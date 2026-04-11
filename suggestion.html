@@ -1,161 +1,33 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>e-Panchayathi Suggestion Portal</title>
+<body>
 
-  <style>
-    body {
-      font-family: Arial;
-      background-color: #f2f2f2;
-      text-align: center;
-    }
+<button onclick="history.back()">⬅ Back</button>
 
-    .box {
-      background: white;
-      width: 400px;
-      margin: auto;
-      margin-top: 40px;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0px 0px 10px gray;
-    }
+<h2>Submit Problem</h2>
+<input id="title" placeholder="Title"><br>
+<textarea id="content" placeholder="Content"></textarea><br>
+<button onclick="save()">Submit</button>
 
-    input, textarea, select {
-      width: 90%;
-      padding: 8px;
-      margin: 8px 0;
-    }
-
-    button {
-      background-color: green;
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-    }
-
-    button:hover {
-      background-color: darkgreen;
-    }
-  </style>
-</head>
-
-<body onload="welcomeAlert()">
-
-<div class="box">
-
-  <h2>e-Panchayathi Operators Suggestion Portal</h2>
-  <p>మీ విలువైన సూచనలను ఇక్కడ నమోదు చేయండి</p>
-
-  <input type="text" id="name" placeholder="మీ పేరు">
-  <input type="text" id="village" placeholder="జిల్లా మరియు మండలం">
-
-  <!-- 🔥 MOBILE FIELD -->
-  <input type="text" id="mobile" maxlength="10" placeholder="మొబైల్ నంబర్">
-
-  <select id="category">
-    <option value="">విభాగం ఎంచుకోండి</option>
-    <option>ఫిర్యాదు</option>
-    <option>సూచన</option>
-    <option>అభ్యర్థన</option>
-  </select>
-
-  <textarea id="suggestion" placeholder="మీ ఫిర్యాదు / సూచన / అభ్యర్థन ఇక్కడ రాయండి"></textarea>
-
-  <button onclick="addSuggestion()">సబ్మిట్</button>
-
-  <!-- 🔥 SCROLLING NOTICE -->
-  <br>
-  <div style="background:#e9f7ef; border:1px solid #28a745; padding:6px; border-radius:6px;">
-    <marquee style="color:#155724; font-size:13px;">
-      ⚠️ గమనిక: మా లక్ష్యం మీకు సాంకేతిక సేవలను అందించడమే. ఈ వెబ్‌సైట్ ద్వారా ఎటువంటి వేతనాలు లేదా ఆర్థిక లావాదేవీలు ఉండవని మనవి. మీ సహకారానికి ధన్యవాదాలు.
-    </marquee>
-  </div>
-
-  <!-- 🙏 THANKS -->
-  <p style="font-size:12px; color:#555; margin-top:8px;">
-    🙏 ప్రత్యేక ధన్యవాదాలు: ఈ వెబ్‌సైట్ తయారీలో సహకరించిన 
-    <strong>Dasari Narender</strong> (DPM, Mancherial) గారికి.
-  </p>
-
-  <!-- 🔗 BUTTON -->
-  <a href="home.html">
-   <script>
-function goHome(){
-  window.location.href = "index.html";
-}
-</script>
-  </a>
-
-</div>
-
-<!-- 🔥 FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-  authDomain: "e-vedhika-258f2.firebaseapp.com",
-  projectId: "e-vedhika-258f2",
-  storageBucket: "e-vedhika-258f2.firebasestorage.app",
-  messagingSenderId: "188172181883",
-  appId: "1:188172181883:web:64f3a543e5305726f49dde"
-};
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+authDomain:"e-vedhika-258f2.firebaseapp.com",
+projectId:"e-vedhika-258f2"
+});
 const db = getFirestore(app);
 
-// 🔥 START ALERT
-window.welcomeAlert = function () {
-  alert("Welcome to e-Panchayathi Suggestion Portal");
-};
-
-// 🔥 SUBMIT FUNCTION
-window.addSuggestion = async function () {
-  let name = document.getElementById("name").value;
-  let village = document.getElementById("village").value;
-  let mobile = document.getElementById("mobile").value;
-  let category = document.getElementById("category").value;
-  let suggestion = document.getElementById("suggestion").value;
-
-  if(name=="" || village=="" || mobile=="" || category=="" || suggestion==""){
-    alert("దయచేసి అన్ని వివరాలు నింపండి");
-    return;
-  }
-
-  // ✅ STRICT 10 DIGITS
-  if (!/^[0-9]{10}$/.test(mobile)) {
-    alert("మొబైల్ నంబర్ కచ్చితంగా 10 అంకెలు మాత్రమే ఉండాలి");
-    return;
-  }
-
-  try {
-    let now = new Date();
-
-    await addDoc(collection(db, "suggestions"), {
-      name,
-      village,
-      mobile,
-      category,
-      suggestion,
-      createdAt: now   // 🔥 IMPORTANT
-    });
-
-    alert("Thank you for your suggestion!");
-
-    // Clear form
-    document.getElementById("name").value = "";
-    document.getElementById("village").value = "";
-    document.getElementById("mobile").value = "";
-    document.getElementById("category").value = "";
-    document.getElementById("suggestion").value = "";
-
-  } catch (error) {
-    alert("Error: " + error);
-  }
+window.save = async ()=>{
+await addDoc(collection(db,"posts"),{
+title:title.value,
+content:content.value,
+status:"Pending",
+userType:"public"
+});
+alert("Submitted");
 };
 </script>
 
