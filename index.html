@@ -1,50 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>E-Vedhika</title>
-
-  <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      background: #f4f4f4;
-    }
-
-    .box {
-      display: inline-block;
-      padding: 15px 25px;
-      margin: 10px;
-      background: #e3f2fd;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-
-    .card {
-      text-align: left;
-      margin: 10px auto;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      width: 80%;
-      background: #fff;
-    }
-  </style>
-</head>
-
-<body>
-
-<h1>🌐 E-Vedhika</h1>
-<p>All E-Panchayat solutions in one place</p>
-
-<div class="box">📌 Schemes</div>
-<div class="box">📌 Problems</div>
-<div class="box">📌 Updates</div>
-
-<h2>🔥 Latest Updates</h2>
-
 <div id="schemesData">Loading...</div>
 
-<!-- 🔥 FIREBASE SCRIPT -->
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
@@ -60,50 +15,31 @@ const db = getFirestore(app);
 
 async function loadSchemes(){
 
+  let el = document.getElementById("schemesData");
+
+  if(!el){
+    console.error("schemesData div not found ❌");
+    return;
+  }
+
   try{
-
     let qs = await getDocs(collection(db,"posts"));
-    let arr=[];
-
-    qs.forEach(d=>{
-      let x=d.data();
-
-      // ✅ safe filter
-      if(
-        (x.userType || "").toLowerCase() === "admin" &&
-        (x.status || "").toLowerCase() === "approved"
-      ){
-        arr.push(x);
-      }
-    });
-
-    // ✅ sorting latest first
-    arr.sort((a,b)=>{
-      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-    });
 
     let html="";
 
-    arr.slice(0,3).forEach(d=>{
-      html+=`
-      <div class="card">
-        <b>${d.title || "No Title"}</b><br>
-        <small>${d.content || ""}</small>
-      </div>`;
+    qs.forEach(doc=>{
+      let d = doc.data();
+      html += `<p><b>${d.title}</b> - ${d.content}</p>`;
     });
 
-    document.getElementById("schemesData").innerHTML =
-      html || "<p>No updates available</p>";
+    el.innerHTML = html || "No data";
 
   }catch(e){
     console.error(e);
-    document.getElementById("schemesData").innerHTML = "Error loading data";
+    el.innerHTML = "Error loading data";
   }
 }
 
-loadSchemes();
+document.addEventListener("DOMContentLoaded", loadSchemes);
 
 </script>
-
-</body>
-</html>
