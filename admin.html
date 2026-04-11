@@ -61,7 +61,6 @@ th{background:#2c3e50;color:white;}
 <h2>📊 Admin Dashboard</h2>
 
 <button onclick="loadSuggestions()">📊 Suggestions</button>
-<button onclick="loadProfiles()">👤 Profiles</button>
 <button onclick="loadPosts()">📝 Public Posts</button>
 <button onclick="loadAdminPosts()">📰 Admin Posts</button>
 
@@ -87,12 +86,12 @@ th{background:#2c3e50;color:white;}
 
   <input id="p_fileUrl" placeholder="Image / Video URL"><br>
 
-  <button onclick="addPost()" class="accept-btn">Post</button>
+  <button onclick="addPost()" class="accept-btn">Submit</button>
 </div>
 
 <table>
 <thead><tr id="header"></tr></thead>
-<tbody id="data"><tr><td>Select a tab</td></tr></tbody>
+<tbody id="data"></tbody>
 </table>
 
 <script type="module">
@@ -113,19 +112,15 @@ let fullData=[];
 
 /* HEADER */
 function setHeader(){
-  let h=header;
-
   if(currentType==="suggestions"){
-    h.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Status</th><th>Action</th>`;
-  }
-  else{
-    h.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
+    header.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Status</th><th>Action</th>`;
+  }else{
+    header.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
   }
 }
 
 /* LOAD */
 window.loadSuggestions=()=>loadData("suggestions");
-window.loadProfiles=()=>loadData("profiles");
 
 window.loadPosts=async()=>{
   currentType="posts";
@@ -136,9 +131,7 @@ window.loadPosts=async()=>{
   let arr=[];
   qs.forEach(d=>{
     let x=d.data();
-    if(x.userType!=="admin"){ // only public
-      arr.push({id:d.id,...x});
-    }
+    if(x.userType!=="admin") arr.push({id:d.id,...x});
   });
 
   fullData=arr;
@@ -154,9 +147,7 @@ window.loadAdminPosts=async()=>{
   let arr=[];
   qs.forEach(d=>{
     let x=d.data();
-    if(x.userType==="admin"){
-      arr.push({id:d.id,...x});
-    }
+    if(x.userType==="admin") arr.push({id:d.id,...x});
   });
 
   fullData=arr;
@@ -184,14 +175,27 @@ function display(arr){
 
     let action="";
 
+    // ADMIN POSTS
     if(currentType==="posts" && d.userType==="admin"){
-      action="✅ Live";
+      if(d.status==="Deleted"){
+        action = `<button class="undo-btn" onclick="undoRow('${d.id}')">Undo</button>`;
+      }else{
+        action = "✅ Live";
+      }
     }
     else{
-      action = d.status==="Approved"?"✅":
-        d.status==="Deleted"?`<button onclick="undoRow('${d.id}')">Undo</button>`:
-        `<button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
-         <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>`;
+      // PUBLIC POSTS
+      if(d.status==="Approved"){
+        action="✅";
+      }
+      else if(d.status==="Deleted"){
+        action=`<button class="undo-btn" onclick="undoRow('${d.id}')">Undo</button>`;
+      }
+      else{
+        action=`
+        <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
+        <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>`;
+      }
     }
 
     let badge = (d.userType==="admin")? `<span class="badge">Admin</span>`:"";
@@ -235,7 +239,7 @@ window.addPost=async()=>{
     content:p_content.value,
     type:p_type.value,
     fileUrl:p_fileUrl.value,
-    status:"Approved",   // direct live
+    status:"Approved",
     userType:"admin",
     createdAt:serverTimestamp()
   });
