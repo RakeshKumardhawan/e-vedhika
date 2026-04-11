@@ -1,253 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Admin Dashboard</title>
-
-<style>
-body{font-family:Arial;background:#f2f2f2;text-align:center;}
-
-button{
-  padding:6px 12px;
-  margin:5px;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
-}
-
-.accept-btn{background:green;color:white;}
-.delete-btn{background:red;color:white;}
-.undo-btn{background:orange;color:white;}
-
-.pending{background:orange;color:white;}
-.accepted{background:green;color:white;}
-.trash{background:red;color:white;}
-.all{background:#444;color:white;}
-
-.badge{
-  background:#0077b6;
-  color:white;
-  padding:3px 8px;
-  border-radius:5px;
-  font-size:12px;
-}
-
-input, textarea, select{
-  padding:8px;
-  margin:5px;
-  width:250px;
-}
-
-table{
-  margin:auto;
-  margin-top:20px;
-  border-collapse:collapse;
-  width:95%;
-  background:white;
-}
-
-th,td{
-  padding:8px;
-  border:1px solid #ddd;
-  font-size:13px;
-}
-
-th{background:#2c3e50;color:white;}
-</style>
-</head>
-
 <body>
 
-<h2>📊 Admin Dashboard</h2>
-
-<button onclick="loadSuggestions()">📊 Suggestions</button>
-<button onclick="loadPosts()">📝 Public Posts</button>
-<button onclick="loadAdminPosts()">📰 Admin Posts</button>
-
-<br>
-
-<button class="pending" onclick="filterStatus('Pending')">Pending</button>
-<button class="accepted" onclick="filterStatus('Approved')">Approved</button>
-<button class="trash" onclick="filterStatus('Deleted')">Deleted</button>
-<button class="all" onclick="showAll()">All</button>
-
-<!-- ADMIN POST -->
-<div id="postForm" style="display:none;">
-  <h3>➕ Admin New Post</h3>
-
-  <input id="p_title" placeholder="Title"><br>
-  <textarea id="p_content" placeholder="Content"></textarea><br>
-
-  <select id="p_type">
-    <option value="text">Text</option>
-    <option value="image">Image</option>
-    <option value="youtube">YouTube</option>
-  </select><br>
-
-  <input id="p_fileUrl" placeholder="Image / Video URL"><br>
-
-  <button onclick="addPost()" class="accept-btn">Submit</button>
-</div>
-
-<table>
-<thead><tr id="header"></tr></thead>
-<tbody id="data"></tbody>
-</table>
+<button onclick="history.back()">⬅ Back</button>
+<h2>Admin Updates</h2>
+<div id="data"></div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const app = initializeApp({
-  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-  authDomain:"e-vedhika-258f2.firebaseapp.com",
-  projectId:"e-vedhika-258f2"
+apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+authDomain:"e-vedhika-258f2.firebaseapp.com",
+projectId:"e-vedhika-258f2"
 });
-
 const db = getFirestore(app);
 
-let currentType="";
-let fullData=[];
-
-/* HEADER */
-function setHeader(){
-  if(currentType==="suggestions"){
-    header.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Status</th><th>Action</th>`;
-  }else{
-    header.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
-  }
+let qs = await getDocs(collection(db,"posts"));
+qs.forEach(d=>{
+let x=d.data();
+if(x.userType==="admin" && x.status==="Approved"){
+data.innerHTML += `<div><b>${x.title}</b><br>${x.content}</div>`;
 }
-
-/* LOAD */
-window.loadSuggestions=()=>loadData("suggestions");
-
-window.loadPosts=async()=>{
-  currentType="posts";
-  setHeader();
-  postForm.style.display="none";
-
-  let qs=await getDocs(collection(db,"posts"));
-  let arr=[];
-  qs.forEach(d=>{
-    let x=d.data();
-    if(x.userType!=="admin") arr.push({id:d.id,...x});
-  });
-
-  fullData=arr;
-  display(arr.filter(d=>(d.status||"Pending")==="Pending"));
-};
-
-window.loadAdminPosts=async()=>{
-  currentType="posts";
-  setHeader();
-  postForm.style.display="block";
-
-  let qs=await getDocs(collection(db,"posts"));
-  let arr=[];
-  qs.forEach(d=>{
-    let x=d.data();
-    if(x.userType==="admin") arr.push({id:d.id,...x});
-  });
-
-  fullData=arr;
-  display(arr);
-};
-
-async function loadData(type){
-  currentType=type;
-  setHeader();
-  postForm.style.display="none";
-
-  let qs=await getDocs(collection(db,type));
-  let arr=[];
-  qs.forEach(d=>arr.push({id:d.id,...d.data()}));
-
-  fullData=arr;
-  display(arr.filter(d=>(d.status||"Pending")==="Pending"));
-}
-
-/* DISPLAY */
-function display(arr){
-  data.innerHTML="";
-
-  arr.forEach((d,i)=>{
-
-    let action="";
-
-    // ADMIN POSTS
-    if(currentType==="posts" && d.userType==="admin"){
-      if(d.status==="Deleted"){
-        action = `<button class="undo-btn" onclick="undoRow('${d.id}')">Undo</button>`;
-      }else{
-        action = "✅ Live";
-      }
-    }
-    else{
-      // PUBLIC POSTS
-      if(d.status==="Approved"){
-        action="✅";
-      }
-      else if(d.status==="Deleted"){
-        action=`<button class="undo-btn" onclick="undoRow('${d.id}')">Undo</button>`;
-      }
-      else{
-        action=`
-        <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
-        <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>`;
-      }
-    }
-
-    let badge = (d.userType==="admin")? `<span class="badge">Admin</span>`:"";
-
-    data.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>${badge} ${d.title||d.name}</td>
-      <td>${d.content||d.suggestion||""}</td>
-      <td>${d.status||"Pending"}</td>
-      <td>${action}</td>
-    </tr>`;
-  });
-}
-
-/* ACTIONS */
-window.acceptRow=async(id)=>{
-  await updateDoc(doc(db,currentType,id),{status:"Approved"});
-  location.reload();
-};
-
-window.deleteRow=async(id)=>{
-  await updateDoc(doc(db,currentType,id),{status:"Deleted"});
-  location.reload();
-};
-
-window.undoRow=async(id)=>{
-  await updateDoc(doc(db,currentType,id),{status:"Pending"});
-  location.reload();
-};
-
-/* ADD ADMIN POST */
-window.addPost=async()=>{
-  if(!p_title.value || !p_content.value){
-    alert("Fill fields");
-    return;
-  }
-
-  await addDoc(collection(db,"posts"),{
-    title:p_title.value,
-    content:p_content.value,
-    type:p_type.value,
-    fileUrl:p_fileUrl.value,
-    status:"Approved",
-    userType:"admin",
-    createdAt:serverTimestamp()
-  });
-
-  alert("Posted!");
-  location.reload();
-};
-
+});
 </script>
 
 </body>
