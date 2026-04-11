@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -23,6 +23,14 @@ button{
 .accepted{background:green;color:white;}
 .trash{background:red;color:white;}
 .all{background:#444;color:white;}
+
+.badge{
+  background:#0077b6;
+  color:white;
+  padding:3px 8px;
+  border-radius:5px;
+  font-size:12px;
+}
 
 input, textarea, select{
   padding:8px;
@@ -52,7 +60,6 @@ th{background:#2c3e50;color:white;}
 
 <h2>📊 Admin Dashboard</h2>
 
-<!-- TABS -->
 <button onclick="loadSuggestions()">📊 Suggestions</button>
 <button onclick="loadProfiles()">👤 Profiles</button>
 <button onclick="loadPosts()">📝 Public Posts</button>
@@ -60,13 +67,12 @@ th{background:#2c3e50;color:white;}
 
 <br>
 
-<!-- FILTER -->
 <button class="pending" onclick="filterStatus('Pending')">Pending</button>
 <button class="accepted" onclick="filterStatus('Approved')">Approved</button>
 <button class="trash" onclick="filterStatus('Deleted')">Deleted</button>
 <button class="all" onclick="showAll()">All</button>
 
-<!-- ADMIN POST FORM -->
+<!-- ADMIN POST -->
 <div id="postForm" style="display:none;">
   <h3>➕ Admin New Post</h3>
 
@@ -81,12 +87,12 @@ th{background:#2c3e50;color:white;}
 
   <input id="p_fileUrl" placeholder="Image / Video URL"><br>
 
-  <button onclick="addPost()" class="accept-btn">Submit</button>
+  <button onclick="addPost()" class="accept-btn">Post</button>
 </div>
 
 <table>
 <thead><tr id="header"></tr></thead>
-<tbody id="data"><tr><td colspan="9">Select a tab</td></tr></tbody>
+<tbody id="data"><tr><td>Select a tab</td></tr></tbody>
 </table>
 
 <script type="module">
@@ -105,31 +111,19 @@ const db = getFirestore(app);
 let currentType="";
 let fullData=[];
 
-/* DATE */
-function formatDate(d){
-  if(d.createdAt?.seconds){
-    let dt=new Date(d.createdAt.seconds*1000);
-    return dt.toLocaleString('en-IN',{hour12:true});
-  }
-  return "N/A";
-}
-
 /* HEADER */
 function setHeader(){
-  let h=document.getElementById("header");
+  let h=header;
 
   if(currentType==="suggestions"){
-    h.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Date</th><th>Status</th><th>Action</th>`;
-  }
-  else if(currentType==="profiles"){
-    h.innerHTML=`<th>#</th><th>Name</th><th>Role</th><th>Status</th><th>Action</th>`;
+    h.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Status</th><th>Action</th>`;
   }
   else{
     h.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
   }
 }
 
-/* LOAD FUNCTIONS */
+/* LOAD */
 window.loadSuggestions=()=>loadData("suggestions");
 window.loadProfiles=()=>loadData("profiles");
 
@@ -142,15 +136,13 @@ window.loadPosts=async()=>{
   let arr=[];
   qs.forEach(d=>{
     let x=d.data();
-    if(x.userType!=="admin"){ // ONLY PUBLIC
+    if(x.userType!=="admin"){ // only public
       arr.push({id:d.id,...x});
     }
   });
 
   fullData=arr;
-
-  let pending=arr.filter(d=>(d.status||"Pending")==="Pending");
-  displayData(pending);
+  display(arr.filter(d=>(d.status||"Pending")==="Pending"));
 };
 
 window.loadAdminPosts=async()=>{
@@ -168,7 +160,7 @@ window.loadAdminPosts=async()=>{
   });
 
   fullData=arr;
-  displayData(arr);
+  display(arr);
 };
 
 async function loadData(type){
@@ -181,58 +173,43 @@ async function loadData(type){
   qs.forEach(d=>arr.push({id:d.id,...d.data()}));
 
   fullData=arr;
-
-  let pending=arr.filter(d=>(d.status||"Pending")==="Pending");
-  displayData(pending);
+  display(arr.filter(d=>(d.status||"Pending")==="Pending"));
 }
 
-/* FILTER */
-window.filterStatus=(status)=>{
-  let f=fullData.filter(d=>{
-    let s=d.status||"Pending";
-    if(status==="Approved") return s==="Approved"||s==="Accepted";
-    return s===status;
-  });
-  displayData(f);
-};
-
-window.showAll=()=>displayData(fullData);
-
 /* DISPLAY */
-function displayData(arr){
-  let table=data;
-  table.innerHTML="";
+function display(arr){
+  data.innerHTML="";
 
   arr.forEach((d,i)=>{
-    let row="";
 
-    if(currentType==="suggestions"){
-      row=`<tr><td>${i+1}</td><td>${d.name}</td><td>${d.suggestion}</td>
-      <td>${formatDate(d)}</td><td>${d.status}</td>
-      <td>
-      <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
-      <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
-      </td></tr>`;
+    let action="";
+
+    if(currentType==="posts" && d.userType==="admin"){
+      action="✅ Live";
     }
-
     else{
-      row=`<tr><td>${i+1}</td><td>${d.title||d.name}</td>
-      <td>${d.content||d.details}</td>
-      <td>${d.status}</td>
-      <td>
-      <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
-      <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
-      </td></tr>`;
+      action = d.status==="Approved"?"✅":
+        d.status==="Deleted"?`<button onclick="undoRow('${d.id}')">Undo</button>`:
+        `<button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
+         <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>`;
     }
 
-    table.innerHTML+=row;
+    let badge = (d.userType==="admin")? `<span class="badge">Admin</span>`:"";
+
+    data.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td>${badge} ${d.title||d.name}</td>
+      <td>${d.content||d.suggestion||""}</td>
+      <td>${d.status||"Pending"}</td>
+      <td>${action}</td>
+    </tr>`;
   });
 }
 
 /* ACTIONS */
 window.acceptRow=async(id)=>{
-  let val=(currentType==="suggestions")?"Accepted":"Approved";
-  await updateDoc(doc(db,currentType,id),{status:val});
+  await updateDoc(doc(db,currentType,id),{status:"Approved"});
   location.reload();
 };
 
@@ -241,19 +218,29 @@ window.deleteRow=async(id)=>{
   location.reload();
 };
 
-/* ADMIN POST */
+window.undoRow=async(id)=>{
+  await updateDoc(doc(db,currentType,id),{status:"Pending"});
+  location.reload();
+};
+
+/* ADD ADMIN POST */
 window.addPost=async()=>{
+  if(!p_title.value || !p_content.value){
+    alert("Fill fields");
+    return;
+  }
+
   await addDoc(collection(db,"posts"),{
     title:p_title.value,
     content:p_content.value,
     type:p_type.value,
     fileUrl:p_fileUrl.value,
-    status:"Approved",
+    status:"Approved",   // direct live
     userType:"admin",
     createdAt:serverTimestamp()
   });
 
-  alert("Admin Post Added");
+  alert("Posted!");
   location.reload();
 };
 
