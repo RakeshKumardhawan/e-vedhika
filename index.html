@@ -1,9 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>E-Vedhika</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #f4f4f4;
+    }
+
+    .box {
+      display: inline-block;
+      padding: 15px 25px;
+      margin: 10px;
+      background: #e3f2fd;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .card {
+      text-align: left;
+      margin: 10px auto;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      width: 80%;
+      background: #fff;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🌐 E-Vedhika</h1>
+<p>All E-Panchayat solutions in one place</p>
+
+<div class="box">📌 Schemes</div>
+<div class="box">📌 Problems</div>
+<div class="box">📌 Updates</div>
+
+<h2>🔥 Latest Updates</h2>
+
+<div id="schemesData">Loading...</div>
+
+<!-- 🔥 FIREBASE SCRIPT -->
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-/* 🔥 SAME CONFIG */
 const app = initializeApp({
   apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
   authDomain:"e-vedhika-258f2.firebaseapp.com",
@@ -12,35 +58,52 @@ const app = initializeApp({
 
 const db = getFirestore(app);
 
-/* 🔥 LOAD ADMIN POSTS */
 async function loadSchemes(){
 
-  let qs = await getDocs(collection(db,"posts"));
-  let arr=[];
+  try{
 
-  qs.forEach(d=>{
-    let x=d.data();
+    let qs = await getDocs(collection(db,"posts"));
+    let arr=[];
 
-    if(x.userType==="admin" && x.status==="Approved"){
-      arr.push(x);
-    }
-  });
+    qs.forEach(d=>{
+      let x=d.data();
 
-  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+      // ✅ safe filter
+      if(
+        (x.userType || "").toLowerCase() === "admin" &&
+        (x.status || "").toLowerCase() === "approved"
+      ){
+        arr.push(x);
+      }
+    });
 
-  let html="";
+    // ✅ sorting latest first
+    arr.sort((a,b)=>{
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    });
 
-  arr.slice(0,3).forEach(d=>{
-    html+=`
-    <div style="text-align:left;margin:5px 0;">
-      <b>${d.title}</b><br>
-      <small>${d.content}</small>
-    </div>`;
-  });
+    let html="";
 
-  document.getElementById("schemesData").innerHTML = html || "No updates";
+    arr.slice(0,3).forEach(d=>{
+      html+=`
+      <div class="card">
+        <b>${d.title || "No Title"}</b><br>
+        <small>${d.content || ""}</small>
+      </div>`;
+    });
+
+    document.getElementById("schemesData").innerHTML =
+      html || "<p>No updates available</p>";
+
+  }catch(e){
+    console.error(e);
+    document.getElementById("schemesData").innerHTML = "Error loading data";
+  }
 }
 
 loadSchemes();
 
 </script>
+
+</body>
+</html>
