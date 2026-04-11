@@ -1,45 +1,65 @@
-<div id="schemesData">Loading...</div>
-
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-const app = initializeApp({
-  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-  authDomain:"e-vedhika-258f2.firebaseapp.com",
-  projectId:"e-vedhika-258f2"
-});
-
-const db = getFirestore(app);
-
-async function loadSchemes(){
-
-  let el = document.getElementById("schemesData");
-
-  if(!el){
-    console.error("schemesData div not found ❌");
-    return;
-  }
-
-  try{
-    let qs = await getDocs(collection(db,"posts"));
-
-    let html="";
-
-    qs.forEach(doc=>{
-      let d = doc.data();
-      html += `<p><b>${d.title}</b> - ${d.content}</p>`;
-    });
-
-    el.innerHTML = html || "No data";
-
-  }catch(e){
-    console.error(e);
-    el.innerHTML = "Error loading data";
-  }
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  text-align: center;
+  background: #f5f7fb;
+  margin: 0;
 }
 
-document.addEventListener("DOMContentLoaded", loadSchemes);
+/* HEADER */
+h1 {
+  margin-top: 20px;
+}
 
-</script>
+p {
+  color: #555;
+}
+
+/* BUTTONS */
+.box {
+  display: inline-block;
+  padding: 12px 25px;
+  margin: 10px;
+  background: #e3f2fd;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.box:hover {
+  background: #90caf9;
+  transform: scale(1.05);
+}
+
+/* SECTION */
+h2 {
+  margin-top: 30px;
+}
+
+/* CARDS */
+.card {
+  text-align: left;
+  margin: 15px auto;
+  padding: 15px;
+  border-radius: 12px;
+  width: 80%;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+/* TITLE */
+.card b {
+  font-size: 18px;
+  color: #222;
+}
+
+/* CONTENT */
+.card small {
+  color: #666;
+}
+</style>
