@@ -1,0 +1,217 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>E-Vedhika</title>
+
+<style>
+body{
+  font-family:Arial;
+  margin:0;
+  background:#eef2f7;
+  text-align:center;
+}
+
+/* HEADER */
+.header{
+  background:#0077b6;
+  color:white;
+  padding:25px;
+}
+
+/* TEXT */
+.desc{
+  margin:15px;
+  color:#333;
+}
+
+/* SEARCH */
+.search input{
+  width:70%;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  margin:15px;
+  transition:0.3s;
+}
+
+.search input:focus{
+  outline:none;
+  box-shadow:0 0 10px rgba(0,119,182,0.4);
+}
+
+/* DASHBOARD */
+.dashboard{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+
+.stat{
+  background:white;
+  margin:10px;
+  padding:15px;
+  border-radius:12px;
+  width:140px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.1);
+  transition:all 0.3s ease;
+}
+
+.stat:hover{
+  transform:translateY(-6px) scale(1.03);
+  box-shadow:0 12px 30px rgba(0,0,0,0.2);
+}
+
+/* CATEGORY */
+.categories{
+  margin:20px;
+}
+
+.cat{
+  display:inline-block;
+  padding:10px 18px;
+  margin:5px;
+  background:#caf0f8;
+  border-radius:30px;
+  transition:all 0.3s ease;
+  cursor:pointer;
+}
+
+.cat:hover{
+  transform:translateY(-4px) scale(1.05);
+  background:#90e0ef;
+  box-shadow:0 6px 15px rgba(0,0,0,0.2);
+}
+
+/* CARDS */
+.grid{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+.card{
+  background:white;
+  width:260px;
+  margin:12px;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.1);
+  transition:all 0.35s ease;
+}
+
+.card:hover{
+  transform:translateY(-10px) scale(1.04);
+  box-shadow:0 15px 40px rgba(0,0,0,0.25);
+}
+
+/* BUTTON */
+button{
+  background:#0077b6;
+  color:white;
+  padding:10px 18px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  transition:all 0.25s ease;
+}
+
+button:hover{
+  background:#023e8a;
+  transform:scale(1.05);
+}
+
+/* MOBILE */
+@media(max-width:600px){
+  .card{width:90%;}
+  .search input{width:90%;}
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+  <h2>🌐 Welcome to E-Vedhika</h2>
+  <p>All E-Panchayat solutions in one place</p>
+</div>
+
+<p class="desc">
+E-Vedhika is a digital support platform for E-Panchayat operators.
+</p>
+
+<div class="search">
+  <input type="text" id="search" placeholder="Search problems, updates, guides...">
+</div>
+
+<div class="dashboard">
+  <div class="stat">📁 Pending</div>
+  <div class="stat">📊 Updates</div>
+  <div class="stat">📈 Progress</div>
+</div>
+
+<div class="categories">
+  <h3>Categories</h3>
+  <span class="cat">EPFO</span>
+  <span class="cat">Aadhar</span>
+  <span class="cat">Payments</span>
+  <span class="cat">House Tax</span>
+</div>
+
+<div class="grid">
+
+<div class="card">
+  <h3>📌 Problems & Solutions</h3>
+  <p>Main support system</p>
+  <button onclick="go('problems.html')">Open</button>
+</div>
+
+<div class="card">
+  <h3>📊 Latest Updates</h3>
+  <p>Admin updates</p>
+  <button onclick="go('updates.html')">Open</button>
+</div>
+
+<div class="card">
+  <h3>🎓 Learning</h3>
+  <p>Guides & videos</p>
+  <button onclick="go('learning.html')">Open</button>
+</div>
+
+<div class="card">
+  <h3>📞 Help</h3>
+  <p>Submit issue</p>
+  <button onclick="go('suggestion.html')">Open</button>
+</div>
+
+<div class="card">
+  <h3>📑 Schemes</h3>
+  <p>Govt info</p>
+  <button onclick="alert('Coming Soon')">Open</button>
+</div>
+
+</div>
+
+<script>
+
+/* NAVIGATION */
+function go(page){
+  window.location.href = page;
+}
+
+/* SEARCH */
+document.getElementById("search").addEventListener("keyup", function(){
+  let val = this.value.toLowerCase();
+  let cards = document.querySelectorAll(".card");
+
+  cards.forEach(c=>{
+    let text = c.innerText.toLowerCase();
+    c.style.display = text.includes(val) ? "block" : "none";
+  });
+});
+
+</script>
+
+</body>
+</html>
