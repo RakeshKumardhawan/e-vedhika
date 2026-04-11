@@ -185,14 +185,45 @@ E-Vedhika is a digital support platform for E-Panchayat operators.
   <button onclick="go('suggestion.html')">Open</button>
 </div>
 
-<div class="card">
-  <h3>📑 Schemes</h3>
-  <p>Govt info</p>
-  <button onclick="alert('Coming Soon')">Open</button>
+<<div class="card">
+  <h3>📑 Schemes (Admin Updates)</h3>
+  <div id="schemesData">Loading...</div>
 </div>
+// 🔥 LOAD ADMIN POSTS TO HOME
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-</div>
+const db = getFirestore();
 
+async function loadSchemes(){
+
+  let qs = await getDocs(collection(db,"posts"));
+  let arr=[];
+
+  qs.forEach(d=>{
+    let x=d.data();
+
+    if(x.userType==="admin" && x.status==="Approved"){
+      arr.push(x);
+    }
+  });
+
+  // latest first
+  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  let html="";
+
+  arr.slice(0,3).forEach(d=>{
+    html+=`
+    <div style="border-bottom:1px solid #ccc;padding:5px;">
+      <b>${d.title}</b><br>
+      <small>${d.content.substring(0,50)}...</small>
+    </div>`;
+  });
+
+  document.getElementById("schemesData").innerHTML = html || "No updates";
+}
+
+loadSchemes();
 <script>
 
 /* NAVIGATION */
