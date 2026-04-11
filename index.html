@@ -1,65 +1,143 @@
-<style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  text-align: center;
-  background: #f5f7fb;
-  margin: 0;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>E-Vedhika</title>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background: #f5f7fb;
+      margin: 0;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    p {
+      color: #555;
+    }
+
+    /* BUTTONS */
+    .box {
+      display: inline-block;
+      padding: 12px 25px;
+      margin: 10px;
+      background: #e3f2fd;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: 0.3s;
+      font-weight: bold;
+    }
+
+    .box:hover {
+      background: #90caf9;
+      transform: scale(1.05);
+    }
+
+    h2 {
+      margin-top: 30px;
+    }
+
+    /* CARDS */
+    .card {
+      text-align: left;
+      margin: 15px auto;
+      padding: 15px;
+      border-radius: 12px;
+      width: 80%;
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    .card b {
+      font-size: 18px;
+      color: #222;
+    }
+
+    .card small {
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🌐 E-Vedhika</h1>
+<p>All E-Panchayat solutions in one place</p>
+
+<div class="box">📌 Schemes</div>
+<div class="box">📌 Problems</div>
+<div class="box">📌 Updates</div>
+
+<h2>🔥 Latest Updates</h2>
+
+<div id="schemesData">Loading...</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain:"e-vedhika-258f2.firebaseapp.com",
+  projectId:"e-vedhika-258f2"
+});
+
+const db = getFirestore(app);
+
+async function loadSchemes(){
+
+  const el = document.getElementById("schemesData");
+
+  try{
+    let qs = await getDocs(collection(db,"posts"));
+
+    let arr=[];
+
+    qs.forEach(doc=>{
+      let d = doc.data();
+
+      if(
+        (d.userType || "").toLowerCase() === "admin" &&
+        (d.status || "").toLowerCase() === "approved"
+      ){
+        arr.push(d);
+      }
+    });
+
+    arr.sort((a,b)=>{
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    });
+
+    let html="";
+
+    arr.slice(0,3).forEach(d=>{
+      html += `
+      <div class="card">
+        <b>${d.title || "No Title"}</b><br>
+        <small>${d.content || ""}</small>
+      </div>`;
+    });
+
+    el.innerHTML = html || "No updates available";
+
+  }catch(e){
+    console.error(e);
+    el.innerHTML = "Error loading data";
+  }
 }
 
-/* HEADER */
-h1 {
-  margin-top: 20px;
-}
+document.addEventListener("DOMContentLoaded", loadSchemes);
 
-p {
-  color: #555;
-}
+</script>
 
-/* BUTTONS */
-.box {
-  display: inline-block;
-  padding: 12px 25px;
-  margin: 10px;
-  background: #e3f2fd;
-  border-radius: 25px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.box:hover {
-  background: #90caf9;
-  transform: scale(1.05);
-}
-
-/* SECTION */
-h2 {
-  margin-top: 30px;
-}
-
-/* CARDS */
-.card {
-  text-align: left;
-  margin: 15px auto;
-  padding: 15px;
-  border-radius: 12px;
-  width: 80%;
-  background: #ffffff;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  transition: 0.3s;
-}
-
-.card:hover {
-  transform: translateY(-3px);
-}
-
-/* TITLE */
-.card b {
-  font-size: 18px;
-  color: #222;
-}
-
-/* CONTENT */
-.card small {
-  color: #666;
-}
-</style>
+</body>
+</html>
