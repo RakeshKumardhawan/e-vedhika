@@ -13,30 +13,6 @@ body{
   background:linear-gradient(120deg,#89f7fe,#66a6ff);
 }
 
-/* BUBBLE BACKGROUND */
-body::before{
-  content:"";
-  position:fixed;
-  width:100%;
-  height:100%;
-  background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.3), transparent 40%),
-              radial-gradient(circle at 80% 70%, rgba(255,255,255,0.2), transparent 40%);
-  animation:moveBg 10s infinite alternate;
-  z-index:-1;
-}
-@keyframes moveBg{
-  from{transform:translateY(0);}
-  to{transform:translateY(-50px);}
-}
-
-/* HEADER */
-.header{
-  text-align:center;
-  padding:20px;
-  color:white;
-}
-
-/* LAYOUT */
 .container{
   display:grid;
   grid-template-columns:220px 1fr 280px;
@@ -44,288 +20,256 @@ body::before{
   padding:15px;
 }
 
-/* GLASS */
 .glass{
-  background:rgba(255,255,255,0.35);
-  backdrop-filter: blur(20px);
-  border:1px solid rgba(255,255,255,0.3);
+  background:rgba(255,255,255,0.3);
+  backdrop-filter: blur(15px);
   border-radius:15px;
   padding:15px;
 }
 
-/* SIDEBAR */
-.sidebar div{
-  background:rgba(255,255,255,0.3);
-  padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-}
-
-/* SCROLL */
-.scroll-box{
-  height:120px;
-  overflow:hidden;
-}
-.scroll-item{
-  background:white;
-  padding:6px;
-  margin:5px 0;
-  border-radius:8px;
-  font-size:12px;
-}
-
-/* POST */
-.post-box{
-  background:white;
-  padding:15px;
-  border-radius:12px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.post-box input,
-.post-box textarea{
-  width:100%;
-  padding:12px;
-  border-radius:8px;
-  border:1px solid #ccc;
-}
-.post-box textarea{height:100px;}
-
 .post{
   background:white;
   margin:10px 0;
-  padding:12px;
+  padding:10px;
   border-radius:10px;
 }
 
-/* BUTTON */
-button{
-  background:#ff6b6b;
-  color:white;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
-
-/* LOGIN */
-.login-box input{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  border-radius:8px;
-  border:none;
-}
-
-/* CHAT */
-.chatbot{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  background:#ff6b6b;
-  color:white;
-  padding:12px;
-  border-radius:50px;
-  cursor:pointer;
-}
-
-/* CHAT WINDOW */
-#chatBox{
-  display:none;
-  position:fixed;
-  bottom:80px;
-  right:20px;
-  width:300px;
-  background:white;
-  border-radius:10px;
-  box-shadow:0 5px 20px rgba(0,0,0,0.3);
-}
-
-@media(max-width:800px){
-.container{grid-template-columns:1fr;}
+.scroll-box{
+  height:120px;
+  overflow:hidden;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  <h2>🌐 E-Vedhika</h2>
-  <p>All problem solutions at one place</p>
-</div>
+<h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
 
 <div class="container">
 
 <!-- LEFT -->
-<div class="glass sidebar">
+<div class="glass">
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="scroll-box"></div>
-<div>📌 Problems</div>
-<div>🛠 Fix Errors</div>
+
+<h4>📌 Problems</h4>
+<div id="problemsBox"></div>
+
+<h4>🛠 Fix Errors</h4>
+<div id="solvedBox"></div>
 </div>
 
 <!-- CENTER -->
 <div class="glass">
 
-<h3>✨ New Post</h3>
+<h3>New Post</h3>
 
-<div class="post-box">
 <input id="title" placeholder="Title">
-<textarea id="content" placeholder="Write something..."></textarea>
+<textarea id="content" placeholder="Write"></textarea>
 <button onclick="addPost()">Post</button>
-</div>
 
-<h3>📊 Recent Posts</h3>
 <div id="posts"></div>
 
 </div>
 
 <!-- RIGHT -->
 <div class="glass">
-<h3>🔐 Login</h3>
 
-<div class="login-box">
-<input id="email" placeholder="User ID">
+<h3>Login</h3>
+
+<input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
 
-<p onclick="signup()" style="cursor:pointer;color:blue;">Signup</p>
-<p onclick="forgot()" style="cursor:pointer;color:red;">Forgot Password</p>
-</div>
-
 <hr>
-<div>📢 Updates</div>
-<div>💬 Chat</div>
-</div>
 
-</div>
-
-<!-- CHAT BOT -->
-<div class="chatbot">🤖</div>
-
-<div id="chatBox">
-<div style="background:#0077b6;color:white;padding:10px;">AI Chat</div>
-<div id="chatMessages" style="height:200px;overflow:auto;padding:10px;"></div>
-<div style="display:flex;">
-<input id="chatInput" style="flex:1;padding:8px;">
+<h3>Chat</h3>
+<div id="chatMessages" style="height:200px;overflow:auto;"></div>
+<input id="chatInput" placeholder="Type message">
 <button onclick="sendMsg()">Send</button>
-</div>
-</div>
 
-<!-- TRANSLATE -->
-<div style="position:fixed;bottom:10px;left:10px;">
-<div id="google_translate_element"></div>
 </div>
 
-<script>
-function googleTranslateElementInit(){
-new google.translate.TranslateElement(
-{pageLanguage:'en',includedLanguages:'en,hi,te'},
-'google_translate_element'
-);
-}
+</div>
 
-/* LOGIN */
-function login(){
-if(!email.value||!password.value){alert("Enter details");return;}
-alert("Login demo");
-}
-function signup(){alert("Signup next");}
-function forgot(){alert("Reset next");}
-
-/* CHAT */
-document.querySelector(".chatbot").onclick=()=>{
-chatBox.style.display = chatBox.style.display==="none"?"block":"none";
-};
-
-function sendMsg(){
-let msg=chatInput.value;
-if(!msg)return;
-
-chatMessages.innerHTML += "<div><b>You:</b> "+msg+"</div>";
-
-let reply="I will help you soon";
-if(msg.includes("problem")) reply="Go to Problems section";
-
-chatMessages.innerHTML += "<div><b>Bot:</b> "+reply+"</div>";
-
-chatInput.value="";
-chatMessages.scrollTop=chatMessages.scrollHeight;
-}
-</script>
-
-<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-
-<!-- FIREBASE -->
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { 
+  getFirestore, collection, addDoc, getDocs, updateDoc, doc, serverTimestamp, onSnapshot 
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
 const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
+  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain:"e-vedhika-258f2.firebaseapp.com",
+  projectId:"e-vedhika-258f2"
 });
 
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 /* POSTS */
-window.addPost=async()=>{
-if(!title.value||!content.value){alert("Fill all");return;}
+window.addPost = async ()=>{
+  if(!auth.currentUser){
+    alert("Login required");
+    return;
+  }
 
-await addDoc(collection(db,"posts"),{
-title:title.value,
-content:content.value,
-status:"Approved",
-createdAt:serverTimestamp()
-});
+  await addDoc(collection(db,"posts"),{
+    title:title.value,
+    content:content.value,
+    status:"Approved",
+    createdAt:serverTimestamp()
+  });
 
-title.value="";
-content.value="";
-loadPosts();
+  title.value="";
+  content.value="";
+  loadPosts();
 };
 
 async function loadPosts(){
-let qs=await getDocs(collection(db,"posts"));
-let arr=[];
-qs.forEach(d=>{
-let x=d.data();
-if(x.status==="Approved") arr.push(x);
-});
+  let qs=await getDocs(collection(db,"posts"));
+  let arr=[];
+  qs.forEach(d=>{
+    let x=d.data();
+    if(x.status==="Approved") arr.push(x);
+  });
 
-arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
-posts.innerHTML="";
-arr.forEach(d=>{
-posts.innerHTML+=`<div class="post"><b>${d.title}</b><p>${d.content}</p></div>`;
-});
+  posts.innerHTML="";
+  arr.forEach(d=>{
+    posts.innerHTML+=`<div class="post"><b>${d.title}</b><p>${d.content}</p></div>`;
+  });
 }
 
 /* APPROVED */
 async function loadApproved(){
-let qs=await getDocs(collection(db,"suggestions"));
-let arr=[];
-qs.forEach(d=>{
-let x=d.data();
-if(x.status==="Accepted"||x.status==="Approved"){arr.push(x);}
-});
+  let qs=await getDocs(collection(db,"suggestions"));
+  let arr=[];
 
-approvedBox.innerHTML="";
-arr.forEach(d=>{
-approvedBox.innerHTML+=`<div class="scroll-item">${d.name}: ${d.suggestion}</div>`;
-});
+  qs.forEach(d=>{
+    let x=d.data();
+    if(x.status==="Accepted"||x.status==="Approved") arr.push(x);
+  });
 
-let pos=0;
-setInterval(()=>{
-pos++;
-approvedBox.scrollTop=pos;
-if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight){pos=0;}
-},50);
+  approvedBox.innerHTML="";
+  arr.forEach(d=>{
+    approvedBox.innerHTML+=`<div class="post">${d.name}: ${d.suggestion}</div>`;
+  });
+
+  let pos=0;
+  setInterval(()=>{
+    pos++;
+    approvedBox.scrollTop=pos;
+    if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
+  },50);
 }
 
+/* PROBLEMS */
+async function loadProblems(){
+  let qs=await getDocs(collection(db,"problems"));
+  let arr=[];
+  qs.forEach(d=>arr.push({id:d.id,...d.data()}));
+
+  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  problemsBox.innerHTML="";
+  solvedBox.innerHTML="";
+
+  for(let d of arr){
+
+    let html=`
+    <div class="post">
+    <b>${d.title}</b><br>${d.content}<br>
+    <input id="r_${d.id}">
+    <button onclick="addReply('${d.id}')">Reply</button>
+    <button onclick="markSolved('${d.id}')">Solved</button>
+    <div id="rep_${d.id}"></div>
+    </div>`;
+
+    if(d.status==="Solved") solvedBox.innerHTML+=html;
+    else problemsBox.innerHTML+=html;
+
+    let rqs=await getDocs(collection(db,"problems",d.id,"replies"));
+    rqs.forEach(r=>{
+      let x=r.data();
+      document.getElementById("rep_"+d.id).innerHTML+=`<div>${x.message}</div>`;
+    });
+  }
+}
+
+window.addReply = async(id)=>{
+  let msg=document.getElementById("r_"+id).value;
+  if(!msg) return;
+
+  await addDoc(collection(db,"problems",id,"replies"),{
+    message:msg,
+    createdAt:serverTimestamp()
+  });
+
+  loadProblems();
+};
+
+window.markSolved = async(id)=>{
+  await updateDoc(doc(db,"problems",id),{status:"Solved"});
+  loadProblems();
+};
+
+/* CHAT (FIXED) */
+window.sendMsg = async ()=>{
+  let input = document.getElementById("chatInput");
+  let msg = input.value;
+
+  if(!msg){
+    alert("Enter message");
+    return;
+  }
+
+  await addDoc(collection(db,"chat"),{
+    message:msg,
+    createdAt:serverTimestamp()
+  });
+
+  input.value="";
+};
+
+function loadChat(){
+  const chatBox = document.getElementById("chatMessages");
+
+  onSnapshot(collection(db,"chat"),(snapshot)=>{
+
+    let arr=[];
+    snapshot.forEach(doc=>{
+      arr.push(doc.data());
+    });
+
+    arr.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+
+    chatBox.innerHTML="";
+
+    arr.forEach(d=>{
+      chatBox.innerHTML+=`
+      <div style="background:#eee;padding:5px;margin:5px;border-radius:5px;">
+      ${d.message}
+      </div>`;
+    });
+
+    chatBox.scrollTop=chatBox.scrollHeight;
+
+  });
+}
+
+/* LOGIN (basic placeholder) */
+window.login=()=>alert("Use Firebase Auth");
+
+/* INIT */
 loadPosts();
 loadApproved();
+loadProblems();
+loadChat();
+
 </script>
 
 </body>
