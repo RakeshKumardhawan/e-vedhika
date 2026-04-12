@@ -51,6 +51,14 @@ th{background:#2c3e50;color:white;}
 <tbody id="data"></tbody>
 </table>
 
+<!-- ✅ ADMIN POST (FIXED) -->
+<div style="margin-top:20px;">
+<h3>➕ Admin New Post</h3>
+<input id="p_title" placeholder="Title"><br>
+<textarea id="p_content" placeholder="Content"></textarea><br>
+<button onclick="addAdminPost()" class="accept-btn">Post</button>
+</div>
+
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
@@ -65,15 +73,13 @@ projectId:"e-vedhika-258f2"
 
 const db = getFirestore(app);
 
-let currentType="", fullData=[];
-let userRole="admin"; // change dynamic if needed
+/* 🔐 ROLE (SIMPLIFIED) */
+let userRole="admin"; // later dynamic
 
-/* LOG TRACK */
-async function logAction(action,data){
+/* 📊 LOG */
+async function log(action,id){
 await addDoc(collection(db,"logs"),{
-action,
-data,
-time:serverTimestamp()
+action,id,time:serverTimestamp()
 });
 }
 
@@ -86,29 +92,37 @@ header.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Act
 }
 }
 
+let currentType="", fullData=[];
+
 /* LOAD */
 window.loadSuggestions=()=>loadData("suggestions");
 window.loadProfiles=()=>loadData("profiles");
 
+/* PUBLIC POSTS FIX */
 window.loadPosts=async()=>{
 currentType="posts"; setHeader();
 let qs=await getDocs(collection(db,"posts"));
 let arr=[];
 qs.forEach(d=>{
 let x=d.data();
-if(x.userType!=="admin") arr.push({id:d.id,...x});
+if(x.userType!=="admin"){
+arr.push({id:d.id,...x});
+}
 });
 fullData=arr;
 displayData(arr);
 };
 
+/* ADMIN POSTS FIX */
 window.loadAdminPosts=async()=>{
 currentType="posts"; setHeader();
 let qs=await getDocs(collection(db,"posts"));
 let arr=[];
 qs.forEach(d=>{
 let x=d.data();
-if(x.userType==="admin") arr.push({id:d.id,...x});
+if(x.userType==="admin"){
+arr.push({id:d.id,...x});
+}
 });
 fullData=arr;
 displayData(arr);
@@ -128,12 +142,11 @@ displayData(arr);
 
 /* FILTER */
 window.filterStatus=(status)=>{
-let f=fullData.filter(d=>{
+displayData(fullData.filter(d=>{
 let s=d.status||"Pending";
 if(status==="Approved") return s==="Approved"||s==="Accepted";
 return s===status;
-});
-displayData(f);
+}));
 };
 
 window.showAll=()=>displayData(fullData);
@@ -150,14 +163,14 @@ displayData(fullData.filter(d=>
 /* ACTION */
 window.acceptRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Approved"});
-logAction("approve",id);
+log("approve",id);
 loadData(currentType);
 };
 
 window.deleteRow=async(id)=>{
 if(userRole!=="admin"){alert("Only admin");return;}
 await updateDoc(doc(db,currentType,id),{status:"Deleted"});
-logAction("delete",id);
+log("delete",id);
 loadData(currentType);
 };
 
@@ -165,7 +178,7 @@ window.editRow=async(id)=>{
 let txt=prompt("Edit:");
 if(!txt) return;
 await updateDoc(doc(db,currentType,id),{content:txt});
-logAction("edit",id);
+log("edit",id);
 loadData(currentType);
 };
 
@@ -175,32 +188,38 @@ if(userRole!=="admin"){alert("Only admin");return;}
 let role=prompt("admin / moderator / operator / user");
 if(!role) return;
 await updateDoc(doc(db,"profiles",id),{role});
-logAction("role change",id);
+log("role",id);
 loadData("profiles");
 };
 
 window.blockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"blocked"});
-logAction("block",id);
+log("block",id);
 loadData("profiles");
 };
 
 window.unblockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"active"});
-logAction("unblock",id);
+log("unblock",id);
 loadData("profiles");
 };
 
 window.kickUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{kickUntil:Date.now()+300000});
-logAction("kick",id);
+log("kick",id);
 };
 
-window.deleteProfile=async(id)=>{
-if(userRole!=="admin"){alert("Only admin");return;}
-await deleteDoc(doc(db,"profiles",id));
-logAction("profile delete",id);
-loadData("profiles");
+/* 📝 ADMIN POST */
+window.addAdminPost=async()=>{
+await addDoc(collection(db,"posts"),{
+title:p_title.value,
+content:p_content.value,
+userType:"admin",
+status:"Approved",
+createdAt:serverTimestamp()
+});
+log("admin_post","new");
+loadAdminPosts();
 };
 
 /* DISPLAY */
@@ -208,8 +227,8 @@ function displayData(arr){
 data.innerHTML="";
 
 arr.forEach((d,i)=>{
-let status=d.status||"Pending";
-let cls=status==="Approved"?"approved":status==="Deleted"?"deleted":"pending";
+let s=d.status||"Pending";
+let cls=s==="Approved"?"approved":s==="Deleted"?"deleted":"pending";
 
 if(currentType==="profiles"){
 data.innerHTML+=`
@@ -217,23 +236,22 @@ data.innerHTML+=`
 <td>${i+1}</td>
 <td>${d.email||""}</td>
 <td>${d.role||"user"}</td>
-<td class="${cls}">${status}</td>
+<td class="${cls}">${s}</td>
 <td>
 <button onclick="changeRole('${d.id}')">Role</button>
 <button onclick="blockUser('${d.id}')">Block</button>
 <button onclick="unblockUser('${d.id}')">Unblock</button>
 <button onclick="kickUser('${d.id}')">Kick</button>
-<button class="delete-btn" onclick="deleteProfile('${d.id}')">Delete</button>
+<button class="delete-btn" onclick="deleteDoc(doc(db,'profiles','${d.id}'))">Delete</button>
 </td>
 </tr>`;
-}
-else{
+}else{
 data.innerHTML+=`
 <tr>
 <td>${i+1}</td>
 <td>${d.title||d.name||""}</td>
 <td>${d.content||d.suggestion||""}</td>
-<td class="${cls}">${status}</td>
+<td class="${cls}">${s}</td>
 <td>
 <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
 <button class="edit-btn" onclick="editRow('${d.id}')">Edit</button>
