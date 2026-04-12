@@ -2,29 +2,42 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
 
 body{
   margin:0;
   font-family:Segoe UI;
-  background:#f5f7fa;
+  background:#f4f6f9;
 }
 
 /* HEADER */
 .header{
   text-align:center;
-  background:#e3f2fd;
+  background:#2196f3;
+  color:white;
   padding:10px;
 }
-.header h2{margin:0;color:#0d47a1;}
-.tagline{font-size:13px;color:#555;}
-.searchbar input{
-  width:80%;
-  padding:8px;
-  margin-top:5px;
+
+.tagline{
+  font-size:12px;
+  opacity:0.8;
 }
 
-/* MAIN GRID */
+/* SEARCH */
+.search{
+  padding:10px;
+  text-align:center;
+}
+
+.search input{
+  width:90%;
+  padding:8px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+
+/* LAYOUT */
 .main{
   display:grid;
   grid-template-columns:1fr 2fr 1fr;
@@ -32,19 +45,30 @@ body{
   padding:10px;
 }
 
-/* BOX */
-.box{
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
+/* MOBILE */
+@media(max-width:768px){
+  .main{
+    grid-template-columns:1fr;
+  }
 }
 
-/* FEED */
-.feed{
+/* CARD */
+.card{
   background:white;
-  padding:10px;
-  border-radius:10px;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+}
+
+/* BUTTON */
+button{
+  padding:6px 10px;
+  border:none;
+  border-radius:8px;
+  background:#2196f3;
+  color:white;
+  margin-top:5px;
 }
 
 /* POST */
@@ -52,33 +76,22 @@ body{
   border-bottom:1px solid #eee;
   padding:10px 0;
 }
-.meta{font-size:12px;color:gray;}
+
+.meta{
+  font-size:12px;
+  color:gray;
+}
+
 .comment{
   background:#eef;
-  padding:5px;
-  margin-top:5px;
-  border-radius:5px;
-}
-
-/* FOOTER */
-.footer{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  padding:10px;
-}
-
-button{
   padding:6px;
   margin-top:5px;
-  border:none;
-  background:#2196f3;
-  color:white;
+  border-radius:6px;
 }
 
-textarea{
-  width:100%;
-  padding:8px;
+/* LOGIN BOX */
+.login-card{
+  text-align:center;
 }
 
 </style>
@@ -90,31 +103,32 @@ textarea{
 <div class="header">
   <h2>E-Vedhika</h2>
   <div class="tagline">All solutions at one place</div>
-  <div class="searchbar">
-    <input id="search" placeholder="Search..." onkeyup="searchPosts()">
-  </div>
 </div>
 
-<!-- MAIN -->
+<!-- SEARCH -->
+<div class="search">
+  <input id="search" placeholder="Search..." onkeyup="searchPosts()">
+</div>
+
 <div class="main">
 
 <!-- LEFT -->
 <div>
-  <div class="box">✔ Approved Suggestions</div>
-  <div class="box">📌 Post Problems & Suggestions</div>
-  <div class="box">📘 How to Fix Errors</div>
+  <div class="card">✔ Approved Suggestions</div>
+  <div class="card">📌 Post Problems</div>
+  <div class="card">📘 How to Fix Errors</div>
 </div>
 
 <!-- CENTER -->
-<div class="feed">
+<div>
 
-<div class="box">
-  <textarea id="content" placeholder="Write your issue..."></textarea>
+<div class="card">
+  <textarea id="content" placeholder="Write your issue..." style="width:100%"></textarea>
 
   <select id="type">
     <option value="problem">Problem</option>
     <option value="suggestion">Suggestion</option>
-    <option value="update">Admin Update</option>
+    <option value="update">Update</option>
   </select>
 
   <button onclick="addPost()">Post</button>
@@ -126,20 +140,25 @@ textarea{
 
 <!-- RIGHT -->
 <div>
-  <div class="box">
-    👤 Login / Signup<br>
-    <button onclick="goLogin()">Open</button>
-  </div>
-  <div class="box">⚠ Union Issues</div>
-  <div class="box">💬 Comments & Discuss</div>
+
+<div class="card login-card">
+  <h3>Welcome</h3>
+  <button onclick="goLogin()">Login / Signup</button>
+</div>
+
+<div class="card">📢 Union Updates (Login only)</div>
+<div class="card">💬 Comments & Discuss</div>
+
 </div>
 
 </div>
 
 <!-- FOOTER -->
-<div class="footer">
-  <div class="box">🌐 Website Translation (Indian Languages)</div>
-  <div class="box">🤖 AI Chatbot</div>
+<div class="main">
+
+<div class="card">🌐 Translation</div>
+<div class="card">🤖 AI Chatbot</div>
+
 </div>
 
 <script type="module">
@@ -152,6 +171,7 @@ collection, addDoc, getDocs, doc, updateDoc
 let posts=[];
 let uid="", username="", role="user";
 
+// LOGIN CHECK
 auth.onAuthStateChanged(async user=>{
   if(user){
     uid=user.uid;
@@ -167,6 +187,7 @@ auth.onAuthStateChanged(async user=>{
   load();
 });
 
+// LOAD POSTS
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
   posts=[];
@@ -178,26 +199,27 @@ async function load(){
   render(posts);
 }
 
+// RENDER
 function render(data){
   let html="";
 
-  data
-  .filter(p=>!p.parentId && p.status==="Approved")
+  data.filter(p=>!p.parentId && p.status==="Approved")
   .reverse()
   .forEach(p=>{
 
     html+=`
-    <div class="post">
+    <div class="card">
       <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
       <span class="meta">${p.type}</span><br><br>
+
       ${p.content}<br><br>
+
       <button onclick="answer('${p.id}')">Answer</button>
     `;
 
     if(role==="admin"){
       html+=`
       <button onclick="approve('${p.id}')">Approve</button>
-      <button onclick="reject('${p.id}')">Reject</button>
       `;
     }
 
@@ -216,6 +238,7 @@ function render(data){
   feed.innerHTML=html;
 }
 
+// ADD POST
 window.addPost = async ()=>{
   if(!auth.currentUser){
     alert("Login required");
@@ -236,6 +259,7 @@ window.addPost = async ()=>{
   load();
 };
 
+// COMMENT
 window.answer = async (id)=>{
   let text=prompt("Write solution");
   if(!text) return;
@@ -253,16 +277,13 @@ window.answer = async (id)=>{
   load();
 };
 
+// APPROVE
 window.approve = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
 };
 
-window.reject = async (id)=>{
-  await updateDoc(doc(db,"posts",id),{status:"Rejected"});
-  load();
-};
-
+// SEARCH
 window.searchPosts = ()=>{
   let val=search.value.toLowerCase();
   let filtered = posts.filter(p =>
@@ -272,6 +293,7 @@ window.searchPosts = ()=>{
   render(filtered);
 };
 
+// LOGIN
 window.goLogin = ()=>{
   location.href="login.html";
 };
