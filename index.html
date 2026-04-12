@@ -11,7 +11,12 @@ body{margin:0;font-family:sans-serif;background:linear-gradient(120deg,#74ebd5,#
 input,textarea{width:100%;margin:5px 0;padding:8px;border:none;border-radius:8px;}
 button{background:#0072ff;color:white;border:none;padding:6px;border-radius:8px;}
 .post{background:white;margin:5px 0;padding:6px;border-radius:8px;}
-.small-box{max-height:120px;overflow:auto;background:rgba(255,255,255,0.3);padding:5px;border-radius:8px;}
+
+.small-box{max-height:140px;overflow:auto;background:rgba(255,255,255,0.3);padding:5px;border-radius:8px;}
+
+/* 🔥 UPDATED HEIGHTS */
+.chat-box{max-height:200px;}
+.union-box{max-height:200px;}
 </style>
 </head>
 
@@ -59,14 +64,14 @@ button{background:#0072ff;color:white;border:none;padding:6px;border-radius:8px;
 <hr>
 
 <h3>Chat</h3>
-<div id="chatBox" class="small-box"></div>
+<div id="chatBox" class="small-box chat-box"></div>
 <input id="chatInput">
 <button onclick="sendMsg()">Send</button>
 
 <hr>
 
 <h3>Union Updates</h3>
-<div id="unionBox" class="small-box"></div>
+<div id="unionBox" class="small-box union-box"></div>
 
 <hr>
 
@@ -135,7 +140,8 @@ content:content.value
 window.addProblem=async()=>{
 if(!currentUser)return alert("Login required");
 await addDoc(collection(db,"problems"),{
-msg:problemMsg.value
+msg:problemMsg.value,
+user:currentUser.email
 });
 };
 
@@ -146,7 +152,10 @@ if(!currentUser)return alert("Login required");
 const msg=chatInput.value.trim();
 if(!msg)return;
 
-await addDoc(collection(db,"chat"),{msg});
+await addDoc(collection(db,"chat"),{
+msg,
+user:currentUser.email
+});
 chatInput.value="";
 };
 
@@ -172,7 +181,7 @@ s.forEach(d=>postBox.innerHTML+=`<div class="post">${d.data().title || ""}</div>
 
 onSnapshot(collection(db,"problems"),s=>{
 problemBox.innerHTML="";
-s.forEach(d=>problemBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`);
+s.forEach(d=>problemBox.innerHTML+=`<div class="post">${d.data().user || "User"}: ${d.data().msg || ""}</div>`);
 });
 
 onSnapshot(collection(db,"fixed"),s=>{
@@ -187,7 +196,9 @@ s.forEach(d=>unionBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`
 
 onSnapshot(collection(db,"chat"),s=>{
 chatBox.innerHTML="";
-s.forEach(d=>chatBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`);
+s.forEach(d=>{
+chatBox.innerHTML+=`<div class="post">${d.data().user || "User"}: ${d.data().msg || ""}</div>`;
+});
 });
 
 onSnapshot(collection(db,"requests"),s=>{
@@ -198,11 +209,12 @@ requestBox.innerHTML+=`<div class="post">${x.user || ""}: ${x.msg || ""}</div>`;
 });
 });
 
-/* APPROVED SCROLL */
+/* APPROVED (WITH USER NAME + SCROLL) */
 onSnapshot(collection(db,"suggestions"),s=>{
 approvedBox.innerHTML="";
 s.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().suggestion || ""}</div>`;
+let x=d.data();
+approvedBox.innerHTML+=`<div class="post">${x.user || "User"}: ${x.suggestion || ""}</div>`;
 });
 
 let pos=0;
