@@ -2,77 +2,48 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Login - E-Vedhika</title>
-
+<title>Login</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{
-  font-family:Arial;
-  background:#eef2f7;
-  text-align:center;
-  padding-top:100px;
-}
-
-.box{
-  background:white;
-  padding:25px;
-  width:280px;
-  margin:auto;
-  border-radius:10px;
-  box-shadow:0 5px 15px rgba(0,0,0,0.2);
-}
-
-input{
-  width:90%;
-  padding:10px;
-  margin:10px 0;
-  border-radius:5px;
-  border:1px solid #ccc;
-}
-
-button{
-  background:#0077b6;
-  color:white;
-  padding:10px;
-  border:none;
-  border-radius:5px;
-  width:100%;
-}
-
+body{font-family:Arial;background:#eef2f7;text-align:center;padding-top:100px;}
+.box{background:white;padding:25px;width:280px;margin:auto;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.2);}
+input{width:90%;padding:10px;margin:10px 0;border-radius:5px;border:1px solid #ccc;}
+button{background:#0077b6;color:white;padding:10px;border:none;border-radius:5px;width:100%;}
 </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>🔐 Login</h2>
+<h2>🔐 Login</h2>
 
-  <input id="user" placeholder="Username">
-  <input id="pass" type="password" placeholder="Password">
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
 
-  <button onclick="login()">Login</button>
+<button onclick="login()">Login</button>
 
-  <p id="msg" style="color:red;"></p>
+<p id="msg" style="color:red;"></p>
+
+<br>
+<a href="register.html">Create new account</a>
 </div>
 
 <script>
-
 function login(){
+let u=user.value;
+let p=pass.value;
 
-  let u = document.getElementById("user").value;
-  let p = document.getElementById("pass").value;
+let users=JSON.parse(localStorage.getItem("users")||"{}");
 
-  // 🔥 SIMPLE LOGIN (change credentials here)
-  if(u === "admin" && p === "1234"){
-    localStorage.setItem("login","yes");
-    window.location.href = "index.html";
-  }
-  else{
-    document.getElementById("msg").innerText = "Invalid login";
-  }
+if(users[u] && users[u]===p){
+localStorage.setItem("login","yes");
+localStorage.setItem("currentUser",u);
+location.href="index.html";
+}else{
+msg.innerText="Invalid login";
 }
-
+}
 </script>
 
 </body>
