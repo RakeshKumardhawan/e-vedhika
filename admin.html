@@ -8,7 +8,6 @@
 body{font-family:Arial;background:#f2f2f2;text-align:center;}
 
 button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
-
 .accept-btn{background:green;color:white;}
 .delete-btn{background:red;color:white;}
 .edit-btn{background:#0072ff;color:white;}
@@ -16,27 +15,17 @@ button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;
 .role-btn{background:#555;color:white;}
 
 .pending{background:orange;color:white;}
-.approved{background:green;color:white;} /* ✅ FIXED GREEN */
+.approved{background:green;color:white;} /* FIXED */
 .deleted{background:red;color:white;}
-.all{background:#444;color:white;}
 
-input, textarea{padding:8px;margin:5px;width:250px;}
+input,textarea{padding:8px;margin:5px;width:250px;}
 
 table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
 th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
 th{background:#2c3e50;color:white;}
 
-#notifyBtn{
-position:absolute;right:20px;top:10px;
-background:#333;color:white;border-radius:50%;padding:8px;
-}
-
-#notifyBox{
-display:none;position:absolute;right:20px;top:50px;
-background:white;width:250px;max-height:300px;
-overflow:auto;border-radius:10px;padding:10px;
-box-shadow:0 0 10px #999;
-}
+#notifyBtn{position:absolute;right:20px;top:10px;background:#333;color:white;border-radius:50%;padding:8px;}
+#notifyBox{display:none;position:absolute;right:20px;top:50px;background:white;width:250px;max-height:300px;overflow:auto;border-radius:10px;padding:10px;}
 </style>
 </head>
 
@@ -47,13 +36,6 @@ box-shadow:0 0 10px #999;
 
 <h2>📊 Admin Dashboard</h2>
 
-<!-- 🔥 ADMIN POST ADD (NO UI CHANGE STYLE) -->
-<div>
-<input id="adminTitle" placeholder="Post Title">
-<textarea id="adminContent" placeholder="Post Content"></textarea><br>
-<button class="accept-btn" onclick="addAdminPost()">➕ Add Admin Post</button>
-</div>
-
 <button onclick="loadSuggestions()">📊 Suggestions</button>
 <button onclick="loadProfiles()">👤 Profiles</button>
 <button onclick="loadPosts()">📝 Public Posts</button>
@@ -61,10 +43,10 @@ box-shadow:0 0 10px #999;
 
 <br>
 
-<button class="pending" onclick="filterStatus('Pending')">Pending</button>
-<button class="approved" onclick="filterStatus('Approved')">Approved</button>
-<button class="deleted" onclick="filterStatus('Deleted')">Deleted</button>
-<button class="all" onclick="showAll()">All</button>
+<button onclick="filterStatus('Pending')">Pending</button>
+<button onclick="filterStatus('Approved')">Approved</button>
+<button onclick="filterStatus('Deleted')">Deleted</button>
+<button onclick="showAll()">All</button>
 
 <br>
 
@@ -76,6 +58,14 @@ box-shadow:0 0 10px #999;
 <thead><tr id="header"></tr></thead>
 <tbody id="data"></tbody>
 </table>
+
+<!-- 📝 ADMIN POST SECTION (BOTTOM — SAFE) -->
+<div style="margin-top:20px;">
+<h3>➕ Admin New Post</h3>
+<input id="p_title" placeholder="Title"><br>
+<textarea id="p_content" placeholder="Content"></textarea><br>
+<button onclick="addAdminPost()" class="accept-btn">Post</button>
+</div>
 
 <script type="module">
 
@@ -95,15 +85,12 @@ let currentType="", fullData=[], notifications=[];
 
 /* 🔔 NOTIFY */
 window.toggleNotify=()=>{
-notifyBox.style.display = notifyBox.style.display==="block"?"none":"block";
+notifyBox.style.display=notifyBox.style.display==="block"?"none":"block";
 };
 
 function addNotify(msg){
 notifications.unshift(msg);
-notifyBox.innerHTML="";
-notifications.forEach(n=>{
-notifyBox.innerHTML+=`<div>${n}</div><hr>`;
-});
+notifyBox.innerHTML=notifications.map(n=>`<div>${n}</div><hr>`).join("");
 }
 
 /* HEADER */
@@ -166,11 +153,10 @@ window.showAll=()=>displayData(fullData);
 /* SEARCH */
 window.searchData=()=>{
 let q=searchBox.value.toLowerCase();
-let f=fullData.filter(d=>
+displayData(fullData.filter(d=>
 (d.title||d.name||"").toLowerCase().includes(q) ||
 (d.content||d.suggestion||"").toLowerCase().includes(q)
-);
-displayData(f);
+));
 };
 
 /* EXPORT */
@@ -186,9 +172,7 @@ a.click();
 };
 
 /* REFRESH */
-window.refreshData=()=>{
-if(currentType) loadData(currentType);
-};
+window.refreshData=()=>{ if(currentType) loadData(currentType); };
 
 /* ACTION */
 window.acceptRow=async(id)=>{
@@ -211,49 +195,41 @@ addNotify("Edited");
 loadData(currentType);
 };
 
-/* 🔥 ROLE FIX (INCLUDING OPERATOR) */
+/* 👤 PROFILE */
 window.changeRole=async(id)=>{
-let role=prompt("Enter role: admin / moderator / operator / user");
+let role=prompt("admin / moderator / operator / user");
 if(!role) return;
 await updateDoc(doc(db,"profiles",id),{role});
 addNotify("Role changed");
 loadData("profiles");
 };
 
-/* PROFILE */
 window.blockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"blocked"});
+addNotify("Blocked");
 loadData("profiles");
 };
 
 window.unblockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"active"});
+addNotify("Unblocked");
 loadData("profiles");
 };
 
 window.kickUser=async(id)=>{
-let t=Date.now()+5*60*1000;
-await updateDoc(doc(db,"profiles",id),{kickUntil:t});
-addNotify("User kicked");
+await updateDoc(doc(db,"profiles",id),{kickUntil:Date.now()+300000});
+addNotify("Kicked 5 min");
 };
 
-/* 🔥 ADMIN POST ADD */
+/* 📝 ADMIN POST */
 window.addAdminPost=async()=>{
-let title=adminTitle.value;
-let content=adminContent.value;
-
-if(!title || !content) return alert("Enter data");
-
 await addDoc(collection(db,"posts"),{
-title,
-content,
+title:p_title.value,
+content:p_content.value,
 userType:"admin",
 status:"Approved",
 createdAt:serverTimestamp()
 });
-
-adminTitle.value="";
-adminContent.value="";
 addNotify("Admin Post Added");
 loadAdminPosts();
 };
@@ -280,8 +256,7 @@ data.innerHTML+=`
 <button onclick="kickUser('${d.id}')">Kick</button>
 </td>
 </tr>`;
-}
-else{
+}else{
 data.innerHTML+=`
 <tr>
 <td>${i+1}</td>
