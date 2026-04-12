@@ -1,170 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-body{
-  margin:0;
-  font-family:Segoe UI;
-  background:linear-gradient(180deg,#eef4ff,#ffffff);
-}
-
-/* HEADER */
-.header{
-  background:linear-gradient(90deg,#1e88e5,#42a5f5);
-  color:white;
-  padding:15px;
-  text-align:center;
-}
-
-/* SEARCH */
-.search{
-  padding:10px;
-  text-align:center;
-}
-.search input{
-  width:90%;
-  padding:10px;
-  border-radius:25px;
-  border:none;
-  box-shadow:0 4px 10px rgba(0,0,0,0.1);
-}
-
-/* GRID */
-.main{
-  display:grid;
-  grid-template-columns:1fr 2fr 1fr;
-  gap:12px;
-  padding:12px;
-}
-@media(max-width:768px){
-  .main{grid-template-columns:1fr;}
-}
-
-/* CARD */
-.card{
-  background:white;
-  border-radius:15px;
-  padding:12px;
-  box-shadow:0 6px 15px rgba(0,0,0,0.08);
-}
-
-/* BUTTON */
-button{
-  background:#1e88e5;
-  color:white;
-  border:none;
-  padding:7px 12px;
-  border-radius:8px;
-  margin-top:5px;
-}
-
-/* POST */
-.post{
-  display:flex;
-  gap:10px;
-  border-bottom:1px solid #eee;
-  padding:10px 0;
-}
-
-.avatar{
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  background:#90caf9;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:white;
-  font-weight:bold;
-}
-
-.meta{font-size:12px;color:gray;}
-
-.comment{
-  background:#eef;
-  padding:6px;
-  border-radius:8px;
-  margin-top:5px;
-}
-
-img{
-  width:100%;
-  border-radius:10px;
-  margin-top:5px;
-}
-</style>
-</head>
-
 <body>
 
-<div class="header">
-  <h2>E-Vedhika</h2>
-  <div>All solutions at one place</div>
-</div>
+<h2>E-Vedhika</h2>
+<button onclick="goProfile()">Profile</button>
+<button onclick="goAdmin()">Admin</button>
 
-<div class="search">
-  <input id="search" placeholder="Search..." onkeyup="searchPosts()">
-</div>
+<textarea id="content"></textarea><br>
+<input type="file" id="img"><br>
+<button onclick="addPost()">Post</button>
 
-<div class="main">
-
-<!-- LEFT -->
-<div>
-  <div class="card">✔ Approved Suggestions</div>
-  <div class="card">📌 Post Problems</div>
-  <div class="card">📘 Fix Errors</div>
-</div>
-
-<!-- CENTER -->
-<div>
-
-<div class="card">
-  <textarea id="content" placeholder="Write your issue..." style="width:100%"></textarea>
-
-  <input type="file" id="img">
-
-  <select id="type">
-    <option value="problem">Problem</option>
-    <option value="suggestion">Suggestion</option>
-    <option value="update">Update</option>
-  </select>
-
-  <button onclick="addPost()">Post</button>
-</div>
+<hr>
 
 <div id="feed"></div>
-
-</div>
-
-<!-- RIGHT -->
-<div>
-  <div class="card">
-    <h3>Welcome</h3>
-    <button onclick="goLogin()">Login</button>
-  </div>
-
-  <div class="card">📢 Union Updates</div>
-  <div class="card">💬 Discuss</div>
-</div>
-
-</div>
 
 <script type="module">
 
 import { auth, db, storage } from "./firebase.js";
+import { collection, addDoc, getDocs, doc, updateDoc }
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import {
-collection, addDoc, getDocs, doc, updateDoc
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL }
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
 
-import {
-ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
-
-let posts=[];
-let uid="", username="", role="user";
+let uid="", username="", role="user", posts=[];
 
 auth.onAuthStateChanged(async user=>{
   if(user){
@@ -181,89 +40,69 @@ auth.onAuthStateChanged(async user=>{
   load();
 });
 
-// LOAD POSTS
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
-    let x=d.data();
-    x.id=d.id;
+    let x=d.data(); x.id=d.id;
     posts.push(x);
   });
-  render(posts);
+  render();
 }
 
-// RENDER
-function render(data){
+function render(){
   let html="";
 
-  data.filter(p=>!p.parentId && p.status==="Approved")
-  .reverse()
-  .forEach(p=>{
+  posts.filter(p=>!p.parentId && p.status==="Approved")
+  .reverse().forEach(p=>{
 
     html+=`
-    <div class="card">
+    <div style="border:1px solid #ccc;padding:10px;margin:10px">
 
-    <div class="post">
-      <div class="avatar">${(p.username||"U")[0]}</div>
+    <b>${p.username}</b><br>
+    ${p.content}<br>
 
-      <div>
-        <b>${p.username || "User"}</b><br>
-        <span class="meta">${p.type || ""}</span><br>
+    ${p.image ? `<img src="${p.image}" width="100%">`:""}
 
-        ${p.content || ""}
+    <br>
 
-        ${p.image ? `<img src="${p.image}">` : ""}
-
-        <br>
-
-        <button onclick="showCommentBox('${p.id}')">💬 Comment</button>
+    <button onclick="showBox('${p.id}')">Comment</button>
     `;
 
     if(role==="admin"){
-      html+=`<button onclick="approve('${p.id}')">✔ Approve</button>`;
+      html+=`<button onclick="approve('${p.id}')">Approve</button>`;
     }
 
     html+=`
     <div id="cbox-${p.id}" style="display:none">
-      <input id="c-${p.id}" placeholder="Write comment">
+      <input id="c-${p.id}">
       <button onclick="addComment('${p.id}')">Send</button>
     </div>
     `;
 
     posts.filter(c=>c.parentId===p.id && c.status==="Approved")
     .forEach(c=>{
-      html+=`
-      <div class="comment">
-        <b>${c.username}</b>: ${c.content}
-      </div>`;
+      html+=`<div><b>${c.username}</b>: ${c.content}</div>`;
     });
 
-    html+=`</div></div></div>`;
+    html+=`</div>`;
   });
 
   feed.innerHTML=html;
 }
 
-// ADD POST
 window.addPost = async ()=>{
-  if(!auth.currentUser){
-    alert("Login required");
-    location.href="login.html";
-    return;
-  }
+  if(!auth.currentUser) return alert("Login");
 
   let imgUrl="";
-
   if(img.files[0]){
-    let r = ref(storage,"posts/"+Date.now());
+    let r=ref(storage,"posts/"+Date.now());
     await uploadBytes(r,img.files[0]);
-    imgUrl = await getDownloadURL(r);
+    imgUrl=await getDownloadURL(r);
   }
 
   await addDoc(collection(db,"posts"),{
     content:content.value,
-    type:type.value,
     image:imgUrl,
     parentId:null,
     userId:uid,
@@ -272,22 +111,18 @@ window.addPost = async ()=>{
     status:"Pending"
   });
 
-  content.value="";
   load();
 };
 
-// COMMENT BOX
-window.showCommentBox = (id)=>{
+window.showBox=id=>{
   document.getElementById("cbox-"+id).style.display="block";
 };
 
-// ADD COMMENT
-window.addComment = async (id)=>{
-  let text=document.getElementById("c-"+id).value;
-  if(!text) return;
+window.addComment=async(id)=>{
+  let t=document.getElementById("c-"+id).value;
 
   await addDoc(collection(db,"posts"),{
-    content:text,
+    content:t,
     parentId:id,
     userId:uid,
     username:username,
@@ -298,24 +133,14 @@ window.addComment = async (id)=>{
   load();
 };
 
-// ADMIN APPROVE
-window.approve = async (id)=>{
+window.approve=async(id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
 };
 
-// SEARCH
-window.searchPosts = ()=>{
-  let val=search.value.toLowerCase();
-  render(posts.filter(p=>p.content?.toLowerCase().includes(val)));
-};
-
-// LOGIN
-window.goLogin = ()=>{
-  location.href="login.html";
-};
+window.goProfile=()=>location.href="profile.html";
+window.goAdmin=()=>location.href="admin.html";
 
 </script>
-
 </body>
 </html>
