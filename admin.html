@@ -1,45 +1,262 @@
 <!DOCTYPE html>
 <html>
-<body>
+<head>
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
 
-<h2>Admin Panel</h2>
-<div id="list"></div>
+<style>
+body{font-family:Arial;background:#f2f2f2;text-align:center;}
 
-<script type="module">
-import { db } from "./firebase.js";
-import {
-collection, getDocs, doc, updateDoc
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-let posts=[];
-
-async function load(){
-  let snap=await getDocs(collection(db,"posts"));
-  posts=[];
-  snap.forEach(d=>{
-    let x=d.data(); x.id=d.id;
-    posts.push(x);
-  });
-
-  let html="";
-  posts.filter(p=>p.status==="Pending")
-  .forEach(p=>{
-    html+=`
-    <div>
-      ${p.content}
-      <button onclick="approve('${p.id}')">Approve</button>
-    </div><hr>`;
-  });
-
-  list.innerHTML=html;
+button{
+  padding:6px 12px;
+  margin:5px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
 }
 
-window.approve = async(id)=>{
-  await updateDoc(doc(db,"posts",id),{status:"Approved"});
-  load();
+.accept-btn{background:green;color:white;}
+.delete-btn{background:red;color:white;}
+.undo-btn{background:orange;color:white;}
+
+.pending{background:orange;color:white;}
+.accepted{background:green;color:white;}
+.trash{background:red;color:white;}
+.all{background:#444;color:white;}
+
+input, textarea, select{
+  padding:8px;
+  margin:5px;
+  width:250px;
+}
+
+table{
+  margin:auto;
+  margin-top:20px;
+  border-collapse:collapse;
+  width:95%;
+  background:white;
+}
+
+th,td{
+  padding:8px;
+  border:1px solid #ddd;
+  font-size:13px;
+}
+
+th{background:#2c3e50;color:white;}
+</style>
+</head>
+
+<body>
+
+<h2>📊 Admin Dashboard</h2>
+
+<!-- TABS -->
+<button onclick="loadSuggestions()">📊 Suggestions</button>
+<button onclick="loadProfiles()">👤 Profiles</button>
+<button onclick="loadPosts()">📝 Public Posts</button>
+<button onclick="loadAdminPosts()">📰 Admin Posts</button>
+
+<br>
+
+<!-- FILTER -->
+<button class="pending" onclick="filterStatus('Pending')">Pending</button>
+<button class="accepted" onclick="filterStatus('Approved')">Approved</button>
+<button class="trash" onclick="filterStatus('Deleted')">Deleted</button>
+<button class="all" onclick="showAll()">All</button>
+
+<!-- ADMIN POST FORM -->
+<div id="postForm" style="display:none;">
+  <h3>➕ Admin New Post</h3>
+
+  <input id="p_title" placeholder="Title"><br>
+  <textarea id="p_content" placeholder="Content"></textarea><br>
+
+  <select id="p_type">
+    <option value="text">Text</option>
+    <option value="image">Image</option>
+    <option value="youtube">YouTube</option>
+  </select><br>
+
+  <input id="p_fileUrl" placeholder="Image / Video URL"><br>
+
+  <button onclick="addPost()" class="accept-btn">Submit</button>
+</div>
+
+<table>
+<thead><tr id="header"></tr></thead>
+<tbody id="data"><tr><td colspan="9">Select a tab</td></tr></tbody>
+</table>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain:"e-vedhika-258f2.firebaseapp.com",
+  projectId:"e-vedhika-258f2"
+});
+
+const db = getFirestore(app);
+
+let currentType="";
+let fullData=[];
+
+/* DATE */
+function formatDate(d){
+  if(d.createdAt?.seconds){
+    let dt=new Date(d.createdAt.seconds*1000);
+    return dt.toLocaleString('en-IN',{hour12:true});
+  }
+  return "N/A";
+}
+
+/* HEADER */
+function setHeader(){
+  let h=document.getElementById("header");
+
+  if(currentType==="suggestions"){
+    h.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Date</th><th>Status</th><th>Action</th>`;
+  }
+  else if(currentType==="profiles"){
+    h.innerHTML=`<th>#</th><th>Name</th><th>Role</th><th>Status</th><th>Action</th>`;
+  }
+  else{
+    h.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
+  }
+}
+
+/* LOAD FUNCTIONS */
+window.loadSuggestions=()=>loadData("suggestions");
+window.loadProfiles=()=>loadData("profiles");
+
+window.loadPosts=async()=>{
+  currentType="posts";
+  setHeader();
+  postForm.style.display="none";
+
+  let qs=await getDocs(collection(db,"posts"));
+  let arr=[];
+  qs.forEach(d=>{
+    let x=d.data();
+    if(x.userType!=="admin"){ // ONLY PUBLIC
+      arr.push({id:d.id,...x});
+    }
+  });
+
+  fullData=arr;
+
+  let pending=arr.filter(d=>(d.status||"Pending")==="Pending");
+  displayData(pending);
 };
 
-load();
+window.loadAdminPosts=async()=>{
+  currentType="posts";
+  setHeader();
+  postForm.style.display="block";
+
+  let qs=await getDocs(collection(db,"posts"));
+  let arr=[];
+  qs.forEach(d=>{
+    let x=d.data();
+    if(x.userType==="admin"){
+      arr.push({id:d.id,...x});
+    }
+  });
+
+  fullData=arr;
+  displayData(arr);
+};
+
+async function loadData(type){
+  currentType=type;
+  setHeader();
+  postForm.style.display="none";
+
+  let qs=await getDocs(collection(db,type));
+  let arr=[];
+  qs.forEach(d=>arr.push({id:d.id,...d.data()}));
+
+  fullData=arr;
+
+  let pending=arr.filter(d=>(d.status||"Pending")==="Pending");
+  displayData(pending);
+}
+
+/* FILTER */
+window.filterStatus=(status)=>{
+  let f=fullData.filter(d=>{
+    let s=d.status||"Pending";
+    if(status==="Approved") return s==="Approved"||s==="Accepted";
+    return s===status;
+  });
+  displayData(f);
+};
+
+window.showAll=()=>displayData(fullData);
+
+/* DISPLAY */
+function displayData(arr){
+  let table=data;
+  table.innerHTML="";
+
+  arr.forEach((d,i)=>{
+    let row="";
+
+    if(currentType==="suggestions"){
+      row=`<tr><td>${i+1}</td><td>${d.name}</td><td>${d.suggestion}</td>
+      <td>${formatDate(d)}</td><td>${d.status}</td>
+      <td>
+      <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
+      <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
+      </td></tr>`;
+    }
+
+    else{
+      row=`<tr><td>${i+1}</td><td>${d.title||d.name}</td>
+      <td>${d.content||d.details}</td>
+      <td>${d.status}</td>
+      <td>
+      <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
+      <button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
+      </td></tr>`;
+    }
+
+    table.innerHTML+=row;
+  });
+}
+
+/* ACTIONS */
+window.acceptRow=async(id)=>{
+  let val=(currentType==="suggestions")?"Accepted":"Approved";
+  await updateDoc(doc(db,currentType,id),{status:val});
+  location.reload();
+};
+
+window.deleteRow=async(id)=>{
+  await updateDoc(doc(db,currentType,id),{status:"Deleted"});
+  location.reload();
+};
+
+/* ADMIN POST */
+window.addPost=async()=>{
+  await addDoc(collection(db,"posts"),{
+    title:p_title.value,
+    content:p_content.value,
+    type:p_type.value,
+    fileUrl:p_fileUrl.value,
+    status:"Approved",
+    userType:"admin",
+    createdAt:serverTimestamp()
+  });
+
+  alert("Admin Post Added");
+  location.reload();
+};
+
 </script>
 
 </body>
