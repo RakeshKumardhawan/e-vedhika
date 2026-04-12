@@ -222,6 +222,74 @@ projectId:"e-vedhika-258f2"
 
 const db = getFirestore(app);
 const auth = getAuth(app);
+  /* =========================
+   🔥 SAFE LOGIN/SIGNUP FIX
+   (DO NOT REMOVE OLD CODE)
+========================= */
+
+function safeGet(id){
+  return document.getElementById(id)?.value?.trim() || "";
+}
+
+function isValidEmail(email){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/* 🔥 OVERRIDE LOGIN */
+window.login = async ()=>{
+  let e = safeGet("email");
+  let p = safeGet("password");
+
+  if(!e || !p){
+    alert("Fill all fields");
+    return;
+  }
+
+  if(!isValidEmail(e)){
+    alert("Enter valid email (example@gmail.com)");
+    return;
+  }
+
+  if(p.length < 6){
+    alert("Password must be 6+ chars");
+    return;
+  }
+
+  try{
+    await signInWithEmailAndPassword(auth, e, p);
+    alert("Login success");
+  }catch(err){
+    alert(err.message);
+  }
+};
+
+/* 🔥 OVERRIDE SIGNUP */
+window.signup = async ()=>{
+  let e = safeGet("email");
+  let p = safeGet("password");
+
+  if(!e || !p){
+    alert("Fill all fields");
+    return;
+  }
+
+  if(!isValidEmail(e)){
+    alert("Enter valid email (example@gmail.com)");
+    return;
+  }
+
+  if(p.length < 6){
+    alert("Password must be 6+ chars");
+    return;
+  }
+
+  try{
+    await createUserWithEmailAndPassword(auth, e, p);
+    alert("Signup success");
+  }catch(err){
+    alert(err.message);
+  }
+};
 
 /* VALIDATION */
 function isValidEmail(email){
