@@ -2,96 +2,33 @@
 <html>
 <head>
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#f0f2f5;
-}
-
-/* HEADER */
-.header{
-  background:#1877f2;
-  color:white;
-  padding:12px;
-  text-align:center;
-  font-size:20px;
-  font-weight:bold;
-}
-
-/* CONTAINER */
-.container{
-  max-width:500px;
-  margin:auto;
-  padding:10px;
-}
-
-/* POST BOX */
-.post-box{
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
-}
-
-.post-box input, .post-box textarea, .post-box select{
-  width:100%;
-  margin:5px 0;
-  padding:8px;
-}
-
-/* POST CARD */
-.card{
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
-}
-
-.post-header{
-  font-weight:bold;
-}
-
-.post-content{
-  margin:10px 0;
-}
-
-.actions button{
-  border:none;
-  background:#e4e6eb;
-  padding:5px 10px;
-  margin:3px;
-  border-radius:5px;
-  cursor:pointer;
-}
-
+body{font-family:Arial;background:#f0f2f5;margin:0;}
+.header{background:#1877f2;color:white;padding:10px;text-align:center;}
+.container{max-width:500px;margin:auto;padding:10px;}
+.card{background:white;padding:10px;margin-bottom:10px;border-radius:10px;}
+.comment{background:#eef;padding:5px;margin:5px 0;border-radius:5px;}
+button{margin:3px;padding:5px;border:none;background:#1877f2;color:white;}
 </style>
 </head>
 
 <body>
 
-<div class="header">
-E-Vedhika
-</div>
+<div class="header">E-Vedhika</div>
 
 <div class="container">
 
 <!-- CREATE POST -->
-<div class="post-box">
-  <textarea id="content" placeholder="What's your problem..."></textarea>
+<select id="type">
+<option value="problem">Problem</option>
+<option value="suggestion">Suggestion</option>
+<option value="update">Admin Update</option>
+</select>
 
-  <select id="category">
-    <option>EPFO</option>
-    <option>Aadhar</option>
-    <option>Payments</option>
-    <option>House Tax</option>
-  </select>
+<textarea id="content" placeholder="Write..."></textarea>
+<button onclick="addPost()">Post</button>
 
-  <button onclick="addPost()">Post</button>
-</div>
+<hr>
 
-<!-- FEED -->
 <div id="feed"></div>
 
 </div>
@@ -104,23 +41,20 @@ collection, addDoc, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 let posts=[];
-let uid="";
-let role="user";
-let username="";
+let uid="", username="", role="user";
 
 auth.onAuthStateChanged(async (user)=>{
   if(user){
-    uid = user.uid;
+    uid=user.uid;
 
-    let snap = await getDocs(collection(db,"users"));
-    snap.forEach(d=>{
+    let u = await getDocs(collection(db,"users"));
+    u.forEach(d=>{
       if(d.id===uid){
-        role=d.data().role;
         username=d.data().username;
+        role=d.data().role;
       }
     });
   }
-
   load();
 });
 
@@ -132,73 +66,76 @@ async function load(){
     x.id=d.id;
     posts.push(x);
   });
-
   render();
 }
 
 function render(){
   let html="";
 
-  posts
-  .filter(p=>p.status==="Approved" && p.status!=="Deleted")
-  .reverse()
-  .forEach(p=>{
+  // MAIN POSTS
+  let mainPosts = posts.filter(p=>!p.parentId && p.status==="Approved");
+
+  mainPosts.reverse().forEach(p=>{
 
     html+=`
     <div class="card">
-
-      <div class="post-header">
-        ${p.username} ${p.role==="admin"?"(Admin)":""}
-      </div>
-
-      <div style="font-size:12px;color:gray;">
-        ${p.category}
-      </div>
-
-      <div class="post-content">
-        ${p.content}
-      </div>
-
-      <div class="actions">
-        👍 ${p.likes||0}
-        <button onclick="like('${p.id}',${p.likes||0})">Like</button>
+    <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
+    <small>${p.type.toUpperCase()}</small><br><br>
+    ${p.content}<br><br>
     `;
 
-    if(auth.currentUser && (p.userId===uid || role==="admin")){
+    // ADMIN CONTROLS
+    if(role==="admin"){
       html+=`
-        <button onclick="edit('${p.id}')">Edit</button>
-        <button onclick="del('${p.id}')">Delete</button>
+      <button onclick="approve('${p.id}')">Approve</button>
+      <button onclick="reject('${p.id}')">Reject</button>
       `;
     }
 
-    html+=`
+    // USER ACTIONS
+    if(auth.currentUser){
+      html+=`
+      <button onclick="addSolution('${p.id}')">Answer</button>
+      `;
+    }
+
+    // SOLUTIONS (COMMENTS)
+    let comments = posts.filter(c=>c.parentId===p.id && c.status==="Approved");
+
+    comments.forEach(c=>{
+      html+=`
+      <div class="comment">
+      <b>${c.username}</b>: ${c.content}
       </div>
-    </div>
-    `;
+      `;
+    });
+
+    html+=`</div>`;
   });
 
   feed.innerHTML=html;
 }
 
+// CREATE POST
 window.addPost = async ()=>{
   if(!auth.currentUser){
     alert("Login required");
-    location.href="login.html";
     return;
   }
 
-  if(!content.value){
-    alert("Write something");
+  // only admin can post updates
+  if(type.value==="update" && role!=="admin"){
+    alert("Only admin can post updates");
     return;
   }
 
   await addDoc(collection(db,"posts"),{
     content:content.value,
-    category:category.value,
+    type:type.value,
+    parentId:null,
     userId:uid,
     username:username,
     role:role,
-    likes:0,
     status:"Pending",
     createdAt:new Date()
   });
@@ -207,33 +144,34 @@ window.addPost = async ()=>{
   load();
 };
 
-window.like = async (id,l)=>{
-  if(!auth.currentUser){
-    alert("Login required");
-    return;
-  }
+// ADD SOLUTION
+window.addSolution = async (postId)=>{
+  let text = prompt("Write solution");
 
-  await updateDoc(doc(db,"posts",id),{likes:l+1});
-  load();
-};
+  if(!text) return;
 
-window.del = async (id)=>{
-  if(!confirm("Delete post?")) return;
-
-  await updateDoc(doc(db,"posts",id),{status:"Deleted"});
-  load();
-};
-
-window.edit = async (id)=>{
-  let c=prompt("Edit content");
-
-  if(!c) return;
-
-  await updateDoc(doc(db,"posts",id),{
-    content:c,
-    status:"Pending"
+  await addDoc(collection(db,"posts"),{
+    content:text,
+    type:"solution",
+    parentId:postId,
+    userId:uid,
+    username:username,
+    role:role,
+    status:"Pending",
+    createdAt:new Date()
   });
 
+  load();
+};
+
+// ADMIN ACTIONS
+window.approve = async (id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Approved"});
+  load();
+};
+
+window.reject = async (id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Rejected"});
   load();
 };
 
