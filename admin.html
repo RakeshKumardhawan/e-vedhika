@@ -28,6 +28,10 @@ th{background:#2c3e50;color:white;}
 
 <body>
 
+<!-- 🔔 Notification UI (no layout disturb) -->
+<button onclick="toggleNotify()" style="position:absolute;right:20px;top:10px;background:#333;color:white;border-radius:50%;padding:8px;">🔔</button>
+<div id="notifyBox" style="display:none;position:absolute;right:20px;top:50px;background:white;width:250px;max-height:300px;overflow:auto;border-radius:10px;padding:10px;box-shadow:0 0 10px #999;"></div>
+
 <h2>📊 Admin Dashboard</h2>
 
 <button onclick="loadSuggestions()">📊 Suggestions</button>
@@ -67,7 +71,26 @@ projectId:"e-vedhika-258f2"
 
 const db = getFirestore(app);
 
-let currentType="", fullData=[];
+let currentType="", fullData=[], notifications=[];
+
+/* 🔔 NOTIFICATIONS */
+window.toggleNotify=()=>{
+let box=document.getElementById("notifyBox");
+box.style.display=box.style.display==="block"?"none":"block";
+};
+
+function addNotify(msg){
+notifications.unshift(msg);
+renderNotify();
+addDoc(collection(db,"notifications"),{msg,time:serverTimestamp()});
+}
+
+function renderNotify(){
+notifyBox.innerHTML="";
+notifications.forEach(n=>{
+notifyBox.innerHTML+=`<div style="padding:5px;border-bottom:1px solid #ddd;">${n}</div>`;
+});
+}
 
 /* HEADER */
 function setHeader(){
@@ -132,6 +155,11 @@ displayData(f);
 window.showAll=()=>displayData(fullData);
 
 /* SEARCH */
+function highlight(text,q){
+if(!q) return text;
+return text.replace(new RegExp(q,"gi"),m=>`<mark>${m}</mark>`);
+}
+
 window.searchData=()=>{
 let q=searchBox.value.toLowerCase();
 let f=fullData.filter(d=>
@@ -164,13 +192,16 @@ data.updatedAt=serverTimestamp();
 await updateDoc(ref,data);
 }
 
+/* ACTIONS */
 window.acceptRow=async(id)=>{
 await updateWithTime(doc(db,currentType,id),{status:"Approved"});
+addNotify("Approved");
 loadData(currentType);
 };
 
 window.deleteRow=async(id)=>{
 await updateWithTime(doc(db,currentType,id),{status:"Deleted"});
+addNotify("Deleted");
 loadData(currentType);
 };
 
@@ -178,31 +209,35 @@ window.editRow=async(id)=>{
 let txt=prompt("Edit:");
 if(!txt) return;
 await updateWithTime(doc(db,currentType,id),{content:txt});
+addNotify("Edited");
 loadData(currentType);
 };
 
-/* PROFILE FEATURES */
+/* PROFILE */
 window.changeRole=async(id)=>{
 let role=prompt("admin/moderator/user");
 if(!role) return;
 await updateDoc(doc(db,"profiles",id),{role});
+addNotify("Role changed");
 loadData("profiles");
 };
 
 window.blockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"blocked"});
+addNotify("User blocked");
 loadData("profiles");
 };
 
 window.unblockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"active"});
+addNotify("User unblocked");
 loadData("profiles");
 };
 
 window.kickUser=async(id)=>{
 let t=Date.now()+5*60*1000;
 await updateDoc(doc(db,"profiles",id),{kickUntil:t});
-alert("User kicked for 5 mins");
+addNotify("User kicked");
 };
 
 /* DISPLAY */
@@ -210,7 +245,6 @@ function displayData(arr){
 data.innerHTML="";
 
 arr.forEach((d,i)=>{
-
 let status=d.status||"Pending";
 let cls=status.toLowerCase();
 
@@ -233,8 +267,8 @@ else{
 data.innerHTML+=`
 <tr class="${cls}">
 <td>${i+1}</td>
-<td>${d.title||d.name||""}</td>
-<td>${d.content||d.suggestion||""}</td>
+<td>${highlight(d.title||d.name||"", searchBox.value)}</td>
+<td>${highlight(d.content||d.suggestion||"", searchBox.value)}</td>
 <td>${status}</td>
 <td>
 <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
@@ -245,10 +279,9 @@ data.innerHTML+=`
 }
 
 });
-
 }
 
-/* COPY ON DOUBLE CLICK */
+/* COPY */
 document.addEventListener("dblclick",(e)=>{
 if(e.target.tagName==="TD"){
 navigator.clipboard.writeText(e.target.innerText);
