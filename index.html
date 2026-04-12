@@ -6,109 +6,23 @@
 
 <style>
 *{box-sizing:border-box;}
+body{margin:0;font-family:'Segoe UI';background:linear-gradient(120deg,#74ebd5,#9face6);overflow:hidden;}
 
-body{
-  margin:0;
-  font-family:'Segoe UI',sans-serif;
-  background:linear-gradient(120deg,#74ebd5,#9face6);
-  overflow:hidden;
-}
+.bubbles{position:fixed;width:100%;height:100%;z-index:0;}
+.bubbles span{position:absolute;bottom:-100px;width:25px;height:25px;background:rgba(255,255,255,0.3);border-radius:50%;animation:bubble 20s linear infinite;}
+.bubbles span:nth-child(1){left:10%}.bubbles span:nth-child(2){left:30%}.bubbles span:nth-child(3){left:50%}.bubbles span:nth-child(4){left:70%}.bubbles span:nth-child(5){left:90%}
+@keyframes bubble{0%{transform:translateY(0)}100%{transform:translateY(-110vh)}}
 
-/* BUBBLES */
-.bubbles{
-  position:fixed;
-  width:100%;
-  height:100%;
-  z-index:0;
-}
-.bubbles span{
-  position:absolute;
-  bottom:-100px;
-  width:25px;
-  height:25px;
-  background:rgba(255,255,255,0.3);
-  border-radius:50%;
-  animation:bubble 20s linear infinite;
-}
-.bubbles span:nth-child(1){left:10%}
-.bubbles span:nth-child(2){left:30%}
-.bubbles span:nth-child(3){left:50%}
-.bubbles span:nth-child(4){left:70%}
-.bubbles span:nth-child(5){left:90%}
+.container{display:grid;grid-template-columns:250px 1fr 320px;gap:20px;padding:20px;height:calc(100vh - 60px);position:relative;z-index:2;}
 
-@keyframes bubble{
-  0%{transform:translateY(0)}
-  100%{transform:translateY(-110vh)}
-}
+.glass{background:rgba(255,255,255,0.2);backdrop-filter:blur(20px);border-radius:20px;padding:15px;}
+input,textarea{width:100%;padding:10px;margin:5px 0;border-radius:10px;border:none;}
+button{padding:8px 12px;border:none;background:#0072ff;color:white;border-radius:10px;cursor:pointer;}
+.post{background:white;margin:5px 0;padding:8px;border-radius:10px;}
+.scroll-box{height:120px;overflow:hidden;}
+.small-box{max-height:120px;overflow:auto;background:rgba(255,255,255,0.3);padding:5px;border-radius:10px;}
 
-/* LAYOUT */
-.container{
-  display:grid;
-  grid-template-columns:250px 1fr 320px;
-  gap:20px;
-  padding:20px;
-  height:calc(100vh - 60px);
-  position:relative;
-  z-index:2;
-}
-
-.glass{
-  background:rgba(255,255,255,0.2);
-  backdrop-filter:blur(20px);
-  border-radius:20px;
-  padding:15px;
-}
-
-input,textarea{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  border-radius:10px;
-  border:none;
-}
-
-button{
-  padding:8px 12px;
-  border:none;
-  background:#0072ff;
-  color:white;
-  border-radius:10px;
-  cursor:pointer;
-}
-
-.post{
-  background:white;
-  margin:5px 0;
-  padding:8px;
-  border-radius:10px;
-}
-
-.scroll-box{
-  height:120px;
-  overflow:hidden;
-}
-
-.small-box{
-  max-height:120px;
-  overflow:auto;
-  background:rgba(255,255,255,0.3);
-  padding:5px;
-  border-radius:10px;
-}
-
-/* POPUP */
-#signupPopup{
-  display:none;
-  position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  background:white;
-  padding:20px;
-  border-radius:15px;
-  z-index:999;
-  width:300px;
-}
+#signupPopup{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:15px;z-index:999;width:300px;}
 </style>
 </head>
 
@@ -122,13 +36,11 @@ button{
 
 <div class="container">
 
-<!-- LEFT -->
 <div class="glass">
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="scroll-box"></div>
 </div>
 
-<!-- CENTER -->
 <div class="glass">
 <h3>New Post</h3>
 <input id="title">
@@ -136,15 +48,15 @@ button{
 <button onclick="addPost()">Post</button>
 </div>
 
-<!-- RIGHT -->
 <div class="glass">
 
 <h3>Login</h3>
 <input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
+<input id="password" type="password">
 
 <button onclick="login()">Login</button>
 <button onclick="openSignup()">Signup</button>
+<button onclick="logout()">Logout</button>
 
 <p id="userInfo"></p>
 
@@ -173,13 +85,11 @@ button{
 
 </div>
 
-<!-- SIGNUP POPUP -->
 <div id="signupPopup">
 <h3>Signup</h3>
-<input id="s_email" placeholder="Email">
-<input id="s_password" type="password" placeholder="Password">
-<input id="s_confirm" type="password" placeholder="Confirm Password">
-
+<input id="s_email">
+<input id="s_password" type="password">
+<input id="s_confirm" type="password">
 <button onclick="signup()">Create</button>
 <button onclick="closeSignup()">Close</button>
 </div>
@@ -190,163 +100,4 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/fireba
 import { getFirestore, collection, addDoc, getDocs, serverTimestamp, onSnapshot } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
-});
-
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-/* AUTH STATE */
-onAuthStateChanged(auth,(user)=>{
-document.getElementById("userInfo").innerText = user ? "Logged: "+user.email : "Not logged";
-});
-
-/* LOGIN */
-window.login = async ()=>{
-const email = document.getElementById("email").value.trim();
-const password = document.getElementById("password").value.trim();
-
-if(!email || !password){
-alert("Enter email & password");
-return;
-}
-
-try{
-await signInWithEmailAndPassword(auth,email,password);
-alert("Login success");
-}catch{
-alert("Invalid login");
-}
-};
-
-/* SIGNUP POPUP */
-window.openSignup=()=>document.getElementById("signupPopup").style.display="block";
-window.closeSignup=()=>document.getElementById("signupPopup").style.display="none";
-
-/* SIGNUP FIXED */
-window.signup = async ()=>{
-const email = document.getElementById("s_email").value.trim();
-const password = document.getElementById("s_password").value.trim();
-const confirm = document.getElementById("s_confirm").value.trim();
-
-if(!email || !password || !confirm){
-alert("Fill all fields");
-return;
-}
-
-if(password !== confirm){
-alert("Password mismatch");
-return;
-}
-
-try{
-await createUserWithEmailAndPassword(auth,email,password);
-alert("Signup success");
-
-document.getElementById("s_email").value="";
-document.getElementById("s_password").value="";
-document.getElementById("s_confirm").value="";
-
-closeSignup();
-
-}catch(err){
-alert(err.message);
-}
-};
-
-/* CHAT */
-window.sendMsg=async()=>{
-await addDoc(collection(db,"chat"),{
-message:document.getElementById("chatInput").value,
-createdAt:serverTimestamp()
-});
-document.getElementById("chatInput").value="";
-};
-
-function loadChat(){
-onSnapshot(collection(db,"chat"),snap=>{
-document.getElementById("chatMessages").innerHTML="";
-snap.forEach(d=>{
-document.getElementById("chatMessages").innerHTML+=`<div>${d.data().message}</div>`;
-});
-});
-}
-
-/* UNION */
-window.addUnion=async()=>{
-const user=auth.currentUser;
-if(!user) return alert("Login required");
-
-await addDoc(collection(db,"union"),{
-message:document.getElementById("unionMsg").value,
-user:user.email,
-createdAt:serverTimestamp()
-});
-document.getElementById("unionMsg").value="";
-};
-
-function loadUnion(){
-onSnapshot(collection(db,"union"),snap=>{
-document.getElementById("unionBox").innerHTML="";
-snap.forEach(d=>{
-let x=d.data();
-document.getElementById("unionBox").innerHTML+=`<div>${x.user}: ${x.message}</div>`;
-});
-});
-}
-
-/* REQUEST */
-window.addRequest=async()=>{
-const user=auth.currentUser;
-if(!user) return alert("Login required");
-
-await addDoc(collection(db,"requests"),{
-message:document.getElementById("requestMsg").value,
-user:user.email,
-createdAt:serverTimestamp()
-});
-document.getElementById("requestMsg").value="";
-};
-
-function loadRequest(){
-onSnapshot(collection(db,"requests"),snap=>{
-document.getElementById("requestBox").innerHTML="";
-snap.forEach(d=>{
-let x=d.data();
-document.getElementById("requestBox").innerHTML+=`<div>${x.user}: ${x.message}</div>`;
-});
-});
-}
-
-/* APPROVED SCROLL */
-async function loadApproved(){
-let qs=await getDocs(collection(db,"suggestions"));
-document.getElementById("approvedBox").innerHTML="";
-qs.forEach(d=>{
-document.getElementById("approvedBox").innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
-});
-
-let pos=0;
-setInterval(()=>{
-pos++;
-approvedBox.scrollTop=pos;
-if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
-},40);
-}
-
-/* INIT */
-loadChat();
-loadUnion();
-loadRequest();
-loadApproved();
-
-</script>
-
-</body>
-</html>
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged
