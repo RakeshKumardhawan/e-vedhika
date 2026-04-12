@@ -233,20 +233,64 @@ onAuthStateChanged(auth,(user)=>{
 userInfo.innerText = user ? "Logged: "+user.email : "Not logged";
 });
 
-/* LOGIN */
-window.login=async()=>{
-if(!isValidEmail(email.value)) return alert("Valid email");
-if(password.value.length<6) return alert("Min 6 chars");
+function isValidEmail(email){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
-await signInWithEmailAndPassword(auth,email.value,password.value);
+/* LOGIN FIX */
+window.login = async ()=>{
+  let e = document.getElementById("email").value.trim();
+  let p = document.getElementById("password").value.trim();
+
+  if(e === "" || p === ""){
+    alert("Fill all fields");
+    return;
+  }
+
+  if(!isValidEmail(e)){
+    alert("Enter valid email like example@gmail.com");
+    return;
+  }
+
+  if(p.length < 6){
+    alert("Password must be 6+ characters");
+    return;
+  }
+
+  try{
+    await signInWithEmailAndPassword(auth, e, p);
+    alert("Login success");
+  }catch(err){
+    alert(err.message);
+  }
 };
 
-/* SIGNUP */
-window.signup=async()=>{
-if(!isValidEmail(email.value)) return alert("Valid email");
-if(password.value.length<6) return alert("Min 6 chars");
+/* SIGNUP FIX */
+window.signup = async ()=>{
+  let e = document.getElementById("email").value.trim();
+  let p = document.getElementById("password").value.trim();
 
-await createUserWithEmailAndPassword(auth,email.value,password.value);
+  if(e === "" || p === ""){
+    alert("Fill all fields");
+    return;
+  }
+
+  if(!isValidEmail(e)){
+    alert("Enter valid email like example@gmail.com");
+    return;
+  }
+
+  if(p.length < 6){
+    alert("Password must be 6+ characters");
+    return;
+  }
+
+  try{
+    await createUserWithEmailAndPassword(auth, e, p);
+    alert("Signup success");
+  }catch(err){
+    alert(err.message);
+  }
 };
 
 /* POSTS */
