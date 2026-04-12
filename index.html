@@ -110,4 +110,67 @@ if(localStorage.getItem("login") !== "yes"){
   <button onclick="location.href='suggestion.html'">Open</button>
 </div>
 
-<!-- 🔥 SCHEMES
+<!-- 🔥 SCHEMES (ADMIN POSTS) -->
+<div class="card">
+  <h3>📑 Schemes</h3>
+  <div id="schemesData">Loading...</div>
+</div>
+
+</div>
+
+<!-- 🔥 FIREBASE -->
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain:"e-vedhika-258f2.firebaseapp.com",
+  projectId:"e-vedhika-258f2"
+});
+
+const db = getFirestore(app);
+
+/* LOAD ADMIN POSTS */
+async function loadSchemes(){
+
+  let qs = await getDocs(collection(db,"posts"));
+  let arr=[];
+
+  qs.forEach(d=>{
+    let x=d.data();
+    if(x.userType==="admin" && x.status==="Approved"){
+      arr.push(x);
+    }
+  });
+
+  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  let html="";
+
+  arr.slice(0,3).forEach(d=>{
+    html+=`
+    <div style="text-align:left;margin:5px 0;">
+      <b>${d.title}</b><br>
+      <small>${d.content}</small>
+    </div>`;
+  });
+
+  document.getElementById("schemesData").innerHTML = html || "No updates";
+}
+
+loadSchemes();
+
+</script>
+
+<!-- 🔥 LOGOUT SCRIPT -->
+<script>
+function logout(){
+  localStorage.removeItem("login");
+  window.location.href="login.html";
+}
+</script>
+
+</body>
+</html>
