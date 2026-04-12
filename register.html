@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <body>
-
 <h2>Register</h2>
 
 <input id="email" placeholder="Email"><br><br>
@@ -19,13 +18,12 @@ window.register = async ()=>{
   let res = await createUserWithEmailAndPassword(auth,email.value,pass.value);
 
   await setDoc(doc(db,"users",res.user.uid),{
-    username: username.value,
-    role: "user"
+    username:username.value,
+    role:"user"
   });
 
   location.href="login.html";
 };
 </script>
-
 </body>
 </html>
