@@ -5,10 +5,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/12.12.0/firebas
 const firebaseConfig = {
   apiKey: "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
   authDomain: "e-vedhika-258f2.firebaseapp.com",
-  projectId: "e-vedhika-258f2",
-  storageBucket: "e-vedhika-258f2.firebasestorage.app",
-  messagingSenderId: "188172181883",
-  appId: "1:188172181883:web:e1e7b7f5a94cf792f49dde"
+  projectId: "e-vedhika-258f2"
 };
 
 const app = initializeApp(firebaseConfig);
