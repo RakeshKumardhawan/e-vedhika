@@ -14,16 +14,13 @@ body{
   overflow:hidden;
 }
 
-/* 🔥 REAL BUBBLES FIX */
+/* BUBBLES */
 .bubbles{
   position:fixed;
   width:100%;
   height:100%;
   z-index:0;
-  top:0;
-  left:0;
 }
-
 .bubbles span{
   position:absolute;
   bottom:-100px;
@@ -33,30 +30,17 @@ body{
   border-radius:50%;
   animation:bubble 20s linear infinite;
 }
-
-.bubbles span:nth-child(1){left:10%;animation-duration:12s;}
-.bubbles span:nth-child(2){left:25%;animation-duration:18s;}
-.bubbles span:nth-child(3){left:40%;animation-duration:15s;}
-.bubbles span:nth-child(4){left:60%;animation-duration:20s;}
-.bubbles span:nth-child(5){left:75%;animation-duration:13s;}
-.bubbles span:nth-child(6){left:90%;animation-duration:17s;}
+.bubbles span:nth-child(1){left:10%}
+.bubbles span:nth-child(2){left:30%}
+.bubbles span:nth-child(3){left:60%}
+.bubbles span:nth-child(4){left:80%}
 
 @keyframes bubble{
-  0%{transform:translateY(0) scale(0.5);}
-  100%{transform:translateY(-110vh) scale(1);}
+  0%{transform:translateY(0)}
+  100%{transform:translateY(-110vh)}
 }
 
-/* HEADER */
-h2{
-  text-align:center;
-  color:white;
-  padding:15px;
-  margin:0;
-  z-index:2;
-  position:relative;
-}
-
-/* GRID FULL SCREEN */
+/* LAYOUT */
 .container{
   display:grid;
   grid-template-columns:250px 1fr 300px;
@@ -67,140 +51,79 @@ h2{
   z-index:2;
 }
 
-/* 🔥 SMOOTH GLASS */
+/* GLASS */
 .glass{
-  background:rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.2);
   backdrop-filter:blur(25px);
   border-radius:20px;
   padding:15px;
-  box-shadow:0 8px 30px rgba(0,0,0,0.2);
-  transition:all 0.3s ease;
-}
-
-/* HOVER FLOAT */
-.glass:hover{
-  transform:translateY(-8px);
-  box-shadow:0 12px 40px rgba(0,0,0,0.3);
 }
 
 /* INPUT */
 input,textarea{
   width:100%;
   padding:10px;
-  margin:6px 0;
+  margin:5px 0;
   border-radius:10px;
   border:none;
-  outline:none;
-  transition:0.3s;
 }
 
-/* INPUT GLOW */
-input:focus,textarea:focus{
-  box-shadow:0 0 10px rgba(0,150,255,0.5);
-}
-
-/* BUTTON */
 button{
-  padding:8px 12px;
-  border:none;
-  background:linear-gradient(45deg,#00c6ff,#0072ff);
+  padding:8px;
+  background:#0072ff;
   color:white;
+  border:none;
   border-radius:10px;
   cursor:pointer;
-  transition:0.3s;
 }
 
-button:hover{
-  transform:scale(1.05);
-}
-
-/* POSTS */
 .post{
   background:white;
-  margin:8px 0;
-  padding:10px;
+  margin:5px 0;
+  padding:8px;
   border-radius:10px;
-  transition:0.3s;
 }
 
-.post:hover{
-  transform:scale(1.02);
-}
-
-/* SCROLL */
 .scroll-box{
   height:120px;
   overflow:hidden;
-}
-
-/* CHAT */
-#chatMessages{
-  background:rgba(255,255,255,0.3);
-  border-radius:10px;
-  padding:5px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- 🔥 BUBBLES -->
 <div class="bubbles">
-<span></span><span></span><span></span>
-<span></span><span></span><span></span>
+<span></span><span></span><span></span><span></span>
 </div>
 
-<h2>🌐 E-Vedhika</h2>
+<h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
 
 <div class="container">
 
-<!-- LEFT -->
 <div class="glass">
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="scroll-box"></div>
-
-<h4>📌 Problems</h4>
-<button onclick="showProblemPost()">+ Post</button>
-
-<div id="problemForm" style="display:none;">
-<input id="ptitle">
-<textarea id="pcontent"></textarea>
-<button onclick="addProblem()">Submit</button>
 </div>
 
-<div id="problemsBox"></div>
-
-<h4>🛠 Fix Errors</h4>
-<div id="solvedBox"></div>
-</div>
-
-<!-- CENTER -->
 <div class="glass">
 <h3>New Post</h3>
 <input id="title">
 <textarea id="content"></textarea>
 <button onclick="addPost()">Post</button>
-<div id="posts"></div>
 </div>
 
-<!-- RIGHT -->
 <div class="glass">
 <h3>Login / Signup</h3>
 
-<input id="email">
-<input id="password" type="password">
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
 
 <button onclick="login()">Login</button>
 <button onclick="signup()">Signup</button>
 
-<p id="userInfo"></p>
+<p id="status"></p>
 
-<hr>
-
-<h3>Chat</h3>
-<div id="chatMessages" style="height:200px;overflow:auto;"></div>
-<input id="chatInput">
-<button onclick="sendMsg()">Send</button>
 </div>
 
 </div>
@@ -208,10 +131,7 @@ button:hover{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, serverTimestamp, onSnapshot } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } 
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
 const app = initializeApp({
@@ -220,206 +140,43 @@ authDomain:"e-vedhika-258f2.firebaseapp.com",
 projectId:"e-vedhika-258f2"
 });
 
-const db = getFirestore(app);
 const auth = getAuth(app);
-  /* =========================
-   🔥 SAFE LOGIN/SIGNUP FIX
-   (DO NOT REMOVE OLD CODE)
-========================= */
 
-function safeGet(id){
-  return document.getElementById(id)?.value?.trim() || "";
-}
-
-function isValidEmail(email){
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-/* 🔥 OVERRIDE LOGIN */
+/* LOGIN */
 window.login = async ()=>{
-  let e = safeGet("email");
-  let p = safeGet("password");
+let e=document.getElementById("email").value.trim();
+let p=document.getElementById("password").value.trim();
 
-  if(!e || !p){
-    alert("Fill all fields");
-    return;
-  }
+if(!e || !p){
+alert("Enter email & password");
+return;
+}
 
-  if(!isValidEmail(e)){
-    alert("Enter valid email (example@gmail.com)");
-    return;
-  }
-
-  if(p.length < 6){
-    alert("Password must be 6+ chars");
-    return;
-  }
-
-  try{
-    await signInWithEmailAndPassword(auth, e, p);
-    alert("Login success");
-  }catch(err){
-    alert(err.message);
-  }
+try{
+await signInWithEmailAndPassword(auth,e,p);
+status.innerText="Login success";
+}catch(err){
+alert(err.message);
+}
 };
 
-/* 🔥 OVERRIDE SIGNUP */
+/* SIGNUP */
 window.signup = async ()=>{
-  let e = safeGet("email");
-  let p = safeGet("password");
+let e=document.getElementById("email").value.trim();
+let p=document.getElementById("password").value.trim();
 
-  if(!e || !p){
-    alert("Fill all fields");
-    return;
-  }
-
-  if(!isValidEmail(e)){
-    alert("Enter valid email (example@gmail.com)");
-    return;
-  }
-
-  if(p.length < 6){
-    alert("Password must be 6+ chars");
-    return;
-  }
-
-  try{
-    await createUserWithEmailAndPassword(auth, e, p);
-    alert("Signup success");
-  }catch(err){
-    alert(err.message);
-  }
-};
-
-/* VALIDATION */
-function isValidEmail(email){
-return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+if(!e || !p){
+alert("Enter email & password");
+return;
 }
 
-/* AUTH STATE */
-onAuthStateChanged(auth,(user)=>{
-userInfo.innerText = user ? "Logged: "+user.email : "Not logged";
-});
-
-function isValidEmail(email){
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+try{
+await createUserWithEmailAndPassword(auth,e,p);
+status.innerText="Signup success";
+}catch(err){
+alert(err.message);
 }
-
-/* LOGIN FIX */
-window.login = async ()=>{
-  let e = document.getElementById("email").value.trim();
-  let p = document.getElementById("password").value.trim();
-
-  if(e === "" || p === ""){
-    alert("Fill all fields");
-    return;
-  }
-
-  if(!isValidEmail(e)){
-    alert("Enter valid email like example@gmail.com");
-    return;
-  }
-
-  if(p.length < 6){
-    alert("Password must be 6+ characters");
-    return;
-  }
-
-  try{
-    await signInWithEmailAndPassword(auth, e, p);
-    alert("Login success");
-  }catch(err){
-    alert(err.message);
-  }
 };
-
-/* SIGNUP FIX */
-window.signup = async ()=>{
-  let e = document.getElementById("email").value.trim();
-  let p = document.getElementById("password").value.trim();
-
-  if(e === "" || p === ""){
-    alert("Fill all fields");
-    return;
-  }
-
-  if(!isValidEmail(e)){
-    alert("Enter valid email like example@gmail.com");
-    return;
-  }
-
-  if(p.length < 6){
-    alert("Password must be 6+ characters");
-    return;
-  }
-
-  try{
-    await createUserWithEmailAndPassword(auth, e, p);
-    alert("Signup success");
-  }catch(err){
-    alert(err.message);
-  }
-};
-
-/* POSTS */
-window.addPost=async()=>{
-if(!auth.currentUser) return alert("Login required");
-
-await addDoc(collection(db,"posts"),{
-title:title.value,
-content:content.value,
-createdAt:serverTimestamp()
-});
-};
-
-/* PROBLEM */
-window.showProblemPost=()=>problemForm.style.display="block";
-
-window.addProblem=async()=>{
-await addDoc(collection(db,"problems"),{
-title:ptitle.value,
-content:pcontent.value,
-status:"Pending",
-createdAt:serverTimestamp()
-});
-};
-
-/* CHAT */
-window.sendMsg=async()=>{
-await addDoc(collection(db,"chat"),{
-message:chatInput.value,
-createdAt:serverTimestamp()
-});
-chatInput.value="";
-};
-
-function loadChat(){
-onSnapshot(collection(db,"chat"),snap=>{
-chatMessages.innerHTML="";
-snap.forEach(d=>{
-chatMessages.innerHTML+=`<div>${d.data().message}</div>`;
-});
-});
-}
-
-/* APPROVED SCROLL */
-async function loadApproved(){
-let qs=await getDocs(collection(db,"suggestions"));
-approvedBox.innerHTML="";
-qs.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
-});
-
-let pos=0;
-setInterval(()=>{
-pos++;
-approvedBox.scrollTop=pos;
-if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
-},40);
-}
-
-loadChat();
-loadApproved();
 
 </script>
 
