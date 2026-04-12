@@ -4,24 +4,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-
 body{
   margin:0;
   font-family:Segoe UI;
-  background:#f4f6f9;
+  background:linear-gradient(180deg,#eef4ff,#ffffff);
 }
 
 /* HEADER */
 .header{
-  text-align:center;
-  background:#2196f3;
+  background:linear-gradient(90deg,#1e88e5,#42a5f5);
   color:white;
-  padding:10px;
-}
-
-.tagline{
-  font-size:12px;
-  opacity:0.8;
+  padding:15px;
+  text-align:center;
 }
 
 /* SEARCH */
@@ -29,83 +23,87 @@ body{
   padding:10px;
   text-align:center;
 }
-
 .search input{
   width:90%;
-  padding:8px;
-  border-radius:8px;
-  border:1px solid #ccc;
+  padding:10px;
+  border-radius:25px;
+  border:none;
+  box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* LAYOUT */
+/* GRID */
 .main{
   display:grid;
   grid-template-columns:1fr 2fr 1fr;
-  gap:10px;
-  padding:10px;
+  gap:12px;
+  padding:12px;
 }
-
-/* MOBILE */
 @media(max-width:768px){
-  .main{
-    grid-template-columns:1fr;
-  }
+  .main{grid-template-columns:1fr;}
 }
 
 /* CARD */
 .card{
   background:white;
-  border-radius:12px;
+  border-radius:15px;
   padding:12px;
-  margin-bottom:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+  box-shadow:0 6px 15px rgba(0,0,0,0.08);
 }
 
 /* BUTTON */
 button{
-  padding:6px 10px;
-  border:none;
-  border-radius:8px;
-  background:#2196f3;
+  background:#1e88e5;
   color:white;
+  border:none;
+  padding:7px 12px;
+  border-radius:8px;
   margin-top:5px;
 }
 
 /* POST */
 .post{
+  display:flex;
+  gap:10px;
   border-bottom:1px solid #eee;
   padding:10px 0;
 }
 
-.meta{
-  font-size:12px;
-  color:gray;
+.avatar{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:#90caf9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  font-weight:bold;
 }
+
+.meta{font-size:12px;color:gray;}
 
 .comment{
   background:#eef;
   padding:6px;
+  border-radius:8px;
   margin-top:5px;
-  border-radius:6px;
 }
 
-/* LOGIN BOX */
-.login-card{
-  text-align:center;
+img{
+  width:100%;
+  border-radius:10px;
+  margin-top:5px;
 }
-
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
   <h2>E-Vedhika</h2>
-  <div class="tagline">All solutions at one place</div>
+  <div>All solutions at one place</div>
 </div>
 
-<!-- SEARCH -->
 <div class="search">
   <input id="search" placeholder="Search..." onkeyup="searchPosts()">
 </div>
@@ -116,7 +114,7 @@ button{
 <div>
   <div class="card">✔ Approved Suggestions</div>
   <div class="card">📌 Post Problems</div>
-  <div class="card">📘 How to Fix Errors</div>
+  <div class="card">📘 Fix Errors</div>
 </div>
 
 <!-- CENTER -->
@@ -124,6 +122,8 @@ button{
 
 <div class="card">
   <textarea id="content" placeholder="Write your issue..." style="width:100%"></textarea>
+
+  <input type="file" id="img">
 
   <select id="type">
     <option value="problem">Problem</option>
@@ -140,38 +140,32 @@ button{
 
 <!-- RIGHT -->
 <div>
+  <div class="card">
+    <h3>Welcome</h3>
+    <button onclick="goLogin()">Login</button>
+  </div>
 
-<div class="card login-card">
-  <h3>Welcome</h3>
-  <button onclick="goLogin()">Login / Signup</button>
+  <div class="card">📢 Union Updates</div>
+  <div class="card">💬 Discuss</div>
 </div>
-
-<div class="card">📢 Union Updates (Login only)</div>
-<div class="card">💬 Comments & Discuss</div>
-
-</div>
-
-</div>
-
-<!-- FOOTER -->
-<div class="main">
-
-<div class="card">🌐 Translation</div>
-<div class="card">🤖 AI Chatbot</div>
 
 </div>
 
 <script type="module">
 
-import { auth, db } from "./firebase.js";
+import { auth, db, storage } from "./firebase.js";
+
 import {
 collection, addDoc, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
+import {
+ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
+
 let posts=[];
 let uid="", username="", role="user";
 
-// LOGIN CHECK
 auth.onAuthStateChanged(async user=>{
   if(user){
     uid=user.uid;
@@ -209,30 +203,43 @@ function render(data){
 
     html+=`
     <div class="card">
-      <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
-      <span class="meta">${p.type}</span><br><br>
 
-      ${p.content}<br><br>
+    <div class="post">
+      <div class="avatar">${(p.username||"U")[0]}</div>
 
-      <button onclick="answer('${p.id}')">Answer</button>
+      <div>
+        <b>${p.username || "User"}</b><br>
+        <span class="meta">${p.type || ""}</span><br>
+
+        ${p.content || ""}
+
+        ${p.image ? `<img src="${p.image}">` : ""}
+
+        <br>
+
+        <button onclick="showCommentBox('${p.id}')">💬 Comment</button>
     `;
 
     if(role==="admin"){
-      html+=`
-      <button onclick="approve('${p.id}')">Approve</button>
-      `;
+      html+=`<button onclick="approve('${p.id}')">✔ Approve</button>`;
     }
+
+    html+=`
+    <div id="cbox-${p.id}" style="display:none">
+      <input id="c-${p.id}" placeholder="Write comment">
+      <button onclick="addComment('${p.id}')">Send</button>
+    </div>
+    `;
 
     posts.filter(c=>c.parentId===p.id && c.status==="Approved")
     .forEach(c=>{
       html+=`
       <div class="comment">
         <b>${c.username}</b>: ${c.content}
-      </div>
-      `;
+      </div>`;
     });
 
-    html+=`</div>`;
+    html+=`</div></div></div>`;
   });
 
   feed.innerHTML=html;
@@ -242,12 +249,22 @@ function render(data){
 window.addPost = async ()=>{
   if(!auth.currentUser){
     alert("Login required");
-    return location.href="login.html";
+    location.href="login.html";
+    return;
+  }
+
+  let imgUrl="";
+
+  if(img.files[0]){
+    let r = ref(storage,"posts/"+Date.now());
+    await uploadBytes(r,img.files[0]);
+    imgUrl = await getDownloadURL(r);
   }
 
   await addDoc(collection(db,"posts"),{
     content:content.value,
     type:type.value,
+    image:imgUrl,
     parentId:null,
     userId:uid,
     username:username,
@@ -259,14 +276,18 @@ window.addPost = async ()=>{
   load();
 };
 
-// COMMENT
-window.answer = async (id)=>{
-  let text=prompt("Write solution");
+// COMMENT BOX
+window.showCommentBox = (id)=>{
+  document.getElementById("cbox-"+id).style.display="block";
+};
+
+// ADD COMMENT
+window.addComment = async (id)=>{
+  let text=document.getElementById("c-"+id).value;
   if(!text) return;
 
   await addDoc(collection(db,"posts"),{
     content:text,
-    type:"solution",
     parentId:id,
     userId:uid,
     username:username,
@@ -277,7 +298,7 @@ window.answer = async (id)=>{
   load();
 };
 
-// APPROVE
+// ADMIN APPROVE
 window.approve = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
@@ -286,11 +307,7 @@ window.approve = async (id)=>{
 // SEARCH
 window.searchPosts = ()=>{
   let val=search.value.toLowerCase();
-  let filtered = posts.filter(p =>
-    p.content.toLowerCase().includes(val) &&
-    p.status==="Approved"
-  );
-  render(filtered);
+  render(posts.filter(p=>p.content?.toLowerCase().includes(val)));
 };
 
 // LOGIN
