@@ -16,31 +16,21 @@ body{
 /* HEADER */
 .header{
   text-align:center;
-  padding:25px;
+  padding:20px;
   color:white;
-  backdrop-filter: blur(10px);
-}
-
-.header h1{
-  margin:0;
-  font-size:28px;
-}
-
-.header p{
-  opacity:0.9;
 }
 
 /* LAYOUT */
 .container{
   display:grid;
-  grid-template-columns:220px 1fr 260px;
+  grid-template-columns:220px 1fr 280px;
   gap:15px;
   padding:15px;
 }
 
 /* GLASS */
 .glass{
-  background:rgba(255,255,255,0.2);
+  background:rgba(255,255,255,0.25);
   backdrop-filter: blur(15px);
   border-radius:15px;
   padding:12px;
@@ -53,11 +43,6 @@ body{
   padding:10px;
   margin:10px 0;
   border-radius:10px;
-  cursor:pointer;
-  transition:0.3s;
-}
-.sidebar div:hover{
-  transform:scale(1.05);
 }
 
 /* SCROLL */
@@ -74,16 +59,22 @@ body{
   font-size:12px;
 }
 
-/* MAIN */
+/* POST */
 .post-box{
   background:white;
   padding:15px;
   border-radius:12px;
-  box-shadow:0 5px 20px rgba(0,0,0,0.2);
-  animation:fadeIn 1s;
 }
 
-.post-box input,.post-box textarea{
+.post{
+  background:white;
+  margin:10px 0;
+  padding:12px;
+  border-radius:10px;
+}
+
+/* LOGIN */
+.login-box input{
   width:100%;
   padding:10px;
   margin:5px 0;
@@ -91,7 +82,6 @@ body{
   border:none;
 }
 
-/* BUTTON */
 button{
   background:#ff6b6b;
   color:white;
@@ -99,28 +89,10 @@ button{
   border:none;
   border-radius:8px;
   cursor:pointer;
-  transition:0.3s;
 }
+
 button:hover{
   background:#ff3b3b;
-}
-
-/* POSTS */
-.post{
-  background:white;
-  margin:10px 0;
-  padding:15px;
-  border-radius:12px;
-  animation:fadeIn 0.5s;
-}
-
-/* RIGHT */
-.box{
-  background:rgba(255,255,255,0.3);
-  padding:10px;
-  margin:10px 0;
-  border-radius:10px;
-  cursor:pointer;
 }
 
 /* CHAT */
@@ -132,22 +104,8 @@ button:hover{
   color:white;
   padding:12px;
   border-radius:50px;
-  cursor:pointer;
-  animation:bounce 2s infinite;
 }
 
-/* ANIMATIONS */
-@keyframes fadeIn{
-  from{opacity:0;transform:translateY(20px);}
-  to{opacity:1;}
-}
-
-@keyframes bounce{
-  0%,100%{transform:translateY(0);}
-  50%{transform:translateY(-10px);}
-}
-
-/* MOBILE */
 @media(max-width:800px){
   .container{grid-template-columns:1fr;}
 }
@@ -157,19 +115,21 @@ button:hover{
 <body>
 
 <div class="header">
-  <h1> E-Vedhika</h1>
-  <p>E-Vedhika is a digital support platform for E-Panchayat operators. Here you can find solutions for daily problems, latest updates, and step-by-step guidance</p>
+  <h2>🌐 E-Vedhika</h2>
+  <p>All problem solutions at one place</p>
 </div>
 
 <div class="container">
 
 <!-- LEFT -->
 <div class="glass sidebar">
-  <h4>✔ Approved Suggestions</h4>
-  <div id="approvedBox" class="scroll-box"></div>
 
-  <div>📌 Problems</div>
-  <div>🛠 Fix Errors</div>
+<h4>✔ Approved Suggestions</h4>
+<div id="approvedBox" class="scroll-box"></div>
+
+<div>📌 Problems</div>
+<div>🛠 Fix Errors</div>
+
 </div>
 
 <!-- CENTER -->
@@ -178,9 +138,9 @@ button:hover{
 <h3>✨ New Post</h3>
 
 <div class="post-box">
-  <input id="title" placeholder="Title">
-  <textarea id="content" placeholder="Write something..."></textarea>
-  <button onclick="addPost()">🚀 Post</button>
+<input id="title" placeholder="Title">
+<textarea id="content" placeholder="Write something..."></textarea>
+<button onclick="addPost()">Post</button>
 </div>
 
 <h3>📊 Recent Posts</h3>
@@ -188,39 +148,30 @@ button:hover{
 
 </div>
 
-<!-- RIGHT -->
-<div class="glass">
-<div class="box" onclick="openLogin()">🔐 Login</div>
-<div class="box">📢 Updates</div>
-<div class="box">💬 Chat</div>
-</div>
-
-</div>
-
-<!-- LOGIN -->
+<!-- RIGHT LOGIN -->
 <div class="glass">
 
-<h4>🔐 User Login</h4>
+<h3>🔐 Login</h3>
 
-<input id="loginEmail" placeholder="User ID (Email)">
-<input id="loginPass" type="password" placeholder="Password">
+<div class="login-box">
+<input id="email" placeholder="User ID">
+<input id="password" type="password" placeholder="Password">
 
 <button onclick="login()">Login</button>
 
-<p onclick="showSignup()" style="cursor:pointer;color:blue;">Create Account</p>
-<p onclick="forgot()" style="cursor:pointer;color:red;">Forgot Password?</p>
+<p onclick="signup()" style="cursor:pointer;color:blue;">Signup</p>
+<p onclick="forgot()" style="cursor:pointer;color:red;">Forgot Password</p>
+</div>
 
-<!-- SIGNUP -->
-<div id="signupBox" style="display:none;margin-top:10px;">
-  <h4>Signup</h4>
-  <input id="signEmail" placeholder="Email">
-  <input id="signPass" type="password" placeholder="Password">
-  <button onclick="signup()">Register</button>
+<hr>
+
+<div>📢 Union Updates</div>
+<div>💬 Chat</div>
+
 </div>
 
 </div>
 
-<!-- CHATBOT -->
 <div class="chatbot">🤖</div>
 
 <!-- GOOGLE TRANSLATE -->
@@ -229,16 +180,35 @@ button:hover{
 </div>
 
 <script>
-function openLogin(){loginBox.style.display="block";}
-function closeLogin(){loginBox.style.display="none";}
-
 function googleTranslateElementInit(){
 new google.translate.TranslateElement(
 {pageLanguage:'en',includedLanguages:'en,hi,te'},
 'google_translate_element'
 );
 }
+
+/* LOGIN (dummy for now) */
+function login(){
+let e=email.value;
+let p=password.value;
+
+if(!e||!p){
+alert("Enter details");
+return;
+}
+
+alert("Login Success (Demo)");
+}
+
+function signup(){
+alert("Signup system next step");
+}
+
+function forgot(){
+alert("Reset link feature next step");
+}
 </script>
+
 <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <!-- FIREBASE -->
@@ -262,7 +232,9 @@ let c=content.value;
 if(!t||!c){alert("Fill all");return;}
 
 await addDoc(collection(db,"posts"),{
-title:t,content:c,status:"Approved",
+title:t,
+content:c,
+status:"Approved",
 createdAt:serverTimestamp()
 });
 
@@ -274,7 +246,11 @@ loadPosts();
 async function loadPosts(){
 let qs=await getDocs(collection(db,"posts"));
 let arr=[];
-qs.forEach(d=>{let x=d.data();if(x.status==="Approved")arr.push(x);});
+qs.forEach(d=>{
+let x=d.data();
+if(x.status==="Approved") arr.push(x);
+});
+
 arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
 posts.innerHTML="";
@@ -283,7 +259,7 @@ posts.innerHTML+=`<div class="post"><b>${d.title}</b><p>${d.content}</p></div>`;
 });
 }
 
-/* APPROVED SUGGESTIONS */
+/* APPROVED */
 async function loadApproved(){
 let qs=await getDocs(collection(db,"suggestions"));
 let arr=[];
@@ -299,7 +275,7 @@ approvedBox.innerHTML+=`<div class="scroll-item">${d.name}: ${d.suggestion}</div
 
 let pos=0;
 setInterval(()=>{
-pos+=1;
+pos++;
 approvedBox.scrollTop=pos;
 if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight){pos=0;}
 },50);
