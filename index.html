@@ -2,13 +2,109 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-body{font-family:Arial;background:#f4f6f9;margin:0}
-.header{background:#2196f3;color:white;padding:10px;text-align:center}
-.container{max-width:600px;margin:auto;padding:10px}
-.card{background:white;padding:10px;margin-bottom:10px;border-radius:10px}
-textarea{width:100%;padding:8px}
-button{padding:6px;margin-top:5px;background:#2196f3;color:white;border:none}
+body{
+  margin:0;
+  font-family:Segoe UI;
+  background:linear-gradient(180deg,#eef4ff,#ffffff);
+}
+
+/* HEADER */
+.header{
+  background:linear-gradient(90deg,#1e88e5,#42a5f5);
+  color:white;
+  padding:14px;
+  text-align:center;
+  font-size:18px;
+}
+
+/* CONTAINER */
+.container{
+  max-width:600px;
+  margin:auto;
+  padding:10px;
+}
+
+/* POST BOX */
+.postbox{
+  background:white;
+  padding:12px;
+  border-radius:15px;
+  box-shadow:0 6px 15px rgba(0,0,0,0.08);
+  margin-bottom:15px;
+}
+
+/* TEXTAREA */
+textarea{
+  width:100%;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+}
+
+/* BUTTON */
+button{
+  background:#1e88e5;
+  color:white;
+  border:none;
+  padding:7px 12px;
+  border-radius:10px;
+  margin-top:6px;
+}
+
+/* POST CARD */
+.card{
+  background:white;
+  border-radius:15px;
+  padding:12px;
+  margin-bottom:12px;
+  box-shadow:0 6px 15px rgba(0,0,0,0.08);
+}
+
+/* POST */
+.post{
+  display:flex;
+  gap:10px;
+}
+
+/* AVATAR */
+.avatar{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:#90caf9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  font-weight:bold;
+}
+
+/* CONTENT */
+.content{
+  flex:1;
+}
+
+/* META */
+.meta{
+  font-size:12px;
+  color:#777;
+}
+
+/* ACTIONS */
+.actions{
+  margin-top:8px;
+  display:flex;
+  gap:10px;
+}
+
+/* IMAGE */
+img{
+  width:100%;
+  border-radius:10px;
+  margin-top:5px;
+}
 </style>
 </head>
 
@@ -18,8 +114,9 @@ button{padding:6px;margin-top:5px;background:#2196f3;color:white;border:none}
 
 <div class="container">
 
-<div class="card">
-<textarea id="content" placeholder="Write your problem..."></textarea>
+<div class="postbox">
+<textarea id="content" placeholder="Share your problem..."></textarea>
+<input type="file" id="img">
 <button onclick="addPost()">Post</button>
 </div>
 
@@ -29,33 +126,85 @@ button{padding:6px;margin-top:5px;background:#2196f3;color:white;border:none}
 
 <script type="module">
 
-import { auth, db } from "./firebase.js";
-import { collection, addDoc, getDocs }
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { auth, db, storage } from "./firebase.js";
+
+import {
+collection, addDoc, getDocs
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+import {
+ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
 
 let posts=[];
 
+// LOAD POSTS
 async function load(){
-  let snap=await getDocs(collection(db,"posts"));
+  let snap = await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
     let x=d.data(); x.id=d.id;
     posts.push(x);
   });
 
-  let html="";
-  posts.forEach(p=>{
-    html+=`<div class="card">${p.content || ""}</div>`;
-  });
-
-  feed.innerHTML=html;
+  render();
 }
 
+// RENDER UI
+function render(){
+  let html="";
+
+  posts.reverse().forEach(p=>{
+    html+=`
+    <div class="card">
+
+      <div class="post">
+
+        <div class="avatar">
+          ${(p.username || "U")[0]}
+        </div>
+
+        <div class="content">
+
+          <b>${p.username || "User"}</b><br>
+          <span class="meta">Public Post</span><br><br>
+
+          ${p.content || ""}
+
+          ${p.image ? `<img src="${p.image}">` : ""}
+
+          <div class="actions">
+            <button>👍 Like</button>
+            <button>💬 Comment</button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+    `;
+  });
+
+  document.getElementById("feed").innerHTML = html;
+}
+
+// ADD POST
 window.addPost = async ()=>{
   if(!content.value) return;
 
+  let imgUrl="";
+
+  if(img.files[0]){
+    let r = ref(storage,"posts/"+Date.now());
+    await uploadBytes(r,img.files[0]);
+    imgUrl = await getDownloadURL(r);
+  }
+
   await addDoc(collection(db,"posts"),{
-    content:content.value
+    content:content.value,
+    image:imgUrl,
+    username:"User"
   });
 
   content.value="";
