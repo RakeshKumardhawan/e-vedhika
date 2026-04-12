@@ -1,74 +1,94 @@
-<!DOCTYPE html>
-<html>
-<body>
+<!-- 🔥 CENTER POSTS SECTION -->
+<div class="main">
+  <h3>📝 New Post</h3>
 
-<h2>E-Vedhika</h2>
+  <div class="post-box">
+    <input type="text" id="title" placeholder="Title" style="width:100%;padding:8px;"><br><br>
+    <textarea id="content" placeholder="Write something..." style="width:100%;height:80px;"></textarea><br><br>
 
-<button onclick="location.href='profile.html'">Profile</button>
-<button onclick="location.href='admin.html'">Admin</button>
+    <button onclick="addPost()">Post</button>
+  </div>
 
-<textarea id="content"></textarea>
-<input type="file" id="img">
-<button onclick="addPost()">Post</button>
-
-<hr>
-<div id="feed"></div>
+  <h3>📊 Recent Posts</h3>
+  <div id="posts"></div>
+</div>
 
 <script type="module">
 
-import { auth, db, storage } from "./firebase.js";
-import {
-collection, addDoc, getDocs
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-import {
-ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-let posts=[], user="User";
+const app = initializeApp({
+  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain:"e-vedhika-258f2.firebaseapp.com",
+  projectId:"e-vedhika-258f2"
+});
 
-async function load(){
-  let snap=await getDocs(collection(db,"posts"));
-  posts=[];
-  snap.forEach(d=>{
-    let x=d.data(); x.id=d.id;
-    posts.push(x);
-  });
+const db = getFirestore(app);
 
-  let html="";
-  posts.filter(p=>p.status==="Approved")
-  .forEach(p=>{
-    html+=`
-    <div>
-      <b>${p.username}</b><br>
-      ${p.content}<br>
-      ${p.image ? `<img src="${p.image}" width="200">`:""}
-    </div><hr>`;
-  });
+let postsBox = document.getElementById("posts");
 
-  feed.innerHTML=html;
-}
+/* 🔥 ADD POST */
+window.addPost = async function(){
 
-window.addPost = async ()=>{
-  let imgUrl="";
+  let title = document.getElementById("title").value;
+  let content = document.getElementById("content").value;
 
-  if(img.files[0]){
-    let r=ref(storage,"posts/"+Date.now());
-    await uploadBytes(r,img.files[0]);
-    imgUrl=await getDownloadURL(r);
+  if(title=="" || content==""){
+    alert("Fill all fields");
+    return;
   }
 
   await addDoc(collection(db,"posts"),{
-    content:content.value,
-    image:imgUrl,
-    username:user,
-    status:"Pending"
+    title,
+    content,
+    userType:"public", // admin / public
+    status:"Approved",
+    createdAt: serverTimestamp()
   });
 
-  load();
+  alert("Post Added");
+
+  document.getElementById("title").value="";
+  document.getElementById("content").value="";
+
+  loadPosts();
 };
 
-load();
+/* 🔥 LOAD POSTS */
+async function loadPosts(){
+
+  let qs = await getDocs(collection(db,"posts"));
+  let arr=[];
+
+  qs.forEach(d=>{
+    let x=d.data();
+
+    if(x.status==="Approved"){
+      arr.push(x);
+    }
+  });
+
+  // latest first
+  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  displayPosts(arr);
+}
+
+/* 🔥 DISPLAY */
+function displayPosts(arr){
+  postsBox.innerHTML="";
+
+  arr.forEach(d=>{
+    postsBox.innerHTML+=`
+      <div style="background:white;margin:10px;padding:15px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.1);text-align:left;">
+        <h4>${d.title}</h4>
+        <p>${d.content}</p>
+      </div>
+    `;
+  });
+}
+
+loadPosts();
 
 </script>
-</body>
-</html>
