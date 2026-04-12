@@ -1,30 +1,219 @@
-<!-- 🔥 CENTER POSTS SECTION -->
-<div class="main">
-  <h3>📝 New Post</h3>
-<div class="sidebar">
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>E-Vedhika</title>
 
-  <h4>✔ Approved Suggestions</h4>
-  <div id="approvedBox" class="scroll-box"></div>
+<style>
 
-  <div onclick="go('problems.html')">📌 Post Problems</div>
-  <div>🛠 How to Fix Errors</div>
+/* 🌈 BACKGROUND */
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background: linear-gradient(135deg,#74ebd5,#ACB6E5);
+}
 
-  <div id="google_translate_element"></div>
+/* HEADER */
+.header{
+  backdrop-filter: blur(15px);
+  background: rgba(255,255,255,0.2);
+  padding:20px;
+  text-align:center;
+  color:#003049;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+/* LOGO */
+.logo{
+  font-size:28px;
+  font-weight:bold;
+  animation: glow 2s infinite alternate;
+}
+
+@keyframes glow{
+  from{ text-shadow:0 0 5px #fff;}
+  to{ text-shadow:0 0 20px #00b4d8;}
+}
+
+/* LAYOUT */
+.container{
+  display:grid;
+  grid-template-columns:220px 1fr 260px;
+  gap:15px;
+  padding:15px;
+}
+
+/* GLASS CARD */
+.glass{
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.3);
+  border-radius:15px;
+  padding:10px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* SIDEBAR */
+.sidebar div{
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.sidebar div:hover{
+  background:rgba(255,255,255,0.5);
+  transform:scale(1.05);
+}
+
+/* SCROLL */
+.scroll-box{
+  height:150px;
+  overflow:hidden;
+}
+
+.scroll-item{
+  background:white;
+  margin:5px 0;
+  padding:8px;
+  border-radius:8px;
+}
+
+/* MAIN */
+.post-box{
+  background:rgba(255,255,255,0.4);
+  padding:15px;
+  border-radius:12px;
+  animation: fadeUp 1s;
+}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;}
+}
+
+.post-box input, .post-box textarea{
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border-radius:8px;
+  border:none;
+}
+
+button{
+  background:#0077b6;
+  color:white;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#023e8a;
+}
+
+/* POSTS */
+.post{
+  background:white;
+  padding:12px;
+  margin:10px 0;
+  border-radius:12px;
+  animation: fadeUp 0.5s;
+}
+
+/* RIGHT */
+.box{
+  padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  background:rgba(255,255,255,0.4);
+  cursor:pointer;
+}
+
+/* CHATBOT */
+.chatbot{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  background:#0077b6;
+  color:white;
+  padding:15px;
+  border-radius:50%;
+  font-size:20px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* MOBILE */
+@media(max-width:800px){
+  .container{grid-template-columns:1fr;}
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo"> E-Vedhika </div>
+  <p>E-Vedhika is a digital support platform for E-Panchayat operators. Here you can find solutions for daily problems, latest updates, and step-by-step guidance</p>
+</div>
+
+<div class="container">
+
+<!-- LEFT -->
+<div class="glass sidebar">
+
+<h4>✔ Approved Suggestions</h4>
+<div id="approvedBox" class="scroll-box"></div>
+
+<div>📌 Problems</div>
+<div>🛠 Fix Errors</div>
+
+<div id="google_translate_element"></div>
 
 </div>
-  <div class="post-box">
-    <input type="text" id="title" placeholder="Title" style="width:100%;padding:8px;"><br><br>
-    <textarea id="content" placeholder="Write something..." style="width:100%;height:80px;"></textarea><br><br>
 
-    <button onclick="addPost()">Post</button>
-  </div>
+<!-- CENTER -->
+<div class="glass">
 
-  <h3>📊 Recent Posts</h3>
-  <div id="posts"></div>
+<h3>✨ New Post</h3>
+
+<div class="post-box">
+  <input id="title" placeholder="Enter Title">
+  <textarea id="content" placeholder="Write your idea..."></textarea>
+  <button onclick="addPost()">🚀 Post</button>
+</div>
+<div class="glass">
+<h3>📊 Recent Posts</h3>
+<div id="posts"></div>
+
 </div>
 
+<!-- RIGHT -->
+<div class="glass">
+<div class="box" onclick="alert('Login next step')">🔐 Login</div>
+<div class="box">📢 Updates</div>
+<div class="box">💬 Chat</div>
+
+</div>
+
+</div>
+
+<!-- CHATBOT -->
+<div class="chatbot">🤖</div>
+
+<!-- TRANSLATE -->
+<script>
+function googleTranslateElementInit(){
+new google.translate.TranslateElement({pageLanguage:'en'},'google_translate_element');
+}
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+<!-- FIREBASE -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
@@ -36,69 +225,74 @@ const app = initializeApp({
 
 const db = getFirestore(app);
 
-let postsBox = document.getElementById("posts");
+/* POSTS */
+let postsBox=document.getElementById("posts");
 
-/* 🔥 ADD POST */
-window.addPost = async function(){
+window.addPost=async()=>{
+let title=titleInput.value;
+let content=contentInput.value;
 
-  let title = document.getElementById("title").value;
-  let content = document.getElementById("content").value;
+if(title==""||content==""){alert("Fill all");return;}
 
-  if(title=="" || content==""){
-    alert("Fill all fields");
-    return;
-  }
+await addDoc(collection(db,"posts"),{
+title,content,status:"Approved",userType:"public",
+createdAt:serverTimestamp()
+});
 
-  await addDoc(collection(db,"posts"),{
-    title,
-    content,
-    userType:"public", // admin / public
-    status:"Approved",
-    createdAt: serverTimestamp()
-  });
-
-  alert("Post Added");
-
-  document.getElementById("title").value="";
-  document.getElementById("content").value="";
-
-  loadPosts();
+titleInput.value="";
+contentInput.value="";
+loadPosts();
 };
 
-/* 🔥 LOAD POSTS */
 async function loadPosts(){
+let qs=await getDocs(collection(db,"posts"));
+let arr=[];
+qs.forEach(d=>{
+let x=d.data();
+if(x.status==="Approved") arr.push(x);
+});
+arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
-  let qs = await getDocs(collection(db,"posts"));
-  let arr=[];
-
-  qs.forEach(d=>{
-    let x=d.data();
-
-    if(x.status==="Approved"){
-      arr.push(x);
-    }
-  });
-
-  // latest first
-  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-
-  displayPosts(arr);
+postsBox.innerHTML="";
+arr.forEach(d=>{
+postsBox.innerHTML+=`
+<div class="post">
+<h4>${d.title}</h4>
+<p>${d.content}</p>
+</div>`;
+});
 }
 
-/* 🔥 DISPLAY */
-function displayPosts(arr){
-  postsBox.innerHTML="";
+/* APPROVED SUGGESTIONS */
+async function loadApprovedSuggestions(){
+let qs=await getDocs(collection(db,"suggestions"));
+let arr=[];
+qs.forEach(d=>{
+let x=d.data();
+if(x.status==="Accepted"||x.status==="Approved") arr.push(x);
+});
+arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
-  arr.forEach(d=>{
-    postsBox.innerHTML+=`
-      <div style="background:white;margin:10px;padding:15px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.1);text-align:left;">
-        <h4>${d.title}</h4>
-        <p>${d.content}</p>
-      </div>
-    `;
-  });
+let box=document.getElementById("approvedBox");
+box.innerHTML="";
+arr.forEach(d=>{
+box.innerHTML+=`
+<div class="scroll-item">
+<b>${d.name}</b><br>${d.suggestion}
+</div>`;
+});
+
+let pos=0;
+setInterval(()=>{
+pos+=1;
+box.scrollTop=pos;
+if(pos>=box.scrollHeight-box.clientHeight){pos=0;}
+},40);
 }
 
 loadPosts();
-
+loadApprovedSuggestions();
 </script>
+
+</body>
+</html>
