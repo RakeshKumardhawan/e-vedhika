@@ -10,71 +10,19 @@ body{
   font-family:Arial;
   background:linear-gradient(120deg,#89f7fe,#66a6ff);
 }
-
-/* HEADER */
-h2{
-  text-align:center;
-  color:white;
-  padding:10px;
-}
-
-/* GRID */
-.container{
-  display:grid;
-  grid-template-columns:220px 1fr 280px;
-  gap:15px;
-  padding:15px;
-}
-
-/* GLASS EFFECT */
+h2{text-align:center;color:white;padding:10px;}
+.container{display:grid;grid-template-columns:220px 1fr 280px;gap:15px;padding:15px;}
 .glass{
   background:rgba(255,255,255,0.2);
   backdrop-filter: blur(15px);
   border-radius:15px;
   padding:15px;
   box-shadow:0 4px 20px rgba(0,0,0,0.1);
-  transition:0.3s;
 }
-
-.glass:hover{
-  transform:translateY(-5px);
-}
-
-/* POSTS */
-.post{
-  background:white;
-  margin:8px 0;
-  padding:10px;
-  border-radius:10px;
-}
-
-/* INPUTS */
-input, textarea{
-  width:100%;
-  margin:5px 0;
-  padding:8px;
-  border-radius:8px;
-  border:1px solid #ccc;
-}
-
-button{
-  padding:8px 12px;
-  border:none;
-  background:#4CAF50;
-  color:white;
-  border-radius:8px;
-  cursor:pointer;
-}
-
-button:hover{
-  background:#45a049;
-}
-
-/* SCROLL */
-.scroll-box{
-  height:120px;
-  overflow:hidden;
-}
+.post{background:white;margin:8px 0;padding:10px;border-radius:10px;}
+input,textarea{width:100%;margin:5px 0;padding:8px;border-radius:8px;border:1px solid #ccc;}
+button{padding:8px 12px;border:none;background:#4CAF50;color:white;border-radius:8px;cursor:pointer;}
+.scroll-box{height:120px;overflow:hidden;}
 </style>
 </head>
 
@@ -84,7 +32,6 @@ button:hover{
 
 <div class="container">
 
-<!-- LEFT -->
 <div class="glass">
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="scroll-box"></div>
@@ -92,8 +39,8 @@ button:hover{
 <h4>📌 Problems</h4>
 <button onclick="showProblemPost()">+ Post Problem</button>
 <div id="problemForm" style="display:none;">
-<input id="ptitle" placeholder="Problem Title">
-<textarea id="pcontent" placeholder="Explain problem"></textarea>
+<input id="ptitle">
+<textarea id="pcontent"></textarea>
 <button onclick="addProblem()">Submit</button>
 </div>
 <div id="problemsBox"></div>
@@ -102,27 +49,23 @@ button:hover{
 <div id="solvedBox"></div>
 </div>
 
-<!-- CENTER -->
 <div class="glass">
 <h3>New Post</h3>
-
-<input id="title" placeholder="Title">
-<textarea id="content" placeholder="Write your post"></textarea>
+<input id="title">
+<textarea id="content"></textarea>
 <button onclick="addPost()">Post</button>
-
 <div id="posts"></div>
 </div>
 
-<!-- RIGHT -->
 <div class="glass">
-
 <h3>Login / Signup</h3>
-
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
+<input id="email">
+<input id="password" type="password">
 
 <button onclick="login()">Login</button>
 <button onclick="signup()">Signup</button>
+
+<p id="userInfo"></p>
 
 <hr>
 
@@ -130,7 +73,6 @@ button:hover{
 <div id="chatMessages" style="height:200px;overflow:auto;"></div>
 <input id="chatInput">
 <button onclick="sendMsg()">Send</button>
-
 </div>
 
 </div>
@@ -139,11 +81,11 @@ button:hover{
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc, getDocs, serverTimestamp, onSnapshot 
+getFirestore, collection, addDoc, getDocs, serverTimestamp, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { 
-  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword 
+getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
 const app = initializeApp({
@@ -155,21 +97,47 @@ projectId:"e-vedhika-258f2"
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+let currentUser=null;
+
+/* 🔥 AUTH STATE */
+onAuthStateChanged(auth,(user)=>{
+if(user){
+currentUser=user;
+userInfo.innerText="Logged: "+user.email;
+}else{
+userInfo.innerText="Not logged";
+}
+});
+
 /* LOGIN */
 window.login=async()=>{
+try{
 await signInWithEmailAndPassword(auth,email.value,password.value);
 alert("Login success");
+}catch(e){
+alert(e.message);
+}
 };
 
-/* SIGNUP */
+/* SIGNUP + SAVE ROLE */
 window.signup=async()=>{
-await createUserWithEmailAndPassword(auth,email.value,password.value);
+try{
+let res = await createUserWithEmailAndPassword(auth,email.value,password.value);
+
+await addDoc(collection(db,"users"),{
+email:res.user.email,
+role:"user"
+});
+
 alert("Signup success");
+}catch(e){
+alert(e.message);
+}
 };
 
 /* POSTS */
 window.addPost=async()=>{
-if(!auth.currentUser){alert("Login required");return;}
+if(!currentUser){alert("Login required");return;}
 
 await addDoc(collection(db,"posts"),{
 title:title.value,
@@ -181,19 +149,8 @@ createdAt:serverTimestamp()
 loadPosts();
 };
 
-async function loadPosts(){
-let qs=await getDocs(collection(db,"posts"));
-posts.innerHTML="";
-qs.forEach(d=>{
-let x=d.data();
-posts.innerHTML+=`<div class="post">${x.title}<br>${x.content}</div>`;
-});
-}
-
-/* PROBLEM POST */
-window.showProblemPost=()=>{
-problemForm.style.display="block";
-};
+/* PROBLEM */
+window.showProblemPost=()=>problemForm.style.display="block";
 
 window.addProblem=async()=>{
 await addDoc(collection(db,"problems"),{
@@ -202,7 +159,7 @@ content:pcontent.value,
 status:"Pending",
 createdAt:serverTimestamp()
 });
-alert("Problem submitted");
+alert("Submitted");
 };
 
 /* CHAT */
@@ -214,6 +171,7 @@ createdAt:serverTimestamp()
 chatInput.value="";
 };
 
+/* LOAD CHAT */
 function loadChat(){
 onSnapshot(collection(db,"chat"),snap=>{
 chatMessages.innerHTML="";
@@ -223,7 +181,7 @@ chatMessages.innerHTML+=`<div>${d.data().message}</div>`;
 });
 }
 
-/* APPROVED AUTO SCROLL */
+/* APPROVED SCROLL */
 async function loadApproved(){
 let qs=await getDocs(collection(db,"suggestions"));
 approvedBox.innerHTML="";
@@ -237,6 +195,16 @@ pos++;
 approvedBox.scrollTop=pos;
 if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
 },40);
+}
+
+/* POSTS LOAD */
+async function loadPosts(){
+let qs=await getDocs(collection(db,"posts"));
+posts.innerHTML="";
+qs.forEach(d=>{
+let x=d.data();
+posts.innerHTML+=`<div class="post">${x.title}<br>${x.content}</div>`;
+});
 }
 
 /* INIT */
