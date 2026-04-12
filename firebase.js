@@ -3,12 +3,17 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT"
+  apiKey: "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain: "e-vedhika-258f2.firebaseapp.com",
+  projectId: "e-vedhika-258f2",
+  storageBucket: "e-vedhika-258f2.firebasestorage.app",
+  messagingSenderId: "188172181883",
+  appId: "1:188172181883:web:e1e7b7f5a94cf792f49dde"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
