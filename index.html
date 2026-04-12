@@ -52,6 +52,13 @@ border-radius:10px;
 cursor:pointer;
 }
 
+.post{
+background:white;
+margin:5px 0;
+padding:8px;
+border-radius:10px;
+}
+
 .small-box{
 max-height:120px;
 overflow:auto;
@@ -84,18 +91,21 @@ z-index:999;
 
 <div class="container">
 
+<!-- LEFT -->
 <div class="glass">
 <h4>✔ Approved Suggestions</h4>
-<div id="approvedBox"></div>
+<div id="approvedBox" class="small-box"></div>
 </div>
 
+<!-- CENTER -->
 <div class="glass">
-<h3>New Post</h3>
+<h3>New Post (Public)</h3>
 <input id="title">
 <textarea id="content"></textarea>
 <button onclick="addPost()">Post</button>
 </div>
 
+<!-- RIGHT -->
 <div class="glass">
 
 <h3>Login</h3>
@@ -110,7 +120,7 @@ z-index:999;
 
 <hr>
 
-<h3>Chat</h3>
+<h3>Chat (Admin)</h3>
 <div id="chatMessages" class="small-box"></div>
 <input id="chatInput">
 <button onclick="sendMsg()">Send</button>
@@ -124,7 +134,7 @@ z-index:999;
 
 <hr>
 
-<h3>Request to Union</h3>
+<h3>Request to Union (Login)</h3>
 <div id="requestBox" class="small-box"></div>
 <textarea id="requestMsg"></textarea>
 <button onclick="addRequest()">Send Request</button>
@@ -133,6 +143,7 @@ z-index:999;
 
 </div>
 
+<!-- SIGNUP POPUP -->
 <div id="signupPopup">
 <h3>Signup</h3>
 <input id="s_email">
@@ -164,46 +175,17 @@ const ADMIN="youradmin@gmail.com";
 
 /* AUTH */
 onAuthStateChanged(auth,(user)=>{
-
-const chat=document.getElementById("chatInput");
-const union=document.getElementById("unionMsg");
-const req=document.getElementById("requestMsg");
-const title=document.getElementById("title");
-const content=document.getElementById("content");
-
 if(user){
 userInfo.innerText="Logged: "+user.email;
 loginBtn.style.display="none";
 signupBtn.style.display="none";
 logoutBtn.style.display="inline-block";
-
-chat.disabled=true;
-union.disabled=true;
-req.disabled=true;
-title.disabled=true;
-content.disabled=true;
-
-if(user.email===ADMIN){
-chat.disabled=false;
-union.disabled=false;
-req.disabled=false;
-title.disabled=false;
-content.disabled=false;
-}
-
 }else{
 userInfo.innerText="Not logged";
 loginBtn.style.display="inline-block";
 signupBtn.style.display="inline-block";
 logoutBtn.style.display="none";
-
-chat.disabled=true;
-union.disabled=true;
-req.disabled=true;
-title.disabled=true;
-content.disabled=true;
 }
-
 });
 
 /* LOGIN */
@@ -219,30 +201,32 @@ window.openSignup=()=>signupPopup.style.display="block";
 window.closeSignup=()=>signupPopup.style.display="none";
 
 window.signup=async()=>{
-const e=document.getElementById("s_email").value;
-const p=document.getElementById("s_password").value;
-const c=document.getElementById("s_confirm").value;
-
-if(p!==c)return alert("Mismatch");
-
-await createUserWithEmailAndPassword(auth,e,p);
+if(s_password.value!==s_confirm.value) return alert("Mismatch");
+await createUserWithEmailAndPassword(auth,s_email.value,s_password.value);
 closeSignup();
 };
 
-/* CHAT */
-window.sendMsg=async()=>{
-if(auth.currentUser?.email!==ADMIN)return alert("Not allowed");
+/* PUBLIC POST */
+window.addPost=async()=>{
+await addDoc(collection(db,"posts"),{
+title:title.value,
+content:content.value,
+createdAt:serverTimestamp()
+});
+};
 
+/* CHAT ADMIN */
+window.sendMsg=async()=>{
+if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
 await addDoc(collection(db,"chat"),{
 message:chatInput.value,
 createdAt:serverTimestamp()
 });
 };
 
-/* UNION */
+/* UNION ADMIN */
 window.addUnion=async()=>{
 if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
-
 await addDoc(collection(db,"union"),{
 message:unionMsg.value,
 user:auth.currentUser.email,
@@ -250,13 +234,14 @@ createdAt:serverTimestamp()
 });
 };
 
-/* REQUEST */
+/* REQUEST LOGIN */
 window.addRequest=async()=>{
-if(auth.currentUser?.email!==ADMIN)return alert("Not allowed");
+const user=auth.currentUser;
+if(!user)return alert("Login required");
 
 await addDoc(collection(db,"requests"),{
 message:requestMsg.value,
-user:auth.currentUser.email,
+user:user.email,
 createdAt:serverTimestamp()
 });
 };
@@ -281,6 +266,22 @@ snap.forEach(d=>{
 let x=d.data();
 requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
 });
+});
+
+/* APPROVED + SCROLL */
+onSnapshot(collection(db,"suggestions"),snap=>{
+approvedBox.innerHTML="";
+snap.forEach(d=>{
+approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
+});
+
+let pos=0;
+setInterval(()=>{
+pos++;
+approvedBox.scrollTop=pos;
+if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
+},40);
+
 });
 
 </script>
