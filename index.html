@@ -198,10 +198,26 @@ button:hover{
 </div>
 
 <!-- LOGIN -->
-<div id="loginBox" style="display:none;position:fixed;top:30%;left:40%;background:white;padding:20px;border-radius:10px;">
-<input placeholder="Email"><br><br>
-<input placeholder="Password"><br><br>
-<button onclick="closeLogin()">Close</button>
+<div class="glass">
+
+<h4>🔐 User Login</h4>
+
+<input id="loginEmail" placeholder="User ID (Email)">
+<input id="loginPass" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<p onclick="showSignup()" style="cursor:pointer;color:blue;">Create Account</p>
+<p onclick="forgot()" style="cursor:pointer;color:red;">Forgot Password?</p>
+
+<!-- SIGNUP -->
+<div id="signupBox" style="display:none;margin-top:10px;">
+  <h4>Signup</h4>
+  <input id="signEmail" placeholder="Email">
+  <input id="signPass" type="password" placeholder="Password">
+  <button onclick="signup()">Register</button>
+</div>
+
 </div>
 
 <!-- CHATBOT -->
