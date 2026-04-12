@@ -2,36 +2,49 @@
 <html>
 <head>
 <style>
-body{margin:0;font-family:Arial;background:#f0f2f5;}
-.header{background:#1877f2;color:white;padding:10px;text-align:center;}
-.container{max-width:500px;margin:auto;padding:10px;}
-.card{background:white;padding:10px;margin-bottom:10px;border-radius:10px;}
-textarea{width:100%;padding:8px;}
-button{margin:5px;padding:6px;border:none;background:#1877f2;color:white;}
+body{margin:0;font-family:Segoe UI;background:#f0f2f5;}
+.header{background:#1877f2;color:white;padding:10px;display:flex;justify-content:space-between;}
+.container{max-width:600px;margin:auto;padding:10px;}
+.card{background:white;padding:12px;margin-bottom:10px;border-radius:10px;}
+textarea,input,select{width:100%;padding:8px;margin-top:5px;}
+button{margin-top:5px;padding:6px;border:none;background:#1877f2;color:white;border-radius:5px;}
+.comment{background:#eef;padding:5px;margin-top:5px;border-radius:5px;}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-E-Vedhika 
-<button onclick="location.href='login.html'">Login</button>
+  <b>E-Vedhika</b>
+  <button onclick="goLogin()">Login</button>
 </div>
 
 <div class="container">
 
-<textarea id="content" placeholder="Write your problem..."></textarea>
+<!-- SEARCH -->
+<input id="search" placeholder="Search posts..." onkeyup="searchPosts()">
 
-<select id="type">
-<option value="problem">Problem</option>
-<option value="suggestion">Suggestion</option>
-<option value="update">Admin Update</option>
-</select>
+<!-- CREATE POST -->
+<div class="card">
+  <textarea id="content" placeholder="Share problem / suggestion..."></textarea>
 
-<button onclick="addPost()">Post</button>
+  <select id="type">
+    <option value="problem">Problem</option>
+    <option value="suggestion">Suggestion</option>
+    <option value="update">Admin Update</option>
+  </select>
 
-<hr>
+  <select id="category">
+    <option>EPFO</option>
+    <option>Aadhar</option>
+    <option>Payments</option>
+    <option>House Tax</option>
+  </select>
 
+  <button onclick="addPost()">Post</button>
+</div>
+
+<!-- FEED -->
 <div id="feed"></div>
 
 </div>
@@ -43,10 +56,10 @@ import {
 collection, addDoc, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-let uid="", username="", role="user";
 let posts=[];
+let uid="", username="", role="user";
 
-// NO REDIRECT
+// LOGIN OPTIONAL
 auth.onAuthStateChanged(async user=>{
   if(user){
     uid=user.uid;
@@ -62,6 +75,7 @@ auth.onAuthStateChanged(async user=>{
   load();
 });
 
+// LOAD POSTS
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
   posts=[];
@@ -70,27 +84,26 @@ async function load(){
     x.id=d.id;
     posts.push(x);
   });
-  render();
+  render(posts);
 }
 
-function render(){
+// RENDER FEED
+function render(data){
   let html="";
 
-  posts
+  data
   .filter(p=>!p.parentId && p.status==="Approved")
   .reverse()
   .forEach(p=>{
 
     html+=`
     <div class="card">
-    <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
-    ${p.type}<br><br>
-    ${p.content}<br><br>
-
-    <button onclick="answer('${p.id}')">Answer</button>
+      <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
+      <small>${p.type} | ${p.category}</small><br><br>
+      ${p.content}<br><br>
+      <button onclick="answer('${p.id}')">Answer</button>
     `;
 
-    // ADMIN CONTROLS
     if(role==="admin"){
       html+=`
       <button onclick="approve('${p.id}')">Approve</button>
@@ -99,11 +112,14 @@ function render(){
     }
 
     // COMMENTS
-    posts.filter(c=>c.parentId===p.id && c.status==="Approved")
+    posts
+    .filter(c=>c.parentId===p.id && c.status==="Approved")
     .forEach(c=>{
-      html+=`<div style="background:#eee;padding:5px;margin-top:5px;border-radius:5px;">
-      <b>${c.username}</b>: ${c.content}
-      </div>`;
+      html+=`
+      <div class="comment">
+        <b>${c.username}</b>: ${c.content}
+      </div>
+      `;
     });
 
     html+=`</div>`;
@@ -112,12 +128,11 @@ function render(){
   feed.innerHTML=html;
 }
 
-// POST
+// CREATE POST
 window.addPost = async ()=>{
   if(!auth.currentUser){
     alert("Login required");
-    location.href="login.html";
-    return;
+    return location.href="login.html";
   }
 
   if(type.value==="update" && role!=="admin"){
@@ -128,18 +143,20 @@ window.addPost = async ()=>{
   await addDoc(collection(db,"posts"),{
     content:content.value,
     type:type.value,
+    category:category.value,
     parentId:null,
     userId:uid,
     username:username,
     role:role,
-    status:"Pending"
+    status:"Pending",
+    createdAt:new Date()
   });
 
   content.value="";
   load();
 };
 
-// ANSWER
+// ADD ANSWER
 window.answer = async (id)=>{
   let text=prompt("Write solution");
   if(!text) return;
@@ -166,6 +183,21 @@ window.approve = async (id)=>{
 window.reject = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Rejected"});
   load();
+};
+
+// SEARCH
+window.searchPosts = ()=>{
+  let val=search.value.toLowerCase();
+  let filtered = posts.filter(p =>
+    p.content.toLowerCase().includes(val) &&
+    p.status==="Approved"
+  );
+  render(filtered);
+};
+
+// LOGIN NAV
+window.goLogin = ()=>{
+  location.href="login.html";
 };
 
 </script>
