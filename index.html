@@ -5,56 +5,13 @@
 <title>E-Vedhika</title>
 
 <style>
-*{box-sizing:border-box;}
-body{margin:0;font-family:'Segoe UI';background:linear-gradient(120deg,#74ebd5,#9face6);}
-
-.container{
-display:grid;
-grid-template-columns:260px 1fr 320px;
-gap:20px;
-padding:20px;
-height:100vh;
-}
-
-.glass{
-background:rgba(255,255,255,0.2);
-backdrop-filter:blur(15px);
-border-radius:15px;
-padding:15px;
-overflow:auto;
-}
-
-input,textarea{
-width:100%;
-padding:8px;
-margin:5px 0;
-border-radius:10px;
-border:none;
-}
-
-button{
-padding:6px 10px;
-background:#0072ff;
-color:white;
-border:none;
-border-radius:8px;
-cursor:pointer;
-}
-
-.post{
-background:white;
-margin:5px 0;
-padding:6px;
-border-radius:8px;
-}
-
-.small-box{
-max-height:140px;
-overflow:auto;
-background:rgba(255,255,255,0.3);
-padding:5px;
-border-radius:10px;
-}
+body{margin:0;font-family:sans-serif;background:linear-gradient(120deg,#74ebd5,#9face6);}
+.container{display:grid;grid-template-columns:260px 1fr 320px;gap:15px;padding:15px;height:100vh;}
+.glass{background:rgba(255,255,255,0.2);backdrop-filter:blur(10px);border-radius:12px;padding:10px;overflow:auto;}
+input,textarea{width:100%;margin:5px 0;padding:8px;border:none;border-radius:8px;}
+button{background:#0072ff;color:white;border:none;padding:6px;border-radius:8px;}
+.post{background:white;margin:5px 0;padding:6px;border-radius:8px;}
+.small-box{max-height:120px;overflow:auto;background:rgba(255,255,255,0.3);padding:5px;border-radius:8px;}
 </style>
 </head>
 
@@ -101,12 +58,14 @@ border-radius:10px;
 
 <hr>
 
-<h3>Chat (Disabled)</h3>
-<div class="small-box">View only</div>
+<h3>Chat</h3>
+<div id="chatBox" class="small-box"></div>
+<input id="chatInput">
+<button onclick="sendMsg()">Send</button>
 
 <hr>
 
-<h3>Union Updates (View only)</h3>
+<h3>Union Updates</h3>
 <div id="unionBox" class="small-box"></div>
 
 <hr>
@@ -114,7 +73,6 @@ border-radius:10px;
 <h3>Request to Union</h3>
 <textarea id="requestMsg"></textarea>
 <button onclick="addRequest()">Send</button>
-
 <div id="requestBox" class="small-box"></div>
 
 </div>
@@ -145,14 +103,18 @@ let currentUser=null;
 onAuthStateChanged(auth,(user)=>{
 currentUser=user;
 
+const chatInput=document.getElementById("chatInput");
+
 if(user){
 userInfo.innerText="Logged: "+user.email;
 loginBtn.style.display="none";
 logoutBtn.style.display="inline-block";
+chatInput.disabled=false;
 }else{
 userInfo.innerText="Not logged";
 loginBtn.style.display="inline-block";
 logoutBtn.style.display="none";
+chatInput.disabled=true;
 }
 });
 
@@ -160,9 +122,9 @@ logoutBtn.style.display="none";
 window.login=()=>signInWithEmailAndPassword(auth,email.value,password.value);
 window.logout=()=>signOut(auth);
 
-/* NEW POST */
+/* POSTS */
 window.addPost=async()=>{
-if(!currentUser) return alert("Login required");
+if(!currentUser)return alert("Login required");
 await addDoc(collection(db,"posts"),{
 title:title.value,
 content:content.value
@@ -171,47 +133,68 @@ content:content.value
 
 /* PROBLEM */
 window.addProblem=async()=>{
-if(!currentUser) return alert("Login required");
+if(!currentUser)return alert("Login required");
 await addDoc(collection(db,"problems"),{
 msg:problemMsg.value
 });
 };
 
+/* CHAT */
+window.sendMsg=async()=>{
+if(!currentUser)return alert("Login required");
+
+const msg=chatInput.value.trim();
+if(!msg)return;
+
+await addDoc(collection(db,"chat"),{msg});
+chatInput.value="";
+};
+
 /* REQUEST */
 window.addRequest=async()=>{
-if(!currentUser) return alert("Login required");
+if(!currentUser)return alert("Login required");
+
+const msg=requestMsg.value.trim();
+if(!msg)return;
+
 await addDoc(collection(db,"requests"),{
-msg:requestMsg.value,
+msg,
 user:currentUser.email
 });
+requestMsg.value="";
 };
 
 /* LOAD DATA */
 onSnapshot(collection(db,"posts"),s=>{
 postBox.innerHTML="";
-s.forEach(d=>postBox.innerHTML+=`<div class="post">${d.data().title}</div>`);
+s.forEach(d=>postBox.innerHTML+=`<div class="post">${d.data().title || ""}</div>`);
 });
 
 onSnapshot(collection(db,"problems"),s=>{
 problemBox.innerHTML="";
-s.forEach(d=>problemBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
+s.forEach(d=>problemBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`);
 });
 
 onSnapshot(collection(db,"fixed"),s=>{
 fixedBox.innerHTML="";
-s.forEach(d=>fixedBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
+s.forEach(d=>fixedBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`);
 });
 
 onSnapshot(collection(db,"union"),s=>{
 unionBox.innerHTML="";
-s.forEach(d=>unionBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
+s.forEach(d=>unionBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`);
+});
+
+onSnapshot(collection(db,"chat"),s=>{
+chatBox.innerHTML="";
+s.forEach(d=>chatBox.innerHTML+=`<div class="post">${d.data().msg || ""}</div>`);
 });
 
 onSnapshot(collection(db,"requests"),s=>{
 requestBox.innerHTML="";
 s.forEach(d=>{
 let x=d.data();
-requestBox.innerHTML+=`<div class="post">${x.user}: ${x.msg}</div>`;
+requestBox.innerHTML+=`<div class="post">${x.user || ""}: ${x.msg || ""}</div>`;
 });
 });
 
@@ -219,7 +202,7 @@ requestBox.innerHTML+=`<div class="post">${x.user}: ${x.msg}</div>`;
 onSnapshot(collection(db,"suggestions"),s=>{
 approvedBox.innerHTML="";
 s.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
+approvedBox.innerHTML+=`<div class="post">${d.data().suggestion || ""}</div>`;
 });
 
 let pos=0;
