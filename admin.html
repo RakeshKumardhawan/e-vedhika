@@ -5,93 +5,46 @@
 <title>Admin Dashboard</title>
 
 <style>
-body{font-family:Arial;background:#f2f2f2;text-align:center;margin:0;padding:10px;}
+body{font-family:Arial;background:#f2f2f2;text-align:center;}
 
-button{padding:6px 10px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
+button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
 .accept-btn{background:green;color:white;}
 .delete-btn{background:red;color:white;}
 .edit-btn{background:#0072ff;color:white;}
 
-#topBar{
-display:flex;
-justify-content:space-between;
-align-items:center;
-margin-bottom:10px;
-}
+.pending{background:orange;color:white;}
+.accepted{background:green;color:white;}
+.trash{background:red;color:white;}
+.all{background:#444;color:white;}
 
-#statsBox{
-font-size:14px;
-color:#333;
-}
+input, textarea, select{padding:8px;margin:5px;width:250px;}
 
-#notifyBtn{
-background:#333;color:white;border-radius:50%;
-padding:6px 10px;
-}
-
-#notifyBox{
-display:none;
-position:absolute;
-right:10px;top:40px;
-background:white;
-width:220px;
-max-height:250px;
-overflow:auto;
-border-radius:8px;
-box-shadow:0 0 10px #aaa;
-padding:8px;
-}
-
-input{
-padding:6px;
-width:200px;
-}
-
-table{
-margin:auto;
-margin-top:10px;
-border-collapse:collapse;
-width:95%;
-background:white;
-}
-
-th,td{
-padding:6px;
-border:1px solid #ddd;
-font-size:13px;
-}
-
+table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
+th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
 th{background:#2c3e50;color:white;}
-
-canvas{
-max-width:350px;
-margin:5px auto;
-display:block;
-}
 </style>
 </head>
 
 <body>
 
-<div id="topBar">
-<div id="statsBox">Loading...</div>
-<button id="notifyBtn" onclick="toggleNotify()">🔔</button>
-</div>
+<h2>📊 Admin Dashboard</h2>
 
-<div id="notifyBox"></div>
-
-<h3>Admin Dashboard</h3>
-
-<input id="searchBox" placeholder="Search..." oninput="searchData()">
-<button onclick="exportCSV()">Export</button>
+<button onclick="loadSuggestions()">📊 Suggestions</button>
+<button onclick="loadProfiles()">👤 Profiles</button>
+<button onclick="loadPosts()">📝 Public Posts</button>
+<button onclick="loadAdminPosts()">📰 Admin Posts</button>
 
 <br>
 
-<button onclick="loadSuggestions()">Suggestions</button>
-<button onclick="loadProfiles()">Profiles</button>
-<button onclick="loadPosts()">Posts</button>
+<button class="pending" onclick="filterStatus('Pending')">Pending</button>
+<button class="accepted" onclick="filterStatus('Approved')">Approved</button>
+<button class="trash" onclick="filterStatus('Deleted')">Deleted</button>
+<button class="all" onclick="showAll()">All</button>
 
-<canvas id="chartBox"></canvas>
+<br>
+
+<input id="searchBox" placeholder="Search..." oninput="searchData()">
+<button onclick="exportCSV()">Export</button>
 
 <table>
 <thead><tr id="header"></tr></thead>
@@ -106,8 +59,6 @@ from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
-import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js";
-
 const app = initializeApp({
 apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
 authDomain:"e-vedhika-258f2.firebaseapp.com",
@@ -117,9 +68,9 @@ projectId:"e-vedhika-258f2"
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-let currentType="", fullData=[], notifications=[];
+let currentType="", fullData=[];
 
-/* LOGIN TRACK */
+/* 🔐 LOGIN TRACK */
 onAuthStateChanged(auth,(user)=>{
 if(user){
 addDoc(collection(db,"logins"),{
@@ -129,86 +80,109 @@ time:serverTimestamp()
 }
 });
 
-/* NOTIFY */
-function addNotify(msg){
-notifications.unshift(msg);
-renderNotify();
+/* 🔔 NOTIFY (NO UI CHANGE) */
+function notify(msg){
+alert(msg);
+addDoc(collection(db,"notifications"),{msg,time:serverTimestamp()});
 }
-function toggleNotify(){
-notifyBox.style.display=notifyBox.style.display==="block"?"none":"block";
+
+/* HEADER */
+function setHeader(){
+const h=document.getElementById("header");
+
+if(currentType==="suggestions"){
+h.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Status</th><th>Action</th>`;
 }
-function renderNotify(){
-notifyBox.innerHTML="";
-notifications.slice(0,10).forEach(n=>{
-notifyBox.innerHTML+=`<div>${n}</div><hr>`;
+else if(currentType==="profiles"){
+h.innerHTML=`<th>#</th><th>Email</th><th>Role</th><th>Status</th>`;
+}
+else{
+h.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
+}
+}
+
+/* LOAD */
+window.loadSuggestions=()=>loadData("suggestions");
+window.loadProfiles=()=>loadData("profiles");
+
+window.loadPosts=async()=>{
+currentType="posts"; setHeader();
+let qs=await getDocs(collection(db,"posts"));
+let arr=[];
+qs.forEach(d=>{
+let x=d.data();
+if(x.userType!=="admin") arr.push({id:d.id,...x});
 });
-}
+fullData=arr; displayData(arr);
+};
 
-/* STATS */
-async function loadStats(){
-let s=await getDocs(collection(db,"suggestions"));
-let p=await getDocs(collection(db,"posts"));
-let u=await getDocs(collection(db,"profiles"));
-
-statsBox.innerText=`Suggestions:${s.size} | Posts:${p.size} | Users:${u.size}`;
-}
-
-/* GRAPH */
-let chart;
-async function loadGraph(){
-let s=await getDocs(collection(db,"suggestions"));
-let p=await getDocs(collection(db,"posts"));
-
-if(chart) chart.destroy();
-
-chart=new Chart(chartBox,{
-type:"bar",
-data:{
-labels:["Suggestions","Posts"],
-datasets:[{data:[s.size,p.size]}]
-}
+window.loadAdminPosts=async()=>{
+currentType="posts"; setHeader();
+let qs=await getDocs(collection(db,"posts"));
+let arr=[];
+qs.forEach(d=>{
+let x=d.data();
+if(x.userType==="admin") arr.push({id:d.id,...x});
 });
+fullData=arr; displayData(arr);
+};
+
+async function loadData(type){
+currentType=type;
+setHeader();
+
+let qs=await getDocs(collection(db,type));
+let arr=[];
+qs.forEach(d=>arr.push({id:d.id,...d.data()}));
+
+fullData=arr;
+displayData(arr);
 }
+
+/* FILTER */
+window.filterStatus=(status)=>{
+let f=fullData.filter(d=>{
+let s=d.status||"Pending";
+if(status==="Approved") return s==="Approved"||s==="Accepted";
+return s===status;
+});
+displayData(f);
+};
+
+window.showAll=()=>displayData(fullData);
 
 /* SEARCH */
 window.searchData=()=>{
 let q=searchBox.value.toLowerCase();
-let f=fullData.filter(d=>(d.title||d.name||"").toLowerCase().includes(q));
+let f=fullData.filter(d=>
+(d.title||d.name||"").toLowerCase().includes(q) ||
+(d.content||d.suggestion||"").toLowerCase().includes(q)
+);
 displayData(f);
 };
 
 /* EXPORT */
 window.exportCSV=()=>{
-let csv="data\n";
-fullData.forEach(d=>csv+=JSON.stringify(d)+"\n");
+let csv="Index,Title,Content,Status\n";
+fullData.forEach((d,i)=>{
+csv+=`${i+1},"${d.title||d.name||""}","${d.content||d.suggestion||""}","${d.status||""}"\n`;
+});
 let a=document.createElement("a");
 a.href=URL.createObjectURL(new Blob([csv]));
 a.download="report.csv";
 a.click();
 };
 
-/* LOAD */
-window.loadSuggestions=()=>loadData("suggestions");
-window.loadProfiles=()=>loadData("profiles");
-window.loadPosts=()=>loadData("posts");
-
-async function loadData(type){
-currentType=type;
-let qs=await getDocs(collection(db,type));
-let arr=[]; qs.forEach(d=>arr.push({id:d.id,...d.data()}));
-fullData=arr;
-displayData(arr);
-addNotify(type+" loaded");
-}
-
 /* ACTION */
 window.acceptRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Approved"});
+notify("Approved");
 loadData(currentType);
 };
 
 window.deleteRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Deleted"});
+notify("Deleted");
 loadData(currentType);
 };
 
@@ -216,6 +190,7 @@ window.editRow=async(id)=>{
 let txt=prompt("Edit:");
 if(!txt) return;
 await updateDoc(doc(db,currentType,id),{content:txt});
+notify("Edited");
 loadData(currentType);
 };
 
@@ -223,24 +198,33 @@ loadData(currentType);
 function displayData(arr){
 data.innerHTML="";
 arr.forEach((d,i)=>{
+
+if(currentType==="profiles"){
+data.innerHTML+=`
+<tr>
+<td>${i+1}</td>
+<td>${d.email||""}</td>
+<td>${d.role||"user"}</td>
+<td>${d.status||"active"}</td>
+</tr>`;
+}
+else{
 data.innerHTML+=`
 <tr>
 <td>${i+1}</td>
 <td>${d.title||d.name||""}</td>
 <td>${d.content||d.suggestion||""}</td>
-<td>${d.status||""}</td>
+<td>${d.status||"Pending"}</td>
 <td>
-<button onclick="acceptRow('${d.id}')">✔</button>
-<button onclick="editRow('${d.id}')">✏</button>
-<button onclick="deleteRow('${d.id}')">✖</button>
+<button onclick="acceptRow('${d.id}')">Accept</button>
+<button onclick="editRow('${d.id}')">Edit</button>
+<button onclick="deleteRow('${d.id}')">Delete</button>
 </td>
 </tr>`;
-});
 }
 
-/* INIT */
-loadStats();
-loadGraph();
+});
+}
 
 </script>
 
