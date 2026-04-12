@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<button onclick="history.back()">⬅ Back</button>
+
+<h2>Admin Updates</h2>
+<div id="data"></div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+authDomain:"e-vedhika-258f2.firebaseapp.com",
+projectId:"e-vedhika-258f2"
+});
+
+const db = getFirestore(app);
+
+let qs = await getDocs(collection(db,"posts"));
+
+qs.forEach(d=>{
+let x=d.data();
+
+if(x.userType==="admin" && x.status==="Approved"){
+data.innerHTML += `
+<div style="background:#fff;margin:10px;padding:10px;border-radius:8px;">
+<b>${x.title}</b><br>
+${x.content}
+</div>`;
+}
+});
+
+</script>
+
+</body>
+</html>
