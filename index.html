@@ -1,32 +1,115 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{margin:0;font-family:Segoe UI;background:#f0f2f5;}
-.header{background:#1877f2;color:white;padding:10px;display:flex;justify-content:space-between;}
-.container{max-width:600px;margin:auto;padding:10px;}
-.card{background:white;padding:12px;margin-bottom:10px;border-radius:10px;}
-textarea,input,select{width:100%;padding:8px;margin-top:5px;}
-button{margin-top:5px;padding:6px;border:none;background:#1877f2;color:white;border-radius:5px;}
-.comment{background:#eef;padding:5px;margin-top:5px;border-radius:5px;}
+
+body{
+  margin:0;
+  font-family:Segoe UI;
+  background:#f5f7fa;
+}
+
+/* HEADER */
+.header{
+  text-align:center;
+  background:#e3f2fd;
+  padding:10px;
+}
+.header h2{margin:0;color:#0d47a1;}
+.tagline{font-size:13px;color:#555;}
+.searchbar input{
+  width:80%;
+  padding:8px;
+  margin-top:5px;
+}
+
+/* MAIN GRID */
+.main{
+  display:grid;
+  grid-template-columns:1fr 2fr 1fr;
+  gap:10px;
+  padding:10px;
+}
+
+/* BOX */
+.box{
+  background:white;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
+/* FEED */
+.feed{
+  background:white;
+  padding:10px;
+  border-radius:10px;
+}
+
+/* POST */
+.post{
+  border-bottom:1px solid #eee;
+  padding:10px 0;
+}
+.meta{font-size:12px;color:gray;}
+.comment{
+  background:#eef;
+  padding:5px;
+  margin-top:5px;
+  border-radius:5px;
+}
+
+/* FOOTER */
+.footer{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  padding:10px;
+}
+
+button{
+  padding:6px;
+  margin-top:5px;
+  border:none;
+  background:#2196f3;
+  color:white;
+}
+
+textarea{
+  width:100%;
+  padding:8px;
+}
+
 </style>
 </head>
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
-  <b>E-Vedhika</b>
-  <button onclick="goLogin()">Login</button>
+  <h2>E-Vedhika</h2>
+  <div class="tagline">All solutions at one place</div>
+  <div class="searchbar">
+    <input id="search" placeholder="Search..." onkeyup="searchPosts()">
+  </div>
 </div>
 
-<div class="container">
+<!-- MAIN -->
+<div class="main">
 
-<!-- SEARCH -->
-<input id="search" placeholder="Search posts..." onkeyup="searchPosts()">
+<!-- LEFT -->
+<div>
+  <div class="box">✔ Approved Suggestions</div>
+  <div class="box">📌 Post Problems & Suggestions</div>
+  <div class="box">📘 How to Fix Errors</div>
+</div>
 
-<!-- CREATE POST -->
-<div class="card">
-  <textarea id="content" placeholder="Share problem / suggestion..."></textarea>
+<!-- CENTER -->
+<div class="feed">
+
+<div class="box">
+  <textarea id="content" placeholder="Write your issue..."></textarea>
 
   <select id="type">
     <option value="problem">Problem</option>
@@ -34,19 +117,29 @@ button{margin-top:5px;padding:6px;border:none;background:#1877f2;color:white;bor
     <option value="update">Admin Update</option>
   </select>
 
-  <select id="category">
-    <option>EPFO</option>
-    <option>Aadhar</option>
-    <option>Payments</option>
-    <option>House Tax</option>
-  </select>
-
   <button onclick="addPost()">Post</button>
 </div>
 
-<!-- FEED -->
 <div id="feed"></div>
 
+</div>
+
+<!-- RIGHT -->
+<div>
+  <div class="box">
+    👤 Login / Signup<br>
+    <button onclick="goLogin()">Open</button>
+  </div>
+  <div class="box">⚠ Union Issues</div>
+  <div class="box">💬 Comments & Discuss</div>
+</div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="box">🌐 Website Translation (Indian Languages)</div>
+  <div class="box">🤖 AI Chatbot</div>
 </div>
 
 <script type="module">
@@ -59,7 +152,6 @@ collection, addDoc, getDocs, doc, updateDoc
 let posts=[];
 let uid="", username="", role="user";
 
-// LOGIN OPTIONAL
 auth.onAuthStateChanged(async user=>{
   if(user){
     uid=user.uid;
@@ -75,7 +167,6 @@ auth.onAuthStateChanged(async user=>{
   load();
 });
 
-// LOAD POSTS
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
   posts=[];
@@ -87,7 +178,6 @@ async function load(){
   render(posts);
 }
 
-// RENDER FEED
 function render(data){
   let html="";
 
@@ -97,9 +187,9 @@ function render(data){
   .forEach(p=>{
 
     html+=`
-    <div class="card">
+    <div class="post">
       <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
-      <small>${p.type} | ${p.category}</small><br><br>
+      <span class="meta">${p.type}</span><br><br>
       ${p.content}<br><br>
       <button onclick="answer('${p.id}')">Answer</button>
     `;
@@ -111,9 +201,7 @@ function render(data){
       `;
     }
 
-    // COMMENTS
-    posts
-    .filter(c=>c.parentId===p.id && c.status==="Approved")
+    posts.filter(c=>c.parentId===p.id && c.status==="Approved")
     .forEach(c=>{
       html+=`
       <div class="comment">
@@ -128,35 +216,26 @@ function render(data){
   feed.innerHTML=html;
 }
 
-// CREATE POST
 window.addPost = async ()=>{
   if(!auth.currentUser){
     alert("Login required");
     return location.href="login.html";
   }
 
-  if(type.value==="update" && role!=="admin"){
-    alert("Only admin can post updates");
-    return;
-  }
-
   await addDoc(collection(db,"posts"),{
     content:content.value,
     type:type.value,
-    category:category.value,
     parentId:null,
     userId:uid,
     username:username,
     role:role,
-    status:"Pending",
-    createdAt:new Date()
+    status:"Pending"
   });
 
   content.value="";
   load();
 };
 
-// ADD ANSWER
 window.answer = async (id)=>{
   let text=prompt("Write solution");
   if(!text) return;
@@ -174,7 +253,6 @@ window.answer = async (id)=>{
   load();
 };
 
-// ADMIN
 window.approve = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
@@ -185,7 +263,6 @@ window.reject = async (id)=>{
   load();
 };
 
-// SEARCH
 window.searchPosts = ()=>{
   let val=search.value.toLowerCase();
   let filtered = posts.filter(p =>
@@ -195,7 +272,6 @@ window.searchPosts = ()=>{
   render(filtered);
 };
 
-// LOGIN NAV
 window.goLogin = ()=>{
   location.href="login.html";
 };
