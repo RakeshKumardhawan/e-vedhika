@@ -15,7 +15,7 @@ button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;
 .role-btn{background:#555;color:white;}
 
 .pending{background:orange;color:white;}
-.approved{background:green;color:white;} /* FIXED */
+.approved{background:green;color:white;}
 .deleted{background:red;color:white;}
 
 input,textarea{padding:8px;margin:5px;width:250px;}
@@ -23,16 +23,10 @@ input,textarea{padding:8px;margin:5px;width:250px;}
 table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
 th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
 th{background:#2c3e50;color:white;}
-
-#notifyBtn{position:absolute;right:20px;top:10px;background:#333;color:white;border-radius:50%;padding:8px;}
-#notifyBox{display:none;position:absolute;right:20px;top:50px;background:white;width:250px;max-height:300px;overflow:auto;border-radius:10px;padding:10px;}
 </style>
 </head>
 
 <body>
-
-<button id="notifyBtn" onclick="toggleNotify()">🔔</button>
-<div id="notifyBox"></div>
 
 <h2>📊 Admin Dashboard</h2>
 
@@ -43,34 +37,24 @@ th{background:#2c3e50;color:white;}
 
 <br>
 
-<button onclick="filterStatus('Pending')">Pending</button>
-<button onclick="filterStatus('Approved')">Approved</button>
-<button onclick="filterStatus('Deleted')">Deleted</button>
+<button class="pending" onclick="filterStatus('Pending')">Pending</button>
+<button class="approved" onclick="filterStatus('Approved')">Approved</button>
+<button class="deleted" onclick="filterStatus('Deleted')">Deleted</button>
 <button onclick="showAll()">All</button>
 
 <br>
 
 <input id="searchBox" placeholder="Search..." oninput="searchData()">
-<button onclick="exportCSV()">📁 Export</button>
-<button onclick="refreshData()">🔄 Refresh</button>
 
 <table>
 <thead><tr id="header"></tr></thead>
 <tbody id="data"></tbody>
 </table>
 
-<!-- 📝 ADMIN POST SECTION (BOTTOM — SAFE) -->
-<div style="margin-top:20px;">
-<h3>➕ Admin New Post</h3>
-<input id="p_title" placeholder="Title"><br>
-<textarea id="p_content" placeholder="Content"></textarea><br>
-<button onclick="addAdminPost()" class="accept-btn">Post</button>
-</div>
-
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } 
+import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const app = initializeApp({
@@ -81,16 +65,16 @@ projectId:"e-vedhika-258f2"
 
 const db = getFirestore(app);
 
-let currentType="", fullData=[], notifications=[];
+let currentType="", fullData=[];
+let userRole="admin"; // change dynamic if needed
 
-/* 🔔 NOTIFY */
-window.toggleNotify=()=>{
-notifyBox.style.display=notifyBox.style.display==="block"?"none":"block";
-};
-
-function addNotify(msg){
-notifications.unshift(msg);
-notifyBox.innerHTML=notifications.map(n=>`<div>${n}</div><hr>`).join("");
+/* LOG TRACK */
+async function logAction(action,data){
+await addDoc(collection(db,"logs"),{
+action,
+data,
+time:serverTimestamp()
+});
 }
 
 /* HEADER */
@@ -114,7 +98,8 @@ qs.forEach(d=>{
 let x=d.data();
 if(x.userType!=="admin") arr.push({id:d.id,...x});
 });
-fullData=arr; displayData(arr);
+fullData=arr;
+displayData(arr);
 };
 
 window.loadAdminPosts=async()=>{
@@ -125,15 +110,18 @@ qs.forEach(d=>{
 let x=d.data();
 if(x.userType==="admin") arr.push({id:d.id,...x});
 });
-fullData=arr; displayData(arr);
+fullData=arr;
+displayData(arr);
 };
 
 async function loadData(type){
 currentType=type;
 setHeader();
+
 let qs=await getDocs(collection(db,type));
 let arr=[];
 qs.forEach(d=>arr.push({id:d.id,...d.data()}));
+
 fullData=arr;
 displayData(arr);
 }
@@ -159,31 +147,17 @@ displayData(fullData.filter(d=>
 ));
 };
 
-/* EXPORT */
-window.exportCSV=()=>{
-let csv="Index,Title,Content,Status\n";
-fullData.forEach((d,i)=>{
-csv+=`${i+1},"${d.title||d.name||""}","${d.content||d.suggestion||""}","${d.status||""}"\n`;
-});
-let a=document.createElement("a");
-a.href=URL.createObjectURL(new Blob([csv]));
-a.download="report.csv";
-a.click();
-};
-
-/* REFRESH */
-window.refreshData=()=>{ if(currentType) loadData(currentType); };
-
 /* ACTION */
 window.acceptRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Approved"});
-addNotify("Approved");
+logAction("approve",id);
 loadData(currentType);
 };
 
 window.deleteRow=async(id)=>{
+if(userRole!=="admin"){alert("Only admin");return;}
 await updateDoc(doc(db,currentType,id),{status:"Deleted"});
-addNotify("Deleted");
+logAction("delete",id);
 loadData(currentType);
 };
 
@@ -191,47 +165,42 @@ window.editRow=async(id)=>{
 let txt=prompt("Edit:");
 if(!txt) return;
 await updateDoc(doc(db,currentType,id),{content:txt});
-addNotify("Edited");
+logAction("edit",id);
 loadData(currentType);
 };
 
-/* 👤 PROFILE */
+/* PROFILE */
 window.changeRole=async(id)=>{
+if(userRole!=="admin"){alert("Only admin");return;}
 let role=prompt("admin / moderator / operator / user");
 if(!role) return;
 await updateDoc(doc(db,"profiles",id),{role});
-addNotify("Role changed");
+logAction("role change",id);
 loadData("profiles");
 };
 
 window.blockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"blocked"});
-addNotify("Blocked");
+logAction("block",id);
 loadData("profiles");
 };
 
 window.unblockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"active"});
-addNotify("Unblocked");
+logAction("unblock",id);
 loadData("profiles");
 };
 
 window.kickUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{kickUntil:Date.now()+300000});
-addNotify("Kicked 5 min");
+logAction("kick",id);
 };
 
-/* 📝 ADMIN POST */
-window.addAdminPost=async()=>{
-await addDoc(collection(db,"posts"),{
-title:p_title.value,
-content:p_content.value,
-userType:"admin",
-status:"Approved",
-createdAt:serverTimestamp()
-});
-addNotify("Admin Post Added");
-loadAdminPosts();
+window.deleteProfile=async(id)=>{
+if(userRole!=="admin"){alert("Only admin");return;}
+await deleteDoc(doc(db,"profiles",id));
+logAction("profile delete",id);
+loadData("profiles");
 };
 
 /* DISPLAY */
@@ -250,13 +219,15 @@ data.innerHTML+=`
 <td>${d.role||"user"}</td>
 <td class="${cls}">${status}</td>
 <td>
-<button class="role-btn" onclick="changeRole('${d.id}')">Role</button>
-<button class="block-btn" onclick="blockUser('${d.id}')">Block</button>
+<button onclick="changeRole('${d.id}')">Role</button>
+<button onclick="blockUser('${d.id}')">Block</button>
 <button onclick="unblockUser('${d.id}')">Unblock</button>
 <button onclick="kickUser('${d.id}')">Kick</button>
+<button class="delete-btn" onclick="deleteProfile('${d.id}')">Delete</button>
 </td>
 </tr>`;
-}else{
+}
+else{
 data.innerHTML+=`
 <tr>
 <td>${i+1}</td>
