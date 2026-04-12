@@ -10,22 +10,14 @@ body{margin:0;font-family:'Segoe UI';background:linear-gradient(120deg,#74ebd5,#
 
 .bubbles{position:fixed;width:100%;height:100%;}
 .bubbles span{position:absolute;bottom:-100px;width:25px;height:25px;background:rgba(255,255,255,0.3);border-radius:50%;animation:bubble 20s linear infinite;}
-.bubbles span:nth-child(1){left:10%}
-.bubbles span:nth-child(2){left:30%}
-.bubbles span:nth-child(3){left:50%}
-.bubbles span:nth-child(4){left:70%}
-.bubbles span:nth-child(5){left:90%}
-
 @keyframes bubble{0%{transform:translateY(0)}100%{transform:translateY(-110vh)}}
 
 .container{
 display:grid;
-grid-template-columns:250px 1fr 320px;
+grid-template-columns:260px 1fr 320px;
 gap:20px;
 padding:20px;
 height:calc(100vh - 60px);
-position:relative;
-z-index:2;
 }
 
 .glass{
@@ -33,6 +25,7 @@ background:rgba(255,255,255,0.2);
 backdrop-filter:blur(20px);
 border-radius:20px;
 padding:15px;
+overflow:auto;
 }
 
 input,textarea{
@@ -44,7 +37,7 @@ border:none;
 }
 
 button{
-padding:8px 12px;
+padding:8px;
 background:#0072ff;
 color:white;
 border:none;
@@ -52,32 +45,9 @@ border-radius:10px;
 cursor:pointer;
 }
 
-.post{
-background:white;
-margin:5px 0;
-padding:8px;
-border-radius:10px;
-}
+.post{background:white;margin:5px 0;padding:8px;border-radius:10px;}
 
-.small-box{
-max-height:120px;
-overflow:auto;
-background:rgba(255,255,255,0.3);
-padding:5px;
-border-radius:10px;
-}
-
-#signupPopup{
-display:none;
-position:fixed;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-background:white;
-padding:20px;
-border-radius:15px;
-z-index:999;
-}
+.small-box{max-height:150px;overflow:auto;background:rgba(255,255,255,0.3);padding:5px;border-radius:10px;}
 </style>
 </head>
 
@@ -93,16 +63,27 @@ z-index:999;
 
 <!-- LEFT -->
 <div class="glass">
+
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="small-box"></div>
+
+<h4>📌 Problems</h4>
+<textarea id="problemMsg"></textarea>
+<button onclick="addProblem()">Post Problem</button>
+<div id="problemBox"></div>
+
+<h4>🛠 Fix Errors (Admin)</h4>
+<div id="fixedBox"></div>
+
 </div>
 
 <!-- CENTER -->
 <div class="glass">
-<h3>New Post (Public)</h3>
+<h3>New Post</h3>
 <input id="title">
 <textarea id="content"></textarea>
 <button onclick="addPost()">Post</button>
+<div id="postBox"></div>
 </div>
 
 <!-- RIGHT -->
@@ -121,36 +102,26 @@ z-index:999;
 <hr>
 
 <h3>Chat (Admin)</h3>
-<div id="chatMessages" class="small-box"></div>
+<div id="chatBox" class="small-box"></div>
 <input id="chatInput">
 <button onclick="sendMsg()">Send</button>
 
 <hr>
 
-<h3>Union Updates</h3>
+<h3>Union Updates (Admin)</h3>
 <div id="unionBox" class="small-box"></div>
 <textarea id="unionMsg"></textarea>
-<button onclick="addUnion()">Post Update</button>
+<button onclick="addUnion()">Post</button>
 
 <hr>
 
 <h3>Request to Union (Login)</h3>
 <div id="requestBox" class="small-box"></div>
 <textarea id="requestMsg"></textarea>
-<button onclick="addRequest()">Send Request</button>
+<button onclick="addRequest()">Send</button>
 
 </div>
 
-</div>
-
-<!-- SIGNUP POPUP -->
-<div id="signupPopup">
-<h3>Signup</h3>
-<input id="s_email">
-<input id="s_password" type="password">
-<input id="s_confirm" type="password">
-<button onclick="signup()">Create</button>
-<button onclick="closeSignup()">Close</button>
 </div>
 
 <script type="module">
@@ -189,99 +160,82 @@ logoutBtn.style.display="none";
 });
 
 /* LOGIN */
-window.login=async()=>{
-await signInWithEmailAndPassword(auth,email.value,password.value);
-};
-
-/* LOGOUT */
-window.logout=async()=>{await signOut(auth);};
+window.login=()=>signInWithEmailAndPassword(auth,email.value,password.value);
+window.logout=()=>signOut(auth);
 
 /* SIGNUP */
-window.openSignup=()=>signupPopup.style.display="block";
-window.closeSignup=()=>signupPopup.style.display="none";
+window.openSignup=()=>alert("Use Firebase Console or extend popup");
 
-window.signup=async()=>{
-if(s_password.value!==s_confirm.value) return alert("Mismatch");
-await createUserWithEmailAndPassword(auth,s_email.value,s_password.value);
-closeSignup();
-};
-
-/* PUBLIC POST */
+/* POSTS LOGIN ONLY */
 window.addPost=async()=>{
+if(!auth.currentUser)return alert("Login required");
 await addDoc(collection(db,"posts"),{
 title:title.value,
-content:content.value,
-createdAt:serverTimestamp()
+content:content.value
 });
+};
+
+/* PROBLEM LOGIN */
+window.addProblem=async()=>{
+if(!auth.currentUser)return alert("Login required");
+await addDoc(collection(db,"problems"),{
+msg:problemMsg.value,
+status:"pending"
+});
+};
+
+/* ADMIN FIX */
+window.fixProblem=async(msg)=>{
+if(auth.currentUser?.email!==ADMIN)return;
+await addDoc(collection(db,"fixed"),{msg});
 };
 
 /* CHAT ADMIN */
 window.sendMsg=async()=>{
 if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
-await addDoc(collection(db,"chat"),{
-message:chatInput.value,
-createdAt:serverTimestamp()
-});
+await addDoc(collection(db,"chat"),{msg:chatInput.value});
 };
 
 /* UNION ADMIN */
 window.addUnion=async()=>{
 if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
-await addDoc(collection(db,"union"),{
-message:unionMsg.value,
-user:auth.currentUser.email,
-createdAt:serverTimestamp()
-});
+await addDoc(collection(db,"union"),{msg:unionMsg.value});
 };
 
 /* REQUEST LOGIN */
 window.addRequest=async()=>{
-const user=auth.currentUser;
-if(!user)return alert("Login required");
-
+if(!auth.currentUser)return alert("Login required");
 await addDoc(collection(db,"requests"),{
-message:requestMsg.value,
-user:user.email,
-createdAt:serverTimestamp()
+msg:requestMsg.value,
+user:auth.currentUser.email
 });
 };
 
 /* LIVE LOAD */
-onSnapshot(collection(db,"chat"),snap=>{
-chatMessages.innerHTML="";
-snap.forEach(d=>chatMessages.innerHTML+=`<div>${d.data().message}</div>`);
+onSnapshot(collection(db,"posts"),s=>{
+postBox.innerHTML="";
+s.forEach(d=>postBox.innerHTML+=`<div class="post">${d.data().title}</div>`);
 });
 
-onSnapshot(collection(db,"union"),snap=>{
-unionBox.innerHTML="";
-snap.forEach(d=>{
-let x=d.data();
-unionBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
-});
+onSnapshot(collection(db,"problems"),s=>{
+problemBox.innerHTML="";
+s.forEach(d=>problemBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
 });
 
-onSnapshot(collection(db,"requests"),snap=>{
-requestBox.innerHTML="";
-snap.forEach(d=>{
-let x=d.data();
-requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
-});
+onSnapshot(collection(db,"fixed"),s=>{
+fixedBox.innerHTML="";
+s.forEach(d=>fixedBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
 });
 
-/* APPROVED + SCROLL */
-onSnapshot(collection(db,"suggestions"),snap=>{
+onSnapshot(collection(db,"suggestions"),s=>{
 approvedBox.innerHTML="";
-snap.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
-});
+s.forEach(d=>approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`);
 
 let pos=0;
 setInterval(()=>{
 pos++;
 approvedBox.scrollTop=pos;
-if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
 },40);
-
 });
 
 </script>
