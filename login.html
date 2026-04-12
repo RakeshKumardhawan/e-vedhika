@@ -1,49 +1,23 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Login</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-body{font-family:Arial;background:#eef2f7;text-align:center;padding-top:100px;}
-.box{background:white;padding:25px;width:280px;margin:auto;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.2);}
-input{width:90%;padding:10px;margin:10px 0;border-radius:5px;border:1px solid #ccc;}
-button{background:#0077b6;color:white;padding:10px;border:none;border-radius:5px;width:100%;}
-</style>
-</head>
-
 <body>
 
-<div class="box">
-<h2>🔐 Login</h2>
+<h2>Login</h2>
 
-<input id="user" placeholder="Username">
-<input id="pass" type="password" placeholder="Password">
+<input id="email" placeholder="Email"><br>
+<input id="pass" type="password" placeholder="Password"><br>
 
 <button onclick="login()">Login</button>
+<a href="register.html">Register</a>
 
-<p id="msg" style="color:red;"></p>
+<script type="module">
+import { auth } from "./firebase.js";
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
-<br>
-<a href="register.html">Create new account</a>
-</div>
-
-<script>
-function login(){
-let u=user.value;
-let p=pass.value;
-
-let users=JSON.parse(localStorage.getItem("users")||"{}");
-
-if(users[u] && users[u]===p){
-localStorage.setItem("login","yes");
-localStorage.setItem("currentUser",u);
-location.href="index.html";
-}else{
-msg.innerText="Invalid login";
-}
-}
+window.login = async ()=>{
+  await signInWithEmailAndPassword(auth,email.value,pass.value);
+  location.href="index.html";
+};
 </script>
 
 </body>
