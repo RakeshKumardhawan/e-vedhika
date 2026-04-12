@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html>
 <body>
+
 <h2>Admin Panel</h2>
 <div id="list"></div>
 
 <script type="module">
 import { db } from "./firebase.js";
-import { collection, getDocs, doc, updateDoc }
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import {
+collection, getDocs, doc, updateDoc
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 let posts=[];
 
@@ -24,20 +26,21 @@ async function load(){
   .forEach(p=>{
     html+=`
     <div>
-    ${p.content}
-    <button onclick="approve('${p.id}')">Approve</button>
-    </div>`;
+      ${p.content}
+      <button onclick="approve('${p.id}')">Approve</button>
+    </div><hr>`;
   });
 
   list.innerHTML=html;
 }
 
-window.approve=async(id)=>{
+window.approve = async(id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
 };
 
 load();
 </script>
+
 </body>
 </html>
