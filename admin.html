@@ -11,13 +11,14 @@ button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;
 .accept-btn{background:green;color:white;}
 .delete-btn{background:red;color:white;}
 .edit-btn{background:#0072ff;color:white;}
+.block-btn{background:black;color:white;}
+.role-btn{background:#555;color:white;}
 
-.pending{background:orange;color:white;}
-.accepted{background:green;color:white;}
-.trash{background:red;color:white;}
-.all{background:#444;color:white;}
+.pending{background:#ffa50033;}
+.approved{background:#00ff0033;}
+.deleted{background:#ff000033;}
 
-input, textarea, select{padding:8px;margin:5px;width:250px;}
+input{padding:8px;margin:5px;width:250px;}
 
 table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
 th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
@@ -36,10 +37,10 @@ th{background:#2c3e50;color:white;}
 
 <br>
 
-<button class="pending" onclick="filterStatus('Pending')">Pending</button>
-<button class="accepted" onclick="filterStatus('Approved')">Approved</button>
-<button class="trash" onclick="filterStatus('Deleted')">Deleted</button>
-<button class="all" onclick="showAll()">All</button>
+<button onclick="filterStatus('Pending')">Pending</button>
+<button onclick="filterStatus('Approved')">Approved</button>
+<button onclick="filterStatus('Deleted')">Deleted</button>
+<button onclick="showAll()">All</button>
 
 <br>
 
@@ -57,8 +58,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/fireba
 import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-
 const app = initializeApp({
 apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
 authDomain:"e-vedhika-258f2.firebaseapp.com",
@@ -66,35 +65,15 @@ projectId:"e-vedhika-258f2"
 });
 
 const db = getFirestore(app);
-const auth = getAuth(app);
 
 let currentType="", fullData=[];
-
-/* 🔐 LOGIN TRACK */
-onAuthStateChanged(auth,(user)=>{
-if(user){
-addDoc(collection(db,"logins"),{
-email:user.email,
-time:serverTimestamp()
-});
-}
-});
-
-/* 🔔 NOTIFY (NO UI CHANGE) */
-function notify(msg){
-alert(msg);
-addDoc(collection(db,"notifications"),{msg,time:serverTimestamp()});
-}
 
 /* HEADER */
 function setHeader(){
 const h=document.getElementById("header");
 
-if(currentType==="suggestions"){
-h.innerHTML=`<th>#</th><th>Name</th><th>Suggestion</th><th>Status</th><th>Action</th>`;
-}
-else if(currentType==="profiles"){
-h.innerHTML=`<th>#</th><th>Email</th><th>Role</th><th>Status</th>`;
+if(currentType==="profiles"){
+h.innerHTML=`<th>#</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th>`;
 }
 else{
 h.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
@@ -173,16 +152,14 @@ a.download="report.csv";
 a.click();
 };
 
-/* ACTION */
+/* ACTIONS */
 window.acceptRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Approved"});
-notify("Approved");
 loadData(currentType);
 };
 
 window.deleteRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Deleted"});
-notify("Deleted");
 loadData(currentType);
 };
 
@@ -190,35 +167,68 @@ window.editRow=async(id)=>{
 let txt=prompt("Edit:");
 if(!txt) return;
 await updateDoc(doc(db,currentType,id),{content:txt});
-notify("Edited");
 loadData(currentType);
+};
+
+/* 👤 PROFILE FEATURES */
+window.changeRole=async(id)=>{
+let role=prompt("admin/moderator/user");
+if(!role) return;
+await updateDoc(doc(db,"profiles",id),{role});
+loadData("profiles");
+};
+
+window.blockUser=async(id)=>{
+await updateDoc(doc(db,"profiles",id),{status:"blocked"});
+loadData("profiles");
+};
+
+window.unblockUser=async(id)=>{
+await updateDoc(doc(db,"profiles",id),{status:"active"});
+loadData("profiles");
+};
+
+window.kickUser=async(id)=>{
+let t=Date.now()+5*60*1000;
+await updateDoc(doc(db,"profiles",id),{kickUntil:t});
+alert("User kicked for 5 mins");
 };
 
 /* DISPLAY */
 function displayData(arr){
 data.innerHTML="";
+
 arr.forEach((d,i)=>{
+
+let status=d.status||"Pending";
+let cls=status.toLowerCase();
 
 if(currentType==="profiles"){
 data.innerHTML+=`
-<tr>
+<tr class="${cls}">
 <td>${i+1}</td>
 <td>${d.email||""}</td>
 <td>${d.role||"user"}</td>
-<td>${d.status||"active"}</td>
+<td>${status}</td>
+<td>
+<button class="role-btn" onclick="changeRole('${d.id}')">Role</button>
+<button class="block-btn" onclick="blockUser('${d.id}')">Block</button>
+<button onclick="unblockUser('${d.id}')">Unblock</button>
+<button onclick="kickUser('${d.id}')">Kick</button>
+</td>
 </tr>`;
 }
 else{
 data.innerHTML+=`
-<tr>
+<tr class="${cls}">
 <td>${i+1}</td>
 <td>${d.title||d.name||""}</td>
 <td>${d.content||d.suggestion||""}</td>
-<td>${d.status||"Pending"}</td>
+<td>${status}</td>
 <td>
-<button onclick="acceptRow('${d.id}')">Accept</button>
-<button onclick="editRow('${d.id}')">Edit</button>
-<button onclick="deleteRow('${d.id}')">Delete</button>
+<button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
+<button class="edit-btn" onclick="editRow('${d.id}')">Edit</button>
+<button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
 </td>
 </tr>`;
 }
