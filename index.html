@@ -2,64 +2,23 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-Vedhika</title>
 
 <style>
-body{
-  margin:0;
-  font-family:Segoe UI;
-  background:#eef4ff;
-}
-
-.header{
-  background:#1e88e5;
-  color:white;
-  text-align:center;
-  padding:12px;
-}
-
-.container{
-  max-width:600px;
-  margin:auto;
-  padding:10px;
-}
-
-.card{
-  background:white;
-  padding:12px;
-  margin-bottom:10px;
-  border-radius:12px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.1);
-}
-
-textarea{
-  width:100%;
-  padding:8px;
-}
-
-button{
-  background:#1e88e5;
-  color:white;
-  border:none;
-  padding:6px 10px;
-  border-radius:8px;
-  margin-top:5px;
-}
-
-.post{
-  display:flex;
-  gap:10px;
-}
-
-.avatar{
-  width:35px;
-  height:35px;
-  background:#90caf9;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:white;
-}
+body{margin:0;font-family:Segoe UI;background:#eef4ff}
+.header{background:#1e88e5;color:#fff;text-align:center;padding:14px;font-size:18px}
+.container{max-width:700px;margin:auto;padding:10px}
+.card{background:#fff;border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+input,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-top:5px}
+button{background:#1e88e5;color:#fff;border:none;padding:6px 10px;border-radius:8px;margin-top:5px}
+.post{display:flex;gap:10px}
+.avatar{width:36px;height:36px;background:#90caf9;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
+.comment{background:#eef;padding:6px;border-radius:8px;margin-top:6px}
+img{width:100%;border-radius:10px;margin-top:6px}
+.actions{display:flex;gap:8px;margin-top:6px}
+.topbar{display:flex;gap:8px;justify-content:space-between}
+.small{font-size:12px;color:#666}
+.hidden{display:none}
 </style>
 </head>
 
@@ -69,33 +28,113 @@ button{
 
 <div class="container">
 
-<div class="card">
-<textarea id="content" placeholder="Share your problem..."></textarea>
-<button onclick="addPost()">Post</button>
+<!-- LOGIN / PROFILE -->
+<div class="card" id="authBox">
+  <div id="loginView">
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+  </div>
+
+  <div id="profileView" class="hidden">
+    <b id="uname"></b> (<span id="district"></span>)<br>
+    <button onclick="logout()">Logout</button>
+    <button onclick="toggleAdmin()">Admin Panel</button>
+  </div>
 </div>
 
+<!-- POST BOX -->
+<div class="card">
+  <textarea id="content" placeholder="Share your problem..."></textarea>
+  <input type="file" id="img">
+  <button onclick="addPost()">Post</button>
+</div>
+
+<!-- SEARCH -->
+<div class="card">
+  <input id="search" placeholder="Search..." onkeyup="render()">
+</div>
+
+<!-- FEED -->
 <div id="feed"></div>
+
+<!-- ADMIN -->
+<div id="adminBox" class="hidden"></div>
 
 </div>
 
 <script type="module">
 
-import { auth, db } from "./firebase.js";
-import {
-collection, addDoc, getDocs, doc, updateDoc
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+// 🔥 Firebase setup
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, setDoc } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
 
-let posts=[];
-let uid="", username="User", role="user";
+// 👉 REPLACE THIS
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_BUCKET"
+};
 
-auth.onAuthStateChanged(async user=>{
-  if(user){
-    uid=user.uid;
-    username="User"; // simple version
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+let uid="", user={}, posts=[], adminMode=false;
+
+// AUTH
+auth.onAuthStateChanged(async u=>{
+  if(u){
+    uid=u.uid;
+
+    let snap = await getDocs(collection(db,"users"));
+    snap.forEach(d=>{
+      if(d.id===uid) user=d.data();
+    });
+
+    uname.innerText=user.username;
+    district.innerText=user.district;
+
+    loginView.classList.add("hidden");
+    profileView.classList.remove("hidden");
+  }else{
+    loginView.classList.remove("hidden");
+    profileView.classList.add("hidden");
   }
   load();
 });
 
+// LOGIN
+window.login = async ()=>{
+  await signInWithEmailAndPassword(auth,email.value,pass.value);
+};
+
+// REGISTER
+window.register = async ()=>{
+  let res = await createUserWithEmailAndPassword(auth,email.value,pass.value);
+
+  let name = prompt("Enter name");
+  let dist = prompt("Enter district");
+
+  await setDoc(doc(db,"users",res.user.uid),{
+    username:name,
+    district:dist,
+    role:"user"
+  });
+};
+
+// LOGOUT
+window.logout = ()=> signOut(auth);
+
+// LOAD POSTS
 async function load(){
   let snap = await getDocs(collection(db,"posts"));
   posts=[];
@@ -106,51 +145,24 @@ async function load(){
   render();
 }
 
-function render(){
-  let html="";
-
-  posts
-  .filter(p=>p.status==="Approved" || !p.status)
-  .reverse()
-  .forEach(p=>{
-
-    html+=`
-    <div class="card">
-
-      <div class="post">
-
-        <div class="avatar">
-          ${(p.username || "U")[0]}
-        </div>
-
-        <div>
-          <b>${p.username || "User"}</b><br><br>
-
-          ${p.content || ""}<br><br>
-
-          <button onclick="comment('${p.id}')">💬 Comment</button>
-    `;
-
-    if(role==="admin"){
-      html+=`<button onclick="approve('${p.id}')">✔ Approve</button>`;
-    }
-
-    html+=`</div></div></div>`;
-  });
-
-  feed.innerHTML=html;
-}
-
+// ADD POST
 window.addPost = async ()=>{
-  if(!auth.currentUser){
-    alert("Login required");
-    location.href="login.html";
-    return;
+  if(!uid) return alert("Login required");
+
+  let imgUrl="";
+  if(img.files[0]){
+    let r = ref(storage,"posts/"+Date.now());
+    await uploadBytes(r,img.files[0]);
+    imgUrl = await getDownloadURL(r);
   }
 
   await addDoc(collection(db,"posts"),{
     content:content.value,
-    username:username,
+    image:imgUrl,
+    userId:uid,
+    username:user.username,
+    district:user.district,
+    parentId:null,
     status:"Pending"
   });
 
@@ -158,16 +170,27 @@ window.addPost = async ()=>{
   load();
 };
 
-window.comment = (id)=>{
-  let text=prompt("Write comment");
-  if(!text) return;
+// COMMENT
+window.addComment = async(id)=>{
+  let txt = document.getElementById("c-"+id).value;
+  if(!txt) return;
 
-  addDoc(collection(db,"posts"),{
-    content:text,
+  await addDoc(collection(db,"posts"),{
+    content:txt,
     parentId:id,
-    username:username,
+    userId:uid,
+    username:user.username,
+    district:user.district,
     status:"Approved"
   });
+
+  load();
+};
+
+// ADMIN
+window.toggleAdmin = ()=>{
+  adminMode=!adminMode;
+  render();
 };
 
 window.approve = async(id)=>{
@@ -175,7 +198,69 @@ window.approve = async(id)=>{
   load();
 };
 
-</script>
+window.reject = async(id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Rejected"});
+  load();
+};
 
+// RENDER
+function render(){
+  let val = search.value?.toLowerCase() || "";
+  let html="", adminHtml="";
+
+  posts
+  .filter(p=>!p.parentId && p.content?.toLowerCase().includes(val))
+  .reverse()
+  .forEach(p=>{
+
+    if(adminMode && p.status==="Pending"){
+      adminHtml+=`
+      <div class="card">
+        ${p.content}
+        <button onclick="approve('${p.id}')">Approve</button>
+        <button onclick="reject('${p.id}')">Reject</button>
+      </div>`;
+      return;
+    }
+
+    if(p.status!=="Approved") return;
+
+    html+=`
+    <div class="card">
+      <div class="post">
+        <div class="avatar">${(p.username||"U")[0]}</div>
+        <div>
+          <b>${p.username}</b> (${p.district})<br>
+          ${p.content}
+          ${p.image ? `<img src="${p.image}">` : ""}
+
+          <div class="actions">
+            <button onclick="showBox('${p.id}')">💬</button>
+          </div>
+
+          <div id="box-${p.id}" class="hidden">
+            <input id="c-${p.id}" placeholder="Comment">
+            <button onclick="addComment('${p.id}')">Send</button>
+          </div>
+    `;
+
+    posts.filter(c=>c.parentId===p.id)
+    .forEach(c=>{
+      html+=`<div class="comment"><b>${c.username}</b>: ${c.content}</div>`;
+    });
+
+    html+=`</div></div></div>`;
+  });
+
+  feed.innerHTML=html;
+  adminBox.innerHTML=adminHtml;
+}
+
+// SHOW COMMENT BOX
+window.showBox = id=>{
+  document.getElementById("box-"+id).classList.toggle("hidden");
+};
+
+</script>
 </body>
 </html>
