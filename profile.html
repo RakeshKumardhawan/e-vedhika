@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>My Posts</h2>
+<div id="my"></div>
+
+<script type="module">
+import { auth, db } from "./firebase.js";
+import { collection, getDocs }
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+let uid="", posts=[];
+
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    uid=user.uid;
+    load();
+  }
+});
+
+async function load(){
+  let snap=await getDocs(collection(db,"posts"));
+  posts=[];
+  snap.forEach(d=>{
+    let x=d.data(); x.id=d.id;
+    posts.push(x);
+  });
+
+  let html="";
+  posts.filter(p=>p.userId===uid)
+  .forEach(p=>{
+    html+=`<div>${p.content}</div>`;
+  });
+
+  my.innerHTML=html;
+}
+</script>
+
+</body>
+</html>
