@@ -1,74 +1,237 @@
-<!-- ONLY IMPORTANT CHANGES SHOWING BELOW (ADD THIS INTO YOUR EXISTING FINAL CODE) -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>E-Vedhika</title>
+
+<style>
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Segoe UI';background:linear-gradient(120deg,#74ebd5,#9face6);overflow:hidden;}
+
+.bubbles{position:fixed;width:100%;height:100%;}
+.bubbles span{position:absolute;bottom:-100px;width:25px;height:25px;background:rgba(255,255,255,0.3);border-radius:50%;animation:bubble 20s linear infinite;}
+.bubbles span:nth-child(1){left:10%}
+.bubbles span:nth-child(2){left:30%}
+.bubbles span:nth-child(3){left:50%}
+.bubbles span:nth-child(4){left:70%}
+.bubbles span:nth-child(5){left:90%}
+
+@keyframes bubble{0%{transform:translateY(0)}100%{transform:translateY(-110vh)}}
+
+.container{
+display:grid;
+grid-template-columns:250px 1fr 320px;
+gap:20px;
+padding:20px;
+height:calc(100vh - 60px);
+position:relative;
+z-index:2;
+}
+
+.glass{
+background:rgba(255,255,255,0.2);
+backdrop-filter:blur(20px);
+border-radius:20px;
+padding:15px;
+}
+
+input,textarea{
+width:100%;
+padding:10px;
+margin:5px 0;
+border-radius:10px;
+border:none;
+}
+
+button{
+padding:8px 12px;
+background:#0072ff;
+color:white;
+border:none;
+border-radius:10px;
+cursor:pointer;
+}
+
+.small-box{
+max-height:120px;
+overflow:auto;
+background:rgba(255,255,255,0.3);
+padding:5px;
+border-radius:10px;
+}
+
+#signupPopup{
+display:none;
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+background:white;
+padding:20px;
+border-radius:15px;
+z-index:999;
+}
+</style>
+</head>
+
+<body>
+
+<div class="bubbles">
+<span></span><span></span><span></span><span></span><span></span>
+</div>
+
+<h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
+
+<div class="container">
+
+<div class="glass">
+<h4>✔ Approved Suggestions</h4>
+<div id="approvedBox"></div>
+</div>
+
+<div class="glass">
+<h3>New Post</h3>
+<input id="title">
+<textarea id="content"></textarea>
+<button onclick="addPost()">Post</button>
+</div>
+
+<div class="glass">
+
+<h3>Login</h3>
+<input id="email">
+<input id="password" type="password">
+
+<button id="loginBtn" onclick="login()">Login</button>
+<button id="signupBtn" onclick="openSignup()">Signup</button>
+<button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+
+<p id="userInfo"></p>
+
+<hr>
+
+<h3>Chat</h3>
+<div id="chatMessages" class="small-box"></div>
+<input id="chatInput">
+<button onclick="sendMsg()">Send</button>
+
+<hr>
+
+<h3>Union Updates</h3>
+<div id="unionBox" class="small-box"></div>
+<textarea id="unionMsg"></textarea>
+<button onclick="addUnion()">Post Update</button>
+
+<hr>
+
+<h3>Request to Union</h3>
+<div id="requestBox" class="small-box"></div>
+<textarea id="requestMsg"></textarea>
+<button onclick="addRequest()">Send Request</button>
+
+</div>
+
+</div>
+
+<div id="signupPopup">
+<h3>Signup</h3>
+<input id="s_email">
+<input id="s_password" type="password">
+<input id="s_confirm" type="password">
+<button onclick="signup()">Create</button>
+<button onclick="closeSignup()">Close</button>
+</div>
 
 <script type="module">
 
-// 🔥 ADMIN EMAIL
-const ADMIN_EMAIL = "youradmin@gmail.com";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-/* AUTH STATE */
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
+const app = initializeApp({
+apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+authDomain:"e-vedhika-258f2.firebaseapp.com",
+projectId:"e-vedhika-258f2"
+});
+
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const ADMIN="youradmin@gmail.com";
+
+/* AUTH */
 onAuthStateChanged(auth,(user)=>{
 
-  if(user){
-    userInfo.innerText="Logged: "+user.email;
-    loginBtn.style.display="none";
-    signupBtn.style.display="none";
-    logoutBtn.style.display="inline-block";
+const chat=document.getElementById("chatInput");
+const union=document.getElementById("unionMsg");
+const req=document.getElementById("requestMsg");
+const title=document.getElementById("title");
+const content=document.getElementById("content");
 
-    // 🔥 DEFAULT BLOCK EVERYTHING
-    chatInput.disabled = true;
-    unionMsg.disabled = true;
-    requestMsg.disabled = true;
-    title.disabled = true;
-    content.disabled = true;
+if(user){
+userInfo.innerText="Logged: "+user.email;
+loginBtn.style.display="none";
+signupBtn.style.display="none";
+logoutBtn.style.display="inline-block";
 
-    // 🔥 ADMIN FULL ACCESS
-    if(user.email === ADMIN_EMAIL){
-      chatInput.disabled = false;
-      unionMsg.disabled = false;
-      requestMsg.disabled = false;
-      title.disabled = false;
-      content.disabled = false;
-    }
+chat.disabled=true;
+union.disabled=true;
+req.disabled=true;
+title.disabled=true;
+content.disabled=true;
 
-  }else{
-    userInfo.innerText="Not logged";
-    loginBtn.style.display="inline-block";
-    signupBtn.style.display="inline-block";
-    logoutBtn.style.display="none";
-
-    // 🔥 BLOCK ALL
-    chatInput.disabled = true;
-    unionMsg.disabled = true;
-    requestMsg.disabled = true;
-    title.disabled = true;
-    content.disabled = true;
-  }
-
-});
-
-/* 🔥 UNION (ADMIN ONLY) */
-window.addUnion=async()=>{
-const user=auth.currentUser;
-if(!user || user.email !== ADMIN_EMAIL){
-  alert("Only admin allowed");
-  return;
+if(user.email===ADMIN){
+chat.disabled=false;
+union.disabled=false;
+req.disabled=false;
+title.disabled=false;
+content.disabled=false;
 }
 
-await addDoc(collection(db,"union"),{
-message:unionMsg.value,
-user:user.email,
-createdAt:serverTimestamp()
+}else{
+userInfo.innerText="Not logged";
+loginBtn.style.display="inline-block";
+signupBtn.style.display="inline-block";
+logoutBtn.style.display="none";
+
+chat.disabled=true;
+union.disabled=true;
+req.disabled=true;
+title.disabled=true;
+content.disabled=true;
+}
+
 });
-unionMsg.value="";
+
+/* LOGIN */
+window.login=async()=>{
+await signInWithEmailAndPassword(auth,email.value,password.value);
 };
 
-/* 🔥 CHAT BLOCK */
+/* LOGOUT */
+window.logout=async()=>{await signOut(auth);};
+
+/* SIGNUP */
+window.openSignup=()=>signupPopup.style.display="block";
+window.closeSignup=()=>signupPopup.style.display="none";
+
+window.signup=async()=>{
+const e=document.getElementById("s_email").value;
+const p=document.getElementById("s_password").value;
+const c=document.getElementById("s_confirm").value;
+
+if(p!==c)return alert("Mismatch");
+
+await createUserWithEmailAndPassword(auth,e,p);
+closeSignup();
+};
+
+/* CHAT */
 window.sendMsg=async()=>{
-const user=auth.currentUser;
-if(!user || user.email !== ADMIN_EMAIL){
-  alert("Not allowed");
-  return;
-}
+if(auth.currentUser?.email!==ADMIN)return alert("Not allowed");
 
 await addDoc(collection(db,"chat"),{
 message:chatInput.value,
@@ -76,34 +239,51 @@ createdAt:serverTimestamp()
 });
 };
 
-/* 🔥 REQUEST BLOCK */
+/* UNION */
+window.addUnion=async()=>{
+if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
+
+await addDoc(collection(db,"union"),{
+message:unionMsg.value,
+user:auth.currentUser.email,
+createdAt:serverTimestamp()
+});
+};
+
+/* REQUEST */
 window.addRequest=async()=>{
-const user=auth.currentUser;
-if(!user || user.email !== ADMIN_EMAIL){
-  alert("Not allowed");
-  return;
-}
+if(auth.currentUser?.email!==ADMIN)return alert("Not allowed");
 
 await addDoc(collection(db,"requests"),{
 message:requestMsg.value,
-user:user.email,
+user:auth.currentUser.email,
 createdAt:serverTimestamp()
 });
 };
 
-/* 🔥 NEW POST BLOCK */
-window.addPost=async()=>{
-const user=auth.currentUser;
-if(!user || user.email !== ADMIN_EMAIL){
-  alert("Only admin can post");
-  return;
-}
-
-await addDoc(collection(db,"posts"),{
-title:title.value,
-content:content.value,
-createdAt:serverTimestamp()
+/* LIVE LOAD */
+onSnapshot(collection(db,"chat"),snap=>{
+chatMessages.innerHTML="";
+snap.forEach(d=>chatMessages.innerHTML+=`<div>${d.data().message}</div>`);
 });
-};
+
+onSnapshot(collection(db,"union"),snap=>{
+unionBox.innerHTML="";
+snap.forEach(d=>{
+let x=d.data();
+unionBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
+});
+});
+
+onSnapshot(collection(db,"requests"),snap=>{
+requestBox.innerHTML="";
+snap.forEach(d=>{
+let x=d.data();
+requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
+});
+});
 
 </script>
+
+</body>
+</html>
