@@ -7,103 +7,58 @@
 body{
   margin:0;
   font-family:Segoe UI;
-  background:linear-gradient(180deg,#eef4ff,#ffffff);
+  background:#eef4ff;
 }
 
-/* HEADER */
 .header{
-  background:linear-gradient(90deg,#1e88e5,#42a5f5);
+  background:#1e88e5;
   color:white;
-  padding:14px;
   text-align:center;
-  font-size:18px;
+  padding:12px;
 }
 
-/* CONTAINER */
 .container{
   max-width:600px;
   margin:auto;
   padding:10px;
 }
 
-/* POST BOX */
-.postbox{
+.card{
   background:white;
   padding:12px;
-  border-radius:15px;
-  box-shadow:0 6px 15px rgba(0,0,0,0.08);
-  margin-bottom:15px;
+  margin-bottom:10px;
+  border-radius:12px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* TEXTAREA */
 textarea{
   width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #ddd;
+  padding:8px;
 }
 
-/* BUTTON */
 button{
   background:#1e88e5;
   color:white;
   border:none;
-  padding:7px 12px;
-  border-radius:10px;
-  margin-top:6px;
+  padding:6px 10px;
+  border-radius:8px;
+  margin-top:5px;
 }
 
-/* POST CARD */
-.card{
-  background:white;
-  border-radius:15px;
-  padding:12px;
-  margin-bottom:12px;
-  box-shadow:0 6px 15px rgba(0,0,0,0.08);
-}
-
-/* POST */
 .post{
   display:flex;
   gap:10px;
 }
 
-/* AVATAR */
 .avatar{
-  width:40px;
-  height:40px;
-  border-radius:50%;
+  width:35px;
+  height:35px;
   background:#90caf9;
+  border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
   color:white;
-  font-weight:bold;
-}
-
-/* CONTENT */
-.content{
-  flex:1;
-}
-
-/* META */
-.meta{
-  font-size:12px;
-  color:#777;
-}
-
-/* ACTIONS */
-.actions{
-  margin-top:8px;
-  display:flex;
-  gap:10px;
-}
-
-/* IMAGE */
-img{
-  width:100%;
-  border-radius:10px;
-  margin-top:5px;
 }
 </style>
 </head>
@@ -114,9 +69,8 @@ img{
 
 <div class="container">
 
-<div class="postbox">
+<div class="card">
 <textarea id="content" placeholder="Share your problem..."></textarea>
-<input type="file" id="img">
 <button onclick="addPost()">Post</button>
 </div>
 
@@ -126,19 +80,22 @@ img{
 
 <script type="module">
 
-import { auth, db, storage } from "./firebase.js";
-
+import { auth, db } from "./firebase.js";
 import {
-collection, addDoc, getDocs
+collection, addDoc, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import {
-ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
-
 let posts=[];
+let uid="", username="User", role="user";
 
-// LOAD POSTS
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    uid=user.uid;
+    username="User"; // simple version
+  }
+  load();
+});
+
 async function load(){
   let snap = await getDocs(collection(db,"posts"));
   posts=[];
@@ -146,15 +103,17 @@ async function load(){
     let x=d.data(); x.id=d.id;
     posts.push(x);
   });
-
   render();
 }
 
-// RENDER UI
 function render(){
   let html="";
 
-  posts.reverse().forEach(p=>{
+  posts
+  .filter(p=>p.status==="Approved" || !p.status)
+  .reverse()
+  .forEach(p=>{
+
     html+=`
     <div class="card">
 
@@ -164,54 +123,57 @@ function render(){
           ${(p.username || "U")[0]}
         </div>
 
-        <div class="content">
+        <div>
+          <b>${p.username || "User"}</b><br><br>
 
-          <b>${p.username || "User"}</b><br>
-          <span class="meta">Public Post</span><br><br>
+          ${p.content || ""}<br><br>
 
-          ${p.content || ""}
-
-          ${p.image ? `<img src="${p.image}">` : ""}
-
-          <div class="actions">
-            <button>👍 Like</button>
-            <button>💬 Comment</button>
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
+          <button onclick="comment('${p.id}')">💬 Comment</button>
     `;
+
+    if(role==="admin"){
+      html+=`<button onclick="approve('${p.id}')">✔ Approve</button>`;
+    }
+
+    html+=`</div></div></div>`;
   });
 
-  document.getElementById("feed").innerHTML = html;
+  feed.innerHTML=html;
 }
 
-// ADD POST
 window.addPost = async ()=>{
-  if(!content.value) return;
-
-  let imgUrl="";
-
-  if(img.files[0]){
-    let r = ref(storage,"posts/"+Date.now());
-    await uploadBytes(r,img.files[0]);
-    imgUrl = await getDownloadURL(r);
+  if(!auth.currentUser){
+    alert("Login required");
+    location.href="login.html";
+    return;
   }
 
   await addDoc(collection(db,"posts"),{
     content:content.value,
-    image:imgUrl,
-    username:"User"
+    username:username,
+    status:"Pending"
   });
 
   content.value="";
   load();
 };
 
-load();
+window.comment = (id)=>{
+  let text=prompt("Write comment");
+  if(!text) return;
+
+  addDoc(collection(db,"posts"),{
+    content:text,
+    parentId:id,
+    username:username,
+    status:"Approved"
+  });
+};
+
+window.approve = async(id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Approved"});
+  load();
+};
 
 </script>
 
