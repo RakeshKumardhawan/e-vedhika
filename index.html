@@ -41,17 +41,10 @@ body{
   100%{transform:translateY(-110vh)}
 }
 
-/* HEADER */
-h2{
-  text-align:center;
-  color:white;
-  padding:10px;
-}
-
-/* GRID */
+/* LAYOUT */
 .container{
   display:grid;
-  grid-template-columns:250px 1fr 300px;
+  grid-template-columns:250px 1fr 320px;
   gap:20px;
   padding:20px;
   height:calc(100vh - 60px);
@@ -59,20 +52,13 @@ h2{
   z-index:2;
 }
 
-/* GLASS */
 .glass{
   background:rgba(255,255,255,0.2);
   backdrop-filter:blur(20px);
   border-radius:20px;
   padding:15px;
-  box-shadow:0 8px 30px rgba(0,0,0,0.2);
-  transition:0.3s;
-}
-.glass:hover{
-  transform:translateY(-5px);
 }
 
-/* INPUT */
 input,textarea{
   width:100%;
   padding:10px;
@@ -81,7 +67,6 @@ input,textarea{
   border:none;
 }
 
-/* BUTTON */
 button{
   padding:8px 12px;
   border:none;
@@ -91,7 +76,6 @@ button{
   cursor:pointer;
 }
 
-/* POSTS */
 .post{
   background:white;
   margin:5px 0;
@@ -99,10 +83,17 @@ button{
   border-radius:10px;
 }
 
-/* SCROLL */
 .scroll-box{
   height:120px;
   overflow:hidden;
+}
+
+.small-box{
+  max-height:120px;
+  overflow:auto;
+  background:rgba(255,255,255,0.3);
+  padding:5px;
+  border-radius:10px;
 }
 
 /* POPUP */
@@ -127,7 +118,7 @@ button{
 <span></span><span></span><span></span><span></span><span></span>
 </div>
 
-<h2>🌐 E-Vedhika</h2>
+<h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
 
 <div class="container">
 
@@ -135,35 +126,20 @@ button{
 <div class="glass">
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="scroll-box"></div>
-
-<h4>📌 Problems</h4>
-<button onclick="showProblemPost()">+ Post</button>
-
-<div id="problemForm" style="display:none;">
-<input id="ptitle" placeholder="Title">
-<textarea id="pcontent"></textarea>
-<button onclick="addProblem()">Submit</button>
-</div>
-
-<div id="problemsBox"></div>
-
-<h4>🛠 Fix Errors</h4>
-<div id="solvedBox"></div>
 </div>
 
 <!-- CENTER -->
 <div class="glass">
 <h3>New Post</h3>
-<input id="title" placeholder="Title">
+<input id="title">
 <textarea id="content"></textarea>
 <button onclick="addPost()">Post</button>
-<div id="posts"></div>
 </div>
 
 <!-- RIGHT -->
 <div class="glass">
-<h3>Login</h3>
 
+<h3>Login</h3>
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
 
@@ -175,9 +151,24 @@ button{
 <hr>
 
 <h3>Chat</h3>
-<div id="chatMessages" style="height:200px;overflow:auto;"></div>
+<div id="chatMessages" style="height:120px;overflow:auto;"></div>
 <input id="chatInput">
 <button onclick="sendMsg()">Send</button>
+
+<hr>
+
+<h3>Union Updates</h3>
+<div id="unionBox" class="small-box"></div>
+<textarea id="unionMsg"></textarea>
+<button onclick="addUnion()">Post Update</button>
+
+<hr>
+
+<h3>Request to Union</h3>
+<div id="requestBox" class="small-box"></div>
+<textarea id="requestMsg"></textarea>
+<button onclick="addRequest()">Send Request</button>
+
 </div>
 
 </div>
@@ -185,9 +176,9 @@ button{
 <!-- SIGNUP POPUP -->
 <div id="signupPopup">
 <h3>Signup</h3>
-<input id="s_email" placeholder="Email">
-<input id="s_password" type="password" placeholder="Password">
-<input id="s_confirm" type="password" placeholder="Confirm Password">
+<input id="s_email">
+<input id="s_password" type="password">
+<input id="s_confirm" type="password">
 
 <button onclick="signup()">Create</button>
 <button onclick="closeSignup()">Close</button>
@@ -217,66 +208,18 @@ userInfo.innerText = user ? "Logged: "+user.email : "Not logged";
 });
 
 /* LOGIN */
-window.login = async ()=>{
-let e=email.value.trim();
-let p=password.value.trim();
-
-if(!e || !p){
-alert("Enter email & password");
-return;
-}
-
-try{
-await signInWithEmailAndPassword(auth,e,p);
-alert("Login success");
-}catch{
-alert("Invalid login");
-}
+window.login=async()=>{
+await signInWithEmailAndPassword(auth,email.value,password.value);
 };
 
-/* SIGNUP POPUP */
+/* SIGNUP */
 window.openSignup=()=>signupPopup.style.display="block";
 window.closeSignup=()=>signupPopup.style.display="none";
 
-/* SIGNUP */
-window.signup = async ()=>{
-let e=s_email.value.trim();
-let p=s_password.value.trim();
-let c=s_confirm.value.trim();
-
-if(!e||!p||!c){alert("Fill all");return;}
-if(p!==c){alert("Password mismatch");return;}
-
-try{
-await createUserWithEmailAndPassword(auth,e,p);
-alert("Signup success");
+window.signup=async()=>{
+if(s_password.value!==s_confirm.value) return alert("Mismatch");
+await createUserWithEmailAndPassword(auth,s_email.value,s_password.value);
 closeSignup();
-}catch(err){
-alert(err.message);
-}
-};
-
-/* POSTS */
-window.addPost=async()=>{
-if(!auth.currentUser){alert("Login required");return;}
-
-await addDoc(collection(db,"posts"),{
-title:title.value,
-content:content.value,
-createdAt:serverTimestamp()
-});
-};
-
-/* PROBLEM */
-window.showProblemPost=()=>problemForm.style.display="block";
-
-window.addProblem=async()=>{
-await addDoc(collection(db,"problems"),{
-title:ptitle.value,
-content:pcontent.value,
-status:"Pending",
-createdAt:serverTimestamp()
-});
 };
 
 /* CHAT */
@@ -297,6 +240,51 @@ chatMessages.innerHTML+=`<div>${d.data().message}</div>`;
 });
 }
 
+/* UNION (LOGIN REQUIRED) */
+window.addUnion=async()=>{
+const user = auth.currentUser;
+if(!user) return alert("Login required");
+
+await addDoc(collection(db,"union"),{
+message:unionMsg.value,
+user:user.email,
+createdAt:serverTimestamp()
+});
+unionMsg.value="";
+};
+
+function loadUnion(){
+onSnapshot(collection(db,"union"),snap=>{
+unionBox.innerHTML="";
+snap.forEach(d=>{
+unionBox.innerHTML+=`<div>${d.data().user}: ${d.data().message}</div>`;
+});
+});
+}
+
+/* REQUEST (LOGIN REQUIRED) */
+window.addRequest=async()=>{
+const user = auth.currentUser;
+if(!user) return alert("Login required");
+
+await addDoc(collection(db,"requests"),{
+message:requestMsg.value,
+user:user.email,
+createdAt:serverTimestamp()
+});
+requestMsg.value="";
+};
+
+function loadRequest(){
+onSnapshot(collection(db,"requests"),snap=>{
+requestBox.innerHTML="";
+snap.forEach(d=>{
+let x=d.data();
+requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
+});
+});
+}
+
 /* APPROVED SCROLL */
 async function loadApproved(){
 let qs=await getDocs(collection(db,"suggestions"));
@@ -313,7 +301,10 @@ if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
 },40);
 }
 
+/* INIT */
 loadChat();
+loadUnion();
+loadRequest();
 loadApproved();
 
 </script>
