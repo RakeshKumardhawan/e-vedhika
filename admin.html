@@ -5,41 +5,93 @@
 <title>Admin Dashboard</title>
 
 <style>
-body{font-family:Arial;background:#f2f2f2;text-align:center;}
+body{font-family:Arial;background:#f2f2f2;text-align:center;margin:0;padding:10px;}
 
-button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
+button{padding:6px 10px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
 .accept-btn{background:green;color:white;}
 .delete-btn{background:red;color:white;}
 .edit-btn{background:#0072ff;color:white;}
 
-#notifyBtn{position:absolute;right:20px;top:10px;background:#333;color:white;padding:8px;border-radius:50%;}
-#notifyBox{display:none;position:absolute;right:20px;top:50px;background:white;width:260px;max-height:300px;overflow:auto;border-radius:10px;padding:10px;}
+#topBar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+}
 
-table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
-th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
+#statsBox{
+font-size:14px;
+color:#333;
+}
+
+#notifyBtn{
+background:#333;color:white;border-radius:50%;
+padding:6px 10px;
+}
+
+#notifyBox{
+display:none;
+position:absolute;
+right:10px;top:40px;
+background:white;
+width:220px;
+max-height:250px;
+overflow:auto;
+border-radius:8px;
+box-shadow:0 0 10px #aaa;
+padding:8px;
+}
+
+input{
+padding:6px;
+width:200px;
+}
+
+table{
+margin:auto;
+margin-top:10px;
+border-collapse:collapse;
+width:95%;
+background:white;
+}
+
+th,td{
+padding:6px;
+border:1px solid #ddd;
+font-size:13px;
+}
+
 th{background:#2c3e50;color:white;}
+
+canvas{
+max-width:350px;
+margin:5px auto;
+display:block;
+}
 </style>
 </head>
 
 <body>
 
+<div id="topBar">
+<div id="statsBox">Loading...</div>
 <button id="notifyBtn" onclick="toggleNotify()">🔔</button>
+</div>
+
 <div id="notifyBox"></div>
 
-<h2>📊 Admin Dashboard</h2>
-
-<div id="statsBox"></div>
-<canvas id="chartBox"></canvas>
-<canvas id="dailyChart"></canvas>
+<h3>Admin Dashboard</h3>
 
 <input id="searchBox" placeholder="Search..." oninput="searchData()">
-<button onclick="exportCSV()">📁 Export</button>
+<button onclick="exportCSV()">Export</button>
 
 <br>
 
 <button onclick="loadSuggestions()">Suggestions</button>
 <button onclick="loadProfiles()">Profiles</button>
 <button onclick="loadPosts()">Posts</button>
+
+<canvas id="chartBox"></canvas>
 
 <table>
 <thead><tr id="header"></tr></thead>
@@ -49,7 +101,7 @@ th{background:#2c3e50;color:white;}
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, onSnapshot } 
+import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
@@ -67,7 +119,7 @@ const auth = getAuth(app);
 
 let currentType="", fullData=[], notifications=[];
 
-/* 🔐 LOGIN TRACK */
+/* LOGIN TRACK */
 onAuthStateChanged(auth,(user)=>{
 if(user){
 addDoc(collection(db,"logins"),{
@@ -77,10 +129,9 @@ time:serverTimestamp()
 }
 });
 
-/* 🔔 NOTIFY */
+/* NOTIFY */
 function addNotify(msg){
 notifications.unshift(msg);
-addDoc(collection(db,"notifications"),{msg,time:serverTimestamp()});
 renderNotify();
 }
 function toggleNotify(){
@@ -88,58 +139,34 @@ notifyBox.style.display=notifyBox.style.display==="block"?"none":"block";
 }
 function renderNotify(){
 notifyBox.innerHTML="";
-notifications.forEach(n=>{
+notifications.slice(0,10).forEach(n=>{
 notifyBox.innerHTML+=`<div>${n}</div><hr>`;
 });
 }
 
-/* 🔔 REALTIME */
-["posts","profiles","suggestions"].forEach(col=>{
-onSnapshot(collection(db,col),(snap)=>{
-snap.docChanges().forEach(c=>{
-if(c.type==="added"){
-addNotify("New "+col);
-}
-});
-});
-});
-
-/* 📊 STATS */
+/* STATS */
 async function loadStats(){
 let s=await getDocs(collection(db,"suggestions"));
 let p=await getDocs(collection(db,"posts"));
 let u=await getDocs(collection(db,"profiles"));
-statsBox.innerHTML=`Suggestions:${s.size} | Posts:${p.size} | Users:${u.size}`;
+
+statsBox.innerText=`Suggestions:${s.size} | Posts:${p.size} | Users:${u.size}`;
 }
 
-/* 📊 GRAPH */
-let chart,dailyChart;
-
+/* GRAPH */
+let chart;
 async function loadGraph(){
 let s=await getDocs(collection(db,"suggestions"));
 let p=await getDocs(collection(db,"posts"));
 
 if(chart) chart.destroy();
+
 chart=new Chart(chartBox,{
 type:"bar",
-data:{labels:["Suggestions","Posts"],datasets:[{data:[s.size,p.size]}]}
-});
+data:{
+labels:["Suggestions","Posts"],
+datasets:[{data:[s.size,p.size]}]
 }
-
-/* 📊 DAILY */
-async function loadDaily(){
-let p=await getDocs(collection(db,"posts"));
-let map={};
-
-p.forEach(d=>{
-let date=new Date().toLocaleDateString();
-map[date]=(map[date]||0)+1;
-});
-
-if(dailyChart) dailyChart.destroy();
-dailyChart=new Chart(dailyChart,{
-type:"line",
-data:{labels:Object.keys(map),datasets:[{data:Object.values(map)}]}
 });
 }
 
@@ -171,6 +198,7 @@ let qs=await getDocs(collection(db,type));
 let arr=[]; qs.forEach(d=>arr.push({id:d.id,...d.data()}));
 fullData=arr;
 displayData(arr);
+addNotify(type+" loaded");
 }
 
 /* ACTION */
@@ -202,9 +230,9 @@ data.innerHTML+=`
 <td>${d.content||d.suggestion||""}</td>
 <td>${d.status||""}</td>
 <td>
-<button onclick="acceptRow('${d.id}')">Accept</button>
-<button onclick="editRow('${d.id}')">Edit</button>
-<button onclick="deleteRow('${d.id}')">Delete</button>
+<button onclick="acceptRow('${d.id}')">✔</button>
+<button onclick="editRow('${d.id}')">✏</button>
+<button onclick="deleteRow('${d.id}')">✖</button>
 </td>
 </tr>`;
 });
@@ -213,7 +241,6 @@ data.innerHTML+=`
 /* INIT */
 loadStats();
 loadGraph();
-loadDaily();
 
 </script>
 
