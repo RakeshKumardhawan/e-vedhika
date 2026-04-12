@@ -5,21 +5,10 @@
 <title>Admin Dashboard</title>
 
 <style>
-body{
-font-family:Arial;
-background:#f2f2f2;
-text-align:center;
-}
+body{font-family:Arial;background:#f2f2f2;text-align:center;}
 
-button{
-padding:6px 12px;
-margin:5px;
-border:none;
-border-radius:5px;
-cursor:pointer;
-}
+button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
 
-/* ORIGINAL COLORS RESTORED */
 .accept-btn{background:green;color:white;}
 .delete-btn{background:red;color:white;}
 .edit-btn{background:#0072ff;color:white;}
@@ -27,57 +16,25 @@ cursor:pointer;
 .role-btn{background:#555;color:white;}
 
 .pending{background:orange;color:white;}
-.approved{background:green;color:white;}
+.approved{background:green;color:white;} /* ✅ FIXED GREEN */
 .deleted{background:red;color:white;}
 .all{background:#444;color:white;}
 
-input{
-padding:8px;
-margin:5px;
-width:250px;
-}
+input, textarea{padding:8px;margin:5px;width:250px;}
 
-table{
-margin:auto;
-margin-top:20px;
-border-collapse:collapse;
-width:95%;
-background:white;
-}
+table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
+th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
+th{background:#2c3e50;color:white;}
 
-th,td{
-padding:8px;
-border:1px solid #ddd;
-font-size:13px;
-}
-
-th{
-background:#2c3e50;
-color:white;
-}
-
-/* 🔔 small clean icon */
 #notifyBtn{
-position:absolute;
-right:20px;
-top:10px;
-background:#333;
-color:white;
-border-radius:50%;
-padding:8px;
+position:absolute;right:20px;top:10px;
+background:#333;color:white;border-radius:50%;padding:8px;
 }
 
 #notifyBox{
-display:none;
-position:absolute;
-right:20px;
-top:50px;
-background:white;
-width:250px;
-max-height:300px;
-overflow:auto;
-border-radius:10px;
-padding:10px;
+display:none;position:absolute;right:20px;top:50px;
+background:white;width:250px;max-height:300px;
+overflow:auto;border-radius:10px;padding:10px;
 box-shadow:0 0 10px #999;
 }
 </style>
@@ -89,6 +46,13 @@ box-shadow:0 0 10px #999;
 <div id="notifyBox"></div>
 
 <h2>📊 Admin Dashboard</h2>
+
+<!-- 🔥 ADMIN POST ADD (NO UI CHANGE STYLE) -->
+<div>
+<input id="adminTitle" placeholder="Post Title">
+<textarea id="adminContent" placeholder="Post Content"></textarea><br>
+<button class="accept-btn" onclick="addAdminPost()">➕ Add Admin Post</button>
+</div>
 
 <button onclick="loadSuggestions()">📊 Suggestions</button>
 <button onclick="loadProfiles()">👤 Profiles</button>
@@ -129,18 +93,13 @@ const db = getFirestore(app);
 
 let currentType="", fullData=[], notifications=[];
 
-/* 🔔 NOTIFICATION */
+/* 🔔 NOTIFY */
 window.toggleNotify=()=>{
-notifyBox.style.display = notifyBox.style.display==="block" ? "none" : "block";
+notifyBox.style.display = notifyBox.style.display==="block"?"none":"block";
 };
 
 function addNotify(msg){
 notifications.unshift(msg);
-renderNotify();
-addDoc(collection(db,"notifications"),{msg,time:serverTimestamp()});
-}
-
-function renderNotify(){
 notifyBox.innerHTML="";
 notifications.forEach(n=>{
 notifyBox.innerHTML+=`<div>${n}</div><hr>`;
@@ -252,24 +211,23 @@ addNotify("Edited");
 loadData(currentType);
 };
 
-/* PROFILE */
+/* 🔥 ROLE FIX (INCLUDING OPERATOR) */
 window.changeRole=async(id)=>{
-let role=prompt("admin/moderator/user");
+let role=prompt("Enter role: admin / moderator / operator / user");
 if(!role) return;
 await updateDoc(doc(db,"profiles",id),{role});
 addNotify("Role changed");
 loadData("profiles");
 };
 
+/* PROFILE */
 window.blockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"blocked"});
-addNotify("User blocked");
 loadData("profiles");
 };
 
 window.unblockUser=async(id)=>{
 await updateDoc(doc(db,"profiles",id),{status:"active"});
-addNotify("User unblocked");
 loadData("profiles");
 };
 
@@ -279,16 +237,34 @@ await updateDoc(doc(db,"profiles",id),{kickUntil:t});
 addNotify("User kicked");
 };
 
+/* 🔥 ADMIN POST ADD */
+window.addAdminPost=async()=>{
+let title=adminTitle.value;
+let content=adminContent.value;
+
+if(!title || !content) return alert("Enter data");
+
+await addDoc(collection(db,"posts"),{
+title,
+content,
+userType:"admin",
+status:"Approved",
+createdAt:serverTimestamp()
+});
+
+adminTitle.value="";
+adminContent.value="";
+addNotify("Admin Post Added");
+loadAdminPosts();
+};
+
 /* DISPLAY */
 function displayData(arr){
 data.innerHTML="";
 
 arr.forEach((d,i)=>{
-
 let status=d.status||"Pending";
-
-let statusClass = status==="Approved" ? "approved" :
-                  status==="Deleted" ? "deleted" : "pending";
+let cls=status==="Approved"?"approved":status==="Deleted"?"deleted":"pending";
 
 if(currentType==="profiles"){
 data.innerHTML+=`
@@ -296,7 +272,7 @@ data.innerHTML+=`
 <td>${i+1}</td>
 <td>${d.email||""}</td>
 <td>${d.role||"user"}</td>
-<td class="${statusClass}">${status}</td>
+<td class="${cls}">${status}</td>
 <td>
 <button class="role-btn" onclick="changeRole('${d.id}')">Role</button>
 <button class="block-btn" onclick="blockUser('${d.id}')">Block</button>
@@ -311,7 +287,7 @@ data.innerHTML+=`
 <td>${i+1}</td>
 <td>${d.title||d.name||""}</td>
 <td>${d.content||d.suggestion||""}</td>
-<td class="${statusClass}">${status}</td>
+<td class="${cls}">${status}</td>
 <td>
 <button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
 <button class="edit-btn" onclick="editRow('${d.id}')">Edit</button>
@@ -319,7 +295,6 @@ data.innerHTML+=`
 </td>
 </tr>`;
 }
-
 });
 }
 
