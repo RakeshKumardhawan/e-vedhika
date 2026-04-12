@@ -1,44 +1,39 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;background:#f4f6f9;margin:0}
+.header{background:#2196f3;color:white;padding:10px;text-align:center}
+.container{max-width:600px;margin:auto;padding:10px}
+.card{background:white;padding:10px;margin-bottom:10px;border-radius:10px}
+textarea{width:100%;padding:8px}
+button{padding:6px;margin-top:5px;background:#2196f3;color:white;border:none}
+</style>
+</head>
+
 <body>
 
-<h2>E-Vedhika</h2>
-<button onclick="goProfile()">Profile</button>
-<button onclick="goAdmin()">Admin</button>
+<div class="header">E-Vedhika</div>
 
-<textarea id="content"></textarea><br>
-<input type="file" id="img"><br>
+<div class="container">
+
+<div class="card">
+<textarea id="content" placeholder="Write your problem..."></textarea>
 <button onclick="addPost()">Post</button>
-
-<hr>
+</div>
 
 <div id="feed"></div>
 
+</div>
+
 <script type="module">
 
-import { auth, db, storage } from "./firebase.js";
-import { collection, addDoc, getDocs, doc, updateDoc }
+import { auth, db } from "./firebase.js";
+import { collection, addDoc, getDocs }
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import { ref, uploadBytes, getDownloadURL }
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
-
-let uid="", username="", role="user", posts=[];
-
-auth.onAuthStateChanged(async user=>{
-  if(user){
-    uid=user.uid;
-
-    let u=await getDocs(collection(db,"users"));
-    u.forEach(d=>{
-      if(d.id===uid){
-        username=d.data().username;
-        role=d.data().role;
-      }
-    });
-  }
-  load();
-});
+let posts=[];
 
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
@@ -47,100 +42,29 @@ async function load(){
     let x=d.data(); x.id=d.id;
     posts.push(x);
   });
-  render();
-}
 
-function render(){
   let html="";
-
-  posts.filter(p=>!p.parentId && p.status==="Approved")
-  .reverse().forEach(p=>{
-
-    html+=`
-    <div style="border:1px solid #ccc;padding:10px;margin:10px">
-
-    <b>${p.username}</b><br>
-    ${p.content}<br>
-
-    ${p.image ? `<img src="${p.image}" width="100%">`:""}
-
-    <br>
-
-    <button onclick="showBox('${p.id}')">Comment</button>
-    `;
-
-    if(role==="admin"){
-      html+=`<button onclick="approve('${p.id}')">Approve</button>`;
-    }
-
-    html+=`
-    <div id="cbox-${p.id}" style="display:none">
-      <input id="c-${p.id}">
-      <button onclick="addComment('${p.id}')">Send</button>
-    </div>
-    `;
-
-    posts.filter(c=>c.parentId===p.id && c.status==="Approved")
-    .forEach(c=>{
-      html+=`<div><b>${c.username}</b>: ${c.content}</div>`;
-    });
-
-    html+=`</div>`;
+  posts.forEach(p=>{
+    html+=`<div class="card">${p.content || ""}</div>`;
   });
 
   feed.innerHTML=html;
 }
 
 window.addPost = async ()=>{
-  if(!auth.currentUser) return alert("Login");
-
-  let imgUrl="";
-  if(img.files[0]){
-    let r=ref(storage,"posts/"+Date.now());
-    await uploadBytes(r,img.files[0]);
-    imgUrl=await getDownloadURL(r);
-  }
+  if(!content.value) return;
 
   await addDoc(collection(db,"posts"),{
-    content:content.value,
-    image:imgUrl,
-    parentId:null,
-    userId:uid,
-    username:username,
-    role:role,
-    status:"Pending"
+    content:content.value
   });
 
+  content.value="";
   load();
 };
 
-window.showBox=id=>{
-  document.getElementById("cbox-"+id).style.display="block";
-};
-
-window.addComment=async(id)=>{
-  let t=document.getElementById("c-"+id).value;
-
-  await addDoc(collection(db,"posts"),{
-    content:t,
-    parentId:id,
-    userId:uid,
-    username:username,
-    role:role,
-    status:"Pending"
-  });
-
-  load();
-};
-
-window.approve=async(id)=>{
-  await updateDoc(doc(db,"posts",id),{status:"Approved"});
-  load();
-};
-
-window.goProfile=()=>location.href="profile.html";
-window.goAdmin=()=>location.href="admin.html";
+load();
 
 </script>
+
 </body>
 </html>
