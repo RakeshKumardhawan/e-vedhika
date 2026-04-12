@@ -11,17 +11,39 @@ body{
   margin:0;
   font-family:'Segoe UI',sans-serif;
   background:linear-gradient(120deg,#74ebd5,#9face6);
-  overflow-x:hidden;
+  overflow:hidden;
 }
 
-/* FULL SCREEN */
-.container{
-  display:grid;
-  grid-template-columns:250px 1fr 300px;
-  gap:20px;
-  padding:20px;
+/* 🔥 REAL BUBBLES FIX */
+.bubbles{
+  position:fixed;
   width:100%;
-  height:calc(100vh - 60px);
+  height:100%;
+  z-index:0;
+  top:0;
+  left:0;
+}
+
+.bubbles span{
+  position:absolute;
+  bottom:-100px;
+  width:25px;
+  height:25px;
+  background:rgba(255,255,255,0.3);
+  border-radius:50%;
+  animation:bubble 20s linear infinite;
+}
+
+.bubbles span:nth-child(1){left:10%;animation-duration:12s;}
+.bubbles span:nth-child(2){left:25%;animation-duration:18s;}
+.bubbles span:nth-child(3){left:40%;animation-duration:15s;}
+.bubbles span:nth-child(4){left:60%;animation-duration:20s;}
+.bubbles span:nth-child(5){left:75%;animation-duration:13s;}
+.bubbles span:nth-child(6){left:90%;animation-duration:17s;}
+
+@keyframes bubble{
+  0%{transform:translateY(0) scale(0.5);}
+  100%{transform:translateY(-110vh) scale(1);}
 }
 
 /* HEADER */
@@ -30,33 +52,66 @@ h2{
   color:white;
   padding:15px;
   margin:0;
+  z-index:2;
+  position:relative;
 }
 
-/* GLASS */
+/* GRID FULL SCREEN */
+.container{
+  display:grid;
+  grid-template-columns:250px 1fr 300px;
+  gap:20px;
+  padding:20px;
+  height:calc(100vh - 60px);
+  position:relative;
+  z-index:2;
+}
+
+/* 🔥 SMOOTH GLASS */
 .glass{
-  background:rgba(255,255,255,0.2);
-  backdrop-filter:blur(20px);
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(25px);
   border-radius:20px;
   padding:15px;
   box-shadow:0 8px 30px rgba(0,0,0,0.2);
+  transition:all 0.3s ease;
 }
 
-/* INPUTS */
+/* HOVER FLOAT */
+.glass:hover{
+  transform:translateY(-8px);
+  box-shadow:0 12px 40px rgba(0,0,0,0.3);
+}
+
+/* INPUT */
 input,textarea{
   width:100%;
   padding:10px;
   margin:6px 0;
   border-radius:10px;
   border:none;
+  outline:none;
+  transition:0.3s;
 }
 
+/* INPUT GLOW */
+input:focus,textarea:focus{
+  box-shadow:0 0 10px rgba(0,150,255,0.5);
+}
+
+/* BUTTON */
 button{
   padding:8px 12px;
   border:none;
-  background:#0072ff;
+  background:linear-gradient(45deg,#00c6ff,#0072ff);
   color:white;
   border-radius:10px;
   cursor:pointer;
+  transition:0.3s;
+}
+
+button:hover{
+  transform:scale(1.05);
 }
 
 /* POSTS */
@@ -65,6 +120,11 @@ button{
   margin:8px 0;
   padding:10px;
   border-radius:10px;
+  transition:0.3s;
+}
+
+.post:hover{
+  transform:scale(1.02);
 }
 
 /* SCROLL */
@@ -73,30 +133,21 @@ button{
   overflow:hidden;
 }
 
-/* BUBBLES */
-.bubbles span{
-  position:absolute;
-  bottom:-50px;
-  width:20px;
-  height:20px;
+/* CHAT */
+#chatMessages{
   background:rgba(255,255,255,0.3);
-  border-radius:50%;
-  animation:rise 15s infinite;
-}
-@keyframes rise{
-  0%{transform:translateY(0);}
-  100%{transform:translateY(-100vh);}
+  border-radius:10px;
+  padding:5px;
 }
 </style>
 </head>
 
 <body>
 
+<!-- 🔥 BUBBLES -->
 <div class="bubbles">
-<span style="left:10%"></span>
-<span style="left:30%"></span>
-<span style="left:60%"></span>
-<span style="left:80%"></span>
+<span></span><span></span><span></span>
+<span></span><span></span><span></span>
 </div>
 
 <h2>🌐 E-Vedhika</h2>
@@ -110,11 +161,13 @@ button{
 
 <h4>📌 Problems</h4>
 <button onclick="showProblemPost()">+ Post</button>
+
 <div id="problemForm" style="display:none;">
-<input id="ptitle" placeholder="Title">
+<input id="ptitle">
 <textarea id="pcontent"></textarea>
 <button onclick="addProblem()">Submit</button>
 </div>
+
 <div id="problemsBox"></div>
 
 <h4>🛠 Fix Errors</h4>
@@ -124,7 +177,7 @@ button{
 <!-- CENTER -->
 <div class="glass">
 <h3>New Post</h3>
-<input id="title" placeholder="Title">
+<input id="title">
 <textarea id="content"></textarea>
 <button onclick="addPost()">Post</button>
 <div id="posts"></div>
@@ -134,8 +187,8 @@ button{
 <div class="glass">
 <h3>Login / Signup</h3>
 
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
+<input id="email">
+<input id="password" type="password">
 
 <button onclick="login()">Login</button>
 <button onclick="signup()">Signup</button>
@@ -161,7 +214,6 @@ from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
-/* INIT */
 const app = initializeApp({
 apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
 authDomain:"e-vedhika-258f2.firebaseapp.com",
@@ -171,7 +223,7 @@ projectId:"e-vedhika-258f2"
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-/* EMAIL VALIDATION */
+/* VALIDATION */
 function isValidEmail(email){
 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -183,34 +235,18 @@ userInfo.innerText = user ? "Logged: "+user.email : "Not logged";
 
 /* LOGIN */
 window.login=async()=>{
-let e=email.value.trim();
-let p=password.value.trim();
+if(!isValidEmail(email.value)) return alert("Valid email");
+if(password.value.length<6) return alert("Min 6 chars");
 
-if(!isValidEmail(e)) return alert("Enter valid email");
-if(p.length<6) return alert("Min 6 chars password");
-
-try{
-await signInWithEmailAndPassword(auth,e,p);
-alert("Login success");
-}catch(err){
-alert(err.message);
-}
+await signInWithEmailAndPassword(auth,email.value,password.value);
 };
 
 /* SIGNUP */
 window.signup=async()=>{
-let e=email.value.trim();
-let p=password.value.trim();
+if(!isValidEmail(email.value)) return alert("Valid email");
+if(password.value.length<6) return alert("Min 6 chars");
 
-if(!isValidEmail(e)) return alert("Enter valid email");
-if(p.length<6) return alert("Min 6 chars password");
-
-try{
-await createUserWithEmailAndPassword(auth,e,p);
-alert("Signup success");
-}catch(err){
-alert(err.message);
-}
+await createUserWithEmailAndPassword(auth,email.value,password.value);
 };
 
 /* POSTS */
@@ -222,7 +258,6 @@ title:title.value,
 content:content.value,
 createdAt:serverTimestamp()
 });
-loadPosts();
 };
 
 /* PROBLEM */
@@ -235,7 +270,6 @@ content:pcontent.value,
 status:"Pending",
 createdAt:serverTimestamp()
 });
-alert("Submitted");
 };
 
 /* CHAT */
@@ -272,18 +306,6 @@ if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
 },40);
 }
 
-/* POSTS LOAD */
-async function loadPosts(){
-let qs=await getDocs(collection(db,"posts"));
-posts.innerHTML="";
-qs.forEach(d=>{
-let x=d.data();
-posts.innerHTML+=`<div class="post">${x.title}<br>${x.content}</div>`;
-});
-}
-
-/* INIT */
-loadPosts();
 loadChat();
 loadApproved();
 
