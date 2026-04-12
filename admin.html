@@ -1,30 +1,43 @@
 <!DOCTYPE html>
 <html>
 <body>
-
-<button onclick="history.back()">⬅ Back</button>
-<h2>Admin Updates</h2>
-<div id="data"></div>
+<h2>Admin Panel</h2>
+<div id="list"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { db } from "./firebase.js";
+import { collection, getDocs, doc, updateDoc }
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
-});
-const db = getFirestore(app);
+let posts=[];
 
-let qs = await getDocs(collection(db,"posts"));
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType==="admin" && x.status==="Approved"){
-data.innerHTML += `<div><b>${x.title}</b><br>${x.content}</div>`;
+async function load(){
+  let snap=await getDocs(collection(db,"posts"));
+  posts=[];
+  snap.forEach(d=>{
+    let x=d.data(); x.id=d.id;
+    posts.push(x);
+  });
+
+  let html="";
+  posts.filter(p=>p.status==="Pending")
+  .forEach(p=>{
+    html+=`
+    <div>
+    ${p.content}
+    <button onclick="approve('${p.id}')">Approve</button>
+    </div>`;
+  });
+
+  list.innerHTML=html;
 }
-});
-</script>
 
+window.approve=async(id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Approved"});
+  load();
+};
+
+load();
+</script>
 </body>
 </html>
