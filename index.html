@@ -3,21 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <title>E-Vedhika</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{font-family:Arial;margin:0;background:#eef2f7;text-align:center;}
-.header{background:#0077b6;color:white;padding:20px;}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px;padding:15px;}
-.card{background:white;padding:15px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.2);}
-button{background:#0077b6;color:white;padding:8px;border:none;border-radius:5px;}
-.logout{position:absolute;top:10px;right:10px;}
+body{
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(to right,#e3f2fd,#eef2f7);
+}
+
+/* HEADER */
+.header{
+  background:#0077b6;
+  color:white;
+  padding:25px;
+  text-align:center;
+  position:relative;
+}
+
+.logout{
+  position:absolute;
+  right:15px;
+  top:15px;
+  background:#fff;
+  color:#0077b6;
+  padding:5px 10px;
+  border-radius:5px;
+  font-weight:bold;
+}
+
+/* SEARCH */
+.search{
+  text-align:center;
+  margin:20px;
+}
+
+.search input{
+  width:85%;
+  padding:12px;
+  border-radius:25px;
+  border:none;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;
+  padding:20px;
+}
+
+/* CARD */
+.card{
+  background:white;
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.15);
+  text-align:center;
+  transition:0.3s;
+}
+
+.card:hover{
+  transform:translateY(-5px);
+}
+
+/* BUTTON */
+button{
+  background:#0077b6;
+  color:white;
+  padding:8px 12px;
+  border:none;
+  border-radius:5px;
+  margin-top:10px;
+}
+
+/* SCHEMES */
+.scheme-box{
+  text-align:left;
+  font-size:14px;
+}
 </style>
 
 <script>
 if(localStorage.getItem("login")!=="yes"){
-location.href="login.html";
+  location.href="login.html";
 }
 </script>
 
@@ -25,31 +95,80 @@ location.href="login.html";
 
 <body>
 
-<button class="logout" onclick="logout()">Logout</button>
-
 <div class="header">
-<h2>🌐 Welcome to E-Vedhika</h2>
-<p>All E-Panchayat solutions in one place</p>
+  <h2>🌐 Welcome to E-Vedhika</h2>
+  <p>All E-Panchayat solutions in one place</p>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="search">
+  <input placeholder="Search problems, updates, guides...">
 </div>
 
 <div class="grid">
 
 <div class="card">
-<h3>Problems</h3>
-<button onclick="location.href='problems.html'">Open</button>
+  <h3>📌 Problems & Solutions</h3>
+  <p>Share issues & get solutions</p>
+  <button onclick="location.href='problems.html'">Open</button>
 </div>
 
 <div class="card">
-<h3>Updates</h3>
-<button onclick="location.href='updates.html'">Open</button>
+  <h3>📊 Updates</h3>
+  <p>Latest admin updates</p>
+  <button onclick="location.href='updates.html'">Open</button>
 </div>
 
 <div class="card">
-<h3>Help</h3>
-<button onclick="location.href='suggestion.html'">Open</button>
+  <h3>📞 Help</h3>
+  <p>Submit your problem</p>
+  <button onclick="location.href='suggestion.html'">Open</button>
+</div>
+
+<div class="card">
+  <h3>📑 Schemes</h3>
+  <div id="schemesData" class="scheme-box">Loading...</div>
 </div>
 
 </div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+authDomain:"e-vedhika-258f2.firebaseapp.com",
+projectId:"e-vedhika-258f2"
+});
+
+const db = getFirestore(app);
+
+async function loadSchemes(){
+let qs = await getDocs(collection(db,"posts"));
+let arr=[];
+
+qs.forEach(d=>{
+let x=d.data();
+if(x.userType==="admin" && x.status==="Approved"){
+arr.push(x);
+}
+});
+
+arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+let html="";
+arr.slice(0,3).forEach(d=>{
+html+=`<div><b>${d.title}</b><br>${d.content}</div><hr>`;
+});
+
+document.getElementById("schemesData").innerHTML = html || "No updates";
+}
+
+loadSchemes();
+
+</script>
 
 <script>
 function logout(){
