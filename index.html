@@ -2,51 +2,97 @@
 <html>
 <head>
 <style>
-body{font-family:Arial;background:#eef2f7;margin:0;}
-.header{background:#0077b6;color:white;padding:15px;text-align:center;}
-.container{max-width:800px;margin:auto;padding:15px;}
-.card{background:white;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
-button{margin:5px;padding:6px 10px;border:none;border-radius:5px;background:#0077b6;color:white;}
-input,select{width:100%;padding:8px;margin:5px 0;}
+body{
+  margin:0;
+  font-family:Arial;
+  background:#f0f2f5;
+}
+
+/* HEADER */
+.header{
+  background:#1877f2;
+  color:white;
+  padding:12px;
+  text-align:center;
+  font-size:20px;
+  font-weight:bold;
+}
+
+/* CONTAINER */
+.container{
+  max-width:500px;
+  margin:auto;
+  padding:10px;
+}
+
+/* POST BOX */
+.post-box{
+  background:white;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+.post-box input, .post-box textarea, .post-box select{
+  width:100%;
+  margin:5px 0;
+  padding:8px;
+}
+
+/* POST CARD */
+.card{
+  background:white;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+.post-header{
+  font-weight:bold;
+}
+
+.post-content{
+  margin:10px 0;
+}
+
+.actions button{
+  border:none;
+  background:#e4e6eb;
+  padding:5px 10px;
+  margin:3px;
+  border-radius:5px;
+  cursor:pointer;
+}
+
 </style>
 </head>
 
 <body>
 
 <div class="header">
-<h2>🌐 E-Vedhika</h2>
+E-Vedhika
 </div>
 
 <div class="container">
 
-<input id="search" placeholder="Search">
+<!-- CREATE POST -->
+<div class="post-box">
+  <textarea id="content" placeholder="What's your problem..."></textarea>
 
-<select onchange="filterCat(this.value)">
-<option>All</option>
-<option>EPFO</option>
-<option>Aadhar</option>
-<option>Payments</option>
-<option>House Tax</option>
-</select>
+  <select id="category">
+    <option>EPFO</option>
+    <option>Aadhar</option>
+    <option>Payments</option>
+    <option>House Tax</option>
+  </select>
 
+  <button onclick="addPost()">Post</button>
+</div>
+
+<!-- FEED -->
 <div id="feed"></div>
-
-<h3>Create Post</h3>
-
-<input id="title" placeholder="Title">
-<input id="content" placeholder="Content">
-
-<select id="category">
-<option>EPFO</option>
-<option>Aadhar</option>
-<option>Payments</option>
-<option>House Tax</option>
-</select>
-
-<button onclick="addPost()">Post</button>
-
-<h3 id="adminTitle"></h3>
-<div id="adminPanel"></div>
 
 </div>
 
@@ -63,17 +109,17 @@ let role="user";
 let username="";
 
 auth.onAuthStateChanged(async (user)=>{
-  if(!user) location.href="login.html";
+  if(user){
+    uid = user.uid;
 
-  uid = user.uid;
-
-  let snap = await getDocs(collection(db,"users"));
-  snap.forEach(d=>{
-    if(d.id === uid){
-      role = d.data().role;
-      username = d.data().username;
-    }
-  });
+    let snap = await getDocs(collection(db,"users"));
+    snap.forEach(d=>{
+      if(d.id===uid){
+        role=d.data().role;
+        username=d.data().username;
+      }
+    });
+  }
 
   load();
 });
@@ -82,76 +128,71 @@ async function load(){
   let snap = await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
-    let x = d.data();
-    x.id = d.id;
+    let x=d.data();
+    x.id=d.id;
     posts.push(x);
   });
 
   render();
-  adminPanelRender();
 }
 
 function render(){
   let html="";
 
-  posts.filter(p=>p.status==="Approved" && p.status!=="Deleted")
+  posts
+  .filter(p=>p.status==="Approved" && p.status!=="Deleted")
+  .reverse()
   .forEach(p=>{
+
     html+=`
     <div class="card">
-    <b>${p.title}</b><br><br>
 
-    ${p.content}<br><br>
+      <div class="post-header">
+        ${p.username} ${p.role==="admin"?"(Admin)":""}
+      </div>
 
-    Category: ${p.category}<br>
-    Posted by ${p.username} ${p.role==="admin"?"(Admin)":""}<br><br>
+      <div style="font-size:12px;color:gray;">
+        ${p.category}
+      </div>
 
-    👍 ${p.likes||0}
-    <button onclick="like('${p.id}',${p.likes||0})">Like</button>
+      <div class="post-content">
+        ${p.content}
+      </div>
+
+      <div class="actions">
+        👍 ${p.likes||0}
+        <button onclick="like('${p.id}',${p.likes||0})">Like</button>
     `;
 
-    if(p.userId===uid || role==="admin"){
+    if(auth.currentUser && (p.userId===uid || role==="admin")){
       html+=`
-      <button onclick="edit('${p.id}')">Edit</button>
-      <button onclick="del('${p.id}')">Delete</button>
+        <button onclick="edit('${p.id}')">Edit</button>
+        <button onclick="del('${p.id}')">Delete</button>
       `;
     }
 
-    html+="</div>";
-  });
-
-  feed.innerHTML = html;
-}
-
-function adminPanelRender(){
-  if(role!=="admin") return;
-
-  adminTitle.innerText="Pending Approval";
-
-  let html="";
-
-  posts.filter(p=>p.status==="Pending")
-  .forEach(p=>{
     html+=`
-    <div class="card">
-    ${p.title} by ${p.username}<br><br>
-
-    <button onclick="approve('${p.id}')">Approve</button>
-    <button onclick="reject('${p.id}')">Reject</button>
+      </div>
     </div>
     `;
   });
 
-  adminPanel.innerHTML = html;
+  feed.innerHTML=html;
 }
 
 window.addPost = async ()=>{
-  if(!title.value || !content.value){
-    alert("Fill all fields");
+  if(!auth.currentUser){
+    alert("Login required");
+    location.href="login.html";
+    return;
+  }
+
+  if(!content.value){
+    alert("Write something");
     return;
   }
 
   await addDoc(collection(db,"posts"),{
-    title:title.value,
     content:content.value,
     category:category.value,
     userId:uid,
@@ -162,10 +203,16 @@ window.addPost = async ()=>{
     createdAt:new Date()
   });
 
+  content.value="";
   load();
 };
 
 window.like = async (id,l)=>{
+  if(!auth.currentUser){
+    alert("Login required");
+    return;
+  }
+
   await updateDoc(doc(db,"posts",id),{likes:l+1});
   load();
 };
@@ -178,47 +225,16 @@ window.del = async (id)=>{
 };
 
 window.edit = async (id)=>{
-  let t = prompt("New title");
-  let c = prompt("New content");
+  let c=prompt("Edit content");
 
-  if(!t || !c) return;
+  if(!c) return;
 
   await updateDoc(doc(db,"posts",id),{
-    title:t,
     content:c,
     status:"Pending"
   });
 
   load();
-};
-
-window.approve = async (id)=>{
-  await updateDoc(doc(db,"posts",id),{status:"Approved"});
-  load();
-};
-
-window.reject = async (id)=>{
-  await updateDoc(doc(db,"posts",id),{status:"Rejected"});
-  load();
-};
-
-window.filterCat = (c)=>{
-  if(c==="All") render();
-  else{
-    feed.innerHTML = posts
-      .filter(p=>p.category===c && p.status==="Approved")
-      .map(p=>`<div class="card">${p.title}</div>`)
-      .join("");
-  }
-};
-
-search.onkeyup = ()=>{
-  let v = search.value.toLowerCase();
-
-  feed.innerHTML = posts
-    .filter(p=>p.title.toLowerCase().includes(v) && p.status==="Approved")
-    .map(p=>`<div class="card">${p.title}</div>`)
-    .join("");
 };
 
 </script>
