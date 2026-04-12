@@ -1,82 +1,113 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="UTF-8">
+<title>E-Vedhika</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:Arial;
+  margin:0;
+  background:#eef2f7;
+  text-align:center;
+}
+
+/* HEADER */
+.header{
+  background:#0077b6;
+  color:white;
+  padding:20px;
+}
+
+/* SEARCH */
+.search input{
+  width:80%;
+  padding:10px;
+  margin:15px;
+  border-radius:5px;
+  border:1px solid #ccc;
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap:15px;
+  padding:15px;
+}
+
+/* CARD */
+.card{
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* BUTTON */
+button{
+  background:#0077b6;
+  color:white;
+  padding:8px 12px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+.logout{
+  position:absolute;
+  top:10px;
+  right:10px;
+}
+</style>
+
+<!-- 🔥 LOGIN PROTECTION -->
 <script>
 if(localStorage.getItem("login") !== "yes"){
   window.location.href = "login.html";
 }
 </script>
-<head>
-<meta charset="UTF-8">
-<title>E-Vedhika</title>
-<style>
-body{font-family:Arial;margin:0;background:#eef2f7;text-align:center;}
-.header{background:#0077b6;color:white;padding:20px;}
-.search input{width:70%;padding:10px;margin:15px;border-radius:5px;border:1px solid #ccc;}
-.grid{display:flex;flex-wrap:wrap;justify-content:center;}
-.card{background:white;width:250px;margin:10px;padding:20px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.2);}
-button{background:#0077b6;color:white;padding:8px;border:none;border-radius:5px;}
-</style>
+
 </head>
 
 <body>
 
+<!-- 🔥 LOGOUT BUTTON -->
+<button class="logout" onclick="logout()">Logout</button>
+
 <div class="header">
-<h2>🌐 Welcome to E-Vedhika</h2>
-<p>All E-Panchayat solutions in one place</p>
+  <h2>🌐 Welcome to E-Vedhika</h2>
+  <p>All E-Panchayat solutions in one place</p>
 </div>
 
+<p>E-Vedhika is a digital support platform for E-Panchayat operators.</p>
+
 <div class="search">
-<input placeholder="Search...">
+  <input placeholder="Search problems, updates, guides...">
 </div>
 
 <div class="grid">
 
 <div class="card">
-<h3>Problems</h3>
-<button onclick="location.href='problems.html'">Open</button>
+  <h3>📌 Problems & Solutions</h3>
+  <button onclick="location.href='problems.html'">Open</button>
 </div>
 
 <div class="card">
-<h3>Updates</h3>
-<button onclick="location.href='updates.html'">Open</button>
+  <h3>📊 Latest Updates</h3>
+  <button onclick="location.href='updates.html'">Open</button>
 </div>
 
 <div class="card">
-<h3>Help</h3>
-<button onclick="location.href='suggestion.html'">Open</button>
+  <h3>🎓 Learning</h3>
+  <button onclick="alert('Coming Soon')">Open</button>
 </div>
 
 <div class="card">
-<h3>📑 Schemes</h3>
-<div id="schemesData">Loading...</div>
+  <h3>📞 Help</h3>
+  <button onclick="location.href='suggestion.html'">Open</button>
 </div>
 
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
-});
-const db = getFirestore(app);
-
-async function loadSchemes(){
-let qs = await getDocs(collection(db,"posts"));
-let html="";
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType==="admin" && x.status==="Approved"){
-html+=`<div><b>${x.title}</b><br>${x.content}</div>`;
-}
-});
-document.getElementById("schemesData").innerHTML = html || "No updates";
-}
-loadSchemes();
-</script>
-
-</body>
-</html>
+<!-- 🔥 SCHEMES
