@@ -1,180 +1,196 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>E-Vedhika</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:linear-gradient(to right,#e3f2fd,#eef2f7);
-}
-
-/* HEADER */
-.header{
-  background:#0077b6;
-  color:white;
-  padding:25px;
-  text-align:center;
-  position:relative;
-}
-
-.logout{
-  position:absolute;
-  right:15px;
-  top:15px;
-  background:#fff;
-  color:#0077b6;
-  padding:5px 10px;
-  border-radius:5px;
-  font-weight:bold;
-}
-
-/* SEARCH */
-.search{
-  text-align:center;
-  margin:20px;
-}
-
-.search input{
-  width:85%;
-  padding:12px;
-  border-radius:25px;
-  border:none;
-  box-shadow:0 3px 10px rgba(0,0,0,0.2);
-}
-
-/* GRID */
-.grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
-  gap:20px;
-  padding:20px;
-}
-
-/* CARD */
-.card{
-  background:white;
-  padding:20px;
-  border-radius:15px;
-  box-shadow:0 8px 20px rgba(0,0,0,0.15);
-  text-align:center;
-  transition:0.3s;
-}
-
-.card:hover{
-  transform:translateY(-5px);
-}
-
-/* BUTTON */
-button{
-  background:#0077b6;
-  color:white;
-  padding:8px 12px;
-  border:none;
-  border-radius:5px;
-  margin-top:10px;
-}
-
-/* SCHEMES */
-.scheme-box{
-  text-align:left;
-  font-size:14px;
-}
-</style>
-
-<script>
-if(localStorage.getItem("login")!=="yes"){
-  location.href="login.html";
-}
-</script>
-
-</head>
-
 <body>
 
-<div class="header">
-  <h2>🌐 Welcome to E-Vedhika</h2>
-  <p>All E-Panchayat solutions in one place</p>
-  <button class="logout" onclick="logout()">Logout</button>
-</div>
+<h2>🌐 E-Vedhika</h2>
 
-<div class="search">
-  <input placeholder="Search problems, updates, guides...">
-</div>
+<input id="search" placeholder="Search..."><br><br>
 
-<div class="grid">
+<select onchange="filterCat(this.value)">
+<option>All</option>
+<option>EPFO</option>
+<option>Aadhar</option>
+<option>Payments</option>
+<option>House Tax</option>
+</select>
 
-<div class="card">
-  <h3>📌 Problems & Solutions</h3>
-  <p>Share issues & get solutions</p>
-  <button onclick="location.href='problems.html'">Open</button>
-</div>
+<hr>
 
-<div class="card">
-  <h3>📊 Updates</h3>
-  <p>Latest admin updates</p>
-  <button onclick="location.href='updates.html'">Open</button>
-</div>
+<div id="feed"></div>
 
-<div class="card">
-  <h3>📞 Help</h3>
-  <p>Submit your problem</p>
-  <button onclick="location.href='suggestion.html'">Open</button>
-</div>
+<hr>
 
-<div class="card">
-  <h3>📑 Schemes</h3>
-  <div id="schemesData" class="scheme-box">Loading...</div>
-</div>
+<h3>Create Post</h3>
+<input id="title" placeholder="Title"><br>
+<input id="content" placeholder="Content"><br>
+<select id="category">
+<option>EPFO</option>
+<option>Aadhar</option>
+<option>Payments</option>
+<option>House Tax</option>
+</select>
+<button onclick="addPost()">Post</button>
 
-</div>
+<hr>
+
+<h3 id="adminTitle"></h3>
+<div id="adminPanel"></div>
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { auth, db } from "./firebase.js";
+import {
+collection, addDoc, getDocs, doc, updateDoc
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
+let posts=[];
+let currentUserId="";
+let role="user";
+let username="";
+
+auth.onAuthStateChanged(async (user)=>{
+  if(!user) location.href="login.html";
+
+  currentUserId = user.uid;
+
+  let uSnap = await getDocs(collection(db,"users"));
+  uSnap.forEach(d=>{
+    if(d.id === currentUserId){
+      role = d.data().role;
+      username = d.data().username;
+    }
+  });
+
+  load();
 });
 
-const db = getFirestore(app);
+async function load(){
+  let snap = await getDocs(collection(db,"posts"));
+  posts=[];
+  snap.forEach(d=>{
+    let x=d.data();
+    x.id=d.id;
+    posts.push(x);
+  });
 
-async function loadSchemes(){
-let qs = await getDocs(collection(db,"posts"));
-let arr=[];
-
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType==="admin" && x.status==="Approved"){
-arr.push(x);
-}
-});
-
-arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-
-let html="";
-arr.slice(0,3).forEach(d=>{
-html+=`<div><b>${d.title}</b><br>${d.content}</div><hr>`;
-});
-
-document.getElementById("schemesData").innerHTML = html || "No updates";
+  renderFeed();
+  renderAdmin();
 }
 
-loadSchemes();
+function renderFeed(){
+  let html="";
 
-</script>
+  posts.filter(p=>p.status==="Approved" && p.status!=="Deleted")
+  .forEach(p=>{
 
-<script>
-function logout(){
-localStorage.removeItem("login");
-location.href="login.html";
+    html+=`
+    <div>
+    <b>${p.title}</b><br>
+    ${p.content}<br>
+    Category: ${p.category}<br>
+    Posted by ${p.username} ${p.role==="admin"?"(Admin)":""}<br>
+
+    👍 ${p.likes||0}
+    <button onclick="like('${p.id}',${p.likes||0})">Like</button>
+    `;
+
+    if(p.userId===currentUserId || role==="admin"){
+      html+=`
+      <button onclick="edit('${p.id}')">Edit</button>
+      <button onclick="del('${p.id}')">Delete</button>
+      `;
+    }
+
+    html+="<hr>";
+  });
+
+  feed.innerHTML=html;
 }
+
+function renderAdmin(){
+
+  if(role!=="admin") return;
+
+  adminTitle.innerText="Pending Approval";
+
+  let html="";
+
+  posts.filter(p=>p.status==="Pending").forEach(p=>{
+    html+=`
+    <div>
+    ${p.title} by ${p.username}
+    <button onclick="approve('${p.id}')">Approve</button>
+    <button onclick="reject('${p.id}')">Reject</button>
+    </div>
+    `;
+  });
+
+  adminPanel.innerHTML=html;
+}
+
+window.addPost = async ()=>{
+  if(!title.value || !content.value) return alert("Fill all");
+
+  await addDoc(collection(db,"posts"),{
+    title:title.value,
+    content:content.value,
+    category:category.value,
+    userId:currentUserId,
+    username:username,
+    role:role,
+    likes:0,
+    status:"Pending",
+    createdAt:new Date()
+  });
+
+  load();
+};
+
+window.like = async (id,l)=>{
+  await updateDoc(doc(db,"posts",id),{likes:l+1});
+  load();
+};
+
+window.del = async (id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Deleted"});
+  load();
+};
+
+window.edit = async (id)=>{
+  let t=prompt("New title");
+  let c=prompt("New content");
+
+  await updateDoc(doc(db,"posts",id),{
+    title:t,
+    content:c,
+    status:"Pending"
+  });
+
+  load();
+};
+
+window.approve = async (id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Approved"});
+  load();
+};
+
+window.reject = async (id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Rejected"});
+  load();
+};
+
+window.filterCat = (c)=>{
+  if(c==="All") renderFeed();
+  else feed.innerHTML = posts.filter(p=>p.category===c && p.status==="Approved")
+  .map(p=>p.title).join("<br>");
+};
+
+search.onkeyup = ()=>{
+  let v=search.value.toLowerCase();
+  feed.innerHTML = posts.filter(p=>p.title.toLowerCase().includes(v) && p.status==="Approved")
+  .map(p=>p.title).join("<br>");
+};
+
 </script>
 
 </body>
