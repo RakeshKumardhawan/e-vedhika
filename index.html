@@ -127,6 +127,193 @@ window.addPost = async ()=>{
   content.value="";
   loadPosts();
 };
+  /* =========================
+   🔥 ROLE SYSTEM (FINAL)
+========================= */
+
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { deleteDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+const auth = getAuth(app);
+
+let USER_ROLE = "user";
+
+/* GET USER ROLE */
+onAuthStateChanged(auth, async(user)=>{
+  if(user){
+    let qs = await getDocs(collection(db,"users"));
+    qs.forEach(d=>{
+      let x=d.data();
+      if(x.email === user.email){
+        USER_ROLE = x.role;
+        console.log("ROLE:", USER_ROLE);
+      }
+    });
+  }
+});
+
+
+/* =========================
+   🔥 ADMIN CONTROL - POSTS
+========================= */
+
+const oldAddPost = window.addPost;
+
+window.addPost = async function(){
+
+  if(!auth.currentUser){
+    alert("Login required");
+    return;
+  }
+
+  /* ADMIN POST */
+  let type = USER_ROLE === "admin" ? "admin" : "public";
+
+  await addDoc(collection(db,"posts"),{
+    title:title.value,
+    content:content.value,
+    status:"Approved",
+    userType:type,
+    createdAt:serverTimestamp()
+  });
+
+  title.value="";
+  content.value="";
+  loadPosts();
+};
+
+
+/* =========================
+   🔥 ADMIN CONTROL - PROBLEMS
+========================= */
+
+window.deleteProblem = async(id)=>{
+
+  if(USER_ROLE !== "admin"){
+    alert("Admin only");
+    return;
+  }
+
+  if(!confirm("Delete this problem?")) return;
+
+  await deleteDoc(doc(db,"problems",id));
+  loadProblems();
+};
+
+
+/* =========================
+   🔥 MODIFY DISPLAY (ADMIN BUTTONS)
+========================= */
+
+const oldDisplay = displayProblems;
+
+displayProblems = async function(arr){
+
+  let box = document.getElementById("problemsBox");
+  let solvedBox = document.getElementById("solvedBox");
+
+  box.innerHTML="";
+  solvedBox.innerHTML="";
+
+  for(let d of arr){
+
+    let controls = `
+    <input id="r_${d.id}" placeholder="Reply">
+    <button onclick="addReply('${d.id}')">Reply</button>
+    `;
+
+    /* ADMIN EXTRA */
+    if(USER_ROLE === "admin"){
+      controls += `
+      <button onclick="markSolved('${d.id}')">Solved</button>
+      <button onclick="deleteProblem('${d.id}')">Delete</button>
+      `;
+    }
+
+    let html = `
+    <div class="post">
+    <b>${d.title}</b><br>
+    ${d.content}<br>
+    ${controls}
+    <div id="rep_${d.id}"></div>
+    </div>
+    `;
+
+    if(d.status==="Solved"){
+      solvedBox.innerHTML += html;
+    }else{
+      box.innerHTML += html;
+    }
+
+    let rqs = await getDocs(collection(db,"problems",d.id,"replies"));
+    rqs.forEach(r=>{
+      let x=r.data();
+      document.getElementById("rep_"+d.id).innerHTML+=`
+      <div>${x.message}</div>`;
+    });
+  }
+};
+
+
+/* =========================
+   🔥 CHAT ADMIN DELETE
+========================= */
+
+window.deleteChat = async(id)=>{
+  if(USER_ROLE !== "admin"){
+    alert("Admin only");
+    return;
+  }
+
+  await deleteDoc(doc(db,"chat",id));
+};
+
+
+/* MODIFY CHAT DISPLAY */
+const oldLoadChat = loadChat;
+
+loadChat = function(){
+
+  const chatBox = document.getElementById("chatMessages");
+
+  onSnapshot(collection(db,"chat"),(snap)=>{
+
+    let arr=[];
+    snap.forEach(doc=>{
+      arr.push({id:doc.id,...doc.data()});
+    });
+
+    arr.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+
+    chatBox.innerHTML="";
+
+    arr.forEach(d=>{
+
+      let html = `<div>${d.message}`;
+
+      if(USER_ROLE==="admin"){
+        html += ` <button onclick="deleteChat('${d.id}')">❌</button>`;
+      }
+
+      html += `</div>`;
+
+      chatBox.innerHTML += html;
+    });
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+  });
+};
+
+
+/* =========================
+   🔥 RELOAD AFTER ROLE
+========================= */
+
+setTimeout(()=>{
+  loadProblems();
+  loadChat();
+},1000);
 
 async function loadPosts(){
   let qs=await getDocs(collection(db,"posts"));
