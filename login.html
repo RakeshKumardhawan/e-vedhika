@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <body>
+
 <h2>Login</h2>
 
 <input id="email" placeholder="Email"><br><br>
 <input id="pass" type="password" placeholder="Password"><br><br>
 
 <button onclick="login()">Login</button>
-<a href="register.html">Register</a>
 
 <script type="module">
 import { auth } from "./firebase.js";
@@ -17,8 +17,11 @@ window.login = async ()=>{
   try{
     await signInWithEmailAndPassword(auth,email.value,pass.value);
     location.href="index.html";
-  }catch(e){ alert(e.message); }
+  }catch(e){
+    alert("Login failed");
+  }
 };
 </script>
+
 </body>
 </html>
