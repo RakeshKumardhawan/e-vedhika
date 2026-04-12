@@ -6,56 +6,59 @@
 
 <style>
 *{box-sizing:border-box;}
-body{margin:0;font-family:'Segoe UI';background:linear-gradient(120deg,#74ebd5,#9face6);overflow:hidden;}
-
-.bubbles{position:fixed;width:100%;height:100%;}
-.bubbles span{position:absolute;bottom:-100px;width:25px;height:25px;background:rgba(255,255,255,0.3);border-radius:50%;animation:bubble 20s linear infinite;}
-@keyframes bubble{0%{transform:translateY(0)}100%{transform:translateY(-110vh)}}
+body{margin:0;font-family:'Segoe UI';background:linear-gradient(120deg,#74ebd5,#9face6);}
 
 .container{
 display:grid;
 grid-template-columns:260px 1fr 320px;
 gap:20px;
 padding:20px;
-height:calc(100vh - 60px);
+height:100vh;
 }
 
 .glass{
 background:rgba(255,255,255,0.2);
-backdrop-filter:blur(20px);
-border-radius:20px;
+backdrop-filter:blur(15px);
+border-radius:15px;
 padding:15px;
 overflow:auto;
 }
 
 input,textarea{
 width:100%;
-padding:10px;
+padding:8px;
 margin:5px 0;
 border-radius:10px;
 border:none;
 }
 
 button{
-padding:8px;
+padding:6px 10px;
 background:#0072ff;
 color:white;
 border:none;
-border-radius:10px;
+border-radius:8px;
 cursor:pointer;
 }
 
-.post{background:white;margin:5px 0;padding:8px;border-radius:10px;}
+.post{
+background:white;
+margin:5px 0;
+padding:6px;
+border-radius:8px;
+}
 
-.small-box{max-height:150px;overflow:auto;background:rgba(255,255,255,0.3);padding:5px;border-radius:10px;}
+.small-box{
+max-height:140px;
+overflow:auto;
+background:rgba(255,255,255,0.3);
+padding:5px;
+border-radius:10px;
+}
 </style>
 </head>
 
 <body>
-
-<div class="bubbles">
-<span></span><span></span><span></span><span></span><span></span>
-</div>
 
 <h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
 
@@ -63,18 +66,16 @@ cursor:pointer;
 
 <!-- LEFT -->
 <div class="glass">
-
 <h4>✔ Approved Suggestions</h4>
 <div id="approvedBox" class="small-box"></div>
 
 <h4>📌 Problems</h4>
 <textarea id="problemMsg"></textarea>
-<button onclick="addProblem()">Post Problem</button>
+<button onclick="addProblem()">Post</button>
 <div id="problemBox"></div>
 
-<h4>🛠 Fix Errors (Admin)</h4>
+<h4>🛠 Fix Errors</h4>
 <div id="fixedBox"></div>
-
 </div>
 
 <!-- CENTER -->
@@ -94,31 +95,27 @@ cursor:pointer;
 <input id="password" type="password">
 
 <button id="loginBtn" onclick="login()">Login</button>
-<button id="signupBtn" onclick="openSignup()">Signup</button>
 <button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
 
 <p id="userInfo"></p>
 
 <hr>
 
-<h3>Chat (Admin)</h3>
-<div id="chatBox" class="small-box"></div>
-<input id="chatInput">
-<button onclick="sendMsg()">Send</button>
+<h3>Chat (Disabled)</h3>
+<div class="small-box">View only</div>
 
 <hr>
 
-<h3>Union Updates (Admin)</h3>
+<h3>Union Updates (View only)</h3>
 <div id="unionBox" class="small-box"></div>
-<textarea id="unionMsg"></textarea>
-<button onclick="addUnion()">Post</button>
 
 <hr>
 
-<h3>Request to Union (Login)</h3>
-<div id="requestBox" class="small-box"></div>
+<h3>Request to Union</h3>
 <textarea id="requestMsg"></textarea>
 <button onclick="addRequest()">Send</button>
+
+<div id="requestBox" class="small-box"></div>
 
 </div>
 
@@ -127,10 +124,10 @@ cursor:pointer;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } 
+import { getFirestore, collection, addDoc, onSnapshot } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } 
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
 const app = initializeApp({
@@ -142,19 +139,19 @@ projectId:"e-vedhika-258f2"
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-const ADMIN="youradmin@gmail.com";
+let currentUser=null;
 
 /* AUTH */
 onAuthStateChanged(auth,(user)=>{
+currentUser=user;
+
 if(user){
 userInfo.innerText="Logged: "+user.email;
 loginBtn.style.display="none";
-signupBtn.style.display="none";
 logoutBtn.style.display="inline-block";
 }else{
 userInfo.innerText="Not logged";
 loginBtn.style.display="inline-block";
-signupBtn.style.display="inline-block";
 logoutBtn.style.display="none";
 }
 });
@@ -163,55 +160,33 @@ logoutBtn.style.display="none";
 window.login=()=>signInWithEmailAndPassword(auth,email.value,password.value);
 window.logout=()=>signOut(auth);
 
-/* SIGNUP */
-window.openSignup=()=>alert("Use Firebase Console or extend popup");
-
-/* POSTS LOGIN ONLY */
+/* NEW POST */
 window.addPost=async()=>{
-if(!auth.currentUser)return alert("Login required");
+if(!currentUser) return alert("Login required");
 await addDoc(collection(db,"posts"),{
 title:title.value,
 content:content.value
 });
 };
 
-/* PROBLEM LOGIN */
+/* PROBLEM */
 window.addProblem=async()=>{
-if(!auth.currentUser)return alert("Login required");
+if(!currentUser) return alert("Login required");
 await addDoc(collection(db,"problems"),{
-msg:problemMsg.value,
-status:"pending"
+msg:problemMsg.value
 });
 };
 
-/* ADMIN FIX */
-window.fixProblem=async(msg)=>{
-if(auth.currentUser?.email!==ADMIN)return;
-await addDoc(collection(db,"fixed"),{msg});
-};
-
-/* CHAT ADMIN */
-window.sendMsg=async()=>{
-if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
-await addDoc(collection(db,"chat"),{msg:chatInput.value});
-};
-
-/* UNION ADMIN */
-window.addUnion=async()=>{
-if(auth.currentUser?.email!==ADMIN)return alert("Admin only");
-await addDoc(collection(db,"union"),{msg:unionMsg.value});
-};
-
-/* REQUEST LOGIN */
+/* REQUEST */
 window.addRequest=async()=>{
-if(!auth.currentUser)return alert("Login required");
+if(!currentUser) return alert("Login required");
 await addDoc(collection(db,"requests"),{
 msg:requestMsg.value,
-user:auth.currentUser.email
+user:currentUser.email
 });
 };
 
-/* LIVE LOAD */
+/* LOAD DATA */
 onSnapshot(collection(db,"posts"),s=>{
 postBox.innerHTML="";
 s.forEach(d=>postBox.innerHTML+=`<div class="post">${d.data().title}</div>`);
@@ -227,14 +202,31 @@ fixedBox.innerHTML="";
 s.forEach(d=>fixedBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
 });
 
+onSnapshot(collection(db,"union"),s=>{
+unionBox.innerHTML="";
+s.forEach(d=>unionBox.innerHTML+=`<div class="post">${d.data().msg}</div>`);
+});
+
+onSnapshot(collection(db,"requests"),s=>{
+requestBox.innerHTML="";
+s.forEach(d=>{
+let x=d.data();
+requestBox.innerHTML+=`<div class="post">${x.user}: ${x.msg}</div>`;
+});
+});
+
+/* APPROVED SCROLL */
 onSnapshot(collection(db,"suggestions"),s=>{
 approvedBox.innerHTML="";
-s.forEach(d=>approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`);
+s.forEach(d=>{
+approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
+});
 
 let pos=0;
 setInterval(()=>{
 pos++;
 approvedBox.scrollTop=pos;
+if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
 },40);
 });
 
