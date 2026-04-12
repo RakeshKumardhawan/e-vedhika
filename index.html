@@ -32,14 +32,17 @@ input,select{width:100%;padding:8px;margin:5px 0;}
 <div id="feed"></div>
 
 <h3>Create Post</h3>
+
 <input id="title" placeholder="Title">
 <input id="content" placeholder="Content">
+
 <select id="category">
 <option>EPFO</option>
 <option>Aadhar</option>
 <option>Payments</option>
 <option>House Tax</option>
 </select>
+
 <button onclick="addPost()">Post</button>
 
 <h3 id="adminTitle"></h3>
@@ -61,13 +64,14 @@ let username="";
 
 auth.onAuthStateChanged(async (user)=>{
   if(!user) location.href="login.html";
-  uid=user.uid;
 
-  let snap=await getDocs(collection(db,"users"));
+  uid = user.uid;
+
+  let snap = await getDocs(collection(db,"users"));
   snap.forEach(d=>{
-    if(d.id===uid){
-      role=d.data().role;
-      username=d.data().username;
+    if(d.id === uid){
+      role = d.data().role;
+      username = d.data().username;
     }
   });
 
@@ -75,24 +79,27 @@ auth.onAuthStateChanged(async (user)=>{
 });
 
 async function load(){
-  let snap=await getDocs(collection(db,"posts"));
+  let snap = await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
-    let x=d.data();
-    x.id=d.id;
+    let x = d.data();
+    x.id = d.id;
     posts.push(x);
   });
+
   render();
   adminPanelRender();
 }
 
 function render(){
   let html="";
+
   posts.filter(p=>p.status==="Approved" && p.status!=="Deleted")
   .forEach(p=>{
     html+=`
     <div class="card">
     <b>${p.title}</b><br><br>
+
     ${p.content}<br><br>
 
     Category: ${p.category}<br>
@@ -112,7 +119,7 @@ function render(){
     html+="</div>";
   });
 
-  feed.innerHTML=html;
+  feed.innerHTML = html;
 }
 
 function adminPanelRender(){
@@ -121,21 +128,27 @@ function adminPanelRender(){
   adminTitle.innerText="Pending Approval";
 
   let html="";
-  posts.filter(p=>p.status==="Pending").forEach(p=>{
+
+  posts.filter(p=>p.status==="Pending")
+  .forEach(p=>{
     html+=`
     <div class="card">
-    ${p.title} by ${p.username}<br>
+    ${p.title} by ${p.username}<br><br>
+
     <button onclick="approve('${p.id}')">Approve</button>
     <button onclick="reject('${p.id}')">Reject</button>
     </div>
     `;
   });
 
-  adminPanel.innerHTML=html;
+  adminPanel.innerHTML = html;
 }
 
-window.addPost=async ()=>{
-  if(!title.value || !content.value) return alert("Fill all");
+window.addPost = async ()=>{
+  if(!title.value || !content.value){
+    alert("Fill all fields");
+    return;
+  }
 
   await addDoc(collection(db,"posts"),{
     title:title.value,
@@ -152,19 +165,21 @@ window.addPost=async ()=>{
   load();
 };
 
-window.like=async (id,l)=>{
+window.like = async (id,l)=>{
   await updateDoc(doc(db,"posts",id),{likes:l+1});
   load();
 };
 
-window.del=async (id)=>{
+window.del = async (id)=>{
+  if(!confirm("Delete post?")) return;
+
   await updateDoc(doc(db,"posts",id),{status:"Deleted"});
   load();
 };
 
-window.edit=async (id)=>{
-  let t=prompt("New title");
-  let c=prompt("New content");
+window.edit = async (id)=>{
+  let t = prompt("New title");
+  let c = prompt("New content");
 
   if(!t || !c) return;
 
@@ -177,28 +192,33 @@ window.edit=async (id)=>{
   load();
 };
 
-window.approve=async (id)=>{
+window.approve = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
 };
 
-window.reject=async (id)=>{
+window.reject = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Rejected"});
   load();
 };
 
-window.filterCat=(c)=>{
+window.filterCat = (c)=>{
   if(c==="All") render();
   else{
-    feed.innerHTML = posts.filter(p=>p.category===c && p.status==="Approved")
-    .map(p=>"<div class='card'>"+p.title+"</div>").join("");
+    feed.innerHTML = posts
+      .filter(p=>p.category===c && p.status==="Approved")
+      .map(p=>`<div class="card">${p.title}</div>`)
+      .join("");
   }
 };
 
-search.onkeyup=()=>{
-  let v=search.value.toLowerCase();
-  feed.innerHTML = posts.filter(p=>p.title.toLowerCase().includes(v) && p.status==="Approved")
-  .map(p=>"<div class='card'>"+p.title+"</div>").join("");
+search.onkeyup = ()=>{
+  let v = search.value.toLowerCase();
+
+  feed.innerHTML = posts
+    .filter(p=>p.title.toLowerCase().includes(v) && p.status==="Approved")
+    .map(p=>`<div class="card">${p.title}</div>`)
+    .join("");
 };
 
 </script>
