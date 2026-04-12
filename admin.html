@@ -45,7 +45,8 @@ th{background:#2c3e50;color:white;}
 <br>
 
 <input id="searchBox" placeholder="Search..." oninput="searchData()">
-<button onclick="exportCSV()">Export</button>
+<button onclick="exportCSV()">📁⬇ Export</button>
+<button onclick="refreshData()">🔄 Refresh</button>
 
 <table>
 <thead><tr id="header"></tr></thead>
@@ -152,25 +153,35 @@ a.download="report.csv";
 a.click();
 };
 
-/* ACTIONS */
+/* REFRESH */
+window.refreshData=()=>{
+if(currentType) loadData(currentType);
+};
+
+/* ACTION WITH TIME */
+async function updateWithTime(ref,data){
+data.updatedAt=serverTimestamp();
+await updateDoc(ref,data);
+}
+
 window.acceptRow=async(id)=>{
-await updateDoc(doc(db,currentType,id),{status:"Approved"});
+await updateWithTime(doc(db,currentType,id),{status:"Approved"});
 loadData(currentType);
 };
 
 window.deleteRow=async(id)=>{
-await updateDoc(doc(db,currentType,id),{status:"Deleted"});
+await updateWithTime(doc(db,currentType,id),{status:"Deleted"});
 loadData(currentType);
 };
 
 window.editRow=async(id)=>{
 let txt=prompt("Edit:");
 if(!txt) return;
-await updateDoc(doc(db,currentType,id),{content:txt});
+await updateWithTime(doc(db,currentType,id),{content:txt});
 loadData(currentType);
 };
 
-/* 👤 PROFILE FEATURES */
+/* PROFILE FEATURES */
 window.changeRole=async(id)=>{
 let role=prompt("admin/moderator/user");
 if(!role) return;
@@ -234,7 +245,16 @@ data.innerHTML+=`
 }
 
 });
+
 }
+
+/* COPY ON DOUBLE CLICK */
+document.addEventListener("dblclick",(e)=>{
+if(e.target.tagName==="TD"){
+navigator.clipboard.writeText(e.target.innerText);
+alert("Copied");
+}
+});
 
 </script>
 
