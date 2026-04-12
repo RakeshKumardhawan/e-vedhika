@@ -1,133 +1,31 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>E-Vedhika</title>
-
-<style>
-body{margin:0;font-family:Segoe UI;background:#eef4ff}
-.header{background:#1e88e5;color:#fff;text-align:center;padding:14px}
-.container{max-width:700px;margin:auto;padding:10px}
-.card{background:#fff;border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
-input,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-top:5px}
-button{background:#1e88e5;color:#fff;border:none;padding:6px 10px;border-radius:8px;margin-top:5px}
-.post{display:flex;gap:10px}
-.avatar{width:36px;height:36px;background:#90caf9;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
-.comment{background:#eef;padding:6px;border-radius:8px;margin-top:6px}
-img{width:100%;border-radius:10px;margin-top:6px}
-.hidden{display:none}
-</style>
-</head>
-
 <body>
 
-<div class="header">E-Vedhika</div>
+<h2>E-Vedhika</h2>
 
-<div class="container">
+<button onclick="location.href='profile.html'">Profile</button>
+<button onclick="location.href='admin.html'">Admin</button>
 
-<!-- LOGIN -->
-<div class="card">
-  <div id="loginBox">
-    <input id="email" placeholder="Email">
-    <input id="pass" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <button onclick="register()">Register</button>
-  </div>
+<textarea id="content"></textarea>
+<input type="file" id="img">
+<button onclick="addPost()">Post</button>
 
-  <div id="userBox" class="hidden">
-    <b id="uname"></b>
-    <button onclick="logout()">Logout</button>
-    <button onclick="toggleAdmin()">Admin</button>
-  </div>
-</div>
-
-<!-- SEARCH -->
-<div class="card">
-  <input id="search" placeholder="Search..." onkeyup="render()">
-</div>
-
-<!-- POST -->
-<div class="card">
-  <textarea id="content" placeholder="Write your problem..."></textarea>
-  <input type="file" id="img">
-  <button onclick="addPost()">Post</button>
-</div>
-
-<!-- FEED -->
+<hr>
 <div id="feed"></div>
-
-<!-- ADMIN PANEL -->
-<div id="adminPanel" class="hidden"></div>
-
-</div>
 
 <script type="module">
 
-// 🔥 Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, setDoc } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
+import { auth, db, storage } from "./firebase.js";
+import {
+collection, addDoc, getDocs
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import {
+ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
 
-// ⚠️ REPLACE
-const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_BUCKET"
-};
+let posts=[], user="User";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-let uid="", user={}, posts=[], admin=false;
-
-// AUTH STATE
-auth.onAuthStateChanged(async u=>{
-  if(u){
-    uid=u.uid;
-
-    let snap=await getDocs(collection(db,"users"));
-    snap.forEach(d=>{
-      if(d.id===uid) user=d.data();
-    });
-
-    uname.innerText=user.username;
-
-    loginBox.classList.add("hidden");
-    userBox.classList.remove("hidden");
-  }else{
-    loginBox.classList.remove("hidden");
-    userBox.classList.add("hidden");
-  }
-  load();
-});
-
-// LOGIN
-window.login=async()=>{
-  await signInWithEmailAndPassword(auth,email.value,pass.value);
-};
-
-// REGISTER
-window.register=async()=>{
-  let res=await createUserWithEmailAndPassword(auth,email.value,pass.value);
-
-  let name=prompt("Name");
-  await setDoc(doc(db,"users",res.user.uid),{
-    username:name,
-    role:"user"
-  });
-};
-
-// LOGOUT
-window.logout=()=>signOut(auth);
-
-// LOAD POSTS
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
   posts=[];
@@ -135,14 +33,24 @@ async function load(){
     let x=d.data(); x.id=d.id;
     posts.push(x);
   });
-  render();
+
+  let html="";
+  posts.filter(p=>p.status==="Approved")
+  .forEach(p=>{
+    html+=`
+    <div>
+      <b>${p.username}</b><br>
+      ${p.content}<br>
+      ${p.image ? `<img src="${p.image}" width="200">`:""}
+    </div><hr>`;
+  });
+
+  feed.innerHTML=html;
 }
 
-// ADD POST
-window.addPost=async()=>{
-  if(!uid) return alert("Login first");
-
+window.addPost = async ()=>{
   let imgUrl="";
+
   if(img.files[0]){
     let r=ref(storage,"posts/"+Date.now());
     await uploadBytes(r,img.files[0]);
@@ -152,63 +60,15 @@ window.addPost=async()=>{
   await addDoc(collection(db,"posts"),{
     content:content.value,
     image:imgUrl,
-    username:user.username,
+    username:user,
     status:"Pending"
   });
 
-  content.value="";
   load();
 };
 
-// ADMIN MODE
-window.toggleAdmin=()=>{
-  admin=!admin;
-  render();
-};
-
-// APPROVE
-window.approve=async(id)=>{
-  await updateDoc(doc(db,"posts",id),{status:"Approved"});
-  load();
-};
-
-// RENDER
-function render(){
-  let val=search.value.toLowerCase();
-  let html="", adminHtml="";
-
-  posts.filter(p=>p.content?.toLowerCase().includes(val))
-  .reverse().forEach(p=>{
-
-    if(admin && p.status==="Pending"){
-      adminHtml+=`
-      <div class="card">
-        ${p.content}
-        <button onclick="approve('${p.id}')">Approve</button>
-      </div>`;
-      return;
-    }
-
-    if(p.status!=="Approved") return;
-
-    html+=`
-    <div class="card">
-      <div class="post">
-        <div class="avatar">${(p.username||"U")[0]}</div>
-        <div>
-          <b>${p.username}</b><br>
-          ${p.content}
-          ${p.image ? `<img src="${p.image}">` : ""}
-        </div>
-      </div>
-    </div>`;
-  });
-
-  feed.innerHTML=html;
-  adminPanel.innerHTML=adminHtml;
-}
+load();
 
 </script>
-
 </body>
 </html>
