@@ -1,10 +1,25 @@
 <!DOCTYPE html>
 <html>
+<head>
+<style>
+body{font-family:Arial;background:#eef2f7;margin:0;}
+.header{background:#0077b6;color:white;padding:15px;text-align:center;}
+.container{max-width:800px;margin:auto;padding:15px;}
+.card{background:white;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
+button{margin:5px;padding:6px 10px;border:none;border-radius:5px;background:#0077b6;color:white;}
+input,select{width:100%;padding:8px;margin:5px 0;}
+</style>
+</head>
+
 <body>
 
+<div class="header">
 <h2>🌐 E-Vedhika</h2>
+</div>
 
-<input id="search" placeholder="Search..."><br><br>
+<div class="container">
+
+<input id="search" placeholder="Search">
 
 <select onchange="filterCat(this.value)">
 <option>All</option>
@@ -14,15 +29,11 @@
 <option>House Tax</option>
 </select>
 
-<hr>
-
 <div id="feed"></div>
 
-<hr>
-
 <h3>Create Post</h3>
-<input id="title" placeholder="Title"><br>
-<input id="content" placeholder="Content"><br>
+<input id="title" placeholder="Title">
+<input id="content" placeholder="Content">
 <select id="category">
 <option>EPFO</option>
 <option>Aadhar</option>
@@ -31,10 +42,10 @@
 </select>
 <button onclick="addPost()">Post</button>
 
-<hr>
-
 <h3 id="adminTitle"></h3>
 <div id="adminPanel"></div>
+
+</div>
 
 <script type="module">
 
@@ -44,20 +55,19 @@ collection, addDoc, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 let posts=[];
-let currentUserId="";
+let uid="";
 let role="user";
 let username="";
 
 auth.onAuthStateChanged(async (user)=>{
   if(!user) location.href="login.html";
+  uid=user.uid;
 
-  currentUserId = user.uid;
-
-  let uSnap = await getDocs(collection(db,"users"));
-  uSnap.forEach(d=>{
-    if(d.id === currentUserId){
-      role = d.data().role;
-      username = d.data().username;
+  let snap=await getDocs(collection(db,"users"));
+  snap.forEach(d=>{
+    if(d.id===uid){
+      role=d.data().role;
+      username=d.data().username;
     }
   });
 
@@ -65,60 +75,56 @@ auth.onAuthStateChanged(async (user)=>{
 });
 
 async function load(){
-  let snap = await getDocs(collection(db,"posts"));
+  let snap=await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
     let x=d.data();
     x.id=d.id;
     posts.push(x);
   });
-
-  renderFeed();
-  renderAdmin();
+  render();
+  adminPanelRender();
 }
 
-function renderFeed(){
+function render(){
   let html="";
-
   posts.filter(p=>p.status==="Approved" && p.status!=="Deleted")
   .forEach(p=>{
-
     html+=`
-    <div>
-    <b>${p.title}</b><br>
-    ${p.content}<br>
+    <div class="card">
+    <b>${p.title}</b><br><br>
+    ${p.content}<br><br>
+
     Category: ${p.category}<br>
-    Posted by ${p.username} ${p.role==="admin"?"(Admin)":""}<br>
+    Posted by ${p.username} ${p.role==="admin"?"(Admin)":""}<br><br>
 
     👍 ${p.likes||0}
     <button onclick="like('${p.id}',${p.likes||0})">Like</button>
     `;
 
-    if(p.userId===currentUserId || role==="admin"){
+    if(p.userId===uid || role==="admin"){
       html+=`
       <button onclick="edit('${p.id}')">Edit</button>
       <button onclick="del('${p.id}')">Delete</button>
       `;
     }
 
-    html+="<hr>";
+    html+="</div>";
   });
 
   feed.innerHTML=html;
 }
 
-function renderAdmin(){
-
+function adminPanelRender(){
   if(role!=="admin") return;
 
   adminTitle.innerText="Pending Approval";
 
   let html="";
-
   posts.filter(p=>p.status==="Pending").forEach(p=>{
     html+=`
-    <div>
-    ${p.title} by ${p.username}
+    <div class="card">
+    ${p.title} by ${p.username}<br>
     <button onclick="approve('${p.id}')">Approve</button>
     <button onclick="reject('${p.id}')">Reject</button>
     </div>
@@ -128,14 +134,14 @@ function renderAdmin(){
   adminPanel.innerHTML=html;
 }
 
-window.addPost = async ()=>{
+window.addPost=async ()=>{
   if(!title.value || !content.value) return alert("Fill all");
 
   await addDoc(collection(db,"posts"),{
     title:title.value,
     content:content.value,
     category:category.value,
-    userId:currentUserId,
+    userId:uid,
     username:username,
     role:role,
     likes:0,
@@ -146,19 +152,21 @@ window.addPost = async ()=>{
   load();
 };
 
-window.like = async (id,l)=>{
+window.like=async (id,l)=>{
   await updateDoc(doc(db,"posts",id),{likes:l+1});
   load();
 };
 
-window.del = async (id)=>{
+window.del=async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Deleted"});
   load();
 };
 
-window.edit = async (id)=>{
+window.edit=async (id)=>{
   let t=prompt("New title");
   let c=prompt("New content");
+
+  if(!t || !c) return;
 
   await updateDoc(doc(db,"posts",id),{
     title:t,
@@ -169,26 +177,28 @@ window.edit = async (id)=>{
   load();
 };
 
-window.approve = async (id)=>{
+window.approve=async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
 };
 
-window.reject = async (id)=>{
+window.reject=async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Rejected"});
   load();
 };
 
-window.filterCat = (c)=>{
-  if(c==="All") renderFeed();
-  else feed.innerHTML = posts.filter(p=>p.category===c && p.status==="Approved")
-  .map(p=>p.title).join("<br>");
+window.filterCat=(c)=>{
+  if(c==="All") render();
+  else{
+    feed.innerHTML = posts.filter(p=>p.category===c && p.status==="Approved")
+    .map(p=>"<div class='card'>"+p.title+"</div>").join("");
+  }
 };
 
-search.onkeyup = ()=>{
+search.onkeyup=()=>{
   let v=search.value.toLowerCase();
   feed.innerHTML = posts.filter(p=>p.title.toLowerCase().includes(v) && p.status==="Approved")
-  .map(p=>p.title).join("<br>");
+  .map(p=>"<div class='card'>"+p.title+"</div>").join("");
 };
 
 </script>
