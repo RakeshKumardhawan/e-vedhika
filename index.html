@@ -6,198 +6,143 @@
 
 <style>
 body{margin:0;font-family:Segoe UI;background:#eef4ff}
-
-/* HEADER */
-.header{
-  background:#1e88e5;color:#fff;text-align:center;padding:14px
-}
-.tag{font-size:12px;opacity:.9}
-
-/* GRID */
-.wrap{
-  display:grid;
-  grid-template-columns:1fr 2fr 1fr;
-  gap:12px;
-  padding:12px;
-}
-@media(max-width:768px){
-  .wrap{grid-template-columns:1fr}
-}
-
-/* CARDS */
-.card{
-  background:#fff;border-radius:14px;padding:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,.1);margin-bottom:12px
-}
-.title{font-weight:600;margin-bottom:6px}
-
-/* POST BOX */
-textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #ccc}
-button{background:#1e88e5;color:#fff;border:none;padding:6px 10px;border-radius:8px;margin-top:6px}
-
-/* FEED */
-.post{display:flex;gap:10px;border-top:1px solid #eee;padding-top:10px;margin-top:10px}
-.avatar{
-  width:36px;height:36px;border-radius:50%;background:#90caf9;
-  display:flex;align-items:center;justify-content:center;color:#fff
-}
+.header{background:#1e88e5;color:#fff;text-align:center;padding:14px}
+.container{max-width:700px;margin:auto;padding:10px}
+.card{background:#fff;border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+input,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-top:5px}
+button{background:#1e88e5;color:#fff;border:none;padding:6px 10px;border-radius:8px;margin-top:5px}
+.post{display:flex;gap:10px}
+.avatar{width:36px;height:36px;background:#90caf9;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
 .comment{background:#eef;padding:6px;border-radius:8px;margin-top:6px}
 img{width:100%;border-radius:10px;margin-top:6px}
-
-/* CHAT BOT (BOTTOM RIGHT FLOAT) */
-.chatbot{
-  position:fixed;right:10px;bottom:10px;background:#1e88e5;
-  color:#fff;padding:10px;border-radius:20px
-}
+.hidden{display:none}
 </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <h3>E-Vedhika</h3>
-  <div class="tag">All problem solution at one place</div>
+<div class="header">E-Vedhika</div>
+
+<div class="container">
+
+<!-- LOGIN -->
+<div class="card">
+  <div id="loginBox">
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+  </div>
+
+  <div id="userBox" class="hidden">
+    <b id="uname"></b>
+    <button onclick="logout()">Logout</button>
+    <button onclick="toggleAdmin()">Admin</button>
+  </div>
 </div>
 
-<div class="wrap">
-
-  <!-- LEFT -->
-  <div>
-    <div class="card">
-      <div class="title">✔ Approved Suggestions</div>
-      <div id="approved"></div>
-    </div>
-
-    <div class="card">
-      <div class="title">📌 Post Problems & Solutions</div>
-      <small>Create & answer problems in center feed</small>
-    </div>
-
-    <div class="card">
-      <div class="title">📘 How to Fix Errors</div>
-      <div id="fixBox">Login to see full data…</div>
-    </div>
-
-    <div class="card">
-      <div class="title">🌐 Website Translator</div>
-      <small>Coming soon</small>
-    </div>
-  </div>
-
-  <!-- CENTER -->
-  <div>
-
-    <div class="card">
-      <div class="title">New Post</div>
-      <textarea id="content" placeholder="Write your problem..."></textarea>
-      <input type="file" id="img">
-      <button onclick="addPost()">Post</button>
-    </div>
-
-    <div id="feed"></div>
-
-  </div>
-
-  <!-- RIGHT -->
-  <div>
-
-    <div class="card">
-      <div class="title">👤 Login / Signup</div>
-      <button onclick="goLogin()">Open</button>
-    </div>
-
-    <div class="card">
-      <div class="title">📢 Union Updates</div>
-      <div id="union"></div>
-    </div>
-
-    <div class="card">
-      <div class="title">💬 Discuss / Comment</div>
-      <small>Comment inside posts</small>
-    </div>
-
-  </div>
-
+<!-- SEARCH -->
+<div class="card">
+  <input id="search" placeholder="Search..." onkeyup="render()">
 </div>
 
-<!-- AI CHAT BOT -->
-<div class="chatbot">AI Bot</div>
+<!-- POST -->
+<div class="card">
+  <textarea id="content" placeholder="Write your problem..."></textarea>
+  <input type="file" id="img">
+  <button onclick="addPost()">Post</button>
+</div>
+
+<!-- FEED -->
+<div id="feed"></div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="hidden"></div>
+
+</div>
 
 <script type="module">
 
-import { auth, db, storage } from "./firebase.js";
-import {
-collection, addDoc, getDocs
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-import {
-ref, uploadBytes, getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
+// 🔥 Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, setDoc } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
 
-let posts=[];
+// ⚠️ REPLACE
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_BUCKET"
+};
 
-// LOAD
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+let uid="", user={}, posts=[], admin=false;
+
+// AUTH STATE
+auth.onAuthStateChanged(async u=>{
+  if(u){
+    uid=u.uid;
+
+    let snap=await getDocs(collection(db,"users"));
+    snap.forEach(d=>{
+      if(d.id===uid) user=d.data();
+    });
+
+    uname.innerText=user.username;
+
+    loginBox.classList.add("hidden");
+    userBox.classList.remove("hidden");
+  }else{
+    loginBox.classList.remove("hidden");
+    userBox.classList.add("hidden");
+  }
+  load();
+});
+
+// LOGIN
+window.login=async()=>{
+  await signInWithEmailAndPassword(auth,email.value,pass.value);
+};
+
+// REGISTER
+window.register=async()=>{
+  let res=await createUserWithEmailAndPassword(auth,email.value,pass.value);
+
+  let name=prompt("Name");
+  await setDoc(doc(db,"users",res.user.uid),{
+    username:name,
+    role:"user"
+  });
+};
+
+// LOGOUT
+window.logout=()=>signOut(auth);
+
+// LOAD POSTS
 async function load(){
   let snap=await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
-    let x=d.data();x.id=d.id;
+    let x=d.data(); x.id=d.id;
     posts.push(x);
   });
   render();
 }
 
-// RENDER
-function render(){
-  let html="";
-  let approvedHTML="";
-
-  posts.forEach(p=>{
-
-    if(p.type==="suggestion" && p.status==="Approved"){
-      approvedHTML+=`<div>• ${p.content}</div>`;
-    }
-
-    if(p.parentId) return;
-
-    html+=`
-    <div class="card">
-
-      <div class="post">
-        <div class="avatar">${(p.username||"U")[0]}</div>
-
-        <div>
-          <b>${p.username||"User"}</b><br>
-          ${p.content}
-
-          ${p.image ? `<img src="${p.image}">` : ""}
-
-          <div>
-            <button onclick="showBox('${p.id}')">💬 Comment</button>
-          </div>
-
-          <div id="box-${p.id}" style="display:none">
-            <input id="c-${p.id}">
-            <button onclick="addComment('${p.id}')">Send</button>
-          </div>
-    `;
-
-    posts.filter(c=>c.parentId===p.id)
-    .forEach(c=>{
-      html+=`<div class="comment">${c.content}</div>`;
-    });
-
-    html+=`</div></div></div>`;
-  });
-
-  document.getElementById("feed").innerHTML=html;
-  document.getElementById("approved").innerHTML=approvedHTML;
-}
-
 // ADD POST
-window.addPost = async ()=>{
-  let imgUrl="";
+window.addPost=async()=>{
+  if(!uid) return alert("Login first");
 
+  let imgUrl="";
   if(img.files[0]){
     let r=ref(storage,"posts/"+Date.now());
     await uploadBytes(r,img.files[0]);
@@ -207,37 +152,61 @@ window.addPost = async ()=>{
   await addDoc(collection(db,"posts"),{
     content:content.value,
     image:imgUrl,
-    username:"User",
-    status:"Approved",
-    type:"problem"
+    username:user.username,
+    status:"Pending"
   });
 
   content.value="";
   load();
 };
 
-// COMMENT
-window.showBox=id=>{
-  document.getElementById("box-"+id).style.display="block";
+// ADMIN MODE
+window.toggleAdmin=()=>{
+  admin=!admin;
+  render();
 };
 
-window.addComment=async(id)=>{
-  let txt=document.getElementById("c-"+id).value;
-
-  await addDoc(collection(db,"posts"),{
-    content:txt,
-    parentId:id,
-    username:"User",
-    status:"Approved"
-  });
-
+// APPROVE
+window.approve=async(id)=>{
+  await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
 };
 
-// LOGIN NAV
-window.goLogin=()=>location.href="login.html";
+// RENDER
+function render(){
+  let val=search.value.toLowerCase();
+  let html="", adminHtml="";
 
-load();
+  posts.filter(p=>p.content?.toLowerCase().includes(val))
+  .reverse().forEach(p=>{
+
+    if(admin && p.status==="Pending"){
+      adminHtml+=`
+      <div class="card">
+        ${p.content}
+        <button onclick="approve('${p.id}')">Approve</button>
+      </div>`;
+      return;
+    }
+
+    if(p.status!=="Approved") return;
+
+    html+=`
+    <div class="card">
+      <div class="post">
+        <div class="avatar">${(p.username||"U")[0]}</div>
+        <div>
+          <b>${p.username}</b><br>
+          ${p.content}
+          ${p.image ? `<img src="${p.image}">` : ""}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  feed.innerHTML=html;
+  adminPanel.innerHTML=adminHtml;
+}
 
 </script>
 
