@@ -1,29 +1,224 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="UTF-8">
+<title>Problems & Solutions</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+
+<style>
+body{
+  font-family:'Poppins',sans-serif;
+  background:linear-gradient(120deg,#89f7fe,#66a6ff);
+  margin:0;
+}
+
+/* HEADER */
+.header{
+  background:#0077b6;
+  color:white;
+  text-align:center;
+  padding:20px;
+}
+
+/* CONTAINER */
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:15px;
+}
+
+/* GLASS BOX */
+.box{
+  background:rgba(255,255,255,0.3);
+  backdrop-filter:blur(15px);
+  padding:15px;
+  border-radius:15px;
+  margin-bottom:20px;
+}
+
+/* INPUT */
+input, textarea{
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border-radius:8px;
+  border:none;
+}
+
+/* BUTTON */
+button{
+  background:#ff6b6b;
+  color:white;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+/* PROBLEM */
+.problem{
+  background:white;
+  padding:15px;
+  margin:10px 0;
+  border-radius:10px;
+}
+
+/* REPLY */
+.reply{
+  background:#e3f2fd;
+  padding:8px;
+  margin:5px 0;
+  border-radius:8px;
+  margin-left:20px;
+  font-size:13px;
+}
+
+/* TITLE */
+.title{
+  font-weight:bold;
+  font-size:16px;
+}
+
+.date{
+  font-size:12px;
+  color:gray;
+}
+</style>
+</head>
+
 <body>
 
-<button onclick="history.back()">⬅ Back</button>
-<h2>Problems</h2>
-<div id="data"></div>
+<div class="header">
+  <h2>📌 Problems & Solutions</h2>
+</div>
+
+<div class="container">
+
+<!-- POST BOX -->
+<div class="box">
+  <h3>Post a Problem</h3>
+  <input id="title" placeholder="Problem Title">
+  <textarea id="content" placeholder="Describe your problem"></textarea>
+  <button onclick="addProblem()">Submit</button>
+</div>
+
+<!-- PROBLEMS LIST -->
+<div id="problems"></div>
+
+</div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
+  apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
+  authDomain:"e-vedhika-258f2.firebaseapp.com",
+  projectId:"e-vedhika-258f2"
 });
+
 const db = getFirestore(app);
 
-let qs = await getDocs(collection(db,"posts"));
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType!=="admin" && x.status==="Approved"){
-data.innerHTML += `<div><b>${x.title}</b><br>${x.content}</div>`;
+/* ADD PROBLEM */
+window.addProblem = async ()=>{
+  let t = title.value;
+  let c = content.value;
+
+  if(!t || !c){
+    alert("Fill all fields");
+    return;
+  }
+
+  await addDoc(collection(db,"problems"),{
+    title:t,
+    content:c,
+    createdAt:serverTimestamp()
+  });
+
+  title.value="";
+  content.value="";
+  loadProblems();
+};
+
+/* LOAD PROBLEMS */
+async function loadProblems(){
+  let qs = await getDocs(collection(db,"problems"));
+  let arr=[];
+
+  qs.forEach(d=>{
+    arr.push({id:d.id,...d.data()});
+  });
+
+  arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+  displayProblems(arr);
 }
-});
+
+/* DISPLAY */
+async function displayProblems(arr){
+  let box = document.getElementById("problems");
+  box.innerHTML="";
+
+  for(let d of arr){
+
+    let html = `
+    <div class="problem">
+      <div class="title">${d.title}</div>
+      <div>${d.content}</div>
+      <div class="date">${formatDate(d)}</div>
+
+      <input id="r_${d.id}" placeholder="Write reply...">
+      <button onclick="addReply('${d.id}')">Reply</button>
+
+      <div id="rep_${d.id}"></div>
+    </div>
+    `;
+
+    box.innerHTML += html;
+
+    /* LOAD REPLIES */
+    let rqs = await getDocs(collection(db,"problems",d.id,"replies"));
+
+    rqs.forEach(r=>{
+      let x = r.data();
+
+      document.getElementById("rep_"+d.id).innerHTML += `
+      <div class="reply">${x.message}</div>
+      `;
+    });
+  }
+}
+
+/* ADD REPLY */
+window.addReply = async(id)=>{
+  let msg = document.getElementById("r_"+id).value;
+
+  if(!msg){
+    alert("Enter reply");
+    return;
+  }
+
+  await addDoc(collection(db,"problems",id,"replies"),{
+    message:msg,
+    createdAt:serverTimestamp()
+  });
+
+  loadProblems();
+};
+
+/* DATE */
+function formatDate(d){
+  if(d.createdAt?.seconds){
+    let dt = new Date(d.createdAt.seconds*1000);
+    return dt.toLocaleString('en-IN',{hour12:true});
+  }
+  return "";
+}
+
+loadProblems();
+
 </script>
 
 </body>
