@@ -4,54 +4,30 @@
 <meta charset="UTF-8">
 <title>E-Vedhika</title>
 
-<style>
+<link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
 
-/* BACKGROUND */
+<style>
 body{
   margin:0;
-  font-family:'Segoe UI',sans-serif;
+  font-family:'Poppins',sans-serif;
   background:linear-gradient(120deg,#89f7fe,#66a6ff);
-  overflow-x:hidden;
-}
-
-/* FLOATING BUBBLES */
-body::before{
-  content:"";
-  position:fixed;
-  width:200%;
-  height:200%;
-  background:radial-gradient(circle,rgba(255,255,255,0.2) 10%,transparent 10%);
-  background-size:80px 80px;
-  animation:move 20s linear infinite;
-}
-@keyframes move{
-  from{transform:translateY(0);}
-  to{transform:translateY(-200px);}
 }
 
 /* HEADER */
 .header{
   text-align:center;
-  padding:20px;
+  padding:25px;
   color:white;
+  backdrop-filter: blur(10px);
 }
 
-.logo{
+.header h1{
+  margin:0;
   font-size:28px;
-  font-weight:bold;
-  letter-spacing:1px;
 }
 
-.tag{
-  font-size:14px;
-}
-
-/* GLASS EFFECT */
-.glass{
-  background:rgba(255,255,255,0.2);
-  backdrop-filter:blur(10px);
-  border-radius:15px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.2);
+.header p{
+  opacity:0.9;
 }
 
 /* LAYOUT */
@@ -62,61 +38,49 @@ body::before{
   padding:15px;
 }
 
+/* GLASS */
+.glass{
+  background:rgba(255,255,255,0.2);
+  backdrop-filter: blur(15px);
+  border-radius:15px;
+  padding:12px;
+  box-shadow:0 8px 25px rgba(0,0,0,0.2);
+}
+
 /* SIDEBAR */
-.sidebar{
+.sidebar div{
+  background:rgba(255,255,255,0.3);
   padding:10px;
+  margin:10px 0;
+  border-radius:10px;
+  cursor:pointer;
+  transition:0.3s;
+}
+.sidebar div:hover{
+  transform:scale(1.05);
 }
 
-.sidebar h4{
-  text-align:center;
-}
-
-/* SMALL SCROLL */
+/* SCROLL */
 .scroll-box{
   height:120px;
   overflow:hidden;
-  padding:5px;
 }
 
 .scroll-item{
-  background:rgba(255,255,255,0.6);
+  background:white;
   padding:6px;
   margin:5px 0;
   border-radius:8px;
   font-size:12px;
 }
 
-/* BUTTON ITEMS */
-.side-btn{
-  padding:10px;
-  margin:8px 0;
-  background:rgba(255,255,255,0.4);
-  border-radius:10px;
-  cursor:pointer;
-  transition:0.3s;
-}
-.side-btn:hover{
-  transform:scale(1.05);
-  background:white;
-}
-
 /* MAIN */
-.main{
-  padding:15px;
-}
-
-/* NEW POST HIGHLIGHT */
 .post-box{
-  background:linear-gradient(135deg,#ffffff,#e3f2fd);
+  background:white;
   padding:15px;
-  border-radius:15px;
+  border-radius:12px;
   box-shadow:0 5px 20px rgba(0,0,0,0.2);
-  animation:fade 1s ease;
-}
-
-@keyframes fade{
-  from{opacity:0;transform:translateY(20px);}
-  to{opacity:1;}
+  animation:fadeIn 1s;
 }
 
 .post-box input,.post-box textarea{
@@ -127,101 +91,96 @@ body::before{
   border:none;
 }
 
+/* BUTTON */
 button{
-  background:#0077b6;
+  background:#ff6b6b;
   color:white;
   padding:10px;
   border:none;
   border-radius:8px;
   cursor:pointer;
+  transition:0.3s;
 }
 button:hover{
-  background:#023e8a;
+  background:#ff3b3b;
 }
 
 /* POSTS */
 .post{
-  background:rgba(255,255,255,0.7);
-  padding:12px;
+  background:white;
   margin:10px 0;
+  padding:15px;
   border-radius:12px;
-  animation:fade 0.5s;
+  animation:fadeIn 0.5s;
 }
 
 /* RIGHT */
-.right{
-  padding:10px;
-}
-
 .box{
-  background:rgba(255,255,255,0.5);
+  background:rgba(255,255,255,0.3);
   padding:10px;
   margin:10px 0;
   border-radius:10px;
   cursor:pointer;
 }
 
-/* CHATBOT */
+/* CHAT */
 .chatbot{
   position:fixed;
-  bottom:80px;
+  bottom:20px;
   right:20px;
-  background:#0077b6;
+  background:#ff6b6b;
   color:white;
-  padding:12px 18px;
-  border-radius:30px;
+  padding:12px;
+  border-radius:50px;
   cursor:pointer;
+  animation:bounce 2s infinite;
 }
 
-/* GOOGLE TRANSLATE */
-.translate{
-  position:fixed;
-  bottom:20px;
-  left:20px;
-  background:white;
-  padding:5px;
-  border-radius:10px;
+/* ANIMATIONS */
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;}
+}
+
+@keyframes bounce{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-10px);}
 }
 
 /* MOBILE */
 @media(max-width:800px){
-  .container{
-    grid-template-columns:1fr;
-  }
+  .container{grid-template-columns:1fr;}
 }
-
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <div class="logo">🇮🇳 E-Vedhika</div>
-  <div class="tag">All problem solutions at one place</div>
+  <h1>🌐 E-Vedhika</h1>
+  <p>All problem solutions at one place</p>
 </div>
 
 <div class="container">
 
 <!-- LEFT -->
-<div class="sidebar glass">
+<div class="glass sidebar">
+  <h4>✔ Approved Suggestions</h4>
+  <div id="approvedBox" class="scroll-box"></div>
 
-<h4>✔ Approved Suggestions</h4>
-<div id="approvedBox" class="scroll-box"></div>
-
-<div class="side-btn">📌 Problems</div>
-<div class="side-btn">🛠 Fix Errors</div>
-
+  <div>📌 Problems</div>
+  <div>🛠 Fix Errors</div>
 </div>
 
 <!-- CENTER -->
-<div class="main glass">
+<div class="glass">
 
 <h3>✨ New Post</h3>
 
 <div class="post-box">
-<input id="title" placeholder="Title">
-<textarea id="content" placeholder="Write something..."></textarea>
-<button onclick="addPost()">Post</button>
+  <input id="title" placeholder="Title">
+  <textarea id="content" placeholder="Write something..."></textarea>
+  <button onclick="addPost()">🚀 Post</button>
 </div>
 
 <h3>📊 Recent Posts</h3>
@@ -230,34 +189,44 @@ button:hover{
 </div>
 
 <!-- RIGHT -->
-<div class="right glass">
-<div class="box">🔐 Login / Signup</div>
-<div class="box">📢 Union Updates</div>
+<div class="glass">
+<div class="box" onclick="openLogin()">🔐 Login</div>
+<div class="box">📢 Updates</div>
 <div class="box">💬 Chat</div>
 </div>
 
 </div>
 
-<!-- CHATBOT -->
-<div class="chatbot">🤖 AI Chat</div>
+<!-- LOGIN -->
+<div id="loginBox" style="display:none;position:fixed;top:30%;left:40%;background:white;padding:20px;border-radius:10px;">
+<input placeholder="Email"><br><br>
+<input placeholder="Password"><br><br>
+<button onclick="closeLogin()">Close</button>
+</div>
 
-<!-- TRANSLATE -->
-<div class="translate">
-  <div id="google_translate_element"></div>
+<!-- CHATBOT -->
+<div class="chatbot">🤖</div>
+
+<!-- GOOGLE TRANSLATE -->
+<div style="position:fixed;bottom:10px;left:10px;">
+<div id="google_translate_element"></div>
 </div>
 
 <script>
+function openLogin(){loginBox.style.display="block";}
+function closeLogin(){loginBox.style.display="none";}
+
 function googleTranslateElementInit(){
 new google.translate.TranslateElement(
-{pageLanguage:'en',includedLanguages:'en,te,hi'},
-'google_translate_element');
+{pageLanguage:'en',includedLanguages:'en,hi,te'},
+'google_translate_element'
+);
 }
 </script>
 <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <!-- FIREBASE -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
@@ -274,41 +243,38 @@ window.addPost=async()=>{
 let t=title.value;
 let c=content.value;
 
-if(t==""||c==""){alert("Fill all");return;}
+if(!t||!c){alert("Fill all");return;}
 
 await addDoc(collection(db,"posts"),{
-title:t,content:c,status:"Approved",userType:"public",
+title:t,content:c,status:"Approved",
 createdAt:serverTimestamp()
 });
 
-title.value="";content.value="";
+title.value="";
+content.value="";
 loadPosts();
 };
 
 async function loadPosts(){
 let qs=await getDocs(collection(db,"posts"));
 let arr=[];
-qs.forEach(d=>{
-let x=d.data();
-if(x.status==="Approved") arr.push(x);
-});
+qs.forEach(d=>{let x=d.data();if(x.status==="Approved")arr.push(x);});
 arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
 posts.innerHTML="";
 arr.forEach(d=>{
-posts.innerHTML+=`<div class="post"><h4>${d.title}</h4><p>${d.content}</p></div>`;
+posts.innerHTML+=`<div class="post"><b>${d.title}</b><p>${d.content}</p></div>`;
 });
 }
 
-/* APPROVED SCROLL */
+/* APPROVED SUGGESTIONS */
 async function loadApproved(){
 let qs=await getDocs(collection(db,"suggestions"));
 let arr=[];
 qs.forEach(d=>{
 let x=d.data();
-if(x.status==="Accepted"||x.status==="Approved") arr.push(x);
+if(x.status==="Accepted"||x.status==="Approved"){arr.push(x);}
 });
-arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
 approvedBox.innerHTML="";
 arr.forEach(d=>{
@@ -325,7 +291,6 @@ if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight){pos=0;}
 
 loadPosts();
 loadApproved();
-
 </script>
 
 </body>
