@@ -4,40 +4,12 @@
 <meta charset="UTF-8">
 <title>E-Vedhika</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
-
 <style>
-body{
-  margin:0;
-  font-family:'Poppins',sans-serif;
-  background:linear-gradient(120deg,#89f7fe,#66a6ff);
-}
-
-.container{
-  display:grid;
-  grid-template-columns:220px 1fr 280px;
-  gap:15px;
-  padding:15px;
-}
-
-.glass{
-  background:rgba(255,255,255,0.3);
-  backdrop-filter: blur(15px);
-  border-radius:15px;
-  padding:15px;
-}
-
-.post{
-  background:white;
-  margin:10px 0;
-  padding:10px;
-  border-radius:10px;
-}
-
-.scroll-box{
-  height:120px;
-  overflow:hidden;
-}
+body{margin:0;font-family:Arial;background:linear-gradient(#89f7fe,#66a6ff);}
+.container{display:grid;grid-template-columns:220px 1fr 280px;gap:10px;padding:10px;}
+.glass{background:rgba(255,255,255,0.3);padding:10px;border-radius:10px;}
+.post{background:white;margin:5px;padding:8px;border-radius:8px;}
+.scroll-box{height:120px;overflow:hidden;}
 </style>
 </head>
 
@@ -61,45 +33,42 @@ body{
 
 <!-- CENTER -->
 <div class="glass">
-
 <h3>New Post</h3>
-
 <input id="title" placeholder="Title">
 <textarea id="content" placeholder="Write"></textarea>
 <button onclick="addPost()">Post</button>
-
 <div id="posts"></div>
-
 </div>
 
 <!-- RIGHT -->
 <div class="glass">
-
 <h3>Login</h3>
-
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
+<input id="email">
+<input id="password" type="password">
 <button onclick="login()">Login</button>
 
 <hr>
 
 <h3>Chat</h3>
 <div id="chatMessages" style="height:200px;overflow:auto;"></div>
-<input id="chatInput" placeholder="Type message">
+<input id="chatInput">
 <button onclick="sendMsg()">Send</button>
-
 </div>
 
 </div>
 
 <script type="module">
 
+/* 🔥 SINGLE IMPORT (NO DUPLICATES) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc, getDocs, updateDoc, doc, serverTimestamp, onSnapshot 
+  getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { 
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
+/* INIT */
 const app = initializeApp({
   apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
   authDomain:"e-vedhika-258f2.firebaseapp.com",
@@ -108,6 +77,31 @@ const app = initializeApp({
 
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+/* ROLE SYSTEM */
+let USER_ROLE="user";
+
+onAuthStateChanged(auth, async(user)=>{
+  if(user){
+    let qs = await getDocs(collection(db,"users"));
+    qs.forEach(d=>{
+      let x=d.data();
+      if(x.email===user.email){
+        USER_ROLE=x.role;
+      }
+    });
+  }
+});
+
+/* LOGIN */
+window.login = async ()=>{
+  try{
+    await signInWithEmailAndPassword(auth,email.value,password.value);
+    alert("Login success");
+  }catch{
+    alert("Login failed");
+  }
+};
 
 /* POSTS */
 window.addPost = async ()=>{
@@ -127,193 +121,6 @@ window.addPost = async ()=>{
   content.value="";
   loadPosts();
 };
-  /* =========================
-   🔥 ROLE SYSTEM (FINAL)
-========================= */
-
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { deleteDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-const auth = getAuth(app);
-
-let USER_ROLE = "user";
-
-/* GET USER ROLE */
-onAuthStateChanged(auth, async(user)=>{
-  if(user){
-    let qs = await getDocs(collection(db,"users"));
-    qs.forEach(d=>{
-      let x=d.data();
-      if(x.email === user.email){
-        USER_ROLE = x.role;
-        console.log("ROLE:", USER_ROLE);
-      }
-    });
-  }
-});
-
-
-/* =========================
-   🔥 ADMIN CONTROL - POSTS
-========================= */
-
-const oldAddPost = window.addPost;
-
-window.addPost = async function(){
-
-  if(!auth.currentUser){
-    alert("Login required");
-    return;
-  }
-
-  /* ADMIN POST */
-  let type = USER_ROLE === "admin" ? "admin" : "public";
-
-  await addDoc(collection(db,"posts"),{
-    title:title.value,
-    content:content.value,
-    status:"Approved",
-    userType:type,
-    createdAt:serverTimestamp()
-  });
-
-  title.value="";
-  content.value="";
-  loadPosts();
-};
-
-
-/* =========================
-   🔥 ADMIN CONTROL - PROBLEMS
-========================= */
-
-window.deleteProblem = async(id)=>{
-
-  if(USER_ROLE !== "admin"){
-    alert("Admin only");
-    return;
-  }
-
-  if(!confirm("Delete this problem?")) return;
-
-  await deleteDoc(doc(db,"problems",id));
-  loadProblems();
-};
-
-
-/* =========================
-   🔥 MODIFY DISPLAY (ADMIN BUTTONS)
-========================= */
-
-const oldDisplay = displayProblems;
-
-displayProblems = async function(arr){
-
-  let box = document.getElementById("problemsBox");
-  let solvedBox = document.getElementById("solvedBox");
-
-  box.innerHTML="";
-  solvedBox.innerHTML="";
-
-  for(let d of arr){
-
-    let controls = `
-    <input id="r_${d.id}" placeholder="Reply">
-    <button onclick="addReply('${d.id}')">Reply</button>
-    `;
-
-    /* ADMIN EXTRA */
-    if(USER_ROLE === "admin"){
-      controls += `
-      <button onclick="markSolved('${d.id}')">Solved</button>
-      <button onclick="deleteProblem('${d.id}')">Delete</button>
-      `;
-    }
-
-    let html = `
-    <div class="post">
-    <b>${d.title}</b><br>
-    ${d.content}<br>
-    ${controls}
-    <div id="rep_${d.id}"></div>
-    </div>
-    `;
-
-    if(d.status==="Solved"){
-      solvedBox.innerHTML += html;
-    }else{
-      box.innerHTML += html;
-    }
-
-    let rqs = await getDocs(collection(db,"problems",d.id,"replies"));
-    rqs.forEach(r=>{
-      let x=r.data();
-      document.getElementById("rep_"+d.id).innerHTML+=`
-      <div>${x.message}</div>`;
-    });
-  }
-};
-
-
-/* =========================
-   🔥 CHAT ADMIN DELETE
-========================= */
-
-window.deleteChat = async(id)=>{
-  if(USER_ROLE !== "admin"){
-    alert("Admin only");
-    return;
-  }
-
-  await deleteDoc(doc(db,"chat",id));
-};
-
-
-/* MODIFY CHAT DISPLAY */
-const oldLoadChat = loadChat;
-
-loadChat = function(){
-
-  const chatBox = document.getElementById("chatMessages");
-
-  onSnapshot(collection(db,"chat"),(snap)=>{
-
-    let arr=[];
-    snap.forEach(doc=>{
-      arr.push({id:doc.id,...doc.data()});
-    });
-
-    arr.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
-
-    chatBox.innerHTML="";
-
-    arr.forEach(d=>{
-
-      let html = `<div>${d.message}`;
-
-      if(USER_ROLE==="admin"){
-        html += ` <button onclick="deleteChat('${d.id}')">❌</button>`;
-      }
-
-      html += `</div>`;
-
-      chatBox.innerHTML += html;
-    });
-
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-  });
-};
-
-
-/* =========================
-   🔥 RELOAD AFTER ROLE
-========================= */
-
-setTimeout(()=>{
-  loadProblems();
-  loadChat();
-},1000);
 
 async function loadPosts(){
   let qs=await getDocs(collection(db,"posts"));
@@ -327,35 +134,42 @@ async function loadPosts(){
 
   posts.innerHTML="";
   arr.forEach(d=>{
-    posts.innerHTML+=`<div class="post"><b>${d.title}</b><p>${d.content}</p></div>`;
+    posts.innerHTML+=`<div class="post">${d.title}<br>${d.content}</div>`;
   });
 }
 
-/* APPROVED */
+/* 🔥 APPROVED SUGGESTIONS + AUTO SCROLL */
 async function loadApproved(){
+
   let qs=await getDocs(collection(db,"suggestions"));
   let arr=[];
 
   qs.forEach(d=>{
     let x=d.data();
-    if(x.status==="Accepted"||x.status==="Approved") arr.push(x);
+    if(x.status==="Accepted"||x.status==="Approved"){
+      arr.push(x);
+    }
   });
 
   approvedBox.innerHTML="";
   arr.forEach(d=>{
-    approvedBox.innerHTML+=`<div class="post">${d.name}: ${d.suggestion}</div>`;
+    approvedBox.innerHTML+=`<div class="post">${d.suggestion}</div>`;
   });
 
   let pos=0;
   setInterval(()=>{
     pos++;
     approvedBox.scrollTop=pos;
-    if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
-  },50);
+
+    if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight){
+      pos=0;
+    }
+  },40);
 }
 
-/* PROBLEMS */
+/* PROBLEMS (NO ADMIN BUTTONS) */
 async function loadProblems(){
+
   let qs=await getDocs(collection(db,"problems"));
   let arr=[];
   qs.forEach(d=>arr.push({id:d.id,...d.data()}));
@@ -369,27 +183,36 @@ async function loadProblems(){
 
     let html=`
     <div class="post">
-    <b>${d.title}</b><br>${d.content}<br>
-    <input id="r_${d.id}">
-    <button onclick="addReply('${d.id}')">Reply</button>
-    <button onclick="markSolved('${d.id}')">Solved</button>
-    <div id="rep_${d.id}"></div>
+      <b>${d.title}</b><br>
+      ${d.content}<br>
+
+      <input id="r_${d.id}">
+      <button onclick="addReply('${d.id}')">Reply</button>
+
+      <div id="rep_${d.id}"></div>
     </div>`;
 
-    if(d.status==="Solved") solvedBox.innerHTML+=html;
-    else problemsBox.innerHTML+=html;
+    if(d.status==="Solved"){
+      solvedBox.innerHTML+=html;
+    }else{
+      problemsBox.innerHTML+=html;
+    }
 
     let rqs=await getDocs(collection(db,"problems",d.id,"replies"));
     rqs.forEach(r=>{
-      let x=r.data();
-      document.getElementById("rep_"+d.id).innerHTML+=`<div>${x.message}</div>`;
+      document.getElementById("rep_"+d.id).innerHTML+=`<div>${r.data().message}</div>`;
     });
   }
 }
 
+/* REPLY */
 window.addReply = async(id)=>{
   let msg=document.getElementById("r_"+id).value;
-  if(!msg) return;
+
+  if(!msg){
+    alert("Enter reply");
+    return;
+  }
 
   await addDoc(collection(db,"problems",id,"replies"),{
     message:msg,
@@ -399,15 +222,9 @@ window.addReply = async(id)=>{
   loadProblems();
 };
 
-window.markSolved = async(id)=>{
-  await updateDoc(doc(db,"problems",id),{status:"Solved"});
-  loadProblems();
-};
-
-/* CHAT (FIXED) */
+/* CHAT */
 window.sendMsg = async ()=>{
-  let input = document.getElementById("chatInput");
-  let msg = input.value;
+  let msg=chatInput.value;
 
   if(!msg){
     alert("Enter message");
@@ -419,37 +236,24 @@ window.sendMsg = async ()=>{
     createdAt:serverTimestamp()
   });
 
-  input.value="";
+  chatInput.value="";
 };
 
 function loadChat(){
-  const chatBox = document.getElementById("chatMessages");
-
-  onSnapshot(collection(db,"chat"),(snapshot)=>{
-
+  onSnapshot(collection(db,"chat"),(snap)=>{
     let arr=[];
-    snapshot.forEach(doc=>{
-      arr.push(doc.data());
-    });
+    snap.forEach(d=>arr.push(d.data()));
 
     arr.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
 
-    chatBox.innerHTML="";
-
+    chatMessages.innerHTML="";
     arr.forEach(d=>{
-      chatBox.innerHTML+=`
-      <div style="background:#eee;padding:5px;margin:5px;border-radius:5px;">
-      ${d.message}
-      </div>`;
+      chatMessages.innerHTML+=`<div>${d.message}</div>`;
     });
 
-    chatBox.scrollTop=chatBox.scrollHeight;
-
+    chatMessages.scrollTop=chatMessages.scrollHeight;
   });
 }
-
-/* LOGIN (basic placeholder) */
-window.login=()=>alert("Use Firebase Auth");
 
 /* INIT */
 loadPosts();
