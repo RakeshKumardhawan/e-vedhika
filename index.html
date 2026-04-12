@@ -1,219 +1,104 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>E-Vedhika</title>
-
-<style>
-*{box-sizing:border-box;}
-body{margin:0;font-family:'Segoe UI',sans-serif;background:linear-gradient(120deg,#74ebd5,#9face6);overflow:hidden;}
-
-.bubbles{position:fixed;width:100%;height:100%;z-index:0;}
-.bubbles span{position:absolute;bottom:-100px;width:25px;height:25px;background:rgba(255,255,255,0.3);border-radius:50%;animation:bubble 20s linear infinite;}
-.bubbles span:nth-child(1){left:10%}
-.bubbles span:nth-child(2){left:30%}
-.bubbles span:nth-child(3){left:50%}
-.bubbles span:nth-child(4){left:70%}
-.bubbles span:nth-child(5){left:90%}
-
-@keyframes bubble{
-0%{transform:translateY(0)}
-100%{transform:translateY(-110vh)}
-}
-
-.container{
-display:grid;
-grid-template-columns:250px 1fr 320px;
-gap:20px;
-padding:20px;
-height:calc(100vh - 60px);
-position:relative;
-z-index:2;
-}
-
-.glass{
-background:rgba(255,255,255,0.2);
-backdrop-filter:blur(20px);
-border-radius:20px;
-padding:15px;
-}
-
-input,textarea{
-width:100%;
-padding:10px;
-margin:5px 0;
-border-radius:10px;
-border:none;
-}
-
-button{
-padding:8px 12px;
-border:none;
-background:#0072ff;
-color:white;
-border-radius:10px;
-cursor:pointer;
-}
-
-.post{
-background:white;
-margin:5px 0;
-padding:8px;
-border-radius:10px;
-}
-
-.scroll-box{
-height:120px;
-overflow:hidden;
-}
-
-.small-box{
-max-height:120px;
-overflow:auto;
-background:rgba(255,255,255,0.3);
-padding:5px;
-border-radius:10px;
-}
-
-#signupPopup{
-display:none;
-position:fixed;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-background:white;
-padding:20px;
-border-radius:15px;
-z-index:999;
-width:300px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="bubbles">
-<span></span><span></span><span></span><span></span><span></span>
-</div>
-
-<h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
-
-<div class="container">
-
-<div class="glass">
-<h4>✔ Approved Suggestions</h4>
-<div id="approvedBox" class="scroll-box"></div>
-</div>
-
-<div class="glass">
-<h3>New Post</h3>
-<input id="title">
-<textarea id="content"></textarea>
-<button onclick="addPost()">Post</button>
-</div>
-
-<div class="glass">
-
-<h3>Login</h3>
-<input id="email">
-<input id="password" type="password">
-
-<button id="loginBtn" onclick="login()">Login</button>
-<button id="signupBtn" onclick="openSignup()">Signup</button>
-<button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
-
-<p id="userInfo"></p>
-
-<hr>
-
-<h3>Chat</h3>
-<div id="chatMessages" style="height:120px;overflow:auto;"></div>
-<input id="chatInput">
-<button onclick="sendMsg()">Send</button>
-
-<hr>
-
-<h3>Union Updates</h3>
-<div id="unionBox" class="small-box"></div>
-<textarea id="unionMsg"></textarea>
-<button onclick="addUnion()">Post Update</button>
-
-<hr>
-
-<h3>Request to Union</h3>
-<div id="requestBox" class="small-box"></div>
-<textarea id="requestMsg"></textarea>
-<button onclick="addRequest()">Send Request</button>
-
-</div>
-
-</div>
-
-<div id="signupPopup">
-<h3>Signup</h3>
-<input id="s_email">
-<input id="s_password" type="password">
-<input id="s_confirm" type="password">
-<button onclick="signup()">Create</button>
-<button onclick="closeSignup()">Close</button>
-</div>
+<!-- ONLY IMPORTANT CHANGES SHOWING BELOW (ADD THIS INTO YOUR EXISTING FINAL CODE) -->
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, serverTimestamp, onSnapshot } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
-});
-
-const db = getFirestore(app);
-const auth = getAuth(app);
+// 🔥 ADMIN EMAIL
+const ADMIN_EMAIL = "youradmin@gmail.com";
 
 /* AUTH STATE */
 onAuthStateChanged(auth,(user)=>{
-if(user){
-userInfo.innerText="Logged: "+user.email;
-loginBtn.style.display="none";
-signupBtn.style.display="none";
-logoutBtn.style.display="inline-block";
-}else{
-userInfo.innerText="Not logged";
-loginBtn.style.display="inline-block";
-signupBtn.style.display="inline-block";
-logoutBtn.style.display="none";
-}
+
+  if(user){
+    userInfo.innerText="Logged: "+user.email;
+    loginBtn.style.display="none";
+    signupBtn.style.display="none";
+    logoutBtn.style.display="inline-block";
+
+    // 🔥 DEFAULT BLOCK EVERYTHING
+    chatInput.disabled = true;
+    unionMsg.disabled = true;
+    requestMsg.disabled = true;
+    title.disabled = true;
+    content.disabled = true;
+
+    // 🔥 ADMIN FULL ACCESS
+    if(user.email === ADMIN_EMAIL){
+      chatInput.disabled = false;
+      unionMsg.disabled = false;
+      requestMsg.disabled = false;
+      title.disabled = false;
+      content.disabled = false;
+    }
+
+  }else{
+    userInfo.innerText="Not logged";
+    loginBtn.style.display="inline-block";
+    signupBtn.style.display="inline-block";
+    logoutBtn.style.display="none";
+
+    // 🔥 BLOCK ALL
+    chatInput.disabled = true;
+    unionMsg.disabled = true;
+    requestMsg.disabled = true;
+    title.disabled = true;
+    content.disabled = true;
+  }
+
 });
 
-/* LOGIN */
-window.login=async()=>{
-await signInWithEmailAndPassword(auth,email.value,password.value);
+/* 🔥 UNION (ADMIN ONLY) */
+window.addUnion=async()=>{
+const user=auth.currentUser;
+if(!user || user.email !== ADMIN_EMAIL){
+  alert("Only admin allowed");
+  return;
+}
+
+await addDoc(collection(db,"union"),{
+message:unionMsg.value,
+user:user.email,
+createdAt:serverTimestamp()
+});
+unionMsg.value="";
 };
 
-/* LOGOUT */
-window.logout=async()=>{
-await signOut(auth);
+/* 🔥 CHAT BLOCK */
+window.sendMsg=async()=>{
+const user=auth.currentUser;
+if(!user || user.email !== ADMIN_EMAIL){
+  alert("Not allowed");
+  return;
+}
+
+await addDoc(collection(db,"chat"),{
+message:chatInput.value,
+createdAt:serverTimestamp()
+});
 };
 
-/* SIGNUP */
-window.openSignup=()=>signupPopup.style.display="block";
-window.closeSignup=()=>signupPopup.style.display="none";
+/* 🔥 REQUEST BLOCK */
+window.addRequest=async()=>{
+const user=auth.currentUser;
+if(!user || user.email !== ADMIN_EMAIL){
+  alert("Not allowed");
+  return;
+}
 
-window.signup=async()=>{
-if(s_password.value!==s_confirm.value) return alert("Mismatch");
-await createUserWithEmailAndPassword(auth,s_email.value,s_password.value);
-closeSignup();
+await addDoc(collection(db,"requests"),{
+message:requestMsg.value,
+user:user.email,
+createdAt:serverTimestamp()
+});
 };
 
-/* POST */
+/* 🔥 NEW POST BLOCK */
 window.addPost=async()=>{
-if(!auth.currentUser) return alert("Login required");
+const user=auth.currentUser;
+if(!user || user.email !== ADMIN_EMAIL){
+  alert("Only admin can post");
+  return;
+}
+
 await addDoc(collection(db,"posts"),{
 title:title.value,
 content:content.value,
@@ -221,90 +106,4 @@ createdAt:serverTimestamp()
 });
 };
 
-/* CHAT */
-window.sendMsg=async()=>{
-if(!auth.currentUser) return alert("Login required");
-await addDoc(collection(db,"chat"),{
-message:chatInput.value,
-createdAt:serverTimestamp()
-});
-chatInput.value="";
-};
-
-function loadChat(){
-onSnapshot(collection(db,"chat"),snap=>{
-chatMessages.innerHTML="";
-snap.forEach(d=>{
-chatMessages.innerHTML+=`<div>${d.data().message}</div>`;
-});
-});
-}
-
-/* UNION */
-window.addUnion=async()=>{
-if(!auth.currentUser) return alert("Login required");
-await addDoc(collection(db,"union"),{
-message:unionMsg.value,
-user:auth.currentUser.email,
-createdAt:serverTimestamp()
-});
-unionMsg.value="";
-};
-
-function loadUnion(){
-onSnapshot(collection(db,"union"),snap=>{
-unionBox.innerHTML="";
-snap.forEach(d=>{
-let x=d.data();
-unionBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
-});
-});
-}
-
-/* REQUEST */
-window.addRequest=async()=>{
-if(!auth.currentUser) return alert("Login required");
-await addDoc(collection(db,"requests"),{
-message:requestMsg.value,
-user:auth.currentUser.email,
-createdAt:serverTimestamp()
-});
-requestMsg.value="";
-};
-
-function loadRequest(){
-onSnapshot(collection(db,"requests"),snap=>{
-requestBox.innerHTML="";
-snap.forEach(d=>{
-let x=d.data();
-requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
-});
-});
-}
-
-/* APPROVED SCROLL */
-async function loadApproved(){
-let qs=await getDocs(collection(db,"suggestions"));
-approvedBox.innerHTML="";
-qs.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
-});
-
-let pos=0;
-setInterval(()=>{
-pos++;
-approvedBox.scrollTop=pos;
-if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
-},40);
-}
-
-/* INIT */
-loadChat();
-loadUnion();
-loadRequest();
-loadApproved();
-
 </script>
-
-</body>
-</html>
