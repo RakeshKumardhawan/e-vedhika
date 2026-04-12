@@ -1,92 +1,35 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<title>Register</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-body{
-  font-family:Arial;
-  background:#eef2f7;
-  text-align:center;
-  padding-top:100px;
-}
-
-.box{
-  background:white;
-  padding:25px;
-  width:280px;
-  margin:auto;
-  border-radius:10px;
-  box-shadow:0 5px 15px rgba(0,0,0,0.2);
-}
-
-input{
-  width:90%;
-  padding:10px;
-  margin:10px 0;
-  border-radius:5px;
-  border:1px solid #ccc;
-}
-
-button{
-  background:#0077b6;
-  color:white;
-  padding:10px;
-  border:none;
-  border-radius:5px;
-  width:100%;
-}
-</style>
-</head>
-
 <body>
 
-<div class="box">
-  <h2>📝 Register</h2>
+<h2>Register</h2>
 
-  <input id="user" placeholder="Username">
-  <input id="pass" type="password" placeholder="Password">
+<input id="email" placeholder="Email"><br>
+<input id="pass" type="password"><br>
+<input id="username" placeholder="Username"><br>
 
-  <button onclick="register()">Create Account</button>
+<select id="role">
+<option value="user">User</option>
+<option value="admin">Admin</option>
+</select><br>
 
-  <p id="msg"></p>
+<button onclick="register()">Create</button>
 
-  <br>
-  <a href="login.html">Already have account?</a>
-</div>
+<script type="module">
+import { auth, db } from "./firebase.js";
+import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { doc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-<script>
+window.register = async ()=>{
+  let res = await createUserWithEmailAndPassword(auth,email.value,pass.value);
 
-function register(){
+  await setDoc(doc(db,"users",res.user.uid),{
+    username: username.value,
+    role: role.value
+  });
 
-  let u = document.getElementById("user").value;
-  let p = document.getElementById("pass").value;
-
-  if(!u || !p){
-    msg.innerText="Fill all fields";
-    return;
-  }
-
-  let users = JSON.parse(localStorage.getItem("users") || "{}");
-
-  if(users[u]){
-    msg.innerText="User already exists";
-    return;
-  }
-
-  users[u] = p;
-  localStorage.setItem("users", JSON.stringify(users));
-
-  msg.innerText="Account created ✔";
-
-  setTimeout(()=>{
-    window.location.href="login.html";
-  },1000);
-}
-
+  location.href="login.html";
+};
 </script>
 
 </body>
