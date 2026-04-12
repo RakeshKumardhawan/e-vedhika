@@ -176,9 +176,9 @@ button{
 <!-- SIGNUP POPUP -->
 <div id="signupPopup">
 <h3>Signup</h3>
-<input id="s_email">
-<input id="s_password" type="password">
-<input id="s_confirm" type="password">
+<input id="s_email" placeholder="Email">
+<input id="s_password" type="password" placeholder="Password">
+<input id="s_confirm" type="password" placeholder="Confirm Password">
 
 <button onclick="signup()">Create</button>
 <button onclick="closeSignup()">Close</button>
@@ -204,83 +204,122 @@ const auth = getAuth(app);
 
 /* AUTH STATE */
 onAuthStateChanged(auth,(user)=>{
-userInfo.innerText = user ? "Logged: "+user.email : "Not logged";
+document.getElementById("userInfo").innerText = user ? "Logged: "+user.email : "Not logged";
 });
 
 /* LOGIN */
-window.login=async()=>{
-await signInWithEmailAndPassword(auth,email.value,password.value);
+window.login = async ()=>{
+const email = document.getElementById("email").value.trim();
+const password = document.getElementById("password").value.trim();
+
+if(!email || !password){
+alert("Enter email & password");
+return;
+}
+
+try{
+await signInWithEmailAndPassword(auth,email,password);
+alert("Login success");
+}catch{
+alert("Invalid login");
+}
 };
 
-/* SIGNUP */
-window.openSignup=()=>signupPopup.style.display="block";
-window.closeSignup=()=>signupPopup.style.display="none";
+/* SIGNUP POPUP */
+window.openSignup=()=>document.getElementById("signupPopup").style.display="block";
+window.closeSignup=()=>document.getElementById("signupPopup").style.display="none";
 
-window.signup=async()=>{
-if(s_password.value!==s_confirm.value) return alert("Mismatch");
-await createUserWithEmailAndPassword(auth,s_email.value,s_password.value);
+/* SIGNUP FIXED */
+window.signup = async ()=>{
+const email = document.getElementById("s_email").value.trim();
+const password = document.getElementById("s_password").value.trim();
+const confirm = document.getElementById("s_confirm").value.trim();
+
+if(!email || !password || !confirm){
+alert("Fill all fields");
+return;
+}
+
+if(password !== confirm){
+alert("Password mismatch");
+return;
+}
+
+try{
+await createUserWithEmailAndPassword(auth,email,password);
+alert("Signup success");
+
+document.getElementById("s_email").value="";
+document.getElementById("s_password").value="";
+document.getElementById("s_confirm").value="";
+
 closeSignup();
+
+}catch(err){
+alert(err.message);
+}
 };
 
 /* CHAT */
 window.sendMsg=async()=>{
 await addDoc(collection(db,"chat"),{
-message:chatInput.value,
+message:document.getElementById("chatInput").value,
 createdAt:serverTimestamp()
 });
-chatInput.value="";
+document.getElementById("chatInput").value="";
 };
 
 function loadChat(){
 onSnapshot(collection(db,"chat"),snap=>{
-chatMessages.innerHTML="";
+document.getElementById("chatMessages").innerHTML="";
 snap.forEach(d=>{
-chatMessages.innerHTML+=`<div>${d.data().message}</div>`;
+document.getElementById("chatMessages").innerHTML+=`<div>${d.data().message}</div>`;
 });
 });
 }
 
-/* UNION (LOGIN REQUIRED) */
+/* UNION */
 window.addUnion=async()=>{
-const user = auth.currentUser;
+const user=auth.currentUser;
 if(!user) return alert("Login required");
 
 await addDoc(collection(db,"union"),{
-message:unionMsg.value,
+message:document.getElementById("unionMsg").value,
 user:user.email,
 createdAt:serverTimestamp()
 });
-unionMsg.value="";
+document.getElementById("unionMsg").value="";
 };
 
 function loadUnion(){
 onSnapshot(collection(db,"union"),snap=>{
-unionBox.innerHTML="";
+document.getElementById("unionBox").innerHTML="";
 snap.forEach(d=>{
-unionBox.innerHTML+=`<div>${d.data().user}: ${d.data().message}</div>`;
+let x=d.data();
+document.getElementById("unionBox").innerHTML+=`<div>${x.user}: ${x.message}</div>`;
 });
 });
 }
 
-/* REQUEST (LOGIN REQUIRED) */
+/* REQUEST */
 window.addRequest=async()=>{
-const user = auth.currentUser;
+const user=auth.currentUser;
 if(!user) return alert("Login required");
 
 await addDoc(collection(db,"requests"),{
-message:requestMsg.value,
+message:document.getElementById("requestMsg").value,
 user:user.email,
 createdAt:serverTimestamp()
 });
-requestMsg.value="";
+document.getElementById("requestMsg").value="";
 };
 
 function loadRequest(){
 onSnapshot(collection(db,"requests"),snap=>{
-requestBox.innerHTML="";
+document.getElementById("requestBox").innerHTML="";
 snap.forEach(d=>{
 let x=d.data();
-requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
+document.getElementById("requestBox").innerHTML+=`<div>${x.user}: ${x.message}</div>`;
 });
 });
 }
@@ -288,9 +327,9 @@ requestBox.innerHTML+=`<div>${x.user}: ${x.message}</div>`;
 /* APPROVED SCROLL */
 async function loadApproved(){
 let qs=await getDocs(collection(db,"suggestions"));
-approvedBox.innerHTML="";
+document.getElementById("approvedBox").innerHTML="";
 qs.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
+document.getElementById("approvedBox").innerHTML+=`<div class="post">${d.data().suggestion}</div>`;
 });
 
 let pos=0;
