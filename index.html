@@ -2,29 +2,32 @@
 <html>
 <head>
 <style>
-body{font-family:Arial;background:#f0f2f5;margin:0;}
+body{margin:0;font-family:Arial;background:#f0f2f5;}
 .header{background:#1877f2;color:white;padding:10px;text-align:center;}
 .container{max-width:500px;margin:auto;padding:10px;}
 .card{background:white;padding:10px;margin-bottom:10px;border-radius:10px;}
-.comment{background:#eef;padding:5px;margin:5px 0;border-radius:5px;}
-button{margin:3px;padding:5px;border:none;background:#1877f2;color:white;}
+textarea{width:100%;padding:8px;}
+button{margin:5px;padding:6px;border:none;background:#1877f2;color:white;}
 </style>
 </head>
 
 <body>
 
-<div class="header">E-Vedhika</div>
+<div class="header">
+E-Vedhika 
+<button onclick="location.href='login.html'">Login</button>
+</div>
 
 <div class="container">
 
-<!-- CREATE POST -->
+<textarea id="content" placeholder="Write your problem..."></textarea>
+
 <select id="type">
 <option value="problem">Problem</option>
 <option value="suggestion">Suggestion</option>
 <option value="update">Admin Update</option>
 </select>
 
-<textarea id="content" placeholder="Write..."></textarea>
 <button onclick="addPost()">Post</button>
 
 <hr>
@@ -40,14 +43,15 @@ import {
 collection, addDoc, getDocs, doc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-let posts=[];
 let uid="", username="", role="user";
+let posts=[];
 
-auth.onAuthStateChanged(async (user)=>{
+// NO REDIRECT
+auth.onAuthStateChanged(async user=>{
   if(user){
     uid=user.uid;
 
-    let u = await getDocs(collection(db,"users"));
+    let u=await getDocs(collection(db,"users"));
     u.forEach(d=>{
       if(d.id===uid){
         username=d.data().username;
@@ -59,7 +63,7 @@ auth.onAuthStateChanged(async (user)=>{
 });
 
 async function load(){
-  let snap = await getDocs(collection(db,"posts"));
+  let snap=await getDocs(collection(db,"posts"));
   posts=[];
   snap.forEach(d=>{
     let x=d.data();
@@ -72,16 +76,18 @@ async function load(){
 function render(){
   let html="";
 
-  // MAIN POSTS
-  let mainPosts = posts.filter(p=>!p.parentId && p.status==="Approved");
-
-  mainPosts.reverse().forEach(p=>{
+  posts
+  .filter(p=>!p.parentId && p.status==="Approved")
+  .reverse()
+  .forEach(p=>{
 
     html+=`
     <div class="card">
     <b>${p.username} ${p.role==="admin"?"(Admin)":""}</b><br>
-    <small>${p.type.toUpperCase()}</small><br><br>
+    ${p.type}<br><br>
     ${p.content}<br><br>
+
+    <button onclick="answer('${p.id}')">Answer</button>
     `;
 
     // ADMIN CONTROLS
@@ -92,22 +98,12 @@ function render(){
       `;
     }
 
-    // USER ACTIONS
-    if(auth.currentUser){
-      html+=`
-      <button onclick="addSolution('${p.id}')">Answer</button>
-      `;
-    }
-
-    // SOLUTIONS (COMMENTS)
-    let comments = posts.filter(c=>c.parentId===p.id && c.status==="Approved");
-
-    comments.forEach(c=>{
-      html+=`
-      <div class="comment">
+    // COMMENTS
+    posts.filter(c=>c.parentId===p.id && c.status==="Approved")
+    .forEach(c=>{
+      html+=`<div style="background:#eee;padding:5px;margin-top:5px;border-radius:5px;">
       <b>${c.username}</b>: ${c.content}
-      </div>
-      `;
+      </div>`;
     });
 
     html+=`</div>`;
@@ -116,14 +112,14 @@ function render(){
   feed.innerHTML=html;
 }
 
-// CREATE POST
+// POST
 window.addPost = async ()=>{
   if(!auth.currentUser){
     alert("Login required");
+    location.href="login.html";
     return;
   }
 
-  // only admin can post updates
   if(type.value==="update" && role!=="admin"){
     alert("Only admin can post updates");
     return;
@@ -136,35 +132,32 @@ window.addPost = async ()=>{
     userId:uid,
     username:username,
     role:role,
-    status:"Pending",
-    createdAt:new Date()
+    status:"Pending"
   });
 
   content.value="";
   load();
 };
 
-// ADD SOLUTION
-window.addSolution = async (postId)=>{
-  let text = prompt("Write solution");
-
+// ANSWER
+window.answer = async (id)=>{
+  let text=prompt("Write solution");
   if(!text) return;
 
   await addDoc(collection(db,"posts"),{
     content:text,
     type:"solution",
-    parentId:postId,
+    parentId:id,
     userId:uid,
     username:username,
     role:role,
-    status:"Pending",
-    createdAt:new Date()
+    status:"Pending"
   });
 
   load();
 };
 
-// ADMIN ACTIONS
+// ADMIN
 window.approve = async (id)=>{
   await updateDoc(doc(db,"posts",id),{status:"Approved"});
   load();
