@@ -15,14 +15,14 @@ button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;
 .role-btn{background:#555;color:white;}
 
 .pending{background:orange;color:white;}
-.approved{background:green;color:white;}
+.approved{background:green;color:white;} /* ✅ FIXED */
 .deleted{background:red;color:white;}
+
+input,textarea{padding:8px;margin:5px;width:250px;}
 
 table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
 th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
 th{background:#2c3e50;color:white;}
-
-input,textarea{padding:8px;margin:5px;width:250px;}
 </style>
 </head>
 
@@ -30,10 +30,10 @@ input,textarea{padding:8px;margin:5px;width:250px;}
 
 <h2>📊 Admin Dashboard</h2>
 
-<button onclick="loadSuggestions()">Suggestions</button>
-<button onclick="loadProfiles()">Profiles</button>
-<button onclick="loadPosts()">Public Posts</button>
-<button onclick="loadAdminPosts()">Admin Posts</button>
+<button onclick="loadSuggestions()">📊 Suggestions</button>
+<button onclick="loadProfiles()">👤 Profiles</button>
+<button onclick="loadPosts()">📝 Public Posts</button>
+<button onclick="loadAdminPosts()">📰 Admin Posts</button>
 
 <br>
 
@@ -41,6 +41,10 @@ input,textarea{padding:8px;margin:5px;width:250px;}
 <button class="approved" onclick="filterData('Approved')">Approved</button>
 <button class="deleted" onclick="filterData('Deleted')">Deleted</button>
 <button onclick="showAll()">All</button>
+
+<br>
+
+<input id="searchBox" placeholder="Search..." oninput="searchData()">
 
 <table>
 <thead><tr id="header"></tr></thead>
@@ -131,6 +135,15 @@ return s===status;
 
 window.showAll=()=>display(fullData);
 
+/* SEARCH */
+window.searchData=()=>{
+let q=searchBox.value.toLowerCase();
+display(fullData.filter(d=>
+(d.title||d.name||"").toLowerCase().includes(q) ||
+(d.content||d.suggestion||"").toLowerCase().includes(q)
+));
+};
+
 /* ACTION */
 window.acceptRow=async(id)=>{
 await updateDoc(doc(db,currentType,id),{status:"Approved"});
@@ -203,7 +216,12 @@ function display(arr){
 data.innerHTML="";
 arr.forEach((d,i)=>{
 let s=d.status||"Pending";
-let cls=s==="Approved"?"approved":s==="Deleted"?"deleted":"pending";
+
+/* 🔥 IMPORTANT FIX */
+if(s==="Accepted") s="Approved";
+
+let cls = s==="Approved" ? "approved" :
+          s==="Deleted" ? "deleted" : "pending";
 
 if(currentType==="profiles"){
 data.innerHTML+=`
