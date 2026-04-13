@@ -15,7 +15,7 @@ button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;
 .role-btn{background:#555;color:white;}
 
 .pending{background:orange;color:white;}
-.approved{background:green;color:white;} /* ✅ FIXED */
+.approved{background:green;color:white;}
 .deleted{background:red;color:white;}
 
 input,textarea{padding:8px;margin:5px;width:250px;}
@@ -42,16 +42,11 @@ th{background:#2c3e50;color:white;}
 <button class="deleted" onclick="filterData('Deleted')">Deleted</button>
 <button onclick="showAll()">All</button>
 
-<br>
-
-<input id="searchBox" placeholder="Search..." oninput="searchData()">
-
 <table>
 <thead><tr id="header"></tr></thead>
 <tbody id="data"></tbody>
 </table>
 
-<!-- ADMIN POST -->
 <h3>➕ Admin Post</h3>
 <input id="p_title" placeholder="Title"><br>
 <textarea id="p_content" placeholder="Content"></textarea><br>
@@ -63,6 +58,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/fireba
 import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
+import { getAuth, onAuthStateChanged, signOut } 
+from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
+/* 🔥 FIREBASE */
 const app = initializeApp({
 apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
 authDomain:"e-vedhika-258f2.firebaseapp.com",
@@ -70,18 +69,59 @@ projectId:"e-vedhika-258f2"
 });
 
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-let currentType="", fullData=[];
-let userRole="admin";
+/* 🔐 ROLE SYSTEM */
+let currentUserRole="guest";
 
-/* LOG */
-async function log(action,id){
-await addDoc(collection(db,"logs"),{
-action,id,time:serverTimestamp()
-});
+/* 🔒 INDEX RESTRICTIONS */
+onAuthStateChanged(auth, async(user)=>{
+if(!user) return;
+
+let qs=await getDocs(collection(db,"profiles"));
+
+qs.forEach(d=>{
+let x=d.data();
+
+if(x.email===user.email){
+
+currentUserRole=x.role||"user";
+
+/* BLOCK */
+if(x.status==="blocked"){
+alert("Blocked by admin");
+signOut(auth);
 }
 
-/* HEADER */
+/* KICK */
+if(x.kickUntil && Date.now()<x.kickUntil){
+alert("Temporarily removed");
+signOut(auth);
+}
+
+}
+});
+
+/* LOGIN LOG */
+await addDoc(collection(db,"logs"),{
+type:"login",
+email:user.email,
+time:serverTimestamp()
+});
+
+});
+
+/* ROLE HELPERS */
+function isAdmin(){return currentUserRole==="admin";}
+function isModerator(){return currentUserRole==="admin"||currentUserRole==="moderator";}
+
+/* ADMIN PANEL */
+let currentType="", fullData=[];
+
+async function log(action,id){
+await addDoc(collection(db,"logs"),{action,id,time:serverTimestamp()});
+}
+
 function setHeader(){
 if(currentType==="profiles"){
 header.innerHTML=`<th>#</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th>`;
@@ -90,7 +130,6 @@ header.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Act
 }
 }
 
-/* LOAD */
 window.loadSuggestions=()=>load("suggestions");
 window.loadProfiles=()=>load("profiles");
 
@@ -124,7 +163,6 @@ fullData=arr;
 display(arr);
 }
 
-/* FILTER */
 window.filterData=(status)=>{
 display(fullData.filter(d=>{
 let s=d.status||"Pending";
@@ -135,24 +173,16 @@ return s===status;
 
 window.showAll=()=>display(fullData);
 
-/* SEARCH */
-window.searchData=()=>{
-let q=searchBox.value.toLowerCase();
-display(fullData.filter(d=>
-(d.title||d.name||"").toLowerCase().includes(q) ||
-(d.content||d.suggestion||"").toLowerCase().includes(q)
-));
-};
-
-/* ACTION */
+/* ACTIONS */
 window.acceptRow=async(id)=>{
+if(!isModerator()) return alert("Moderator only");
 await updateDoc(doc(db,currentType,id),{status:"Approved"});
 log("approve",id);
 load(currentType);
 };
 
 window.deleteRow=async(id)=>{
-if(userRole!=="admin") return alert("Only admin");
+if(!isAdmin()) return alert("Admin only");
 await updateDoc(doc(db,currentType,id),{status:"Deleted"});
 log("delete",id);
 load(currentType);
@@ -167,12 +197,10 @@ load(currentType);
 };
 
 /* PROFILE */
-window.changeRole=async(id)=>{
-if(userRole!=="admin") return;
-let role=prompt("admin/moderator/operator/user");
+window.updateRole=async(id,role)=>{
+if(!isAdmin()) return alert("Admin only");
 await updateDoc(doc(db,"profiles",id),{role});
 log("role",id);
-load("profiles");
 };
 
 window.blockUser=async(id)=>{
@@ -193,6 +221,7 @@ log("kick",id);
 };
 
 window.deleteProfile=async(id)=>{
+if(!isAdmin()) return;
 await deleteDoc(doc(db,"profiles",id));
 log("delete profile",id);
 load("profiles");
@@ -200,6 +229,7 @@ load("profiles");
 
 /* ADMIN POST */
 window.addAdminPost=async()=>{
+if(!isAdmin()) return alert("Admin only");
 await addDoc(collection(db,"posts"),{
 title:p_title.value,
 content:p_content.value,
@@ -216,22 +246,25 @@ function display(arr){
 data.innerHTML="";
 arr.forEach((d,i)=>{
 let s=d.status||"Pending";
-
-/* 🔥 IMPORTANT FIX */
 if(s==="Accepted") s="Approved";
 
-let cls = s==="Approved" ? "approved" :
-          s==="Deleted" ? "deleted" : "pending";
+let cls=s==="Approved"?"approved":s==="Deleted"?"deleted":"pending";
 
 if(currentType==="profiles"){
 data.innerHTML+=`
 <tr>
 <td>${i+1}</td>
 <td>${d.email}</td>
-<td>${d.role||"user"}</td>
+<td>
+<select onchange="updateRole('${d.id}',this.value)">
+<option value="user" ${d.role==="user"?"selected":""}>user</option>
+<option value="operator" ${d.role==="operator"?"selected":""}>operator</option>
+<option value="moderator" ${d.role==="moderator"?"selected":""}>moderator</option>
+<option value="admin" ${d.role==="admin"?"selected":""}>admin</option>
+</select>
+</td>
 <td class="${cls}">${s}</td>
 <td>
-<button onclick="changeRole('${d.id}')">Role</button>
 <button onclick="blockUser('${d.id}')">Block</button>
 <button onclick="unblockUser('${d.id}')">Unblock</button>
 <button onclick="kickUser('${d.id}')">Kick</button>
