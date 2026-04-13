@@ -36,26 +36,28 @@ input,textarea{padding:8px;margin:5px;width:250px;}
 <button onclick="loadAdminPosts()">Admin Posts</button>
 <button onclick="loadLogs()">Logs</button>
 
-<br>
-
-<button class="pending" onclick="filterData('Pending')">Pending</button>
-<button class="approved" onclick="filterData('Approved')">Approved</button>
-<button class="deleted" onclick="filterData('Deleted')">Deleted</button>
-<button onclick="showAll()">All</button>
-
 <table>
 <thead><tr id="header"></tr></thead>
 <tbody id="data"></tbody>
 </table>
 
+<!-- 🔥 ADMIN POST -->
 <h3>➕ Admin Post</h3>
 <input id="p_title" placeholder="Title"><br>
 <textarea id="p_content" placeholder="Content"></textarea><br>
 <button onclick="addAdminPost()" class="accept-btn">Post</button>
 
+<!-- 🔥 NEW UPDATES SECTION -->
+<h3>🔥 New Updates</h3>
+
+<div id="updatesBox"></div>
+
+<input id="newUpdateText" placeholder="Write update">
+<button onclick="addUpdate()" class="accept-btn">Add</button>
+
 <!-- 📊 ANALYTICS -->
 <h3>📊 Activity Analytics</h3>
-<canvas id="logChart" width="400" height="200"></canvas>
+<canvas id="logChart"></canvas>
 
 <script type="module">
 
@@ -71,114 +73,36 @@ projectId:"e-vedhika-258f2"
 
 const db = getFirestore(app);
 
-let currentType="", fullData=[];
-let userRole="admin";
+/* 🔥 NEW UPDATES */
+async function loadUpdates(){
+let qs=await getDocs(collection(db,"updates"));
+let html="";
+qs.forEach((d,i)=>{
+let x=d.data();
+html+=`
+<div>
+${i+1}. ${x.text}
+<button onclick="deleteUpdate('${d.id}')">❌</button>
+</div>`;
+});
+updatesBox.innerHTML=html;
+}
 
-/* LOG SAVE */
-async function log(action){
-await addDoc(collection(db,"logs"),{
-action,
+window.addUpdate=async()=>{
+await addDoc(collection(db,"updates"),{
+text:newUpdateText.value,
 time:serverTimestamp()
 });
-}
-
-/* HEADER */
-function setHeader(){
-if(currentType==="profiles"){
-header.innerHTML=`<th>#</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th>`;
-}else if(currentType==="logs"){
-header.innerHTML=`<th>#</th><th>Action</th><th>Time</th>`;
-}else{
-header.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
-}
-}
-
-/* LOAD */
-window.loadSuggestions=()=>load("suggestions");
-window.loadProfiles=()=>load("profiles");
-
-window.loadPosts=async()=>{
-currentType="posts"; setHeader();
-let qs=await getDocs(collection(db,"posts"));
-let arr=[];
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType!=="admin"){
-if(!x.status) x.status="Pending";
-arr.push({id:d.id,...x});
-}
-});
-fullData=arr; display(arr);
+newUpdateText.value="";
+loadUpdates();
 };
 
-window.loadAdminPosts=async()=>{
-currentType="posts"; setHeader();
-let qs=await getDocs(collection(db,"posts"));
-let arr=[];
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType==="admin") arr.push({id:d.id,...x});
-});
-fullData=arr; display(arr);
+window.deleteUpdate=async(id)=>{
+await deleteDoc(doc(db,"updates",id));
+loadUpdates();
 };
 
-window.loadLogs=async()=>{
-currentType="logs"; setHeader();
-
-let qs=await getDocs(collection(db,"logs"));
-let arr=[];
-qs.forEach(d=>arr.push({id:d.id,...d.data()}));
-
-fullData=arr;
-display(arr);
-drawChart(arr);
-};
-
-async function load(type){
-currentType=type;
-setHeader();
-
-let qs=await getDocs(collection(db,type));
-let arr=[];
-qs.forEach(d=>arr.push({id:d.id,...d.data()}));
-
-fullData=arr;
-display(arr);
-}
-
-/* FILTER */
-window.filterData=(status)=>{
-display(fullData.filter(d=>{
-let s=d.status||"Pending";
-if(status==="Approved") return s==="Approved"||s==="Accepted";
-return s===status;
-}));
-};
-
-window.showAll=()=>display(fullData);
-
-/* ACTION */
-window.acceptRow=async(id)=>{
-await updateDoc(doc(db,currentType,id),{status:"Approved"});
-log("approve");
-load(currentType);
-};
-
-window.deleteRow=async(id)=>{
-await updateDoc(doc(db,currentType,id),{status:"Deleted"});
-log("delete");
-load(currentType);
-};
-
-window.editRow=async(id)=>{
-let txt=prompt("Edit:");
-if(!txt) return;
-await updateDoc(doc(db,currentType,id),{content:txt});
-log("edit");
-load(currentType);
-};
-
-/* ADMIN POST */
+/* 🔥 ADMIN POST */
 window.addAdminPost=async()=>{
 await addDoc(collection(db,"posts"),{
 title:p_title.value,
@@ -188,74 +112,30 @@ status:"Approved",
 isNew:true,
 createdAt:serverTimestamp()
 });
-log("admin_post");
-loadAdminPosts();
 };
 
-/* DISPLAY */
-function display(arr){
-data.innerHTML="";
-
-arr.forEach((d,i)=>{
-if(currentType==="logs"){
-data.innerHTML+=`
-<tr>
-<td>${i+1}</td>
-<td>${d.action||""}</td>
-<td>${d.time?.seconds ? new Date(d.time.seconds*1000).toLocaleString() : ""}</td>
-</tr>`;
-}
-else if(currentType==="profiles"){
-data.innerHTML+=`
-<tr>
-<td>${i+1}</td>
-<td>${d.email}</td>
-<td>${d.role}</td>
-<td>${d.status||""}</td>
-<td>-</td>
-</tr>`;
-}
-else{
-let s=d.status||"Pending";
-if(s==="Accepted") s="Approved";
-let cls=s==="Approved"?"approved":s==="Deleted"?"deleted":"pending";
-
-data.innerHTML+=`
-<tr>
-<td>${i+1}</td>
-<td>${d.title||d.name}</td>
-<td>${d.content||d.suggestion}</td>
-<td class="${cls}">${s}</td>
-<td>
-<button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
-<button class="edit-btn" onclick="editRow('${d.id}')">Edit</button>
-<button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
-</td>
-</tr>`;
-}
-});
-}
-
-/* 📊 CHART */
-function drawChart(logs){
+/* 📊 LOGS + GRAPH */
+window.loadLogs=async()=>{
+let qs=await getDocs(collection(db,"logs"));
+let arr=[];
+qs.forEach(d=>arr.push(d.data()));
 
 let counts={};
-
-logs.forEach(l=>{
+arr.forEach(l=>{
 counts[l.action]=(counts[l.action]||0)+1;
 });
-
-let labels=Object.keys(counts);
-let dataArr=Object.values(counts);
 
 new Chart(document.getElementById("logChart"),{
 type:"bar",
 data:{
-labels:labels,
-datasets:[{label:"Actions",data:dataArr}]
+labels:Object.keys(counts),
+datasets:[{label:"Actions",data:Object.values(counts)}]
 }
 });
-}
+};
+
+/* INIT */
+loadUpdates();
 
 </script>
 
