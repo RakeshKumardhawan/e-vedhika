@@ -1,278 +1,519 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Vedhika Admin Panel</title>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#f2f2f2;text-align:center;}
-
-button{padding:6px 12px;margin:5px;border:none;border-radius:5px;cursor:pointer;}
-.accept-btn{background:green;color:white;}
-.delete-btn{background:red;color:white;}
-.edit-btn{background:#0072ff;color:white;}
-
-.pending{background:orange;color:white;}
-.approved{background:green;color:white;}
-.deleted{background:red;color:white;}
-
-table{margin:auto;margin-top:20px;border-collapse:collapse;width:95%;background:white;}
-th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
-th{background:#2c3e50;color:white;}
-
-input,textarea{padding:8px;margin:5px;width:250px;}
+body{font-family:Arial;margin:0;background:#f2f2f2;display:flex}
+.sidebar{width:230px;background:#1a1c1e;color:#fff;height:100vh;padding:10px}
+.sidebar a{display:block;padding:12px;color:#ccc;cursor:pointer;border-left:4px solid transparent}
+.sidebar a.active{background:#333;color:#fff;border-left:4px solid #0d6efd}
+.main{flex:1;padding:20px}
+.tabs{margin-bottom:15px}
+.tabs button{margin-right:5px;padding:6px 12px;border:none;border-radius:5px;cursor:pointer}
+.tabs .active{background:#0d6efd;color:#fff}
+button{cursor:pointer;border:none;padding:6px 10px;border-radius:4px;margin:2px}
+.approve{background:#198754;color:#fff}
+.delete{background:#dc3545;color:#fff}
+.edit{background:#0d6efd;color:#fff}
+.pending{background:#ffc107;color:#000}
+.undo{background:#6c757d;color:#fff}
+.resolve{background:#20c997;color:#fff}
+.send{background:#0d6efd;color:#fff}
+.table-box{background:#fff;border-radius:6px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border:1px solid #ddd}
+th{background:#2c3e50;color:#fff}
+.status{padding:3px 8px;border-radius:10px;font-size:12px}
+.status-Approved{background:#d1e7dd;color:#0f5132}
+.status-Pending{background:#fff3cd;color:#856404}
+.status-Deleted{background:#f8d7da;color:#842029}
+.status-Resolved{background:#cfe2ff;color:#084298}
 </style>
 </head>
 
 <body>
 
-<h2>📊 Admin Dashboard</h2>
+<div class="sidebar">
+<h3>E-Vedhika Admin</h3>
+<a onclick="openTab('suggestions',this)" class="nav active">💡 Suggestions</a>
+<a onclick="openTab('posts',this)" class="nav">🌐 Posts</a>
+<a onclick="openTab('profiles',this)" class="nav">👥 Profiles</a>
+<a onclick="openTab('logs',this)" class="nav">📊 Logs</a>
+<a onclick="openTab('adminPosts',this)" class="nav">🛡️ Admin Posts</a>
 
-<button onclick="loadSuggestions()">Suggestions</button>
-<button onclick="loadProfiles()">Profiles</button>
-<button onclick="loadPosts()">Public Posts</button>
-<button onclick="loadAdminPosts()">Admin Posts</button>
-<button onclick="loadLogs()">Logs</button>
+</div>
 
+<div class="main">
+<input id="search" placeholder="Search" onkeyup="searchData()"><br><br>
+
+<div class="tabs">
+<button onclick="filterStatus('All',this)" class="active">All</button>
+<button onclick="filterStatus('Pending',this)">Pending</button>
+<button onclick="filterStatus('Approved',this)">Approved</button>
+<button onclick="filterStatus('Deleted',this)">Deleted</button>
+<button onclick="filterStatus('Resolved',this)">Resolved</button>
+</div>
+
+<div class="table-box">
+<table>
+<thead id="head"></thead>
+<tbody id="body"></tbody>
+</table>
+</div>
+
+<canvas id="chart" style="margin-top:20px;display:none"></canvas>
+
+<div id="adminPostsBox" style="display:none;margin-top:20px">
+<h3><i class="fa fa-pen-to-square"></i> Post Editor</h3>
+<input id="ap_title" placeholder="Title">
+<input id="ap_media" placeholder="Image/Video/Link URL">
+<textarea id="ap_content" placeholder="Write content..."></textarea>
 <br>
+<button class="edit" onclick="createAdminPost()"><i class="fa fa-upload"></i> Publish</button>
+<button class="pending" onclick="saveDraft()"><i class="fa fa-save"></i> Save Draft</button>
 
-<button class="pending" onclick="filterData('Pending')">Pending</button>
-<button class="approved" onclick="filterData('Approved')">Approved</button>
-<button class="deleted" onclick="filterData('Deleted')">Deleted</button>
-<button onclick="showAll()">All</button>
+<hr>
+<h4><i class="fa fa-photo-film"></i> Media Manager</h4>
+<input id="media_upload" type="file" accept="image/*,.pdf,video/*" multiple onchange="addMedia()">
 
-<table>
-<thead><tr id="header"></tr></thead>
-<tbody id="data"></tbody>
-</table>
+<div id="mediaList" style="margin-top:10px"></div>
 
-<!-- ADMIN POST -->
-<h3>➕ Admin Post</h3>
-<input id="p_title" placeholder="Title"><br>
-<textarea id="p_content" placeholder="Content"></textarea><br>
-<button onclick="addAdminPost()" class="accept-btn">Post</button>
+<hr>
+<h4><i class="fa fa-list"></i> Your Posts</h4>
+<div id="adminPostList"></div>
+</div>
 
-<!-- NEW UPDATES TABLE -->
-<h3>🔥 New Updates</h3>
-<table>
-<thead>
-<tr><th>#</th><th>Update</th><th>Action</th></tr>
-</thead>
-<tbody id="updatesTable"></tbody>
-</table>
+<div id="updatesBox" style="display:none;margin-top:20px">
+<h3><i class="fa fa-bullhorn"></i> Broadcasts</h3>
+<input id="bc_text" placeholder="Message" oninput="updatePreview()">
+<label><input type="checkbox" id="flash" onchange="updatePreview()"> Flash</label>
+<button class="send" onclick="sendBroadcast()">Send</button>
 
-<input id="newUpdateText" placeholder="Write update">
-<button onclick="addUpdate()" class="accept-btn">Add</button>
+<div id="previewBox" style="margin-top:15px;padding:10px;border-radius:6px;background:#f1f1f1">
+<b>Preview:</b>
+<div id="previewContent" style="margin-top:5px;padding:8px;border-radius:5px;background:#e9ecef">No message</div>
+</div>
+</div>
 
-<!-- ANALYTICS -->
-<h3>📊 Analytics</h3>
-<canvas id="logChart"></canvas>
+</div>
+
+<script>
+let type="suggestions",data=[],filtered=[];
+
+
+function safe(v){return (v||'').replace(/'/g,"\\'").replace(/\n/g,' ')}
+
+window.render=function(){
+const body=document.getElementById('body');
+const head=document.getElementById('head');
+body.innerHTML='';
+
+if(type==='logs'){
+  head.innerHTML='';
+  body.innerHTML='';
+  return;
+}
+
+if(type==='adminPosts'){
+head.innerHTML='<tr><th>#</th><th>Title</th><th>Content</th><th>Preview</th></tr>';
+}else{
+head.innerHTML='<tr><th>#</th><th>Title / Email</th><th>Content / Role</th><th>Status</th><th>Actions</th></tr>';
+}
+
+filtered.forEach((d,i)=>{
+const s=d.status||'Pending';
+
+let actions='';
+if(s==='Deleted'){
+actions=`<button class="undo" onclick="undo('${d.id}')"><i class="fa fa-rotate-left"></i></button>
+<button class="delete" onclick="permanentDelete('${d.id}')"><i class="fa fa-trash"></i></button>`;
+}else{
+actions=`<button class="approve" onclick="upd('${d.id}','Approved')"><i class="fa fa-check"></i></button>
+<button class="pending" onclick="upd('${d.id}','Pending')"><i class="fa fa-clock"></i></button>
+<button class="delete" onclick="softDelete('${d.id}')"><i class="fa fa-trash"></i></button>`;
+
+if(s==='Approved' || type==='posts'){
+actions+=`<button class="edit" onclick="editItem('${d.id}')"><i class="fa fa-pen"></i></button>`;
+if(type==='suggestions'){
+actions+=`<button class="resolve" onclick="resolveItem('${d.id}')"><i class="fa fa-check-double"></i></button>`;
+}
+}
+
+if(type==='profiles'){
+actions+=`<button class="edit" onclick="roleEdit('${d.id}')"><i class="fa fa-user"></i></button>`;
+}
+}
+
+if(type==='adminPosts'){
+body.innerHTML+=`<tr>
+<td>${i+1}</td>
+<td>${d.title||''}</td>
+<td>${d.content||''}</td>
+<td><button class="edit" onclick="previewPost('${d.media}')"><i class="fa fa-eye"></i></button></td>
+</tr>`;
+}else{
+body.innerHTML+=`<tr>
+<td>${i+1}</td>
+<td>${d.name||d.userName||d.title||d.email||''}</td>
+<td>${type==='profiles' ? (d.role||'User') : (d.content||d.suggestion||'')}</td>
+<td class="status status-${s}">${s}</td>
+<td>${actions}</td>
+</tr>`;
+}
+});
+};
+
+function openTab(t,el){
+type=t;
+document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));
+el.classList.add('active');
+document.getElementById('adminPostsBox').style.display=(t==='adminPosts')?'block':'none';
+// merge Broadcasts into Admin Posts
+if(t==='adminPosts'){
+  document.getElementById('updatesBox').style.display='block';
+}else{
+  document.getElementById('updatesBox').style.display='none';
+}
+
+const tableBox=document.querySelector('.table-box');
+const chartEl=document.getElementById('chart');
+const tabs=document.querySelector('.tabs');
+
+if(t==='logs'){
+  tableBox.style.display='none';
+  chartEl.style.display='block';
+  tabs.style.display='none';
+}else if(t==='adminPosts' || t==='updates'){
+  // both Admin Posts + Broadcasts in one place
+  tableBox.style.display='none';
+  chartEl.style.display='none';
+  tabs.style.display='none';
+  document.getElementById('adminPostsBox').style.display='block';
+  document.getElementById('updatesBox').style.display='block';
+}else{
+  tableBox.style.display='block';
+  chartEl.style.display='none';
+  tabs.style.display='block';
+}
+
+
+loadData();
+}
+
+function searchData(){
+let v=document.getElementById('search').value.toLowerCase();
+filtered=data.filter(d=>JSON.stringify(d).toLowerCase().includes(v));
+render();
+}
+
+function filterStatus(s,btn){
+document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+btn.classList.add('active');
+
+if(type==='profiles'){
+ filtered=[...data];
+}else{
+ filtered=s==='All'?[...data]:data.filter(d=>(d.status||'').toLowerCase()===s.toLowerCase());
+}
+
+render();
+}
+</script>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
-});
+const app=initializeApp({apiKey:"AIzaSyC",authDomain:"e-vedhika-258f2.firebaseapp.com",projectId:"e-vedhika-258f2"});
+const db=getFirestore(app);
 
-const db = getFirestore(app);
+window.loadData=async function(){
 
-let currentType="", fullData=[];
-
-/* HEADER */
-function setHeader(){
-if(currentType==="profiles"){
-header.innerHTML=`<th>#</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th>`;
-}else if(currentType==="logs"){
-header.innerHTML=`<th>#</th><th>Action</th><th>Time</th>`;
-}else{
-header.innerHTML=`<th>#</th><th>Title</th><th>Content</th><th>Status</th><th>Action</th>`;
-}
+if(type==='logs'){
+const qs=await getDocs(collection(db,'logs'));
+data=[];
+qs.forEach(d=>data.push(d.data()));
+drawChart();
+return;
 }
 
-/* LOAD */
-window.loadSuggestions=()=>load("suggestions");
-window.loadProfiles=()=>load("profiles");
-
-window.loadPosts=async()=>{
-currentType="posts"; setHeader();
-let qs=await getDocs(collection(db,"posts"));
-let arr=[];
+let col;
+if(type==='adminPosts') col='posts';
+else if(type==='profiles') col='logins';
+else col=type;
+const qs=await getDocs(collection(db,col));
+data=[];
 qs.forEach(d=>{
 let x=d.data();
-if(x.userType!=="admin"){
-if(!x.status) x.status="Pending";
-arr.push({id:d.id,...x});
-}
+if(type==='adminPosts' && x.userType!=='admin') return;
+let s=(x.status||'Pending').toLowerCase();
+if(s==='accepted') s='approved';
+x.status=s.charAt(0).toUpperCase()+s.slice(1);
+data.push({id:d.id,...x});
 });
-fullData=arr; display(arr);
+filtered=[...data];
+render();
 };
 
-window.loadAdminPosts=async()=>{
-currentType="posts"; setHeader();
-let qs=await getDocs(collection(db,"posts"));
-let arr=[];
-qs.forEach(d=>{
-let x=d.data();
-if(x.userType==="admin") arr.push({id:d.id,...x});
+window.upd=async(id,s)=>{
+const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
+await updateDoc(doc(db,col,id),{status:s});
+await addDoc(collection(db,'logs'),{action:`${col} ${s}`,item:id,time:serverTimestamp()});
+loadData();
+};
+
+window.softDelete=async(id)=>{
+const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
+await updateDoc(doc(db,col,id),{status:'Deleted'});
+await addDoc(collection(db,'logs'),{action:`${col} moved to deleted`,item:id,time:serverTimestamp()});
+loadData();
+};
+
+window.permanentDelete=async(id)=>{
+const res = await Swal.fire({
+  title: 'Are you sure?',
+  text: 'This will permanently delete',
+  icon: 'warning',
+  showCancelButton: true,
+  confirmButtonColor: '#dc3545',
+  cancelButtonColor: '#6c757d'
 });
-fullData=arr; display(arr);
+
+if(!res.isConfirmed) return;
+
+const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
+await deleteDoc(doc(db,col,id));
+await addDoc(collection(db,'logs'),{action:`${col} permanently deleted`,item:id,time:serverTimestamp()});
+loadData();
 };
 
-window.loadLogs=async()=>{
-currentType="logs"; setHeader();
-let qs=await getDocs(collection(db,"logs"));
-let arr=[];
-qs.forEach(d=>arr.push(d.data()));
-fullData=arr;
-display(arr);
-drawChart(arr);
+window.undo=async(id)=>{
+const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
+await updateDoc(doc(db,col,id),{status:'Pending'});
+loadData();
 };
 
-async function load(type){
-currentType=type;
-setHeader();
-let qs=await getDocs(collection(db,type));
-let arr=[];
-qs.forEach(d=>arr.push({id:d.id,...d.data()}));
-fullData=arr;
-display(arr);
-}
-
-/* FILTER */
-window.filterData=(status)=>{
-display(fullData.filter(d=>{
-let s=d.status||"Pending";
-if(status==="Approved") return s==="Approved"||s==="Accepted";
-return s===status;
-}));
+window.resolveItem=async(id)=>{
+await updateDoc(doc(db,'suggestions',id),{status:'Resolved'});
+await addDoc(collection(db,'logs'),{action:`suggestions resolved`,item:id,time:serverTimestamp()});
+loadData();
 };
 
-window.showAll=()=>display(fullData);
-
-/* ACTION */
-window.acceptRow=async(id)=>{
-await updateDoc(doc(db,currentType,id),{status:"Approved"});
-load(currentType);
-};
-
-window.deleteRow=async(id)=>{
-await updateDoc(doc(db,currentType,id),{status:"Deleted"});
-load(currentType);
-};
-
-window.editRow=async(id)=>{
-let txt=prompt("Edit:");
-if(!txt) return;
-await updateDoc(doc(db,currentType,id),{content:txt});
-load(currentType);
-};
-
-/* ADMIN POST */
-window.addAdminPost=async()=>{
-await addDoc(collection(db,"posts"),{
-title:p_title.value,
-content:p_content.value,
-userType:"admin",
-status:"Approved",
-isNew:true,
-createdAt:serverTimestamp()
+window.roleEdit=async(id)=>{
+const { value: roleInput } = await Swal.fire({
+  title: 'Set Role',
+  input: 'select',
+  inputOptions: {
+    User: 'User',
+    Moderator: 'Moderator',
+    Admin: 'Admin'
+  },
+  inputPlaceholder: 'Select role',
+  showCancelButton: true
 });
+
+if(!roleInput) return;
+
+await updateDoc(doc(db,'logins',id),{role:roleInput});
+
+await addDoc(collection(db,'logs'),{action:`profile role updated`,item:id,time:serverTimestamp()});
+
+loadData();
 };
 
-/* DISPLAY */
-function display(arr){
-data.innerHTML="";
-arr.forEach((d,i)=>{
-if(currentType==="logs"){
-data.innerHTML+=`
-<tr>
-<td>${i+1}</td>
-<td>${d.action||""}</td>
-<td>${d.time?.seconds?new Date(d.time.seconds*1000).toLocaleString():""}</td>
-</tr>`;
-}else{
-let s=d.status||"Pending";
-if(s==="Accepted") s="Approved";
-let cls=s==="Approved"?"approved":s==="Deleted"?"deleted":"pending";
+window.editItem=async(id)=>{
+const item=data.find(x=>x.id===id)||{};
 
-data.innerHTML+=`
-<tr>
-<td>${i+1}</td>
-<td>${d.title||d.name}</td>
-<td>${d.content||d.suggestion}</td>
-<td class="${cls}">${s}</td>
-<td>
-<button class="accept-btn" onclick="acceptRow('${d.id}')">Accept</button>
-<button class="edit-btn" onclick="editRow('${d.id}')">Edit</button>
-<button class="delete-btn" onclick="deleteRow('${d.id}')">Delete</button>
-</td>
-</tr>`;
-}
+const { value: formValues } = await Swal.fire({
+  title: 'Edit Post',
+  html:
+    `<input id="swal-title" class="swal2-input" placeholder="Title" value="${item.title||''}">` +
+    `<textarea id="swal-content" class="swal2-textarea" placeholder="Content">${item.content||item.suggestion||''}</textarea>`,
+  focusConfirm: false,
+  showCancelButton: true,
+  preConfirm: () => {
+    return {
+      title: document.getElementById('swal-title').value,
+      content: document.getElementById('swal-content').value
+    }
+  }
 });
-}
 
-/* 🔥 UPDATES TABLE */
-async function loadUpdates(){
-let qs=await getDocs(collection(db,"updates"));
-let html="";
-let i=1;
-qs.forEach(d=>{
-let x=d.data();
-html+=`
-<tr>
-<td>${i++}</td>
-<td>${x.text}</td>
-<td>
-<button onclick="editUpdate('${d.id}','${x.text}')">✏️</button>
-<button onclick="deleteUpdate('${d.id}')">❌</button>
-</td>
-</tr>`;
+if(!formValues) return;
+
+let col = (type==='posts' || type==='adminPosts') ? 'posts' : type;
+await updateDoc(doc(db,col,id),{
+  title: formValues.title,
+  content: formValues.content
 });
-updatesTable.innerHTML=html;
-}
 
-window.addUpdate=async()=>{
-await addDoc(collection(db,"updates"),{
-text:newUpdateText.value,
+await addDoc(collection(db,'logs'),{action:`${col} edited`,item:id,time:serverTimestamp()});
+
+loadData();
+};
+
+window.createAdminPost=async()=>{
+await addDoc(collection(db,'posts'),{
+title:ap_title.value,
+content:ap_content.value,
+media:ap_media.value,
+userType:'admin',
+status:'Approved'
+});
+Swal.fire('Posted!','','success');
+loadData();
+};
+
+window.saveDraft=async()=>{
+await addDoc(collection(db,'posts'),{
+title:ap_title.value,
+content:ap_content.value,
+media:ap_media.value,
+userType:'admin',
+status:'Draft'
+});
+Swal.fire('Saved as Draft','','info');
+};
+
+window.selectedMedia=[]; // store {url,type}
+
+window.addMedia=()=>{
+const input=document.getElementById('media_upload');
+const files=Array.from(input.files);
+
+if(!files.length) return;
+
+files.forEach(file=>{
+ const fileURL=URL.createObjectURL(file);
+ const type=file.type;
+ window.selectedMedia.push({url:fileURL,type:type});
+
+ let preview='';
+
+ if(type.startsWith('image/')){
+  preview=`<img src="${fileURL}" style="max-width:100px;border-radius:6px">`;
+ }else if(type.startsWith('video/')){
+  preview=`<video src="${fileURL}" style="max-width:120px" controls></video>`;
+ }else if(type==='application/pdf'){
+  preview=`<i class="fa fa-file-pdf" style="color:red"></i> ${file.name}`;
+ }else{
+  preview=`<i class="fa fa-file"></i> ${file.name}`;
+ }
+
+ document.getElementById('mediaList').innerHTML+=`
+ <div style="margin:8px 0;padding:6px;border:1px solid #ddd;border-radius:6px;display:flex;align-items:center;gap:10px;justify-content:space-between">
+   <div style="display:flex;align-items:center;gap:10px">
+     ${preview}
+     <span style="font-size:12px">${file.name}</span>
+   </div>
+   <button class="edit" onclick="previewMedia('${fileURL}','${type}')"><i class="fa fa-eye"></i></button>
+   <button class="delete" onclick="removeMedia(this,'${fileURL}')"><i class="fa fa-times"></i></button>
+ </div>`;
+});
+
+ap_media.value=JSON.stringify(window.selectedMedia);
+input.value='';
+};
+
+window.removeMedia=(btn,url)=>{
+ const row=btn.closest('div');
+ if(row) row.remove();
+
+ if(url){
+   window.selectedMedia=window.selectedMedia.filter(x=>x!==url);
+   ap_media.value=JSON.stringify(window.selectedMedia);
+ }else{
+   ap_media.value='';
+ }
+};
+
+window.previewMedia=(url,type)=>{
+ let content='';
+
+ if(type && type.startsWith('image/')){
+  content=`<img src="${url}" style="max-width:100%">`;
+ }else if(type && type==='application/pdf'){
+  content=`<embed src="${url}" type="application/pdf" style="width:100%;height:600px" />
+           <div style="margin-top:8px"><a href="${url}" target="_blank">Open PDF in new tab</a></div>`;
+ }else if(type && type.startsWith('video/')){
+  content=`<video src="${url}" controls style="max-width:100%"></video>`;
+ }else{
+  content=`<a href="${url}" target="_blank">Open File</a>`;
+ }
+
+ Swal.fire({
+  title:'Preview',
+  html:content,
+  width:'700px'
+ });
+};
+
+window.sendBroadcast=async()=>{
+await addDoc(collection(db,'updates'),{
+text:bc_text.value,
+flash:document.getElementById('flash').checked,
 time:serverTimestamp()
 });
-newUpdateText.value="";
-loadUpdates();
+loadData();
 };
 
-window.editUpdate=async(id,text)=>{
-let n=prompt("Edit",text);
-if(!n) return;
-await updateDoc(doc(db,"updates",id),{text:n});
-loadUpdates();
-};
-
-window.deleteUpdate=async(id)=>{
-await deleteDoc(doc(db,"updates",id));
-loadUpdates();
-};
-
-/* 📊 CHART */
-function drawChart(logs){
-let c={};
-logs.forEach(l=>{c[l.action]=(c[l.action]||0)+1;});
-new Chart(document.getElementById("logChart"),{
-type:"bar",
-data:{labels:Object.keys(c),datasets:[{label:"Actions",data:Object.values(c)}]}
-});
+function updatePreview(){
+const text=document.getElementById('bc_text').value||'No message';
+const flash=document.getElementById('flash').checked;
+const box=document.getElementById('previewContent');
+box.innerText=text;
+if(flash){
+ box.style.background='#dc3545';
+ box.style.color='#fff';
+}else{
+ box.style.background='#e9ecef';
+ box.style.color='#000';
+}
 }
 
-/* INIT */
-loadUpdates();
+window.previewPost=(media)=>{
+ let arr=[];
+ try{arr=JSON.parse(media)||[]}catch(e){arr=[{url:media}]}
 
+ let html='';
+ arr.forEach(obj=>{
+  const url=obj.url||obj;
+  const type=obj.type||'';
+
+  if(type.startsWith('image/')){
+    html+=`<img src="${url}" style="max-width:100%;margin:5px 0">`;
+  }else if(type==='application/pdf'){
+    html+=`<embed src="${url}" type="application/pdf" style="width:100%;height:500px" />
+           <div style="margin:6px 0"><a href="${url}" target="_blank">Open PDF in new tab</a></div>`;
+  }else if(type.startsWith('video/')){
+    html+=`<video src="${url}" controls style="max-width:100%;margin:5px 0"></video>`;
+  }else{
+    html+=`<a href="${url}" target="_blank">Open File</a>`;
+  }
+ });
+
+ Swal.fire({title:'Post Preview',html:html||'No media'});
+};
+
+function drawChart(){
+let c={};
+data.forEach(d=>{c[d.action]=(c[d.action]||0)+1});
+if(window.chartInstance)window.chartInstance.destroy();
+const ctx=document.getElementById('chart');
+window.chartInstance=new Chart(ctx,{type:'doughnut',data:{labels:Object.keys(c),datasets:[{data:Object.values(c)}]},options:{onClick:(e,i)=>{if(i.length){alert(Object.keys(c)[i[0].index])}}}});
+}
+
+loadData();
 </script>
 
 </body>
