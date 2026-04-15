@@ -1,30 +1,131 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signup - E-Vedhika</title>
+
+<style>
+:root{--primary:#0d3b66;--bg:#f4f7fb}
+body{margin:0;font-family:Segoe UI;background:var(--bg)}
+
+header{background:#0d3b66;color:#fff;padding:20px;text-align:center}
+
+.wrapper{max-width:500px;margin:30px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+
+h2{text-align:center;margin-bottom:10px}
+
+input,select{
+ width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc
+}
+
+button{
+ width:100%;padding:10px;margin-top:8px;background:#0d3b66;color:#fff;border:none;border-radius:6px;cursor:pointer
+}
+
+button.secondary{background:#6b7280}
+
+/* make anchor behave like button wrapper */
+.btn-link{display:block;text-decoration:none}
+
+</style>
+</head>
+
 <body>
 
-<h2>Register</h2>
+<header>
+<h2>E-VEDHIKA</h2>
+<p style="font-size:12px">Create User Login</p>
+</header>
 
-<input id="email">
-<input id="pass" type="password">
-<input id="name">
+<div class="wrapper">
+<h2>Signup</h2>
 
-<button onclick="reg()">Create</button>
+<input id="surname" placeholder="Surname *">
+<input id="name" placeholder="Name *">
+
+<select id="gender">
+<option value="">Select Gender</option>
+<option>Male</option>
+<option>Female</option>
+</select>
+
+<input id="father" placeholder="Father/Spouse Name *">
+
+<select id="state"><option value="">Select State</option><option>Telangana</option></select>
+<select id="district"><option>Select District</option></select>
+<select id="mandal"><option>Select Mandal</option></select>
+
+<input id="mobile" placeholder="Mobile No *">
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password (min 6 chars)">
+<input id="confirm" type="password" placeholder="Confirm Password">
+
+<button onclick="register()">Submit</button>
+<a href="https://rakeshkumardhawan.github.io/e-vedhika/" target="_top" class="btn-link" style="display:block;text-align:center;padding:10px;margin-top:8px;background:#6b7280;color:#fff;border-radius:6px;">
+  Cancel
+</a>
+
+
+</div>
 
 <script type="module">
-import { auth, db } from "./firebase.js";
-import { createUserWithEmailAndPassword }
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { doc, setDoc }
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-window.reg = async ()=>{
-  let res = await createUserWithEmailAndPassword(auth,email.value,pass.value);
+const app=initializeApp({apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",authDomain:"e-vedhika-258f2.firebaseapp.com",projectId:"e-vedhika-258f2"});
+const auth=getAuth(app);
+const db=getFirestore(app);
 
-  await setDoc(doc(db,"users",res.user.uid),{
-    username:name.value
+const $=id=>document.getElementById(id);
+
+// sample data
+const data={Telangana:{Adilabad:["Bheempur","Jainoor"],Nizamabad:["Bodhan","Armoor"]}};
+
+state.onchange=()=>{
+ district.innerHTML='<option>Select District</option>';
+ mandal.innerHTML='<option>Select Mandal</option>';
+ const d=data[state.value]; if(!d) return;
+ Object.keys(d).forEach(x=>district.innerHTML+=`<option>${x}</option>`);
+};
+
+district.onchange=()=>{
+ mandal.innerHTML='<option>Select Mandal</option>';
+ const m=data[state.value]?.[district.value]||[];
+ m.forEach(x=>mandal.innerHTML+=`<option>${x}</option>`);
+};
+
+window.register=async()=>{
+ const e=$("email").value;
+ const p=$("password").value;
+ const c=$("confirm").value;
+
+ if(p!==c) return alert("Passwords not match");
+
+ try{
+  const cred=await createUserWithEmailAndPassword(auth,e,p);
+  await setDoc(doc(db,"profiles",cred.user.uid),{
+   name:$("name").value,
+   surname:$("surname").value,
+   mobile:$("mobile").value,
+   gender:$("gender").value,
+   state:$("state").value,
+   district:$("district").value,
+   mandal:$("mandal").value
   });
 
-  location.href="login.html";
+  // 🔥 Auto login already happens after signup (Firebase keeps session)
+  // Direct redirect to home (user will be logged in automatically)
+  // use full absolute URL for GitHub Pages reliability
+  window.location.href="https://rakeshkumardhawan.github.io/e-vedhika/";
+ }catch(err){alert(err.message)}
+};
+
+// not needed when using direct link; kept as fallback if used elsewhere
+window.goBack=()=>{
+  // simple same-tab navigation
+  window.location.replace("https://rakeshkumardhawan.github.io/e-vedhika/");
 };
 </script>
 
