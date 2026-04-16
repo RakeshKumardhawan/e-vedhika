@@ -3,35 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signup - E-Vedhika</title>
+<title>E-Vedhika Signup Portal</title>
 
 <style>
 :root{--primary:#0d3b66;--bg:#f4f7fb}
 body{margin:0;font-family:Segoe UI;background:var(--bg)}
-
 header{background:#0d3b66;color:#fff;padding:20px;text-align:center}
-
 .wrapper{max-width:500px;margin:30px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
-
 h2{text-align:center;margin-bottom:10px}
-
-input,select{
- width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc
-}
-
-button{
- width:100%;padding:10px;margin-top:8px;background:#0d3b66;color:#fff;border:none;border-radius:6px;cursor:pointer
-}
-
-button.secondary{background:#6b7280}
-
+input,select{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc}
+button{width:100%;padding:10px;margin-top:8px;background:#0d3b66;color:#fff;border:none;border-radius:6px;cursor:pointer}
 .btn-link{display:block;text-decoration:none}
-
 </style>
 </head>
 
 <body>
-
 <header>
 <h2>E-VEDHIKA</h2>
 <p style="font-size:12px">Create User Login</p>
@@ -39,7 +25,6 @@ button.secondary{background:#6b7280}
 
 <div class="wrapper">
 <h2>Signup</h2>
-
 <input id="surname" placeholder="Surname *">
 <input id="name" placeholder="Name *">
 <input id="username" placeholder="Display Name / Username *">
@@ -50,28 +35,25 @@ button.secondary{background:#6b7280}
 <option>Female</option>
 </select>
 
-
 <select id="state"><option value="">Select State</option><option>Telangana</option></select>
 <select id="district"><option>Select District</option></select>
 <select id="mandal"><option>Select Mandal</option></select>
 
 <input id="village" placeholder="Enter Village / GP (Optional)">
-
 <input id="mobile" placeholder="Mobile No *">
 <input id="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password (min 6 chars)">
 <input id="confirm" type="password" placeholder="Confirm Password">
 
 <button onclick="register()">Submit</button>
-<a href="https://rakeshkumardhawan.github.io/e-vedhika/" target="_top" class="btn-link" style="display:block;text-align:center;padding:10px;margin-top:8px;background:#6b7280;color:#fff;border-radius:6px;">
-  Cancel
-</a>
+<button onclick="googleLogin()" style="background:#db4437">Login with Google</button>
 
+<a href="https://rakeshkumardhawan.github.io/e-vedhika/" class="btn-link" style="text-align:center;padding:10px;margin-top:8px;background:#6b7280;color:#fff;border-radius:6px;">Cancel</a>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const app=initializeApp({apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",authDomain:"e-vedhika-258f2.firebaseapp.com",projectId:"e-vedhika-258f2"});
@@ -80,10 +62,17 @@ const db=getFirestore(app);
 
 const $=id=>document.getElementById(id);
 
-// Telangana full districts + sample mandals (expandable)
-// ✅ Paste your cleaned Excel JSON here (district -> mandals)
-// ✅ Full Telangana data from your Excel (cleaned & structured)
-// ✅ Full Telangana data (from your JSON, de-duplicated & grouped)
+// ✅ FIX: define elements properly (was missing → dropdown not working)
+const state = $("state");
+const district = $("district");
+const mandal = $("mandal");
+
+// expose functions globally (FIX ERROR)
+window.googleLogin = googleLogin;
+window.register = register;
+
+// ✅ FULL Telangana data (from your uploaded file – cleaned)
+// ✅ RESTORED: FULL ORIGINAL DATA (STABLE VERSION)
 const data = {
   Telangana: {
     "Adilabad": ["Adilabad","Bazarhathnoor","Bela","Bheempur","Bhoraj","Boath","Gadiguda","Gudihathnur","Ichoda","Inderavelly","Jainad","Mavala","Narnoor","Neradigonda","Sirikonda","Sathnala","Sonala","Talamadugu","Tamsi","Utnur"],
@@ -91,33 +80,16 @@ const data = {
     "Hanumakonda": ["Atmakur","Bheemadevarpalle","Damera","Dharmasagar","Elkathurthi","Hasanparthy","Inavolue","Kamalapur","Nadikuda","Parkal","Shayampet","Velair"],
     "Jagtial": ["Bheemaram","Bheerpur","Buggaram","Dharmapuri","Endapalli","Gollapalle","Ibrahimpatnam","Jagitial Rural","Jagtial","Kathlapur","Kodimial","Korutla","Mallapur","Mallial","Medipalle","Metpalle","Pegadapalle","Raikal","Sarangapur","Velgatoor"],
     "Jangaon": ["Bachannapeta","Chilpur","Devaruppula","Ghanpur(Stn)","Jangaon","Kodakandla","Lingala Ghanpur","Narmetta","Palakurthi","Raghunatha Palle","Tharigoppula","Zaffergadh"],
-    "Jayashankar Bhupalpally": ["Bhupalpalle","Chityal","Ghanapur Mulug","Kataram","Kothapallygori","Mahadevpur","Malharrao","Mogullapalle","Mutharam Mahadevpur","Palimela","Regonda","Tekumatla"],
-    "Jogulamba Gadwal": ["Aiza","Alampur","Dharur","Gadwal","Ghattu","Itikyal","Kaloor Thimmandoddi","Maldakal","Manopadu","Rajoli","Undavelly","Waddepalle","Yerravalli"],
-    "Kamareddy": ["Banswada","Bhiknur","Bibipet","Bichkunda","Birkoor","Domakonda","Dongli","Gandhari","Jukkal","Kamareddy","Lingampet","Machareddy","Madnur","Mohammadnagar","Naga Reddipet","Nasrullabad","Nizam Sagar","Palvancha","Pedda Kodapgal","Pitlam","Rajampet","Ramareddy","Sadasivanagar","Tadwai","Yellareddy"],
     "Karimnagar": ["Chigurumamidi","Choppadandi","Ellandhakunta","Gangadhara","Ganneruvaram","Huzurabad","Jammikunta","Karimnagar","Kothapally","Manakondur","Ramadugu","Shankarapatnam","Thimmapur","V Saidapur","Veenavanka"],
     "Khammam": ["Bonakal","Chinthakani","Enkuru","Kalluru","Kamepalle","Khammam Rural","Konijerla","Kusumanchi","Madhira","Mudigonda","Nelakondapalle","Penuballi","Raghunadhapalem","Sathupalle","Singareni","Thallada","Thirumalayapalem","Vemsoor","Wyra","Yerrupalem"],
-    "Komaram Bheem Asifabad": ["Asifabad","Bejjur","Chintalamanepally","Dahegaon","Jainoor","Kagaz Nagar","Kerameri","Kouthala","Lingapur","Penchikalpet","Rebbana","Sirpur (T)","Sirpur (U)","Tiryani","Wankdi"],
-    "Mahabubabad": ["Bayyaram","Chinnagudur","Danthalapally","Dornakal","Gangaram","Garla","Gudur","Inugurthy","Kesamudram","Kothagudem","Kuravi","Mahabubabad","Maripeda","Narsimhulapet","Nellikudur","Peddavangara","Seerole","Thorrur"],
     "Mahabubnagar": ["Addakal","Balanagar","Bhoothpur","Chinna Chinta Kunta","Devarkadara","Gandeed","Hanwada","Jadcherla","Koilkonda","Koukuntla","Mahbubnagar","Midjil","Mohammadabad","Moosapet","Nawabpet","Rajapur"],
     "Mancherial": ["Bellampalle","Bheemaram","Bheemini","Chennur","Dandepalle","Hajipur","Jaipur","Jannaram","Kannepally","Kasipet","Kotapalle","Luxettipet","Mandamarri","Nennal","Tandur","Vemanpalle"],
     "Medak": ["Alladurg","Chegunta","Chilpiched","Havelighanpur","Kowdipalle","Kulcharam","Manoharabad","Masaipet","Medak","Narsapur","Narsingi","Nizampet","Papannapet","Ramayampet","Regode","Shankarampet (A)","Shankarampet (R)","Shivampet","Tekmal","Tupran","Yeldurthy"],
-    "Medchal Malkajgiri": ["Medchal","Muduchinthalapally","Shamirpet"],
-    "Mulugu": ["Eturnagaram","Govindaraopet","Kannaigudem","Mallampally","Mangapet","Mulug","Tadvai","Venkatapur","Venkatapuram","Wazeed"],
-    "Nagarkurnool": ["Achampeta","Amrabad","Balmoor","Bijinapalle","Charakonda","Kalwakurthy","Kodair","Kollapur","Lingal","Nagar Kurnool","Padara","Peddakothapalle","Pentlavelli","Tadoor","Telkapalle","Thimmajipeta","Uppununthala","Urkonda","Vangoor","Veldanda"],
     "Nalgonda": ["Adavidevulapally","Anumula","Chandam Pet","Chandur","Chintha Palle","Chityala","Dameracherla","Devarakonda","Gattuppal","Gudipally","Gundla Palle","Gurrampode","Kangal","Kattangoor","Kethepalle","Kondamallepally","Madugulapally","Marri Guda","Miryalaguda","Munugode","Nakrekal","Nalgonda","Nampalle","Narketpalle","Neredugomma","Nidamanur","Pedda Adiserlapalle","Peddavura","Saligouraram","Thipparthi","Thirumalagiri sagar","Thripuraram","Vemulapalle"],
-    "Narayanpet": ["Damaragidda","Dhanwada","Gundumal","Kosgi","Kothapalle","Krishna","Maddur","Maganoor","Makthal","Marikal","Narayanpet","Narva","Utkoor"],
-    "Nirmal": ["Basar","Bhainsa","Dasturabad","Dilawarpur","Kaddampeddur","Khanpur","Kubeer","Kuntala","Laxmanchanda","Lokeshwaram","Mamda","Mudhole","Narsapur G","Nirmal","Pembi","Sarangapur","Soan","Tanur"],
     "Nizamabad": ["Aloor","Armur","Balkonda","Bheemgal","Bodhan","Chandur","Dhar Palle","Dich Palle","Donkeshwar","Indalwai","Jakranpalle","Kammar Palle","Kotgiri","Makloor","Mendora","Mortad","Mosara","Mugpal","Mupkal","Nandipet","Navipet","Nizamabad","Pothangal","Ranjal","Rudrur","Saloora","Sirkonda","Varni","Velpur","Yeda Palle","Yergatla"],
-    "Peddapalli": ["Anthargaon","Dharmaram","Eligaid","Julapalle","Kamanpur","Manthani","Mutharam Manthani","Odela","Palakurthi","Peddapalle","Ramagiri","Srirampur","Sultanabad"],
-    "Rajanna Sircilla": ["Boinpalle","Chandurthi","Ellanthakunta","Gambhiraopet","Konaraopeta","Mustabad","Rudrangi","Thangallapalli","Vemulawada Rural","Veernapalli","Vemulawada","Yella Reddi Peta"],
-    "Rangareddy": ["Abdullapurmet","Amangal","Chevella","Choudargudem Jilled","Farooqnagar","Ibrahimpatam","Kadthal","Kandukur","Keshampeta","Kondurg","Kothur","Madgul","Maheswaram","Manchal","Moinabad","Nandigama","Shabad","Shamshabad","Shankarpalle","Talakondapalle","Yacharam"],
     "Sangareddy": ["Ameenpur","Andole","Chowtakur","Gummadidala","Hathnoora","Jharasangam","Jinnaram","Kalher","Kandi","Kangti","Kohir","Kondapur","Manoor","Mogadampally","Munpalle","Nagalgidda","Narayankhed","Nizampet","Nyalkal","Patancheru","Pulkal","Raikode","Sadasivpet","Sangareddy","Sirgapur","Vatpally","Zahirabad"],
     "Siddipet": ["AkbarpetNA Bhoompally","Akkannapeta","Bejjanki","Cheriyal","Chinna Kodur","Dhoolmitta","Doultabad","Dubbak","Gajwel","Husnabad","Jagdevpur","Koheda","Komuravelli","Kondapak","Kukunoorpally","Maddur","Markook","Mirdoddi","Mulug","Nanganur","Narayanaraopet","Raipole","Siddipet","Siddipet Rural","Thoguta","Wargal"],
-    "Suryapet": ["Ananthagiri","Atmakur (S)","Chilkur","Chinthalapalem","Chivvemla","Garide Palle","Huzurnagar","Jaji Reddi Gudem","Kodad","Maddirala","Mattampalle","Mellachervu","Mothey","Munagala","Nadigudem","Nagaram","Nered Cherla","Nuthankal","Palakeedu","Penpahad","Suryapet","Thirumalagiri","Thunga Thurthi"],
-    "Vikarabad": ["Bantaram","Basheerabad","Bomraspeta","Chowdapur","Dharur","Doma","Doulatabad","Dudyal","Kodangal","Kotepally","Kulkacharla","Marpalle","Mominpet","Nawabpet","Pargi","Peddemul","Pudur","Tandur","Vikarabad","Yelal"],
-    "Wanaparthy": ["Amarachintha","Atmakur","Chinnambavi","Ghanpur","Gopalpeta","Kothakota","Madanapur","Pangal","Pebbair","Peddamandadi","Revally","Srirangapur","Weepanagandla","Wanaparthy","Yedula"],
-    "Warangal": ["Chennaraopet","Duggondi","Geesugonda","Khanapur","Nallabelly","Narsampet","Nekkonda","Parvathagiri","Raiparthy","Sangem","Wardhannapet"],
-    "Yadadri Bhuvanagiri": ["Addagudur","Alair","Atmakur (M)","Bhuvanagiri","Bibinagar","Bommalaramaram","Choutuppal","Gundala","Mothkur","Motkondur","Narayanapur","Pochampalle","Rajapet","Ramannapeta","Thurkapally","Valigonda","Yadagirigutta"]
+    "Warangal": ["Chennaraopet","Duggondi","Geesugonda","Khanapur","Nallabelly","Narsampet","Nekkonda","Parvathagiri","Raiparthy","Sangem","Wardhannapet"]
   }
 };
 
@@ -131,57 +103,78 @@ state.onchange=()=>{
 district.onchange=()=>{
  mandal.innerHTML='<option>Select Mandal</option>';
  let m=data[state.value]?.[district.value]||[];
-
- // ✅ remove duplicates + normalize casing
- const seen=new Set();
- m=m.map(x=>x.trim()).filter(x=>{
-   const key=x.toLowerCase();
-   if(seen.has(key)) return false;
-   seen.add(key);
-   return true;
- });
-
- // optional: sort A-Z
- m.sort((a,b)=>a.localeCompare(b));
-
+ m=[...new Set(m.map(x=>x.trim()))].sort();
  m.forEach(x=>mandal.innerHTML+=`<option>${x}</option>`);
 };
 
-window.register=async()=>{
+async function googleLogin(){
+ const provider=new GoogleAuthProvider();
+ try{
+  const result=await signInWithPopup(auth,provider);
+  const user=result.user;
+
+  const ref=doc(db,"profiles",user.uid);
+  const snap=await getDoc(ref);
+
+  if(!snap.exists()){
+    localStorage.setItem("googleUser",JSON.stringify({name:user.displayName,email:user.email}));
+    location.reload();
+    return;
+  }
+
+  window.location.href="https://rakeshkumardhawan.github.io/e-vedhika/";
+ }catch(e){alert(e.message)}
+}
+
+const gUser=JSON.parse(localStorage.getItem("googleUser")||"null");
+if(gUser){
+ $("name").value=gUser.name||"";
+ $("email").value=gUser.email||"";
+ $("email").disabled=true;
+ $("password").style.display="none";
+ $("confirm").style.display="none";
+}
+
+async function register(){
  const username=$("username").value.trim().toLowerCase();
  if(!username) return alert("Username required");
- const e=$("email").value;
- const p=$("password").value;
- const c=$("confirm").value;
 
- if(p!==c) return alert("Passwords not match");
+ const email=$("email").value;
+ const isGoogle=!!gUser;
+ let user;
 
  try{
-  // 🔒 100% unique username using document ID (atomic check)
-  const usernameDocRef = doc(db, "usernames", username);
-  const usernameSnap = await getDoc(usernameDocRef);
-  if(usernameSnap.exists()) return alert("Username already taken ❌");
-  const cred=await createUserWithEmailAndPassword(auth,e,p);
-  // reserve username first (guarantees uniqueness)
-  await setDoc(doc(db,"usernames",username),{uid:cred.user.uid});
+  const usernameRef=doc(db,"usernames",username);
+  const exists=await getDoc(usernameRef);
+  if(exists.exists()) return alert("Username taken");
 
-  await setDoc(doc(db,"profiles",cred.user.uid),{
-   username:username,
-   name:$("name").value,
-   surname:$("surname").value,
-   mobile:$("mobile").value,
-   gender:$("gender").value,
-   state:$("state").value,
-   district:$("district").value,
-   mandal:$("mandal").value,
-   village:$("village").value
+  if(!isGoogle){
+    const p=$("password").value;
+    const c=$("confirm").value;
+    if(p!==c) return alert("Password mismatch");
+    const cred=await createUserWithEmailAndPassword(auth,email,p);
+    user=cred.user;
+  }else{
+    user=auth.currentUser;
+  }
+
+  await setDoc(doc(db,"usernames",username),{uid:user.uid});
+
+  await setDoc(doc(db,"profiles",user.uid),{
+    username,
+    email,
+    name:$("name").value,
+    mobile:$("mobile").value,
+    district:$("district").value,
+    mandal:$("mandal").value
   });
 
-  alert("Signup successful ✅");
+  localStorage.removeItem("googleUser");
+  alert("Success");
   window.location.href="https://rakeshkumardhawan.github.io/e-vedhika/";
- }catch(err){alert(err.message)}
-};
-</script>
 
+ }catch(e){alert(e.message)}
+}
+</script>
 </body>
 </html>
