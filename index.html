@@ -1,259 +1,552 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>E-Vedhika</title>
 
 <style>
-body{margin:0;font-family:sans-serif;background:linear-gradient(120deg,#74ebd5,#9face6);}
-.container{display:grid;grid-template-columns:260px 1fr 320px;gap:15px;padding:15px;height:100vh;}
-.glass{background:rgba(255,255,255,0.2);backdrop-filter:blur(10px);border-radius:12px;padding:10px;overflow:auto;}
+:root{--primary:#0d3b66;--bg:#f4f7fb}
+body{margin:0;font-family:Segoe UI;background:var(--bg)}
+header{background:#0d3b66;color:#fff;padding:20px;text-align:center}
 
-input,textarea{
-width:100%;
-margin:5px 0;
-padding:8px;
-border:none;
-border-radius:8px;
+.latest-bar{background:#dc2626;color:#fff;padding:6px 10px;font-size:13px;overflow:hidden;display:flex;align-items:center}
+.latest-label{background:#facc15;color:#000;padding:4px 8px;border-radius:4px;margin-right:10px;font-weight:bold}
+.blink{animation:blinkAnim 1s infinite}
+@keyframes blinkAnim{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
+.latest-text{flex:1;overflow:hidden}
+.latest-text span{display:inline-block;white-space:nowrap;padding-left:100%;animation:scrollLeft 15s linear infinite}
+@keyframes scrollLeft{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+
+.container{display:grid;grid-template-columns:260px 1fr 260px;gap:20px;padding:20px;max-width:1300px;margin:auto}
+.card{background:#fff;padding:15px;border-radius:10px;border:1px solid #ddd;margin-bottom:15px}
+.card h3{margin:0 0 10px;font-size:14px;border-bottom:2px solid #0d3b66;padding-bottom:6px}
+input,textarea{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc}
+button{width:100%;padding:10px;background:#0d3b66;color:#fff;border:none;border-radius:6px}
+
+#suggestionBox{height:220px;overflow:auto;scrollbar-width:none}
+#suggestionBox::-webkit-scrollbar{display:none}
+.logo-pro{display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25));animation:glowPulse 2s infinite ease-in-out;transition:filter .2s ease}
+.logo-pro:hover{filter:drop-shadow(0 0 18px #22c55e) drop-shadow(0 0 30px #0ea5e9)}
+
+@keyframes glowPulse{
+0%{filter:drop-shadow(0 0 5px #22c55e) drop-shadow(0 0 10px #0ea5e9)}
+50%{filter:drop-shadow(0 0 12px #22c55e) drop-shadow(0 0 22px #0ea5e9)}
+100%{filter:drop-shadow(0 0 5px #22c55e) drop-shadow(0 0 10px #0ea5e9)}
+}
+/* rotating gradient ring */
+.logo-ring{transform-origin:32px 32px;animation:spin 6s linear infinite}
+.logo-pro:hover .logo-ring{animation-duration:2.5s}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* particle glow */
+.logo-particles{position:absolute;width:64px;height:64px;pointer-events:none}
+.logo-particles span{position:absolute;width:4px;height:4px;background:#22c55e;border-radius:50%;animation:particle 2s infinite}
+.logo-particles span:nth-child(2){background:#0ea5e9;animation-delay:.5s}
+.logo-particles span:nth-child(3){background:#a78bfa;animation-delay:1s}
+@keyframes particle{
+0%{transform:translate(32px,32px) scale(1);opacity:1}
+100%{transform:translate(60px,10px) scale(0);opacity:0}
 }
 
-button{
-background:#0072ff;
-color:white;
-border:none;
-padding:6px;
-border-radius:8px;
-}
-
-.post{
-background:white;
-margin:5px 0;
-padding:6px;
-border-radius:8px;
-}
-
-.small-box{
-max-height:140px;
-overflow:auto;
-background:rgba(255,255,255,0.3);
-padding:5px;
-border-radius:8px;
-}
-
-/* 🔥 NEW POST BIG SIZE */
-#title{
-height:45px;
-font-size:16px;
-}
-
-#content{
-height:120px;
-font-size:15px;
-}
-
-/* 🔥 UNION BIG BOX */
-#unionBox{
-max-height:250px;
-}
-
-/* 🔥 CHAT थोड़ा bigger (keep balance) */
-#chatBox{
-max-height:200px;
-}
+/* click animation */
+.logo-pro:active{transform:scale(0.9)}
 </style>
 </head>
-
 <body>
 
-<h2 style="text-align:center;color:white;">🌐 E-Vedhika</h2>
+<header>
+<div style="display:flex;align-items:center;justify-content:center;gap:12px">
+  <div class="logo-pro" onclick="logoClick()" style="position:relative">
+    <div class="logo-particles"><span></span><span></span><span></span></div>
+    <svg viewBox="0 0 64 64" width="46" height="46">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#22c55e"/>
+          <stop offset="100%" stop-color="#0ea5e9"/>
+        </linearGradient>
+        <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#22c55e"/>
+          <stop offset="50%" stop-color="#a78bfa"/>
+          <stop offset="100%" stop-color="#0ea5e9"/>
+        </linearGradient>
+      </defs>
+      <!-- rotating ring -->
+      <g class="logo-ring">
+        <circle cx="32" cy="32" r="29" fill="none" stroke="url(#ringG)" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 10"/>
+      </g>
+      <!-- base circles -->
+      <circle cx="32" cy="32" r="28" fill="url(#g)"/>
+      <circle cx="32" cy="32" r="24" fill="#0d3b66"/>
+      <!-- perfectly centered text -->
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-size="20" font-weight="700" font-family="Segoe UI">EV</text>
+    </svg>
+  </div>
+  <h2 style="margin:0;letter-spacing:1px">E‑VEDHIKA</h2>
+</div>
+<p id="welcomeText">All Problem Solution at One Place</p>
+</header>
+
+<!-- 🔥 MODERN NAVIGATION BAR (STEP 1 UPGRADED) -->
+<style>
+.navbar{display:flex;justify-content:center;gap:20px;background:#ffffff;border-bottom:1px solid #ddd;padding:10px;position:sticky;top:0;z-index:1000}
+.nav-btn{padding:8px 14px;border-radius:20px;border:1px solid #0d3b66;background:#f4f7fb;color:#0d3b66;font-weight:600;cursor:pointer;transition:all .2s}
+.nav-btn:hover{background:#0d3b66;color:#fff;transform:translateY(-2px)}
+</style>
+<div class="navbar">
+  <div class="nav-btn" onclick="scrollToSection('postBox')">📌 Schemes</div>
+  <div class="nav-btn" onclick="scrollToSection('problemBox')">🚩 Problems</div>
+  <div class="nav-btn" onclick="scrollToTop()">📢 Updates</div>
+  <div class="nav-btn" onclick="scrollToSection('requestBox')">📞 Help</div>
+</div>
+
+<!-- 🚀 DASHBOARD (STEP 2) -->
+<style>
+#dashboard .card{padding:6px;border-radius:8px}
+#dashboard h3{font-size:11px;margin-bottom:4px}
+#dashboard h2{font-size:16px;margin:2px 0}
+</style>
+<div id="dashboard" style="max-width:1300px;margin:5px auto;padding:5px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px">
+
+    <div class="card" style="text-align:center">
+      <h3>📊 Updates</h3>
+      <h2 id="dashUpdates">0</h2>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <h3>🚩 Problems</h3>
+      <h2 id="dashProblems">0</h2>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <h3>📨 Requests</h3>
+      <h2 id="dashRequests">0</h2>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <h3>💬 Chat</h3>
+      <h2 id="dashChat">0</h2>
+    </div>
+
+  </div>
+</div>
+
+<div class="latest-bar">
+<span class="latest-label blink">LATEST UPDATE:-</span>
+<div class="latest-text"><span id="flashUpdates">Loading...</span></div>
+</div>
 
 <div class="container">
 
 <!-- LEFT -->
-<div class="glass">
-<h4>✔ Approved Suggestions</h4>
-<div id="approvedBox" class="small-box"></div>
-
-<h4>📌 Problems</h4>
-<textarea id="problemMsg"></textarea>
-<button onclick="addProblem()">Post</button>
-<div id="problemBox"></div>
-
-<h4>🛠 Fix Errors</h4>
-<div id="fixedBox"></div>
+<div>
+  <div class="card">
+    <h3>💡 SUGGESTIONS FROM PUBLIC</h3>
+    <div id="suggestionBox"></div>
+    <button onclick="goSuggestions()" style="background:#16a34a">More Suggestions → Improve Website</button>
+  </div>
 </div>
 
 <!-- CENTER -->
-<div class="glass">
-<h3>New Post</h3>
-<input id="title" placeholder="Enter title">
-<textarea id="content" placeholder="Write your content..."></textarea>
-<button onclick="addPost()">Post</button>
+<div>
+  <div class="card">
+    <h3>📝 Create New Update</h3>
+
+
+    <label style="font-size:12px;color:#555">Title</label>
+    <input id="postT" placeholder="Enter update title">
+
+    <label style="font-size:12px;color:#555">Category</label>
+    <select id="postCategory" style="margin-bottom:8px">
+      <option value="">Select Category</option>
+      <option value="general">📌 General</option>
+      <option value="problem">🚩 Problem</option>
+      <option value="announcement">📢 Announcement</option>
+      <option value="alert">⚠️ Alert</option>
+    </select>
+    <textarea id="postD" placeholder="Write full details..."></textarea>
+
+    <button onclick="addPost()" style="margin-top:8px;font-weight:bold">🚀 Publish Update</button>
+  </div>
+  <div style="margin:10px 0;display:flex;gap:10px;flex-wrap:wrap">
+<input id="searchBox" placeholder="🔍 Search posts..." oninput="searchPosts()" style="flex:1;min-width:150px">
+<select id="filterCategory" onchange="filterPosts()">
+<option value="all">All Categories</option>
+<option value="general">General</option>
+<option value="problem">Problem</option>
+<option value="announcement">Announcement</option>
+<option value="alert">Alert</option>
+</select>
+</div>
 <div id="postBox"></div>
 </div>
 
 <!-- RIGHT -->
-<div class="glass">
+<div>
 
-<h3>Login</h3>
-<input id="email">
-<input id="password" type="password">
+  <div class="card" id="accountBox">
+    <h3>👤 ACCOUNT</h3>
+    <input id="emailLogin">
+    <input id="passwordLogin" type="password">
+    <button onclick="smartLogin()">Continue</button>
+    <button onclick="googleLogin()" style="background:#ea4335">Google</button>
+    <button id="logoutBtn" onclick="logout()" style="display:none">Logout</button>
+  </div>
 
-<button id="loginBtn" onclick="login()">Login</button>
-<button id="logoutBtn" onclick="logout()" style="display:none;">Logout</button>
+  <div class="card">
+    <h3>🚩 PROBLEMS</h3>
 
-<p id="userInfo"></p>
+    <select id="problemCategory">
+      <option value="">Select Category</option>
+      <option value="aadhar">Aadhar</option>
+      <option value="epfo">EPFO</option>
+      <option value="payment">Payments</option>
+      <option value="tax">House Tax</option>
+    </select>
 
-<hr>
+    <textarea id="problemMsg" placeholder="Describe your issue..."></textarea>
 
-<h3>Chat</h3>
-<div id="chatBox" class="small-box"></div>
-<input id="chatInput">
-<button onclick="sendMsg()">Send</button>
+    <button onclick="addProblem()">Post</button>
 
-<hr>
+    <div style="margin:8px 0">
+      <select id="problemFilter" onchange="filterProblems()">
+        <option value="all">All</option>
+        <option value="pending">Pending</option>
+        <option value="solved">Solved</option>
+      </select>
+    </div>
 
-<h3>Union Updates</h3>
-<div id="unionBox" class="small-box"></div>
+    <div id="problemBox"></div>
+  </div>
 
-<hr>
+  <div class="card">
+    <h3>💬 LIVE CHAT</h3>
+    <div id="chatBox"></div>
+    <input id="chatInput">
+    <button onclick="sendMsg()">Send</button>
+  </div>
 
-<h3>Request to Union</h3>
-<textarea id="requestMsg"></textarea>
-<button onclick="addRequest()">Send</button>
-<div id="requestBox" class="small-box"></div>
+  <div class="card">
+    <h3>📢 UNION UPDATES</h3>
+    <div id="unionBox"></div>
+  </div>
+
+  <div class="card">
+    <h3>📨 REQUEST</h3>
+    <textarea id="requestMsg"></textarea>
+    <button onclick="addRequest()">Send</button>
+    <div id="requestBox"></div>
+  </div>
 
 </div>
 
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } 
-from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-
-const app = initializeApp({
-apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",
-authDomain:"e-vedhika-258f2.firebaseapp.com",
-projectId:"e-vedhika-258f2"
-});
-
-const db = getFirestore(app);
-const auth = getAuth(app);
-
+const app=initializeApp({apiKey:"AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU",authDomain:"e-vedhika-258f2.firebaseapp.com",projectId:"e-vedhika-258f2"});
+const auth=getAuth(app);
+const db=getFirestore(app);
+const $=id=>document.getElementById(id);
 let currentUser=null;
 
-/* AUTH */
-onAuthStateChanged(auth,(user)=>{
-currentUser=user;
+// ✅ navigation
+window.goSuggestions = ()=>{
+  window.location.href = "https://rakeshkumardhawan.github.io/e-vedhika/suggestion.html";
+};
 
-if(user){
-userInfo.innerText="Logged: "+user.email;
-loginBtn.style.display="none";
-logoutBtn.style.display="inline-block";
-chatInput.disabled=false;
-}else{
-userInfo.innerText="Not logged";
-loginBtn.style.display="inline-block";
-logoutBtn.style.display="none";
-chatInput.disabled=true;
-}
+// ✅ AUTH STATE (CLEAN - NO DUPLICATES)
+onAuthStateChanged(auth, async user=>{
+ currentUser=user;
+ const btn=$("logoutBtn");
+ const acc=$("accountBox");
+ const wt=$("welcomeText");
+
+ if(user){
+   ["problemMsg","chatInput","requestMsg","postT","postD"].forEach(id=>{const el=$(id); if(el) el.disabled=false;});
+   if(btn) btn.style.display="block";
+
+   try{
+     const snap = await getDoc(doc(db,"profiles",user.uid));
+     if(!snap.exists()){
+       let uname = prompt("Enter username");
+       if(!uname) uname = "user"+Date.now();
+       await setDoc(doc(db,"profiles",user.uid),{username:uname});
+       wt.innerText = "Welcome "+uname+" 👋";
+     }else{
+       const data = snap.data();
+       wt.innerText = "Welcome "+(data.username || user.email)+" 👋";
+     }
+   }catch{
+     wt.innerText = "Welcome " + (user.email || "User") + " 👋";
+   }
+
+   const inputs = acc.querySelectorAll("input, button:not(#logoutBtn)");
+   inputs.forEach(el=>el.style.display="none");
+
+ }else{
+   ["problemMsg","chatInput","requestMsg","postT","postD"].forEach(id=>{const el=$(id); if(el) el.disabled=true;});
+   if(btn) btn.style.display="none";
+   if(acc){
+     acc.style.display="block";
+     const inputs = acc.querySelectorAll("input, button:not(#logoutBtn)");
+     inputs.forEach(el=>el.style.display="block");
+   }
+   if(wt) wt.innerText = "All Problem Solution at One Place";
+ }
 });
 
-/* LOGIN */
-window.login=()=>signInWithEmailAndPassword(auth,email.value,password.value);
-window.logout=()=>signOut(auth);
+// ✅ LOGIN
+window.smartLogin=async()=>{
+ const email=$("emailLogin").value;
+ const pass=$("passwordLogin").value;
+ try{await signInWithEmailAndPassword(auth,email,pass)}
+ catch{await createUserWithEmailAndPassword(auth,email,pass)}
+};
 
-/* POST */
+window.googleLogin=async()=>{
+ const p=new GoogleAuthProvider();
+ await signInWithPopup(auth,p);
+};
+
+window.logout=async()=>{
+ await signOut(auth);
+ location.reload();
+};
+
+// ✅ POSTS
+let allPosts=[];
 window.addPost=async()=>{
-if(!currentUser)return alert("Login required");
-await addDoc(collection(db,"posts"),{
-title:title.value,
-content:content.value
-});
+ if(!currentUser) return alert("Login required");
+
+ const title=$("postT").value.trim();
+ const content=$("postD").value.trim();
+ const category=$("postCategory").value;
+
+ if(!title || !content || !category){
+   return alert("Fill all fields");
+ }
+
+ await addDoc(collection(db,"posts"),{
+   title,
+   content,
+   category,
+   time: Date.now()
+ });
+
+ $("postT").value="";
+ $("postD").value="";
+ $("postCategory").value="";
 };
 
-/* PROBLEM */
+// 🔥 FETCH POSTS + STORE
+onSnapshot(collection(db,"posts"),snap=>{
+ allPosts=[];
+ snap.forEach(doc=>{
+   allPosts.push(doc.data());
+ });
+ renderPosts(allPosts);
+});
+
+// 🔥 RENDER POSTS
+function renderPosts(data){
+ let h="";
+ data.forEach(p=>{
+   h+=`<div class='card'>
+   <span style="background:#0d3b66;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">${p.category}</span>
+   <h4>${p.title}</h4>
+   <p>${p.content}</p>
+   </div>`;
+ });
+ $("postBox").innerHTML = h || "<p>No posts</p>";
+}
+
+// 🔥 FILTER
+window.filterPosts=()=>{
+ const cat=$("filterCategory").value;
+ let data = allPosts;
+ if(cat!=="all") data = data.filter(p=>p.category===cat);
+ renderPosts(data);
+};
+
+// 🔍 SEARCH
+window.searchPosts=()=>{
+ const q=$("searchBox").value.toLowerCase();
+ let data = allPosts.filter(p=>
+   (p.title||"").toLowerCase().includes(q) ||
+   (p.content||"").toLowerCase().includes(q)
+ );
+
+ const cat=$("filterCategory").value;
+ if(cat!=="all") data = data.filter(p=>p.category===cat);
+
+ renderPosts(data);
+};
+
+let allProblems=[];
+
 window.addProblem=async()=>{
-if(!currentUser)return alert("Login required");
-await addDoc(collection(db,"problems"),{
-msg:problemMsg.value,
-user:currentUser.email
-});
+ if(!currentUser) return alert("Login Required");
+
+ const msg=$("problemMsg").value.trim();
+ const category=$("problemCategory").value;
+
+ if(!msg || !category) return alert("Fill all fields");
+
+ await addDoc(collection(db,"problems"),{
+   msg,
+   category,
+   status:"pending",
+   time:Date.now()
+ });
+
+ $("problemMsg").value="";
+ $("problemCategory").value="";
 };
 
-/* CHAT */
 window.sendMsg=async()=>{
-if(!currentUser)return alert("Login required");
-await addDoc(collection(db,"chat"),{
-msg:chatInput.value,
-user:currentUser.email
-});
-chatInput.value="";
+ if(!currentUser) return alert("Login Required");
+ await addDoc(collection(db,"chat"),{msg:$("chatInput").value});
 };
 
-/* REQUEST */
 window.addRequest=async()=>{
-if(!currentUser)return alert("Login required");
-await addDoc(collection(db,"requests"),{
-msg:requestMsg.value,
-user:currentUser.email
-});
-requestMsg.value="";
+ if(!currentUser) return alert("Login Required");
+ await addDoc(collection(db,"requests"),{msg:$("requestMsg").value});
 };
 
-/* LOAD */
-onSnapshot(collection(db,"posts"),s=>{
-postBox.innerHTML="";
-s.forEach(d=>postBox.innerHTML+=`<div class="post">${d.data().title||""}</div>`);
-});
-
-onSnapshot(collection(db,"problems"),s=>{
-problemBox.innerHTML="";
-s.forEach(d=>problemBox.innerHTML+=`<div class="post">${d.data().user||"User"}: ${d.data().msg||""}</div>`);
-});
-
-onSnapshot(collection(db,"fixed"),s=>{
-fixedBox.innerHTML="";
-s.forEach(d=>fixedBox.innerHTML+=`<div class="post">${d.data().msg||""}</div>`);
-});
-
-onSnapshot(collection(db,"union"),s=>{
-unionBox.innerHTML="";
-s.forEach(d=>unionBox.innerHTML+=`<div class="post">${d.data().msg||""}</div>`);
-});
-
-onSnapshot(collection(db,"chat"),s=>{
-chatBox.innerHTML="";
-s.forEach(d=>chatBox.innerHTML+=`<div class="post">${d.data().user||"User"}: ${d.data().msg||""}</div>`);
-});
-
-onSnapshot(collection(db,"requests"),s=>{
-requestBox.innerHTML="";
-s.forEach(d=>{
-let x=d.data();
-requestBox.innerHTML+=`<div class="post">${x.user||""}: ${x.msg||""}</div>`;
-});
-});
-
-/* APPROVED */
+// ✅ SUGGESTIONS (FIXED)
 onSnapshot(collection(db,"suggestions"),s=>{
-approvedBox.innerHTML="";
-s.forEach(d=>{
-approvedBox.innerHTML+=`<div class="post">${d.data().user||"User"}: ${d.data().suggestion||""}</div>`;
+ let h="";
+ s.forEach(d=>{
+  const x=d.data();
+  if((x.status||"").toLowerCase()==="approved"){
+    h+=`<div style="padding:4px 0;border-bottom:1px solid #eee"><b style='color:green'>${x.name||"User"}</b><br>${x.suggestion||x.text||""}</div>`;
+  }
+ });
+ if(!h) h = "<p style='color:#888'>No approved suggestions</p>";
+ $("suggestionBox").innerHTML=h;
 });
 
-let pos=0;
-setInterval(()=>{
-pos++;
-approvedBox.scrollTop=pos;
-if(pos>=approvedBox.scrollHeight-approvedBox.clientHeight) pos=0;
-},40);
+// ✅ LATEST UPDATES (FIXED)
+// 🔥 AI-BASED ANIMATION SPEED
+let activityScore = 1;
+
+function updateLogoSpeed(){
+  const logo=document.querySelector('.logo-ring');
+  if(!logo) return;
+
+  let speed = 6;
+
+  if(activityScore > 15) speed = 1.5;
+  else if(activityScore > 10) speed = 2.5;
+  else if(activityScore > 5) speed = 4;
+  else speed = 6;
+
+  logo.style.animationDuration = speed + 's';
+}
+
+// updates activity
+onSnapshot(collection(db,"updates"),snap=>{
+ activityScore += snap.size;
+ updateLogoSpeed();
+
+ let text="";
+ snap.forEach(doc=>{
+   const d=doc.data();
+   if(d.text) text += " 🔥 " + d.text;
+ });
+
+ if(!text) text = "🔥 Welcome to E-Vedhika Portal...";
+
+ $("flashUpdates").innerText = text;
 });
+
+// dashboard counters
+onSnapshot(collection(db,"posts"),snap=>{
+  $("dashUpdates").innerText = snap.size;
+  activityScore += snap.size;
+  updateLogoSpeed();
+});
+
+onSnapshot(collection(db,"problems"),snap=>{
+  $("dashProblems").innerText = snap.size;
+});
+
+onSnapshot(collection(db,"requests"),snap=>{
+  $("dashRequests").innerText = snap.size;
+});
+
+onSnapshot(collection(db,"chat"),snap=>{
+  $("dashChat").innerText = snap.size;
+});
+
+// 🔥 FETCH PROBLEMS
+onSnapshot(collection(db,"problems"),snap=>{
+ allProblems=[];
+ snap.forEach(d=>allProblems.push(d.data()));
+ renderProblems(allProblems);
+});
+
+function renderProblems(data){
+ let h="";
+ data.forEach(p=>{
+   h+=`<div class='card'>
+     <span style="background:${p.status==='solved'?'green':'red'};color:#fff;padding:2px 6px;border-radius:4px;font-size:10px">${p.status}</span>
+     <span style="background:#0d3b66;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px">${p.category}</span>
+     <p>${p.msg}</p>
+   </div>`;
+ });
+ document.getElementById("problemBox").innerHTML = h || "<p>No problems</p>";
+}
+
+// 🔍 FILTER PROBLEMS
+window.filterProblems=()=>{
+ const f=$("problemFilter").value;
+ if(f==="all") return renderProblems(allProblems);
+ const filtered=allProblems.filter(p=>p.status===f);
+ renderProblems(filtered);
+};
+
+// posts activity
+onSnapshot(collection(db,"posts"),snap=>{
+ activityScore += snap.size;
+ updateLogoSpeed();
+});
+
+// chat activity
+onSnapshot(collection(db,"chat"),snap=>{
+ activityScore += snap.size;
+ updateLogoSpeed();
+});
+
+// ✅ AUTO SCROLL
+setInterval(()=>{
+ const box=$("suggestionBox");
+ if(!box) return;
+ box.scrollTop++;
+ if(box.scrollTop>=box.scrollHeight-box.clientHeight) box.scrollTop=0;
+},40);
+
+// logo click bounce
+window.logoClick=()=>{
+ const el=document.querySelector('.logo-pro');
+ el.style.transform='scale(1.2)';
+ setTimeout(()=>el.style.transform='scale(1)',200);
+};
+
+// 🔥 NAVIGATION FUNCTIONS
+window.scrollToSection=(id)=>{
+ const el=document.getElementById(id);
+ if(el) el.scrollIntoView({behavior:'smooth'});
+};
+
+window.scrollToTop=()=>{
+ window.scrollTo({top:0,behavior:'smooth'});
+};
 
 </script>
 
