@@ -3,518 +3,515 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>E-Vedhika Admin Panel</title>
-
+<title>E-Vedhika Admin Panel - Future Ready</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Quill.js Rich Text Editor CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{font-family:Arial;margin:0;background:#f2f2f2;display:flex}
-.sidebar{width:230px;background:#1a1c1e;color:#fff;height:100vh;padding:10px}
-.sidebar a{display:block;padding:12px;color:#ccc;cursor:pointer;border-left:4px solid transparent}
-.sidebar a.active{background:#333;color:#fff;border-left:4px solid #0d6efd}
-.main{flex:1;padding:20px}
-.tabs{margin-bottom:15px}
-.tabs button{margin-right:5px;padding:6px 12px;border:none;border-radius:5px;cursor:pointer}
-.tabs .active{background:#0d6efd;color:#fff}
-button{cursor:pointer;border:none;padding:6px 10px;border-radius:4px;margin:2px}
-.approve{background:#198754;color:#fff}
-.delete{background:#dc3545;color:#fff}
-.edit{background:#0d6efd;color:#fff}
-.pending{background:#ffc107;color:#000}
-.undo{background:#6c757d;color:#fff}
-.resolve{background:#20c997;color:#fff}
-.send{background:#0d6efd;color:#fff}
-.table-box{background:#fff;border-radius:6px;overflow:hidden}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border:1px solid #ddd}
-th{background:#2c3e50;color:#fff}
-.status{padding:3px 8px;border-radius:10px;font-size:12px}
-.status-Approved{background:#d1e7dd;color:#0f5132}
-.status-Pending{background:#fff3cd;color:#856404}
-.status-Deleted{background:#f8d7da;color:#842029}
-.status-Resolved{background:#cfe2ff;color:#084298}
+body{font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;margin:0;background:#f8fafc;display:flex; overflow-x: hidden; color: #1e293b;}
+.sidebar{width:230px;background:#1a1c1e;color:#fff;height:100vh;padding:10px; transition: 0.3s; z-index: 1000;}
+.sidebar a{display:block;padding:12px;color:#cbd5e1;cursor:pointer;border-left:4px solid transparent; text-decoration: none; font-size: 14px; transition: 0.2s;}
+.sidebar a:hover { background: #2d2f31; color: #fff; }
+.sidebar a.active{background:#333;color:#fff;border-left:4px solid #0d6efd;}
+.main{flex:1;padding:20px; overflow-y: auto; height: 100vh; box-sizing: border-box; transition: 0.3s;}
+
+/* Page Title Style */
+#activePageHeader { margin-bottom: 25px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0; color: #1e293b; font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+
+.tabs{margin-bottom:15px; display: flex; flex-wrap: wrap; gap: 8px;}
+.tabs button{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;background:#e2e8f0; font-weight: 500; transition: 0.2s;}
+.tabs button.active-All{background:#0d6efd;color:#fff; box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);}
+.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+table{width:100%;border-collapse:collapse; min-width: 900px;}
+th,td{padding:14px;border-bottom:1px solid #f1f5f9; word-break: break-word; font-size: 14px;}
+th{background:#f8fafc;color:#64748b;text-align:left; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;}
+td button{margin:2px;padding:6px 10px;border:none;border-radius:6px;color:#fff;cursor:pointer; font-weight: bold; transition: 0.2s;}
+button.approve{background:#10b981}
+button.pending{background:#f59e0b;color:#fff}
+button.delete{background:#ef4444}
+button.resolve{background:#06b6d4}
+button.edit{background:#6366f1}
+.hamburger { display: none; font-size: 24px; cursor: pointer; border: none; background: transparent; color: #1e293b; padding: 5px 10px; border-radius: 4px;}
+
+#adminChatBox { margin-bottom: 15px; display: none; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+.time-tag { font-size: 11px; color: #6366f1; font-weight: bold; display: block; margin-top: 4px; }
+.badge-cat { padding: 4px 10px; border-radius: 20px; font-size: 10px; color: #fff; text-transform: uppercase; font-weight: 700; }
+
+/* Dashboard Cards */
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
+.stat-card { background: #fff; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; position: relative; overflow: hidden; }
+.stat-card h3 { margin: 0; font-size: 28px; color: #1e293b; }
+.stat-card p { margin: 8px 0 0; font-size: 14px; color: #64748b; font-weight: 600; }
+.chart-container { background: white; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; }
+
+/* Post Creation Section */
+#createPostSection { background: #fff; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: none; }
+.ql-toolbar { border-radius: 8px 8px 0 0; background: #f8fafc; }
+#editor-container { border-radius: 0 0 8px 8px; min-height: 120px; }
+
+/* Auto Refresh Indicator */
+#refreshTimer { font-size: 12px; color: #64748b; font-weight: bold; margin-left: 10px; }
+
+@media (max-width: 768px) {
+    .sidebar { position: fixed; left: -250px; }
+    .sidebar.open { left: 0; box-shadow: 10px 0 15px -3px rgba(0,0,0,0.1); }
+    .main { padding: 15px; width: 100vw; }
+    .hamburger { display: block; }
+}
+
+/* Dark Mode */
+body.dark-mode { background: #0f172a; color: #f1f5f9; }
+.dark-mode .sidebar { background: #1e293b; border-right: 1px solid #334155; }
+.dark-mode .main { background: #0f172a; }
+.dark-mode .table-responsive, .dark-mode table, .dark-mode #adminChatBox, .dark-mode #bulkActionContainer, .dark-mode .stat-card, .dark-mode .chart-container, .dark-mode #activePageHeader, .dark-mode #createPostSection { background: #1e293b; color: #f1f5f9; border-color: #334155; }
+.dark-mode th { background: #1e293b; color: #94a3b8; }
+.dark-mode input, .dark-mode select, .dark-mode textarea { background: #334155; color: #fff; border-color: #475569; }
 </style>
 </head>
-
 <body>
-
-<div class="sidebar">
-<h3>E-Vedhika Admin</h3>
-<a onclick="openTab('suggestions',this)" class="nav active">💡 Suggestions</a>
-<a onclick="openTab('posts',this)" class="nav">🌐 Posts</a>
-<a onclick="openTab('profiles',this)" class="nav">👥 Profiles</a>
-<a onclick="openTab('logs',this)" class="nav">📊 Logs</a>
-<a onclick="openTab('adminPosts',this)" class="nav">🛡️ Admin Posts</a>
-
+<div class="sidebar" id="sidebarMenu">
+<h3 style="display:flex; justify-content:space-between; align-items:center; padding: 10px 15px; border-bottom: 1px solid #2d2f31; margin-bottom: 15px;">
+  E-Vedhika Admin 
+  <span class="hamburger" style="color:#fff; display:none;" onclick="window.toggleSidebar()">✕</span>
+</h3>
+<a onclick="window.openTab('dashboard',this)" class="nav">📊 Dashboard (Analytics)</a>
+<a onclick="window.openTab('suggestions',this)" class="nav active">💡 Suggestions / Problems</a>
+<a onclick="window.openTab('posts',this)" class="nav">🌐 Public Posts</a>
+<a onclick="window.openTab('scheduled',this)" class="nav">⏱️ Scheduled Posts</a>
+<a onclick="window.openTab('updates',this)" class="nav">⚡ Flash News</a>
+<a onclick="window.openTab('profiles',this)" class="nav">👥 Profiles</a>
+<a onclick="window.openTab('chat',this)" class="nav">💬 Live Chat</a>
+<a onclick="window.openTab('security',this)" class="nav">🛡️ Security Logs</a>
+<a onclick="window.openTab('trash',this)" class="nav" style="color:#ef4444; font-weight:bold;">🗑️ Recycle Bin</a>
+<a onclick="window.openTab('settings',this)" class="nav">⚙️ Settings (Alerts)</a>
+<a onclick="window.openTab('Search',this)" class="nav">🔍 Search</a>
+<a onclick="window.toggleTheme()" class="nav" id="themeBtn" style="margin-top: 20px; border-top: 1px solid #334155;">🌙 Dark Mode</a>
 </div>
 
 <div class="main">
-<input id="search" placeholder="Search" onkeyup="searchData()"><br><br>
+<div id="activePageHeader">💡 Suggestions / Problems <span id="refreshTimer"></span></div>
 
-<div class="tabs">
-<button onclick="filterStatus('All',this)" class="active">All</button>
-<button onclick="filterStatus('Pending',this)">Pending</button>
-<button onclick="filterStatus('Approved',this)">Approved</button>
-<button onclick="filterStatus('Deleted',this)">Deleted</button>
-<button onclick="filterStatus('Resolved',this)">Resolved</button>
+<div id="topSearchBar" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom: 20px;">
+<button class="hamburger" onclick="window.toggleSidebar()" style="background:#fff; border:1px solid #e2e8f0; padding: 10px; border-radius: 8px;">☰</button>
+<input id="search" placeholder="Search entries..." onkeyup="window.searchData()" style="flex:1; padding:12px; border:1px solid #e2e8f0; border-radius:10px; min-width:150px; outline: none;">
+<select id="dateFilterSelect" onchange="window.currentDateFilter=this.value; window.applyAllFilters();" style="padding:12px; border:1px solid #e2e8f0; border-radius:10px; font-weight: 600; background: #fff;">
+    <option value="all">📅 All Time</option>
+    <option value="today">📅 Today</option>
+    <option value="7days">📅 Last 7 Days</option>
+    <option value="30days">📅 Last 30 Days</option>
+</select>
+<button onclick="window.loadData()" style="padding:12px 20px; border:none; background:#1e293b; color:#fff; border-radius:10px; cursor:pointer;">Refresh</button>
+<button onclick="window.exportToCSV()" style="padding:12px 20px; border:none; background:#10b981; color:#fff; border-radius:10px; cursor:pointer;">📥 Export CSV</button>
 </div>
 
-<div class="table-box">
-<table>
+<!-- Form to Create Posts -->
+<div id="createPostSection">
+    <h4 style="margin-top:0;"><i class="fas fa-plus-circle"></i> Create New Post</h4>
+    <input type="text" id="postTitle" placeholder="Enter Post Title..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:10px; box-sizing:border-box; font-weight:bold;">
+    <div id="editor-container"></div>
+    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <select id="postCategory" style="flex:1; padding:10px; border-radius:8px; border:1px solid #e2e8f0; min-width:150px;">
+            <option value="General">📌 General</option>
+            <option value="Problem">🚩 Problem</option>
+            <option value="Announcement">📢 Announcement</option>
+            <option value="Alert">⚠️ Alert</option>
+        </select>
+        <div style="flex:1; min-width:200px; display:flex; align-items:center; gap:8px;">
+            <label style="font-size:12px; font-weight:bold; white-space:nowrap;">Schedule For:</label>
+            <input type="datetime-local" id="postSchedule" style="flex:1; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+        </div>
+        <button onclick="window.createPost()" style="padding:10px 25px; background:#0d6efd; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">🚀 Submit Post</button>
+    </div>
+</div>
+
+<div id="dashboardSection" style="display:none;">
+    <div class="dash-grid">
+        <div class="stat-card" style="border-left: 5px solid #3b82f6;"><h3><span id="count-users">0</span></h3><p>Total Users</p></div>
+        <div class="stat-card" style="border-left: 5px solid #f59e0b;"><h3><span id="count-problems">0</span></h3><p>Problems</p></div>
+        <div class="stat-card" style="border-left: 5px solid #ef4444;"><h3><span id="count-flagged">0</span></h3><p>AI Flagged</p></div>
+        <div class="stat-card" style="border-left: 5px solid #10b981;"><h3><span id="count-active">1</span></h3><p>Live Sessions</p></div>
+    </div>
+    <div class="chart-container">
+        <h4>📈 User Interaction Heatmap</h4>
+        <div style="height: 350px;"><canvas id="engagementChart"></canvas></div>
+    </div>
+</div>
+
+<div class="tabs" id="filterTabs">
+<button onclick="window.filterStatus('All',this)" class="active-All">All</button>
+<button onclick="window.filterStatus('Pending',this)">Pending</button>
+<button onclick="window.filterStatus('Approved',this)">Approved</button>
+<button onclick="window.filterStatus('Resolved',this)">Resolved</button>
+<button onclick="window.filterStatus('Flagged',this)" style="color: #ef4444;">⚠️ AI Flagged</button>
+<button onclick="window.analyzeCurrentTabWithAI()" style="background:linear-gradient(45deg, #6366f1, #a855f7); color:#fff; margin-left:auto; padding:8px 20px; font-weight:bold; border-radius: 8px;">✨ AI Intelligence</button>
+</div>
+
+<div id="bulkActionContainer" style="display:none; background:#fff; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:20px; align-items:center; gap:15px; flex-wrap:wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <span style="font-weight:bold; font-size:14px; color:#1e293b;"><i class="fas fa-check-double" style="color:#3b82f6"></i> Bulk Operations:</span>
+    <select id="bulkActionSelect" style="padding:10px; border-radius:8px; border:1px solid #cbd5e1; background: #f8fafc; min-width: 200px;">
+        <option value="">-- Choose Action --</option>
+        <option value="Approved">✔️ Bulk Approve</option>
+        <option value="Pending">⏳ Set to Pending</option>
+        <option value="Resolved">✅ Mark as Resolved</option>
+        <option value="Deleted">🗑️ Move to Recycle Bin</option>
+        <option value="RealDelete" style="color:#ef4444; font-weight:bold;">🔥 PERMANENT DELETE</option>
+    </select>
+    <button onclick="window.executeBulkAction()" style="padding:10px 30px; background:#1e293b; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">Apply Selected</button>
+</div>
+
+<div id="adminChatBox">
+    <h4 style="margin-top:0; font-size: 16px;"><i class="fas fa-reply" style="color:#3b82f6"></i> Admin Message 👑</h4>
+    <div style="display:flex; gap:12px;">
+        <textarea id="adminChatMessage" placeholder="Type your reply..." style="flex:1; padding:12px; border-radius:10px; border:1px solid #e2e8f0; height: 60px; outline: none;"></textarea>
+        <button onclick="window.sendAdminChatMessage()" style="padding: 0 25px; background: #3b82f6; color: #fff; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;">🚀 Send</button>
+    </div>
+</div>
+
+<div id="settingsSection" style="display:none;">
+    <div class="dash-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="stat-card">
+            <h3>⚙️ Site Management</h3>
+            <p>Maintenance & Config</p><br>
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">Maintenance Mode:</label>
+            <select id="setMaintenance" style="width:100%; padding:10px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:15px;"><option value="off">Off</option><option value="on">On</option></select>
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">Welcome Message:</label>
+            <input type="text" id="setWelcome" style="width:100%; padding:10px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:15px;">
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">Contact Email:</label>
+            <input type="email" id="setEmail" style="width:100%; padding:10px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:15px;">
+            <button onclick="window.saveSettings()" style="padding:12px 30px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width: 100%;">💾 Save Site Config</button>
+        </div>
+        <div class="stat-card">
+            <h3>📧 Alerts & Notifications</h3>
+            <p>Admin Preferences</p><br>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" checked> Email alerts for new reports</label><br>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox"> SMS alerts for AI flags</label><br>
+            <button onclick="Swal.fire({icon:'success', title:'Saved', text:'Preferences updated!'})" style="padding:12px; background:#1e293b; color:#fff; border:none; border-radius:8px; margin-top:10px; width:100%;">💾 Update Preferences</button>
+        </div>
+    </div>
+</div>
+
+<div id="usersSection" style="display:none; margin-bottom: 10px;"><h3>Registered Profiles</h3></div>
+<div id="usersList" style="display:none; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;"></div>
+
+<div class="table-responsive" id="dataTableWrapper">
+<table id="dataTable">
 <thead id="head"></thead>
 <tbody id="body"></tbody>
 </table>
 </div>
-
-<canvas id="chart" style="margin-top:20px;display:none"></canvas>
-
-<div id="adminPostsBox" style="display:none;margin-top:20px">
-<h3><i class="fa fa-pen-to-square"></i> Post Editor</h3>
-<input id="ap_title" placeholder="Title">
-<input id="ap_media" placeholder="Image/Video/Link URL">
-<textarea id="ap_content" placeholder="Write content..."></textarea>
-<br>
-<button class="edit" onclick="createAdminPost()"><i class="fa fa-upload"></i> Publish</button>
-<button class="pending" onclick="saveDraft()"><i class="fa fa-save"></i> Save Draft</button>
-
-<hr>
-<h4><i class="fa fa-photo-film"></i> Media Manager</h4>
-<input id="media_upload" type="file" accept="image/*,.pdf,video/*" multiple onchange="addMedia()">
-
-<div id="mediaList" style="margin-top:10px"></div>
-
-<hr>
-<h4><i class="fa fa-list"></i> Your Posts</h4>
-<div id="adminPostList"></div>
-</div>
-
-<div id="updatesBox" style="display:none;margin-top:20px">
-<h3><i class="fa fa-bullhorn"></i> Broadcasts</h3>
-<input id="bc_text" placeholder="Message" oninput="updatePreview()">
-<label><input type="checkbox" id="flash" onchange="updatePreview()"> Flash</label>
-<button class="send" onclick="sendBroadcast()">Send</button>
-
-<div id="previewBox" style="margin-top:15px;padding:10px;border-radius:6px;background:#f1f1f1">
-<b>Preview:</b>
-<div id="previewContent" style="margin-top:5px;padding:8px;border-radius:5px;background:#e9ecef">No message</div>
-</div>
-</div>
-
 </div>
 
 <script>
-let type="suggestions",data=[],filtered=[];
+window.type = 'suggestions';
+window.data = [];
+window.filtered = [];
+window.currentFilter = 'All';
+window.currentDateFilter = 'all';
 
+const restrictedKeywords = ['badword', 'abuse', 'fraud', 'scam', 'spam', 'hack'];
 
-function safe(v){return (v||'').replace(/'/g,"\\'").replace(/\n/g,' ')}
+window.formatDate = function(t){
+  if(!t) return 'N/A';
+  let date;
+  if(typeof t === 'object' && t.seconds) date = new Date(t.seconds * 1000);
+  else if(typeof t === 'number') date = new Date(t);
+  else if(typeof t === 'string' && !isNaN(Date.parse(t))) date = new Date(t);
+  else return 'N/A';
+  if(isNaN(date.getTime())) return 'N/A';
+  return date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:true});
+}
 
-window.render=function(){
-const body=document.getElementById('body');
-const head=document.getElementById('head');
-body.innerHTML='';
+window.normalizeStatus = function(s){
+  s=(s||'Pending').toLowerCase();
+  if(s==='approved')return'Approved';
+  if(s==='deleted')return'Deleted';
+  if(s==='flagged')return'Flagged';
+  if(s==='resolved')return'Resolved';
+  return'Pending'
+}
 
-if(type==='logs'){
-  head.innerHTML='';
-  body.innerHTML='';
+window.toggleSelectAll = function(src) {
+    document.querySelectorAll('.row-chk').forEach(cb => cb.checked = src.checked);
+}
+
+window.render = function render(){
+ const head=document.getElementById('head');
+ const body=document.getElementById('body');
+ if(!head || !body) return;
+ body.innerHTML='';
+ const dataToRender = window.filtered || window.data || [];
+ if(['profiles', 'dashboard', 'settings'].includes(window.type)) return;
+ let selHeader = '<th><input type="checkbox" id="main-sel" onclick="window.toggleSelectAll(this)" title="Select All"></th>';
+ if(window.type === 'security') {
+    head.innerHTML = `<tr><th>#</th><th>IP Address</th><th>Admin Session</th><th>Action</th><th>Device</th><th>Timestamp</th></tr>`;
+    dataToRender.forEach((d,i) => {
+        body.innerHTML += `<tr><td>${i+1}</td><td><code>${d.ip || '103.xx.xx.xx'}</code></td><td>${d.admin || 'admin@evedhika.com'}</td><td><span style="background:#f1f5f9; padding:4px 8px; border-radius:4px; font-size:11px;">${d.action}</span></td><td><small>${d.device || 'Chrome/Win'}</small></td><td><span class="time-tag">${window.formatDate(d.createdAt || d.time || d.updatedAt)}</span></td></tr>`;
+    });
+    return;
+ }
+ if(window.type === 'chat'){
+  head.innerHTML=`<tr>${selHeader}<th>#</th><th>Author</th><th>Message Body</th><th>Sent Time</th><th>Management</th></tr>`;
+  dataToRender.forEach((d,i)=>{
+   let isAdmin = (d.name||'').includes('Admin');
+   body.innerHTML+=`<tr><td><input type="checkbox" class="row-chk" value="${d.id}" data-col="chat"></td><td>${i+1}</td><td><b style="${isAdmin?'color:#ef4444':''}">${d.name||'User'} ${isAdmin?'👑':''}</b></td><td>${d.message||''}</td><td><span class="time-tag">${window.formatDate(d.createdAt || d.time || d.updatedAt)}</span></td><td><button class="edit" onclick="window.actionEdit('${d.id}', 'chat')">✏️</button><button class="delete" onclick="window.actionRealDelete('${d.id}','chat')">🗑 Remove</button></td></tr>`;
+  });
   return;
+ }
+ if(window.type === 'updates'){
+  head.innerHTML=`<tr>${selHeader}<th>#</th><th>News Text</th><th>Created At</th><th>Actions</th></tr>`;
+  dataToRender.forEach((d,i)=>{
+    body.innerHTML+=`<tr><td><input type="checkbox" class="row-chk" value="${d.id}" data-col="updates"></td><td>${i+1}</td><td>${d.text||''}</td><td><span class="time-tag">${window.formatDate(d.createdAt || d.time || d.updatedAt)}</span></td><td><button class="edit" onclick="window.actionEdit('${d.id}', 'updates')">✏️</button><button class="delete" onclick="window.actionRealDelete('${d.id}','updates')">🗑</button></td></tr>`;
+  });
+  return;
+ }
+ if(window.type === 'trash'){
+  head.innerHTML=`<tr>${selHeader}<th>#</th><th>Module</th><th>Title / Name</th><th>Deleted Date</th><th>Actions</th></tr>`;
+  dataToRender.forEach((d,i)=>{
+   body.innerHTML+=`<tr><td><input type="checkbox" class="row-chk" value="${d.id}" data-col="${d.colSource}"></td><td>${i+1}</td><td><span class="badge-cat" style="background:#64748b">${d.colSource}</span></td><td><b>${d.name||d.title||''}</b></td><td><span class="time-tag">${window.formatDate(d.createdAt || d.time || d.updatedAt)}</span></td><td><button style="background:#10b981" onclick="window.actionRestore('${d.id}', '${d.colSource}')">♻️ Restore</button> <button class="delete" onclick="window.actionRealDelete('${d.id}','${d.colSource}')">🔥 Wipe</button></td></tr>`;
+  });
+  return;
+ }
+ head.innerHTML=`<tr>${selHeader}<th>#</th><th>Category</th><th>Details / Subject</th><th>Status</th><th>Created At</th><th>Operations</th></tr>`;
+ dataToRender.forEach((d,i)=>{
+  const s=window.normalizeStatus(d.status);
+  let isFlagged = s === 'Flagged';
+  let actions=`<button class="edit" onclick="window.actionEdit('${d.id}', '${d.colSource||window.type}')" title="Edit">✏️</button>
+  <button class="approve" onclick="window.actionUpdate('${d.id}','Approved', '${d.colSource||window.type}')" title="Approve">✔</button>
+  <button class="resolve" style="background:#06b6d4" onclick="window.actionUpdate('${d.id}','Resolved', '${d.colSource||window.type}')" title="Resolve">✔✔</button>
+  <button class="delete" onclick="window.actionDelete('${d.id}', '${d.colSource||window.type}')" title="Soft Delete">🗑</button>`;
+  const timestamp = d.createdAt || d.time || d.updatedAt;
+  body.innerHTML+=`<tr style="${isFlagged ? 'background:#fff1f2' : ''}">
+    <td><input type="checkbox" class="row-chk" value="${d.id}" data-col="${d.colSource||window.type}"></td>
+    <td>${i+1}</td>
+    <td><span class="badge-cat" style="background:${d.colSource==='problems'?'#ef4444':'#3b82f6'}">${d.colSource||'General'}</span></td>
+    <td><b>${d.title||d.name||''}</b><br><small style="color:#64748b">${(d.content||d.suggestion||'').substring(0,60)}...</small></td>
+    <td style="color:${isFlagged?'#ef4444':''}">${s}</td>
+    <td><span class="time-tag">${window.formatDate(timestamp)}</span></td>
+    <td>${actions}</td>
+  </tr>`;
+ });
 }
 
-if(type==='adminPosts'){
-head.innerHTML='<tr><th>#</th><th>Title</th><th>Content</th><th>Preview</th></tr>';
-}else{
-head.innerHTML='<tr><th>#</th><th>Title / Email</th><th>Content / Role</th><th>Status</th><th>Actions</th></tr>';
+window.applyAllFilters = function() {
+    let temp = [...window.data];
+    if (!['chat', 'profiles', 'trash', 'security', 'scheduled', 'updates'].includes(window.type)) {
+        if (window.currentFilter !== 'All') temp = temp.filter(d => window.normalizeStatus(d.status) === window.currentFilter);
+        else temp = temp.filter(d => window.normalizeStatus(d.status) !== 'Deleted');
+    }
+    const v = document.getElementById('search')?.value.toLowerCase();
+    if(v) temp = temp.filter(d => JSON.stringify(d).toLowerCase().includes(v));
+    window.filtered = temp;
+    window.render();
 }
 
-filtered.forEach((d,i)=>{
-const s=d.status||'Pending';
-
-let actions='';
-if(s==='Deleted'){
-actions=`<button class="undo" onclick="undo('${d.id}')"><i class="fa fa-rotate-left"></i></button>
-<button class="delete" onclick="permanentDelete('${d.id}')"><i class="fa fa-trash"></i></button>`;
-}else{
-actions=`<button class="approve" onclick="upd('${d.id}','Approved')"><i class="fa fa-check"></i></button>
-<button class="pending" onclick="upd('${d.id}','Pending')"><i class="fa fa-clock"></i></button>
-<button class="delete" onclick="softDelete('${d.id}')"><i class="fa fa-trash"></i></button>`;
-
-if(s==='Approved' || type==='posts'){
-actions+=`<button class="edit" onclick="editItem('${d.id}')"><i class="fa fa-pen"></i></button>`;
-if(type==='suggestions'){
-actions+=`<button class="resolve" onclick="resolveItem('${d.id}')"><i class="fa fa-check-double"></i></button>`;
-}
+window.filterStatus = (s, btn) => {
+    window.currentFilter = s;
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active-All'));
+    btn.classList.add('active-All');
+    window.applyAllFilters();
 }
 
-if(type==='profiles'){
-actions+=`<button class="edit" onclick="roleEdit('${d.id}')"><i class="fa fa-user"></i></button>`;
-}
+window.openTab = function(t, el){
+  window.type=t;
+  document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));
+  if(el) {
+      el.classList.add('active');
+      document.getElementById('activePageHeader').innerHTML = el.innerHTML + ' <span id="refreshTimer"></span>';
+  }
+  document.getElementById('createPostSection').style.display = (t === 'posts' || t === 'scheduled') ? 'block' : 'none';
+  document.getElementById('adminChatBox').style.display = (t === 'chat') ? 'block' : 'none';
+  document.getElementById('dashboardSection').style.display = (t === 'dashboard') ? 'block' : 'none';
+  document.getElementById('settingsSection').style.display = (t === 'settings') ? 'block' : 'none';
+  document.getElementById('dataTableWrapper').style.display = (['dashboard', 'profiles', 'settings'].includes(t)) ? 'none' : 'block';
+  document.getElementById('usersList').style.display = (t === 'profiles') ? 'flex' : 'none';
+  document.getElementById('usersSection').style.display = (t === 'profiles') ? 'block' : 'none';
+  const bulkShow = ['suggestions', 'posts', 'chat', 'trash', 'updates'];
+  document.getElementById('bulkActionContainer').style.display = (bulkShow.includes(t)) ? 'flex' : 'none';
+  document.getElementById('filterTabs').style.display = (['chat', 'trash', 'updates', 'security', 'profiles', 'dashboard', 'settings'].includes(t)) ? 'none' : 'flex';
+  if(t === 'dashboard') window.loadData().then(() => window.initEngagementChart());
+  else if(t === 'settings') window.loadSettings();
+  else window.loadData();
 }
 
-if(type==='adminPosts'){
-body.innerHTML+=`<tr>
-<td>${i+1}</td>
-<td>${d.title||''}</td>
-<td>${d.content||''}</td>
-<td><button class="edit" onclick="previewPost('${d.media}')"><i class="fa fa-eye"></i></button></td>
-</tr>`;
-}else{
-body.innerHTML+=`<tr>
-<td>${i+1}</td>
-<td>${d.name||d.userName||d.title||d.email||''}</td>
-<td>${type==='profiles' ? (d.role||'User') : (d.content||d.suggestion||'')}</td>
-<td class="status status-${s}">${s}</td>
-<td>${actions}</td>
-</tr>`;
-}
-});
+window.toggleSidebar = () => document.getElementById('sidebarMenu').classList.toggle('open');
+window.searchData = () => window.applyAllFilters();
+window.toggleTheme = () => {
+    const isDark = document.body.classList.toggle('dark-mode');
+    document.getElementById('themeBtn').innerHTML = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+    localStorage.setItem('admin-theme', isDark ? 'dark' : 'light');
 };
+if(localStorage.getItem('admin-theme') === 'dark') document.body.classList.add('dark-mode');
 
-function openTab(t,el){
-type=t;
-document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));
-el.classList.add('active');
-document.getElementById('adminPostsBox').style.display=(t==='adminPosts')?'block':'none';
-// merge Broadcasts into Admin Posts
-if(t==='adminPosts'){
-  document.getElementById('updatesBox').style.display='block';
-}else{
-  document.getElementById('updatesBox').style.display='none';
+window.initEngagementChart = () => {
+    const ctx = document.getElementById('engagementChart').getContext('2d');
+    if(window.engChart) window.engChart.destroy();
+    const baseCount = window.data.length || 10;
+    window.engChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{ label: 'Activity', data: [baseCount, baseCount+5, baseCount-2, baseCount+8, baseCount+1, baseCount+12, baseCount+4], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.05)', fill: true, tension: 0.4 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
 }
-
-const tableBox=document.querySelector('.table-box');
-const chartEl=document.getElementById('chart');
-const tabs=document.querySelector('.tabs');
-
-if(t==='logs'){
-  tableBox.style.display='none';
-  chartEl.style.display='block';
-  tabs.style.display='none';
-}else if(t==='adminPosts' || t==='updates'){
-  // both Admin Posts + Broadcasts in one place
-  tableBox.style.display='none';
-  chartEl.style.display='none';
-  tabs.style.display='none';
-  document.getElementById('adminPostsBox').style.display='block';
-  document.getElementById('updatesBox').style.display='block';
-}else{
-  tableBox.style.display='block';
-  chartEl.style.display='none';
-  tabs.style.display='block';
-}
-
-
-loadData();
-}
-
-function searchData(){
-let v=document.getElementById('search').value.toLowerCase();
-filtered=data.filter(d=>JSON.stringify(d).toLowerCase().includes(v));
-render();
-}
-
-function filterStatus(s,btn){
-document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
-btn.classList.add('active');
-
-if(type==='profiles'){
- filtered=[...data];
-}else{
- filtered=s==='All'?[...data]:data.filter(d=>(d.status||'').toLowerCase()===s.toLowerCase());
-}
-
-render();
-}
+document.addEventListener("DOMContentLoaded", () => {
+    window.quill = new Quill('#editor-container', { theme: 'snow', placeholder: 'Write your post content here...' });
+});
 </script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, addDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const app=initializeApp({apiKey:"AIzaSyC",authDomain:"e-vedhika-258f2.firebaseapp.com",projectId:"e-vedhika-258f2"});
 const db=getFirestore(app);
+window.db=db;
 
-window.loadData=async function(){
+window.saveSettings = async () => {
+    const maintenance = document.getElementById('setMaintenance').value;
+    const welcome = document.getElementById('setWelcome').value;
+    const email = document.getElementById('setEmail').value;
+    try {
+        await setDoc(doc(db, 'settings', 'general'), { maintenance, welcome, email, updatedAt: Date.now() });
+        Swal.fire('Saved!', 'Site configurations updated.', 'success');
+    } catch(e) { console.error(e); }
+};
 
-if(type==='logs'){
-const qs=await getDocs(collection(db,'logs'));
-data=[];
-qs.forEach(d=>data.push(d.data()));
-drawChart();
-return;
+window.loadSettings = async () => {
+    try {
+        const snap = await getDoc(doc(db, 'settings', 'general'));
+        if(snap.exists()) {
+            const d = snap.data();
+            document.getElementById('setMaintenance').value = d.maintenance || 'off';
+            document.getElementById('setWelcome').value = d.welcome || '';
+            document.getElementById('setEmail').value = d.email || '';
+        }
+    } catch(e) { console.log(e); }
+};
+
+window.loadData = async() => {
+ try {
+  window.data = [];
+  if (window.type === 'suggestions') {
+      const sSnap = await getDocs(collection(db, 'suggestions'));
+      const pSnap = await getDocs(collection(db, 'problems')); 
+      sSnap.forEach(d => window.data.push({id:d.id, colSource:'suggestions', ...d.data()}));
+      pSnap.forEach(d => window.data.push({id:d.id, colSource:'problems', ...d.data()}));
+  } else if (window.type === 'trash') {
+      const sSnap = await getDocs(collection(db, 'suggestions'));
+      const pSnap = await getDocs(collection(db, 'problems'));
+      const poSnap = await getDocs(collection(db, 'posts'));
+      [sSnap, pSnap, poSnap].forEach((snap, idx) => {
+          let cols = ['suggestions', 'problems', 'posts'];
+          snap.forEach(d => { if(d.data().status === 'Deleted') window.data.push({id:d.id, colSource: cols[idx], ...d.data()}) });
+      });
+  } else if (window.type === 'security') {
+      const snap = await getDocs(collection(db, 'security_logs'));
+      snap.forEach(d => window.data.push({id:d.id, ...d.data()}));
+  } else {
+      const snap = await getDocs(collection(db, window.type));
+      snap.forEach(d => window.data.push({id:d.id, colSource: window.type, ...d.data()}));
+  }
+  window.data.forEach(item => {
+      const txt = (item.content || item.suggestion || "").toLowerCase();
+      if(restrictedKeywords.some(w => txt.includes(w)) && item.status !== 'Deleted' && item.status !== 'Approved') item.status = 'Flagged';
+  });
+  window.data.sort((a,b) => (b.createdAt || b.time || 0) - (a.createdAt || a.time || 0));
+  if(window.type === 'dashboard') {
+      document.getElementById('count-users').innerText = window.data.length;
+      document.getElementById('count-problems').innerText = window.data.filter(d => d.colSource === 'problems').length;
+      document.getElementById('count-flagged').innerText = window.data.filter(d => d.status === 'Flagged').length;
+  }
+  if(window.type === 'profiles') {
+      let html='';
+      window.data.forEach(u=>{
+          html+=`<div class="stat-card" style="min-width: 250px; flex:1;">
+          <b style="font-size:16px;">${u.username||'User'}</b><br><small style="color:#64748b">${u.email||''}</small><br>
+          <span class="time-tag">Joined: ${window.formatDate(u.createdAt || u.time)}</span>
+          <div style="margin-top:12px;"><select style="width:100%; padding:8px; border-radius:6px; border:1px solid #e2e8f0;" onchange="window.changeRole('${u.id}', this.value)"><option value="user" ${u.role==='user'?'selected':''}>User Access</option><option value="moderator" ${u.role==='moderator'?'selected':''}>Moderator</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin Full</option></select></div></div>`;
+      });
+      document.getElementById('usersList').innerHTML=html || '<p>No profiles found.</p>';
+  }
+  window.applyAllFilters();
+ } catch(e) { console.error(e); }
 }
 
-let col;
-if(type==='adminPosts') col='posts';
-else if(type==='profiles') col='logins';
-else col=type;
-const qs=await getDocs(collection(db,col));
-data=[];
-qs.forEach(d=>{
-let x=d.data();
-if(type==='adminPosts' && x.userType!=='admin') return;
-let s=(x.status||'Pending').toLowerCase();
-if(s==='accepted') s='approved';
-x.status=s.charAt(0).toUpperCase()+s.slice(1);
-data.push({id:d.id,...x});
-});
-filtered=[...data];
-render();
+window.createPost = async () => {
+    const title = document.getElementById('postTitle').value;
+    const content = window.quill.root.innerHTML;
+    const category = document.getElementById('postCategory').value;
+    const schedule = document.getElementById('postSchedule').value;
+    if(!title || window.quill.getText().trim() === "") return Swal.fire('Error', 'Title and Content are required.', 'error');
+    try {
+        await addDoc(collection(db, 'posts'), { title, content, category, scheduleTime: schedule ? new Date(schedule).getTime() : null, status: 'Approved', createdAt: Date.now(), time: Date.now() });
+        Swal.fire('Success', 'Post created!', 'success');
+        document.getElementById('postTitle').value = ''; window.quill.root.innerHTML = ''; window.loadData();
+    } catch(e) { console.error(e); }
 };
 
-window.upd=async(id,s)=>{
-const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
-await updateDoc(doc(db,col,id),{status:s});
-await addDoc(collection(db,'logs'),{action:`${col} ${s}`,item:id,time:serverTimestamp()});
-loadData();
-};
+window.actionUpdate = async(id, status, source) => {
+    try { await updateDoc(doc(db, source, id), {status, updatedAt: Date.now()}); window.loadData(); } catch(e) { console.error(e); }
+}
 
-window.softDelete=async(id)=>{
-const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
-await updateDoc(doc(db,col,id),{status:'Deleted'});
-await addDoc(collection(db,'logs'),{action:`${col} moved to deleted`,item:id,time:serverTimestamp()});
-loadData();
-};
-
-window.permanentDelete=async(id)=>{
-const res = await Swal.fire({
-  title: 'Are you sure?',
-  text: 'This will permanently delete',
-  icon: 'warning',
-  showCancelButton: true,
-  confirmButtonColor: '#dc3545',
-  cancelButtonColor: '#6c757d'
-});
-
-if(!res.isConfirmed) return;
-
-const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
-await deleteDoc(doc(db,col,id));
-await addDoc(collection(db,'logs'),{action:`${col} permanently deleted`,item:id,time:serverTimestamp()});
-loadData();
-};
-
-window.undo=async(id)=>{
-const col = (type==='adminPosts') ? 'posts' : (type==='profiles' ? 'logins' : type);
-await updateDoc(doc(db,col,id),{status:'Pending'});
-loadData();
-};
-
-window.resolveItem=async(id)=>{
-await updateDoc(doc(db,'suggestions',id),{status:'Resolved'});
-await addDoc(collection(db,'logs'),{action:`suggestions resolved`,item:id,time:serverTimestamp()});
-loadData();
-};
-
-window.roleEdit=async(id)=>{
-const { value: roleInput } = await Swal.fire({
-  title: 'Set Role',
-  input: 'select',
-  inputOptions: {
-    User: 'User',
-    Moderator: 'Moderator',
-    Admin: 'Admin'
-  },
-  inputPlaceholder: 'Select role',
-  showCancelButton: true
-});
-
-if(!roleInput) return;
-
-await updateDoc(doc(db,'logins',id),{role:roleInput});
-
-await addDoc(collection(db,'logs'),{action:`profile role updated`,item:id,time:serverTimestamp()});
-
-loadData();
-};
-
-window.editItem=async(id)=>{
-const item=data.find(x=>x.id===id)||{};
-
-const { value: formValues } = await Swal.fire({
-  title: 'Edit Post',
-  html:
-    `<input id="swal-title" class="swal2-input" placeholder="Title" value="${item.title||''}">` +
-    `<textarea id="swal-content" class="swal2-textarea" placeholder="Content">${item.content||item.suggestion||''}</textarea>`,
-  focusConfirm: false,
-  showCancelButton: true,
-  preConfirm: () => {
-    return {
-      title: document.getElementById('swal-title').value,
-      content: document.getElementById('swal-content').value
+window.actionEdit = async(id, source) => {
+    const item = window.data.find(d => d.id === id); if(!item) return;
+    let html = (source === 'updates' || source === 'chat') ? `<textarea id="swal-input1" class="swal2-textarea" style="height:100px">${item.text || item.message || ''}</textarea>` : `<input id="swal-input1" class="swal2-input" value="${(item.title || item.name || '').replace(/"/g, '&quot;')}"><textarea id="swal-input2" class="swal2-textarea" style="height:150px">${item.content || item.suggestion || ''}</textarea>`;
+    const { value: formValues } = await Swal.fire({ title: 'Edit Content', html, focusConfirm: false, preConfirm: () => [document.getElementById('swal-input1').value, document.getElementById('swal-input2')?.value] });
+    if (formValues) {
+        let updateObj = { updatedAt: Date.now() };
+        if(source === 'updates') updateObj.text = formValues[0];
+        else if(source === 'chat') updateObj.message = formValues[0];
+        else { if (item.title !== undefined) updateObj.title = formValues[0]; else updateObj.name = formValues[0]; if (item.content !== undefined) updateObj.content = formValues[1]; else if (item.suggestion !== undefined) updateObj.suggestion = formValues[1]; }
+        try { await updateDoc(doc(db, source, id), updateObj); window.loadData(); } catch(e) { console.error(e); }
     }
-  }
-});
-
-if(!formValues) return;
-
-let col = (type==='posts' || type==='adminPosts') ? 'posts' : type;
-await updateDoc(doc(db,col,id),{
-  title: formValues.title,
-  content: formValues.content
-});
-
-await addDoc(collection(db,'logs'),{action:`${col} edited`,item:id,time:serverTimestamp()});
-
-loadData();
-};
-
-window.createAdminPost=async()=>{
-await addDoc(collection(db,'posts'),{
-title:ap_title.value,
-content:ap_content.value,
-media:ap_media.value,
-userType:'admin',
-status:'Approved'
-});
-Swal.fire('Posted!','','success');
-loadData();
-};
-
-window.saveDraft=async()=>{
-await addDoc(collection(db,'posts'),{
-title:ap_title.value,
-content:ap_content.value,
-media:ap_media.value,
-userType:'admin',
-status:'Draft'
-});
-Swal.fire('Saved as Draft','','info');
-};
-
-window.selectedMedia=[]; // store {url,type}
-
-window.addMedia=()=>{
-const input=document.getElementById('media_upload');
-const files=Array.from(input.files);
-
-if(!files.length) return;
-
-files.forEach(file=>{
- const fileURL=URL.createObjectURL(file);
- const type=file.type;
- window.selectedMedia.push({url:fileURL,type:type});
-
- let preview='';
-
- if(type.startsWith('image/')){
-  preview=`<img src="${fileURL}" style="max-width:100px;border-radius:6px">`;
- }else if(type.startsWith('video/')){
-  preview=`<video src="${fileURL}" style="max-width:120px" controls></video>`;
- }else if(type==='application/pdf'){
-  preview=`<i class="fa fa-file-pdf" style="color:red"></i> ${file.name}`;
- }else{
-  preview=`<i class="fa fa-file"></i> ${file.name}`;
- }
-
- document.getElementById('mediaList').innerHTML+=`
- <div style="margin:8px 0;padding:6px;border:1px solid #ddd;border-radius:6px;display:flex;align-items:center;gap:10px;justify-content:space-between">
-   <div style="display:flex;align-items:center;gap:10px">
-     ${preview}
-     <span style="font-size:12px">${file.name}</span>
-   </div>
-   <button class="edit" onclick="previewMedia('${fileURL}','${type}')"><i class="fa fa-eye"></i></button>
-   <button class="delete" onclick="removeMedia(this,'${fileURL}')"><i class="fa fa-times"></i></button>
- </div>`;
-});
-
-ap_media.value=JSON.stringify(window.selectedMedia);
-input.value='';
-};
-
-window.removeMedia=(btn,url)=>{
- const row=btn.closest('div');
- if(row) row.remove();
-
- if(url){
-   window.selectedMedia=window.selectedMedia.filter(x=>x!==url);
-   ap_media.value=JSON.stringify(window.selectedMedia);
- }else{
-   ap_media.value='';
- }
-};
-
-window.previewMedia=(url,type)=>{
- let content='';
-
- if(type && type.startsWith('image/')){
-  content=`<img src="${url}" style="max-width:100%">`;
- }else if(type && type==='application/pdf'){
-  content=`<embed src="${url}" type="application/pdf" style="width:100%;height:600px" />
-           <div style="margin-top:8px"><a href="${url}" target="_blank">Open PDF in new tab</a></div>`;
- }else if(type && type.startsWith('video/')){
-  content=`<video src="${url}" controls style="max-width:100%"></video>`;
- }else{
-  content=`<a href="${url}" target="_blank">Open File</a>`;
- }
-
- Swal.fire({
-  title:'Preview',
-  html:content,
-  width:'700px'
- });
-};
-
-window.sendBroadcast=async()=>{
-await addDoc(collection(db,'updates'),{
-text:bc_text.value,
-flash:document.getElementById('flash').checked,
-time:serverTimestamp()
-});
-loadData();
-};
-
-function updatePreview(){
-const text=document.getElementById('bc_text').value||'No message';
-const flash=document.getElementById('flash').checked;
-const box=document.getElementById('previewContent');
-box.innerText=text;
-if(flash){
- box.style.background='#dc3545';
- box.style.color='#fff';
-}else{
- box.style.background='#e9ecef';
- box.style.color='#000';
-}
 }
 
-window.previewPost=(media)=>{
- let arr=[];
- try{arr=JSON.parse(media)||[]}catch(e){arr=[{url:media}]}
-
- let html='';
- arr.forEach(obj=>{
-  const url=obj.url||obj;
-  const type=obj.type||'';
-
-  if(type.startsWith('image/')){
-    html+=`<img src="${url}" style="max-width:100%;margin:5px 0">`;
-  }else if(type==='application/pdf'){
-    html+=`<embed src="${url}" type="application/pdf" style="width:100%;height:500px" />
-           <div style="margin:6px 0"><a href="${url}" target="_blank">Open PDF in new tab</a></div>`;
-  }else if(type.startsWith('video/')){
-    html+=`<video src="${url}" controls style="max-width:100%;margin:5px 0"></video>`;
-  }else{
-    html+=`<a href="${url}" target="_blank">Open File</a>`;
-  }
- });
-
- Swal.fire({title:'Post Preview',html:html||'No media'});
-};
-
-function drawChart(){
-let c={};
-data.forEach(d=>{c[d.action]=(c[d.action]||0)+1});
-if(window.chartInstance)window.chartInstance.destroy();
-const ctx=document.getElementById('chart');
-window.chartInstance=new Chart(ctx,{type:'doughnut',data:{labels:Object.keys(c),datasets:[{data:Object.values(c)}]},options:{onClick:(e,i)=>{if(i.length){alert(Object.keys(c)[i[0].index])}}}});
+window.actionRealDelete = async(id, col) => {
+    const res = await Swal.fire({ title: 'Delete Forever?', text: 'This cannot be undone!', icon: 'error', showCancelButton: true });
+    if(res.isConfirmed) { try { await deleteDoc(doc(db, col, id)); window.loadData(); } catch(e) { console.error(e); } }
 }
 
-loadData();
+window.actionDelete = async(id, source) => {
+    const res = await Swal.fire({ title: 'Move to Recycle Bin?', icon: 'warning', showCancelButton: true });
+    if(res.isConfirmed) { try { await updateDoc(doc(db, source, id), {status: 'Deleted', updatedAt: Date.now()}); window.loadData(); } catch(e) { console.error(e); } }
+}
+
+window.executeBulkAction = async () => {
+    const act = document.getElementById('bulkActionSelect').value;
+    const items = document.querySelectorAll('.row-chk:checked');
+    if(!items.length || !act) return Swal.fire('Error', 'Select items.', 'info');
+    Swal.fire({title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    for(let i of items) {
+        const id = i.value; const col = i.getAttribute('data-col');
+        try { if(act === 'RealDelete') await deleteDoc(doc(db, col, id)); else await updateDoc(doc(db, col, id), {status: act, updatedAt: Date.now()}); } catch(e) {}
+    }
+    Swal.close(); window.loadData();
+}
+
+window.sendAdminChatMessage = async () => {
+    const msg = document.getElementById('adminChatMessage').value;
+    if(!msg) return;
+    try { await addDoc(collection(db, 'chat'), { name: 'Admin 👑', message: msg, createdAt: Date.now() }); document.getElementById('adminChatMessage').value = ''; window.loadData(); } catch(e) {}
+};
+
+window.loadData();
+
+// Feature Request: Automatic Refresh every 30 seconds
+let timeLeft = 30;
+setInterval(() => {
+    timeLeft--;
+    const timerEl = document.getElementById('refreshTimer');
+    if(timerEl) timerEl.innerText = `(Auto refresh in ${timeLeft}s)`;
+    if(timeLeft <= 0) {
+        window.loadData();
+        timeLeft = 30;
+    }
+}, 1000);
+
 </script>
-
 </body>
 </html>
