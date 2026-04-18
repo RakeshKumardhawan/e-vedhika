@@ -132,7 +132,7 @@ body.dark-mode { background: #0f172a; color: #f1f5f9; }
         <div class="stat-card" style="border-left: 5px solid #3b82f6;"><h3><span id="count-users">0</span></h3><p>Total Users</p></div>
         <div class="stat-card" style="border-left: 5px solid #f59e0b;"><h3><span id="count-problems">0</span></h3><p>Problems</p></div>
         <div class="stat-card" style="border-left: 5px solid #ef4444;"><h3><span id="count-flagged">0</span></h3><p>AI Flagged</p></div>
-        <div class="stat-card" style="border-left: 5px solid #10b981;"><h3><span id="count-active">1</span></h3><p>Live Sessions</p></div>
+        <div class="stat-card" style="border-left: 5px solid #10b981;"><h3><span id="count-active">1</span></h3><p id="siteStatusDashLabel">Live Now</p></div>
     </div>
     <div class="chart-container">
         <h4>📈 User Interaction Heatmap</h4>
@@ -170,13 +170,17 @@ body.dark-mode { background: #0f172a; color: #f1f5f9; }
     </div>
 </div>
 
+<!-- Settings Section (FIXED: Added explicitly CLEAR Site Status / Live Option) -->
 <div id="settingsSection" style="display:none;">
     <div class="dash-grid" style="grid-template-columns: 1fr 1fr;">
         <div class="stat-card">
             <h3>⚙️ Site Management</h3>
             <p>Maintenance & Config</p><br>
-            <label style="display:block; margin-bottom:8px; font-weight:bold;">Maintenance Mode:</label>
-            <select id="setMaintenance" style="width:100%; padding:10px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:15px;"><option value="off">Off</option><option value="on">On</option></select>
+            <label style="display:block; margin-bottom:8px; font-weight:bold;">Current Site Status (Live Option):</label>
+            <select id="setMaintenance" style="width:100%; padding:10px; border-radius:6px; border:2px solid #e2e8f0; margin-bottom:15px; font-weight:bold;">
+                <option value="live" style="color: green;">🟢 LIVE (Visible to Everyone)</option>
+                <option value="maintenance" style="color: red;">🔴 MAINTENANCE (Admin only access)</option>
+            </select>
             <label style="display:block; margin-bottom:8px; font-weight:bold;">Welcome Message:</label>
             <input type="text" id="setWelcome" style="width:100%; padding:10px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:15px;">
             <label style="display:block; margin-bottom:8px; font-weight:bold;">Contact Email:</label>
@@ -186,8 +190,8 @@ body.dark-mode { background: #0f172a; color: #f1f5f9; }
         <div class="stat-card">
             <h3>📧 Alerts & Notifications</h3>
             <p>Admin Preferences</p><br>
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" checked> Email alerts for new reports</label><br>
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox"> SMS alerts for AI flags</label><br>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="alertEmailCheck" checked> Email alerts for new reports</label><br>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="alertSMSCheck"> SMS alerts for AI flags</label><br>
             <button onclick="Swal.fire({icon:'success', title:'Saved', text:'Preferences updated!'})" style="padding:12px; background:#1e293b; color:#fff; border:none; border-radius:8px; margin-top:10px; width:100%;">💾 Update Preferences</button>
         </div>
     </div>
@@ -236,6 +240,16 @@ window.normalizeStatus = function(s){
 window.toggleSelectAll = function(src) {
     document.querySelectorAll('.row-chk').forEach(cb => cb.checked = src.checked);
 }
+
+window.analyzeCurrentTabWithAI = () => {
+    Swal.fire({
+        title: '✨ AI Intelligence Analysis',
+        text: `Analyzing current tab (${window.type})... Generating data insights.`,
+        icon: 'info',
+        timer: 1500,
+        showConfirmButton: false
+    });
+};
 
 window.render = function render(){
  const head=document.getElementById('head');
@@ -300,6 +314,23 @@ window.applyAllFilters = function() {
     if (!['chat', 'profiles', 'trash', 'security', 'scheduled', 'updates'].includes(window.type)) {
         if (window.currentFilter !== 'All') temp = temp.filter(d => window.normalizeStatus(d.status) === window.currentFilter);
         else temp = temp.filter(d => window.normalizeStatus(d.status) !== 'Deleted');
+    }
+    if (window.currentDateFilter !== 'all') {
+        const now = Date.now();
+        const oneDay = 86400000;
+        temp = temp.filter(d => {
+            let t = d.createdAt || d.time || d.updatedAt;
+            let ms = 0;
+            if (t && typeof t === 'object' && t.seconds) ms = t.seconds * 1000;
+            else if (typeof t === 'number') ms = t;
+            else if (typeof t === 'string') ms = Date.parse(t) || 0;
+            if (!ms) return false;
+            const diff = now - ms;
+            if (window.currentDateFilter === 'today') return diff <= oneDay;
+            if (window.currentDateFilter === '7days') return diff <= oneDay * 7;
+            if (window.currentDateFilter === '30days') return diff <= oneDay * 30;
+            return true;
+        });
     }
     const v = document.getElementById('search')?.value.toLowerCase();
     if(v) temp = temp.filter(d => JSON.stringify(d).toLowerCase().includes(v));
@@ -378,6 +409,10 @@ window.saveSettings = async () => {
     try {
         await setDoc(doc(db, 'settings', 'general'), { maintenance, welcome, email, updatedAt: Date.now() });
         Swal.fire('Saved!', 'Site configurations updated.', 'success');
+        // Update dash indicator if currently on dash
+        if(window.type === 'dashboard') {
+             document.getElementById('siteStatusDashLabel').innerText = (maintenance === 'live') ? 'Live Now' : 'Maintenance';
+        }
     } catch(e) { console.error(e); }
 };
 
@@ -386,7 +421,7 @@ window.loadSettings = async () => {
         const snap = await getDoc(doc(db, 'settings', 'general'));
         if(snap.exists()) {
             const d = snap.data();
-            document.getElementById('setMaintenance').value = d.maintenance || 'off';
+            document.getElementById('setMaintenance').value = d.maintenance || 'live';
             document.getElementById('setWelcome').value = d.welcome || '';
             document.getElementById('setEmail').value = d.email || '';
         }
@@ -425,6 +460,13 @@ window.loadData = async() => {
       document.getElementById('count-users').innerText = window.data.length;
       document.getElementById('count-problems').innerText = window.data.filter(d => d.colSource === 'problems').length;
       document.getElementById('count-flagged').innerText = window.data.filter(d => d.status === 'Flagged').length;
+      
+      // Load current site status into dash card
+      const snap = await getDoc(doc(db, 'settings', 'general'));
+      if(snap.exists()) {
+          const m = snap.data().maintenance || 'live';
+          document.getElementById('siteStatusDashLabel').innerText = (m === 'live') ? 'Live Now' : 'Maintenance';
+      }
   }
   if(window.type === 'profiles') {
       let html='';
@@ -480,6 +522,14 @@ window.actionDelete = async(id, source) => {
     if(res.isConfirmed) { try { await updateDoc(doc(db, source, id), {status: 'Deleted', updatedAt: Date.now()}); window.loadData(); } catch(e) { console.error(e); } }
 }
 
+window.actionRestore = async(id, source) => {
+    try {
+        await updateDoc(doc(db, source, id), {status: 'Pending', updatedAt: Date.now()});
+        Swal.fire({toast:true, position:'top-end', icon:'success', title:'Restored!', showConfirmButton:false, timer:1500});
+        window.loadData();
+    } catch(e) { console.error(e); }
+}
+
 window.executeBulkAction = async () => {
     const act = document.getElementById('bulkActionSelect').value;
     const items = document.querySelectorAll('.row-chk:checked');
@@ -500,7 +550,7 @@ window.sendAdminChatMessage = async () => {
 
 window.loadData();
 
-// Feature Request: Automatic Refresh every 30 seconds
+// Automatic Refresh every 30 seconds
 let timeLeft = 30;
 setInterval(() => {
     timeLeft--;
