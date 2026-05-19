@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import {
   useSearchParams,
   Link,
@@ -13,6 +13,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { ManaBot } from "./components/ManaBot";
+import AdBanner from "./components/AdBanner";
 import {
   Bell,
   Menu,
@@ -179,156 +180,14 @@ import {
   deleteObject,
 } from "firebase/storage";
 import { auth, db, storage } from "../firebase";
-
-enum OperationType {
-  CREATE = "create",
-  UPDATE = "update",
-  DELETE = "delete",
-  LIST = "list",
-  GET = "get",
-  WRITE = "write",
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  };
-}
-
-function handleFirestoreError(
-  error: unknown,
-  operationType: OperationType,
-  path: string | null,
-) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo:
-        auth.currentUser?.providerData?.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
-    },
-    operationType,
-    path,
-  };
-
-  const lowerErr = errInfo.error.toLowerCase();
-
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
-
-  if (lowerErr.includes("permission") || lowerErr.includes("insufficient")) {
-    console.warn(
-      `PERMISSION ERROR ON PATH: ${path}. User might need to update Firebase Security Rules for this collection.`,
-    );
-  }
-
-  throw new Error(JSON.stringify(errInfo));
-}
-
-export function getFriendlyError(err: any): string {
-  let msg = err.message || String(err);
-  try {
-    const parsed = JSON.parse(msg);
-    if (parsed.error) msg = parsed.error;
-  } catch (e) {
-
-  }
-
-  if (msg.includes("Missing or insufficient permissions")) {
-    return "మీకు ఈ యాక్షన్‌ని చేయడానికి పర్మిషన్ లేదు / You don't have permission to perform this action.";
-  }
-  if (msg.includes("offline") || msg.includes("network-request-failed") || msg.includes("Failed to get document because the client is offline")) {
-    return "ఇంటర్నెట్ కనెక్షన్ లేదు. దయచేసి నెట్‌వర్క్ చెక్ చేయండి / No internet connection. Please check your network.";
-  }
-  if (msg.includes("Quota exceeded")) {
-    return "సిస్టమ్ పరిమితి దాటింది. దయచేసి రేపు మళ్ళీ ప్రయత్నించండి / Quota exceeded. Please try again tomorrow.";
-  }
-  if (msg.includes("invalid-credential") || msg.includes("user-not-found") || msg.includes("wrong-password")) {
-    return "లాగిన్ వివరాలు తప్పు. దయచేసి సరియైన లాగిన్ వివరాలు ప్రయత్నించండి / Invalid credentials. Please try again.";
-  }
-  if (msg.includes("popup-closed-by-user") || msg.includes("cancelled-popup-request")) {
-    return "లాగిన్ విండో మూసివేయబడింది. దయచేసి మళ్ళీ ప్రయత్నించండి / The login popup was closed before completion.";
-  }
-  
-  return msg;
-}
-
-export async function sendCommentNotifications(
-  postId: string,
-  commentText: string,
-  authorUid: string,
-  authorName: string
-) {
-  try {
-    const time = Date.now();
-    
-
-    const mentionRegex = /@([a-zA-Z0-9_]+)/g;
-    const mentions = [...commentText.matchAll(mentionRegex)].map((m) => m[1].toLowerCase());
-    const uniqueMentions = [...new Set(mentions)];
-    
-    for (const username of uniqueMentions) {
-       try {
-          const userDoc = await getDoc(doc(db, "usernames", username));
-          if (userDoc.exists()) {
-             const targetUid = userDoc.data().uid;
-             if (targetUid && targetUid !== authorUid) {
-                await addDoc(collection(db, "notifications"), {
-                   uid: targetUid,
-                   title: "కొత్త మెన్షన్ (New Mention)",
-                   message: `${authorName} మిమ్మల్ని ఒక కామెంట్‌లో మెన్షన్ చేశారు.`,
-                   type: "mention",
-                   read: false,
-                   time: time,
-                });
-             }
-          }
-       } catch (err) { console.error(err); }
-    }
-
-    const commentsSnap = await getDocs(collection(db, "posts", postId, "comments"));
-    const uids = new Set<string>();
-    commentsSnap.forEach((d) => {
-       const data = d.data();
-       if (data.uid) uids.add(data.uid);
-    });
-    
-
-    uids.delete(authorUid);
-    
-    for (const targetUid of Array.from(uids)) {
-       try {
-          await addDoc(collection(db, "notifications"), {
-             uid: targetUid,
-             title: "కొత్త కామెంట్ (New Comment)",
-             message: `${authorName} మీరు కామెంట్ చేసిన పోస్టులో కొత్త కామెంట్ చేశారు.`,
-             type: "comment",
-             read: false,
-             time: time,
-          });
-       } catch(err) { console.error(err); }
-    }
-  } catch (err) {
-    console.error("Error sending notifications", err);
-  }
-}
+import { PostCard } from "./components/PostCard";
+import { UsersListModal } from "./components/UsersListModal";
+import { sendCommentNotifications } from "./lib/utils";
+import { OperationType, UserNotification, ChatMessage } from "./types";
+import { 
+  handleFirestoreError, 
+  getFriendlyError
+} from "./lib/utils";
 
 const logUserActivity = async (actionDesc: string) => {
   if (!auth.currentUser) return;
@@ -397,7 +256,7 @@ function EVAnimatedLogo({ size = 64 }: { size?: number }) {
   );
 }
 
-export function requireLoginAlert(userObj?: any): boolean {
+function requireLoginAlert(userObj?: any): boolean {
   const account = userObj || auth.currentUser;
   if (!account || account.isAnonymous) {
     Swal.fire({
@@ -1166,14 +1025,6 @@ interface ProblemReport {
   wantsWhatsAppUpdates?: boolean;
 }
 
-interface ChatMessage {
-  id: string;
-  msg: string;
-  time: number;
-  uid: string;
-  userName?: string;
-}
-
 interface RequestData {
   id: string;
   msg: string;
@@ -1221,18 +1072,19 @@ body {
 .brand-title {
   font-family: 'Poppins', sans-serif;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: #fff;
-  font-weight: 800;
-  font-size: 24px;
+  font-weight: 900;
+  font-size: 26px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .sub-tagline {
   margin: 0;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--accent);
   opacity: 1;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
@@ -1267,19 +1119,20 @@ body {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 10px 15px;
-  margin-bottom: 2px;
+  padding: 12px 16px;
+  margin-bottom: 4px;
   background: transparent;
   color: #1e293b;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 14px;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 14px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 15px;
   text-align: left;
-  gap: 12px;
+  gap: 14px;
   font-family: 'Poppins', sans-serif;
+  letter-spacing: -0.01em;
 }
 .side-btn:hover { background: #f1f5f9; color: var(--primary); transform: translateX(5px); }
 .side-btn.active-tab {
@@ -1517,6 +1370,17 @@ const formatPostTitle = (title: string | undefined | null) => {
 };
 
 export const SYSTEM_UPDATES = [
+  {
+    id: `update-v1.5.4`,
+    isSystemElement: true,
+    version: "v1.5.4",
+    title: "19/05/2026: సోషల్ ప్రివ్యూ & డౌన్లోడ్ ఫిక్సెస్",
+    badge: "LATEST",
+    text: "1. 🔗 **సోషల్ ప్రివ్యూ**: ఇప్పుడు వాట్సాప్ లేదా ఫేస్‌బుక్‌లో పోస్ట్‌లను షేర్ చేసినప్పుడు వాటి టైటిల్, ఇమేజ్ మరియు డిస్క్రిప్షన్ స్పష్టంగా కనిపిస్తాయి.\n2. 📥 **డౌన్లోడ్ ఫిక్స్**: ఫైల్ డౌన్లోడ్ చేసేటప్పుడు వచ్చే 'Local file not found' ఎర్రర్ పరిష్కరించబడింది.\n3. 🖌️ **నెవిగేషన్ డిజైన్**: సైడ్ నెవిగేషన్ బార్ ఫాంట్స్ మరియు వెయిట్స్ మరింత సులభంగా చదవగలిగేలా మార్చబడ్డాయి.\n4. ⚙️ **SPA ఇంప్రూవ్‌మెంట్స్**: వెబ్‌సైట్ రిఫ్రెష్ చేసినా లేదా డైరెక్ట్ లింక్ ఓపెన్ చేసినా ఎర్రర్స్ రాకుండా సెట్ చేయబడింది.",
+    time: Date.now(),
+    type: "changelog",
+    status: "Approved",
+  },
   {
     id: `update-v1.5.3`,
     isSystemElement: true,
@@ -1849,7 +1713,7 @@ export const SYSTEM_UPDATES = [
   },
 ];
 
-export const handleShare = async (
+const handleShare = async (
   title: string,
   text: string,
   url: string,
@@ -1893,7 +1757,7 @@ export const handleShare = async (
   }
 };
 
-export const handleForceDownload = async (e: React.MouseEvent, url: string, fileName: string) => {
+const handleForceDownload = async (e: React.MouseEvent, url: string, fileName: string) => {
   e.preventDefault();
   e.stopPropagation();
   
@@ -1966,7 +1830,7 @@ export const handleForceDownload = async (e: React.MouseEvent, url: string, file
   }
 };
 
-export const getLatestAttachment = (attachments: any[]) => {
+const getLatestAttachment = (attachments: any[]) => {
   if (!attachments || attachments.length === 0) return null;
   const nonImages = attachments.filter((att) => !(/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || att.url.includes("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.name || "")));
   const candidates = nonImages.length > 0 ? nonImages : attachments;
@@ -2175,7 +2039,7 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [visiblePostsCount, setVisiblePostsCount] = useState(20);
+  const [visiblePostsLimit, setVisiblePostsLimit] = useState(50);
   const [visibleUpdatesCount, setVisibleUpdatesCount] = useState(20);
   const [visibleProblemsCount, setVisibleProblemsCount] = useState(20);
   const [visibleSuggestionsCount, setVisibleSuggestionsCount] = useState(20);
@@ -2478,7 +2342,7 @@ export default function App() {
 
     let initialPostsLoadedLocal = false;
     const unsubPosts = onSnapshot(
-      query(collection(db, "posts")),
+      query(collection(db, "posts"), orderBy("time", "desc"), limit(visiblePostsLimit)),
       (snap) => {
         const pArr: Post[] = [];
         snap.forEach((d) => {
@@ -2672,7 +2536,7 @@ export default function App() {
       unsubRequests();
       unsub1();
     };
-  }, [user, userRole]);
+  }, [user, userRole, visiblePostsLimit]);
 
   const addToast = (msg: string) => {
     setToasts((prev) => {
@@ -2779,29 +2643,31 @@ export default function App() {
     }
   };
 
-  const filteredPosts = posts.filter((p) => {
-    if (p.status === "Deleted") return false;
+  const filteredPosts = useMemo(() => {
+    return posts.filter((p) => {
+      if (p.status === "Deleted") return false;
 
-    const pStatus = (p.status || "").toLowerCase();
-    if (
-      !isAdmin &&
-      !["approved", "active"].includes(pStatus) &&
-      p.uid !== user?.uid
-    )
-      return false;
+      const pStatus = (p.status || "").toLowerCase();
+      if (
+        !isAdmin &&
+        !["approved", "active"].includes(pStatus) &&
+        p.uid !== user?.uid
+      )
+        return false;
 
-    const q = searchQuery.toLowerCase().trim();
-    const tMatch = (p.title || "").toLowerCase().includes(q);
-    const cMatch = (p.content || "").toLowerCase().includes(q);
-    const searchOk = !q || tMatch || cMatch;
-    if (currentFilter === "All") return searchOk;
-    return (
-      searchOk &&
-      (p.category === currentFilter ||
-        p.subCategory === currentFilter ||
-        p.categories?.includes(currentFilter))
-    );
-  });
+      const q = searchQuery.toLowerCase().trim();
+      const tMatch = (p.title || "").toLowerCase().includes(q);
+      const cMatch = (p.content || "").toLowerCase().includes(q);
+      const searchOk = !q || tMatch || cMatch;
+      if (currentFilter === "All") return searchOk;
+      return (
+        searchOk &&
+        (p.category === currentFilter ||
+          p.subCategory === currentFilter ||
+          p.categories?.includes(currentFilter))
+      );
+    });
+  }, [posts, isAdmin, user?.uid, searchQuery, currentFilter]);
 
   if (location.pathname.endsWith("/Evdka")) {
     if (!isEditor) {
@@ -4279,7 +4145,7 @@ export default function App() {
                             </div>
                             <div className="space-y-10">
                               <AnimatePresence mode="popLayout">
-                                {filteredPosts.slice(0, visiblePostsCount).flatMap((post, index) => {
+                                {filteredPosts.slice(0, visiblePostsLimit).flatMap((post, index) => {
                                   const renderIndex = index; // Optional: cap stagger delay if needed
                                   const items = [
                                     <motion.div
@@ -4320,13 +4186,13 @@ export default function App() {
                                 })}
                               </AnimatePresence>
                               
-                              {filteredPosts.length > visiblePostsCount && (
+                              {filteredPosts.length >= visiblePostsLimit && (
                                 <div className="pt-8 text-center">
                                   <button
-                                    onClick={() => setVisiblePostsCount(prev => prev + 20)}
+                                    onClick={() => setVisiblePostsLimit(prev => prev + 50)}
                                     className="px-8 py-3 bg-slate-50 text-slate-600 rounded-xl font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-100 hover:text-primary transition-all active:scale-95"
                                   >
-                                    Load More Posts
+                                    Load More Posts (Fetch)
                                   </button>
                                 </div>
                               )}
@@ -4411,12 +4277,14 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                 >
-                  <ChatSection
-                    messages={chatMessages}
-                    user={user}
-                    addToast={addToast}
-                    userProfile={userProfile}
-                  />
+                  <React.Suspense fallback={<div className="p-8 text-center text-slate-400 font-bold">Loading Chat...</div>}>
+                    <ChatSection
+                      messages={chatMessages}
+                      user={user}
+                      addToast={addToast}
+                      userProfile={userProfile}
+                    />
+                  </React.Suspense>
                 </motion.div>
               )}
 
@@ -4436,7 +4304,9 @@ export default function App() {
                       <ArrowLeft size={16} /> Back to Dashboard
                     </button>
                   </div>
-                  <PollsScreen user={user} addToast={addToast} />
+                  <React.Suspense fallback={<div className="p-8 text-center text-slate-400 font-bold">Loading Polls...</div>}>
+                    <PollsScreen user={user} addToast={addToast} />
+                  </React.Suspense>
                 </motion.div>
               )}
 
@@ -5511,10 +5381,13 @@ export default function App() {
           {showSuggestionForm && (
             <div className="fixed inset-0 z-[3000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-[24px] shadow-2xl custom-scrollbar relative">
-                <SuggestionForm
-                  addToast={addToast}
-                  onCancel={() => setShowSuggestionForm(false)}
-                />
+                <React.Suspense fallback={<div className="p-10 text-center font-bold text-slate-400">Loading Form...</div>}>
+                  <SuggestionForm
+                    addToast={addToast}
+                    onCancel={() => setShowSuggestionForm(false)}
+                    logUserActivity={logUserActivity}
+                  />
+                </React.Suspense>
               </div>
             </div>
           )}
@@ -5544,7 +5417,12 @@ export default function App() {
           )}
         </main>
       </div>
-      <ManaBot currentTab={currentTab} userName={userProfile?.name} />
+      <ManaBot 
+        currentTab={currentTab} 
+        userName={userProfile?.name} 
+        isAdmin={isAdmin}
+        isEditor={isEditor}
+      />
     </div>
   );
 }
@@ -10126,7 +10004,12 @@ function AdminPanel({
           <LocationManager districtsData={districtsData} addToast={addToast} />
         )}
       </main>
-      <ManaBot currentTab={currentTab} userName={userProfile?.name} />
+      <ManaBot 
+        currentTab={currentTab} 
+        userName={userProfile?.name} 
+        isAdmin={isAdmin}
+        isEditor={isEditor}
+      />
     </div>
   );
 }
@@ -10312,80 +10195,6 @@ function SmartAssistant({
           <ReactMarkdown rehypePlugins={[rehypeRaw]}>{response}</ReactMarkdown>
         </div>
       )}
-    </div>
-  );
-}
-
-function UsersListModal({
-  title,
-  uids,
-  allUsers,
-  onClose,
-}: {
-  title: string;
-  uids: string[];
-  allUsers: UserProfile[];
-  onClose: () => void;
-}) {
-  const usersList = uids.map(
-    (uid) =>
-      allUsers.find((u) => u.id === uid) || {
-        id: uid,
-        username: "Unknown User",
-        name: "",
-        surname: "",
-        designation: "",
-      },
-  );
-
-  return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-sm max-h-[80vh] overflow-y-auto bg-white rounded-3xl shadow-2xl custom-scrollbar p-6 relative">
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
-        >
-          <X size={16} />
-        </button>
-        <h3 className="font-black text-primary text-xl mb-4 uppercase tracking-widest">
-          {title}{" "}
-          <span className="text-slate-400 text-sm">({uids.length})</span>
-        </h3>
-        <div className="space-y-3">
-          {usersList.length === 0 && (
-            <p className="text-slate-400 text-xs font-bold text-center py-4 uppercase">
-              No users found
-            </p>
-          )}
-          {usersList.map((u, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs">
-                  {(u as any).photoURL ? (
-                    <img src={(u as any).photoURL} alt="" />
-                  ) : (
-                    u.username?.[0] || "U"
-                  )}
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-800 leading-tight">
-                    {u.name && u.surname
-                      ? `${u.name} ${u.surname}`
-                      : u.username}
-                  </h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                    {u.designation || "User"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -13285,861 +13094,7 @@ function DSRAnalyzer({
   );
 }
 
-function AdBanner({ slotId = "5641797386" }: { slotId?: string }) {
-
-  return null;
-}
-
-function PostCard({
-  post,
-  isExpanded,
-  toggleExpansion,
-  addToast,
-  isAdmin,
-  onEdit,
-  allUsers,
-}: {
-  post: Post;
-  isExpanded: boolean;
-  toggleExpansion: () => void;
-  addToast: (s: string) => void;
-  isAdmin: boolean;
-  onEdit: (p: Post) => void;
-  allUsers: UserProfile[];
-}) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const isOwner = Boolean(
-    (auth.currentUser && post.uid && auth.currentUser.uid === post.uid) ||
-    isAdmin,
-  );
-  const postTime = getValidTime(post);
-
-  const [showComments, setShowComments] = useState(false);
-  const [showViewsModal, setShowViewsModal] = useState(false);
-  const [showLikesModal, setShowLikesModal] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
-  const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
-
-  useEffect(() => {
-    if (showComments) {
-      const q = query(
-        collection(db, "posts", post.id, "comments"),
-        orderBy("time", "desc"),
-      );
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          const fetchedComments = snap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }));
-          setComments(fetchedComments);
-          setCommentsLoaded(true);
-        },
-        (err) =>
-          handleFirestoreError(
-            err,
-            OperationType.LIST,
-            `posts/${post.id}/comments`,
-          ),
-      );
-      return () => unsub();
-    }
-  }, [showComments, post.id]);
-
-  return (
-    <motion.div layout className="post-card h-full flex flex-col">
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-black overflow-hidden border shadow-sm">
-          {post.userPhoto ? (
-            <img
-              src={post.userPhoto}
-              alt={post.userName || "Author"}
-              loading="lazy"
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="text-lg">
-              {(post.userName || "U").charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h5 className="text-[17px] font-black text-primary leading-tight">
-              {post.userName || "Portal Member"}
-            </h5>
-            {post.isAdminPost && (
-              <span className="bg-blue-600 text-white text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                <ShieldCheck size={10} /> Official
-              </span>
-            )}
-            {post.pinned && (
-              <span className="text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] uppercase font-black tracking-widest border border-amber-100">
-                <Pin size={10} fill="currentColor" /> Pinned
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase mt-1">
-            <Clock size={12} />
-            <span>
-              {new Date(postTime).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-            <span>•</span>
-            <span className="text-primary/70">
-              {post.categories && post.categories.length > 0
-                ? post.categories.join(", ")
-                : post.category || "Update"}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {isOwner && (
-            <>
-                {isAdmin && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await updateDoc(doc(db, "posts", post.id), {
-                          pinned: !post.pinned,
-                        });
-                        addToast(post.pinned ? "Post Unpinned" : "Post Pinned");
-                      } catch (err) {
-                        handleFirestoreError(err, OperationType.UPDATE, `posts/${post.id}`);
-                      }
-                    }}
-                    className={`p-1.5 hover:bg-slate-50 transition-all rounded-lg ${post.pinned ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}
-                    title={post.pinned ? "Unpin Post" : "Pin Post"}
-                  >
-                    <Pin size={16} fill={post.pinned ? "currentColor" : "none"} />
-                  </button>
-                )}
-                <button
-                  onClick={() => onEdit(post)}
-                  className="p-1.5 hover:bg-slate-50 text-slate-400 hover:text-primary transition-all rounded-lg"
-                  title="Edit"
-                >
-                  <Edit3 size={16} />
-                </button>
-              <button
-                aria-label="Delete Post"
-                onClick={async () => {
-                  const res = await Swal.fire({
-                    title: "Delete?",
-                    text: "Move this post to recycle bin?",
-                    icon: "warning",
-                    showCancelButton: true,
-                  });
-                  if (res.isConfirmed) {
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), {
-                        status: "Deleted",
-                        deletedAt: Date.now(),
-                      });
-                      addToast("Moved to recycle bin");
-                    } catch (err: any) {
-                      addToast(getFriendlyError(err));
-                    }
-                  }
-                }}
-                className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-danger transition-all rounded-lg"
-                title="Delete"
-              >
-                <Trash2 size={16} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-            <h4 className="post-title !mt-0 whitespace-pre-wrap flex items-center gap-2">
-              {formatPostTitle(post.title) || "Platform Update"}
-              {post.version && (
-                <span className="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase">
-                   {post.version}
-                </span>
-              )}
-              {post.versionStatus && (
-                <span className={`${post.versionStatus === 'New' ? 'bg-emerald-500' : 'bg-rose-500'} text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase`}>
-                  {post.versionStatus}
-                </span>
-              )}
-            </h4>
-
-      {post.tags && post.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {post.tags.map((tag, i) => (
-            <span
-              key={i}
-              className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-slate-200/50"
-            >
-              <Hash size={10} strokeWidth={3} /> {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {post.attachments && (post.downloadStyle === "techspot" || (!post.downloadStyle && post.attachments.length >= 2)) ? (
-         <div className="flex flex-col md:flex-row gap-8 mt-4">
-            <div className="flex-1 min-w-0">
-               <div
-                 className={`post-body mb-4 whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-4"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
-               >
-                 <ReactMarkdown
-                   remarkPlugins={[remarkBreaks]}
-                   rehypePlugins={[rehypeRaw]}
-                   components={{
-                     h3: ({ node, children, ...props }) => {
-                       const text = String(children);
-                       if (text.includes("🚀 What's New")) {
-                         return <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm" {...props}>{children}</h3>;
-                       }
-                       if (text.includes("🛠️ Bug Fixes")) {
-                         return <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm" {...props}>{children}</h3>;
-                       }
-                       if (text.includes("⚡ Improvements")) {
-                         return <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm" {...props}>{children}</h3>;
-                       }
-                       return <h3 className="text-lg font-black text-primary mt-4 mb-2" {...props}>{children}</h3>;
-                     },
-                     ul: ({ node, children, ...props }) => <ul className="space-y-1.5 ml-4 mb-4" {...props}>{children}</ul>,
-                     li: ({ node, children, ...props }) => (
-                       <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed" {...props}>
-                         <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                         <span>{children}</span>
-                       </li>
-                     )
-                   }}
-                 >
-                   {post.content || ""}
-                 </ReactMarkdown>
-               </div>
-               
-               {post.attachments.filter(att => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || att.url.includes("image")).length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
-                     {post.attachments.filter(att => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || att.url.includes("image")).map((att, idx) => (
-                           <div key={idx} className="relative group overflow-hidden rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
-                             <img
-                               src={att.url}
-                               alt={att.name}
-                               loading="lazy"
-                               className="w-full h-40 object-cover transition-transform group-hover:scale-105"
-                             />
-                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <a
-                                  href={att.url}
-                       onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-2 bg-white rounded-full text-primary hover:scale-110 transition-transform"
-                                >
-                                  <ExternalLink size={16} />
-                                </a>
-                             </div>
-                             <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                                <p className="text-white text-[10px] font-bold truncate px-1">{att.name}</p>
-                             </div>
-                           </div>
-                     ))}
-                  </div>
-               )}
-      
-      {post.websiteName && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-            <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-              <ExternalLink size={12} strokeWidth={3} />
-            </div>
-            {post.websiteName} Issue / Problem
-          </div>
-          <Target
-            size={14}
-            className="text-primary/40 group-hover:text-primary transition-colors"
-          />
-        </div>
-      )}
-
-      {post.mediaUrl && (
-        <div className="mb-4">
-          {post.mediaType?.startsWith("video") ? (
-            <video src={post.mediaUrl} controls className="post-media" />
-          ) : post.mediaType?.startsWith("image") ? (
-            <img
-              src={post.mediaUrl}
-              alt={post.title}
-              className="post-media"
-              loading="lazy"
-            />
-          ) : post.mediaType?.startsWith("audio") ? (
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
-                {post.mediaName || "Audio Attachment"}
-              </p>
-              <audio src={post.mediaUrl} controls className="w-full" />
-            </div>
-          ) : post.mediaType === "link" ? (
-            <a
-              href={post.mediaUrl.startsWith("http") ? post.mediaUrl : `https://${post.mediaUrl}`}
-              target="_blank"
-              rel="noreferrer"
-              
-              className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl hover:bg-blue-50 transition-colors w-full group"
-            >
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                <Link2 size={24} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-slate-800 text-sm truncate">
-                  {post.mediaName || "External Link"}
-                </h5>
-                <p className="text-xs text-slate-500 truncate mt-0.5" dir="ltr">
-                  {post.mediaUrl}
-                </p>
-              </div>
-            </a>
-          ) : !(post.downloadStyle === "techspot" || (!post.downloadStyle && post.attachments && post.attachments.length >= 2)) && (
-            <a
-              href={post.mediaUrl}
-              download={post.mediaName || "Document"}
-              onClick={(e) => handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document")}
-              target="_blank"
-              rel="noreferrer"
-              
-              className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 hover:border-primary/30 transition-colors w-full group"
-            >
-              <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                <FileText size={24} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-slate-800 text-sm truncate">
-                  {post.mediaName || "Attached Document"}
-                </h5>
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">
-                  Download File
-                </p>
-              </div>
-              <Download
-                size={20}
-                className="text-slate-400 group-hover:text-primary transition-colors ml-4"
-              />
-            </a>
-          )}
-        </div>
-      )}
-
-            </div>
-
-            <div className="w-full md:w-[280px] lg:w-[320px] shrink-0 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-8 flex flex-col">
-               <div className="mb-5">
-                    <a 
-                       href={(() => { const att = getLatestAttachment(post.attachments); return att ? att.url : post.attachments[0].url; })()}
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       onClick={(e) => {
-                          const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0];
-                          handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip");
-                       }}
-                       
-                      className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
-                      style={{ background: "linear-gradient(to bottom, #2b88d8 0%, #1565c0 100%)", padding: "10px" }}
-                    >
-                      <div className="bg-black/15 p-2.5 flex items-center justify-center border-r border-black/10">
-                        <ArrowDown size={28} color="white" strokeWidth={3} className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform" />
-                      </div>
-                      <span className="text-[20px] font-semibold pr-6 tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] flex-1 truncate" title={(() => { const att = getLatestAttachment(post.attachments); return att ? `Download Now (${att.name})` : "Download Now"; })()}>
-                        {getLatestAttachment(post.attachments) ? "Download Latest Version" : "Download Now"}
-                      </span>
-                    </a>
-               </div>
-
-               <div className="text-[13px] text-gray-800 mb-2 font-sans font-black uppercase tracking-wider">
-                  Download
-               </div>
-               <div className="flex flex-col gap-2 w-full">
-                  {post.mediaUrl && !post.mediaType?.startsWith('video') && !post.mediaType?.startsWith('image') && !post.mediaType?.startsWith('audio') && post.mediaType !== 'link' && (
-                     <a
-                       href={post.mediaUrl}
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
-                     >
-                        <div className="flex items-center h-full min-w-0">
-                          <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                              <ArrowDown size={12} className="text-[#666666]" strokeWidth={4} />
-                            </div>
-                          </div>
-                          <div className="flex flex-col px-3 min-w-0">
-                            <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                              {post.mediaName || "Attached Document"}
-                            </span>
-                          </div>
-                        </div>
-                     </a>
-                  )}
-                  {post.attachments?.map((att, idx) => (
-                     <a
-                       key={idx}
-                       href={att.url}
-                       onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
-                     >
-                        <div className="flex items-center h-full min-w-0">
-                          <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                              <ArrowDown size={12} className="text-[#666666]" strokeWidth={4} />
-                            </div>
-                          </div>
-                          <div className="flex flex-col px-3 min-w-0">
-                            <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                              {att.name}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 pr-3">
-                           <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50" title="Version Number">
-                                 <span className="text-[9px] font-black text-blue-500 uppercase leading-none">v</span>
-                                 <span className="text-[9px] font-bold text-blue-600 leading-none">{att.version || "1.0"}</span>
-                              </div>
-                              {att.status && (
-                                <span className={`${att.status === 'New' ? 'bg-emerald-500' : 'bg-rose-500'} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}>
-                                   {att.status}
-                                </span>
-                              )}
-                           </div>
-                        </div>
-                     </a>
-                  ))}
-               </div>
-            </div>
-         </div>
-      ) : (
-         <>
-            <div
-              className={`post-body mb-4 whitespace-pre-wrap ${isExpanded ? "" : "line-clamp-4"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
-            >
-              <ReactMarkdown
-                remarkPlugins={[remarkBreaks]}
-                rehypePlugins={[rehypeRaw]}
-                components={{
-                  h3: ({ node, children, ...props }) => {
-                    const text = String(children);
-                    if (text.includes("🚀 What's New")) {
-                      return (
-                        <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm" {...props}>
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("🛠️ Bug Fixes")) {
-                      return (
-                        <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm" {...props}>
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("⚡ Improvements")) {
-                      return (
-                        <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm" {...props}>
-                          {children}
-                        </h3>
-                      );
-                    }
-                    return <h3 className="text-lg font-black text-primary mt-4 mb-2" {...props}>{children}</h3>;
-                  },
-                  ul: ({ node, children, ...props }) => (
-                    <ul className="space-y-1.5 ml-4 mb-4" {...props}>{children}</ul>
-                  ),
-                  li: ({ node, children, ...props }) => (
-                    <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed" {...props}>
-                      <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                      <span>{children}</span>
-                    </li>
-                  )
-                }}
-              >
-                {post.content || ""}
-              </ReactMarkdown>
-            </div>
-
-            {post.attachments && post.attachments.length > 0 && (
-               <div className="mt-6 pt-4 border-t border-slate-100">
-                  <div className="text-[14px] text-gray-800 mb-3 font-sans font-black uppercase tracking-wider">
-                     Download
-                  </div>
-                  <div className="flex flex-col gap-2 w-full">
-                     {post.attachments.map((att, idx) => {
-                       const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || att.url.includes("image");
-                       return (
-                         <div key={idx} className="w-full">
-                           {isImage ? (
-                             <div className="relative group overflow-hidden rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
-                               <img
-                                 src={att.url}
-                                 alt={att.name}
-                                 loading="lazy"
-                                 className="w-full h-40 object-cover transition-transform group-hover:scale-105"
-                               />
-                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                  <a
-                                    href={att.url}
-                                    onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 bg-white rounded-full text-primary hover:scale-110 transition-transform"
-                                  >
-                                    <ExternalLink size={16} />
-                                  </a>
-                               </div>
-                               <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                                  <p className="text-white text-[10px] font-bold truncate px-1">{att.name}</p>
-                                  {att.status && (
-                                     <div className="absolute top-2 right-2">
-                                        <span className={`${att.status === 'New' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase`}>
-                                           {att.status}
-                                        </span>
-                                     </div>
-                                  )}
-                                </div>
-                             </div>
-                           ) : (
-                             <a
-                               href={att.url}
-                               onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
-                             >
-                                <div className="flex items-center h-full min-w-0">
-                                  <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                                    <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                                      <ArrowDown size={12} className="text-[#666666]" strokeWidth={4} />
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col px-3 min-w-0">
-                                    <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                                      {att.name}
-                                    </span>
-                                    <span className="text-[9px] font-medium text-slate-400 truncate max-w-[200px]">
-                                      {att.url}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 pr-3">
-                                   <div className="flex items-center gap-2">
-                                      <div className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50" title="Version Number">
-                                         <span className="text-[9px] font-black text-blue-500 uppercase leading-none">v</span>
-                                         <span className="text-[9px] font-bold text-blue-600 leading-none">{att.version || "1.0"}</span>
-                                      </div>
-                                      {att.status && (
-                                        <span className={`${att.status === 'New' ? 'bg-emerald-500' : 'bg-rose-500'} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}>
-                                           {att.status}
-                                        </span>
-                                      )}
-                                   </div>
-                                </div>
-                             </a>
-                           )}
-                         </div>
-                       );
-                     })}
-                  </div>
-               </div>
-            )}
-      {post.websiteName && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-            <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-              <ExternalLink size={12} strokeWidth={3} />
-            </div>
-            {post.websiteName} Issue / Problem
-          </div>
-          <Target
-            size={14}
-            className="text-primary/40 group-hover:text-primary transition-colors"
-          />
-        </div>
-      )}
-
-      {post.mediaUrl && (
-        <div className="mb-4">
-          {post.mediaType?.startsWith("video") ? (
-            <video src={post.mediaUrl} controls className="post-media" />
-          ) : post.mediaType?.startsWith("image") ? (
-            <img
-              src={post.mediaUrl}
-              alt={post.title}
-              className="post-media"
-              loading="lazy"
-            />
-          ) : post.mediaType?.startsWith("audio") ? (
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
-                {post.mediaName || "Audio Attachment"}
-              </p>
-              <audio src={post.mediaUrl} controls className="w-full" />
-            </div>
-          ) : post.mediaType === "link" ? (
-            <a
-              href={post.mediaUrl.startsWith("http") ? post.mediaUrl : `https://${post.mediaUrl}`}
-              target="_blank"
-              rel="noreferrer"
-              
-              className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl hover:bg-blue-50 transition-colors w-full group"
-            >
-              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                <Link2 size={24} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-slate-800 text-sm truncate">
-                  {post.mediaName || "External Link"}
-                </h5>
-                <p className="text-xs text-slate-500 truncate mt-0.5" dir="ltr">
-                  {post.mediaUrl}
-                </p>
-              </div>
-            </a>
-          ) : !(post.downloadStyle === "techspot" || (!post.downloadStyle && post.attachments && post.attachments.length >= 2)) && (
-            <a
-              href={post.mediaUrl}
-              download={post.mediaName || "Document"}
-              onClick={(e) => handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document")}
-              target="_blank"
-              rel="noreferrer"
-              
-              className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 hover:border-primary/30 transition-colors w-full group"
-            >
-              <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                <FileText size={24} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-slate-800 text-sm truncate">
-                  {post.mediaName || "Attached Document"}
-                </h5>
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">
-                  Download File
-                </p>
-              </div>
-              <Download
-                size={20}
-                className="text-slate-400 group-hover:text-primary transition-colors ml-4"
-              />
-            </a>
-          )}
-        </div>
-      )}
-
-         </>
-      )}
-
-      <div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-6">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Like Post"
-              onClick={async (e) => {
-                e.stopPropagation();
-                const userId = auth.currentUser?.uid;
-                if (requireLoginAlert()) return;
-                const likedBy = post.likedBy || [];
-                try {
-                  if (likedBy.includes(userId)) {
-                    await updateDoc(doc(db, "posts", post.id), {
-                      likes: increment(-1),
-                      likedBy: arrayRemove(userId),
-                    });
-                  } else {
-                    await updateDoc(doc(db, "posts", post.id), {
-                      likes: increment(1),
-                      likedBy: arrayUnion(userId),
-                    });
-                  }
-                } catch (err: any) {
-                  addToast(getFriendlyError(err));
-                }
-              }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all ${post.likedBy?.includes(auth.currentUser?.uid || "") ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
-            >
-              <Heart
-                size={18}
-                fill={
-                  post.likedBy?.includes(auth.currentUser?.uid || "")
-                    ? "currentColor"
-                    : "none"
-                }
-              />
-              <span
-                onClick={(e) => {
-                  if (isAdmin && post.likes > 0) {
-                    e.stopPropagation();
-                    setShowLikesModal(true);
-                  }
-                }}
-                className={`text-sm font-black ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
-              >
-                {post.likes || 0}
-              </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div
-              className="flex items-center gap-2 p-2 text-slate-400 cursor-pointer hover:bg-slate-50 rounded-xl transition-all"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowComments(!showComments);
-              }}
-            >
-              <MessageSquare size={18} />
-              <span className="text-sm font-black">
-                {post.commentCount || 0}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div
-              onClick={(e) => {
-                if (isAdmin && post.views > 0) {
-                  e.stopPropagation();
-                  setShowViewsModal(true);
-                }
-              }}
-              className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && post.views > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
-            >
-              <Eye size={18} />
-              <span
-                className={`text-sm font-black ${isAdmin && post.views > 0 ? "hover:underline cursor-pointer" : ""}`}
-              >
-                {post.views || 0}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-4 items-center">
-          <button
-            aria-label="Share Post"
-            onClick={(e) => {
-              e.stopPropagation();
-              const url = `${window.location.origin}/?postId=${post.id}`;
-              const plainContent = post.content ? post.content.replace(/<[^>]*>?/gm, '').replace(/[#*`]/g, '').substring(0, 100) + '...' : "";
-              const shareText = plainContent ? `${plainContent}\n\nRead more on E-Vedhika:` : "Check out this post on E-Vedhika:";
-              handleShare(
-                post.title || "E-Vedhika Post",
-                shareText,
-                url,
-                () => addToast("Link Copied!"),
-                post.mediaUrl,
-                post.mediaType
-              );
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
-          >
-            <Share2 size={16} strokeWidth={2.5} />
-            <span>Share</span>
-          </button>
-
-          <button
-            aria-label="Read Post"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSearchParams({ postId: post.id });
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
-          >
-            <Eye size={16} strokeWidth={2.5} />
-            <span>Read post</span>
-          </button>
-        </div>
-      </div>
-
-      {showComments && (
-        <div className="mt-6 pt-6 border-t border-slate-100">
-          <div className="space-y-4 mb-4">
-            {comments.map((c) => (
-              <div key={c.id} className="text-sm bg-slate-50 p-3 rounded-2xl">
-                <span className="font-black text-primary mr-2 uppercase text-[10px]">
-                  {c.userName}:
-                </span>
-                <span className="text-slate-600">{c.text}</span>
-              </div>
-            ))}
-            {comments.length === 0 && (
-              <p className="text-xs text-slate-400 italic text-center py-2">
-                No comments yet
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment..."
-              className="flex-1 bg-slate-50 px-4 py-2 rounded-xl text-sm border-2 border-transparent focus:border-primary/20 outline-none"
-            />
-            <button
-              onClick={async () => {
-                if (!newComment.trim() || requireLoginAlert()) return;
-                try {
-                  const authorName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
-                  await addDoc(collection(db, "posts", post.id, "comments"), {
-                    text: newComment,
-                    time: Date.now(),
-                    uid: auth.currentUser!.uid,
-                    userName: authorName,
-                  });
-                  await updateDoc(doc(db, "posts", post.id), {
-                    commentCount: increment(1),
-                  });
-
-                  sendCommentNotifications(post.id, newComment, auth.currentUser!.uid, authorName);
-                  
-                  setNewComment("");
-                } catch (e: any) {
-                  addToast("Error: " + e.message);
-                }
-              }}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"
-            >
-              SEND
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showLikesModal && (
-        <UsersListModal
-          title="Liked By"
-          uids={post.likedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowLikesModal(false)}
-        />
-      )}
-      {showViewsModal && (
-        <UsersListModal
-          title="Viewed By"
-          uids={post.viewedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowViewsModal(false)}
-        />
-      )}
-    </motion.div>
-  );
-}
+// AdBanner moved to top imports
 
 function PostForm({
   addToast,
@@ -15241,7 +14196,7 @@ function PostForm({
   );
 }
 
-function MenuButton({
+const MenuButton = memo(({
   label,
   active,
   onClick,
@@ -15255,7 +14210,7 @@ function MenuButton({
   emoji?: string;
   icon?: any;
   tourId?: string;
-}) {
+}) => {
   return (
     <motion.button
       id={tourId || `nav-menu-${label.replace(/[^a-zA-Z0-9]/g, '-')}`}
@@ -15275,102 +14230,12 @@ function MenuButton({
           />
         )
       )}
-      <span className="text-sm font-semibold tracking-normal">{label}</span>
+      <span className="text-[15px] font-bold tracking-tight">{label}</span>
     </motion.button>
   );
-}
+});
 
-function ChatSection({
-  messages,
-  user,
-  addToast,
-  userProfile,
-}: {
-  messages: ChatMessage[];
-  user: any;
-  addToast: (s: string) => void;
-  userProfile: UserProfile | null;
-}) {
-  const [msg, setMsg] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const send = async () => {
-    if (!msg.trim()) return;
-    if (requireLoginAlert(user)) return;
-
-    try {
-      await addDoc(collection(db, "chat"), {
-        msg,
-        time: Date.now(),
-        uid: user.uid,
-        userName: userProfile?.username || user.displayName || "Portal User",
-      });
-      setMsg("");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, "chat");
-      addToast("Error sending");
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-3xl border shadow-sm flex flex-col h-[600px] overflow-hidden">
-      <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
-        <div className="font-black text-primary flex items-center gap-3">
-          <MessageCircle size={20} />
-          LIVE FEED
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8fafc] custom-scrollbar">
-        <AnimatePresence initial={false}>
-          {messages.map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className={`flex ${m.uid === user?.uid ? "justify-end" : "justify-start"}`}
-            >
-              <div className="flex flex-col max-w-[80%]">
-                <span
-                  className={`text-[10px] font-black uppercase mb-1 px-1 ${m.uid === user?.uid ? "text-right text-primary/40" : "text-slate-400"}`}
-                >
-                  {m.userName || "Portal User"}
-                </span>
-                <div
-                  className={`p-3 rounded-2xl text-sm font-medium shadow-sm whitespace-pre-wrap ${m.uid === user?.uid ? "bg-primary text-white rounded-tr-none" : "bg-white border rounded-tl-none"}`}
-                  style={m.uid === user?.uid ? { background: "#0d3b66" } : {}}
-                >
-                  {m.msg}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        <div ref={scrollRef} />
-      </div>
-      <div className="p-4 border-t flex gap-2">
-        <input
-          value={msg}
-          onChange={(e) => setMsg(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type..."
-          className="mb-0 flex-1 bg-slate-50 border border-slate-200 p-3 rounded-xl focus:outline-none focus:border-primary/50 text-sm"
-        />
-        <button
-          aria-label="Send message"
-          onClick={send}
-          className="bg-primary text-white p-3 rounded-xl"
-          style={{ background: "#0d3b66" }}
-        >
-          <Send size={18} />
-        </button>
-      </div>
-    </div>
-  );
-}
+const ChatSection = React.lazy(() => import('./components/ChatSection'));
 
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
@@ -17041,443 +15906,6 @@ function AuthModal({
   );
 }
 
-function PollsScreen({
-  user,
-  addToast,
-}: {
-  user: any;
-  addToast: (msg: string) => void;
-}) {
-  const [polls, setPolls] = useState<any[]>([]);
-  const [newPollQuestion, setNewPollQuestion] = useState("");
-  const [newPollOptions, setNewPollOptions] = useState(["", ""]);
-  const [loading, setLoading] = useState(true);
+const PollsScreen = React.lazy(() => import('./components/PollsScreen'));
 
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, "polls"), orderBy("createdAt", "desc")),
-      (snap) => {
-        setPolls(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching polls:", error);
-        setLoading(false);
-      },
-    );
-    return () => unsub();
-  }, []);
-
-  const handleCreatePoll = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return addToast("లాగిన్ అవసరం (Login required)");
-    if (!newPollQuestion.trim() || newPollOptions.some((opt) => !opt.trim()))
-      return addToast("అన్ని వివరాలు నింపండి (Fill all fields)");
-
-    try {
-      await addDoc(collection(db, "polls"), {
-        question: newPollQuestion,
-        options: newPollOptions.map((opt) => ({ text: opt, votes: 0 })),
-        votedBy: {},
-        createdBy: user.uid,
-        createdAt: Date.now(),
-      });
-      setNewPollQuestion("");
-      setNewPollOptions(["", ""]);
-      addToast("పోల్ విజయవంతంగా సృష్టించబడింది (Poll created)");
-    } catch (err: any) {
-      addToast(getFriendlyError(err));
-    }
-  };
-
-  const handleVote = async (
-    pollId: string,
-    optionIndex: number,
-    currentPoll: any,
-  ) => {
-    if (!user) return addToast("లాగిన్ అవసరం (Login required)");
-    if (currentPoll.votedBy[user.uid] !== undefined)
-      return addToast("మీరు ఇప్పటికే ఓటు వేశారు (Already voted)");
-
-    try {
-      const pollRef = doc(db, "polls", pollId);
-      const newOptions = [...currentPoll.options];
-      newOptions[optionIndex].votes += 1;
-
-      await updateDoc(pollRef, {
-        options: newOptions,
-        [`votedBy.${user.uid}`]: optionIndex,
-      });
-      addToast("మీ ఓటు నమోదైంది (Vote recorded)");
-    } catch (err: any) {
-      addToast(getFriendlyError(err));
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <AdBanner />
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
-          <Vote size={24} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            ప్రజాభిప్రాయ సేకరణ (Polls)
-          </h2>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Village Voting & Opinions
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-sm mb-8">
-        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <Plus size={16} className="text-primary" /> కొత్త పోల్ సృష్టించండి
-          (Create Poll)
-        </h3>
-        <form onSubmit={handleCreatePoll} className="space-y-4">
-          <input
-            type="text"
-            value={newPollQuestion}
-            onChange={(e) => setNewPollQuestion(e.target.value)}
-            placeholder="ప్రశ్న (ఉదా: ముందుగా ఏ పని చేయాలి? పార్క్ లేదా రోడ్డు?)"
-            className="w-full bg-slate-50 border-slate-100 rounded-2xl p-4 text-sm font-bold placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20"
-            required
-          />
-          <div className="space-y-2">
-            {newPollOptions.map((opt, i) => (
-              <div key={i} className="flex gap-2">
-                <input
-                  type="text"
-                  value={opt}
-                  onChange={(e) => {
-                    const newOpts = [...newPollOptions];
-                    newOpts[i] = e.target.value;
-                    setNewPollOptions(newOpts);
-                  }}
-                  placeholder={`ఆప్షన్ (Option) ${i + 1}`}
-                  className="flex-1 bg-slate-50 border-slate-100 rounded-2xl p-4 text-sm font-bold placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20"
-                  required
-                />
-                {i >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewPollOptions(
-                        newPollOptions.filter((_, idx) => idx !== i),
-                      )
-                    }
-                    className="p-4 text-slate-400 hover:text-danger bg-slate-50 rounded-2xl transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => setNewPollOptions([...newPollOptions, ""])}
-            className="text-[10px] font-black text-primary hover:text-blue-700 transition-colors flex items-center gap-1 uppercase tracking-widest pl-1 mt-2"
-          >
-            <Plus size={14} /> యాడ్ ఆప్షన్ (Add Option)
-          </button>
-          <button
-            type="submit"
-            className="w-full mt-4 bg-primary text-white py-4 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform uppercase tracking-widest text-sm"
-          >
-            పబ్లిష్ చేయండి (Publish Poll)
-          </button>
-        </form>
-      </div>
-
-      <div className="space-y-4">
-        {loading ? (
-          <div className="text-center py-10">
-            <div className="w-8 h-8 mx-auto border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-          </div>
-        ) : polls.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 font-bold">
-            ఇంకా ఎటువంటి పోల్స్ లేవు (No polls yet)
-          </div>
-        ) : (
-          polls.map((poll) => {
-            const totalVotes = poll.options.reduce(
-              (acc: number, opt: any) => acc + opt.votes,
-              0,
-            );
-            const userVotedIndex = user ? poll.votedBy[user.uid] : undefined;
-
-            return (
-              <div
-                key={poll.id}
-                className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group"
-              >
-                <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 text-[9px] uppercase tracking-widest px-3 py-1.5 rounded-bl-xl font-black">
-                  {totalVotes} Votes
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-slate-800 mb-4 mt-2 pr-12">
-                  {poll.question}
-                </h3>
-                <div className="space-y-3">
-                  {poll.options.map((opt: any, i: number) => {
-                    const percent =
-                      totalVotes > 0
-                        ? Math.round((opt.votes / totalVotes) * 100)
-                        : 0;
-                    const isSelected = userVotedIndex === i;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => handleVote(poll.id, i, poll)}
-                        disabled={userVotedIndex !== undefined}
-                        className={`w-full relative overflow-hidden rounded-xl border text-left transition-all ${userVotedIndex !== undefined ? (isSelected ? "border-primary bg-blue-50/50" : "border-slate-100 bg-slate-50 opacity-70") : "border-slate-100 bg-white hover:border-primary/50 hover:bg-slate-50"}`}
-                      >
-                        <div
-                          className={`absolute top-0 left-0 bottom-0 transition-all duration-1000 ${isSelected ? "bg-blue-100" : "bg-slate-200/50"}`}
-                          style={{ width: `${percent}%` }}
-                        />
-                        <div className="relative p-4 flex justify-between items-center z-10">
-                          <span
-                            className={`text-sm font-bold ${isSelected ? "text-primary" : "text-slate-700"}`}
-                          >
-                            {opt.text}
-                          </span>
-                          {userVotedIndex !== undefined && (
-                            <span
-                              className={`text-xs font-black ${isSelected ? "text-primary" : "text-slate-400"}`}
-                            >
-                              {percent}%
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400 tracking-wider">
-                  <span className="uppercase">
-                    Created:{" "}
-                    {new Date(poll.createdAt).toLocaleDateString("en-IN")}
-                  </span>
-                  <button
-                    onClick={() => {
-                      const shareText = `దయచేసి ఈ పోల్ లో పాల్గొనండి:\n*${poll.question}*\n\nమా గ్రామం యాప్ లో ఓటు వేయడానికి కింది లింక్ ద్వారా వెళ్ళండి:\n${window.location.origin}`;
-                      if (navigator.share) {
-                        navigator
-                          .share({ title: "Vote in Poll", text: shareText })
-                          .catch(console.error);
-                      } else {
-                        window.open(
-                          `https://wa.me/?text=${encodeURIComponent(shareText)}`,
-                          "_blank",
-                        );
-                      }
-                    }}
-                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg hover:bg-slate-100 hover:text-blue-600 transition-colors uppercase tracking-widest"
-                  >
-                    <Share2 size={14} /> Share Poll
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SuggestionForm({
-  addToast,
-  onCancel,
-}: {
-  addToast: (s: string) => void;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [village, setVillage] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [category, setCategory] = useState("General Suggestion");
-  const [suggestion, setSuggestion] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = async () => {
-    if (requireLoginAlert()) return;
-    if (!name || !suggestion) {
-      addToast("దయచేసి పేరు మరియు సూచన నింపండి");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, "suggestions"), {
-        name,
-        userEmail: auth.currentUser?.email || "",
-        userId: auth.currentUser?.uid || "",
-        village: village || "Not specified",
-        mobile: mobile || "Not specified",
-        category,
-        suggestion: suggestion,
-        text: suggestion,
-        status: "pending",
-        time: Date.now(),
-        createdAt: Date.now(),
-      });
-      await logUserActivity(`Submitted Suggestion: ${category}`);
-      setSubmitted(true);
-      addToast("మీ సూచన విజయవంతంగా పంపబడింది!");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, "suggestions");
-      addToast("Error submitting suggestion");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="p-10 text-center space-y-6 bg-white rounded-[24px]">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner"
-        >
-          <CheckCircle2 size={40} />
-        </motion.div>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tighter">
-          విజయవంతంగా పంపబడింది!
-        </h2>
-        <p className="text-slate-500 font-bold">
-          మీ సూచన మా దృష్టికి వచ్చింది. ధన్యవాదాలు.
-        </p>
-
-        <div className="gap-3 flex flex-col pt-4">
-          <button
-            aria-label="Send another suggestion"
-            onClick={() => {
-              setSubmitted(false);
-              setName("");
-              setVillage("");
-              setMobile("");
-              setCategory("General Suggestion");
-              setSuggestion("");
-            }}
-            className="bg-[#a855f7] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90"
-          >
-            మరో సూచన పంపండి
-          </button>
-          <button
-            aria-label="Go back"
-            onClick={onCancel}
-            className="bg-slate-100 text-slate-600 py-4 rounded-2xl font-black hover:bg-slate-200"
-          >
-            తిరిగి వెళ్ళండి
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-0 overflow-hidden rounded-[24px] bg-white">
-      <div className="bg-[#a855f7] p-8 text-white relative">
-        <h2 className="text-2xl font-black tracking-tighter">
-          Portal Feedback & Suggestions
-        </h2>
-        <p className="text-white/80 font-bold text-sm">
-          మీ విలువైన సూచనలను ఇక్కడ తెలియజేయండి
-        </p>
-        <button
-          aria-label="Close suggestion form"
-          onClick={onCancel}
-          className="absolute top-6 right-6 p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      <div className="p-8 space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              మీ పేరు
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter Name"
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              మొబైల్ నంబర్ (ఐచ్ఛికం)
-            </label>
-            <input
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              maxLength={10}
-              placeholder="Mobile Number"
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            విలేజ్ / మండలం
-          </label>
-          <input
-            value={village}
-            onChange={(e) => setVillage(e.target.value)}
-            placeholder="Village / Mandal"
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            విభాగం
-          </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700 appearance-none"
-          >
-            <option value="General Suggestion">General Suggestion</option>
-            <option value="App Improvement">App Improvement</option>
-            <option value="Service Feedback">Service Feedback</option>
-            <option value="Technical Issue">Technical Issue</option>
-            <option value="Request Feature">Request Feature</option>
-          </select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            మీ సూచన
-          </label>
-          <textarea
-            value={suggestion}
-            onChange={(e) => setSuggestion(e.target.value)}
-            placeholder="మీ సూచనను ఇక్కడ వ్రాయండి..."
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 min-h-[120px] font-bold text-slate-700"
-          />
-        </div>
-
-        <div className="flex gap-4 pt-2">
-          <button
-            aria-label="Submit Suggestion"
-            disabled={isSubmitting}
-            onClick={handleSubmit}
-            className="flex-1 bg-[#a855f7] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
-          >
-            {isSubmitting ? "పంపిస్తున్నాము..." : "Submit Suggestion"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const SuggestionForm = React.lazy(() => import('./components/SuggestionForm'));

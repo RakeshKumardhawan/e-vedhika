@@ -79,6 +79,10 @@ async function startServer() {
   });
 
   
+  // Simple memory cache for post previews
+  const previewCache = new Map<string, { data: any, timestamp: number }>();
+  const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+
   app.get('/api/download', async (req, res) => {
     try {
       const url = req.query.url as string;
@@ -88,102 +92,72 @@ async function startServer() {
         return res.status(400).send("No URL provided");
       }
 
-      if (url.startsWith('/uploads/')) {
-        const localPath = path.join(process.cwd(), url.replace(/^\//, ''));
-        console.log("DEBUG: Downloading file from:", localPath);
-        if (fs.existsSync(localPath)) {
-          let downloadName = filename as string;
-          const extMatch = localPath.match(/\.[a-zA-Z0-9]+$/);
-          if (extMatch && !downloadName.includes('.')) {
-            const lowerName = downloadName.toLowerCase();
-            if (lowerName === "download" || lowerName === "document" || lowerName === "attachment" || lowerName === "download.zip" || lowerName.startsWith("download")) {
-              downloadName += extMatch[0];
-            } else {
-              downloadName += extMatch[0];
-            }
-          }
-          return res.download(localPath, downloadName);
+      // 1. Strict Local Check
+      const isUploadPath = url.startsWith('/uploads/') || url.startsWith('uploads/');
+      if (isUploadPath && !url.startsWith('http')) {
+        const relativePath = url.replace(/^\//, '');
+        const fullLocalPath = path.join(process.cwd(), relativePath);
+        
+        if (fs.existsSync(fullLocalPath)) {
+          let downloadName = filename;
+          const ext = path.extname(fullLocalPath);
+          if (ext && !downloadName.includes('.')) downloadName += ext;
+          return res.download(fullLocalPath, downloadName);
         }
-        console.error("DEBUG: Local file not found:", localPath);
-        return res.status(404).send("Local file not found");
       }
 
-      const fetchUrl = url;
-
+      // 2. High-Speed Remote Fallback
+      const fetchUrl = url.startsWith('http') ? url : `https://${url}`;
       const fetchResp = await fetch(fetchUrl);
-      if (!fetchResp.ok) throw new Error("Failed to fetch remote URL <" + fetchUrl + ">: " + fetchResp.statusText + " (" + fetchResp.status + ")");
+      
+      if (!fetchResp.ok) {
+        return res.status(fetchResp.status).send(`Failed to fetch file: ${fetchResp.statusText}`);
+      }
 
-      let extractedFilename = filename as string;
+      let extractedFilename = filename;
       const remoteDisposition = fetchResp.headers.get('content-disposition');
       if (remoteDisposition) {
-
-        const filenameStarMatch = remoteDisposition.match(/filename\*=UTF-8''([^;]+)/i);
         const filenameMatch = remoteDisposition.match(/filename="?([^";]+)"?/i);
-        if (filenameStarMatch && filenameStarMatch[1]) {
-          extractedFilename = decodeURIComponent(filenameStarMatch[1]);
-        } else if (filenameMatch && filenameMatch[1]) {
-          extractedFilename = filenameMatch[1];
-        }
+        if (filenameMatch) extractedFilename = filenameMatch[1];
       }
 
-      if (!extractedFilename) extractedFilename = "download";
-      
-      const lowerName = extractedFilename.toLowerCase();
-      if (lowerName === "download" || lowerName === "document" || lowerName === "attachment" || lowerName === "download.zip" || lowerName.startsWith("download") || !extractedFilename.includes('.')) {
-        try {
-          const urlObj = new URL(url);
-          const decodedPath = decodeURIComponent(urlObj.pathname);
-          const parts = decodedPath.split('/');
-          const lastPart = parts[parts.length - 1];
-          if (lastPart && lastPart.includes('.')) {
-            extractedFilename = lastPart;
-          }
-        } catch (e) {}
-      }
-
-      let safeFilename = (extractedFilename || "download").replace(/["\\/]/g, "");
-
-      const contentType = fetchResp.headers.get('content-type') || '';
-      if (!safeFilename.includes('.') && contentType) {
-        const mimeToExt: Record<string, string> = {
-          'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
-          'application/pdf': 'pdf', 'application/msword': 'doc', 'text/plain': 'txt',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-          'application/vnd.ms-excel': 'xls', 'application/csv': 'csv', 'text/csv': 'csv',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-          'video/mp4': 'mp4', 'audio/mpeg': 'mp3', 'application/zip': 'zip',
-          'application/x-zip-compressed': 'zip', 'application/vnd.rar': 'rar',
-          'application/x-rar-compressed': 'rar', 'application/octet-stream': 'bin',
-          'application/vnd.android.package-archive': 'apk'
-        };
-        const ext = mimeToExt[contentType.split(';')[0].toLowerCase() as any];
-        if (ext) {
-          safeFilename += '.' + ext;
-        }
-      }
-
-      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`);
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(extractedFilename)}"`);
       res.setHeader('Content-Type', fetchResp.headers.get('content-type') || 'application/octet-stream');
       
-      const contentLength = fetchResp.headers.get('content-length');
-      if (contentLength) {
-        res.setHeader('Content-Length', contentLength);
-      }
-      
-      if (fetchResp.body) {
-        const readableNodeStream = Readable.fromWeb(fetchResp.body as any);
-        readableNodeStream.pipe(res);
-      } else {
-        res.end();
-      }
-
-    } catch (e: any) {
-      console.error("Proxy download error:", e);
-      res.status(500).send("Download failed: " + (e.message || String(e)));
+      const arrayBuffer = await fetchResp.arrayBuffer();
+      res.send(Buffer.from(arrayBuffer));
+    } catch (error: any) {
+      console.error("Download Error:", error);
+      res.status(500).send("Error: " + error.message);
     }
   });
-
   app.use('/uploads', express.static(uploadsDir));
+
+  // Meta Tags Injection Helper
+  async function getPostMetaData(postId: string) {
+    const cached = previewCache.get(postId);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+
+    try {
+      const postResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}`);
+      if (postResp.ok) {
+        const postData = await postResp.json();
+        const fields = postData.fields || {};
+        const data = {
+          title: fields.title?.stringValue || "E-Vedhika Post",
+          description: fields.content?.stringValue?.substring(0, 160) || "Check out this update on E-Vedhika Portal",
+          image: fields.mediaUrl?.stringValue || "/ev-logo-v2.svg"
+        };
+        previewCache.set(postId, { data, timestamp: Date.now() });
+        return data;
+      }
+    } catch (e) {
+      console.error("Firestore preview fetch error:", e);
+    }
+    return null;
+  }
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -194,28 +168,21 @@ async function startServer() {
     // Inject dynamic meta tags middleware
     app.use(async (req, res, next) => {
       const postId = req.query.postId as string;
-      if (postId && (req.headers.accept?.includes('text/html') || req.headers['user-agent']?.includes('WhatsApp') || req.headers['user-agent']?.includes('facebookexternalhit'))) {
-        try {
-          const postResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}`);
-          if (postResp.ok) {
-            const postData = await postResp.json();
-            const fields = postData.fields || {};
-            const title = fields.title?.stringValue || "E-Vedhika Post";
-            const description = fields.content?.stringValue?.substring(0, 160) || "Check out this update on E-Vedhika Portal";
-            const image = fields.mediaUrl?.stringValue || "/ev-logo-v2.svg";
+      const isHtmlRequest = req.headers.accept?.includes('text/html');
+      const isBot = /WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot/i.test(req.headers['user-agent'] || '');
 
-            const indexContent = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
-            let modified = await vite.transformIndexHtml(req.url, indexContent);
-            
-            modified = modified.replace(/<title>.*?<\/title>/, `<title>${title} | E-Vedhika</title>`);
-            modified = modified.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${title}" />`);
-            modified = modified.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${description}" />`);
-            modified = modified.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`);
-            
-            return res.status(200).set({ 'Content-Type': 'text/html' }).end(modified);
-          }
-        } catch (e) {
-          console.error("Meta injection error:", e);
+      if (postId && (isHtmlRequest || isBot)) {
+        const meta = await getPostMetaData(postId);
+        if (meta) {
+          const indexContent = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
+          let modified = await vite.transformIndexHtml(req.url, indexContent);
+          
+          modified = modified.replace(/<title>.*?<\/title>/, `<title>${meta.title} | E-Vedhika</title>`);
+          modified = modified.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${meta.title}" />`);
+          modified = modified.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${meta.description}" />`);
+          modified = modified.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${meta.image}" />`);
+          
+          return res.status(200).set({ 'Content-Type': 'text/html' }).end(modified);
         }
       }
       next();
@@ -231,25 +198,15 @@ async function startServer() {
       const indexPath = path.join(distPath, 'index.html');
       
       if (postId && fs.existsSync(indexPath)) {
-        try {
-          const postResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}`);
-          if (postResp.ok) {
-            const postData = await postResp.json();
-            const fields = postData.fields || {};
-            const title = fields.title?.stringValue || "E-Vedhika Post";
-            const description = fields.content?.stringValue?.substring(0, 160) || "Check out this update on E-Vedhika Portal";
-            const image = fields.mediaUrl?.stringValue || "/ev-logo-v2.svg";
-
-            let indexContent = fs.readFileSync(indexPath, 'utf-8');
-            indexContent = indexContent.replace(/<title>.*?<\/title>/, `<title>${title} | E-Vedhika</title>`);
-            indexContent = indexContent.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${title}" />`);
-            indexContent = indexContent.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${description}" />`);
-            indexContent = indexContent.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`);
-            
-            return res.status(200).set({ 'Content-Type': 'text/html' }).send(indexContent);
-          }
-        } catch (e) {
-          console.error("Meta injection error (prod):", e);
+        const meta = await getPostMetaData(postId);
+        if (meta) {
+          let indexContent = fs.readFileSync(indexPath, 'utf-8');
+          indexContent = indexContent.replace(/<title>.*?<\/title>/, `<title>${meta.title} | E-Vedhika</title>`);
+          indexContent = indexContent.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${meta.title}" />`);
+          indexContent = indexContent.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${meta.description}" />`);
+          indexContent = indexContent.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${meta.image}" />`);
+          
+          return res.status(200).set({ 'Content-Type': 'text/html' }).send(indexContent);
         }
       }
       
@@ -258,7 +215,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-
+    console.log(`Server running at http://0.0.0.0:${PORT}`);
   });
 }
 

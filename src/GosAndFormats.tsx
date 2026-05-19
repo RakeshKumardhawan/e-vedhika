@@ -4,7 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, storage } from '../firebase';
 import { Download, Upload, Trash2, FileBadge } from 'lucide-react';
-import { handleForceDownload, requireLoginAlert, getFriendlyError } from './App';
+import { handleForceDownload, requireLoginAlert, getFriendlyError } from './lib/utils';
 
 export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, addToast: (s: string) => void, isAdmin?: boolean }) {
   const [items, setItems] = useState<any[]>([]);
