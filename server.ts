@@ -23,16 +23,18 @@ async function startServer() {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server" });
       }
 
-      const genAI = new GoogleGenAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-3-flash-preview",
-        systemInstruction: systemInstruction 
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      res.json({ text });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { systemInstruction }
+      });
+
+      res.json({ text: response.text });
     } catch (error: any) {
       console.error("Gemini API error:", error);
       res.status(500).json({ error: error.message || "Failed to generate content" });
@@ -87,7 +89,8 @@ async function startServer() {
       }
 
       if (url.startsWith('/uploads/')) {
-        const localPath = path.join(process.cwd(), url);
+        const localPath = path.join(process.cwd(), url.replace(/^\//, ''));
+        console.log("DEBUG: Downloading file from:", localPath);
         if (fs.existsSync(localPath)) {
           let downloadName = filename as string;
           const extMatch = localPath.match(/\.[a-zA-Z0-9]+$/);
@@ -101,6 +104,7 @@ async function startServer() {
           }
           return res.download(localPath, downloadName);
         }
+        console.error("DEBUG: Local file not found:", localPath);
         return res.status(404).send("Local file not found");
       }
 
@@ -187,13 +191,69 @@ async function startServer() {
       appType: "spa",
     });
     
+    // Inject dynamic meta tags middleware
+    app.use(async (req, res, next) => {
+      const postId = req.query.postId as string;
+      if (postId && (req.headers.accept?.includes('text/html') || req.headers['user-agent']?.includes('WhatsApp') || req.headers['user-agent']?.includes('facebookexternalhit'))) {
+        try {
+          const postResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}`);
+          if (postResp.ok) {
+            const postData = await postResp.json();
+            const fields = postData.fields || {};
+            const title = fields.title?.stringValue || "E-Vedhika Post";
+            const description = fields.content?.stringValue?.substring(0, 160) || "Check out this update on E-Vedhika Portal";
+            const image = fields.mediaUrl?.stringValue || "/ev-logo-v2.svg";
+
+            const indexContent = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
+            let modified = await vite.transformIndexHtml(req.url, indexContent);
+            
+            modified = modified.replace(/<title>.*?<\/title>/, `<title>${title} | E-Vedhika</title>`);
+            modified = modified.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${title}" />`);
+            modified = modified.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${description}" />`);
+            modified = modified.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`);
+            
+            return res.status(200).set({ 'Content-Type': 'text/html' }).end(modified);
+          }
+        } catch (e) {
+          console.error("Meta injection error:", e);
+        }
+      }
+      next();
+    });
 
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    
+    app.get('*', async (req, res) => {
+      const postId = req.query.postId as string;
+      const indexPath = path.join(distPath, 'index.html');
+      
+      if (postId && fs.existsSync(indexPath)) {
+        try {
+          const postResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}`);
+          if (postResp.ok) {
+            const postData = await postResp.json();
+            const fields = postData.fields || {};
+            const title = fields.title?.stringValue || "E-Vedhika Post";
+            const description = fields.content?.stringValue?.substring(0, 160) || "Check out this update on E-Vedhika Portal";
+            const image = fields.mediaUrl?.stringValue || "/ev-logo-v2.svg";
+
+            let indexContent = fs.readFileSync(indexPath, 'utf-8');
+            indexContent = indexContent.replace(/<title>.*?<\/title>/, `<title>${title} | E-Vedhika</title>`);
+            indexContent = indexContent.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${title}" />`);
+            indexContent = indexContent.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${description}" />`);
+            indexContent = indexContent.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`);
+            
+            return res.status(200).set({ 'Content-Type': 'text/html' }).send(indexContent);
+          }
+        } catch (e) {
+          console.error("Meta injection error (prod):", e);
+        }
+      }
+      
+      res.sendFile(indexPath);
     });
   }
 

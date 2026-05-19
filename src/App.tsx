@@ -1219,20 +1219,21 @@ body {
 }
 
 .brand-title {
-  font-family: 'Righteous', cursive;
+  font-family: 'Poppins', sans-serif;
   margin: 0;
-  letter-spacing: 2px;
-  color: var(--accent);
-  text-shadow: 2px 2px 0px var(--primary);
+  letter-spacing: -0.02em;
+  color: #fff;
+  font-weight: 800;
+  font-size: 24px;
 }
-
 .sub-tagline {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  color: #fff;
-  opacity: 0.9;
-  letter-spacing: 1px;
+  color: var(--accent);
+  opacity: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .latest-bar {
@@ -1269,15 +1270,16 @@ body {
   padding: 10px 15px;
   margin-bottom: 2px;
   background: transparent;
-  color: #64748b;
+  color: #1e293b;
   border: 1px solid transparent;
-  border-radius: 10px;
-  font-weight: 700;
+  border-radius: 12px;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 14px;
   text-align: left;
   gap: 12px;
+  font-family: 'Poppins', sans-serif;
 }
 .side-btn:hover { background: #f1f5f9; color: var(--primary); transform: translateX(5px); }
 .side-btn.active-tab {
@@ -3976,7 +3978,7 @@ export default function App() {
                               </div>
                               <Link to="?tab=reports" className="text-blue-600 font-black text-xs hover:underline">View All</Link>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch auto-rows-fr">
                               {filteredPosts.slice(0, 4).map((post: any) => (
                                   <PostCard
                                     key={post.id}
@@ -3997,9 +3999,9 @@ export default function App() {
                         )}
 
                         {el.type === "Feature Cards" && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch auto-rows-fr">
                             {[1, 2, 3].map((i) => (
-                              <div key={i} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group h-full">
+                              <div key={i} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group h-full min-h-[250px]">
                                 <div className={`w-10 h-10 bg-${el.color || "blue"}-50 rounded-xl flex items-center justify-center text-${el.color || "blue"}-600 mb-4 group-hover:scale-110 transition-transform`}>
                                   {i === 1 ? <Shield size={20} /> : i === 2 ? <Zap size={20} /> : <Users size={20} />}
                                 </div>
@@ -13348,7 +13350,7 @@ function PostCard({
   }, [showComments, post.id]);
 
   return (
-    <motion.div layout className="post-card">
+    <motion.div layout className="post-card h-full flex flex-col">
       <div className="flex items-center gap-4 mb-6">
         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-black overflow-hidden border shadow-sm">
           {post.userPhoto ? (

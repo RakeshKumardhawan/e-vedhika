@@ -4,7 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, storage } from '../firebase';
 import { Download, Upload, Trash2, FileBadge } from 'lucide-react';
-import { requireLoginAlert, getFriendlyError } from './App';
+import { handleForceDownload, requireLoginAlert, getFriendlyError } from './App';
 
 export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, addToast: (s: string) => void, isAdmin?: boolean }) {
   const [items, setItems] = useState<any[]>([]);
@@ -257,7 +257,8 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
                     </button>
                  )}
                  <a href={item.url} target="_blank" rel="noreferrer" onClick={(e) => {
-                    if (!item.url) { e.preventDefault(); addToast("File link not found"); }
+                    if (!item.url) { e.preventDefault(); addToast("File link not found"); return; }
+                    handleForceDownload(e, item.url, item.fileNameDisplay || item.fileName || "Document");
                  }} className="flex-1 md:w-auto px-6 py-3 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
                     <Download size={16} /> Download
                  </a>
