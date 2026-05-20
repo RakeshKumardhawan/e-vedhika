@@ -237,6 +237,15 @@ async function startServer() {
       }
 
       let safeFilename = (extractedFilename || "download").replace(/["\\/]/g, "");
+      
+      // Strip multiple layers of timestamp prefixes (matches 10-15 digits followed by a dash)
+      while (safeFilename.match(/^\d{10,15}-/)) {
+          safeFilename = safeFilename.replace(/^\d{10,15}-/, '');
+      }
+      // Also strip shorter numeric prefixes that might be part of a double-timestamp
+      while (safeFilename.match(/^\d{5,15}-/)) {
+          safeFilename = safeFilename.replace(/^\d{5,15}-/, '');
+      }
 
       const contentType = fetchResp.headers.get('content-type') || '';
       if (!safeFilename.includes('.') && contentType) {

@@ -51,8 +51,11 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
     setProgress(0);
 
     try {
+      const metadata = {
+        contentDisposition: `attachment; filename="${file.name}"`
+      };
       const fileRef = ref(storage, "gos_formats/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
-      const uploadTask = uploadBytesResumable(fileRef, file);
+      const uploadTask = uploadBytesResumable(fileRef, file, metadata);
 
       uploadTask.on(
         "state_changed",

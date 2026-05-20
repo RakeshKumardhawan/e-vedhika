@@ -1407,6 +1407,57 @@ function cleanStringData(val: any) {
   return String(val).trim();
 }
 
+function PostSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-4 w-full">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 animate-pulse">
+          <div className="flex gap-4 items-start mb-4">
+            <div className="w-12 h-12 bg-slate-200 rounded-2xl" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-slate-200 rounded-full w-1/4" />
+              <div className="h-3 bg-slate-100 rounded-full w-1/3" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="h-4 bg-slate-100 rounded-full w-full" />
+            <div className="h-4 bg-slate-100 rounded-full w-5/6" />
+            <div className="h-4 bg-slate-100 rounded-full w-4/6" />
+          </div>
+          <div className="mt-6 flex gap-4">
+            <div className="h-8 bg-slate-50 rounded-xl w-24" />
+            <div className="h-8 bg-slate-50 rounded-xl w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div className="w-full bg-slate-100 rounded-[40px] p-8 sm:p-12 animate-pulse mb-8 min-h-[300px] flex flex-col justify-end">
+      <div className="h-8 bg-slate-200 rounded-full w-1/3 mb-4" />
+      <div className="h-4 bg-slate-200 rounded-full w-2/3 mb-2" />
+      <div className="h-4 bg-slate-200 rounded-full w-1/2" />
+    </div>
+  );
+}
+
+function UpdateTickerSkeleton() {
+  return (
+    <div className="latest-bar overflow-hidden animate-pulse">
+      <div className="latest-label whitespace-nowrap shrink-0 flex items-center gap-1.5 opacity-50">
+        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+        Latest Updates
+      </div>
+      <div className="latest-text flex-1">
+        <div className="h-4 bg-white/20 rounded-full w-full mx-4" />
+      </div>
+    </div>
+  );
+}
+
 function getValidTime(obj: any): number {
   if (!obj) return Date.now();
   if (obj.time) {
@@ -1934,6 +1985,15 @@ export const handleForceDownload = async (e: React.MouseEvent, url: string, file
       }
     }
 
+    // Strip multiple layers of timestamp prefixes (matches 10-15 digits followed by a dash)
+    while (extractedFilename.match(/^\d{10,15}-/)) {
+        extractedFilename = extractedFilename.replace(/^\d{10,15}-/, '');
+    }
+    // Also strip the multer double-timestamp pattern or other dash-separated numeric prefixes
+    while (extractedFilename.match(/^\d{5,15}-/)) {
+        extractedFilename = extractedFilename.replace(/^\d{5,15}-/, '');
+    }
+
     const link = document.createElement("a");
 
     const isFirebaseOrGoogleUrl = url.includes("firebasestorage.googleapis.com") || 
@@ -1944,16 +2004,11 @@ export const handleForceDownload = async (e: React.MouseEvent, url: string, file
     if (url.startsWith("data:")) {
         link.href = url;
         link.download = extractedFilename;
-    } else if (isFirebaseOrGoogleUrl) {
-        // Firebase Storage or GCS URLs contain signed tokens and proper headers.
-        // We can download or open them in a new tab directly to avoid Cloud Run network or proxy block.
-        link.href = url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
     } else {
+        // Use proxy for all remote downloads to ensure filename stripping logic is applied
+        // and browser correctly handles the download filename header.
         const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(extractedFilename)}`;
         link.href = proxyUrl;
-        
 
         const finalLower = extractedFilename.toLowerCase();
         if (finalLower !== "download" && finalLower !== "document" && finalLower !== "attachment" && finalLower !== "download.zip" && !finalLower.startsWith("download")) {
@@ -2342,6 +2397,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showForcedProfileSetup, setShowForcedProfileSetup] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const [adminLocked, setAdminLocked] = useState(true);
   const [adminPinInput, setAdminPinInput] = useState("");
@@ -2444,6 +2500,14 @@ export default function App() {
     }
 
     let initialUpdatesLoadedLocal = false;
+    let initialPostsLoadedLocal = false;
+
+    const checkCoreDataLoaded = () => {
+      if (initialUpdatesLoadedLocal && initialPostsLoadedLocal) {
+        setDataLoading(false);
+      }
+    };
+
     const unsubUpdates = onSnapshot(
       collection(db, "updates"),
       (snap) => {
@@ -2455,6 +2519,7 @@ export default function App() {
 
         if (!initialUpdatesLoadedLocal) {
           initialUpdatesLoadedLocal = true;
+          checkCoreDataLoaded();
         } else {
           const addedChanges = snap
             .docChanges()
@@ -2486,7 +2551,6 @@ export default function App() {
       (err) => handleFirestoreError(err, OperationType.LIST, "suggestions"),
     );
 
-    let initialPostsLoadedLocal = false;
     const unsubPosts = onSnapshot(
       query(collection(db, "posts")),
       (snap) => {
@@ -2506,6 +2570,7 @@ export default function App() {
 
         if (!initialPostsLoadedLocal) {
           initialPostsLoadedLocal = true;
+          checkCoreDataLoaded();
         } else {
           const addedChanges = snap
             .docChanges()
@@ -3548,29 +3613,33 @@ export default function App() {
         </div>
       </header>
 
-      <div className="latest-bar overflow-hidden">
-        <div className="latest-label whitespace-nowrap shrink-0 flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-          Latest Updates
+      {dataLoading ? (
+        <UpdateTickerSkeleton />
+      ) : (
+        <div className="latest-bar overflow-hidden">
+          <div className="latest-label whitespace-nowrap shrink-0 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+            Latest Updates
+          </div>
+          <div className="latest-text flex-1">
+            <span>
+              {(() => {
+                const visibleUpdates = updates.filter(
+                  (u) =>
+                    (u.type === "flash" || (!u.type && !u.status)) &&
+                    u.status !== "hidden" &&
+                    u.status?.toLowerCase() !== "deleted",
+                );
+                return visibleUpdates.length > 0
+                  ? visibleUpdates
+                      .map((u) => u.text || (u as any).msg || (u as any).update)
+                      .join("  •  ")
+                  : "🔥 Welcome to E-Vedhika Portal... 🔥 • 🔥 The E-Vedhika Portal is now live – Empowering Governance with Digital Excellence.. 🔥";
+              })()}
+            </span>
+          </div>
         </div>
-        <div className="latest-text flex-1">
-          <span>
-            {(() => {
-              const visibleUpdates = updates.filter(
-                (u) =>
-                  (u.type === "flash" || (!u.type && !u.status)) &&
-                  u.status !== "hidden" &&
-                  u.status?.toLowerCase() !== "deleted",
-              );
-              return visibleUpdates.length > 0
-                ? visibleUpdates
-                    .map((u) => u.text || (u as any).msg || (u as any).update)
-                    .join("  •  ")
-                : "🔥 Welcome to E-Vedhika Portal... 🔥 • 🔥 The E-Vedhika Portal is now live – Empowering Governance with Digital Excellence.. 🔥";
-            })()}
-          </span>
-        </div>
-      </div>
+      )}
 
       <nav className="nav-trigger-bar sticky z-[1000]">
         <div className="trigger-left">
@@ -3920,8 +3989,20 @@ export default function App() {
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-4 sm:space-y-6"
                 >
-                  <div className="space-y-8 pb-12">
-                    {(siteConfig?.elements && siteConfig.elements.length > 0 ? siteConfig.elements : DEFAULT_HOME_ELEMENTS).filter((el: any) => !el.hidden).map((el: any) => {
+                  {dataLoading ? (
+                    <div className="space-y-8 animate-in fade-in duration-500">
+                      <HeroSkeleton />
+                      <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="flex justify-between items-center px-4">
+                          <div className="h-4 bg-slate-200 rounded-full w-32" />
+                          <div className="h-4 bg-slate-100 rounded-full w-24" />
+                        </div>
+                        <PostSkeleton count={3} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-8 pb-12">
+                      {(siteConfig?.elements && siteConfig.elements.length > 0 ? siteConfig.elements : DEFAULT_HOME_ELEMENTS).filter((el: any) => !el.hidden).map((el: any) => {
                       let sizeClass = "w-full";
                       if (el.size === "small") sizeClass = "max-w-xl w-full mx-auto";
                       else if (el.size === "medium") sizeClass = "max-w-3xl w-full mx-auto";
@@ -4399,8 +4480,9 @@ export default function App() {
                        </div>
                     </footer>
                   </div>
-                </motion.div>
-              )}
+                )}
+              </motion.div>
+            )}
 
               {currentTab === "workspace" && (
                 <motion.div
@@ -14452,8 +14534,11 @@ function PostForm({
 
       return new Promise<{ name: string; url: string; version: string }>((resolve, reject) => {
         try {
+          const metadata = {
+            contentDisposition: `attachment; filename="${file.name}"`
+          };
           const fileRef = ref(storage, "uploads/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
-          const uploadTask = uploadBytesResumable(fileRef, file);
+          const uploadTask = uploadBytesResumable(fileRef, file, metadata);
 
           uploadTask.on(
             "state_changed",
