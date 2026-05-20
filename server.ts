@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import path from "path";
 import multer from "multer";
@@ -6,6 +8,8 @@ import cors from "cors";
 import { Readable } from 'stream';
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
 
 async function startServer() {
   const app = express();
@@ -18,9 +22,14 @@ async function startServer() {
   app.post("/api/chat", async (req, res) => {
     try {
       const { prompt, systemInstruction } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || 
+                     process.env.VITE_GEMINI_API_KEY || 
+                     process.env.GOOGLE_API_KEY || 
+                     process.env.VITE_GOOGLE_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server" });
+        return res.status(500).json({ 
+          error: "Gemini API కీ కనిపించలేదు (Gemini API key is not configured). దయచేసి AI Studio సెట్టింగ్స్ > Secrets లో GEMINI_API_KEY ని కాన్ఫిగర్ చేయండి." 
+        });
       }
 
       const ai = new GoogleGenAI({
@@ -69,20 +78,93 @@ async function startServer() {
     limits: { fileSize: 1024 * 1024 * 1024 } // 1GB limit
   });
 
-  app.post("/api/upload", (req, res, next) => {
-    upload.single('file')(req, res, (err) => {
-      if (err) {
-        console.error("Multer upload error:", err);
-        return res.status(500).json({ error: err.message || "Upload failed" });
-      }
-      next();
-    });
-  }, (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+  app.post("/api/upload", (req, res) => {
+    console.log("POST /api/upload hit. Content-Type:", req.headers['content-type']);
+    
+    upload.single('file')(req, res, async (err) => {
+      try {
+        if (err) {
+          console.error("Multer upload error:", err);
+          return res.status(500).json({ error: err.message || "Upload failed during multer parsing" });
+        }
 
-    res.json({ url: `/uploads/${req.file.filename}` });
+        if (!req.file) {
+          console.error("No file found in request payload");
+          return res.status(400).json({ error: "No file uploaded in form data" });
+        }
+
+        console.log("File received successfully:", req.file.originalname, "saved to", req.file.path);
+
+        const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+        let publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || "";
+
+        const hasR2 = !!(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
+
+        if (hasR2) {
+          try {
+            console.log("Uploading file to Cloudflare R2...");
+            
+            const r2Client = new S3Client({
+              region: "auto",
+              endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+              credentials: {
+                accessKeyId: accessKeyId,
+                secretAccessKey: secretAccessKey,
+              },
+            });
+
+            const contentType = req.file.mimetype || "application/octet-stream";
+            const fileKey = `uploads/${Date.now()}-${req.file.filename}`;
+
+            const uploadParams = {
+              Bucket: bucketName,
+              Key: fileKey,
+              Body: fs.readFileSync(req.file.path),
+              ContentType: contentType,
+            };
+
+            const command = new PutObjectCommand(uploadParams);
+            await r2Client.send(command);
+
+            if (publicUrl.endsWith('/')) {
+              publicUrl = publicUrl.slice(0, -1);
+            }
+            
+            const finalUrl = `${publicUrl}/${fileKey}`;
+            console.log("Cloudflare R2 Upload Success. Public URL:", finalUrl);
+
+            // Delete temporary local file on success
+            try {
+              fs.unlinkSync(req.file.path);
+            } catch (e) {
+              console.warn("Could not delete local tmp file:", e);
+            }
+
+            return res.json({ url: finalUrl, r2: true });
+          } catch (r2Error: any) {
+            console.error("Cloudflare R2 Upload Error, falling back to local:", r2Error);
+            return res.json({ 
+              url: `/uploads/${req.file.filename}`, 
+              r2: false, 
+              error: "Cloudflare R2 upload error: " + r2Error.message 
+            });
+          }
+        } else {
+          console.log("Cloudflare R2 parameters not configured or incomplete. Storing file locally.");
+          return res.json({ 
+            url: `/uploads/${req.file.filename}`, 
+            r2: false,
+            warning: "Cloudflare R2 config not fully complete. Stored locally." 
+          });
+        }
+      } catch (innerError: any) {
+        console.error("Unhandled error inside upload handler:", innerError);
+        return res.status(500).json({ error: innerError.message || "Internal server error during upload" });
+      }
+    });
   });
 
   
@@ -115,7 +197,15 @@ async function startServer() {
 
       const fetchUrl = url;
 
-      const fetchResp = await fetch(fetchUrl);
+      const fetchResp = await fetch(fetchUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       if (!fetchResp.ok) throw new Error("Failed to fetch remote URL <" + fetchUrl + ">: " + fetchResp.statusText + " (" + fetchResp.status + ")");
 
       let extractedFilename = filename as string;

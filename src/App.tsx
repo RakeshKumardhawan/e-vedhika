@@ -1936,9 +1936,20 @@ export const handleForceDownload = async (e: React.MouseEvent, url: string, file
 
     const link = document.createElement("a");
 
+    const isFirebaseOrGoogleUrl = url.includes("firebasestorage.googleapis.com") || 
+                                  url.includes("storage.googleapis.com") || 
+                                  url.includes("googleusercontent.com") ||
+                                  url.includes("firebasestorage");
+
     if (url.startsWith("data:")) {
         link.href = url;
         link.download = extractedFilename;
+    } else if (isFirebaseOrGoogleUrl) {
+        // Firebase Storage or GCS URLs contain signed tokens and proper headers.
+        // We can download or open them in a new tab directly to avoid Cloud Run network or proxy block.
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
     } else {
         const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(extractedFilename)}`;
         link.href = proxyUrl;
@@ -14431,7 +14442,7 @@ function PostForm({
                  type: file.type,
                  lastModified: Date.now()
              });
-             addToast(`కంప్రెస్ పూర్తయింది! సర్వర్‌కు అప్‌లోడ్ అవుతోంది...`);
+             addToast(`కంప్రెస్ పూర్తయింది! క్లౌడ్‌కు అప్‌లోడ్ అవుతోంది...`);
          } catch (error) {
              console.error("Compression error:", error);
          }
@@ -14441,42 +14452,30 @@ function PostForm({
 
       return new Promise<{ name: string; url: string; version: string }>((resolve, reject) => {
         try {
-          const xhr = new XMLHttpRequest();
-          const formData = new FormData();
-          formData.append('file', file);
+          const fileRef = ref(storage, "uploads/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
+          const uploadTask = uploadBytesResumable(fileRef, file);
 
-          xhr.upload.addEventListener('progress', (event) => {
-            if (event.lengthComputable) {
-              const progress = (event.loaded / event.total) * 100;
+          uploadTask.on(
+            "state_changed",
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
               setUploadProgress(progress);
-            }
-          });
-
-          xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
+            },
+            (error) => {
+              console.error("Firebase upload error:", error);
+              reject(error);
+            },
+            async () => {
               try {
-                const response = JSON.parse(xhr.responseText);
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                 setUploadProgress(100);
-                resolve({ name: file.name, url: response.url, version: "1.0" });
-              } catch (err) {
-                reject(new Error("Invalid server response"));
+                resolve({ name: file.name, url: downloadURL, version: "1.0" });
+              } catch (err: any) {
+                console.error("Failed to get download URL:", err);
+                reject(err);
               }
-            } else {
-              let errMsg = "Upload failed";
-              try {
-                const response = JSON.parse(xhr.responseText);
-                errMsg = response.error || errMsg;
-              } catch (e) {}
-              reject(new Error(errMsg));
             }
-          });
-
-          xhr.addEventListener('error', () => {
-            reject(new Error("Network error during file upload."));
-          });
-
-          xhr.open('POST', '/api/upload');
-          xhr.send(formData);
+          );
         } catch (error) {
           reject(error);
         }

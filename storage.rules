@@ -3,7 +3,11 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      allow read, write: if true;
+      // Allows anyone to view and download attachments, files, and GOs
+      allow read: if true;
+      
+      // Requires user to be logged in to upload or delete files
+      allow write: if request.auth != null;
     }
   }
 }

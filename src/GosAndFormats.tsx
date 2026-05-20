@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, storage } from '../firebase';
 import { Download, Upload, Trash2, FileBadge } from 'lucide-react';
@@ -51,22 +51,23 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
     setProgress(0);
 
     try {
-      const xhr = new XMLHttpRequest();
-      const formData = new FormData();
-      formData.append('file', file);
+      const fileRef = ref(storage, "gos_formats/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
+      const uploadTask = uploadBytesResumable(fileRef, file);
 
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const p = (event.loaded / event.total) * 100;
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           setProgress(p);
-        }
-      });
-
-      xhr.addEventListener('load', async () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
+        },
+        (error) => {
+          console.error("Firebase upload error:", error);
+          addToast("అప్‌లోడ్ విఫలమైంది: " + error.message);
+          setUploading(false);
+        },
+        async () => {
           try {
-            const response = JSON.parse(xhr.responseText);
-            const downloadURL = response.url;
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
             setProgress(100);
 
             await addDoc(collection(db, 'gos_formats'), {
@@ -99,24 +100,8 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
             addToast("సమీక్ష లోపం సంభవించింది: " + err.message);
             setUploading(false);
           }
-        } else {
-          let errMsg = "Upload failed";
-          try {
-            const response = JSON.parse(xhr.responseText);
-            errMsg = response.error || errMsg;
-          } catch (e) {}
-          addToast("అప్‌లోడ్ విఫలమైంది: " + errMsg);
-          setUploading(false);
         }
-      });
-
-      xhr.addEventListener('error', () => {
-        addToast("నెట్‌వర్క్ కనెక్షన్ లోపం (Network upload error)");
-        setUploading(false);
-      });
-
-      xhr.open('POST', '/api/upload');
-      xhr.send(formData);
+      );
     } catch (err: any) {
       addToast(getFriendlyError(err));
       setUploading(false);
