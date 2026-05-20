@@ -14534,33 +14534,49 @@ function PostForm({
 
       return new Promise<{ name: string; url: string; version: string }>((resolve, reject) => {
         try {
-          const metadata = {
-            contentDisposition: `attachment; filename="${file.name}"`
-          };
-          const fileRef = ref(storage, "uploads/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
-          const uploadTask = uploadBytesResumable(fileRef, file, metadata);
-
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/upload', true);
+          
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const progress = (event.loaded / event.total) * 100;
               setUploadProgress(progress);
-            },
-            (error) => {
-              console.error("Firebase upload error:", error);
-              reject(error);
-            },
-            async () => {
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
               try {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                setUploadProgress(100);
-                resolve({ name: file.name, url: downloadURL, version: "1.0" });
-              } catch (err: any) {
-                console.error("Failed to get download URL:", err);
-                reject(err);
+                const response = JSON.parse(xhr.responseText);
+                if (response.url) {
+                  setUploadProgress(100);
+                  // Ensure proxy URLs are absolute if needed, but our backend can return full Cloudflare R2 URL or relative /uploads path
+                  resolve({ name: file.name, url: response.url, version: "1.0" });
+                } else {
+                  reject(new Error("URL not returned from server"));
+                }
+              } catch (e) {
+                reject(new Error("Invalid response from server"));
+              }
+            } else {
+              try {
+                const errResp = JSON.parse(xhr.responseText);
+                reject(new Error(errResp.error || "Upload failed with status " + xhr.status));
+              } catch (e) {
+                reject(new Error("Upload failed with status " + xhr.status));
               }
             }
-          );
+          };
+
+          xhr.onerror = () => {
+            reject(new Error("Network error occurred during upload"));
+          };
+
+          xhr.send(formData);
+
         } catch (error) {
           reject(error);
         }

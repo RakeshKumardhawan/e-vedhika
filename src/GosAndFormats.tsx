@@ -51,60 +51,76 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
     setProgress(0);
 
     try {
-      const metadata = {
-        contentDisposition: `attachment; filename="${file.name}"`
-      };
-      const fileRef = ref(storage, "gos_formats/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
-      const uploadTask = uploadBytesResumable(fileRef, file, metadata);
+      const formData = new FormData();
+      formData.append('file', file);
 
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload', true);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const p = (event.loaded / event.total) * 100;
           setProgress(p);
-        },
-        (error) => {
-          console.error("Firebase upload error:", error);
-          addToast("అప్‌లోడ్ విఫలమైంది: " + error.message);
-          setUploading(false);
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            setProgress(100);
-
-            await addDoc(collection(db, 'gos_formats'), {
-              title,
-              description,
-              category: activeTab,
-              whatIsIt: activeTab === 'Application' ? whatIsIt : '',
-              whoUses: activeTab === 'Application' ? whoUses : '',
-              url: downloadURL,
-              storagePath: downloadURL,
-              fileName: file.name,
-              fileNameDisplay: fileNameDisplay || file.name,
-              size: file.size,
-              time: Date.now(),
-              uploadedBy: user.uid
-            });
-
-            addToast("Document Uploaded Successfully!");
-            setUploading(false);
-            setShowUpload(false);
-            setTitle('');
-            setDescription('');
-            setWhatIsIt('');
-            setWhoUses('');
-            setFileNameDisplay('');
-            setFile(null);
-            setProgress(0);
-          } catch (err: any) {
-            console.error("Failed to save doc metadata:", err);
-            addToast("సమీక్ష లోపం సంభవించింది: " + err.message);
-            setUploading(false);
-          }
         }
-      );
+      };
+
+      xhr.onload = async () => {
+        if (xhr.status === 200) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.url) {
+              setProgress(100);
+              const downloadURL = response.url;
+              
+              await addDoc(collection(db, 'gos_formats'), {
+                title,
+                description,
+                category: activeTab,
+                whatIsIt: activeTab === 'Application' ? whatIsIt : '',
+                whoUses: activeTab === 'Application' ? whoUses : '',
+                url: downloadURL,
+                storagePath: downloadURL,
+                fileName: file.name,
+                fileNameDisplay: fileNameDisplay || file.name,
+                size: file.size,
+                time: Date.now(),
+                uploadedBy: user.uid
+              });
+
+              addToast("Document Uploaded Successfully!");
+              setUploading(false);
+              setShowUpload(false);
+              setTitle('');
+              setDescription('');
+              setWhatIsIt('');
+              setWhoUses('');
+              setFileNameDisplay('');
+              setFile(null);
+              setProgress(0);
+            } else {
+              throw new Error("URL not returned from server");
+            }
+          } catch (e: any) {
+             addToast("Invalid response from server: " + e.message);
+             setUploading(false);
+          }
+        } else {
+          try {
+            const errResp = JSON.parse(xhr.responseText);
+            addToast("Upload failed: " + (errResp.error || xhr.statusText));
+          } catch (e) {
+            addToast("Upload failed with status " + xhr.status);
+          }
+          setUploading(false);
+        }
+      };
+
+      xhr.onerror = () => {
+        addToast("Network error occurred during upload");
+        setUploading(false);
+      };
+
+      xhr.send(formData);
     } catch (err: any) {
       addToast(getFriendlyError(err));
       setUploading(false);
@@ -114,7 +130,7 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
   const handleDelete = async (item: any) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
     try {
-      if (item.storagePath) {
+      if (item.storagePath && !item.storagePath.startsWith('http')) {
         const fileRef = ref(storage, item.storagePath);
         await deleteObject(fileRef).catch(e => console.warn("Storage warning:", e));
       }
