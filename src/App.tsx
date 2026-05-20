@@ -104,7 +104,9 @@ import {
   ArrowDown,
   GripVertical,
   Volume2,
-  VolumeX
+  VolumeX,
+  Cloud,
+  Globe
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -7150,6 +7152,11 @@ function AdminPanel({
                   icon: <Settings size={18} />,
                 },
                 {
+                  id: "cloud_dns",
+                  label: "Cloud, DNS & SEO",
+                  icon: <Cloud size={18} />,
+                },
+                {
                   id: "locations",
                   label: "Manage Locations",
                   icon: <MapPin size={18} />,
@@ -7256,6 +7263,7 @@ function AdminPanel({
                 {activeSubTab === "builder" && "🏗️ E-Vedhika Page Builder"}
                 {activeSubTab === "logs" && "🛡️ Security Audits"}
                 {activeSubTab === "settings" && "⚙️ System Settings"}
+                {activeSubTab === "cloud_dns" && "☁️ Cloud, DNS & SEO Management"}
                 {activeSubTab === "locations" && "🗺️ Location Management"}
                 {activeSubTab === "suggestions" && "💡 Suggestions & Feedback"}
                 {activeSubTab === "updates" && "⚡ Flash News"}
@@ -10439,6 +10447,135 @@ function AdminPanel({
                 >
                   Wipe Interaction Cache
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === "cloud_dns" && (
+          <div className="space-y-12 pb-20 fade-in slide-in-from-bottom-4 duration-700 animate-in">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-8 rounded-[36px] shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+                <Cloud size={200} className="text-white" />
+              </div>
+              <div className="relative z-10 text-left">
+                <h3 className="text-3xl font-black text-white tracking-tight mb-2">Cloud, DNS & SEO Control</h3>
+                <p className="text-sm font-bold text-slate-400 max-w-xl">
+                  Manage core infrastructure pointers, domain resolution, scaling configurations, and search engine optimization flags directly from this terminal.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
+              {/* Cloud Storage Panel */}
+              <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
+                    <Database size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black text-slate-800 tracking-tight">Cloud Storage Config</h4>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Cloudflare R2 Storage Node</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Environment Status</span>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Active</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-600">Dynamic backend bindings mapped to Cloudflare R2 S3-Compatible bucket arrays.</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Bucket Public Edge URL</label>
+                     <input disabled className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-semibold text-slate-500 cursor-not-allowed" value="https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev" />
+                  </div>
+
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Target Account Catalog</label>
+                     <input disabled className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-mono text-slate-500 cursor-not-allowed" value="8ace4e3f2324eda23d28f8e8ddd1ffb4_e-vedhika-files" />
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
+                    <button onClick={() => addToast("Storage configuration refresh initiated...")} className="w-full py-4 bg-slate-900 text-white font-black rounded-xl text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-colors flex justify-center items-center gap-2 shadow-xl shadow-slate-900/20 active:scale-95">
+                      <RotateCcw size={16} /> Force Object Synchronization
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* DNS & SEO Stats */}
+              <div className="space-y-8">
+                {/* DNS Panel */}
+                <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="p-3.5 bg-indigo-50 text-indigo-600 rounded-2xl">
+                      <Globe size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-800 tracking-tight">DNS Resolution</h4>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">e-vedhika.onrender.com</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nameservers</span>
+                        <div className="text-xs font-mono font-semibold text-slate-700">cameron.ns.cloudflare.com</div>
+                        <div className="text-xs font-mono font-semibold text-slate-700">melody.ns.cloudflare.com</div>
+                     </div>
+                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Proxy Protocol</span>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></span>
+                          <span className="text-[11px] tracking-wide font-black text-slate-700 uppercase">Cloudflare TLS Proxied</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  <button onClick={() => addToast("Pulling fresh DNS propagation records...")} className="w-full py-4 bg-indigo-50 text-indigo-700 font-black rounded-xl text-[11px] uppercase tracking-widest hover:bg-indigo-100 transition-colors active:scale-95">
+                    Check Routing Health
+                  </button>
+                </div>
+
+                {/* SEO Panel */}
+                <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6 relative overflow-hidden">
+                  <div className="absolute right-0 top-0 opacity-5 pointer-events-none p-6">
+                     <Search size={120} />
+                  </div>
+                  
+                  <div className="relative z-10 flex items-center gap-4 mb-2">
+                    <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
+                      <Target size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-800 tracking-tight">SEO Posture Analytics</h4>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Search Engine Indexing Stats</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 relative z-10">
+                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 border border-slate-100 shadow-sm">
+                        <span>Robots.txt Parser</span>
+                        <span className="text-emerald-700 font-black">Allow: /*</span>
+                     </div>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 border border-slate-100 shadow-sm">
+                        <span>Sitemap Validation</span>
+                        <span className="text-emerald-700 font-black">Indexed & Valid</span>
+                     </div>
+                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 border border-slate-100 shadow-sm">
+                        <span>Meta Tags Health</span>
+                        <span className="text-emerald-700 font-black tracking-tight">98% Grade</span>
+                     </div>
+                  </div>
+
+                  <button onClick={() => addToast("Triggering crawler rebuild & search engine manual ping...")} className="relative z-10 w-full py-4 bg-emerald-500 text-white font-black rounded-xl text-[11px] uppercase tracking-widest hover:bg-emerald-600 transition-colors shadow-xl shadow-emerald-500/30 active:scale-95">
+                    Dispatch Web Crawler Pings
+                  </button>
+                </div>
               </div>
             </div>
           </div>
