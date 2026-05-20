@@ -4,7 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, storage } from '../firebase';
 import { Download, Upload, Trash2, FileBadge } from 'lucide-react';
-import { handleForceDownload, requireLoginAlert, getFriendlyError } from './lib/utils';
+import { requireLoginAlert, getFriendlyError } from './App';
 
 export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, addToast: (s: string) => void, isAdmin?: boolean }) {
   const [items, setItems] = useState<any[]>([]);
@@ -51,55 +51,73 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
     setProgress(0);
 
     try {
-      const lastDotIndex = file.name.lastIndexOf('.');
-      const extension = lastDotIndex !== -1 ? file.name.substring(lastDotIndex) : '';
-      let safeFileNameDisplay = fileNameDisplay ? fileNameDisplay.replace(/[^a-zA-Z0-9.\-]/g, '_') : '';
-      if (safeFileNameDisplay && extension && !safeFileNameDisplay.endsWith(extension)) {
-        safeFileNameDisplay += extension;
-      }
-      const safeName = fileNameDisplay ? safeFileNameDisplay : file.name.replace(/[^a-zA-Z0-9.\-]/g, '_');
-      const storageRef = ref(storage, `gos_formats/${Date.now()}_${safeName}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const p = (event.loaded / event.total) * 100;
           setProgress(p);
-        }, 
-        (error) => {
-          console.error(error);
-          addToast(getFriendlyError(error));
-          setUploading(false);
-        }, 
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          await addDoc(collection(db, 'gos_formats'), {
-            title,
-            description,
-            category: activeTab,
-            whatIsIt: activeTab === 'Application' ? whatIsIt : '',
-            whoUses: activeTab === 'Application' ? whoUses : '',
-            url: downloadURL,
-            storagePath: uploadTask.snapshot.ref.fullPath,
-            fileName: file.name,
-            fileNameDisplay: fileNameDisplay || file.name,
-            size: file.size,
-            time: Date.now(),
-            uploadedBy: user.uid
-          });
-          addToast("Document Uploaded Successfully!");
-          setUploading(false);
-          setShowUpload(false);
-          setTitle('');
-          setDescription('');
-          setWhatIsIt('');
-          setWhoUses('');
-          setFileNameDisplay('');
-          setFile(null);
-          setProgress(0);
         }
-      );
-    } catch(err: any) {
+      });
+
+      xhr.addEventListener('load', async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            const downloadURL = response.url;
+            setProgress(100);
+
+            await addDoc(collection(db, 'gos_formats'), {
+              title,
+              description,
+              category: activeTab,
+              whatIsIt: activeTab === 'Application' ? whatIsIt : '',
+              whoUses: activeTab === 'Application' ? whoUses : '',
+              url: downloadURL,
+              storagePath: downloadURL,
+              fileName: file.name,
+              fileNameDisplay: fileNameDisplay || file.name,
+              size: file.size,
+              time: Date.now(),
+              uploadedBy: user.uid
+            });
+
+            addToast("Document Uploaded Successfully!");
+            setUploading(false);
+            setShowUpload(false);
+            setTitle('');
+            setDescription('');
+            setWhatIsIt('');
+            setWhoUses('');
+            setFileNameDisplay('');
+            setFile(null);
+            setProgress(0);
+          } catch (err: any) {
+            console.error("Failed to save doc metadata:", err);
+            addToast("సమీక్ష లోపం సంభవించింది: " + err.message);
+            setUploading(false);
+          }
+        } else {
+          let errMsg = "Upload failed";
+          try {
+            const response = JSON.parse(xhr.responseText);
+            errMsg = response.error || errMsg;
+          } catch (e) {}
+          addToast("అప్‌లోడ్ విఫలమైంది: " + errMsg);
+          setUploading(false);
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        addToast("నెట్‌వర్క్ కనెక్షన్ లోపం (Network upload error)");
+        setUploading(false);
+      });
+
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+    } catch (err: any) {
       addToast(getFriendlyError(err));
       setUploading(false);
     }
@@ -257,8 +275,7 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
                     </button>
                  )}
                  <a href={item.url} target="_blank" rel="noreferrer" onClick={(e) => {
-                    if (!item.url) { e.preventDefault(); addToast("File link not found"); return; }
-                    handleForceDownload(e, item.url, item.fileNameDisplay || item.fileName || "Document");
+                    if (!item.url) { e.preventDefault(); addToast("File link not found"); }
                  }} className="flex-1 md:w-auto px-6 py-3 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
                     <Download size={16} /> Download
                  </a>

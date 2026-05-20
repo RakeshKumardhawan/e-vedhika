@@ -12,24 +12,12 @@ interface Message {
   timestamp: number;
 }
 
-export function ManaBot({ 
-  currentTab, 
-  userName,
-  isAdmin,
-  isEditor
-}: { 
-  currentTab: string, 
-  userName?: string,
-  isAdmin?: boolean,
-  isEditor?: boolean
-}) {
+export function ManaBot({ currentTab, userName }: { currentTab: string, userName?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
-      text: `నమస్కారం ${userName || ''}! E-VEDHIKA అసిస్టెంట్ కు స్వాగతం. వెబ్‌సైట్ ఫీచర్లు, జిఓలు, డిఎస్‌ఆర్ అనలైజర్ లేదా యూజర్ల నుండి వచ్చిన సమస్యలను (Orders/Issues) ఎలా పరిష్కరించాలో నేను మీకు వివరించగలను. మీకు ఏం సహాయం కావాలి?
-      
-(Welcome! I can help you with website features, GOs, DSR Analyzer, or explain how to resolve reported user orders/issues. How can I help you today?)`,
+      text: `నమస్కారం ${userName || ''}! E-VEDHIKA వెబ్సైటుకు స్వాగతం. ఈ వెబ్‌సైట్‌ను ఎలా ఉపయోగించాలో లేదా ఇక్కడ ఉన్న ఫీచర్ల గురించి నేను మీకు వివరిస్తాను. మీకు ఏం సహాయం కావాలి? (Hello! Welcome to E-VEDHIKA. I'm here to guide you on how to use this website and its features. How can I help you today?)`,
       sender: 'bot',
       timestamp: Date.now()
     }
@@ -60,7 +48,7 @@ export function ManaBot({
     setInput('');
     setIsLoading(true);
 
-    const context = `The user is currently on the "${currentTab}" tab. The user's name is ${userName || 'Anonymous'}. Role: ${isAdmin ? 'Admin' : isEditor ? 'Editor' : 'User'}.`;
+    const context = `The user is currently on the "${currentTab}" tab. The user's name is ${userName || 'Anonymous'}.`;
     const response = await askMana(input, context);
 
     const botMsg: Message = {
