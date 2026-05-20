@@ -48,9 +48,9 @@ async function startServer() {
     }
   });
 
-  const uploadsDir = path.join(process.cwd(), 'uploads');
+  const uploadsDir = path.join('/tmp', 'uploads');
   if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
+    fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
   const storage = multer.diskStorage({
@@ -96,7 +96,7 @@ async function startServer() {
       }
 
       if (url.startsWith('/uploads/')) {
-        const localPath = path.join(process.cwd(), url);
+        const localPath = path.join('/tmp', 'uploads', url.substring('/uploads/'.length));
         if (fs.existsSync(localPath)) {
           let downloadName = filename as string;
           const extMatch = localPath.match(/\.[a-zA-Z0-9]+$/);
