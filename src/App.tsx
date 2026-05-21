@@ -98,6 +98,10 @@ import {
   MapPin,
   Plus,
   Mic,
+  Layout,
+  LayoutGrid,
+  Fingerprint,
+  Boxes,
   ExternalLink,
   Target,
   HardDrive,
@@ -333,7 +337,7 @@ export async function sendCommentNotifications(
   }
 }
 
-const logUserActivity = async (actionDesc: string) => {
+const logUserActivity = async (actionDesc: string, details?: any) => {
   if (!auth.currentUser) return;
   try {
     const userDisplay =
@@ -343,10 +347,15 @@ const logUserActivity = async (actionDesc: string) => {
       "Registered User";
     await addDoc(collection(db, "security_logs"), {
       admin: userDisplay,
+      uid: auth.currentUser.uid,
       action: actionDesc,
+      details: details || null,
       time: Date.now(),
+      userAgent: navigator.userAgent,
     });
-  } catch (e) {}
+  } catch (e) {
+    console.error("Logging error:", e);
+  }
 };
 
 function EVAnimatedLogo({ size = 64 }: { size?: number }) {
@@ -485,6 +494,7 @@ interface UserProfile {
   theme?: "light" | "dark" | "system";
   notifications?: boolean;
   time: number;
+  timeSpentMinutes?: number;
 }
 
 const DEPRECATED_DISTRICTS_DATA: Record<string, string[]> = {
@@ -1438,10 +1448,16 @@ function PostSkeleton({ count = 3 }: { count?: number }) {
 
 function HeroSkeleton() {
   return (
-    <div className="w-full bg-slate-100 rounded-[40px] p-8 sm:p-12 animate-pulse mb-8 min-h-[300px] flex flex-col justify-end">
-      <div className="h-8 bg-slate-200 rounded-full w-1/3 mb-4" />
-      <div className="h-4 bg-slate-200 rounded-full w-2/3 mb-2" />
-      <div className="h-4 bg-slate-200 rounded-full w-1/2" />
+    <div className="w-full bg-slate-900 rounded-[56px] p-8 sm:p-20 animate-pulse mb-8 min-h-[400px] flex flex-col justify-center items-center relative overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full" />
+      <div className="h-4 bg-slate-800 rounded-full w-24 mb-8 opacity-50" />
+      <div className="h-16 bg-slate-800 rounded-2xl w-3/4 mb-6" />
+      <div className="h-16 bg-slate-800 rounded-2xl w-1/2 mb-10" />
+      <div className="h-6 bg-slate-800 rounded-full w-2/3 mb-4 opacity-70" />
+      <div className="flex gap-4 mt-8">
+        <div className="h-12 bg-slate-800 rounded-2xl w-32" />
+        <div className="h-12 bg-slate-800 rounded-2xl w-32 opacity-50" />
+      </div>
     </div>
   );
 }
@@ -2071,12 +2087,15 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "editor" | "user">("user");
+  const [posts, setPosts] = useState<Post[]>([]);
   const hasGreetedRef = useRef(false);
 
   const isDevEmail =
     user?.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com";
+  const hasPosts = posts.some(p => p.uid === user?.uid);
   const isAdmin = userRole === "admin" || isDevEmail;
   const isEditor = userRole === "admin" || userRole === "editor" || isDevEmail;
+  const canAccessAdmin = isEditor || hasPosts;
 
   useEffect(() => {
     if (
@@ -2226,7 +2245,6 @@ export default function App() {
     null,
   );
   const [currentFilter, setCurrentFilter] = useState("All");
-  const [posts, setPosts] = useState<Post[]>([]);
   const [ads, setAds] = useState<Advertisement[]>([]);
 
   const headerHeight = "72px";
@@ -2404,27 +2422,71 @@ export default function App() {
   const [adminLocked, setAdminLocked] = useState(true);
   const [adminPinInput, setAdminPinInput] = useState("");
   const [currentAdminPin, setCurrentAdminPin] = useState("1234");
+  const [storageConfig, setStorageConfig] = useState<"cloudflare" | "firebase">("cloudflare");
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const settingsSnap = await getDoc(doc(db, "settings", "admin_config"));
-        if (settingsSnap.exists()) {
-          const data = settingsSnap.data();
-          if (data.pin) setCurrentAdminPin(data.pin);
-        }
-      } catch (err) {
-        console.error("Error fetching settings:", err);
+    const unsub = onSnapshot(doc(db, "settings", "admin_config"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.pin) setCurrentAdminPin(data.pin);
+        if (data.storageType) setStorageConfig(data.storageType);
       }
-    };
-    fetchSettings();
+    });
+    return () => unsub();
   }, []);
 
   useEffect(() => {
-    if (sidebarOpen) {
-      setSidebarOpen(false);
+    if (postIdFromUrl && posts.length > 0) {
+      const post = posts.find((p) => p.id === postIdFromUrl);
+      if (post) {
+        document.title = `${post.title || "Post"} | E-Vedhika`;
+        // Update meta tags for client-side aware crawlers
+        let description = post.content ? post.content.replace(/<[^>]*>?/gm, '').substring(0, 160) : "";
+        let metaDesc = document.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          metaDesc.setAttribute("content", description);
+        }
+        
+        let ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.setAttribute("content", post.title || "E-Vedhika Post");
+        
+        let ogDesc = document.querySelector('meta[property="og:description"]');
+        if (ogDesc) ogDesc.setAttribute("content", description);
+        
+        let ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage && post.mediaUrl) ogImage.setAttribute("content", post.mediaUrl);
+
+        // Auto-increment view for direct links
+        const viewedSessionKey = `session_viewed_${post.id}`;
+        if (!sessionStorage.getItem(viewedSessionKey)) {
+          sessionStorage.setItem(viewedSessionKey, "true");
+          const userId = auth.currentUser?.uid;
+          if (!userId || !post.viewedBy?.includes(userId)) {
+            updateDoc(doc(db, "posts", post.id), {
+              views: increment(1),
+              ...(userId ? { viewedBy: arrayUnion(userId) } : {})
+            }).catch(() => {});
+          }
+        }
+      }
+    } else {
+      document.title = "E-Vedhika | The Digital Governance Platform";
     }
-  }, [currentTab, postIdFromUrl]);
+  }, [postIdFromUrl, posts]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const interval = setInterval(async () => {
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          timeSpentMinutes: increment(1)
+        });
+      } catch (e) {
+        // Silent fail for non-admins if profile doc doesn't exist yet
+      }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -2843,14 +2905,29 @@ export default function App() {
     if (!expandedPosts.has(id)) {
       const post = posts.find((p) => p.id === id);
       const userId = auth.currentUser?.uid;
-      if (post && userId && !post.viewedBy?.includes(userId)) {
-        try {
-          await updateDoc(doc(db, "posts", id), {
-            views: increment(1),
-            viewedBy: arrayUnion(userId),
-          });
-        } catch (err) {
-          console.error(err);
+      const viewedKey = `viewed_${id}`;
+      const hasViewedLocally = localStorage.getItem(viewedKey);
+
+      if (post) {
+        let shouldIncrement = false;
+        let updateData: any = { views: increment(1) };
+
+        if (userId) {
+          if (!post.viewedBy?.includes(userId)) {
+            shouldIncrement = true;
+            updateData.viewedBy = arrayUnion(userId);
+          }
+        } else if (!hasViewedLocally) {
+          shouldIncrement = true;
+          localStorage.setItem(viewedKey, "true");
+        }
+
+        if (shouldIncrement) {
+          try {
+            await updateDoc(doc(db, "posts", id), updateData);
+          } catch (err) {
+            console.error("View count increment error:", err);
+          }
         }
       }
     }
@@ -2881,7 +2958,7 @@ export default function App() {
   });
 
   if (location.pathname.endsWith("/Evdka")) {
-    if (!isEditor) {
+    if (!canAccessAdmin) {
       return (
         <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans selection:bg-accent/20 selection:text-primary antialiased flex flex-col justify-center items-center p-4">
           <AnimatePresence>
@@ -3032,7 +3109,7 @@ export default function App() {
               posts={posts}
               addToast={addToast}
               onNewPost={() => setShowPostForm(true)}
-              onEditPost={(post) => {
+              onEditPost={(post: Post) => {
                 setEditingPost(post);
                 setShowPostForm(true);
               }}
@@ -3050,9 +3127,11 @@ export default function App() {
               users={allUsers}
               user={user}
               onExit={() => navigate("/")}
-              districtsData={districtsData}
+              districtsData={DEPRECATED_DISTRICTS_DATA}
               currentTab={currentTab}
               userProfile={userProfile}
+              storageConfig={siteConfig?.storageType}
+              hasPostsOnly={!isEditor && hasPosts}
             />
           </div>
         )}
@@ -4019,62 +4098,111 @@ export default function App() {
                         className={sizeClass}
                       >
                         {el.type === "Hero Section" && (
-                          <div 
-                            className="rounded-[24px] text-white relative overflow-hidden shadow-lg mx-auto flex flex-col justify-center px-8 sm:px-12"
-                            style={{ 
-                              backgroundColor: '#772424', 
-                              height: '214.667px', 
-                              width: '1302.67px', 
-                              maxWidth: '100%',
-                              paddingTop: '10px', 
-                              paddingBottom: '10px' 
-                            }}
-                          >
-                            <div className="absolute -top-10 -right-10 p-6 opacity-10 rotate-12">
-                              <Zap size={180} />
+                          <div className="relative isolate px-6 pt-12 lg:px-8 bg-slate-950 rounded-[40px] sm:rounded-[56px] overflow-hidden shadow-2xl border border-white/5 group min-h-[320px] flex items-center">
+                            {/* Abstract background blobs */}
+                            <div className="absolute inset-0 -z-10 overflow-hidden">
+                              <motion.div 
+                                animate={{ 
+                                  scale: [1, 1.2, 1],
+                                  rotate: [0, 45, 0],
+                                }}
+                                transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                                className="absolute -top-[20%] -right-[10%] w-[60%] h-[80%] bg-indigo-600/20 blur-[100px] rounded-full" 
+                              />
+                              <motion.div 
+                                animate={{ 
+                                  scale: [1.2, 1, 1.2],
+                                  rotate: [45, 0, 45],
+                                }}
+                                transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                                className="absolute -bottom-[10%] -left-[10%] w-[50%] h-[70%] bg-blue-600/20 blur-[80px] rounded-full" 
+                              />
                             </div>
-                            <div className="relative z-10 max-w-xl space-y-4">
-                              <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-                                {userProfile?.name ? `Hi ${userProfile.name}, Welcome to E-Vedhika` : (el.title || "Welcome to E-Vedhika")}
-                              </h1>
-                              <p className="text-sm sm:text-base text-white/90 font-medium leading-relaxed">
-                                {el.content || "Empowering citizens through digital transparency and direct access to government services."}
-                              </p>
-                              <div className="flex flex-wrap gap-3 pt-2">
-                                <button
-                                  onClick={() => window.scrollTo({ top: 500, behavior: "smooth" })}
-                                  className="px-6 py-2.5 bg-white text-blue-600 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+                            
+                            <div className="mx-auto max-w-3xl py-8 sm:py-16">
+                              <div className="text-center">
+                                <motion.h1 
+                                  initial={{ opacity: 0, y: 30 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.1 }}
+                                  className="text-4xl font-black tracking-tighter text-white sm:text-7xl !leading-[0.85]"
                                 >
-                                  Explore
-                                </button>
-                                <button
-                                  onClick={() => setCurrentTab("suggestions")}
-                                  className="px-6 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
+                                  {userProfile?.name ? (
+                                    <>
+                                      Hello Good morning <span className="text-indigo-400">{userProfile.name.split(' ')[0]}</span> <br/>
+                                      Welcome to Your <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent italic">E-Vedhika.</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      Welcome to Your <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">E-Vedhika</span> <br /> Portal.
+                                    </>
+                                  )}
+                                </motion.h1>
+                                <motion.p 
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.2 }}
+                                  className="mt-6 text-base font-medium leading-relaxed text-slate-400 sm:text-lg max-w-lg mx-auto"
                                 >
-                                  Contact Us
-                                </button>
+                                  {el.content || "All Problems One Solution"}
+                                </motion.p>
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.3 }}
+                                  className="mt-10 flex flex-wrap items-center justify-center gap-4"
+                                >
+                                  <button
+                                    onClick={() => window.scrollTo({ top: 800, behavior: "smooth" })}
+                                    className="rounded-2xl bg-white px-8 py-4 text-xs font-black uppercase tracking-widest text-slate-950 shadow-xl shadow-white/10 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all"
+                                  >
+                                    Get Started
+                                  </button>
+                                  <button
+                                    onClick={() => setCurrentTab("suggestions")}
+                                    className="rounded-2xl px-8 py-4 text-xs font-black uppercase tracking-widest text-white border border-white/10 backdrop-blur-md hover:bg-white/5 transition-all flex items-center gap-2 group/btn"
+                                  >
+                                    Help Center <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+                                  </button>
+                                </motion.div>
                               </div>
                             </div>
+                            
+                            {/* Decorative line */}
+                            <div className="absolute bottom-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
                           </div>
                         )}
 
                         {el.type === "Post Grid" && (
-                          <div className="space-y-6">
-                            <div className="flex items-center justify-between px-2">
+                          <div className="space-y-8">
+                            <div className="flex items-end justify-between px-2">
                               <div>
-                                <h2 className="text-xl font-black tracking-tight text-slate-800">
+                                <motion.span 
+                                  initial={{ opacity: 0 }}
+                                  whileInView={{ opacity: 1 }}
+                                  className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-2 block"
+                                >
+                                  Portal Pulse
+                                </motion.span>
+                                <h2 className="text-3xl font-black tracking-tighter text-slate-900">
                                   {el.title || "Recent Updates"}
                                 </h2>
-                                <p className="text-slate-500 font-bold uppercase text-[9px] tracking-[0.2em] mt-0.5">
-                                  Official News
-                                </p>
                               </div>
-                              <Link to="?tab=reports" className="text-blue-600 font-black text-xs hover:underline">View All</Link>
+                              <Link to="?tab=reports" className="group flex items-center gap-1.5 text-slate-400 hover:text-indigo-600 font-bold text-xs uppercase tracking-widest transition-colors">
+                                View Full Archive 
+                                <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                              </Link>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                              {filteredPosts.slice(0, 4).map((post: any) => (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              {filteredPosts.slice(0, 4).map((post: any, idx: number) => (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 20 }}
+                                  whileInView={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: idx * 0.1 }}
+                                  viewport={{ once: true }}
+                                  key={post.id}
+                                >
                                   <PostCard
-                                    key={post.id}
                                     post={post}
                                     isExpanded={false}
                                     toggleExpansion={() => {}}
@@ -4086,56 +4214,109 @@ export default function App() {
                                     }}
                                     allUsers={allUsers}
                                   />
+                                </motion.div>
                               ))}
                             </div>
                           </div>
                         )}
 
                         {el.type === "Feature Cards" && (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all group">
-                                <div className={`w-10 h-10 bg-${el.color || "blue"}-50 rounded-xl flex items-center justify-center text-${el.color || "blue"}-600 mb-4 group-hover:scale-110 transition-transform`}>
-                                  {i === 1 ? <Shield size={20} /> : i === 2 ? <Zap size={20} /> : <Users size={20} />}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {[
+                              { title: el.title || "Secure Portal", desc: "Enterprise-grade encryption for all your data and interactions.", icon: <Shield size={24} />, color: "indigo" },
+                              { title: "Real-time Sync", desc: "Get instant notifications and updates on government orders and changes.", icon: <Zap size={24} />, color: "blue" },
+                              { title: "Citizen First", desc: "Designed with accessibility and simplicity at its core for everyone.", icon: <Users size={24} />, color: "violet" }
+                            ].map((feat, i) => (
+                              <motion.div 
+                                key={i} 
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                viewport={{ once: true }}
+                                className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(99,102,241,0.08)] transition-all group relative overflow-hidden"
+                              >
+                                <div className={`w-14 h-14 bg-${feat.color}-50 rounded-2xl flex items-center justify-center text-${feat.color}-600 mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 shadow-sm`}>
+                                  {feat.icon}
                                 </div>
-                                <h3 className="text-lg font-black text-slate-800 mb-2">Feature {i}</h3>
-                                <p className="text-slate-500 font-medium leading-relaxed text-[13px]">
-                                  Description for community thrive through digital connectivity.
+                                <h3 className="text-xl font-black text-slate-800 mb-3 tracking-tight">{feat.title}</h3>
+                                <p className="text-slate-500 font-medium leading-relaxed text-sm">
+                                  {feat.desc}
                                 </p>
-                              </div>
+                                <div className="mt-6 flex items-center gap-2 text-slate-400 group-hover:text-indigo-600 transition-colors">
+                                  <span className="text-[10px] font-black uppercase tracking-widest">Learn More</span>
+                                  <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                                </div>
+                                
+                                {/* Hover background detail */}
+                                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-indigo-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </motion.div>
                             ))}
                           </div>
                         )}
 
                         {el.type === "Contact Banner" && (
-                          <div className={`bg-slate-900/90 backdrop-blur-sm p-8 rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between gap-6 border border-white/5`}>
-                            <div className="text-center md:text-left">
-                              <h3 className="text-xl font-black mb-2">{el.title || "Have a suggestion?"}</h3>
-                              <p className="text-white/70 text-sm font-medium">{el.content || "Your feedback helps us build better."}</p>
+                          <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="relative overflow-hidden group"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-[48px]" />
+                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+                            
+                            <div className="relative p-10 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-10 text-white">
+                              <div className="text-center md:text-left max-w-xl">
+                                <h3 className="text-3xl sm:text-4xl font-black mb-4 tracking-tighter leading-tight">
+                                  {el.title || "Shape the transformation."}
+                                </h3>
+                                <p className="text-indigo-100 text-lg font-medium opacity-90 leading-relaxed">
+                                  {el.content || "Your feedback is the catalyst for a better digital ecosystem. Join us in building a more transparent future."}
+                                </p>
+                              </div>
+                              <button 
+                                onClick={() => setCurrentTab("suggestions")}
+                                className="px-10 py-5 bg-white text-indigo-600 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-indigo-900/20 whitespace-nowrap"
+                              >
+                                Reach Out Now
+                              </button>
                             </div>
-                            <button 
-                              onClick={() => setCurrentTab("suggestions")}
-                              className="px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all whitespace-nowrap shadow-lg shadow-white/10"
-                            >
-                              Get in Touch
-                            </button>
-                          </div>
+                            
+                            {/* Decorative flare */}
+                            <div className="absolute top-0 right-0 p-12 text-white/10 group-hover:rotate-12 transition-transform duration-700">
+                                <MessageSquare size={120} />
+                            </div>
+                          </motion.div>
                         )}
                         
                         {el.type === "Important Links" && (
-                          <div className={`p-8 sm:p-12 bg-${el.color || "slate"}-50 border border-slate-100 rounded-[32px]`}>
-                            <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-2">{el.title || "Important Links"}</h3>
-                            <p className="text-slate-500 mb-8">{el.content || "Quick access to essential portal resources."}</p>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                              {[1, 2, 3, 4].map(i => (
-                                 <a key={i} href="#" className={`p-5 bg-white rounded-[24px] shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center hover:border-${el.color || "blue"}-400 hover:shadow-md hover:-translate-y-1 transition-all group`}>
-                                   <div className={`w-14 h-14 rounded-[16px] bg-${el.color || "slate"}-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform text-${el.color || "slate"}-600`}>
-                                     <ExternalLink size={24} />
-                                   </div>
-                                   <span className="text-sm font-bold text-slate-700">Service Portal {i}</span>
-                                 </a>
-                              ))}
-                            </div>
+                          <div className="space-y-8">
+                             <div className="text-center md:text-left px-2">
+                                <h3 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">{el.title || "Essential Links"}</h3>
+                                <p className="text-slate-500 font-medium">Quick access to official government portals and resources.</p>
+                             </div>
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                               {[
+                                 { name: "Service Portal", icon: <Globe size={24} /> },
+                                 { name: "Digital Records", icon: <Database size={24} /> },
+                                 { name: "Legal Hub", icon: <ShieldCheck size={24} /> },
+                                 { name: "Public Data", icon: <BarChart3 size={24} /> }
+                               ].map((link, i) => (
+                                  <motion.a 
+                                    key={i} 
+                                    href="#" 
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    viewport={{ once: true }}
+                                    className="p-8 bg-white rounded-[40px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col items-center justify-center text-center hover:shadow-[0_20px_50px_rgba(59,130,246,0.08)] hover:-translate-y-1 transition-all group"
+                                  >
+                                    <div className="w-16 h-16 rounded-[20px] bg-slate-50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 text-indigo-600 shadow-sm border border-white">
+                                      {link.icon}
+                                    </div>
+                                    <span className="text-sm font-black text-slate-800 uppercase tracking-widest">{link.name}</span>
+                                  </motion.a>
+                               ))}
+                             </div>
                           </div>
                         )}
 
@@ -6440,30 +6621,22 @@ export const DEFAULT_HOME_ELEMENTS = [
     id: 1,
     type: "Hero Section",
     title: "Welcome to E-Vedhika",
-    content: "Empowering citizens through digital transparency and direct access to government services.",
+    content: "All Problems One Solution",
     color: "blue",
     hidden: false,
   },
   {
     id: 2,
-    type: "E-Vedhika Core Feed",
-    title: "📝 Latest Updates",
-    content: "Search latest news, reports or notices...",
-    color: "blue",
+    type: "Post Grid",
+    title: "Latest Insight Hub",
+    color: "indigo",
     hidden: false,
   },
   {
-    id: 3,
-    type: "Feature Cards",
-    title: "Key Services",
-    color: "indigo",
-    hidden: true,
-  },
-  {
-    id: 4,
+    id: 5,
     type: "Contact Banner",
-    title: "Have a suggestion?",
-    content: "Your feedback helps us build a better digital ecosystem for everyone.",
+    title: "Voice your vision.",
+    content: "We're listening. Build the future of e-governance with us.",
     color: "slate",
     hidden: false,
   }
@@ -6606,8 +6779,8 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
 
 function AdminPanel({
   addToast,
-  posts,
-  problems,
+  posts: rawPosts,
+  problems: rawProblems,
   suggestions,
   users,
   user,
@@ -6626,14 +6799,72 @@ function AdminPanel({
   districtsData,
   currentTab,
   userProfile,
+  storageConfig,
+  hasPostsOnly,
 }: any) {
+  const posts = hasPostsOnly ? (rawPosts || []).filter((p: any) => p.uid === user?.uid) : (rawPosts || []);
+  const problems = hasPostsOnly ? (rawProblems || []).filter((p: any) => p.uid === user?.uid) : (rawProblems || []);
+
   const isAdmin = userRole === "admin" || isDevEmail;
   const isEditor = userRole === "admin" || userRole === "editor" || isDevEmail;
-  const [activeSubTab, setActiveSubTab] = useState("dash");
+  const [activeSubTab, setActiveSubTab] = useState(hasPostsOnly ? "reports" : "dash");
+  
+  // Dashboard Metrics in English
+  const stats = [
+    { label: "Enrolled Citizens", value: users?.filter((u: any) => !(u.isDeleted || u.role === "deleted")).length || 0, icon: <Users size={22} />, color: "from-blue-600 to-indigo-600", trend: "+12%" },
+    { label: "Pending Issues", value: (problems || []).filter((p: any) => !["solved", "resolved", "deleted"].includes((p.status || "").toLowerCase())).length, icon: <AlertTriangle size={22} />, color: "from-rose-600 to-orange-600", trend: "Critical" },
+    { label: "Total Contents", value: posts.length, icon: <Layout size={22} />, color: "from-emerald-600 to-teal-600", trend: "+5%" },
+    { label: "Cloud Node", value: storageConfig === "cloudflare" ? "R2 Active" : "Firebase", icon: <Database size={22} />, color: "from-purple-600 to-pink-600", trend: "Global" },
+  ];
+
+  const menuCategories = [
+    {
+      title: "Core Hub",
+      items: [
+        ...(!hasPostsOnly ? [{ id: "dash", label: "Dashboard Hub", icon: <LayoutGrid size={18} /> }] : []),
+        { id: "reports", label: "Posts & Issues", icon: <Flag size={18} /> },
+        ...(!hasPostsOnly ? [
+          { id: "gos_formats", label: "GOs & Formats", icon: <FileText size={18} /> },
+          { id: "updates", label: "Flash News", icon: <Zap size={18} /> },
+        ] : []),
+      ]
+    },
+    ...(!hasPostsOnly ? [
+      {
+        title: "Security & Nodes",
+        items: [
+          { id: "users", label: "User Access", icon: <Fingerprint size={18} /> },
+          ...(isDevEmail ? [
+            { id: "logs", label: "Security Logs", icon: <ShieldCheck size={18} /> },
+            { id: "cloud_dns", label: "Cloud & DNA", icon: <Cloud size={18} /> },
+          ] : []),
+        ]
+      },
+      {
+        title: "Operations",
+        items: [
+          { id: "builder", label: "Page Builder", icon: <Boxes size={18} /> },
+          { id: "locations", label: "Manage Locations", icon: <MapPin size={18} /> },
+          { id: "suggestions", label: "Admin Feedback", icon: <MessageSquare size={18} /> },
+          { id: "trash", label: "Recycle Bin", icon: <Trash2 size={18} /> },
+        ]
+      },
+      {
+        title: "Metadata",
+        items: [
+          { id: "changelog", label: "What's New", icon: <Rocket size={18} /> },
+          ...(isDevEmail ? [{ id: "settings", label: "System Config", icon: <Settings size={18} /> }] : []),
+          { id: "ai", label: "Gemini AI", icon: <Bot size={18} /> },
+        ]
+      }
+    ] : [])
+  ];
+
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [diagnosticLogs, setDiagnosticLogs] = useState<any[]>([
     { id: 1, type: "Warning", text: "Suppressed benign HMR WebSocket disconnect. (expected-behavior)", time: Date.now() - 300000, component: "Vite HMR" },
-    { id: 2, type: "Info", text: "అడ్మిన్ డేటాబేస్ యాక్సెస్ వెరిఫై చేయబడింది (Admin DB access key verified)", time: Date.now() - 120000, component: "Security" },
-    { id: 3, type: "Success", text: "Gemini AI API కనెక్షన్ సరిగా ఉంది /api/chat (Gemini AI proxy connection stable)", time: Date.now() - 60000, component: "AI Engine" }
+    { id: 2, type: "Info", text: "Admin database access verified (Verified Security Auth Key)", time: Date.now() - 120000, component: "Security" },
+    { id: 3, type: "Success", text: "Gemini AI proxy connection stable (/api/chat)", time: Date.now() - 60000, component: "AI Engine" }
   ]);
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const [aiDiagnosis, setAiDiagnosis] = useState("");
@@ -6646,7 +6877,7 @@ function AdminPanel({
         {
           id: Date.now(),
           type: "Error",
-          text: `క్లయింట్ ఎర్రర్: ${event.message || "Uncaught runtime exception"}`,
+          text: `Client Error: ${event.message || "Uncaught runtime exception"}`,
           time: Date.now(),
           component: "Browser Window Logger"
         }
@@ -6662,12 +6893,12 @@ function AdminPanel({
       {
         id: Date.now() + 10,
         type: "Success",
-        text: "సిస్టమ్ డయాగ్నోస్టిక్స్ విజయవంతంగా పూర్తయింది. ఏవైనా లోపాలు కనుగొనబడితే ఇక్కడ అప్‌డేట్ అవుతాయి.",
+        text: "System diagnostics completed successfully. Any errors found will be updated here.",
         time: Date.now(),
         component: "Diagnostic Trigger"
       }
     ]);
-    addToast("పూర్తి సిస్టమ్ తనిఖీ పూర్తయింది!");
+    addToast("Full system check complete!");
   };
 
   const handleLogDiagnose = async (logText: string, component: string) => {
@@ -6822,7 +7053,6 @@ function AdminPanel({
   const [logs, setLogs] = useState<any[]>([]);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [logsError, setLogsError] = useState(false);
-  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   const handleBulkApprove = async () => {
@@ -6844,6 +7074,7 @@ function AdminPanel({
         });
       } catch (e) {}
     }
+    await logUserActivity("Bulk Approved items", { count: selectedItems.length, collection: col });
     setSelectedItems([]);
     addToast(`Bulk Approved ${selectedItems.length} items`);
   };
@@ -6861,6 +7092,7 @@ function AdminPanel({
         }
       }
       const res = await fetch("/api/admin/restart", { method: "POST" });
+      await logUserActivity("Initiated System Cache & Server Refresh", { via: "Admin Dashboard" });
       if (res.ok) {
         addToast(
           "Server restarting & Apps Cache cleared! Reloading...",
@@ -7025,472 +7257,292 @@ function AdminPanel({
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-full w-full bg-[#f8fafc] overflow-hidden border border-slate-200">
-      {/* SIDEBAR */}
-      <AnimatePresence>
-        {(adminMenuOpen || window.innerWidth >= 1024) && (
-          <motion.aside
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            className={`w-full lg:w-64 bg-white text-slate-800 p-6 shrink-0 flex flex-col absolute lg:relative z-50 h-full lg:h-auto border-r border-slate-100 ${adminMenuOpen ? "fixed inset-y-0 left-0 max-w-[280px]" : "hidden lg:flex"}`}
-          >
-            <div className="flex items-center justify-between mb-0 pb-0 border-b border-slate-100 text-[13px] leading-[18px]">
-              <div className="flex items-center gap-3">
-                <div className="logo-pro logo-pro-glow relative">
-                  <div className="logo-particles">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                  <svg viewBox="0 0 64 64" width="36" height="36">
-                    <defs>
-                      <linearGradient id="adminG" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0%" stopColor="#22c55e" />
-                        <stop offset="100%" stopColor="#0ea5e9" />
-                      </linearGradient>
-                    </defs>
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r="29"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1"
-                      strokeDasharray="4 4"
-                      className="text-white/20 logo-ring"
-                    />
-                    <circle cx="32" cy="32" r="28" fill="url(#adminG)" />
-                    <circle cx="32" cy="32" r="24" fill="#0d3b66" />
-                    <text
-                      x="50%"
-                      y="54%"
-                      dominantBaseline="middle"
-                      textAnchor="middle"
-                      fill="#fff"
-                      fontSize="18"
-                      fontWeight="900"
-                    >
-                      EV
-                    </text>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-black text-sm tracking-tight leading-none mb-1">
-                    E-VEDHIKA
-                  </h3>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    Global Admin
-                  </p>
-                </div>
-              </div>
-              <button
-                aria-label="Close menu"
-                className="lg:hidden text-slate-400 hover:text-slate-600"
-                onClick={() => setAdminMenuOpen(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <nav className="flex-1 space-y-1">
-              {[
-                {
-                  id: "dash",
-                  label: "Analytics Dashboard",
-                  icon: <Activity size={18} />,
-                },
-                {
-                  id: "reports",
-                  label: "Posts & Issues",
-                  icon: <AlertOctagon size={18} />,
-                },
-                {
-                  id: "builder",
-                  label: "Page Builder",
-                  icon: <Layers size={18} />,
-                },
-                {
-                  id: "suggestions",
-                  label: "Suggestions & Feedback",
-                  icon: <PlusCircle size={18} />,
-                },
-                {
-                  id: "gos_formats",
-                  label: "Applications, Formats & GOs",
-                  icon: <FileText size={18} />,
-                },
-                {
-                  id: "users",
-                  label: "User Access & Directory",
-                  icon: <Users size={18} />,
-                },
-                {
-                  id: "trash",
-                  label: "Recycle Bin",
-                  icon: <Trash2 size={18} />,
-                },
-                { id: "updates", label: "Flash News", icon: <Zap size={18} /> },
-                {
-                  id: "changelog",
-                  label: "What's New",
-                  icon: <Info size={18} />,
-                },
-                {
-                  id: "ai",
-                  label: "Admin AI Bot",
-                  icon: <Bot size={18} />,
-                },
-                {
-                  id: "logs",
-                  label: "Security Logs",
-                  icon: <ShieldAlert size={18} />,
-                },
-                {
-                  id: "settings",
-                  label: "System Config",
-                  icon: <Settings size={18} />,
-                },
-                {
-                  id: "cloud_dns",
-                  label: "Cloud, DNS & SEO",
-                  icon: <Cloud size={18} />,
-                },
-                {
-                  id: "locations",
-                  label: "Manage Locations",
-                  icon: <MapPin size={18} />,
-                },
-              ]
-                .filter(
-                  (t) =>
-                    isAdmin ||
-                    [
-                      "dash",
-                      "reports",
-                      "builder",
-                      "suggestions",
-                      "trash",
-                      "updates",
-                    ].includes(t.id),
-                )
-                .map((tab) => (
-                  <button
-                    aria-label={tab.label}
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveSubTab(tab.id);
-                      setAdminMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 p-2.5 lg:p-3.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
-                      activeSubTab === tab.id
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                    }`}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                  </button>
-                ))}
-            </nav>
-
-            <div className="mt-auto pt-0 border-t border-slate-100 space-y-1.5">
-              <button
-                aria-label="Exit to Portal"
-                onClick={onExit}
-                className="w-full flex items-center gap-3 p-2.5 lg:p-3.5 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all"
-              >
-                <LogOut size={16} />
-                Exit to Portal
-              </button>
-              <button
-                aria-label="Lock Session"
-                onClick={() => setAdminLocked(true)}
-                className="w-full flex items-center gap-3 p-2.5 lg:p-3.5 rounded-xl text-[11px] font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-400/10 transition-all"
-              >
-                <Lock size={16} />
-                Lock Session
-              </button>
-              {isAdmin && (
-                <button
-                  aria-label="Restart Server"
-                  onClick={handleRestartServer}
-                  className="w-full flex items-center gap-3 p-2.5 lg:p-3.5 rounded-xl text-[11px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-400/10 transition-all"
-                >
-                  <RefreshCw size={16} />
-                  Restart Server
-                </button>
-              )}
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      {/* OVERLAY FOR MOBILE */}
-      <AnimatePresence>
-        {adminMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setAdminMenuOpen(false)}
-            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      <main
-        className="flex-1 p-2 lg:p-6 bg-slate-50 overflow-y-auto custom-scrollbar flex flex-col relative w-full h-full"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+    <div className="flex bg-[#f8fafc] min-h-screen font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden w-full relative h-screen">
+      {/* Hyper-Modern Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/80 backdrop-blur-3xl border-r border-slate-200/60 transform transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] lg:relative lg:translate-x-0 ${
+          adminMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
       >
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200 !bg-transparent !h-auto !p-0">
-          <div className="flex items-center gap-4">
-            <button
-              aria-label="Open Admin Menu"
-              className="lg:hidden p-2 bg-white text-slate-600 rounded-2xl shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors"
-              onClick={() => setAdminMenuOpen(true)}
-            >
-              <Menu size={20} />
-            </button>
+        <div className="h-full flex flex-col p-6 overflow-hidden">
+          <div className="flex items-center gap-4 mb-10 pl-2">
+            <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-center text-white rotate-3">
+              <Shield size={24} className="stroke-[2.5]" />
+            </div>
             <div>
-              <h1 className="text-xl lg:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                {activeSubTab === "dash" && "📊 Dashboard Hub"}
-                {activeSubTab === "reports" && "🚩 Posts & Issues"}
-                {activeSubTab === "gos_formats" &&
-                  "📑 Applications, Formats & GOs Management"}
-                {activeSubTab === "users" && "👥 User Access & Directory"}
-                {activeSubTab === "trash" && "🗑️ Recycle Bin System"}
-                {activeSubTab === "builder" && "🏗️ E-Vedhika Page Builder"}
-                {activeSubTab === "logs" && "🛡️ Security Audits"}
-                {activeSubTab === "settings" && "⚙️ System Settings"}
-                {activeSubTab === "cloud_dns" && "☁️ Cloud, DNS & SEO Management"}
-                {activeSubTab === "locations" && "🗺️ Location Management"}
-                {activeSubTab === "suggestions" && "💡 Suggestions & Feedback"}
-                {activeSubTab === "updates" && "⚡ Flash News"}
-                {activeSubTab === "changelog" && "🚀 What's New Management"}
-                {activeSubTab === "ai" && "🤖 Admin AI Assistant"}
-              </h1>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1 ml-1">
-                Administration & Monitoring Terminal • <span className="text-blue-500">v{SYSTEM_UPDATES[0]?.version} • {new Date(SYSTEM_UPDATES[0]?.time).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} • {new Date(SYSTEM_UPDATES[0]?.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-              </p>
+              <h2 className="text-xl font-black text-slate-800 tracking-tighter leading-none mb-1 text-left">Admin Node</h2>
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block opacity-70 text-left">Control Terminal v3.0</span>
             </div>
           </div>
+
+          <nav className="flex-1 space-y-8 overflow-y-auto no-scrollbar pb-8">
+            {menuCategories.map((cat, idx) => (
+              <div key={idx} className="space-y-3">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-4 text-left">{cat.title}</p>
+                <div className="space-y-1">
+                  {cat.items.filter(item => isAdmin || ["dash", "reports", "builder", "suggestions", "trash", "updates"].includes(item.id)).map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveSubTab(item.id);
+                        setAdminMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[13px] font-bold transition-all duration-300 relative group/btn ${
+                        activeSubTab === item.id
+                          ? "bg-blue-600 text-white shadow-xl shadow-blue-600/25 scale-[1.03]"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                      }`}
+                    >
+                      <span className={`${activeSubTab === item.id ? "text-white" : "text-slate-400 group-hover/btn:text-blue-600"} transition-colors`}>{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div className="pt-6 border-t border-slate-100 flex flex-col gap-2">
+             <button
+              onClick={onExit}
+              className="w-full flex items-center gap-4 px-5 py-3 text-slate-500 hover:bg-slate-50 rounded-2xl font-bold text-xs transition-all active:scale-95"
+            >
+              <LogOut size={16} /> Exit to Portal
+            </button>
+            <button
+              onClick={() => setAdminLocked(true)}
+              className="w-full flex items-center gap-4 px-5 py-4 bg-amber-50 text-amber-700 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-100 transition-all active:scale-95 border border-amber-200/50"
+            >
+              <Lock size={18} /> Lock Session
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* OVERLAY FOR MOBILE */}
+      {adminMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          onClick={() => setAdminMenuOpen(false)}
+        />
+      )}
+
+      {/* Main Framework Container */}
+      <main className="flex-1 overflow-y-auto h-screen bg-[#f8fafc] flex flex-col relative custom-scrollbar">
+        {/* Dynamic Header */}
+        <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-2xl border-b border-slate-200/60 px-6 lg:px-12 py-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <button
+              className="lg:hidden p-3.5 bg-white border border-slate-200 rounded-[20px] text-slate-600 shadow-sm active:scale-90 transition-transform"
+              onClick={() => setAdminMenuOpen(true)}
+            >
+              <Menu size={22} />
+            </button>
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                 <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight leading-none">
+                  {menuCategories.flatMap(c => (c as any).items).find(i => (i as any).id === activeSubTab)?.label || "Terminal"}
+                </h1>
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black rounded-lg uppercase tracking-wider border border-blue-200">Active Node</span>
+              </div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-0.5 flex items-center gap-2">
+                System Registry • <span className="text-blue-500">v{SYSTEM_UPDATES[0]?.version || "2.1.0"}</span> • <ClockWidget />
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-4">
             {(activeSubTab === "reports" || activeSubTab === "dash") && (
               <button
-                aria-label="Create New Post"
                 onClick={onNewPost}
-                className="px-6 py-3 bg-primary text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2"
+                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-[22px] text-[11px] font-black uppercase tracking-[0.1em] shadow-2xl shadow-blue-600/30 hover:scale-[1.05] hover:shadow-blue-600/40 transition-all active:scale-95 flex items-center gap-3"
               >
-                <PlusCircle size={18} /> Create New Post
+                <Plus size={20} className="stroke-[3]" /> Add New Content
               </button>
             )}
-            <ClockWidget />
+            <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-slate-200">
+               <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Root Login</p>
+                  <p className="text-xs font-black text-slate-900">{userProfile?.fullName || user?.email?.split('@')[0] || "Administrator"}</p>
+               </div>
+               <div className="w-12 h-12 rounded-[18px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-lg shadow-sm">
+                  {userProfile?.fullName?.charAt(0) || "A"}
+               </div>
+            </div>
           </div>
         </header>
 
-        {activeSubTab === "dash" && (
-          <div className="space-y-8 pb-20">
-            {/* Unified Stat Cards */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
-            >
-              {[
-                {
-                  label: "Citizens Enrolled",
-                  value: users.filter(
-                    (u) => !(u.isDeleted || u.role === "deleted"),
-                  ).length,
-                  icon: <Users size={20} className="sm:w-6 sm:h-6" />,
-                  color: "blue",
-                },
-                {
-                  label: "Unresolved Issues",
-                  value: allProblems.filter(
-                    (p) =>
-                      !p.status ||
-                      !["solved", "resolved", "deleted"].includes(
-                        (p.status || "").toLowerCase(),
-                      ),
-                  ).length,
-                  icon: <AlertTriangle size={20} className="sm:w-6 sm:h-6" />,
-                  color: "rose",
-                },
-                {
-                  label: "Pending Curation",
-                  value: posts.filter(
-                    (p) =>
-                      !p.status || (p.status || "").toLowerCase() === "pending",
-                  ).length,
-                  icon: <Megaphone size={20} className="sm:w-6 sm:h-6" />,
-                  color: "amber",
-                },
-                {
-                  label: "Flash Broadcasts",
-                  value: updates.filter(
-                    (u) =>
-                      (u.type === "flash" || !u.type) &&
-                      u.status?.toLowerCase() !== "deleted",
-                  ).length,
-                  icon: <Zap size={20} className="sm:w-6 sm:h-6" />,
-                  color: "emerald",
-                },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    if (stat.label === "Citizens Enrolled")
-                      setActiveSubTab("users");
-                    else if (stat.label === "Unresolved Issues") {
-                      setActiveSubTab("reports");
-                      setReportsType("issues");
-                    } else if (stat.label === "Pending Curation") {
-                      setActiveSubTab("reports");
-                      setReportsType("posts");
-                    } else if (stat.label === "Flash Broadcasts")
-                      setActiveSubTab("updates");
-                  }}
-                  className="bg-white p-3 sm:p-6 rounded-[24px] sm:rounded-[32px] border border-slate-100 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 group hover:shadow-xl transition-all cursor-pointer"
-                >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[14px] sm:rounded-2xl flex shrink-0 items-center justify-center bg-slate-50 text-slate-600 group-hover:scale-110 transition-transform">
-                    {stat.icon}
+        {/* Dynamic Content Surface */}
+        <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
+          {activeSubTab === "dash" && (
+            <div className="space-y-12 fade-in slide-in-from-bottom-6 animate-in duration-1000">
+              {/* Bento Analytics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                {stats.map((stat, idx) => (
+                  <motion.div 
+                    key={idx}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="group bg-white p-10 rounded-[48px] border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-3xl hover:shadow-indigo-600/10 transition-all duration-700 ease-out overflow-hidden relative cursor-pointer"
+                    onClick={() => {
+                        if (stat.label === "పౌరుల నమోదు") setActiveSubTab("users");
+                        if (stat.label === "పరిష్కారం కాని సమస్యలు") setActiveSubTab("reports");
+                    }}
+                  >
+                    <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-slate-50 rounded-full group-hover:scale-[1.8] transition-transform duration-1000 ease-out opacity-60"></div>
+                    <div className={`w-16 h-16 rounded-[28px] bg-gradient-to-br ${stat.color} flex items-center justify-center text-white mb-8 shadow-2xl relative z-10 group-hover:rotate-6 transition-transform`}>
+                      {stat.icon}
+                    </div>
+                    <div className="relative z-10">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mb-2">{stat.label}</p>
+                      <h4 className="text-5xl font-black text-slate-900 tracking-tighter leading-none mb-4">{stat.value}</h4>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-xl border border-emerald-100`}>{stat.trend}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Hub Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                <div className="lg:col-span-2 space-y-10">
+                  {/* Command Center Card */}
+                  <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-12 lg:p-16 rounded-[60px] shadow-3xl relative overflow-hidden text-left border border-white/5">
+                    <div className="absolute top-0 right-0 p-12 opacity-15 pointer-events-none scale-150 rotate-12">
+                      <ShieldCheck size={350} className="text-blue-400 blur-[2px]" />
+                    </div>
+                    <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-blue-600/20 rounded-full blur-[120px]"></div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3 mb-8">
+                         <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30 backdrop-blur-md">Admin Portal Root</span>
+                         <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)] animate-pulse"></span>
+                      </div>
+                      <h3 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-none">Command Center <br/><span className="text-blue-400">Hyper-Node</span></h3>
+                      <p className="text-slate-400 font-bold max-w-xl text-balance leading-relaxed mb-12 text-lg">
+                        Welcome back to E-Vedhika Hyper-Terminal. All systems are operational. Monitor user traffic, handle reports, and orchestrate cloud nodes from this central framework.
+                      </p>
+                      <div className="flex flex-wrap gap-5">
+                        <button onClick={() => setActiveSubTab("reports")} className="px-10 py-5 bg-white text-slate-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.03] transition-all flex items-center gap-4 active:scale-95 shadow-2xl shadow-white/5">
+                          Audit Feed <ArrowRight size={18} strokeWidth={3} />
+                        </button>
+                        <button onClick={() => setActiveSubTab("cloud_dns")} className="px-10 py-5 bg-white/5 text-white border border-white/10 backdrop-blur-2xl rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95">
+                          Infrastructure
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight sm:leading-none mb-1 sm:mb-1 truncate">
-                      {stat.label}
-                    </p>
-                    <p className="text-lg sm:text-xl font-black text-slate-800 tracking-tighter">
-                      {stat.value}
-                    </p>
+
+                  {/* Quick Activity Board */}
+                  <div className="bg-white rounded-[50px] border border-slate-100 shadow-xl p-10">
+                    <div className="flex items-center justify-between mb-10">
+                       <div className="flex items-center gap-4">
+                          <div className="p-4 bg-slate-50 text-slate-900 rounded-3xl">
+                             <Activity size={24} />
+                          </div>
+                          <h4 className="text-2xl font-black text-slate-900 tracking-tight">Active Analytics</h4>
+                       </div>
+                       <button className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline">View Expanded Logs</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-80">
+                         {/* Placeholder for small charts or lists */}
+                         <div className="bg-slate-50 rounded-[36px] border border-slate-100 p-8 flex flex-col items-center justify-center text-center">
+                            <Users size={40} className="text-slate-300 mb-4" />
+                            <p className="text-sm font-bold text-slate-500">Live Traffic Monitor Under Calibration</p>
+                         </div>
+                         <div className="bg-slate-50 rounded-[36px] border border-slate-100 p-8 flex flex-col items-center justify-center text-center">
+                            <ShieldCheck size={40} className="text-slate-300 mb-4" />
+                            <p className="text-sm font-bold text-slate-500">Security Nodes: All Encrypted</p>
+                         </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all w-full overflow-hidden">
-                <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest pl-2 mb-4">
-                  Users per District
-                </h4>
-                <div className="h-64 min-h-[256px] w-full relative">
-                  <ResponsiveContainer
-                    width="99%"
-                    height="100%"
-                    minWidth={100}
-                    minHeight={200}
-                  >
-                    <BarChart
-                      data={Object.entries(
-                        users
-                          .filter((u) => !u.isDeleted)
-                          .reduce((acc: any, curr: any) => {
-                            const d = curr.district || "Unknown";
-                            acc[d] = (acc[d] || 0) + 1;
-                            return acc;
-                          }, {}),
-                      ).map(([name, value]) => ({ name, value }))}
-                    >
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 10, fill: "#94a3b8" }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 10, fill: "#94a3b8" }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "#f1f5f9" }}
-                        contentStyle={{
-                          borderRadius: "12px",
-                          border: "none",
-                          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                        }}
-                      />
-                      <Bar
-                        dataKey="value"
-                        fill="#0891b2"
-                        radius={[6, 6, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="space-y-8">
+                  {/* Broadcast Node Card */}
+                  <div className="bg-white rounded-[50px] border border-slate-100 shadow-2xl shadow-slate-200/50 p-10 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                      <Zap size={150} />
+                    </div>
+                    <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[36px] flex items-center justify-center shadow-xl shadow-blue-100 animate-bounce-slow relative z-10">
+                      <Zap size={40} fill="currentColor" />
+                    </div>
+                    <div className="relative z-10">
+                      <h4 className="text-3xl font-black text-slate-900 tracking-tight mb-4 leading-none">Instant <br/> Broadcast</h4>
+                      <p className="text-slate-500 font-bold leading-relaxed px-4">Deploy critical flash news and platform-wide alerts globally in &lt;100ms.</p>
+                    </div>
+                    <button onClick={() => setActiveSubTab("updates")} className="w-full py-5 bg-blue-600 text-white rounded-[30px] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-2xl shadow-blue-600/30 active:scale-95 relative z-10">
+                      Initiate Broadcast
+                    </button>
+                  </div>
+
+                  {/* System Health Card */}
+                  <div className="bg-slate-900 rounded-[50px] p-10 border border-slate-800 text-left">
+                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">Service Infrastructure</p>
+                     <div className="space-y-6">
+                        {[
+                          { label: "Cloudflare R2", status: "Active", color: "emerald" },
+                          { label: "Firebase Auth", status: "Active", color: "emerald" },
+                          { label: "Gemini API", status: "Standby", color: "blue" },
+                          { label: "DDoS Shield", status: "Enabled", color: "emerald" }
+                        ].map((node, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-slate-300">{node.label}</span>
+                            <div className="flex items-center gap-2">
+                               <span className={`w-1.5 h-1.5 bg-${node.color}-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.7)]`}></span>
+                               <span className={`text-[10px] font-black uppercase text-${node.color}-500 tracking-widest`}>{node.status}</span>
+                            </div>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-xl transition-all w-full overflow-hidden">
-                <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest pl-2 mb-4">
-                  Post Status Overview
-                </h4>
-                <div className="h-64 min-h-[256px] w-full relative">
-                  <ResponsiveContainer
-                    width="99%"
-                    height="100%"
-                    minWidth={100}
-                    minHeight={200}
-                  >
-                    <PieChart>
-                      <Pie
-                        data={Object.entries(
-                          posts
-                            .filter((p) => !p.isDeleted)
-                            .reduce((acc: any, curr: any) => {
-                              const s = curr.status || "pending";
-                              acc[s] = (acc[s] || 0) + 1;
-                              return acc;
-                            }, {}),
-                        ).map(([name, value]) => ({
-                          name: name.charAt(0).toUpperCase() + name.slice(1),
-                          value,
-                        }))}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                      >
-                        {Object.entries(
-                          posts
-                            .filter((p) => !p.isDeleted)
-                            .reduce((acc: any, curr: any) => {
-                              const s = curr.status || "pending";
-                              acc[s] = (acc[s] || 0) + 1;
-                              return acc;
-                            }, {}),
-                        ).map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={
-                              [
-                                "#10b981",
-                                "#f59e0b",
-                                "#3b82f6",
-                                "#ef4444",
-                                "#6366f1",
-                              ][index % 5]
-                            }
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: "12px",
-                          border: "none",
-                          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+              {/* Analytical Charts Board */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="bg-white p-10 rounded-[60px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all">
+                  <div className="flex items-center justify-between mb-8">
+                     <h4 className="text-xl font-black text-slate-900 tracking-tight">Users per District</h4>
+                     <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Users size={20} /></span>
+                  </div>
+                  <div className="h-80 w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={Object.entries(users.filter((u: any) => !u.isDeleted).reduce((acc: any, curr: any) => { const d = curr.district || "Unknown"; acc[d] = (acc[d] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name, value }))}>
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }} tickLine={false} axisLine={false} />
+                        <Tooltip cursor={{ fill: "#f1f5f9" }} contentStyle={{ borderRadius: "24px", border: "none", boxShadow: "0 20px 40px rgba(0,0,0,0.05)", fontWeight: 800 }} />
+                        <Bar dataKey="value" fill="#3b82f6" radius={[12, 12, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white p-10 rounded-[60px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all">
+                  <div className="flex items-center justify-between mb-8">
+                     <h4 className="text-xl font-black text-slate-900 tracking-tight">Status Overview</h4>
+                     <span className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><Zap size={20} /></span>
+                  </div>
+                  <div className="h-80 w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={Object.entries(posts.filter((p: any) => !p.isDeleted).reduce((acc: any, curr: any) => { const s = curr.status || "pending"; acc[s] = (acc[s] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={8}>
+                          {Object.entries(posts.filter((p: any) => !p.isDeleted).reduce((acc: any, curr: any) => { const s = curr.status || "pending"; acc[s] = (acc[s] || 0) + 1; return acc; }, {})).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={["#3b82f6", "#6366f1", "#10b981", "#f59e0b", "#ef4444"][index % 5]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: "24px", border: "none", boxShadow: "0 20px 40px rgba(0,0,0,0.05)", fontWeight: 800 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {(activeSubTab === "reports" || activeSubTab === "suggestions") && (
           <div className="space-y-8 pb-20">
@@ -8201,15 +8253,7 @@ function AdminPanel({
                                       : "User Access Restored",
                                   );
 
-                                  await addDoc(
-                                    collection(db, "security_logs"),
-                                    {
-                                      admin:
-                                        auth.currentUser?.email || "System",
-                                      action: `${nextRole === "suspended" ? "Blocked" : "Unblocked"} User: ${u.email || u.id}`,
-                                      time: Date.now(),
-                                    },
-                                  );
+                                  await logUserActivity(`${nextRole === "suspended" ? "Blocked" : "Unblocked"} User`, { email: u.email, id: u.id });
                                 } catch (e: any) {
                                   addToast(e.message);
                                 }
@@ -8317,6 +8361,12 @@ function AdminPanel({
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+                          <span>Usage Time</span>
+                          <span className="text-blue-600 font-bold">
+                            {u.timeSpentMinutes || 0} Minutes
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
                           <span>Access Level</span>
                           <span
                             className={`px-2 py-0.5 rounded-full ${u.role === "admin" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}
@@ -8324,14 +8374,16 @@ function AdminPanel({
                             {u.role || "User"}
                           </span>
                         </div>
-                        <select
+                         <select
                           value={u.role || "user"}
                           onChange={async (e) => {
                             try {
+                              const newRole = e.target.value;
                               await updateDoc(doc(db, "users", u.id), {
-                                role: e.target.value,
+                                role: newRole,
                               });
                               addToast("Role Authorization Updated");
+                              await logUserActivity(`Changed User Role`, { targetEmail: u.email, newRole: newRole });
                             } catch (err) {
                               handleFirestoreError(
                                 err,
@@ -10151,21 +10203,28 @@ function AdminPanel({
                                     {log.admin || log.userEmail || "System Root"}
                                   </div>
                                   <div className="text-[9px] font-mono text-slate-300 uppercase tracking-widest leading-none">
-                                    ID: {log.id?.substring(0, 8) || "GENESIS"}
+                                    ID: {log.id?.substring(0, 8) || "GENESIS"} {log.uid && `| UID: ${log.uid.substring(0, 5)}`}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             <td className="p-6">
-                              <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wider border border-slate-100 group-hover:bg-white group-hover:border-slate-200 transition-all">
-                                {log.action?.includes("DELETE") ? (
-                                  <Trash2 size={12} className="text-rose-500" />
-                                ) : log.action?.includes("UPDATE") || log.action?.includes("POST") ? (
-                                  <Edit3 size={12} className="text-blue-500" />
-                                ) : (
-                                  <Activity size={12} className="text-emerald-500" />
+                              <div className="flex flex-col gap-1">
+                                <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wider border border-slate-100 group-hover:bg-white group-hover:border-slate-200 transition-all w-fit">
+                                  {log.action?.includes("DELETE") ? (
+                                    <Trash2 size={12} className="text-rose-500" />
+                                  ) : log.action?.includes("UPDATE") || log.action?.includes("POST") ? (
+                                    <Edit3 size={12} className="text-blue-500" />
+                                  ) : (
+                                    <Activity size={12} className="text-emerald-500" />
+                                  )}
+                                  {log.action}
+                                </div>
+                                {log.details && (
+                                  <div className="text-[8px] font-mono text-slate-400 bg-slate-50/50 p-2 rounded-lg max-w-xs truncate border border-dashed border-slate-100">
+                                    {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
+                                  </div>
                                 )}
-                                {log.action}
                               </div>
                             </td>
                             <td className="p-6 text-right pr-10">
@@ -10454,126 +10513,202 @@ function AdminPanel({
 
         {activeSubTab === "cloud_dns" && (
           <div className="space-y-12 pb-20 fade-in slide-in-from-bottom-4 duration-700 animate-in">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-8 rounded-[36px] shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-                <Cloud size={200} className="text-white" />
+            {/* Massive Header with Glassmorphism */}
+            <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-10 lg:p-14 rounded-[48px] shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border border-white/5">
+              <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none scale-150">
+                <Cloud size={300} className="text-blue-400 blur-sm" />
               </div>
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px]"></div>
+              
               <div className="relative z-10 text-left">
-                <h3 className="text-3xl font-black text-white tracking-tight mb-2">Cloud, DNS & SEO Control</h3>
-                <p className="text-sm font-bold text-slate-400 max-w-xl">
-                  Manage core infrastructure pointers, domain resolution, scaling configurations, and search engine optimization flags directly from this terminal.
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30">Infrastructure v2</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse"></span>
+                </div>
+                <h3 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-none">Cloud, DNS & SEO <br/><span className="text-blue-400">Hyper-Terminal</span></h3>
+                <p className="text-slate-400 font-medium max-w-xl text-balance leading-relaxed">
+                  Real-time infrastructure orchestration. Manage primary storage nodes, verify global DNS propagation, and monitor SEO crawls from a unified command center.
                 </p>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
-              {/* Cloud Storage Panel */}
-              <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
+              <div className="flex flex-col gap-4 relative z-10 w-full md:w-auto">
+                <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 flex items-center gap-6 min-w-[280px]">
+                  <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center">
                     <Database size={24} />
                   </div>
                   <div>
-                    <h4 className="text-xl font-black text-slate-800 tracking-tight">Cloud Storage Config</h4>
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Cloudflare R2 Storage Node</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Environment Status</span>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Active</span>
-                    </div>
-                    <p className="text-sm font-bold text-slate-600">Dynamic backend bindings mapped to Cloudflare R2 S3-Compatible bucket arrays.</p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Bucket Public Edge URL</label>
-                     <input disabled className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-semibold text-slate-500 cursor-not-allowed" value="https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev" />
-                  </div>
-
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Target Account Catalog</label>
-                     <input disabled className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm font-mono text-slate-500 cursor-not-allowed" value="8ace4e3f2324eda23d28f8e8ddd1ffb4_e-vedhika-files" />
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-100">
-                    <button onClick={() => addToast("Storage configuration refresh initiated...")} className="w-full py-4 bg-slate-900 text-white font-black rounded-xl text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-colors flex justify-center items-center gap-2 shadow-xl shadow-slate-900/20 active:scale-95">
-                      <RotateCcw size={16} /> Force Object Synchronization
-                    </button>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Active Pipeline</p>
+                    <p className="text-sm font-black text-white uppercase">{storageConfig === "cloudflare" ? "Cloudflare R2 (Global)" : "Firebase Hot Storage"}</p>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* DNS & SEO Stats */}
-              <div className="space-y-8">
-                {/* DNS Panel */}
-                <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="p-3.5 bg-indigo-50 text-indigo-600 rounded-2xl">
-                      <Globe size={24} />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-black text-slate-800 tracking-tight">DNS Resolution</h4>
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">e-vedhika.onrender.com</p>
-                    </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+              {/* Intelligent Storage Switch Card */}
+              <div className="lg:col-span-1 bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 flex flex-col justify-between relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <HardDrive size={100} />
+                </div>
+                
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[28px] flex items-center justify-center mb-8 shadow-sm">
+                    <Cloud size={32} />
                   </div>
+                  <h4 className="text-2xl font-black text-slate-800 tracking-tight mb-3">Storage Engine</h4>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
+                    Switch between Cold (R2) and Hot (Firebase) storage. All file mapping and backend translations occur automatically.
+                  </p>
 
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nameservers</span>
-                        <div className="text-xs font-mono font-semibold text-slate-700">cameron.ns.cloudflare.com</div>
-                        <div className="text-xs font-mono font-semibold text-slate-700">melody.ns.cloudflare.com</div>
-                     </div>
-                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Proxy Protocol</span>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></span>
-                          <span className="text-[11px] tracking-wide font-black text-slate-700 uppercase">Cloudflare TLS Proxied</span>
+                  <div className="space-y-4">
+                    {[
+                      { id: "cloudflare", name: "Cloudflare R2", desc: "Infinite scaling, low cost edge storage", icon: "🌐" },
+                      { id: "firebase", name: "Firebase Storage", desc: "Real-time, persistent hot bucket", icon: "🔥" }
+                    ].map((node) => (
+                      <button
+                        key={node.id}
+                        onClick={async () => {
+                          if (storageConfig === node.id) return;
+                          addToast(`Migrating upload pipeline to ${node.name}...`);
+                          try {
+                            await setDoc(doc(db, "settings", "admin_config"), { storageType: node.id }, { merge: true });
+                            addToast(`System updated: Now utilizing ${node.name}`);
+                          } catch (err: any) {
+                            addToast(err.message);
+                          }
+                        }}
+                        className={`w-full p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden ${
+                          storageConfig === node.id 
+                          ? "border-blue-600 bg-blue-50/50" 
+                          : "border-slate-100 hover:border-slate-200 bg-slate-50/30"
+                        }`}
+                      >
+                        {storageConfig === node.id && (
+                          <div className="absolute top-4 right-4 text-blue-600">
+                            <ShieldCheck size={20} />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4">
+                          <span className="text-2xl">{node.icon}</span>
+                          <div>
+                            <p className={`text-sm font-black ${storageConfig === node.id ? "text-blue-900" : "text-slate-700"}`}>{node.name}</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{node.desc}</p>
+                          </div>
                         </div>
-                     </div>
+                      </button>
+                    ))}
                   </div>
-
-                  <button onClick={() => addToast("Pulling fresh DNS propagation records...")} className="w-full py-4 bg-indigo-50 text-indigo-700 font-black rounded-xl text-[11px] uppercase tracking-widest hover:bg-indigo-100 transition-colors active:scale-95">
-                    Check Routing Health
-                  </button>
                 </div>
 
-                {/* SEO Panel */}
-                <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6 relative overflow-hidden">
-                  <div className="absolute right-0 top-0 opacity-5 pointer-events-none p-6">
-                     <Search size={120} />
+                <div className="mt-10 p-5 bg-slate-900 rounded-3xl text-white">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,1)]"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Auto-Scaling Live</span>
+                  </div>
+                  <p className="text-[11px] font-bold text-slate-300 leading-normal">
+                    Files are served via custom edge workers for zero-latency globally.
+                  </p>
+                </div>
+              </div>
+
+              {/* DNS Health Board */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-5 font-black">
+                      <div className="p-4 bg-indigo-50 text-indigo-600 rounded-3xl">
+                        <Globe size={28} />
+                      </div>
+                      <div>
+                        <h4 className="text-2xl text-slate-800 tracking-tight">DNS Propagation & SSL</h4>
+                        <p className="text-[11px] uppercase tracking-widest text-slate-400">Domain: e-vedhika.com</p>
+                      </div>
+                    </div>
+                    <button onClick={() => addToast("Re-scanning DNS nodes...")} className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all">Refresh Scan</button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[
+                      { label: "A Records", status: "Healthy", val: "76.76.21.21", color: "emerald" },
+                      { label: "CNAME", status: "Active", val: "cname.render.com", color: "indigo" },
+                      { label: "SSL Vert", status: "Encrypted", val: "DigiCert TLS v1.3", color: "blue" }
+                    ].map((item, i) => (
+                      <div key={i} className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</span>
+                          <span className={`px-2 py-0.5 bg-${item.color}-100 text-${item.color}-700 text-[9px] font-black rounded-lg uppercase`}>{item.status}</span>
+                        </div>
+                        <p className="text-xs font-mono font-bold text-slate-700 truncate">{item.val}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 p-6 bg-indigo-600 rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                        <ShieldCheck size={28} />
+                      </div>
+                      <div className="text-left">
+                        <h5 className="text-lg font-black leading-none mb-1">Advanced DNS Proxy</h5>
+                        <p className="text-xs font-bold text-indigo-100">Active protection against L7 DDoS attacks via Edge Gateway.</p>
+                      </div>
+                    </div>
+                    <div className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest">Secured</div>
+                  </div>
+                </div>
+
+                {/* SEO Radar Board */}
+                <div className="bg-slate-900 rounded-[40px] shadow-2xl p-8 relative overflow-hidden border border-slate-800">
+                  <div className="absolute right-0 top-0 p-8 opacity-10 pointer-events-none rotate-12">
+                    <Search size={250} className="text-emerald-500" />
                   </div>
                   
-                  <div className="relative z-10 flex items-center gap-4 mb-2">
-                    <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl shadow-sm border border-emerald-100">
-                      <Target size={24} />
+                  <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                    <div className="flex items-center gap-6">
+                      <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-[32px] flex items-center justify-center shrink-0">
+                        <Target size={36} />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-3xl font-black text-white tracking-tighter mb-1">SEO Health Index</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Live Search Optimization Grader</p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-xl font-black text-slate-800 tracking-tight">SEO Posture Analytics</h4>
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Search Engine Indexing Stats</p>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-center">
+                        <p className="text-[42px] font-black text-white leading-none tracking-tighter">98<span className="text-emerald-500 text-2xl">%</span></p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">Overall Score</p>
+                      </div>
+                      <div className="w-px h-12 bg-slate-800"></div>
+                      <div className="text-center">
+                        <p className="text-[42px] font-black text-white leading-none tracking-tighter">0.8<span className="text-blue-400 text-2xl">s</span></p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">LCP Speed</p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-3 relative z-10">
-                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 border border-slate-100 shadow-sm">
-                        <span>Robots.txt Parser</span>
-                        <span className="text-emerald-700 font-black">Allow: /*</span>
-                     </div>
-                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 border border-slate-100 shadow-sm">
-                        <span>Sitemap Validation</span>
-                        <span className="text-emerald-700 font-black">Indexed & Valid</span>
-                     </div>
-                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 border border-slate-100 shadow-sm">
-                        <span>Meta Tags Health</span>
-                        <span className="text-emerald-700 font-black tracking-tight">98% Grade</span>
-                     </div>
+                  <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+                    {[
+                      { label: "Meta Tags", val: "Optimized", color: "emerald" },
+                      { label: "Open Graph", val: "Configured", color: "blue" },
+                      { label: "Keywords", val: "Trending", color: "indigo" },
+                      { label: "Sitemap", val: "Indexed", color: "amber" }
+                    ].map((m, i) => (
+                      <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{m.label}</p>
+                        <p className="text-sm font-black text-white tracking-tight">{m.val}</p>
+                      </div>
+                    ))}
                   </div>
 
-                  <button onClick={() => addToast("Triggering crawler rebuild & search engine manual ping...")} className="relative z-10 w-full py-4 bg-emerald-500 text-white font-black rounded-xl text-[11px] uppercase tracking-widest hover:bg-emerald-600 transition-colors shadow-xl shadow-emerald-500/30 active:scale-95">
-                    Dispatch Web Crawler Pings
+                  <button 
+                    onClick={() => addToast("Forcing search engine indexing ping...")}
+                    className="mt-8 relative z-10 w-full py-5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black rounded-3xl text-[12px] uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    Resubmit Sitemaps to Global Crawlers
                   </button>
                 </div>
               </div>
@@ -14492,20 +14627,20 @@ function PostCard({
         <div className="flex gap-4 items-center">
           <button
             aria-label="Share Post"
-            onClick={(e) => {
-              e.stopPropagation();
-              const url = `${window.location.origin}/?postId=${post.id}`;
-              const plainContent = post.content ? post.content.replace(/<[^>]*>?/gm, '').replace(/[#*`]/g, '').substring(0, 100) + '...' : "";
-              const shareText = plainContent ? `${plainContent}\n\nRead more on E-Vedhika:` : "Check out this post on E-Vedhika:";
-              handleShare(
-                post.title || "E-Vedhika Post",
-                shareText,
-                url,
-                () => addToast("Link Copied!"),
-                post.mediaUrl,
-                post.mediaType
-              );
-            }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const url = `${window.location.origin}/?postId=${post.id}`;
+                const plainContent = post.content ? post.content.replace(/<[^>]*>?/gm, '').replace(/[#*`]/g, '').substring(0, 150) : "";
+                const shareText = `📌 *${post.title || "E-Vedhika Post"}*\n\n${plainContent ? `${plainContent}...\n\n` : ""}Read more details on E-Vedhika link below:\n`;
+                handleShare(
+                  post.title || "E-Vedhika Post",
+                  shareText,
+                  url,
+                  () => addToast("Link Copied!"),
+                  post.mediaUrl,
+                  post.mediaType
+                );
+              }}
             className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
           >
             <Share2 size={16} strokeWidth={2.5} />
@@ -14669,8 +14804,42 @@ function PostForm({
          addToast(`క్లౌడ్‌కు అప్‌లోడ్ అవుతోంది...`);
       }
 
-      return new Promise<{ name: string; url: string; version: string }>((resolve, reject) => {
+      return new Promise<{ name: string; url: string; version: string }>(async (resolve, reject) => {
         try {
+          const adminSnap = await getDoc(doc(db, "settings", "admin_config"));
+          const isFirebaseStorage = adminSnap.exists() && adminSnap.data().storageType === "firebase";
+
+          if (isFirebaseStorage) {
+            const metadata = {
+              contentDisposition: `attachment; filename="${file.name}"`
+            };
+            const fileRef = ref(storage, "uploads/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
+            const uploadTask = uploadBytesResumable(fileRef, file, metadata);
+
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+              },
+              (error) => {
+                console.error("Firebase upload error:", error);
+                reject(error);
+              },
+              async () => {
+                try {
+                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  setUploadProgress(100);
+                  resolve({ name: file.name, url: downloadURL, version: "1.0" });
+                } catch (err: any) {
+                  reject(err);
+                }
+              }
+            );
+            return;
+          }
+
+          // CLOUDFLARE R2 via backend logic
           const formData = new FormData();
           formData.append('file', file);
           

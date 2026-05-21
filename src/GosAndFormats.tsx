@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, storage } from '../firebase';
@@ -51,6 +51,68 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
     setProgress(0);
 
     try {
+      const adminSnap = await getDoc(doc(db, "settings", "admin_config"));
+      const isFirebaseStorage = adminSnap.exists() && adminSnap.data().storageType === "firebase";
+
+      if (isFirebaseStorage) {
+        const metadata = {
+          contentDisposition: `attachment; filename="${file.name}"`
+        };
+        const fileRef = ref(storage, "gos_formats/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
+        const uploadTask = uploadBytesResumable(fileRef, file, metadata);
+
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setProgress(p);
+          },
+          (error) => {
+            console.error("Firebase upload error:", error);
+            addToast("అప్‌లోడ్ విఫలమైంది: " + error.message);
+            setUploading(false);
+          },
+          async () => {
+             try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                setProgress(100);
+
+                await addDoc(collection(db, 'gos_formats'), {
+                  title,
+                  description,
+                  category: activeTab,
+                  whatIsIt: activeTab === 'Application' ? whatIsIt : '',
+                  whoUses: activeTab === 'Application' ? whoUses : '',
+                  url: downloadURL,
+                  storagePath: downloadURL,
+                  fileName: file.name,
+                  fileNameDisplay: fileNameDisplay || file.name,
+                  size: file.size,
+                  time: Date.now(),
+                  uploadedBy: user.uid
+                });
+
+                addToast("Document Uploaded Successfully!");
+                setUploading(false);
+                setShowUpload(false);
+                setTitle('');
+                setDescription('');
+                setWhatIsIt('');
+                setWhoUses('');
+                setFileNameDisplay('');
+                setFile(null);
+                setProgress(0);
+             } catch (err: any) {
+               console.error("Failed to save doc metadata:", err);
+               addToast("సమీక్ష లోపం సంభవించింది: " + err.message);
+               setUploading(false);
+             }
+          }
+        );
+        return;
+      }
+
+      // CLOUDFLARE R2 via backend logic
       const formData = new FormData();
       formData.append('file', file);
 

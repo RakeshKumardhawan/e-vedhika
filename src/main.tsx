@@ -50,35 +50,33 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   private timer: any;
   constructor(props: {children: React.ReactNode}) {
     super(props);
-    this.state = { hasError: false, error: null, countdown: 2 };
+    this.state = { hasError: false, error: null, countdown: 10 };
   }
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error, countdown: 2 };
+    return { hasError: true, error, countdown: 10 };
   }
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
-    // Auto-recovery mechanism
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-      if ('caches' in window) {
-        caches.keys().then((names) => {
-          names.forEach(name => caches.delete(name));
-        });
-      }
-    } catch(e) {}
-
-    this.timer = setInterval(() => {
-      this.setState(s => {
-        if (s.countdown <= 1) {
-          clearInterval(this.timer);
-          window.location.href = '/';
-          return { ...s, countdown: 0 };
-        }
-        return { ...s, countdown: s.countdown - 1 };
-      });
-    }, 1000);
+    // Auto-recovery mechanism - only clear things if it's likely a persistent issue
+    // but don't do it on every minor issue if we want to be less "over"
   }
+
+  componentDidUpdate(prevProps: any, prevState: any) {
+    if (this.state.hasError && !prevState.hasError) {
+      this.timer = setInterval(() => {
+        this.setState(s => {
+          if (s.countdown <= 1) {
+            clearInterval(this.timer);
+            // Before reloading, we could try to just reset state, but for a true crash we reload
+            window.location.reload(); 
+            return { ...s, countdown: 0 };
+          }
+          return { ...s, countdown: s.countdown - 1 };
+        });
+      }, 1000);
+    }
+  }
+
   componentWillUnmount() {
     if (this.timer) clearInterval(this.timer);
   }
@@ -86,24 +84,32 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     if (this.state.hasError) {
       return (
         <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#020617', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px', textAlign: 'center' }}>
-          <div style={{ padding: '40px', background: 'rgba(30, 41, 59, 0.5)', borderRadius: '48px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', maxWidth: '500px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
-            <div style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', width: '80px', height: '80px', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 40px rgba(59, 130, 246, 0.3)' }}>
-              <span style={{ fontSize: '40px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>🤖</span>
+          <div style={{ padding: '40px', background: 'rgba(30, 41, 59, 0.3)', borderRadius: '48px', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', maxWidth: '500px', width: '100%', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', width: '64px', height: '64px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 30px rgba(99, 102, 241, 0.2)' }}>
+              <span style={{ fontSize: '32px' }}>✨</span>
             </div>
-            <h1 style={{ fontSize: '28px', fontWeight: '900', marginBottom: '12px', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>E-Vedhika Auto Recovery</h1>
-            <p style={{ fontSize: '16px', fontWeight: '500', lineHeight: '1.6', marginBottom: '24px', color: '#94a3b8' }}>
-              హలో! సిస్టమ్‌లో చిన్న లోపం (Error) వచ్చింది. నేను దాన్ని క్లియర్ చేసి మరల స్టార్ట్ చేస్తున్నాను... దయచేసి వేచి ఉండండి.
+            <h1 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.02em', color: '#f8fafc' }}>E-Vedhika System Check</h1>
+            <p style={{ fontSize: '15px', fontWeight: '500', lineHeight: '1.6', marginBottom: '20px', color: '#94a3b8' }}>
+              We noticed a minor issue. We're performing a quick system refresh to keep things running smoothly.
+              <br/><span style={{ fontSize: '13px', opacity: 0.7 }}>(చిన్న లోపం సరిదిద్దబడుతోంది... దయచేసి వేచి ఉండండి)</span>
             </p>
-            <div style={{ padding: '16px 32px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '20px', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '12px', fontSize: '18px', fontWeight: '800', color: '#60a5fa', marginBottom: '32px' }}>
-              <div style={{ width: '8px', height: '8px', background: '#60a5fa', borderRadius: '50%', animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }} />
-              Restarting in {this.state.countdown}s...
+            <div style={{ padding: '12px 24px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '16px', border: '1px solid rgba(99, 102, 241, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '700', color: '#818cf8', marginBottom: '24px' }}>
+              Refreshing in {this.state.countdown}s
             </div>
-            <button 
-              onClick={() => window.location.href = '/'} 
-              style={{ width: '100%', background: '#fff', color: '#020617', border: 'none', padding: '18px 24px', borderRadius: '18px', fontWeight: '900', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 10px 15px -3px rgba(255, 255, 255, 0.1)' }}
-            >
-              Refresh Now (వెంటనే రిఫ్రెష్ చెయ్యండి)
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => window.location.reload()} 
+                style={{ flex: 1, background: '#fff', color: '#020617', border: 'none', padding: '14px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Refresh Now
+              </button>
+              <button 
+                onClick={() => this.setState({ hasError: false })} 
+                style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '14px 20px', borderRadius: '14px', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Go Back
+              </button>
+            </div>
           </div>
           
           <style>{`
