@@ -2913,9 +2913,9 @@ export default function App() {
 
     const slowLoginWarning = setTimeout(() => {
       addToast(
-        "ఇక్కడ లాగిన్ ఆలస్యం అవుతుంది. దయచేసి యాప్‌ను కొత్త ట్యాబ్‌లో ఓపెన్ చేసి లాగిన్ అవ్వండి (పైన కుడివైపు బాణం గుర్తు ↗). అప్పుడు త్వరగా అవుతుంది.",
+        "లాగిన్ ఆలస్యం అవుతుంటే, దయచేసి పైన ఉన్న బాణం గుర్తు ↗ పై క్లిక్ చేసి కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి. అప్పుడు త్వరగా జరుగుతుంది.",
       );
-    }, 4000);
+    }, 2000);
 
     try {
       const provider = new GoogleAuthProvider();
@@ -18334,6 +18334,12 @@ function AuthModal({
                 </svg>
                 Continue with Google
               </button>
+              <div className="mt-2 text-center">
+                <p className="text-[10px] text-slate-400 font-bold leading-tight">
+                  లాగిన్ ఆలస్యం అయితే పైన ఉన్న బాణం ↗ గుర్తుపై క్లిక్ చేసి <br/> 
+                  కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి. అప్పుడు త్వరగా అవుతుంది.
+                </p>
+              </div>
             </>
           )}
 
