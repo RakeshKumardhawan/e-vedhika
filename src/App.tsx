@@ -2460,6 +2460,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedIframeUrl, setSelectedIframeUrl] = useState<string | null>(null);
   const [showForcedProfileSetup, setShowForcedProfileSetup] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
@@ -3344,7 +3345,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <FarmerRegistryTool />
+            <FarmerRegistryTool user={user} onLoginClick={() => setShowAuthModal(true)} />
           </motion.div>
         </div>
       </div>
@@ -5791,12 +5792,10 @@ export default function App() {
                             "bg-orange-50 text-orange-700 border-orange-100",
                         },
                       ].map((link) => (
-                        <a
+                        <button
                           key={link.name}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`p-5 rounded-3xl border transition-all hover:scale-[1.02] active:scale-95 flex flex-col gap-2 shadow-sm ${link.color}`}
+                          onClick={() => setSelectedIframeUrl(link.url)}
+                          className={`p-5 rounded-3xl border transition-all hover:scale-[1.02] active:scale-95 flex flex-col gap-2 shadow-sm text-left ${link.color}`}
                         >
                           <h4 className="font-black uppercase tracking-tight text-[11px] leading-tight flex-1">
                             {link.name}
@@ -5805,11 +5804,55 @@ export default function App() {
                             {link.desc}
                           </p>
                           <div className="mt-2 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest leading-none">
-                            Visit Portal <ArrowUpRight size={14} />
+                            Open in E-Vedhika <ArrowUpRight size={14} />
                           </div>
-                        </a>
+                        </button>
                       ))}
                     </div>
+                    {selectedIframeUrl && (
+                      <div className="fixed inset-0 z-[100] bg-white flex flex-col">
+                        <div className="h-14 bg-indigo-600 flex items-center justify-between px-4 text-white shadow-md z-10 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedIframeUrl(null)}
+                              className="p-2 hover:bg-white/20 rounded-full transition-colors flex items-center gap-1 border border-transparent hover:border-white/30"
+                            >
+                              <X size={20} />
+                              <span className="text-xs font-bold shrink-0">Close / వెనుకకు</span>
+                            </button>
+                          </div>
+                          <div className="text-xs font-bold truncate max-w-[50%] opacity-80">
+                            {selectedIframeUrl}
+                          </div>
+                          <a
+                            href={selectedIframeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-white/20 rounded-full transition-colors flex items-center gap-1 border border-transparent hover:border-white/30"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink size={16} />
+                            <span className="text-[10px] font-bold hidden sm:inline shrink-0">కొత్త ట్యాబ్ లో</span>
+                          </a>
+                        </div>
+                        <div className="flex-1 w-full bg-slate-50 relative">
+                          {/* Some sites might block iframe rendering due to X-Frame-Options */}
+                          <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-slate-400 bg-slate-50">
+                            <div className="max-w-xs space-y-3">
+                              <Loader2 size={32} className="animate-spin mx-auto opacity-50" />
+                              <p className="text-xs font-medium">లోడింగ్... ఒకవేళ సైట్ ఓపెన్ అవ్వకపోతే (సెక్యూరిటీ వల్ల), పైనున్న "కొత్త ట్యాబ్ లో" బటన్ నొక్కండి.</p>
+                            </div>
+                          </div>
+                          <iframe
+                            src={selectedIframeUrl}
+                            className="absolute inset-0 w-full h-full border-0 z-10 bg-white"
+                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                            title="Embedded Website"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -5832,7 +5875,7 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                 >
-                  <FarmerRegistryTool />
+                  <FarmerRegistryTool user={user} onLoginClick={() => setShowAuthModal(true)} />
                 </motion.div>
               )}
 

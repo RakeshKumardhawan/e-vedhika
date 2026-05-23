@@ -14,7 +14,8 @@ import {
   FileText,
   Play,
   Plus,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -56,7 +57,12 @@ interface GPWorkRow {
   captchaSolutionText?: string;
 }
 
-export function FarmerRegistryTool() {
+interface FarmerRegistryToolProps {
+  user?: any;
+  onLoginClick?: () => void;
+}
+
+export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolProps = {}) {
   const [gpRows, setGpRows] = useState<GPWorkRow[]>([
     {
       id: "gp-" + Date.now() + "-1",
@@ -378,22 +384,9 @@ export function FarmerRegistryTool() {
         </div>
       </div>
 
-      {/* Security Info Panel */}
-      <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-2xl p-4 flex gap-3 text-slate-700 mb-8 shadow-sm">
-        <ShieldCheck className="text-emerald-600 flex-shrink-0" size={20} />
-        <div>
-          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-0.5">పూర్తిగా ఆటోమేటిక్ పైప్‌లైన్ (Zero Manual Effort)</h4>
-          <p className="text-xs text-slate-600 font-medium leading-relaxed">
-            ఈ వ్యవస్థ <b>FILE 1 మరియు FILE 2</b> ల నుండి <b>BucketID = PPBNO</b> ఆధారంగా ఆటోమేటిక్ విలీన ప్రక్రియను పూర్తి చేస్తుంది. 
-            మీ సర్వర్‌లో తాత్కాలిక <b>FILE 3</b> ని సృష్టించి నేరుగా ఆధార్ కార్డుల లైవ్ వెరిఫికేషన్ చేసి మీకు <b>FINAL FILE 4</b> మాత్రమే అందజేస్తుంది. 
-            మీకు ఎటువంటి మ్యాన్యువల్ విలీనం లేదా తాత్కాలిక ఫైల్ అప్‌లోడ్ అవసరం లేదు.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left column: Workspace row designer */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="space-y-6">
+        {/* Workspace row designer */}
+        <div className="space-y-6">
           <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 md:p-8 space-y-6">
             
             <div className="flex justify-between items-center">
@@ -470,100 +463,121 @@ export function FarmerRegistryTool() {
 
                     {row.status === "pending" ? (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* File 1 Upload Box */}
-                          <div className="bg-white border border-slate-200/65 rounded-xl p-3 flex flex-col justify-between items-start gap-2.5 transition-all hover:shadow-md">
+                        {!user ? (
+                          <div className="bg-slate-50 border-2 border-dashed border-slate-200/60 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-3 shadow-inner">
+                            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-150 shadow-sm animate-bounce">
+                              <Lock size={18} />
+                            </div>
                             <div>
-                              <span className="text-[10px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded font-black tracking-wide uppercase">
-                                FILE 1 (Main/Land)
-                              </span>
-                              <div className="text-[11px] font-bold text-slate-500 mt-1">
-                                ఆటో-మ్యాచింగ్ కోసం <b>BucketID</b> ఉండే ఫైల్
+                              <p className="text-xs font-black text-slate-700">ఫైల్స్ అప్‌లోడ్ చేయడానికి దయచేసి లాగిన్ అవ్వండి</p>
+                              <p className="text-[10px] text-slate-400 font-medium mt-1">రైతు రిజిస్ట్రీ ఆధారిత ఆటోమేటిక్ ల్యాండ్ విలీనం మరియు తనిఖీల కొరకు లాగిన్ అవ్వడం తప్పనిసరి.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={onLoginClick}
+                              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-indigo-500/15 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
+                            >
+                              లాగిన్ అవ్వండి (Login Now)
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* File 1 Upload Box */}
+                              <div className="bg-white border border-slate-200/65 rounded-xl p-3 flex flex-col justify-between items-start gap-2.5 transition-all hover:shadow-md">
+                                <div>
+                                  <span className="text-[10px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded font-black tracking-wide uppercase">
+                                    FILE 1 (Main/Land)
+                                  </span>
+                                  <div className="text-[11px] font-bold text-slate-500 mt-1">
+                                    ఆటో-మ్యాచింగ్ కోసం <b>BucketID</b> ఉండే ఫైల్
+                                  </div>
+                                </div>
+
+                                <div className="w-full flex items-center justify-between gap-2 mt-1">
+                                  <span className="text-[11px] font-medium text-slate-400 truncate max-w-44">
+                                    {row.file1 ? row.file1.name : "ఫైల్ సెలెక్ట్ చేయలేదు"}
+                                  </span>
+                                  <label className="px-2.5 py-1.5 bg-slate-100 hover:bg-sky-50 text-slate-700 hover:text-sky-700 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1 border border-slate-200 hover:border-sky-200">
+                                    <FileUp size={12} />
+                                    చూస్
+                                    <input
+                                      type="file"
+                                      accept=".xlsx, .xls, .csv"
+                                      onChange={(e) => handleFileChange(row.id, "file1", e.target.files ? e.target.files[0] : null)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+
+                              {/* File 2 Upload Box */}
+                              <div className="bg-white border border-slate-200/65 rounded-xl p-3 flex flex-col justify-between items-start gap-2.5 transition-all hover:shadow-md">
+                                <div>
+                                  <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-black tracking-wide uppercase">
+                                    FILE 2 (Checklist)
+                                  </span>
+                                  <div className="text-[11px] font-bold text-slate-500 mt-1">
+                                    ఆధార్ కోసం <b>PPBNO & AadhaarId</b> ఉండే ఫైల్
+                                  </div>
+                                </div>
+
+                                <div className="w-full flex items-center justify-between gap-2 mt-1">
+                                  <span className="text-[11px] font-medium text-slate-400 truncate max-w-44">
+                                    {row.file2 ? row.file2.name : "ఫైల్ సెలెక్ట్ చేయలేదు"}
+                                  </span>
+                                  <label className="px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1 border border-slate-200 hover:border-emerald-200">
+                                    <FileUp size={12} />
+                                    చూస్
+                                    <input
+                                      type="file"
+                                      accept=".xlsx, .xls, .csv"
+                                      onChange={(e) => handleFileChange(row.id, "file2", e.target.files ? e.target.files[0] : null)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                </div>
                               </div>
                             </div>
 
-                            <div className="w-full flex items-center justify-between gap-2 mt-1">
-                              <span className="text-[11px] font-medium text-slate-400 truncate max-w-44">
-                                {row.file1 ? row.file1.name : "ఫైల్ సెలెక్ట్ చేయలేదు"}
-                              </span>
-                              <label className="px-2.5 py-1.5 bg-slate-100 hover:bg-sky-50 text-slate-700 hover:text-sky-700 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1 border border-slate-200 hover:border-sky-200">
-                                <FileUp size={12} />
-                                చూస్
-                                <input
-                                  type="file"
-                                  accept=".xlsx, .xls, .csv"
-                                  onChange={(e) => handleFileChange(row.id, "file1", e.target.files ? e.target.files[0] : null)}
-                                  className="hidden"
-                                />
-                              </label>
-                            </div>
-                          </div>
+                            {/* Integration parameters Strategy block */}
+                            <div className="bg-white border border-slate-150 rounded-2xl p-4 space-y-3 shadow-inner">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                  <span className="text-xs font-black text-slate-700 block">ధృవీకరణ శైలి (Verification Mode)</span>
+                                  <span className="text-[10px] text-slate-400 font-bold block">లైవ్ పోర్టల్ పద్ధతిని సెట్ చేయండి.</span>
+                                </div>
+                                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                                  <span className="px-3.5 py-1.5 text-[11px] font-extrabold rounded-md bg-rose-600 text-white shadow-sm">
+                                    రియల్ వెబ్‌సైట్ (Stealth)
+                                  </span>
+                                </div>
+                              </div>
 
-                          {/* File 2 Upload Box */}
-                          <div className="bg-white border border-slate-200/65 rounded-xl p-3 flex flex-col justify-between items-start gap-2.5 transition-all hover:shadow-md">
-                            <div>
-                              <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-black tracking-wide uppercase">
-                                FILE 2 (Checklist)
-                              </span>
-                              <div className="text-[11px] font-bold text-slate-500 mt-1">
-                                ఆధార్ కోసం <b>PPBNO & AadhaarId</b> ఉండే ఫైల్
+                              <div className="pt-2 border-t border-slate-100 space-y-3">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[10px] text-slate-500 font-bold">ధృవీకరణ వేగం (Verification Speed):</span>
+                                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-black px-2 py-0.5 rounded border border-emerald-150 flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      గరిష్ట వేగం (Full Speed - 100% Instant)
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
+                                    ఆలస్యాలు ఏమీ లేకుండా పూర్తి వేగంతో తనిఖీ జరుగుతుంది.
+                                  </p>
+                                </div>
+
+                                <div className="text-[10px] bg-emerald-50 rounded-xl p-3 border border-emerald-200/50 flex gap-2 text-emerald-850 font-medium leading-relaxed">
+                                  <Info size={14} className="flex-shrink-0 text-emerald-700 mt-0.5" />
+                                  <div>
+                                    <b>స్మార్ట్ ఆటోమేషన్:</b> నిజమైన అగ్రిస్టాక్ పోర్టల్ తనిఖీలలో ఎలాంటి ఆలస్యం మరియు CAPTCHA అడ్డంకులు లేకుండా సులువుగా, వేగంగా సమయం ఆదా చేస్తూ ధృవీకరణ పూర్తి చేయబడుతుంది.
+                                  </div>
+                                </div>
                               </div>
                             </div>
-
-                            <div className="w-full flex items-center justify-between gap-2 mt-1">
-                              <span className="text-[11px] font-medium text-slate-400 truncate max-w-44">
-                                {row.file2 ? row.file2.name : "ఫైల్ సెలెక్ట్ చేయలేదు"}
-                              </span>
-                              <label className="px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1 border border-slate-200 hover:border-emerald-200">
-                                <FileUp size={12} />
-                                చూస్
-                                <input
-                                  type="file"
-                                  accept=".xlsx, .xls, .csv"
-                                  onChange={(e) => handleFileChange(row.id, "file2", e.target.files ? e.target.files[0] : null)}
-                                  className="hidden"
-                                />
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Integration parameters Strategy block */}
-                        <div className="bg-white border border-slate-150 rounded-2xl p-4 space-y-3 shadow-inner">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                              <span className="text-xs font-black text-slate-700 block">ధృవీకరణ శైలి (Verification Mode)</span>
-                              <span className="text-[10px] text-slate-400 font-bold block">లైవ్ పోర్టల్ పద్ధతిని సెట్ చేయండి.</span>
-                            </div>
-                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                              <span className="px-3.5 py-1.5 text-[11px] font-extrabold rounded-md bg-rose-600 text-white shadow-sm">
-                                రియల్ వెబ్‌సైట్ (Stealth)
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="pt-2 border-t border-slate-100 space-y-3">
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-[10px] text-slate-500 font-bold">ధృవీకరణ వేగం (Verification Speed):</span>
-                                <span className="text-[10px] bg-emerald-50 text-emerald-700 font-black px-2 py-0.5 rounded border border-emerald-150 flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                  గరిష్ట वेగం (Full Speed - 100% Instant)
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
-                                ఆలస్యాలు ఏమీ లేకుండా పూర్తి వేగంతో తనిఖీ జరుగుతుంది.
-                              </p>
-                            </div>
-
-                            <div className="text-[10px] bg-emerald-50 rounded-xl p-3 border border-emerald-200/50 flex gap-2 text-emerald-850 font-medium leading-relaxed">
-                              <Info size={14} className="flex-shrink-0 text-emerald-700 mt-0.5" />
-                              <div>
-                                <b>స్మార్ట్ ఆటోమేషన్:</b> నిజమైన అగ్రిస్టాక్ పోర్టల్ తనిఖీలలో ఎలాంటి ఆలస్యం మరియు CAPTCHA అడ్డంకులు లేకుండా సులువుగా, వేగంగా సమయం ఆదా చేస్తూ ధృవీకరణ పూర్తి చేయబడుతుంది.
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                          </>
+                        )}
                       </div>
                     ) : (
                       /* Execution details (uploading, queued, processing, complete, failed) */
@@ -594,13 +608,23 @@ export function FarmerRegistryTool() {
                           </div>
 
                           {row.status === "completed" && (
-                            <button
-                              onClick={() => handleDownload(row)}
-                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-emerald-500/15 transition-all hover:-translate-y-0.5"
-                            >
-                              <Download size={12} />
-                              <span>FINAL FILE 4</span>
-                            </button>
+                            user ? (
+                              <button
+                                onClick={() => handleDownload(row)}
+                                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-emerald-500/15 transition-all hover:-translate-y-0.5"
+                              >
+                                <Download size={12} />
+                                <span>FINAL FILE 4</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={onLoginClick}
+                                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-indigo-500/15 transition-all hover:-translate-y-0.5"
+                              >
+                                <Lock size={12} />
+                                <span>లాగిన్ అవ్వండి (Login to Download)</span>
+                              </button>
+                            )
                           )}
                         </div>
 
@@ -620,27 +644,7 @@ export function FarmerRegistryTool() {
                           </div>
                         )}
 
-                        {/* Terminal simulation log inside browser mode */}
-                        {row.verificationMode === 'real_live' && row.browserLogs && row.browserLogs.length > 0 && (
-                          <div className="bg-[#0f172a] rounded-xl p-3 border.5 border-[#1e293b] mt-2 shadow-inner">
-                            <div className="flex items-center justify-between pb-1.5 border-b border-[#1e293b] mb-1.5">
-                              <span className="text-[10px] text-teal-400 font-mono flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                                STEALTH BROWSER DRIVER LOGS:
-                              </span>
-                              <span className="text-[9px] text-slate-500 font-mono">
-                                రాయింగ్...
-                              </span>
-                            </div>
-                            <div className="max-h-28 overflow-y-auto font-mono text-[9px] text-[#94a3b8] space-y-1 scrollbar-thin scrollbar-thumb-slate-700">
-                              {row.browserLogs.slice().reverse().map((logStr, lIdx) => (
-                                <div key={lIdx} className="leading-normal whitespace-pre-wrap">
-                                  {logStr}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+
 
                         {row.status === "failed" && (
                           <div className="text-[11px] text-rose-500 font-bold bg-rose-50 p-2.5 rounded-lg border border-rose-100">
@@ -666,89 +670,86 @@ export function FarmerRegistryTool() {
                   సర్వం రీసెట్ చేయి
                 </button>
 
-                <button
-                  disabled={isProcessingPipeline || gpRows.filter(x => x.status === "pending" && x.file1 && x.file2).length === 0}
-                  onClick={startPipelineVerification}
-                  className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg ${
-                    !isProcessingPipeline && gpRows.filter(x => x.status === "pending" && x.file1 && x.file2).length > 0
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 hover:-translate-y-0.5"
-                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  }`}
-                >
-                  {isProcessingPipeline ? (
-                    <>
-                      <Loader2 className="animate-spin" size={15} />
-                      <span>ఆటోమేటిక్ పైప్‌లైన్ రన్నింగ్ లో ఉంది...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play size={14} />
-                      <span>ఆటోమేటిక్ పైప్‌లైన్ ప్రారంభించు (Start Pipeline)</span>
-                    </>
-                  )}
-                </button>
+                {user ? (
+                  <button
+                    disabled={isProcessingPipeline || gpRows.filter(x => x.status === "pending" && x.file1 && x.file2).length === 0}
+                    onClick={startPipelineVerification}
+                    className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg ${
+                      !isProcessingPipeline && gpRows.filter(x => x.status === "pending" && x.file1 && x.file2).length > 0
+                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 hover:-translate-y-0.5"
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    }`}
+                  >
+                    {isProcessingPipeline ? (
+                      <>
+                        <Loader2 className="animate-spin" size={15} />
+                        <span>ఆటోమేటిక్ పైప్‌లైన్ రన్నింగ్ లో ఉంది...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={14} />
+                        <span>ఆటోమేటిక్ పైప్‌లైన్ ప్రారంభించు (Start Pipeline)</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={onLoginClick}
+                    className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 hover:-translate-y-0.5 animate-pulse"
+                  >
+                    <Lock size={14} />
+                    <span>లాగిన్ అవ్వండి (Login to Start Pipeline)</span>
+                  </button>
+                )}
               </div>
             )}
 
           </div>
-        </div>
 
-        {/* Right column: Instructions & Live logs */}
-        <div className="space-y-6">
-          {/* Instructions Box */}
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-4">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-              <Info size={16} className="text-teal-600" />
-              పైప్‌లైన్ దశలు (Pipeline Workflow)
-            </h3>
-            <div className="text-xs text-slate-500 space-y-3.5 leading-relaxed font-semibold">
-              <div className="flex gap-2">
-                <span className="w-4 h-4 rounded bg-teal-50 text-teal-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                <p>GP పేరుతో పాటు <b>FILE 1 మరియు FILE 2</b> ఎంచుకోండి.</p>
+          {/* Consolidated Help & Instructions Info Panel */}
+          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-3xl p-6 text-slate-700 shadow-sm mt-8 space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-emerald-150 pb-3 mb-1">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-inner">
+                <ShieldCheck size={18} />
               </div>
-              <div className="flex gap-2">
-                <span className="w-4 h-4 rounded bg-teal-50 text-teal-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                <p>వ్యవస్థ <b>FILE1.BucketID = FILE2.PPBNO</b> ద్వారా ఫైళ్లను ఆటోమేటిక్‌గా విలీనం (Merge) చేస్తుంది.</p>
+              <div>
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">
+                  పూర్తిగా ఆటోమేటిక్ పైప్‌లైన్ పద్ధతి (Automatic Pipeline Workflow)
+                </h3>
+                <p className="text-[10px] text-emerald-700 font-bold">మ్యాన్యువల్ శ్రమ లేకుండా 100% ఆటో-మ్యాచింగ్ వెరిఫికేషన్</p>
               </div>
-              <div className="flex gap-2">
-                <span className="w-4 h-4 rounded bg-teal-50 text-teal-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                <p>సర్వర్ అంతర్గతంగా ఒక తాత్కాలిక <b>FILE 3</b> ని క్రియేట్ చేసి అందులోని ఆధార్ నంబర్లను వేరు చేస్తుంది (యూజర్‌కు కనిపించదు).</p>
+            </div>
+
+            <p className="text-xs text-slate-600 font-semibold leading-relaxed">
+              ఈ వ్యవస్థ ద్వారా <b>FILE 1 మరియు FILE 2</b> ల నుండి <b>BucketID = PPBNO</b> ఆధారంగా ఆటోమేటిక్ విలీన ప్రక్రియను పూర్తి చేస్తుంది. 
+              మీకు ఎటువంటి మ్యాన్యువల్ విలీనాలు లేదా తాత్కాలిక ఫైల్ అప్‌లోడ్స్ అవసరం లేదు.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="bg-white/60 rounded-2xl p-4 border border-emerald-100/50 space-y-2.5">
+                <div className="flex gap-2.5">
+                  <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                  <p className="text-xs text-slate-600 font-medium">GP పేరుతో పాటు <b>FILE 1 (Main/Land) మరియు FILE 2 (Checklist)</b> ని జోడించండి.</p>
+                </div>
+                <div className="flex gap-2.5">
+                  <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                  <p className="text-xs text-slate-600 font-medium">సిస్టమ్ <b>FILE1.BucketID = FILE2.PPBNO</b> ద్వారా ఫైళ్లను ఆటోమేటిక్‌గా విలీనం (Merge) చేస్తుంది.</p>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <span className="w-4 h-4 rounded bg-teal-50 text-teal-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
-                <p>సరిపోలిన కార్డులను అగ్రిస్టాక్ లైవ్ వెబ్‌సైట్ ద్వారా ఆటోమేటిక్ పరిశీలన చేస్తుంది.</p>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-4 h-4 rounded bg-teal-50 text-teal-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">5</span>
-                <p>శిక్షణ పొందిన బ్యాక్‌గ్రౌండ్ రిపోర్ట్ <b>FINAL FILE 4</b> ని మాత్రమే రూపొందిస్తుంది, యూజర్ దీనిని నేరుగా డౌన్‌లోడ్ చేసుకోవచ్చు.</p>
+
+              <div className="bg-white/60 rounded-2xl p-4 border border-emerald-100/50 space-y-2.5">
+                <div className="flex gap-2.5">
+                  <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                  <p className="text-xs text-slate-600 font-medium">సర్వర్ అంతర్గతంగా తాత్కాలిక <b>FILE 3</b> ని సృష్టించి, అందులోని ఆధార్ నంబర్లను ఎంచుకుంటుంది (యూజర్‌కు ఇది కనిపించదు).</p>
+                </div>
+                <div className="flex gap-2.5">
+                  <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+                  <p className="text-xs text-slate-600 font-medium">చివరగా అన్ని వివరాలతో కూడిన <b>FINAL FILE 4</b> ని నివేదికగా అందిస్తుంది, దీనిని మీరు నేరుగా డౌన్‌లోడ్ చేసుకోవచ్చు.</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* System Console Logs screen */}
-          <div className="bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-xl p-6 space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                సిస్టమ్ లాగ్స్ (Logs Terminal)
-              </span>
-              {isProcessingPipeline && (
-                <div className="flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">RUNNING</span>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-slate-950 rounded-2xl p-4 h-64 overflow-y-auto font-mono text-[10px] text-slate-300 space-y-2.5 scrollbar-thin border border-slate-850">
-              {logs.map((log, index) => (
-                <div key={index} className="flex gap-2 items-start">
-                  <span className="text-teal-400 font-bold opacity-80 select-none">&gt;</span>
-                  <span className="font-semibold leading-relaxed">{log}</span>
-                </div>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
-          </div>
         </div>
       </div>
     </div>
