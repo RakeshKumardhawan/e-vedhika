@@ -3893,17 +3893,13 @@ export default function App() {
 
         <div className="flex-1 flex items-center h-full w-full min-w-0 px-1 sm:px-2">
           {currentTab === "home" && (
-            <div className="flex items-center gap-2 sm:gap-3 w-full max-w-xl h-[40px] sm:h-[44px] bg-white/50 backdrop-blur-sm lg:bg-white/80 focus-within:!bg-white focus-within:ring-4 focus-within:ring-primary/5 border-slate-100 focus-within:border-primary/20 border shadow-sm rounded-xl sm:rounded-[14px] px-3 sm:px-5 transition-all group">
-              <Search size={18} className="text-slate-400 group-focus-within:text-primary shrink-0 transition-colors" />
+            <div className="flex items-center gap-2 sm:gap-3 w-full max-w-xl h-[38px] sm:h-[44px] bg-white/50 backdrop-blur-sm lg:bg-white/80 focus-within:!bg-white focus-within:ring-4 focus-within:ring-primary/5 border-slate-100 focus-within:border-primary/20 border shadow-sm rounded-xl sm:rounded-[14px] px-3 sm:px-5 transition-all group">
+              <Search size={16} className="text-slate-400 group-focus-within:text-primary shrink-0 transition-colors" />
               <input
                 type="text"
-                placeholder="Search resources..."
-                className="bg-transparent border-none focus:ring-0 text-[13px] sm:text-[15px] font-bold text-slate-700 placeholder:text-slate-400 outline-none w-full"
+                placeholder="Search..."
+                className="bg-transparent border-none focus:ring-0 text-[12px] sm:text-[15px] font-bold text-slate-700 placeholder:text-slate-400 outline-none w-full p-0 m-0 h-full"
                 style={{
-                  padding: "0",
-                  margin: "0",
-                  height: "100%",
-                  border: "none",
                   boxShadow: "none"
                 }}
                 value={searchQuery}
@@ -3951,24 +3947,9 @@ export default function App() {
         <aside
           ref={sidebarRef}
           className={`sidebar ${sidebarOpen ? "z-[1100]" : ""}`}
-          style={{
-            paddingTop: '0px',
-            paddingBottom: '0px',
-            paddingLeft: '0px',
-            paddingRight: '0px',
-            fontSize: '9px',
-            lineHeight: '17px',
-            backgroundColor: '#0f0606',
-            fontWeight: 'bold',
-          }}
         >
           <div
             className="sidebar-inner relative"
-            style={{
-              backgroundColor: '#fffbfb',
-              fontFamily: 'Times New Roman',
-              color: '#000101',
-            }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setSidebarOpen(false);
             }}
@@ -5701,95 +5682,58 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {[
                         {
-                          name: "ePanchayat Home",
-                          desc: "Panchayat Raj & Rural Development Home",
+                          name: "ePanchayat Home (ఈ-పంచాయతీ)",
+                          desc: "పంచాయతీ రాజ్ & గ్రామీణాభివృద్ధి హోమ్ పేజీ",
                           url: "https://epanchayat.telangana.gov.in/",
-                          color:
-                            "bg-emerald-50 text-emerald-700 border-emerald-100",
+                          color: "bg-emerald-50 text-emerald-700 border-emerald-100",
                         },
                         {
-                          name: "Online Tax Collection Report R 2.1 House Tax DCB",
-                          desc: "Property Tax Payment & Search Portal",
+                          name: "House Tax DCB (ఇంటి పన్ను నివేదిక)",
+                          desc: "ఆన్‌లైన్ పన్ను వసూళ్ల నివేదిక R 2.1",
                           url: "https://epanchayat.telangana.gov.in/epmis/epmisPRHTAXDCBLive.jsp",
                           color: "bg-blue-50 text-blue-700 border-blue-100",
                         },
                         {
-                          name: "UBD Portal",
-                          desc: "Urban Building Department Telangana",
+                          name: "UBD Portal (భవన అనుమతులు)",
+                          desc: "మునిసిపల్ భవన నిర్మాణ అనుమతుల పోర్టల్",
                           url: "https://ubd.telangana.gov.in/",
                           color: "bg-rose-50 text-rose-700 border-rose-100",
                         },
                         {
-                          name: "UBD MIS Total Status",
-                          desc: "Urban Building Department Total Status Report",
+                          name: "UBD MIS Status (మొత్తం నివేదిక)",
+                          desc: "తెలంగాణ మున్సిపల్ భవన అనుమతుల స్టేటస్",
                           url: "https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus.do?rlb_type=3&pstcode=35&style=bluetheme",
                           color: "bg-pink-50 text-pink-700 border-pink-100",
                         },
                         {
-                          name: "TSEC-Te Poll login",
-                          desc: "State Election Commission Login",
-                          url: "https://tsec.telangana.gov.in/",
-                          color:
-                            "bg-indigo-50 text-indigo-700 border-indigo-100",
-                        },
-                        {
-                          name: "eGramSwaraj",
-                          desc: "Simplified Work Based Accounting System",
+                          name: "eGramSwaraj (ఈ-గ్రామ స్వరాజ్)",
+                          desc: "గ్రామ పంచాయతీ అకౌంటింగ్ సిస్టమ్",
                           url: "https://egramswaraj.gov.in/",
-                          color:
-                            "bg-orange-50 text-orange-700 border-orange-100",
+                          color: "bg-orange-50 text-orange-700 border-orange-100",
                         },
                         {
-                          name: "PFMS Portal",
-                          desc: "Public Financial Management System",
-                          url: "https://pfms.nic.in/",
-                          color:
-                            "bg-purple-50 text-purple-700 border-purple-100",
-                        },
-                        {
-                          name: "AuditOnline Portal",
-                          desc: "Online Audit for Panchayati Raj",
+                          name: "AuditOnline (అడిట్ ఆన్‌లైన్)",
+                          desc: "పంచాయతీ రాజ్ ఆన్‌లైన్ ఆడిట్ ప్రాసెస్",
                           url: "https://auditonline.gov.in/",
-                          color:
-                            "bg-indigo-50 text-indigo-700 border-indigo-100",
+                          color: "bg-indigo-50 text-indigo-700 border-indigo-100",
                         },
                         {
-                          name: "LGdirectory Portal",
-                          desc: "Local Government Directory Services",
-                          url: "https://lgdirectory.gov.in/",
+                          name: "Panchayat Nirnay (పంచాయతీ నిర్ణయ్)",
+                          desc: "గ్రామ సభ మరియు GPDP థీమ్స్ పోర్టల్",
+                          url: "https://meetingonline.gov.in/homepage/official-login",
+                          color: "bg-orange-50 text-orange-700 border-orange-100",
+                        },
+                        {
+                          name: "IFMIS Telangana (ట్రెజరీ)",
+                          desc: "Integrated Financial Management Information System",
+                          url: "https://ifmis.telangana.gov.in/",
                           color: "bg-cyan-50 text-cyan-700 border-cyan-100",
                         },
                         {
-                          name: "GPDP Portal",
-                          desc: "ఇది MPDO/ MPO లోగిన్స్ ద్వార GPDP కోసం గ్రామా సభ తాయారు చేసే సైట్",
-                          url: "https://gpdp.nic.in/",
-                          color: "bg-amber-50 text-amber-700 border-amber-100",
-                        },
-                        {
-                          name: "Panchayat Awards Portal",
-                          desc: "National Panchayat Awards System",
-                          url: "https://panchayataward.gov.in/",
-                          color:
-                            "bg-emerald-50 text-emerald-700 border-emerald-100",
-                        },
-                        {
-                          name: "DARPG Awards Portal",
-                          desc: "Administrative Reforms Awards Portal",
-                          url: "https://da-awards.gov.in/",
-                          color: "bg-blue-50 text-blue-700 border-blue-100",
-                        },
-                        {
-                          name: "DARPG Reports",
-                          desc: "Committee Recommendation Status Reports",
-                          url: "https://reports.darpg.gov.in/",
-                          color: "bg-slate-50 text-slate-700 border-slate-100",
-                        },
-                        {
-                          name: "Panchayat Nirnay Portal",
-                          desc: "ఇది మనమ GPDP కోసం Theams సెలెక్ట్ చేసుకునే వెబ్సైటు",
-                          url: "https://meetingonline.gov.in/homepage/official-login",
-                          color:
-                            "bg-orange-50 text-orange-700 border-orange-100",
+                          name: "TG TGov (తెలంగాణ జీఓలు)",
+                          desc: "తెలంగాణ ప్రభుత్వ జీఓల సెర్చ్ ఇంజిన్",
+                          url: "https://goir.telangana.gov.in/",
+                          color: "bg-violet-50 text-violet-700 border-violet-100",
                         },
                       ].map((link) => (
                         <button
@@ -5846,7 +5790,7 @@ export default function App() {
                           <iframe
                             src={`/api/iframe-proxy?url=${encodeURIComponent(selectedIframeUrl)}`}
                             className="absolute inset-0 w-full h-full border-0 z-10 bg-white"
-                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals"
                             title="Embedded Website"
                             referrerPolicy="no-referrer"
                           />
@@ -13597,13 +13541,15 @@ function DSRAnalyzer({
 
         let bestHeaderIdx = -1;
         let maxScore = 0;
-        const mandalKeys = ["mandal", "block", "tehsil"];
+        const mandalKeys = ["mandal", "block", "tehsil", "మండలం", "మండల్"];
         const gpKeys = [
           "panchayat",
           "gp name",
           "gram",
           "habitation",
           "village name",
+          "గ్రామ పంచాయతీ",
+          "gp",
         ];
 
         for (let i = 0; i < Math.min(allRows.length, 100); i++) {

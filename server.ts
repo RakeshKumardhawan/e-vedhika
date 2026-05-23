@@ -62,7 +62,7 @@ async function startServer() {
       if (contentType.includes('text/html')) {
         let html = body.toString('utf-8');
         const parsedUrl = new URL(targetUrl);
-        const baseHref = parsedUrl.origin + parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+        const baseHref = parsedUrl.origin + '/';
         const baseTag = `<base href="${baseHref}">`;
         
         if (html.includes('<head>')) {
@@ -1350,6 +1350,14 @@ async function startServer() {
       }
 
       let html = fs.readFileSync(indexPath, 'utf-8');
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.get('host');
+      const fullBaseUrl = `${protocol}://${host}`;
+
+      // Global replacements for correct previews even on home page
+      html = html.replace(/https:\/\/e-vedhika\.onrender\.com\//g, `${fullBaseUrl}/`);
+      html = html.replace(/property="og:url" content="\/"/g, `property="og:url" content="${fullBaseUrl}/"`);
+      html = html.replace(/content="\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
 
       if (postId) {
         try {
