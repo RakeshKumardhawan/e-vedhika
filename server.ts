@@ -13,12 +13,75 @@ import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 
 
+import { createProxyMiddleware } from "http-proxy-middleware";
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(cors());
   app.use(express.json());
+
+  const proxyOptions = (targetUrl: string) => ({
+    target: targetUrl,
+    changeOrigin: true,
+    cookieDomainRewrite: "",
+    onProxyRes: function (proxyRes, req, res) {
+      delete proxyRes.headers['x-frame-options'];
+      delete proxyRes.headers['content-security-policy'];
+      delete proxyRes.headers['x-content-type-options'];
+      proxyRes.headers['access-control-allow-origin'] = '*';
+    }
+  });
+
+  app.use('/proxy/epanchayat', createProxyMiddleware(proxyOptions('https://epanchayat.telangana.gov.in')));
+  app.use('/proxy/ubd', createProxyMiddleware(proxyOptions('https://ubd.telangana.gov.in')));
+  app.use('/proxy/meetingonline', createProxyMiddleware(proxyOptions('https://meetingonline.gov.in')));
+
+  app.get('/api/iframe-proxy', async (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl || typeof targetUrl !== 'string') {
+      return res.status(400).send("Missing target URL");
+    }
+
+    try {
+      const response = await fetch(targetUrl);
+      const contentType = response.headers.get('content-type') || '';
+      const arrayBuffer = await response.arrayBuffer();
+      let body = Buffer.from(arrayBuffer);
+
+      // Strip framing headers
+      response.headers.forEach((val, key) => {
+        if (!['x-frame-options', 'content-security-policy', 'x-content-type-options', 'content-encoding', 'transfer-encoding'].includes(key.toLowerCase())) {
+          res.setHeader(key, val);
+        }
+      });
+      res.setHeader('access-control-allow-origin', '*');
+
+      // If HTML, inject base tag so relative assets load from original site
+      if (contentType.includes('text/html')) {
+        let html = body.toString('utf-8');
+        const parsedUrl = new URL(targetUrl);
+        const baseHref = parsedUrl.origin + parsedUrl.pathname.substring(0, parsedUrl.pathname.lastIndexOf('/') + 1);
+        const baseTag = `<base href="${baseHref}">`;
+        
+        if (html.includes('<head>')) {
+          html = html.replace('<head>', `<head>${baseTag}`);
+        } else if (html.includes('<html>')) {
+          html = html.replace('<html>', `<html><head>${baseTag}</head>`);
+        } else {
+          html = `<head>${baseTag}</head>` + html;
+        }
+        body = Buffer.from(html, 'utf-8');
+      }
+
+      res.send(body);
+    } catch (e: any) {
+      console.error("Iframe proxy error:", e);
+      res.status(500).send("Proxy Error");
+    }
+  });
+
 
   // Gemini Proxy
   app.post("/api/chat", async (req, res) => {

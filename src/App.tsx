@@ -5844,7 +5844,7 @@ export default function App() {
                             </div>
                           </div>
                           <iframe
-                            src={selectedIframeUrl}
+                            src={`/api/iframe-proxy?url=${encodeURIComponent(selectedIframeUrl)}`}
                             className="absolute inset-0 w-full h-full border-0 z-10 bg-white"
                             sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                             title="Embedded Website"
