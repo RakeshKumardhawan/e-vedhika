@@ -110,7 +110,9 @@ import {
   Volume2,
   VolumeX,
   Cloud,
-  Globe
+  Globe,
+  Settings2,
+  ShieldOff
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -238,12 +240,20 @@ function handleFirestoreError(
 
   const lowerErr = errInfo.error.toLowerCase();
 
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  const isIgnorableReadError = (operationType === OperationType.GET || operationType === OperationType.LIST) && 
+                                (lowerErr.includes("permission") || lowerErr.includes("insufficient"));
 
-  if (lowerErr.includes("permission") || lowerErr.includes("insufficient")) {
-    console.warn(
-      `PERMISSION ERROR ON PATH: ${path}. User might need to update Firebase Security Rules for this collection.`,
-    );
+  if (!isIgnorableReadError) {
+    console.error("Firestore Error: ", JSON.stringify(errInfo));
+  }
+
+  if (isIgnorableReadError) {
+    if (path !== "notifications") {
+      console.warn(
+        `PERMISSION ERROR ON PATH: ${path}. Operation: ${operationType}. User: ${auth.currentUser?.uid}.`,
+      );
+    }
+    return;
   }
 
   throw new Error(JSON.stringify(errInfo));
@@ -2093,9 +2103,11 @@ export default function App() {
   const isDevEmail =
     user?.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com";
   const hasPosts = posts.some(p => p.uid === user?.uid);
-  const isAdmin = userRole === "admin" || isDevEmail;
-  const isEditor = userRole === "admin" || userRole === "editor" || isDevEmail;
-  const canAccessAdmin = isEditor || hasPosts;
+  const isAdmin = (userRole || "").toLowerCase() === "admin" || (userProfile?.role || "").toLowerCase() === "admin" || isDevEmail;
+  const isEditor = (userRole || "").toLowerCase() === "editor" || (userProfile?.role || "").toLowerCase() === "editor";
+  const isModerator = (userRole || "").toLowerCase() === "moderator" || (userProfile?.role || "").toLowerCase() === "moderator";
+  const isAnyAdminOrStaff = isAdmin || isEditor || isModerator || isDevEmail;
+  const canAccessAdmin = isAnyAdminOrStaff || hasPosts;
 
   useEffect(() => {
     if (
@@ -2208,14 +2220,19 @@ export default function App() {
     };
   }, []);
 
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
+  const [activeAdminSubTab, setActiveAdminSubTab] = useState(searchParams.get("subtab") || "dash");
   const [siteConfig, setSiteConfig] = useState<any>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const isFarmerRegistryPath = location.pathname.endsWith("/farmer_registry") || location.pathname.endsWith("/farmer-registry");
   const tabFromUrl = searchParams.get("tab");
-  const [currentTab, setCurrentTab] = useState(tabFromUrl || "home");
+  const [currentTab, setCurrentTab] = useState(
+    isFarmerRegistryPath ? "farmer_registry" : (tabFromUrl || "home")
+  );
   const [isPriorityOpen, setIsPriorityOpen] = useState(
-    tabFromUrl === "emergency" || tabFromUrl === "my_activity"
+    !isFarmerRegistryPath && (tabFromUrl === "emergency" || tabFromUrl === "my_activity")
   );
 
   useEffect(() => {
@@ -2236,11 +2253,25 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const isFarmerRegistry = location.pathname.endsWith("/farmer_registry") || location.pathname.endsWith("/farmer-registry");
+    if (isFarmerRegistry) {
+      if (currentTab !== "farmer_registry") {
+        setCurrentTab("farmer_registry");
+      }
+      return;
+    }
     const tab = searchParams.get("tab");
     if (tab && tab !== currentTab) {
       setCurrentTab(tab);
     }
-  }, [searchParams, currentTab]);
+  }, [searchParams, currentTab, location.pathname]);
+
+  useEffect(() => {
+    const isFarmerRegistry = location.pathname.endsWith("/farmer_registry") || location.pathname.endsWith("/farmer-registry");
+    if (isFarmerRegistry && currentTab !== "farmer_registry") {
+      navigate(`/?tab=${currentTab}`);
+    }
+  }, [currentTab, location.pathname, navigate]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -2253,9 +2284,11 @@ export default function App() {
   const [updates, setUpdates] = useState<Update[]>([]);
   const [requests, setRequests] = useState<RequestData[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const approvedSuggestions = suggestions.filter(
-    (s) => s.status === "Approved" || s.status === "approved",
-  );
+  const approvedSuggestions = suggestions.filter((s) => {
+    if (!s.status) return true;
+    const stat = s.status.toLowerCase();
+    return stat === "approved" || stat === "resolved" || stat === "accepted";
+  });
   const [problemsGlobal, setProblemsGlobal] = useState<ProblemReport[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
@@ -2322,6 +2355,18 @@ export default function App() {
   const suggestionsScrollRef = useRef<HTMLDivElement>(null);
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [rbacPermissions, setRbacPermissions] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "rbac_permissions"), (snap) => {
+      if (snap.exists()) {
+        setRbacPermissions(snap.data().roles || {});
+      } else {
+        setRbacPermissions({});
+      }
+    });
+    return () => unsub();
+  }, []);
   const [districtsData, setDistrictsData] = useState<Record<string, string[]>>(
     DEFAULT_DISTRICTS_DATA,
   );
@@ -2423,6 +2468,8 @@ export default function App() {
   const [adminPinInput, setAdminPinInput] = useState("");
   const [currentAdminPin, setCurrentAdminPin] = useState("1234");
   const [storageConfig, setStorageConfig] = useState<"cloudflare" | "firebase">("cloudflare");
+  const [userPinDoc, setUserPinDoc] = useState<any>(null);
+  const [loadedUserPin, setLoadedUserPin] = useState<boolean>(false);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "admin_config"), (snap) => {
@@ -2434,6 +2481,32 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUserPinDoc(null);
+      setLoadedUserPin(false);
+      return;
+    }
+    const unsub = onSnapshot(doc(db, "user_pins", user.uid), (snap) => {
+      if (snap.exists()) {
+        setUserPinDoc(snap.data());
+      } else {
+        setUserPinDoc(null);
+      }
+      setLoadedUserPin(true);
+    }, (err) => {
+      console.error("user_pins error details:", {
+        code: err.code,
+        message: err.message,
+        uid: user?.uid,
+        path: `user_pins/${user?.uid}`
+      });
+      setUserPinDoc(null);
+      setLoadedUserPin(true);
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     if (postIdFromUrl && posts.length > 0) {
@@ -2610,7 +2683,8 @@ export default function App() {
         snap.forEach((d) =>
           sArr.push({ id: d.id, ...(d.data() as any) } as Suggestion),
         );
-        setSuggestions(sArr.sort((a, b) => (b.time || 0) - (a.time || 0)));
+        const sorted = sArr.sort((a, b) => getValidTime(b) - getValidTime(a));
+        setSuggestions(sorted);
       },
       (err) => handleFirestoreError(err, OperationType.LIST, "suggestions"),
     );
@@ -2706,7 +2780,8 @@ export default function App() {
           setUserRole("admin");
         } else if (snap.exists()) {
           const data = snap.data();
-          setUserRole(data?.role || "admin");
+          const role = (data?.role || "admin").toLowerCase();
+          setUserRole(role);
         } else {
           setUserRole("user");
         }
@@ -2800,7 +2875,13 @@ export default function App() {
           }
         }
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, "notifications"),
+      (err) => {
+        if (err.message.toLowerCase().includes("permission")) {
+          console.warn("Notifications permission denied - check firestore.rules");
+          return;
+        }
+        handleFirestoreError(err, OperationType.LIST, "notifications");
+      },
     );
 
     return () => {
@@ -2957,6 +3038,46 @@ export default function App() {
     );
   });
 
+
+
+  const handleRecordProblem = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addToast("Your browser does not support voice to text capability.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "te-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsRecordingProblem(true);
+      addToast("🎤 రికార్డింగ్ ప్రారంభమైంది (Recording started)...");
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setProblemMessage((prev) =>
+        prev ? prev + " " + transcript : transcript,
+      );
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error(event.error);
+      addToast("రికార్డింగ్‌లో సమస్య ఏర్పడింది (Error recording). ");
+      setIsRecordingProblem(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecordingProblem(false);
+    };
+
+    recognition.start();
+  };
+
   if (location.pathname.endsWith("/Evdka")) {
     if (!canAccessAdmin) {
       return (
@@ -2996,10 +3117,13 @@ export default function App() {
                 >
                   Google Identity Verification
                 </button>
+                <div className="mt-4 p-3.5 bg-amber-500/15 rounded-xl border border-amber-500/30 text-amber-200 text-[11px] leading-relaxed font-semibold text-left">
+                  🔔 <span className="font-extrabold text-amber-400">లాగిన్ ఆలస్యం అవుతుంటే:</span> ఈ యాప్ ఐఫ్రేమ్ (Iframe) లో రన్ అవుతున్నందున బ్రౌజర్ సెక్యూరిటీ వల్ల Google లాగిన్ ఆలస్యం కావచ్చు. పైన కుడివైపు ఉండే బాణం గుర్తును (↗ Open in new tab) క్లిక్ చేసి యాప్‌ను కొత్త ట్యాబ్‌లో రన్ చేయడం ద్వారా కేవలం ఒకే ఒక్క సెకనులో లాగిన్ పూర్తి చేయవచ్చు!
+                </div>
                 <button
                   aria-label="Return to Public Portal"
                   onClick={() => navigate("/")}
-                  className="mt-8 text-slate-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl"
+                  className="mt-6 text-slate-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl"
                 >
                   Return to Public Portal
                 </button>
@@ -3036,8 +3160,149 @@ export default function App() {
         </div>
       );
     }
+    
+    if (adminLocked) {
+      return (
+        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans selection:bg-accent/20 selection:text-primary antialiased">
+          <AnimatePresence>
+            {toasts.map((t) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed top-4 right-4 z-[9999] bg-primary text-white px-6 py-3 rounded-2xl shadow-xl font-bold flex items-center gap-3"
+                style={{ background: "#0d3b66" }}
+              >
+                <div
+                  className="w-1.5 h-1.5 rounded-full bg-accent"
+                  style={{ background: "#fbbf24" }}
+                ></div>
+                {t.msg}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          <div className="fixed inset-0 z-[5000] bg-slate-950 flex flex-col items-center justify-center p-6 text-white overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent pointer-events-none" />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-center relative z-10 w-full max-w-sm p-8 bg-slate-900/60 rounded-[40px] border border-slate-800 backdrop-blur-md"
+            >
+              <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
+                <Lock size={40} className="text-blue-400" />
+              </div>
+              
+              <h2 className="text-3xl font-black mb-1 uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+                {!isAdmin && loadedUserPin && !userPinDoc?.pin ? "Security PIN Setup" : "Admin Session Locked"}
+              </h2>
+              
+              <p className="text-slate-400 font-bold mb-4 uppercase text-xs tracking-widest">
+                Account: {user?.email} ({isDevEmail ? "Website Creator" : isAdmin ? "Super Admin" : userProfile?.role || "Staff Node"})
+              </p>
+
+              {!isAdmin && loadedUserPin && !userPinDoc?.pin ? (
+                <div className="space-y-4 max-w-xs mx-auto">
+                  <p className="text-xs text-amber-400 font-semibold mb-2 leading-relaxed">
+                    మొదటిసారి లాగిన్: దయచేసి మీ వ్యక్తిగత 4-అంకెల సెక్యూరిటీ పిన్‌ను సెట్ చేసుకోండి.
+                  </p>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 text-left pl-2">పిన్ ఎంటర్ చేయండి</label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      placeholder="••••"
+                      className="w-full bg-slate-950 border-2 border-slate-800 focus:border-blue-500 p-3 rounded-xl text-center text-xl tracking-[0.5em] outline-none"
+                      value={adminPinInput}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setAdminPinInput(val);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1 text-left pl-2">పిన్ కన్ఫర్మ్ చేసుకోండి</label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      placeholder="••••"
+                      className="w-full bg-slate-950 border-2 border-slate-800 focus:border-blue-500 p-3 rounded-xl text-center text-xl tracking-[0.5em] outline-none"
+                      id="setupConfirmPin"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const cInput = (document.getElementById("setupConfirmPin") as HTMLInputElement)?.value;
+                      if (adminPinInput.length !== 4) {
+                        addToast("దయచేసి 4 అంకెల పిన్ ఎంటర్ చేయండి");
+                        return;
+                      }
+                      if (adminPinInput !== cInput) {
+                        addToast("పిన్‌లు ఒకదానికొకటి సరిపోలలేదు!");
+                        return;
+                      }
+                      try {
+                        await setDoc(doc(db, "user_pins", user.uid), {
+                          pin: adminPinInput,
+                          role: userProfile?.role || "Editor",
+                          updatedAt: Date.now()
+                        });
+                        addToast("సెక్యూరిటీ పిన్ విజయవంతంగా సెట్ చేయబడింది!");
+                        setAdminLocked(false);
+                        setAdminPinInput("");
+                      } catch (err: any) {
+                        addToast("పిన్ సేవ్ చేయడంలో లోపం సంభవించింది: " + err.message);
+                      }
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-[10px] mt-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                  >
+                    Register Security PIN • పిన్ నమోదు చెయ్
+                  </button>
+                </div>
+              ) : (
+                <div className="max-w-xs mx-auto">
+                  <input
+                    type="password"
+                    maxLength={4}
+                    placeholder="••••"
+                    className="w-full bg-slate-950 border-2 border-slate-800 focus:border-blue-500 p-4 rounded-2xl text-center text-2xl tracking-[0.5em] outline-none shadow-inner"
+                    value={adminPinInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAdminPinInput(val);
+                      
+                      const requiredPin = isAdmin ? currentAdminPin : userPinDoc?.pin;
+                      if (val === requiredPin) {
+                        setAdminLocked(false);
+                        setAdminPinInput("");
+                        addToast("🔐 సెషన్ అన్‌లాక్ చేయబడింది!");
+                      }
+                    }}
+                  />
+                  <p className="text-[10px] text-slate-500 font-bold uppercase mt-4 block">
+                    {isAdmin ? "Standard master PIN verifies Super Admin Nodes" : "మీ వ్యక్తిగత సెక్యూరిటీ పిన్ను నమోదు చేయండి"}
+                  </p>
+                </div>
+              )}
+
+              <button
+                aria-label="Back to Portal"
+                onClick={() => navigate("/")}
+                className="mt-8 text-slate-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl"
+              >
+                Back to Portal
+              </button>
+            </motion.div>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  if (isFarmerRegistryPath) {
     return (
-      <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans selection:bg-accent/20 selection:text-primary antialiased">
+      <div className="h-[100dvh] overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 font-sans selection:bg-accent/20 selection:text-primary antialiased">
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
@@ -3057,144 +3322,34 @@ export default function App() {
           ))}
         </AnimatePresence>
 
-        {adminLocked ? (
-          <div className="fixed inset-0 z-[5000] bg-slate-950 flex flex-col items-center justify-center p-6 text-white overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent pointer-events-none" />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-center relative z-10"
-            >
-              <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-                <Lock size={40} className="text-blue-400" />
+        <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="flex justify-between items-center mb-6 border-b border-slate-200/60 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🌾</span>
+              <div>
+                <h1 className="text-2xl font-black text-slate-800 tracking-tighter">Farmer Registry Live Verification</h1>
+                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">రైతు రిజిస్ట్రీ ఎన్‌రోల్‌మెంట్ ఆటోమేటిక్ ల్యాండ్ విలీనం మరియు లైవ్ వెరిఫికేషన్ నివేదిక సాధనం</p>
               </div>
-              <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter">
-                Admin Session Locked
-              </h2>
-              <p className="text-slate-400 font-bold mb-8 uppercase text-xs tracking-widest">
-                Restricted Access Level: 1
-              </p>
-
-              <div className="max-w-xs mx-auto">
-                <input
-                  type="password"
-                  placeholder="Enter Access PIN"
-                  className="w-full bg-slate-900 border-2 border-slate-800 focus:border-blue-500 p-4 rounded-2xl text-center text-2xl tracking-[1em] outline-none shadow-inner"
-                  value={adminPinInput}
-                  onChange={(e) => {
-                    const target = e.target;
-                    setAdminPinInput(target.value);
-                    if (target.value === currentAdminPin) {
-                      setAdminLocked(false);
-                    }
-                  }}
-                />
-                <p className="text-[10px] text-slate-500 font-bold uppercase mt-4">
-                  Security PIN required to view sensitive data
-                </p>
-              </div>
-
-              <button
-                aria-label="Back to Portal"
-                onClick={() => navigate("/")}
-                className="mt-8 text-slate-500 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl"
-              >
-                Back to Portal
-              </button>
-            </motion.div>
-          </div>
-        ) : (
-          <div className="h-screen w-full">
-            <AdminPanel
-              posts={posts}
-              addToast={addToast}
-              onNewPost={() => setShowPostForm(true)}
-              onEditPost={(post: Post) => {
-                setEditingPost(post);
-                setShowPostForm(true);
-              }}
-              problems={problemsGlobal}
-              suggestions={suggestions}
-              setAdminLocked={setAdminLocked}
-              adminLocked={adminLocked}
-              notifications={notifications}
-              requests={requests}
-              updates={allUpdates}
-              userRole={userRole}
-              isDevEmail={isDevEmail}
-              currentAdminPin={currentAdminPin}
-              setCurrentAdminPin={setCurrentAdminPin}
-              users={allUsers}
-              user={user}
-              onExit={() => navigate("/")}
-              districtsData={DEPRECATED_DISTRICTS_DATA}
-              currentTab={currentTab}
-              userProfile={userProfile}
-              storageConfig={siteConfig?.storageType}
-              hasPostsOnly={!isEditor && hasPosts}
-            />
-          </div>
-        )}
-
-        {(showPostForm || editingPost) && (
-          <div className="fixed inset-0 z-[3000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl custom-scrollbar">
-              <PostForm
-                key={editingPost?.id || "new"}
-                addToast={addToast}
-                onCancel={() => {
-                  setShowPostForm(false);
-                  setEditingPost(null);
-                }}
-                currentUserProfile={userProfile}
-                editingPost={editingPost}
-                isAdmin={isAdmin}
-                isEditor={isEditor}
-              />
             </div>
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-2xl transition-all shadow-sm active:scale-95"
+            >
+              <ArrowLeft size={14} /> Back to Portal
+            </button>
           </div>
-        )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <FarmerRegistryTool />
+          </motion.div>
+        </div>
       </div>
     );
   }
-
-  const handleRecordProblem = () => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      addToast("Your browser does not support voice to text capability.");
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = "te-IN";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      setIsRecordingProblem(true);
-      addToast("🎤 రికార్డింగ్ ప్రారంభమైంది (Recording started)...");
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setProblemMessage((prev) =>
-        prev ? prev + " " + transcript : transcript,
-      );
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error(event.error);
-      addToast("రికార్డింగ్‌లో సమస్య ఏర్పడింది (Error recording). ");
-      setIsRecordingProblem(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecordingProblem(false);
-    };
-
-    recognition.start();
-  };
 
   return (
     <div className="h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased">
@@ -3722,8 +3877,8 @@ export default function App() {
         </div>
       )}
 
-      <nav className="nav-trigger-bar sticky z-[1000]">
-        <div className="trigger-left">
+      <nav className={`nav-trigger-bar sticky z-[1000] ${sidebarOpen ? "sidebar-active" : ""}`}>
+        <div className="trigger-left pr-2 sm:pr-4 border-r border-slate-100 mr-2 sm:mr-4 shrink-0">
           <button
             aria-label="Toggle Menu"
             className="menu-toggle shrink-0"
@@ -3735,22 +3890,20 @@ export default function App() {
           </button>
         </div>
 
-        <div className="flex-1 flex items-center h-full pl-3 sm:pl-6 w-full min-w-0">
+        <div className="flex-1 flex items-center h-full w-full min-w-0 px-1 sm:px-2">
           {currentTab === "home" && (
-            <div className="flex items-center gap-2 sm:gap-3 w-full h-[40px] sm:h-[44px] bg-slate-50 hover:bg-slate-100 focus-within:!bg-white focus-within:ring-4 focus-within:ring-primary/10 border-slate-200 focus-within:border-primary/40 border shadow-sm rounded-xl sm:rounded-2xl px-4 sm:px-5 transition-all group">
-              <Search size={18} className="text-slate-400 group-focus-within:text-primary shrink-0" />
+            <div className="flex items-center gap-2 sm:gap-3 w-full max-w-xl h-[40px] sm:h-[44px] bg-white/50 backdrop-blur-sm lg:bg-white/80 focus-within:!bg-white focus-within:ring-4 focus-within:ring-primary/5 border-slate-100 focus-within:border-primary/20 border shadow-sm rounded-xl sm:rounded-[14px] px-3 sm:px-5 transition-all group">
+              <Search size={18} className="text-slate-400 group-focus-within:text-primary shrink-0 transition-colors" />
               <input
                 type="text"
-                placeholder="Search reports, notices, GOs and formats..."
-                className="bg-transparent border-none focus:ring-0 text-[13px] sm:text-[15px] font-bold text-slate-700 placeholder:text-slate-400 outline-none"
+                placeholder="Search resources..."
+                className="bg-transparent border-none focus:ring-0 text-[13px] sm:text-[15px] font-bold text-slate-700 placeholder:text-slate-400 outline-none w-full"
                 style={{
-                  paddingTop: "10px",
-                  paddingBottom: "10px",
-                  marginBottom: "0px",
-                  paddingRight: "0px",
-                  paddingLeft: "0px",
-                  width: "100%",
-                  height: "40.4844px"
+                  padding: "0",
+                  margin: "0",
+                  height: "100%",
+                  border: "none",
+                  boxShadow: "none"
                 }}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -3759,13 +3912,24 @@ export default function App() {
                 <button
                   aria-label="Clear Search"
                   onClick={() => setSearchQuery("")}
-                  className="text-slate-300 hover:text-rose-500 transition-colors shrink-0 outline-none"
+                  className="text-slate-300 hover:text-rose-500 transition-colors shrink-0 outline-none p-1"
                 >
-                  <XCircle size={18} />
+                  <XCircle size={16} />
                 </button>
               )}
             </div>
           )}
+        </div>
+
+        <div className="hidden min-[400px]:flex items-center gap-2 sm:gap-6 ml-2 sm:ml-4">
+          <div className="hidden lg:flex flex-col items-end">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 leading-none mb-1">
+              System Live
+            </span>
+            <span className="text-[11px] font-mono font-bold text-slate-500">
+              {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+            </span>
+          </div>
         </div>
       </nav>
 
@@ -3819,201 +3983,261 @@ export default function App() {
                 <X size={20} />
               </button>
             )}
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
-              Navigations
-            </h3>
-            <MenuButton
-              label="Home"
-              emoji="🏠"
-              tourId="menu-home"
-              active={currentTab === "home" && !postIdFromUrl}
-              onClick={() => {
-                setCurrentTab("home");
-                setCurrentFilter("All");
-                setSidebarOpen(false);
-                if (searchParams.has("postId")) {
-                  searchParams.delete("postId");
-                  setSearchParams(searchParams);
-                }
-              }}
-            />
-            <MenuButton
-              label="🏛️ Mana Panchayath"
-              emoji="📊"
-              tourId="menu-mana-panchayath"
-              active={currentTab === "workspace"}
-              onClick={() => {
-                setCurrentTab("workspace");
-                setSidebarOpen(false);
-              }}
-            />
-            <div className="flex flex-col gap-1 mb-2 p-1 bg-blue-50/30 rounded-[20px] border border-blue-100/50 overflow-hidden transition-all duration-300">
-              <button
-                aria-label="Toggle Priority Services"
-                onClick={() => setIsPriorityOpen(!isPriorityOpen)}
-                className="flex items-center justify-between w-full p-3 hover:bg-blue-100/30 transition-colors rounded-[16px] group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
-                    <Target size={16} className="text-white" />
-                  </div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.1em] text-blue-600">Priority Services</span>
-                </div>
-                {isPriorityOpen ? (
-                  <ChevronUp size={16} className="text-blue-400 group-hover:text-blue-600 transition-colors" />
-                ) : (
-                  <ChevronDown size={16} className="text-blue-400 group-hover:text-blue-600 transition-colors" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {isPriorityOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="flex flex-col gap-1 px-1 pb-1 overflow-hidden"
+            {location.pathname.endsWith("/Evdka") ? (
+              <>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
+                  Admin Panel
+                </h3>
+                {[
+                  { id: "dash", label: "Analytics Hub", emoji: "📊" },
+                  { id: "reports", label: "Posts & Issues", emoji: "🚩" },
+                  { id: "updates", label: "Flash News", emoji: "⚡" },
+                  { id: "users", label: "User Access", emoji: "🔑" },
+                  ...(isAdmin || isDevEmail ? [{ id: "staff_management", label: "Staff Nodes", emoji: "🛡️" }] : []),
+                  ...(isAdmin || isDevEmail ? [{ id: "logs", label: "Security Logs", emoji: "📜" }] : []),
+                  { id: "builder", label: "Page Builder", emoji: "🏗️" },
+                  { id: "locations", label: "Locations", emoji: "📍" },
+                  { id: "suggestions", label: "Feedback", emoji: "💬" },
+                  { id: "settings", label: "System Config", emoji: "⚙️" },
+                  { id: "ai", label: "Gemini AI", emoji: "🤖" },
+                ].map((item) => (
+                  <MenuButton
+                    key={item.id}
+                    label={item.label}
+                    emoji={item.emoji}
+                    active={activeAdminSubTab === item.id}
+                    onClick={() => {
+                      setActiveAdminSubTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                  />
+                ))}
+                
+                <div className="h-px bg-slate-100 my-4 mx-2" />
+                
+                <MenuButton
+                  label="Return to Portal"
+                  emoji="🏠"
+                  active={false}
+                  onClick={() => {
+                    window.location.href = "/";
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
+                  Navigations
+                </h3>
+                <MenuButton
+                  label="Home"
+                  emoji="🏠"
+                  tourId="menu-home"
+                  active={currentTab === "home" && !postIdFromUrl}
+                  onClick={() => {
+                    setCurrentTab("home");
+                    setCurrentFilter("All");
+                    setSidebarOpen(false);
+                    if (searchParams.has("postId")) {
+                      searchParams.delete("postId");
+                      setSearchParams(searchParams);
+                    }
+                  }}
+                />
+                <MenuButton
+                  label="🏛️ Mana Panchayath"
+                  emoji="📊"
+                  tourId="menu-mana-panchayath"
+                  active={currentTab === "workspace"}
+                  onClick={() => {
+                    setCurrentTab("workspace");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <div className="flex flex-col gap-1 mb-2 p-1 bg-blue-50/30 rounded-[20px] border border-blue-100/50 overflow-hidden transition-all duration-300">
+                  <button
+                    aria-label="Toggle Priority Services"
+                    onClick={() => setIsPriorityOpen(!isPriorityOpen)}
+                    className="flex items-center justify-between w-full p-3 hover:bg-blue-100/30 transition-colors rounded-[16px] group"
                   >
-                    <MenuButton
-                      label="🚨 Emergency Contacts"
-                      emoji="🚨"
-                      tourId="menu-emergency"
-                      active={currentTab === "emergency"}
-                      onClick={() => {
-                        setCurrentTab("emergency");
-                        setSidebarOpen(false);
-                      }}
-                    />
-                    <MenuButton
-                      label="👤 My Activity & Reports"
-                      emoji="📋"
-                      tourId="menu-my-activity"
-                      active={currentTab === "my_activity"}
-                      onClick={() => {
-                        if (!user) {
-                          requireLoginAlert();
-                        } else {
-                          setCurrentTab("my_activity");
-                          setSidebarOpen(false);
-                        }
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
+                        <Target size={16} className="text-white" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-[0.1em] text-blue-600">Priority Services</span>
+                    </div>
+                    {isPriorityOpen ? (
+                      <ChevronUp size={16} className="text-blue-400 group-hover:text-blue-600 transition-colors" />
+                    ) : (
+                      <ChevronDown size={16} className="text-blue-400 group-hover:text-blue-600 transition-colors" />
+                    )}
+                  </button>
 
-            <MenuButton
-              label="Live Chat"
-              emoji="💬"
-              tourId="menu-live-chat"
-              active={currentTab === "chat"}
-              onClick={() => {
-                setCurrentTab("chat");
-                setSidebarOpen(false);
-              }}
-            />
-            <MenuButton
-              label="Union Corner & Polls"
-              emoji="🤝"
-              tourId="menu-union-corner"
-              active={currentTab === "union"}
-              onClick={() => {
-                setCurrentTab("union");
-                setSidebarOpen(false);
-              }}
-            />
-            <MenuButton
-              label="What's New! 🚀"
-              emoji="✨"
-              tourId="menu-whats-new"
-              active={currentTab === "changelog"}
-              onClick={() => {
-                setCurrentTab("changelog");
-                setSidebarOpen(false);
-              }}
-            />
-            <MenuButton
-              label="💡 Public suggestions & Feedback"
-              emoji="💡"
-              tourId="menu-suggestions"
-              active={currentTab === "suggestions"}
-              onClick={() => {
-                setCurrentTab("suggestions");
-                setSidebarOpen(false);
-              }}
-            />
-            <MenuButton
-              label="📑 Applications, Formats & GOs"
-              emoji="📑"
-              tourId="menu-applications"
-              active={currentTab === "gos_formats"}
-              onClick={() => {
-                setCurrentTab("gos_formats");
-                setSidebarOpen(false);
-              }}
-            />
-            <MenuButton
-              label="🔗 Useful Information"
-              emoji="🔗"
-              tourId="menu-useful-info"
-              active={currentTab === "useful_links"}
-              onClick={() => {
-                setCurrentTab("useful_links");
-                setSidebarOpen(false);
-              }}
-            />
-            <MenuButton
-              label="📄 Excel A4 Print"
-              emoji="📄"
-              tourId="menu-excel-print"
-              active={currentTab === "excel_print"}
-              onClick={() => {
-                setCurrentTab("excel_print");
-                setSidebarOpen(false);
-              }}
-            />
+                  <AnimatePresence>
+                    {isPriorityOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="flex flex-col gap-1 px-1 pb-1 overflow-hidden"
+                      >
+                        <MenuButton
+                          label="🚨 Emergency Contacts"
+                          emoji="🚨"
+                          tourId="menu-emergency"
+                          active={currentTab === "emergency"}
+                          onClick={() => {
+                            setCurrentTab("emergency");
+                            setSidebarOpen(false);
+                          }}
+                        />
+                        <MenuButton
+                          label="👤 My Activity & Reports"
+                          emoji="📋"
+                          tourId="menu-my-activity"
+                          active={currentTab === "my_activity"}
+                          onClick={() => {
+                            if (!user) {
+                              requireLoginAlert();
+                            } else {
+                              setCurrentTab("my_activity");
+                              setSidebarOpen(false);
+                            }
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
-            {showInstallButton && (
-              <div className="mt-8 px-4">
-                <button
-                  aria-label="Install App"
-                  onClick={handleInstallClick}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-2xl flex items-center justify-between group hover:shadow-lg transition-all active:scale-95 border border-blue-500/20"
+                <MenuButton
+                  label="Live Chat"
+                  emoji="💬"
+                  tourId="menu-live-chat"
+                  active={currentTab === "chat"}
+                  onClick={() => {
+                    setCurrentTab("chat");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="Union Corner & Polls"
+                  emoji="🤝"
+                  tourId="menu-union-corner"
+                  active={currentTab === "union"}
+                  onClick={() => {
+                    setCurrentTab("union");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="What's New! 🚀"
+                  emoji="✨"
+                  tourId="menu-whats-new"
+                  active={currentTab === "changelog"}
+                  onClick={() => {
+                    setCurrentTab("changelog");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="💡 Public suggestions & Feedback"
+                  emoji="💡"
+                  tourId="menu-suggestions"
+                  active={currentTab === "suggestions"}
+                  onClick={() => {
+                    setCurrentTab("suggestions");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="📑 Applications, Formats & GOs"
+                  emoji="📑"
+                  tourId="menu-applications"
+                  active={currentTab === "gos_formats"}
+                  onClick={() => {
+                    setCurrentTab("gos_formats");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="🔗 Useful Information"
+                  emoji="🔗"
+                  tourId="menu-useful-info"
+                  active={currentTab === "useful_links"}
+                  onClick={() => {
+                    setCurrentTab("useful_links");
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="📄 Excel A4 Print"
+                  emoji="📄"
+                  tourId="menu-excel-print"
+                  active={currentTab === "excel_print"}
+                  onClick={() => {
+                    setCurrentTab("excel_print");
+                    setSidebarOpen(false);
+                  }}
+                />
+
+                <motion.a
+                  href="/farmer_registry"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ x: 5 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`side-btn text-sans cursor-pointer ${currentTab === "farmer_registry" ? "active-tab text-white" : "hover:bg-slate-50"}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                      <Download size={20} className="text-white" />
-                    </div>
-                    <div className="flex flex-col items-start translate-y-[-1px]">
-                      <span className="text-[14px] font-black leading-tight tracking-tight">
-                        యాప్ ఇన్‌స్టాల్
-                      </span>
-                      <span className="text-[10px] font-bold text-blue-100 uppercase tracking-widest opacity-80">
-                        Install App
-                      </span>
-                    </div>
+                  <span className="side-btn-emoji">🌾</span>
+                  <span className="text-sm tracking-tight font-bold">Farmer Registry Live Verification</span>
+                </motion.a>
+
+                {showInstallButton && (
+                  <div className="mt-8 px-4">
+                    <button
+                      aria-label="Install App"
+                      onClick={handleInstallClick}
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-2xl flex items-center justify-between group hover:shadow-lg transition-all active:scale-95 border border-blue-500/20"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                          <Download size={20} className="text-white" />
+                        </div>
+                        <div className="flex flex-col items-start translate-y-[-1px]">
+                          <span className="text-[14px] font-black leading-tight tracking-tight">
+                            యాప్ ఇన్‌స్టాల్
+                          </span>
+                          <span className="text-[10px] font-bold text-blue-100 uppercase tracking-widest opacity-80">
+                            Install App
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                        <PlusCircle size={14} />
+                      </div>
+                    </button>
                   </div>
-                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <PlusCircle size={14} />
-                  </div>
-                </button>
-              </div>
+                )}
+
+                {(isAdmin || isEditor || isDevEmail) && (
+                  <MenuButton
+                    label="Admin Panel"
+                    emoji="⚙️"
+                    tourId="menu-admin-new-tab"
+                    active={location.pathname.endsWith("/Evdka")}
+                    onClick={() => {
+                      navigate("/Evdka");
+                      setSidebarOpen(false);
+                    }}
+                  />
+                )}
+              </>
             )}
 
-            {isAdmin || isEditor ? (
-              <MenuButton
-                label="Admin Panel"
-                emoji="⚙️"
-                tourId="menu-admin-panel"
-                active={false}
-                onClick={() => {
-                  navigate("/Evdka");
-                  setSidebarOpen(false);
-                }}
-              />
-            ) : null}
+
 
             <div 
               className="px-4 text-center border-t border-slate-100/50"
@@ -4044,7 +4268,72 @@ export default function App() {
           className="flex-1 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-3 sm:p-6 lg:p-8"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
         >
-          {postIdFromUrl ? (
+          {location.pathname.endsWith("/Evdka") && (isAdmin || isEditor || isDevEmail) && (
+            <AdminPanel 
+              addToast={addToast}
+              posts={posts}
+              problems={problemsGlobal}
+              suggestions={suggestions}
+              users={allUsers}
+              user={user}
+              setAdminLocked={setAdminLocked}
+              adminLocked={adminLocked}
+              notifications={notifications}
+              requests={requests}
+              updates={allUpdates}
+              userRole={userProfile?.role || (isAdmin ? 'Admin' : 'Editor')}
+              onExit={() => { window.location.href = "/" }}
+              onNewPost={() => {}}
+              onEditPost={setEditingPost}
+              isDevEmail={isDevEmail}
+              currentAdminPin={currentAdminPin}
+              setCurrentAdminPin={setCurrentAdminPin}
+              districtsData={districtsData}
+              currentTab={currentTab}
+              userProfile={userProfile}
+              storageConfig={storageConfig}
+              isEditorMode={!isAdmin && isEditor}
+              rbacPermissions={rbacPermissions}
+              setRbacPermissions={setRbacPermissions}
+              activeSubTab={activeAdminSubTab}
+              setActiveSubTab={setActiveAdminSubTab}
+            />
+          )}
+
+          <div className={location.pathname.endsWith("/Evdka") ? "hidden" : "contents"}>
+            {(currentTab === "admin" || currentTab === "editor") && (isAdmin || isEditor || isDevEmail) && (
+              <AdminPanel 
+                addToast={addToast}
+                posts={posts}
+                problems={problemsGlobal}
+                suggestions={suggestions}
+                users={allUsers}
+                user={user}
+                setAdminLocked={setAdminLocked}
+                adminLocked={adminLocked}
+                notifications={notifications}
+                requests={requests}
+                updates={allUpdates}
+                userRole={userProfile?.role || (isAdmin ? 'Admin' : 'Editor')}
+                onExit={() => setCurrentTab("home")}
+                onNewPost={() => {}}
+                onEditPost={setEditingPost}
+                isDevEmail={isDevEmail}
+                currentAdminPin={currentAdminPin}
+                setCurrentAdminPin={setCurrentAdminPin}
+                districtsData={districtsData}
+                currentTab={currentTab}
+                userProfile={userProfile}
+                storageConfig={storageConfig}
+                isEditorMode={!isAdmin && isEditor}
+                rbacPermissions={rbacPermissions}
+                setRbacPermissions={setRbacPermissions}
+                activeSubTab={activeAdminSubTab}
+                setActiveSubTab={setActiveAdminSubTab}
+              />
+            )}
+
+            {postIdFromUrl ? (
             <PostDetail
               postId={postIdFromUrl}
               onBack={() => {
@@ -4098,71 +4387,83 @@ export default function App() {
                         className={sizeClass}
                       >
                         {el.type === "Hero Section" && (
-                          <div className="relative isolate px-6 pt-12 lg:px-8 bg-slate-950 rounded-[40px] sm:rounded-[56px] overflow-hidden shadow-2xl border border-white/5 group min-h-[320px] flex items-center">
+                          <div className="relative isolate px-4 py-8 sm:px-8 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 rounded-[32px] overflow-hidden shadow-xl border border-white/5 group min-h-[220px] sm:min-h-[260px] flex items-center">
                             {/* Abstract background blobs */}
                             <div className="absolute inset-0 -z-10 overflow-hidden">
                               <motion.div 
                                 animate={{ 
-                                  scale: [1, 1.2, 1],
+                                  scale: [1, 1.15, 1],
                                   rotate: [0, 45, 0],
                                 }}
                                 transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                                className="absolute -top-[20%] -right-[10%] w-[60%] h-[80%] bg-indigo-600/20 blur-[100px] rounded-full" 
+                                className="absolute -top-[20%] -right-[10%] w-[50%] h-[70%] bg-indigo-500/15 blur-[80px] rounded-full" 
                               />
                               <motion.div 
                                 animate={{ 
-                                  scale: [1.2, 1, 1.2],
+                                  scale: [1.15, 1, 1.15],
                                   rotate: [45, 0, 45],
                                 }}
                                 transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                                className="absolute -bottom-[10%] -left-[10%] w-[50%] h-[70%] bg-blue-600/20 blur-[80px] rounded-full" 
+                                className="absolute -bottom-[10%] -left-[10%] w-[40%] h-[60%] bg-purple-500/15 blur-[60px] rounded-full" 
                               />
                             </div>
                             
-                            <div className="mx-auto max-w-3xl py-8 sm:py-16">
+                            <div className="mx-auto max-w-2xl py-3 sm:py-6 w-full">
                               <div className="text-center">
-                                <motion.h1 
-                                  initial={{ opacity: 0, y: 30 }}
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 15 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: 0.1 }}
-                                  className="text-4xl font-black tracking-tighter text-white sm:text-7xl !leading-[0.85]"
                                 >
-                                  {userProfile?.name ? (
-                                    <>
-                                      Hello Good morning <span className="text-indigo-400">{userProfile.name.split(' ')[0]}</span> <br/>
-                                      Welcome to Your <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent italic">E-Vedhika.</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      Welcome to Your <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">E-Vedhika</span> <br /> Portal.
-                                    </>
-                                  )}
-                                </motion.h1>
+                                  {(() => {
+                                    const hours = new Date().getHours();
+                                    const timeGreeting = hours < 12 ? "Good Morning" : hours < 17 ? "Good Afternoon" : "Good Evening";
+                                    return userProfile?.name ? (
+                                      <div className="space-y-1 sm:space-y-2">
+                                        <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block">
+                                          Hello, {timeGreeting}, {userProfile.name.split(' ')[0]}! 👋
+                                        </span>
+                                        <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block">
+                                          Welcome to <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent italic">E-Vedhika. ✨</span>
+                                        </h1>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-1 sm:space-y-2">
+                                        <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block">
+                                          Hello, {timeGreeting}! 👋
+                                        </span>
+                                        <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block">
+                                          Welcome to <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">E-Vedhika. ✨</span>
+                                        </h1>
+                                      </div>
+                                    );
+                                  })()}
+                                </motion.div>
                                 <motion.p 
-                                  initial={{ opacity: 0, y: 20 }}
+                                  initial={{ opacity: 0, y: 15 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: 0.2 }}
-                                  className="mt-6 text-base font-medium leading-relaxed text-slate-400 sm:text-lg max-w-lg mx-auto"
+                                  className="mt-3 text-sm sm:text-base font-medium leading-relaxed text-slate-300/80 max-w-md mx-auto"
                                 >
-                                  {el.content || "All Problems One Solution"}
+                                  {el.content || "All Problems One Solution 🤝"}
                                 </motion.p>
                                 <motion.div 
-                                  initial={{ opacity: 0, y: 20 }}
+                                  initial={{ opacity: 0, y: 15 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: 0.3 }}
-                                  className="mt-10 flex flex-wrap items-center justify-center gap-4"
+                                  className="mt-6 flex flex-wrap items-center justify-center gap-3"
                                 >
                                   <button
-                                    onClick={() => window.scrollTo({ top: 800, behavior: "smooth" })}
-                                    className="rounded-2xl bg-white px-8 py-4 text-xs font-black uppercase tracking-widest text-slate-950 shadow-xl shadow-white/10 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all"
+                                    onClick={() => window.scrollTo({ top: 750, behavior: "smooth" })}
+                                    className="rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-blue-600 hover:to-indigo-700 hover:scale-105 active:scale-95 transition-all text-center"
                                   >
-                                    Get Started
+                                    Get Started 🚀
                                   </button>
                                   <button
                                     onClick={() => setCurrentTab("suggestions")}
-                                    className="rounded-2xl px-8 py-4 text-xs font-black uppercase tracking-widest text-white border border-white/10 backdrop-blur-md hover:bg-white/5 transition-all flex items-center gap-2 group/btn"
+                                    className="rounded-xl px-6 py-2.5 text-xs font-bold text-slate-200 border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
                                   >
-                                    Help Center <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
+                                    Help Center 💡
                                   </button>
                                 </motion.div>
                               </div>
@@ -4201,13 +4502,14 @@ export default function App() {
                                   transition={{ delay: idx * 0.1 }}
                                   viewport={{ once: true }}
                                   key={post.id}
+                                  className="h-full flex"
                                 >
                                   <PostCard
                                     post={post}
                                     isExpanded={false}
                                     toggleExpansion={() => {}}
                                     addToast={addToast}
-                                    isAdmin={isEditor}
+                                    isAdmin={isAdmin || isEditor || isDevEmail}
                                     onEdit={(p) => {
                                       setEditingPost(p);
                                       setShowPostForm(true);
@@ -4261,29 +4563,29 @@ export default function App() {
                             viewport={{ once: true }}
                             className="relative overflow-hidden group"
                           >
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-[48px]" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-[32px]" />
                             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
                             
-                            <div className="relative p-10 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-10 text-white">
+                            <div className="relative p-6 sm:p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 text-white">
                               <div className="text-center md:text-left max-w-xl">
-                                <h3 className="text-3xl sm:text-4xl font-black mb-4 tracking-tighter leading-tight">
+                                <h3 className="text-xl sm:text-2xl font-black mb-2 tracking-tight leading-snug">
                                   {el.title || "Shape the transformation."}
                                 </h3>
-                                <p className="text-indigo-100 text-lg font-medium opacity-90 leading-relaxed">
+                                <p className="text-indigo-100/90 text-xs sm:text-sm font-medium leading-relaxed">
                                   {el.content || "Your feedback is the catalyst for a better digital ecosystem. Join us in building a more transparent future."}
                                 </p>
                               </div>
                               <button 
                                 onClick={() => setCurrentTab("suggestions")}
-                                className="px-10 py-5 bg-white text-indigo-600 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-indigo-900/20 whitespace-nowrap"
+                                className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-950/10 whitespace-nowrap shrink-0"
                               >
                                 Reach Out Now
                               </button>
                             </div>
                             
                             {/* Decorative flare */}
-                            <div className="absolute top-0 right-0 p-12 text-white/10 group-hover:rotate-12 transition-transform duration-700">
-                                <MessageSquare size={120} />
+                            <div className="absolute top-0 right-0 p-6 text-white/10 group-hover:rotate-12 transition-transform duration-700">
+                                <MessageSquare size={80} />
                             </div>
                           </motion.div>
                         )}
@@ -4569,7 +4871,7 @@ export default function App() {
                                           togglePostExpansion(post.id)
                                         }
                                         addToast={addToast}
-                                        isAdmin={isEditor}
+                                        isAdmin={isAdmin || isEditor || isDevEmail}
                                         onEdit={(p) => {
                                           setEditingPost(p);
                                           setShowPostForm(true);
@@ -4618,49 +4920,26 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Footer Links Section - Compact & Cute Edition */}
-                    <footer className="pt-8 pb-8 mt-6 -mx-4 sm:-mx-8 px-4 sm:px-8 border-t border-slate-50">
-                       <div className="max-w-xl mx-auto flex flex-col items-center gap-6">
-                          <div className="flex flex-wrap justify-center gap-3">
+                    {/* Footer - Black Strip Layout */}
+                    <footer className="bg-black py-4 md:py-0 min-h-[64px] px-6 md:px-12 mt-8 -mx-3 sm:-mx-6 lg:-mx-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between font-sans text-sm gap-4" id="vedhika-footer" style={{ marginBottom: "calc((env(safe-area-inset-bottom) + 16px) * -1)", paddingBottom: "env(safe-area-inset-bottom)" }}>
+                        <div className="flex items-center gap-6 md:gap-12 w-full md:w-auto justify-center md:justify-start pl-0 sm:pl-8">
                              <button 
-                               onClick={() => setShowFooterModal("privacy")}
-                               className="px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100 hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center gap-2 group"
+                               onClick={() => { document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                               className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center bg-[#b13b16] hover:bg-[#c94318] text-white transition-colors"
+                               aria-label="Scroll to top"
                              >
-                               <ShieldCheck size={12} className="text-slate-400 group-hover:text-primary transition-colors" />
-                               <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800">Privacy</span>
+                                <ChevronUp size={28} strokeWidth={2.5} />
                              </button>
-   
-                             <button 
-                               onClick={() => setShowFooterModal("about")}
-                               className="px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100 hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center gap-2 group"
-                             >
-                               <Info size={12} className="text-slate-400 group-hover:text-primary transition-colors" />
-                               <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800">About</span>
-                             </button>
-   
-                             <button 
-                               onClick={() => setShowFooterModal("contact")}
-                               className="px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100 hover:bg-primary/5 hover:border-primary/20 transition-all flex items-center gap-2 group"
-                             >
-                               <Mail size={12} className="text-slate-400 group-hover:text-primary transition-colors" />
-                               <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-800">Contact</span>
-                             </button>
-                          </div>
-                          
-                          <div className="flex flex-col items-center text-center gap-2 opacity-60 hover:opacity-100 transition-opacity">
-                             <div className="flex items-center gap-1.5 scale-90">
-                               <EVAnimatedLogo size={24} />
-                               <div className="text-left">
-                                 <h4 className="text-[10px] font-black text-primary leading-none">E-VEDHIKA</h4>
-                                 <p className="text-[6px] font-bold text-slate-500 tracking-tighter">DIGITAL ECOSYSTEM</p>
-                               </div>
-                             </div>
-                             <div className="space-y-0.5">
-                               <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">© 2026 E-Vedhika • All Rights Reserved</p>
-                               <p className="text-[7px] text-slate-300 font-bold uppercase tracking-[0.1em]">Empowering Citizens</p>
-                             </div>
-                          </div>
-                       </div>
+                             <p className="text-gray-300 text-sm whitespace-nowrap">
+                                Copyright ©2026 <span className="text-[#b13b16] font-medium">E-VEDHIKA</span>
+                             </p>
+                        </div>
+                        <div className="flex items-center justify-center flex-wrap gap-4 md:gap-8 text-gray-300 text-sm w-full md:w-auto mb-2 md:mb-0 pr-0 sm:pr-8">
+                           <button onClick={() => { document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:text-white transition-colors">Home</button>
+                           <button onClick={() => setShowFooterModal("about")} className="hover:text-white transition-colors">About</button>
+                           <button onClick={() => setShowFooterModal("contact")} className="hover:text-white transition-colors">Contact Us</button>
+                           <span className="hover:text-white cursor-pointer transition-colors">Index Page</span>
+                        </div>
                     </footer>
                   </div>
                 )}
@@ -4704,11 +4983,11 @@ export default function App() {
                 >
                   <div className="flex justify-between items-center mb-4">
                     <button
-                      aria-label="Back to Dashboard"
+                      aria-label="Back to Home"
                       onClick={() => setCurrentTab("home")}
                       className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                     >
-                      <ArrowLeft size={16} /> Back to Dashboard
+                      <ArrowLeft size={16} /> Back to Home
                     </button>
                   </div>
                   <PollsScreen user={user} addToast={addToast} />
@@ -5072,16 +5351,17 @@ export default function App() {
                         <Lightbulb className="text-amber-500 shrink-0" />
                         <span>e-Vedhika Suggestion Portal</span>
                       </h2>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
                         మీ సూచనలు మాకు ఎంతో ముఖ్యం
                       </p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       <div className="space-y-4">
-                        <div className="bg-[#f8fafc] rounded-2xl border border-slate-200 p-6 relative overflow-hidden">
+                        <div className="bg-slate-50 rounded-[28px] border border-slate-200 p-6 relative overflow-hidden shadow-sm">
                           <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">
+                            <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
                               Latest Suggestions
                             </h3>
                           </div>
@@ -5089,7 +5369,7 @@ export default function App() {
                             ref={suggestionsScrollRef}
                             onMouseEnter={() => setIsSuggestionsHovered(true)}
                             onMouseLeave={() => setIsSuggestionsHovered(false)}
-                            className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2"
+                            className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2"
                           >
                             {approvedSuggestions.length > 0 ? (
                               [...approvedSuggestions]
@@ -5104,41 +5384,29 @@ export default function App() {
                                     animate={{
                                       opacity: 1,
                                       y: 0,
-                                      boxShadow: [
-                                        "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-                                        "0 0 8px 0 rgba(59, 130, 246, 0.2)",
-                                        "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-                                      ],
                                     }}
-                                    transition={{
-                                      boxShadow: {
-                                        duration: 3,
-                                        repeat: Infinity,
-                                        ease: "easeInOut",
-                                      },
-                                    }}
-                                    className="bg-white p-3 rounded-xl border border-slate-100 hover:border-blue-300 transition-colors"
+                                    className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-blue-400 transition-colors shadow-sm"
                                   >
-                                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-50">
-                                      <div className="flex items-center gap-1.5">
-                                        <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center text-[9px] font-black text-slate-400">
+                                    <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-black text-slate-600">
                                           {(s.name ||
                                             s.author ||
                                             "U")[0].toUpperCase()}
                                         </div>
                                         <div className="flex flex-col">
-                                          <span className="text-[10px] font-black text-slate-700 leading-tight">
+                                          <span className="text-xs font-black text-slate-800 leading-tight">
                                             {s.name || s.author || "Unknown"}
                                           </span>
                                           {s.village && (
-                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
                                               {s.village}
                                             </span>
                                           )}
                                         </div>
                                       </div>
-                                      <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight text-right">
-                                        <div className="leading-none mb-0.5">
+                                      <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight text-right">
+                                        <div className="leading-none mb-0.5 whitespace-nowrap">
                                           {new Date(
                                             getValidTime(s),
                                           ).toLocaleDateString("en-IN", {
@@ -5146,7 +5414,7 @@ export default function App() {
                                             month: "short",
                                           })}
                                         </div>
-                                        <div className="text-[8px] opacity-70">
+                                        <div className="text-[8px] opacity-70 whitespace-nowrap">
                                           {new Date(
                                             getValidTime(s),
                                           ).toLocaleTimeString("en-IN", {
@@ -5157,7 +5425,7 @@ export default function App() {
                                         </div>
                                       </div>
                                     </div>
-                                    <p className="text-[13px] text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">
+                                    <p className="text-[13px] text-slate-800 font-bold leading-relaxed whitespace-pre-wrap">
                                       {s.msg || s.suggestion}
                                     </p>
                                   </motion.div>
@@ -5171,7 +5439,7 @@ export default function App() {
                               <div className="pt-4 text-center pb-4">
                                 <button
                                   onClick={() => setVisibleSuggestionsCount(prev => prev + 20)}
-                                  className="px-6 py-2 bg-slate-50 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest border border-slate-100 hover:bg-slate-100 hover:text-blue-500 transition-all active:scale-95"
+                                  className="px-6 py-2 bg-white text-slate-700 rounded-xl font-black uppercase text-xs tracking-widest border border-slate-200 hover:bg-slate-50 hover:text-blue-600 transition-all active:scale-95 shadow-sm"
                                 >
                                   Load More Suggestions
                                 </button>
@@ -5181,10 +5449,10 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="relative bg-white p-5 sm:p-8 rounded-3xl border-2 border-dashed border-slate-100 flex flex-col h-full">
+                      <div className="relative bg-white p-6 sm:p-8 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col h-full hover:shadow-2xl hover:border-slate-300/80 transition-all duration-300 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-indigo-600 before:via-blue-500 before:to-indigo-500 before:rounded-t-[32px]">
                         {(!user || user?.isAnonymous) && (
                           <div
-                            className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-3xl"
+                            className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-[32px]"
                             onClick={async () => {
                               const res = await Swal.fire({
                                 title: "లాగిన్ అవసరం",
@@ -5208,10 +5476,14 @@ export default function App() {
                               : ""
                           }
                         >
-                          <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-2">
-                            Submit Suggestion & Feedback
+                          <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                              <MessageSquare className="w-5 h-5" />
+                            </div>
+                            <span>Submit Suggestion & Feedback</span>
                           </h3>
-                          <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-tight mb-6">
+                          <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-3 mb-6 flex items-center gap-1.5 pl-0.5">
+                            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
                             మీ అమూల్యమైన సూచనలను ఇక్కడ నమోదు చేయండి
                           </p>
 
@@ -5291,9 +5563,9 @@ export default function App() {
                             className="space-y-4"
                           >
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                                  మీ పేరు (Name)
+                              <div className="space-y-1.5 flex flex-col">
+                                <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                  మీ పేరు (Name) <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                   name="name"
@@ -5304,13 +5576,13 @@ export default function App() {
                                       : ""
                                   }
                                   placeholder="Enter your name"
-                                  className="w-full bg-slate-50 border-slate-100 rounded-xl p-3 text-sm font-bold placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                                   required
                                 />
                               </div>
-                              <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                                  జిల్లా / మండలం (Area)
+                              <div className="space-y-1.5 flex flex-col">
+                                <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                  జిల్లా / మండలం (Area) <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                   name="village"
@@ -5323,7 +5595,7 @@ export default function App() {
                                       : ""
                                   }
                                   placeholder="District / Mandal"
-                                  className="w-full bg-slate-50 border-slate-100 rounded-xl p-3 text-sm font-bold placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                                   required
                                 />
                               </div>
@@ -5331,9 +5603,9 @@ export default function App() {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               {userProfile?.gender !== "Female" && (
-                                <div className="space-y-1.5">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                                    మొబైల్ నంబర్ (Mobile)
+                                <div className="space-y-1.5 flex flex-col">
+                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                    మొబైల్ నంబర్ (Mobile) <span className="text-rose-500">*</span>
                                   </label>
                                   <input
                                     name="mobile"
@@ -5341,18 +5613,18 @@ export default function App() {
                                     defaultValue={userProfile?.mobile || ""}
                                     maxLength={10}
                                     placeholder="10 Digit Number"
-                                    className="w-full bg-slate-50 border-slate-100 rounded-xl p-3 text-sm font-bold placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                                     required
                                   />
                                 </div>
                               )}
-                              <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                                  విభాగం (Category)
+                              <div className="space-y-1.5 flex flex-col">
+                                <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                  విభాగం (Category) <span className="text-rose-500">*</span>
                                 </label>
                                 <select
                                   name="category"
-                                  className="w-full bg-slate-50 border-slate-100 rounded-xl p-3 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
                                   required
                                 >
                                   <option value="">విభాగం ఎంచుకోండి</option>
@@ -5369,15 +5641,15 @@ export default function App() {
                               </div>
                             </div>
 
-                            <div className="space-y-1.5 pt-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                                మీ సూచన (Suggestion)
+                            <div className="space-y-1.5 pt-2 flex flex-col">
+                              <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                మీ సూచన (Suggestion) <span className="text-rose-500">*</span>
                               </label>
                               <textarea
                                 name="suggestion"
                                 placeholder="మీ సూచన ఇక్కడ టైప్ చేయండి..."
                                 rows={4}
-                                className="w-full bg-slate-50 border-slate-100 rounded-2xl p-4 text-sm font-bold placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm resize-none"
                                 required
                               ></textarea>
                             </div>
@@ -5385,9 +5657,10 @@ export default function App() {
                             <button
                               aria-label="Submit Entry"
                               type="submit"
-                              className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95"
+                              className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:via-blue-700 hover:to-indigo-800 text-white py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 hover:scale-[1.01] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
                             >
-                              Submit Entry
+                              <Send className="w-4 h-4" />
+                              <span>Submit Entry</span>
                             </button>
                           </form>
                         </div>
@@ -5552,6 +5825,17 @@ export default function App() {
                 </motion.div>
               )}
 
+              {currentTab === "farmer_registry" && (
+                <motion.div
+                  key="farmer_registry"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <FarmerRegistryTool />
+                </motion.div>
+              )}
+
               {currentTab === "my_activity" && (
                 <motion.div
                   key="my_activity"
@@ -5578,11 +5862,11 @@ export default function App() {
                 >
                   <div className="flex justify-between items-center mb-4">
                     <button
-                      aria-label="Back to Dashboard"
+                      aria-label="Back to Home"
                       onClick={() => setCurrentTab("home")}
                       className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                     >
-                      <ArrowLeft size={16} /> Back to Dashboard
+                      <ArrowLeft size={16} /> Back to Home
                     </button>
                   </div>
                   <div className="section-card card-gold !border-t-danger">
@@ -5815,8 +6099,10 @@ export default function App() {
               isForced={showForcedProfileSetup}
               onComplete={() => setShowForcedProfileSetup(false)}
               districtsData={districtsData}
+              rbacPermissions={rbacPermissions}
             />
           )}
+          </div>
         </main>
       </div>
       <ManaBot currentTab={currentTab} userName={userProfile?.name} />
@@ -5833,6 +6119,7 @@ function EditProfileModal({
   isForced,
   onComplete,
   districtsData,
+  rbacPermissions,
 }: {
   onClose: () => void;
   onExitForced?: () => void;
@@ -5842,6 +6129,7 @@ function EditProfileModal({
   isForced?: boolean;
   onComplete?: () => void;
   districtsData: Record<string, string[]>;
+  rbacPermissions: any;
 }) {
   const [surname, setSurname] = useState(userProfile?.surname || "");
   const [name, setName] = useState(userProfile?.name || "");
@@ -5982,6 +6270,40 @@ function EditProfileModal({
         </div>
 
         <form onSubmit={handleSave} className="space-y-3">
+          {/* Permissions Matrix Summary for Staff */}
+          {(userProfile?.role === "admin" || userProfile?.role === "editor" || userProfile?.role === "moderator") && (
+             <div className="mb-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 text-left">
+                <div className="flex items-center gap-2 mb-3">
+                   <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                      <Lock size={16} />
+                   </div>
+                   <div>
+                      <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest leading-none">Your Node Permissions</h4>
+                      <p className="text-[8px] font-bold text-blue-400 uppercase mt-0.5 tracking-tight">Active for: {userProfile.role}</p>
+                   </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
+                   {["dash", "reports", "gos_formats", "updates", "users", "builder", "locations", "suggestions", "trash", "logs", "settings", "ai"].map(tab => {
+                      const perms = rbacPermissions?.[userProfile.role!]?.[tab] || {};
+                      if (!perms.view) return null;
+                      return (
+                         <div key={tab} className="bg-white/80 p-2 rounded-xl flex items-center justify-between border border-blue-50 shadow-sm">
+                            <span className="text-[9px] font-bold text-slate-600 uppercase tracking-tighter truncate max-w-[70px]">
+                               {tab === "gos_formats" ? "GOs" : tab === "dash" ? "Home" : tab}
+                            </span>
+                            <div className="flex gap-0.5">
+                               {perms.view && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]" title="View" />}
+                               {perms.edit && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_rgba(59,130,246,0.5)]" title="Edit" />}
+                               {perms.delete && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]" title="Delete" />}
+                            </div>
+                         </div>
+                      );
+                   })}
+                </div>
+             </div>
+          )}
+
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-[20px] overflow-hidden border-2 border-slate-100 shadow-inner bg-slate-50 flex items-center justify-center relative group">
               {photoURL ? (
@@ -6777,6 +7099,37 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
   );
 }
 
+const DEFAULT_PERMISSIONS: any = {
+  editor: {
+    dash: { view: true, edit: false, delete: false },
+    reports: { view: true, edit: true, delete: false },
+    gos_formats: { view: true, edit: true, delete: false },
+    updates: { view: true, edit: true, delete: false },
+    suggestions: { view: true, edit: false, delete: false },
+    users: { view: false, edit: false, delete: false },
+    builder: { view: false, edit: false, delete: false },
+    locations: { view: false, edit: false, delete: false },
+    trash: { view: false, edit: false, delete: false },
+    settings: { view: false, edit: false, delete: false },
+    ai: { view: true, edit: true, delete: false },
+    changelog: { view: true, edit: false, delete: false }
+  },
+  moderator: {
+    dash: { view: true, edit: false, delete: false },
+    reports: { view: true, edit: true, delete: false },
+    gos_formats: { view: true, edit: false, delete: false },
+    updates: { view: true, edit: false, delete: false },
+    suggestions: { view: true, edit: true, delete: false },
+    users: { view: false, edit: false, delete: false },
+    builder: { view: false, edit: false, delete: false },
+    locations: { view: false, edit: false, delete: false },
+    trash: { view: false, edit: false, delete: false },
+    settings: { view: false, edit: false, delete: false },
+    ai: { view: true, edit: false, delete: false },
+    changelog: { view: true, edit: false, delete: false }
+  }
+};
+
 function AdminPanel({
   addToast,
   posts: rawPosts,
@@ -6801,60 +7154,99 @@ function AdminPanel({
   userProfile,
   storageConfig,
   hasPostsOnly,
+  isEditorMode,
+  rbacPermissions,
+  setRbacPermissions,
+  activeSubTab,
+  setActiveSubTab
 }: any) {
-  const posts = hasPostsOnly ? (rawPosts || []).filter((p: any) => p.uid === user?.uid) : (rawPosts || []);
-  const problems = hasPostsOnly ? (rawProblems || []).filter((p: any) => p.uid === user?.uid) : (rawProblems || []);
+  const posts = (hasPostsOnly || isEditorMode) ? (rawPosts || []).filter((p: any) => p.uid === user?.uid) : (rawPosts || []);
+  const problems = (hasPostsOnly || isEditorMode) ? (rawProblems || []).filter((p: any) => p.uid === user?.uid) : (rawProblems || []);
 
-  const isAdmin = userRole === "admin" || isDevEmail;
-  const isEditor = userRole === "admin" || userRole === "editor" || isDevEmail;
-  const [activeSubTab, setActiveSubTab] = useState(hasPostsOnly ? "reports" : "dash");
+  const [selectedRbacRole, setSelectedRbacRole] = useState("editor");
+  const [allUserPins, setAllUserPins] = useState<any[]>([]);
+
+  const userRoleStr = (userProfile?.role || userRole || "").toLowerCase();
+  const isSuperAdmin = isDevEmail; // Only the Website Creator has full admin rights as requested
+  const isAdmin = isSuperAdmin;
+  const isEditor = isSuperAdmin || userRoleStr === "editor" || userRoleStr === "moderator";
+  const isEffectiveAdmin = isSuperAdmin && !isEditorMode;
+  const isEffectiveEditor = isEditor || isEditorMode;
   
-  // Dashboard Metrics in English
+  const userPermissions = rbacPermissions?.[userRoleStr] || DEFAULT_PERMISSIONS[userRoleStr] || {};
+
+  const hasViewPermission = (tabId: string) => {
+    if (isSuperAdmin) return true;
+    return !!userPermissions[tabId]?.view;
+  };
+
+  const hasEditPermission = (tabId: string) => {
+    if (isSuperAdmin) return true;
+    return !!userPermissions[tabId]?.edit;
+  };
+
+  const hasDeletePermission = (tabId: string) => {
+    if (isSuperAdmin) return true;
+    return !!userPermissions[tabId]?.delete;
+  };
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    const unsub = onSnapshot(collection(db, "user_pins"), (snap) => {
+      const pins: any[] = [];
+      snap.forEach(d => pins.push({ id: d.id, ...d.data() }));
+      setAllUserPins(pins);
+    });
+    return () => unsub();
+  }, [isSuperAdmin]);
+  
+  // Analytics Metrics in English
   const stats = [
-    { label: "Enrolled Citizens", value: users?.filter((u: any) => !(u.isDeleted || u.role === "deleted")).length || 0, icon: <Users size={22} />, color: "from-blue-600 to-indigo-600", trend: "+12%" },
-    { label: "Pending Issues", value: (problems || []).filter((p: any) => !["solved", "resolved", "deleted"].includes((p.status || "").toLowerCase())).length, icon: <AlertTriangle size={22} />, color: "from-rose-600 to-orange-600", trend: "Critical" },
-    { label: "Total Contents", value: posts.length, icon: <Layout size={22} />, color: "from-emerald-600 to-teal-600", trend: "+5%" },
-    { label: "Cloud Node", value: storageConfig === "cloudflare" ? "R2 Active" : "Firebase", icon: <Database size={22} />, color: "from-purple-600 to-pink-600", trend: "Global" },
+    { label: isEditorMode ? "My Active Citizens" : "Enrolled Citizens", value: users?.filter((u: any) => !(u.isDeleted || u.role === "deleted")).length || 0, icon: <Users size={22} />, color: "from-blue-600 to-indigo-600", trend: "+12%" },
+    { label: isEditorMode ? "My Pending Issues" : "Pending Issues", value: (problems || []).filter((p: any) => !["solved", "resolved", "deleted"].includes((p.status || "").toLowerCase())).length, icon: <AlertTriangle size={22} />, color: "from-rose-600 to-orange-600", trend: "Critical" },
+    { label: isEditorMode ? "My Contents" : "Total Contents", value: posts.length, icon: <Layout size={22} />, color: "from-emerald-600 to-teal-600", trend: "+5%" },
+    { label: "Content Node", value: storageConfig === "cloudflare" ? "R2 Active" : "Firebase", icon: <Database size={22} />, color: "from-purple-600 to-pink-600", trend: "Global" },
   ];
 
   const menuCategories = [
     {
-      title: "Core Hub",
+      title: isEditorMode ? "Content Hub" : "Core Hub",
       items: [
-        ...(!hasPostsOnly ? [{ id: "dash", label: "Dashboard Hub", icon: <LayoutGrid size={18} /> }] : []),
-        { id: "reports", label: "Posts & Issues", icon: <Flag size={18} /> },
-        ...(!hasPostsOnly ? [
-          { id: "gos_formats", label: "GOs & Formats", icon: <FileText size={18} /> },
-          { id: "updates", label: "Flash News", icon: <Zap size={18} /> },
+        ...(hasViewPermission("dash") && !(hasPostsOnly || isEditorMode) ? [{ id: "dash", label: isEditorMode ? "My Panel" : "Analytics Hub", icon: <LayoutGrid size={18} /> }] : []),
+        ...(hasViewPermission("reports") ? [{ id: "reports", label: isEditorMode ? "My Posts & Issues" : "Posts & Issues", icon: <Flag size={18} /> }] : []),
+        ...(!(hasPostsOnly || isEditorMode) ? [
+          ...(hasViewPermission("gos_formats") ? [{ id: "gos_formats", label: "GOs & Formats", icon: <FileText size={18} /> }] : []),
+          ...(hasViewPermission("updates") ? [{ id: "updates", label: "Flash News", icon: <Zap size={18} /> }] : []),
         ] : []),
       ]
     },
-    ...(!hasPostsOnly ? [
+    ...(!(hasPostsOnly || isEditorMode) ? [
       {
         title: "Security & Nodes",
         items: [
-          { id: "users", label: "User Access", icon: <Fingerprint size={18} /> },
-          ...(isDevEmail ? [
-            { id: "logs", label: "Security Logs", icon: <ShieldCheck size={18} /> },
-            { id: "cloud_dns", label: "Cloud & DNA", icon: <Cloud size={18} /> },
+          ...(hasViewPermission("users") ? [{ id: "users", label: "User Access", icon: <Fingerprint size={18} /> }] : []),
+          ...(isSuperAdmin ? [
+            { id: "staff_management", label: "Staff & Permissions", icon: <Shield size={18} /> },
           ] : []),
+          ...(hasViewPermission("logs") && isEffectiveAdmin ? [{ id: "logs", label: "Security Logs", icon: <ShieldCheck size={18} /> }] : []),
+          ...(hasViewPermission("cloud_dns") && isEffectiveAdmin ? [{ id: "cloud_dns", label: "Cloud & DNA", icon: <Cloud size={18} /> }] : []),
         ]
       },
       {
         title: "Operations",
         items: [
-          { id: "builder", label: "Page Builder", icon: <Boxes size={18} /> },
-          { id: "locations", label: "Manage Locations", icon: <MapPin size={18} /> },
-          { id: "suggestions", label: "Admin Feedback", icon: <MessageSquare size={18} /> },
-          { id: "trash", label: "Recycle Bin", icon: <Trash2 size={18} /> },
+          ...(hasViewPermission("builder") ? [{ id: "builder", label: "Page Builder", icon: <Boxes size={18} /> }] : []),
+          ...(hasViewPermission("locations") ? [{ id: "locations", label: "Manage Locations", icon: <MapPin size={18} /> }] : []),
+          ...(hasViewPermission("suggestions") ? [{ id: "suggestions", label: "Admin Feedback", icon: <MessageSquare size={18} /> }] : []),
+          ...(hasViewPermission("trash") ? [{ id: "trash", label: "Recycle Bin", icon: <Trash2 size={18} /> }] : []),
         ]
       },
       {
         title: "Metadata",
         items: [
-          { id: "changelog", label: "What's New", icon: <Rocket size={18} /> },
-          ...(isDevEmail ? [{ id: "settings", label: "System Config", icon: <Settings size={18} /> }] : []),
-          { id: "ai", label: "Gemini AI", icon: <Bot size={18} /> },
+          ...(hasViewPermission("changelog") ? [{ id: "changelog", label: "What's New", icon: <Rocket size={18} /> }] : []),
+          ...(hasViewPermission("settings") && isEffectiveAdmin ? [{ id: "settings", label: "System Config", icon: <Settings size={18} /> }] : []),
+          ...(hasViewPermission("ai") ? [{ id: "ai", label: "Gemini AI", icon: <Bot size={18} /> }] : []),
         ]
       }
     ] : [])
@@ -7092,7 +7484,7 @@ function AdminPanel({
         }
       }
       const res = await fetch("/api/admin/restart", { method: "POST" });
-      await logUserActivity("Initiated System Cache & Server Refresh", { via: "Admin Dashboard" });
+      await logUserActivity("Initiated System Cache & Server Refresh", { via: "Admin Panel" });
       if (res.ok) {
         addToast(
           "Server restarting & Apps Cache cleared! Reloading...",
@@ -7257,80 +7649,18 @@ function AdminPanel({
   }
 
   return (
-    <div className="flex bg-[#f8fafc] min-h-screen font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden w-full relative h-screen">
-      {/* Hyper-Modern Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white/80 backdrop-blur-3xl border-r border-slate-200/60 transform transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] lg:relative lg:translate-x-0 ${
-          adminMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
-        }`}
-      >
-        <div className="h-full flex flex-col p-6 overflow-hidden">
-          <div className="flex items-center gap-4 mb-10 pl-2">
-            <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-center text-white rotate-3">
-              <Shield size={24} className="stroke-[2.5]" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-slate-800 tracking-tighter leading-none mb-1 text-left">Admin Node</h2>
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block opacity-70 text-left">Control Terminal v3.0</span>
-            </div>
-          </div>
-
-          <nav className="flex-1 space-y-8 overflow-y-auto no-scrollbar pb-8">
-            {menuCategories.map((cat, idx) => (
-              <div key={idx} className="space-y-3">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-4 text-left">{cat.title}</p>
-                <div className="space-y-1">
-                  {cat.items.filter(item => isAdmin || ["dash", "reports", "builder", "suggestions", "trash", "updates"].includes(item.id)).map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveSubTab(item.id);
-                        setAdminMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[13px] font-bold transition-all duration-300 relative group/btn ${
-                        activeSubTab === item.id
-                          ? "bg-blue-600 text-white shadow-xl shadow-blue-600/25 scale-[1.03]"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                      }`}
-                    >
-                      <span className={`${activeSubTab === item.id ? "text-white" : "text-slate-400 group-hover/btn:text-blue-600"} transition-colors`}>{item.icon}</span>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </nav>
-
-          <div className="pt-6 border-t border-slate-100 flex flex-col gap-2">
-             <button
-              onClick={onExit}
-              className="w-full flex items-center gap-4 px-5 py-3 text-slate-500 hover:bg-slate-50 rounded-2xl font-bold text-xs transition-all active:scale-95"
-            >
-              <LogOut size={16} /> Exit to Portal
-            </button>
-            <button
-              onClick={() => setAdminLocked(true)}
-              className="w-full flex items-center gap-4 px-5 py-4 bg-amber-50 text-amber-700 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-100 transition-all active:scale-95 border border-amber-200/50"
-            >
-              <Lock size={18} /> Lock Session
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* OVERLAY FOR MOBILE */}
-      {adminMenuOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity"
-          onClick={() => setAdminMenuOpen(false)}
-        />
-      )}
-
-      {/* Main Framework Container */}
-      <main className="flex-1 overflow-y-auto h-screen bg-[#f8fafc] flex flex-col relative custom-scrollbar">
+    <div className="flex bg-[#f8fafc] font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden w-full relative">
+      {/* Main Framework Container - sidebar removed as it is now unified in App.tsx */}
+      <main className="flex-1 bg-[#f8fafc] flex flex-col relative">
         {/* Dynamic Header */}
-        <header className="sticky top-0 z-40 bg-white/60 backdrop-blur-2xl border-b border-slate-200/60 px-6 lg:px-12 py-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div
+          role="banner"
+          className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 pt-6 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6"
+          style={{
+            paddingRight: "60.6367px",
+            paddingLeft: "60.6367px",
+          }}
+        >
           <div className="flex items-center gap-5">
             <button
               className="lg:hidden p-3.5 bg-white border border-slate-200 rounded-[20px] text-slate-600 shadow-sm active:scale-90 transition-transform"
@@ -7362,19 +7692,32 @@ function AdminPanel({
             )}
             <div className="hidden lg:flex items-center gap-4 pl-6 border-l border-slate-200">
                <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Root Login</p>
-                  <p className="text-xs font-black text-slate-900">{userProfile?.fullName || user?.email?.split('@')[0] || "Administrator"}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{isEditorMode ? "Editor Hub" : "Root Login"}</p>
+                  <p className="text-xs font-black text-slate-900">{userProfile?.fullName || user?.email?.split('@')[0] || (isEditorMode ? "Editor" : "Administrator")}</p>
                </div>
-               <div className="w-12 h-12 rounded-[18px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-lg shadow-sm">
-                  {userProfile?.fullName?.charAt(0) || "A"}
+               <div className={`w-12 h-12 rounded-[18px] ${isEditorMode ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-indigo-50 border-indigo-100 text-indigo-600"} border flex items-center justify-center font-black text-lg shadow-sm`}>
+                  {userProfile?.fullName?.charAt(0) || (isEditorMode ? "E" : "A")}
                </div>
             </div>
           </div>
-        </header>
+        </div>
 
         {/* Dynamic Content Surface */}
-        <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
-          {activeSubTab === "dash" && (
+        {!hasViewPermission(activeSubTab) ? (
+          <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
+            <div className="flex flex-col items-center justify-center p-20 min-h-[500px] bg-white border border-slate-100 rounded-[40px] shadow-sm text-center">
+              <div className="w-20 h-20 bg-rose-50 border border-rose-100/50 rounded-full flex items-center justify-center text-rose-500 mb-6 animate-bounce">
+                <Lock size={32} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">అనుమతి నిరాకరించబడింది (Access Restricted)</h3>
+              <p className="text-slate-500 font-bold mt-2 text-center max-w-md">
+                ఈ సిస్టమ్ మాడ్యూల్ లేదా విభాగాన్ని వీక్షించడానికి మీకు అనుమతి తగినంత లేదు. దయచేసి ప్రధాన నిర్వాహకుడిని సంప్రదించండి.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
+            {activeSubTab === "dash" && (
             <div className="space-y-12 fade-in slide-in-from-bottom-6 animate-in duration-1000">
               {/* Bento Analytics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -7418,20 +7761,25 @@ function AdminPanel({
                     
                     <div className="relative z-10">
                       <div className="flex items-center gap-3 mb-8">
-                         <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30 backdrop-blur-md">Admin Portal Root</span>
-                         <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)] animate-pulse"></span>
+                         <span className={`px-4 py-1.5 ${isEditorMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-blue-500/20 text-blue-300 border-blue-500/30"} text-[10px] font-black uppercase tracking-[0.3em] rounded-full border backdrop-blur-md`}>{isEditorMode ? "Editor Hub Active" : "Admin Portal Root"}</span>
+                         <span className={`w-2 h-2 rounded-full ${isEditorMode ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.7)]" : "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]"} animate-pulse`}></span>
                       </div>
-                      <h3 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-none">Command Center <br/><span className="text-blue-400">Hyper-Node</span></h3>
+                      <h3 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-none">{isEditorMode ? "Content Editor" : "Command Center"} <br/><span className={isEditorMode ? "text-emerald-400" : "text-blue-400"}>{isEditorMode ? "Workspace" : "Hyper-Node"}</span></h3>
                       <p className="text-slate-400 font-bold max-w-xl text-balance leading-relaxed mb-12 text-lg">
-                        Welcome back to E-Vedhika Hyper-Terminal. All systems are operational. Monitor user traffic, handle reports, and orchestrate cloud nodes from this central framework.
+                        {isEditorMode 
+                          ? "Submit reports, manage your issues, and monitor content flow. This specialized node provides a focused workspace for content editors."
+                          : "Welcome back to E-Vedhika Hyper-Terminal. All systems are operational. Monitor user traffic, handle reports, and orchestrate cloud nodes from this central framework."
+                        }
                       </p>
                       <div className="flex flex-wrap gap-5">
                         <button onClick={() => setActiveSubTab("reports")} className="px-10 py-5 bg-white text-slate-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.03] transition-all flex items-center gap-4 active:scale-95 shadow-2xl shadow-white/5">
-                          Audit Feed <ArrowRight size={18} strokeWidth={3} />
+                          {isEditorMode ? "My Feed" : "Audit Feed"} <ArrowRight size={18} strokeWidth={3} />
                         </button>
-                        <button onClick={() => setActiveSubTab("cloud_dns")} className="px-10 py-5 bg-white/5 text-white border border-white/10 backdrop-blur-2xl rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95">
-                          Infrastructure
-                        </button>
+                        {!isEditorMode && (
+                          <button onClick={() => setActiveSubTab("cloud_dns")} className="px-10 py-5 bg-white/5 text-white border border-white/10 backdrop-blur-2xl rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95">
+                            Infrastructure
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -7542,7 +7890,6 @@ function AdminPanel({
               </div>
             </div>
           )}
-        </div>
 
         {(activeSubTab === "reports" || activeSubTab === "suggestions") && (
           <div className="space-y-8 pb-20">
@@ -7613,7 +7960,7 @@ function AdminPanel({
                     >
                       {f}
                     </button>
-                  ),
+                  )
                 )}
                 {reportsFilter === "Deleted" && (
                   <button
@@ -7735,85 +8082,31 @@ function AdminPanel({
                                 </div>
                               )}
                             </div>
-                            <div>
-                              <h5 className="font-black text-slate-800 text-[15px] leading-tight mb-1">
-                                {item.userName || item.name || "Portal User"}
-                              </h5>
-                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none flex items-center gap-2">
-                                <Mail size={10} />{" "}
-                                {item.isAdminPost || item.userName === "Admin" ? (
-                                  item.userEmail || "Portal Admin"
-                                ) : (
-                                  item.userEmail ||
-                                  item.userId ||
-                                  item.uid ||
-                                  "Citizen Entry"
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <div
-                            className={`p-5 rounded-2xl border ${activeSubTab === "suggestions" ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100"}`}
-                          >
-                            {item.title && (
-                              <h4 className="text-sm font-black text-slate-800 mb-2 whitespace-pre-wrap">
-                                {formatPostTitle(item.title)}
-                              </h4>
-                            )}
-                            {activeSubTab === "reports" &&
-                            reportsType === "posts" ? (
-                              <div className="text-[12px] text-slate-700 font-medium leading-relaxed whitespace-pre-wrap [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline">
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkBreaks]}
-                                  rehypePlugins={[rehypeRaw]}
-                                >
-                                  {item.content || ""}
-                                </ReactMarkdown>
-                                <div className="mt-6 pt-4 border-t border-slate-200">
-                                  <details className="group">
-                                    <summary className="cursor-pointer text-sm font-black text-primary flex items-center gap-2 select-none mb-2">
-                                      <MessageCircle size={16} />
-                                      <span>
-                                        Manage Comments (
-                                        {item.commentCount || 0})
-                                      </span>
-                                    </summary>
-                                    <div className="pt-4 bg-white/50 rounded-xl p-4">
-                                      <PostComments
-                                        post={item}
-                                        addToast={addToast}
-                                        userProfile={null}
-                                        isAdmin={isAdmin}
-                                        allUsers={users}
-                                      />
-                                    </div>
-                                  </details>
+                            <div className="ml-2">
+                                <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
+                                  {item.title || item.type || "Untitled Report"}
+                                </h4>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-1">
+                                  <span>{item.authorName || (item.userName === "Admin" ? "Administrator" : "User Node")}</span>
+                                  <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                  <span className="uppercase tracking-widest">{item.district || "Regional Terminal"}</span>
                                 </div>
                               </div>
-                            ) : (
-                              <p className="text-[12px] text-slate-700 font-bold leading-relaxed italic whitespace-pre-wrap">
-                                "
-                                {item.msg ||
-                                  item.content ||
-                                  item.text ||
-                                  item.problem ||
-                                  item.suggestion}
-                                "
-                              </p>
-                            )}
-                          </div>
-                        </td>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-medium line-clamp-2 pl-14 max-w-md italic">
+                              "{item.desc || item.text || item.problem || item.suggestion || "No descriptor signal received."}"
+                            </p>
+                          </td>
                         <td className="py-6">
                           <div className="space-y-4">
                             <div className="flex flex-wrap items-center gap-2">
                               <span
                                 className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                  item.status === "Approved" ||
-                                  item.status === "Resolved" ||
-                                  item.status === "solved" ||
-                                  item.status === "approved"
+                                  (item.status || "pending").toLowerCase() === "approved" ||
+                                  (item.status || "pending").toLowerCase() === "resolved" ||
+                                  (item.status || "pending").toLowerCase() === "solved"
                                     ? "bg-emerald-50 border-emerald-100 text-emerald-600"
-                                    : item.status === "flagged"
+                                    : (item.status || "pending").toLowerCase() === "flagged"
                                       ? "bg-rose-50 border-rose-100 text-rose-600"
                                       : "bg-amber-50 border-amber-100 text-amber-600"
                                 }`}
@@ -7859,6 +8152,11 @@ function AdminPanel({
                             <select
                               value={(item.status || "pending").toLowerCase()}
                               onChange={async (e) => {
+                                const tabId = activeSubTab === "reports" ? "reports" : "suggestions";
+                                if (!hasEditPermission(tabId)) {
+                                  addToast("క్షమించండి, ఈ సమాచారాన్ని మార్చే అనుమతి మీకు లేదు.");
+                                  return;
+                                }
                                 try {
                                   const col =
                                     activeSubTab === "reports"
@@ -7888,6 +8186,11 @@ function AdminPanel({
                             <button
                               aria-label="Edit Post"
                               onClick={() => {
+                                const tabId = activeSubTab === "reports" ? "reports" : "suggestions";
+                                if (!hasEditPermission(tabId)) {
+                                  addToast("క్షమించండి, ఈ సమాచారాన్ని మార్చే అనుమతి మీకు లేదు.");
+                                  return;
+                                }
                                 if (
                                   activeSubTab === "reports" &&
                                   reportsType === "posts"
@@ -8247,6 +8550,19 @@ function AdminPanel({
                                   await updateDoc(doc(db, "users", u.id), {
                                     role: nextRole,
                                   });
+                                  
+                                  // Send Notification to user
+                                  await addDoc(collection(db, "notifications"), {
+                                    uid: u.id,
+                                    title: "ఖాతా స్థితి (Account Status)",
+                                    message: nextRole === "suspended" 
+                                      ? "మీ ఖాతా యాక్సెస్ భద్రతా కారణాల దృష్ట్యా పరిమితం చేయబడింది." 
+                                      : "మీ ఖాతా యాక్సెస్ పునరుద్ధరించబడింది.",
+                                    type: "system",
+                                    read: false,
+                                    time: Date.now(),
+                                  });
+
                                   addToast(
                                     nextRole === "suspended"
                                       ? "User Access Restricted"
@@ -8369,9 +8685,9 @@ function AdminPanel({
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
                           <span>Access Level</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full ${u.role === "admin" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}
+                             className={`px-2 py-0.5 rounded-full ${u.role === "admin" || (u.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com") ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}
                           >
-                            {u.role || "User"}
+                            {(u.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com") ? "Website Creator" : u.role || "User"}
                           </span>
                         </div>
                          <select
@@ -8382,6 +8698,17 @@ function AdminPanel({
                               await updateDoc(doc(db, "users", u.id), {
                                 role: newRole,
                               });
+
+                              // Send Notification to user
+                              await addDoc(collection(db, "notifications"), {
+                                uid: u.id,
+                                title: "హోదా మార్పు (Role Updated)",
+                                message: `మీ ఖాతా హోదా ${newRole.toUpperCase()} కు మార్చబడింది.`,
+                                type: "system",
+                                read: false,
+                                time: Date.now(),
+                              });
+
                               addToast("Role Authorization Updated");
                               await logUserActivity(`Changed User Role`, { targetEmail: u.email, newRole: newRole });
                             } catch (err) {
@@ -8763,7 +9090,13 @@ function AdminPanel({
                             <div className={`bg-gradient-to-br from-${el.color || "blue"}-600 to-${el.color || "blue"}-800 p-6 sm:p-12 rounded-[24px] sm:rounded-[40px] text-white overflow-hidden shadow-xl`}>
                               <div className="relative z-10 space-y-4">
                                 <h1 className="text-2xl sm:text-4xl font-black tracking-tighter leading-tight drop-shadow-md">
-                                  {userProfile?.name ? `Hi ${userProfile.name}, Welcome to E-Vedhika` : (el.title || "Welcome to E-Vedhika")}
+                                  {(() => {
+                                    const hours = new Date().getHours();
+                                    const timeGreeting = hours < 12 ? "Good Morning" : hours < 17 ? "Good Afternoon" : "Good Evening";
+                                    return userProfile?.name 
+                                      ? `Hello, ${timeGreeting}, ${userProfile.name}! 👋 Welcome to E-Vedhika. ✨`
+                                      : `Hello, ${timeGreeting}! 👋 Welcome to E-Vedhika. ✨`;
+                                  })()}
                                 </h1>
                                 <p className="text-xs sm:text-sm text-white/80 font-medium leading-relaxed max-w-sm">
                                   {el.content || "Empowering citizens through digital transparency."}
@@ -9013,10 +9346,20 @@ function AdminPanel({
                                   <div key={i} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
                                     <div className="flex items-center gap-3">
                                       <div className="w-8 h-8 rounded-full bg-slate-100" />
-                                      <div className="h-3 bg-slate-200 rounded w-32" />
+                                      <div className="flex flex-col gap-1">
+                                        <div className="h-2.5 bg-slate-200 rounded w-24" />
+                                        <div className="h-2 bg-slate-100 rounded w-16" />
+                                      </div>
                                     </div>
-                                    <div className="h-16 bg-slate-50 rounded-2xl border flex items-center justify-center text-slate-300 text-xs">
-                                      Post Content Preview
+                                    <div className="space-y-2 py-2">
+                                      <div className="h-2.5 bg-slate-50 rounded w-full" />
+                                      <div className="h-2.5 bg-slate-50 rounded w-5/6" />
+                                    </div>
+                                    <div className="h-24 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center gap-2">
+                                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-200 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                      </div>
+                                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Image Preview</span>
                                     </div>
                                   </div>
                                 ))}
@@ -9676,17 +10019,11 @@ function AdminPanel({
                                             </h3>
                                           );
                                         }
-                                        return <h3 className="text-sm font-black text-primary mt-3 mb-1.5" {...props}>{children}</h3>;
+                                        return <h3 className="font-bold text-slate-800 mt-4 mb-2" {...props}>{children}</h3>;
                                       },
-                                      ul: ({ node, children, ...props }) => (
-                                        <ul className="space-y-1.5 ml-4 mb-3" {...props}>{children}</ul>
-                                      ),
-                                      li: ({ node, children, ...props }) => (
-                                        <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed" {...props}>
-                                          <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                                          <span>{children}</span>
-                                        </li>
-                                      )
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-1">{children}</ul>,
+                                      li: ({ children }) => <li className="text-slate-600 font-medium">{children}</li>,
                                     }}
                                   >
                                     {upd.text}
@@ -9696,139 +10033,26 @@ function AdminPanel({
                             </div>
                           </div>
                         ) : (
-                          <div className="text-sm font-bold text-slate-700 leading-relaxed overflow-hidden">
-                            <ReactMarkdown 
-                              remarkPlugins={[remarkBreaks]} 
-                              rehypePlugins={[rehypeRaw]}
-                              components={{
-                                h3: ({ node, children, ...props }) => {
-                                  const text = String(children);
-                                  if (text.includes("🚀 What's New")) {
-                                    return (
-                                      <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-2 mb-1 border border-blue-100 shadow-sm" {...props}>
-                                        {children}
-                                      </h3>
-                                    );
-                                  }
-                                  if (text.includes("🛠️ Bug Fixes")) {
-                                    return (
-                                      <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-2 mb-1 border border-rose-100 shadow-sm" {...props}>
-                                        {children}
-                                      </h3>
-                                    );
-                                  }
-                                  if (text.includes("⚡ Improvements")) {
-                                    return (
-                                      <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-2 mb-1 border border-amber-100 shadow-sm" {...props}>
-                                        {children}
-                                      </h3>
-                                    );
-                                  }
-                                  return <h3 className="text-sm font-black text-primary mt-2 mb-1" {...props}>{children}</h3>;
-                                },
-                                ul: ({ node, children, ...props }) => (
-                                  <ul className="space-y-1 ml-2 mb-2" {...props}>{children}</ul>
-                                ),
-                                li: ({ node, children, ...props }) => (
-                                  <li className="flex items-start gap-2 text-slate-700 font-medium text-[13px] leading-relaxed" {...props}>
-                                    <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                                    <span>{children}</span>
-                                  </li>
-                                )
-                              }}
-                            >
-                              {upd.text}
-                            </ReactMarkdown>
+                          <div className="text-sm font-medium text-slate-700 leading-relaxed">
+                            {upd.text}
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           aria-label="Edit Update"
                           onClick={() => {
                             Swal.fire({
                               title: "Edit Update",
-                              html: `
-                                <div class="text-left mb-2 text-sm font-semibold text-slate-700">Version (Optional)</div>
-                                <input id="edit-update-version" class="swal2-input mt-0 mb-4" value="${upd.version || ""}" placeholder="e.g. v1.4.1">
-                                <div class="text-left mb-2 text-sm font-semibold text-slate-700">Title / Category (Optional)</div>
-                                <input id="edit-update-title" class="swal2-input mt-0 mb-4" value="${upd.title || ""}" placeholder="e.g. Applications & GOs">
-                                <div class="text-left mb-2 text-sm font-semibold text-slate-700">Badge/Tag (Optional)</div>
-                                <input id="edit-update-badge" class="swal2-input mt-0 mb-4" value="${upd.badge || ""}" placeholder="e.g. NEW UI or ADMIN">
-                                <div class="text-left mb-2 text-sm font-semibold text-slate-700">Content</div>
-                                <textarea id="edit-update-text" class="swal2-textarea mt-0 mb-4">${upd.text}</textarea>
-                                <div class="text-left mb-2 text-sm font-semibold text-slate-700">Visibility</div>
-                                <select id="edit-update-visibility" class="swal2-select w-full mt-0">
-                                  <option value="public" ${!upd.visibility || upd.visibility === "public" ? "selected" : ""}>Public (Visible to everyone)</option>
-                                  <option value="internal" ${upd.visibility === "internal" ? "selected" : ""}>Admin Panel Only (Hidden from public)</option>
-                                </select>
-                              `,
+                              input: "textarea",
+                              inputValue: upd.text,
                               showCancelButton: true,
-                              confirmButtonText: "Save Changes",
-                              confirmButtonColor: "#2563eb",
-                              preConfirm: () => {
-                                const text = (
-                                  document.getElementById(
-                                    "edit-update-text",
-                                  ) as HTMLTextAreaElement
-                                ).value;
-                                const visibility = (
-                                  document.getElementById(
-                                    "edit-update-visibility",
-                                  ) as HTMLSelectElement
-                                ).value;
-                                const version = (
-                                  document.getElementById(
-                                    "edit-update-version",
-                                  ) as HTMLInputElement
-                                ).value;
-                                const title = (
-                                  document.getElementById(
-                                    "edit-update-title",
-                                  ) as HTMLInputElement
-                                ).value;
-                                const badge = (
-                                  document.getElementById(
-                                    "edit-update-badge",
-                                  ) as HTMLInputElement
-                                ).value;
-                                if (!text) {
-                                  Swal.showValidationMessage(
-                                    "Content cannot be empty!",
-                                  );
-                                  return null;
-                                }
-                                return {
-                                  text,
-                                  visibility,
-                                  version,
-                                  title,
-                                  badge,
-                                };
-                              },
-                            }).then((result) => {
-                              if (result.isConfirmed) {
-                                const newVals = result.value;
-                                if (
-                                  newVals.text !== upd.text ||
-                                  newVals.visibility !== upd.visibility ||
-                                  newVals.version !== upd.version ||
-                                  newVals.title !== upd.title ||
-                                  newVals.badge !== upd.badge
-                                ) {
-                                  setDoc(
-                                    doc(db, "updates", upd.id),
-                                    {
-                                      ...upd,
-                                      text: newVals.text,
-                                      visibility: newVals.visibility,
-                                      version: newVals.version || null,
-                                      title: newVals.title || null,
-                                      badge: newVals.badge || null,
-                                      updatedAt: Date.now(),
-                                    },
-                                    { merge: true },
-                                  )
+                            }).then((res) => {
+                              if (res.isConfirmed && res.value) {
+                                if (res.value !== upd.text) {
+                                  updateDoc(doc(db, "updates", upd.id), {
+                                    text: res.value,
+                                  })
                                     .then(() =>
                                       addToast("Update modified successfully!"),
                                     )
@@ -9896,6 +10120,303 @@ function AdminPanel({
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === "staff_management" && isSuperAdmin && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm text-left">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[22px] flex items-center justify-center shadow-sm border border-blue-100/50">
+                  <Shield size={28} />
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
+                    సిబ్బంది & అనుమతుల నిర్వహణ (Staff & Permissions)
+                  </h4>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                     User IDలు, సెక్యూరిటీ పిన్స్ మరియు కార్యాచరణ అనుమతుల నిర్వహణ
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <a
+                  href="#rbac-matrix"
+                  className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white hover:bg-black shadow-lg transition-all flex items-center gap-2"
+                >
+                  <Lock size={14} /> Permissions Matrix
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {users
+                .filter((u: any) => ["admin", "editor", "moderator"].includes((u.role || "").toLowerCase()))
+                .map((u: any) => {
+                  const userPinData = allUserPins.find(p => p.id === u.id);
+                  return (
+                    <motion.div
+                      layout
+                      key={u.id}
+                      className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group text-left"
+                    >
+                      <div className="absolute top-0 right-0 p-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          u.role === "admin" ? "bg-red-50 text-red-600 border border-red-100" :
+                          u.role === "editor" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                          "bg-amber-50 text-amber-600 border border-amber-100"
+                        }`}>
+                          {u.role || "Staff"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt={u.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <User size={30} className="text-slate-300" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-black text-slate-800 truncate leading-tight">
+                            {u.name || "Anonymous Staff"}
+                          </h3>
+                          <p className="text-xs font-bold text-slate-400 truncate">
+                            {u.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t border-slate-50">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">User Unique ID</p>
+                          <code className="text-[10px] font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded-lg block truncate">
+                            {u.id}
+                          </code>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                            Access Security PIN
+                            <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded uppercase">Verified</span>
+                          </p>
+                          <div className="flex items-center gap-2">
+                             <div className="flex-1 bg-slate-900 text-white font-mono text-xl tracking-[0.5em] py-2 px-4 rounded-xl text-center shadow-inner border border-slate-800">
+                               {userPinData?.pin || "NOT SET"}
+                             </div>
+                             <button
+                               onClick={() => {
+                                 Swal.fire({
+                                   title: `Reset PIN for ${u.name}`,
+                                   input: 'text',
+                                   inputLabel: 'Enter New 4-Digit PIN',
+                                   inputAttributes: {
+                                      maxlength: '4',
+                                      autocapitalize: 'off',
+                                      autocorrect: 'off'
+                                   },
+                                   showCancelButton: true,
+                                   confirmButtonText: 'Update PIN',
+                                   confirmButtonColor: '#2563eb'
+                                 }).then(async (result) => {
+                                   if (result.isConfirmed && result.value) {
+                                      if (result.value.length === 4) {
+                                         await setDoc(doc(db, "user_pins", u.id), { pin: result.value }, { merge: true });
+                                         addToast("PIN Updated Successfully");
+                                      } else {
+                                         addToast("PIN must be 4 digits");
+                                      }
+                                   }
+                                 });
+                               }}
+                               className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                             >
+                               <Settings2 size={18} />
+                             </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Role Assignment</p>
+                           <div className="flex gap-2">
+                              {["admin", "editor", "moderator"].map(role => (
+                                 <button
+                                    key={role}
+                                    onClick={async () => {
+                                       try {
+                                          await updateDoc(doc(db, "users", u.id), { role });
+                                          addToast(`Role changed to ${role}`);
+                                       } catch (e: any) {
+                                          addToast(e.message);
+                                       }
+                                    }}
+                                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
+                                       u.role === role 
+                                       ? "bg-slate-900 border-slate-900 text-white" 
+                                       : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"
+                                    }`}
+                                 >
+                                    {role}
+                                 </button>
+                              ))}
+                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+
+              {users.filter((u: any) => ["admin", "editor", "moderator"].includes((u.role || "").toLowerCase())).length === 0 && (
+                <div className="col-span-full p-20 text-center bg-white border-2 border-dashed border-slate-100 rounded-[48px]">
+                   <ShieldOff size={40} className="mx-auto text-slate-200 mb-4" />
+                   <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">No Staff Members Found</h3>
+                   <p className="text-xs font-bold text-slate-350 mt-2">Promote users from local directory to see them here.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Permissions Matrix Section */}
+            <div id="rbac-matrix" className="bg-white p-10 rounded-[44px] border border-slate-100 shadow-xl space-y-8 mt-12 animate-in fade-in duration-700 text-left">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-50">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                    <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Lock size={22} /></span>
+                    కార్యాచరణ అనుమతుల నియంత్రణ (Permissions Matrix)
+                  </h3>
+                  <p className="text-slate-400 font-bold mt-1 text-xs uppercase tracking-widest pl-14">
+                    Set permissions for staff roles globally
+                  </p>
+                </div>
+                
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-fit">
+                  {["editor", "moderator"].map((role) => (
+                    <button
+                      key={role}
+                      onClick={() => setSelectedRbacRole(role)}
+                      className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        selectedRbacRole === role ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      👤 {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-[32px] border border-slate-50">
+                <table className="w-full text-left border-collapse bg-white">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <th className="py-5 pl-8 text-left">Module NAME</th>
+                      <th className="py-5 text-center">VIEW (చూడవచ్చు)</th>
+                      <th className="py-5 text-center">EDIT (మార్చవచ్చు)</th>
+                      <th className="py-5 text-center">DELETE (తొలగింపు)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-left">
+                    {Object.entries({
+                      dash: { name: "Analytics Hub", desc: "ముఖ్యమైన గణాంకాలు & గ్రాఫ్‌ల వీక్షణ" },
+                      reports: { name: "Posts & Issues ( సమస్యలు )", desc: "పౌరుల సమస్యల పరిష్కారం, మరియు పోస్టుల అనుమతి" },
+                      gos_formats: { name: "GOs & Formats ( జీవోలు )", desc: "సర్కారు కొత్త జీవోలు, దరఖాస్తు ఫార్మాట్ల నియంత్రణ" },
+                      updates: { name: "Flash News ( ఫ్లాష్ న్యూస్ )", desc: "ముఖ్యమైన ప్రకటనలు, స్క్రోలింగ్ తాజా వార్తలు" },
+                      users: { name: "User Access ( యూజర్ల అడ్మిన్ )", desc: "మెంబర్ల సమాచారం మరియు సిబ్బంది నియామక బాధ్యతలు" },
+                      builder: { name: "Page Builder ( డిజైన్ బిల్డర్ )", desc: "వెబ్ సైట్ ప్రధాన పేజీ లేఅవుట్ మార్చుకునే సదుపాయం" },
+                      locations: { name: "Manage Locations ( లొకేషన్లు )", desc: "మండలాలు, గ్రామ పంచాయతీల జాబితా ఎడిట్ చెయ్" },
+                      suggestions: { name: "Admin Feedback ( సలహాలు )", desc: "పౌరుల సలహాల స్వీకరణ మరియు వారి ఫీడ్ బ్యాక్ సమాధానాలు" },
+                      trash: { name: "Recycle Bin ( డస్ట్ బిన్ )", desc: "డిలీట్ చేసిన రికార్డుల రీసైకిల్ వీక్షణ మరియు పునరుద్ధరణ" },
+                      logs: { name: "Security Logs ( లాగ్లు )", desc: "అడ్మిన్ల లాగిన్ మరియు ఎడిట్ లాగ్ వివరాల డేటాబేస్" },
+                      settings: { name: "System Config ( కాన్ఫిగరేషన్ )", desc: "అడ్మిన్ యాక్సెస్ పిన్ మార్చుకునే సమగ్ర సిస్టమ్ సెట్టింగ్స్" },
+                      ai: { name: "Gemini AI Node ( అసిస్టెంట్ )", desc: "జెమినీ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అసిస్టెంట్ యాక్సెస్" }
+                    }).map(([key, item]) => {
+                      const currentPerm = rbacPermissions?.[selectedRbacRole]?.[key] || DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || { view: false, edit: false, delete: false };
+                      return (
+                        <tr key={key} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-5 pl-8 text-left pr-4">
+                            <p className="font-bold text-slate-800 text-sm leading-tight">{item.name}</p>
+                            <p className="text-[10px] text-slate-400 mt-1 font-bold">{item.desc}</p>
+                          </td>
+                          <td className="py-5 text-center">
+                            <input
+                              type="checkbox"
+                              checked={!!currentPerm.view}
+                              onChange={(e) => {
+                                const updated = { ...rbacPermissions };
+                                if (!updated[selectedRbacRole]) updated[selectedRbacRole] = {};
+                                if (!updated[selectedRbacRole][key]) updated[selectedRbacRole][key] = {};
+                                updated[selectedRbacRole][key].view = e.target.checked;
+                                if (!e.target.checked) {
+                                  updated[selectedRbacRole][key].edit = false;
+                                  updated[selectedRbacRole][key].delete = false;
+                                }
+                                setRbacPermissions(updated);
+                              }}
+                              className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-5 text-center">
+                            <input
+                              type="checkbox"
+                              disabled={!currentPerm.view}
+                              checked={!!currentPerm.edit}
+                              onChange={(e) => {
+                                const updated = { ...rbacPermissions };
+                                if (!updated[selectedRbacRole]) updated[selectedRbacRole] = {};
+                                if (!updated[selectedRbacRole][key]) updated[selectedRbacRole][key] = {};
+                                updated[selectedRbacRole][key].edit = e.target.checked;
+                                setRbacPermissions(updated);
+                              }}
+                              className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-5 text-center">
+                            <input
+                              type="checkbox"
+                              disabled={!currentPerm.view}
+                              checked={!!currentPerm.delete}
+                              onChange={(e) => {
+                                const updated = { ...rbacPermissions };
+                                if (!updated[selectedRbacRole]) updated[selectedRbacRole] = {};
+                                if (!updated[selectedRbacRole][key]) updated[selectedRbacRole][key] = {};
+                                updated[selectedRbacRole][key].delete = e.target.checked;
+                                setRbacPermissions(updated);
+                              }}
+                              className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-50">
+                <button
+                  onClick={() => setRbacPermissions({ ...DEFAULT_PERMISSIONS })}
+                  className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all border border-slate-100"
+                >
+                  Reset To Defaults
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await setDoc(doc(db, "settings", "rbac_permissions"), {
+                        roles: rbacPermissions,
+                        lastUpdated: Date.now(),
+                        updatedBy: auth.currentUser?.email || "Super Admin"
+                      });
+                      addToast("🔐 permissions updated successfully!");
+                    } catch (err: any) {
+                      addToast(err.message);
+                    }
+                  }}
+                  className="px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-600/25 transition-all"
+                >
+                  Save Global Config
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -10108,6 +10629,150 @@ function AdminPanel({
                   />
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === "rbac" && isSuperAdmin && (
+          <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all pb-12 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
+              <div className="text-left">
+                <h3 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                  <span className="p-3 bg-blue-100 text-blue-600 rounded-3xl"><Lock size={26} /></span>
+                  కార్యాచరణ అనుమతుల నియంత్రణ (Permissions Matrix)
+                </h3>
+                <p className="text-slate-500 font-bold mt-2 text-sm">
+                  విభిన్న సిబ్బంది పాత్రలు (Roles) కోసం ఖచ్చితమైన వ్యూ/ఎడిట్/డిలీట్ అనుమతులను ఇక్కడ డైనమిక్గా సెట్ చేయండి.
+                </p>
+              </div>
+              
+              <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
+                {["editor", "moderator"].map((role) => (
+                  <button
+                    key={role}
+                    aria-label={`Select ${role}`}
+                    onClick={() => setSelectedRbacRole(role)}
+                    className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                      selectedRbacRole === role ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-705"
+                    }`}
+                  >
+                    👤 {role.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-[32px] border border-slate-100 shadow-sm">
+              <table className="w-full text-left border-collapse bg-white">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <th className="py-5 pl-8 text-left">మాడ్యూల్ పేరు (Module)</th>
+                    <th className="py-5 text-center">చూడవచ్చు (View)</th>
+                    <th className="py-5 text-center">మార్చవచ్చు (Edit)</th>
+                    <th className="py-5 text-center">తొలగించవచ్చు (Delete)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {Object.entries({
+                    dash: { name: "Analytics Hub", desc: "ముఖ్యమైన గణాంకాలు & గ్రాఫ్‌ల వీక్షణ" },
+                    reports: { name: "Posts & Issues ( సమస్యలు )", desc: "పౌరుల సమస్యల పరిష్కారం, మరియు పోస్టుల అనుమతి" },
+                    gos_formats: { name: "GOs & Formats ( జీవోలు )", desc: "సర్కారు కొత్త జీవోలు, దరఖాస్తు ఫార్మాట్ల నియంత్రణ" },
+                    updates: { name: "Flash News ( ఫ్లాష్ న్యూస్ )", desc: "ముఖ్యమైన ప్రకటనలు, స్క్రోలింగ్ తాజా వార్తలు" },
+                    users: { name: "User Access ( యూజర్ల అడ్మిన్ )", desc: "మెంబర్ల సమాచారం మరియు సిబ్బంది నియామక బాధ్యతలు" },
+                    builder: { name: "Page Builder ( డిజైన్ బిల్డర్ )", desc: "వెబ్ సైట్ ప్రధాన పేజీ లేఅవుట్ మార్చుకునే సదుపాయం" },
+                    locations: { name: "Manage Locations ( లొకేషన్లు )", desc: "మండలాలు, గ్రామ పంచాయతీల జాబితా ఎడిట్ చెయ్" },
+                    suggestions: { name: "Admin Feedback ( సలహాలు )", desc: "పౌరుల సలహాల స్వీకరణ మరియు వారి ఫీడ్ బ్యాక్ సమాధానాలు" },
+                    trash: { name: "Recycle Bin ( డస్ట్ బిన్ )", desc: "డిలీట్ చేసిన రికార్డుల రీసైకిల్ వీక్షణ మరియు పునరుద్ధరణ" },
+                    logs: { name: "Security Logs ( లాగ్లు )", desc: "అడ్మిన్ల లాగిన్ మరియు ఎడిట్ లాగ్ వివరాల డేటాబేస్" },
+                    settings: { name: "System Config ( కాన్ఫిగరేషన్ )", desc: "అడ్మిన్ యాక్సెస్ పిన్ మార్చుకునే సమగ్ర సిస్టమ్ సెట్టింగ్స్" },
+                    ai: { name: "Gemini AI Node ( అసిస్టెంట్ )", desc: "జెమినీ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అసిస్టెంట్ యాక్సెస్" }
+                  }).map(([key, item]) => {
+                    const currentPerm = rbacPermissions?.[selectedRbacRole]?.[key] || DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || { view: false, edit: false, delete: false };
+                    return (
+                      <tr key={key} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-5 pl-8 text-left pr-4">
+                          <p className="font-bold text-slate-850 text-sm">{item.name}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 font-semibold">{item.desc}</p>
+                        </td>
+                        <td className="py-5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!!currentPerm.view}
+                            onChange={(e) => {
+                              const updated = { ...rbacPermissions };
+                              if (!updated[selectedRbacRole]) updated[selectedRbacRole] = {};
+                              if (!updated[selectedRbacRole][key]) updated[selectedRbacRole][key] = {};
+                              updated[selectedRbacRole][key].view = e.target.checked;
+                              if (!e.target.checked) {
+                                updated[selectedRbacRole][key].edit = false;
+                                updated[selectedRbacRole][key].delete = false;
+                              }
+                              setRbacPermissions(updated);
+                            }}
+                            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-5 text-center">
+                          <input
+                            type="checkbox"
+                            disabled={!currentPerm.view}
+                            checked={!!currentPerm.edit}
+                            onChange={(e) => {
+                              const updated = { ...rbacPermissions };
+                              if (!updated[selectedRbacRole]) updated[selectedRbacRole] = {};
+                              if (!updated[selectedRbacRole][key]) updated[selectedRbacRole][key] = {};
+                              updated[selectedRbacRole][key].edit = e.target.checked;
+                              setRbacPermissions(updated);
+                            }}
+                            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                        <td className="py-5 text-center">
+                          <input
+                            type="checkbox"
+                            disabled={!currentPerm.view}
+                            checked={!!currentPerm.delete}
+                            onChange={(e) => {
+                              const updated = { ...rbacPermissions };
+                              if (!updated[selectedRbacRole]) updated[selectedRbacRole] = {};
+                              if (!updated[selectedRbacRole][key]) updated[selectedRbacRole][key] = {};
+                              updated[selectedRbacRole][key].delete = e.target.checked;
+                              setRbacPermissions(updated);
+                            }}
+                            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setRbacPermissions({ ...DEFAULT_PERMISSIONS })}
+                className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-650 hover:bg-slate-200 transition-all"
+              >
+                Reset to Defaults
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await setDoc(doc(db, "settings", "rbac_permissions"), {
+                      roles: rbacPermissions,
+                      lastUpdated: Date.now(),
+                      updatedBy: auth.currentUser?.email || "Super Admin"
+                    });
+                    addToast("🔐 కార్యాచరణ అనుమతులు డైనమిక్గా అప్‌డేట్ అయ్యాయి!");
+                  } catch (err: any) {
+                    addToast("మార్పులు చేయడంలో విఫలమైంది: " + err.message);
+                  }
+                }}
+                className="px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-500 shadow-xl shadow-blue-600/25 cursor-pointer transition-all"
+              >
+                Save Permissions • కాన్ఫిగ్ సేవ్‌చెయ్
+              </button>
             </div>
           </div>
         )}
@@ -10719,10 +11384,16 @@ function AdminPanel({
         {activeSubTab === "locations" && (
           <LocationManager districtsData={districtsData} addToast={addToast} />
         )}
-      </main>
+      </div>
+    )}
+  </main>
       <ManaBot currentTab={currentTab} userName={userProfile?.name} />
     </div>
   );
+}
+
+function EditorPanel(props: any) {
+  return <AdminPanel {...props} isEditorMode={true} hasPostsOnly={true} />;
 }
 
 function StatCard({
@@ -13624,7 +14295,7 @@ function DSRAnalyzer({
           <div className="mt-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Database size={14} /> Mandal-wise Summary Dashboard
+                <Database size={14} /> Mandal-wise Summary Hub
               </h4>
               <div className="bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-2">
                 <Info size={12} className="text-emerald-600" />
@@ -14329,36 +15000,16 @@ function PostCard({
                 remarkPlugins={[remarkBreaks]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
-                  h3: ({ node, children, ...props }) => {
+                  h3: ({ children }) => {
                     const text = String(children);
                     if (text.includes("🚀 What's New")) {
-                      return (
-                        <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm" {...props}>
-                          {children}
-                        </h3>
-                      );
+                      return <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm">{children}</h3>;
                     }
-                    if (text.includes("🛠️ Bug Fixes")) {
-                      return (
-                        <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm" {...props}>
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("⚡ Improvements")) {
-                      return (
-                        <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm" {...props}>
-                          {children}
-                        </h3>
-                      );
-                    }
-                    return <h3 className="text-lg font-black text-primary mt-4 mb-2" {...props}>{children}</h3>;
+                    return <h3 className="text-lg font-black text-primary mt-4 mb-2">{children}</h3>;
                   },
-                  ul: ({ node, children, ...props }) => (
-                    <ul className="space-y-1.5 ml-4 mb-4" {...props}>{children}</ul>
-                  ),
-                  li: ({ node, children, ...props }) => (
-                    <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed" {...props}>
+                  ul: ({ children }) => <ul className="space-y-1.5 ml-4 mb-4">{children}</ul>,
+                  li: ({ children }) => (
+                    <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed">
                       <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
                       <span>{children}</span>
                     </li>
@@ -14385,6 +15036,7 @@ function PostCard({
                                  src={att.url}
                                  alt={att.name}
                                  loading="lazy"
+                                 referrerPolicy="no-referrer"
                                  className="w-full h-40 object-cover transition-transform group-hover:scale-105"
                                />
                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -14539,7 +15191,7 @@ function PostCard({
          </>
       )}
 
-      <div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-6">
+      <div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-auto">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <button
@@ -14895,6 +15547,16 @@ function PostForm({
         addToast(`${i + 1}/${paramsFiles.length} ఫైల్ అప్‌లోడ్ అవుతోంది: ${file.name}...`);
         const result = await uploadFile(file);
         setAttachments((prev) => [...prev, result]);
+        
+        // Auto-set primary media if not set and this is an image
+        if (!media && file.type.startsWith('image/')) {
+          setMedia({
+            url: result.url,
+            type: file.type,
+            name: file.name
+          });
+        }
+        
         addToast(`${file.name} విజయవంతంగా అప్‌లోడ్ చేయబడింది!`);
       }
 
@@ -15095,14 +15757,14 @@ function PostForm({
           createdAt: Date.now(),
           uid: auth.currentUser.uid,
           userEmail: auth.currentUser.email || "",
-          userName: isEditor
+          userName: (isEditor || isAdmin)
             ? "Admin"
             : currentUserProfile?.username ||
               auth.currentUser.displayName ||
               "User",
-          userPhoto: isEditor ? "" : currentUserProfile?.photoURL || "",
-          isAdminPost: isEditor,
-          status: isEditor ? "Approved" : "Pending",
+          userPhoto: (isEditor || isAdmin) ? "" : currentUserProfile?.photoURL || "",
+          isAdminPost: (isEditor || isAdmin),
+          status: (isEditor || isAdmin) ? "Approved" : "Pending",
         });
 
         const hasUpdateTag = finalTags.some((tag) =>
@@ -15438,32 +16100,32 @@ function PostForm({
                         const text = String(children);
                         if (text.includes("🚀 What's New")) {
                           return (
-                            <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm" {...props}>
+                            <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm">
                               {children}
                             </h3>
                           );
                         }
                         if (text.includes("🛠️ Bug Fixes")) {
                           return (
-                            <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm" {...props}>
+                            <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm">
                               {children}
                             </h3>
                           );
                         }
                         if (text.includes("⚡ Improvements")) {
                           return (
-                            <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm" {...props}>
+                            <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm">
                               {children}
                             </h3>
                           );
                         }
-                        return <h3 className="text-lg font-black text-primary mt-4 mb-2" {...props}>{children}</h3>;
+                        return <h3 className="text-lg font-black text-primary mt-4 mb-2">{children}</h3>;
                       },
                       ul: ({ node, children, ...props }) => (
-                        <ul className="space-y-1.5 ml-4 mb-4" {...props}>{children}</ul>
+                        <ul className="space-y-1.5 ml-4 mb-4">{children}</ul>
                       ),
                       li: ({ node, children, ...props }) => (
-                        <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed" {...props}>
+                        <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed">
                           <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
                           <span>{children}</span>
                         </li>
@@ -15483,17 +16145,31 @@ function PostForm({
                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attached Files (Preview)</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                         {attachments.map((att, idx) => (
-                           <div key={idx} className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center border border-slate-100 shrink-0 shadow-sm">
-                                <FileText size={16} className="text-blue-500" />
+                         {attachments.map((att, idx) => {
+                           const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || att.url.includes("image");
+                           return (
+                             <div key={idx} className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl relative group">
+                               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 shrink-0 shadow-sm overflow-hidden">
+                                  {isImage ? (
+                                    <img src={att.url} alt="Attached" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <FileText size={16} className="text-blue-500" />
+                                  )}
+                               </div>
+                               <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-[11px] font-bold text-slate-700 truncate">{att.name}</span>
+                                  <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Link Provided</span>
+                               </div>
+                               <button
+                                 type="button"
+                                 onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                                 className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border border-white"
+                               >
+                                 <X size={10} strokeWidth={4} />
+                               </button>
                              </div>
-                             <div className="flex flex-col min-w-0">
-                                <span className="text-[11px] font-bold text-slate-700 truncate">{att.name}</span>
-                                <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Link Provided</span>
-                             </div>
-                           </div>
-                         ))}
+                           );
+                         })}
                       </div>
                    </div>
                 )}
@@ -15515,7 +16191,7 @@ function PostForm({
                   {media.type?.startsWith("video") ? (
                     <video src={media.url} controls className="post-media" />
                   ) : media.type?.startsWith("image") ? (
-                    <img src={media.url} alt="Media preview" className="post-media" loading="lazy" />
+                    <img src={media.url} alt="Media preview" className="post-media" loading="lazy" referrerPolicy="no-referrer" />
                   ) : media.type?.startsWith("audio") ? (
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
@@ -16021,6 +16697,7 @@ function ChatSection({
 
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
+import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
 
 function KnowledgeHubSection() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17367,27 +18044,27 @@ function AuthModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[4000] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.93, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-[280px] sm:max-w-xs bg-white rounded-[16px] shadow-2xl overflow-hidden flex flex-col max-h-[98vh]"
+        className="w-full max-w-[450px] bg-white rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200/50"
       >
-        <div className="bg-[#0f2e4a] p-2 text-white text-center relative flex flex-col items-center">
+        <div className="bg-gradient-to-b from-[#0f2e4a] to-[#0a1f33] p-5 text-white text-center relative flex flex-col items-center border-b border-indigo-950/20 shadow-inner">
           <button
             aria-label="Close auth modal"
             onClick={onClose}
-            className="absolute top-2.5 right-2.5 text-white/60 hover:text-white transition-colors"
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-90"
           >
-            <X size={14} />
+            <X size={16} />
           </button>
 
-          <div className="mb-0.5">
-            <EVAnimatedLogo size={24} />
+          <div className="mb-2 bg-white/5 p-2 rounded-full border border-white/10 shadow-md">
+            <EVAnimatedLogo size={36} />
           </div>
 
           <h2
-            className="text-lg font-black uppercase tracking-widest leading-none mb-0.5"
+            className="text-xl sm:text-2xl font-black uppercase tracking-wider leading-none mb-1 flex items-center gap-1"
             style={{
               color: "#fbe947",
               fontFamily: '"Arial Black", Impact, sans-serif',
@@ -17395,69 +18072,69 @@ function AuthModal({
           >
             E<span style={{ color: "#facc15" }}>-</span>VEDHIKA
           </h2>
-          <p className="text-[7px] font-black text-white/50 uppercase tracking-[0.2em]">
+          <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.22em] pl-0.5">
             Access Your Portal
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2 bg-white custom-scrollbar">
-          <div className="mb-2 text-center">
-            <h3 className="text-sm font-black text-[#0f2e4a] tracking-tight leading-none">
+        <div className="flex-1 overflow-y-auto px-6 py-5 bg-white custom-scrollbar">
+          <div className="mb-5 text-center">
+            <h3 className="text-lg sm:text-xl font-black text-[#0f2e4a] tracking-tight">
               {isSignup ? "Create Account" : "Welcome Back"}
             </h3>
-            <p className="text-[8px] font-bold text-slate-400 mt-0.5">
+            <p className="text-xs font-semibold text-slate-500 mt-1">
               {isSignup
                 ? "Fill in your details to get started."
                 : "Sign in with your credentials."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-1.5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
               <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                      Surname *
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                      Surname <span className="text-rose-500">*</span>
                     </label>
                     <input
                       value={surname}
                       onChange={(e) => setSurname(e.target.value)}
                       placeholder="Surname"
                       required
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                     />
                   </div>
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                      Name *
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                      Name <span className="text-rose-500">*</span>
                     </label>
                     <input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Name"
                       required
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                    Username / Display Name *
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    Username / Display Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Display name"
                     required
-                    className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
                       Gender
                     </label>
                     <select
@@ -17466,7 +18143,7 @@ function AuthModal({
                         setGender(e.target.value);
                         if (e.target.value === "Female") setMobile("");
                       }}
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
                     >
                       <option value="">Select Gender</option>
                       <option>Male</option>
@@ -17475,37 +18152,37 @@ function AuthModal({
                     </select>
                   </div>
                   {gender !== "Female" && (
-                    <div>
-                      <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                        Mobile No *
+                    <div className="flex flex-col">
+                      <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                        Mobile No <span className="text-rose-500">*</span>
                       </label>
                       <input
                         value={mobile}
                         onChange={(e) => setMobile(e.target.value)}
                         placeholder="Phone"
                         required
-                        className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
                       State
                     </label>
                     <select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
                     >
                       <option>Telangana</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                      District
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                      District <span className="text-rose-500">*</span>
                     </label>
                     <select
                       value={district}
@@ -17513,7 +18190,7 @@ function AuthModal({
                         setDistrict(e.target.value);
                         setMandal("");
                       }}
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
                     >
                       <option value="">Select District</option>
                       {Object.keys(districtsData)
@@ -17525,15 +18202,15 @@ function AuthModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
                       Mandal
                     </label>
                     <select
                       value={mandal}
                       onChange={(e) => setMandal(e.target.value)}
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
                       disabled={!district}
                     >
                       <option value="">Select Mandal</option>
@@ -17544,36 +18221,36 @@ function AuthModal({
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
+                  <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
                       Village / GP
                     </label>
                     <input
                       value={village}
                       onChange={(e) => setVillage(e.target.value)}
                       placeholder="Enter Village"
-                      className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
                     Designation
                   </label>
                   <input
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
                     placeholder="Type Designation"
-                    className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                   />
                 </div>
               </>
             )}
 
-            <div>
-              <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                Email Address *
+            <div className="flex flex-col">
+              <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                Email Address <span className="text-rose-500">*</span>
               </label>
               <input
                 value={email}
@@ -17581,14 +18258,14 @@ function AuthModal({
                 type="email"
                 placeholder="email@example.com"
                 required
-                className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
               />
             </div>
 
-            <div className={isSignup ? "grid grid-cols-2 gap-2" : ""}>
-              <div>
-                <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
-                  Password *
+            <div className={isSignup ? "grid grid-cols-2 gap-3" : "flex flex-col"}>
+              <div className="flex flex-col">
+                <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                  Password <span className="text-rose-500">*</span>
                 </label>
                 <input
                   value={password}
@@ -17596,12 +18273,12 @@ function AuthModal({
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                 />
               </div>
               {isSignup && (
-                <div>
-                  <label className="text-[8px] font-black text-[#0f2e4a] uppercase mb-0.5 block tracking-wider">
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
                     Confirm Password
                   </label>
                   <input
@@ -17610,7 +18287,7 @@ function AuthModal({
                     type="password"
                     placeholder="••••••••"
                     required
-                    className="w-full bg-white border border-slate-200 focus:border-[#0f2e4a]/30 px-2 py-1.5 rounded-lg outline-none font-bold text-[10px] text-slate-700 transition-colors"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
                   />
                 </div>
               )}
@@ -17620,10 +18297,10 @@ function AuthModal({
               aria-label={isSignup ? "Register Now" : "Sign In Now"}
               type="submit"
               disabled={loading}
-              className="w-full bg-[#0f2e4a] text-white py-1.5 rounded-[6px] font-black uppercase text-[9px] tracking-widest shadow-md hover:shadow-lg transition-all active:scale-[0.98] mt-px disabled:opacity-50 disabled:transform-none flex justify-center items-center gap-1.5"
+              className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:via-blue-700 hover:to-indigo-800 text-white py-3 px-5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/15 hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-50 disabled:transform-none flex justify-center items-center gap-2 cursor-pointer"
             >
               {loading ? (
-                <Loader2 className="animate-spin mx-auto" size={12} />
+                <Loader2 className="animate-spin text-white" size={15} />
               ) : isSignup ? (
                 "Register Now"
               ) : (
@@ -17634,21 +18311,21 @@ function AuthModal({
 
           {!isSignup && (
             <>
-              <div className="my-2 flex items-center gap-2">
-                <div className="flex-1 h-px bg-slate-100"></div>
-                <span className="text-[7px] font-black text-slate-300 uppercase">
+              <div className="my-4 flex items-center gap-3">
+                <div className="flex-1 h-[1px] bg-slate-200"></div>
+                <span className="text-[10px] font-extrabold text-slate-400 tracking-widest">
                   OR
                 </span>
-                <div className="flex-1 h-px bg-slate-100"></div>
+                <div className="flex-1 h-[1px] bg-slate-200"></div>
               </div>
 
               <button
                 aria-label="Continue with Google"
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full border border-slate-200 py-1.5 rounded-[6px] font-black text-[#0f2e4a] text-[8px] uppercase flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm"
+                className="w-full border-2 border-slate-200 hover:border-slate-300 py-2.5 rounded-xl font-black text-slate-700 hover:text-slate-900 text-xs uppercase flex items-center justify-center gap-2.5 hover:bg-slate-50/50 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24">
+                <svg width="15" height="15" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -17671,11 +18348,11 @@ function AuthModal({
             </>
           )}
 
-          <div className="mt-3 text-center pb-1">
+          <div className="mt-5 text-center pb-2">
             <button
               aria-label={isSignup ? "Switch to Sign In" : "Switch to Sign Up"}
               onClick={() => setIsSignup(!isSignup)}
-              className="text-[#0f2e4a] font-black text-[8px] uppercase underline underline-offset-2 hover:text-[#0a2034] transition-colors"
+              className="text-[#0f2e4a] hover:text-indigo-600 font-extrabold text-xs uppercase tracking-wide transition-colors"
             >
               {isSignup
                 ? "Already have an account? Sign In"

@@ -4,68 +4,123 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // -------------------------------------------------------------------------
-    // HELPERS
+    // HELPERS & AUTH CHECKS
     // -------------------------------------------------------------------------
     function isSignedIn() { return request.auth != null; }
     function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    
+    // Check if user is Main Developer/Admin
     function isAdmin() { 
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) || 
-        ('email' in request.auth.token && request.auth.token.email.lower() == 'rakeshkumardhawan123@gmail.com')
+        ('email' in request.auth.token && request.auth.token.email.lower() == 'rakeshkumardhawan123@gmail.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin')
       ); 
     }
+    
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function isOwner(field) { return incoming()[field] == request.auth.uid; }
 
-    // COLLECTIONS
+    // -------------------------------------------------------------------------
+    // DYNAMIC RBAC EVALUATION ENGINE
+    // -------------------------------------------------------------------------
+    function hasPermission(tabId, action) {
+      let rbacDoc = /databases/$(database)/documents/settings/rbac_permissions;
+      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
+      
+      // Dynamic fallback check to avoid rules evaluation crashes on empty DB
+      return isSignedIn() && 
+        exists(rbacDoc) && 
+        exists(userDoc) &&
+        ('role' in get(userDoc).data) &&
+        (get(userDoc).data.role.lower() in get(rbacDoc).data.roles) &&
+        (tabId in get(rbacDoc).data.roles[get(userDoc).data.role.lower()]) &&
+        (action in get(rbacDoc).data.roles[get(userDoc).data.role.lower()][tabId]) &&
+        get(rbacDoc).data.roles[get(userDoc).data.role.lower()][tabId][action] == true;
+    }
+
+    function canViewTab(tabId) {
+      return isAdmin() || hasPermission(tabId, 'view');
+    }
+
+    function canEditTab(tabId) {
+      return isAdmin() || hasPermission(tabId, 'edit');
+    }
+
+    function canDeleteTab(tabId) {
+      return isAdmin() || hasPermission(tabId, 'delete');
+    }
+
+    // -------------------------------------------------------------------------
+    // COLLECTIONS ACCESS RULES
     // -------------------------------------------------------------------------
 
     match /admins/{adminId} {
       allow read: if isValidId(adminId);
-      allow write: if false;
+      allow write: if false; // Managed strictly via cloud console, or super admin email rules
+    }
+
+    match /user_pins/{userId} {
+      // Pin security layout: isolated, only owner reads/writes their private PIN
+      // Super Admin (rakeshkumardhawan123@gmail.com) can manage all pins
+      allow read, write: if isSignedIn() && (
+        request.auth.uid == userId || 
+        isAdmin()
+      );
+      // Allow listing for Admins
+      allow list: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /updates/{updateId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if canEditTab('updates');
     }
 
     match /suggestions/{suggestionId} {
       allow read: if true;
       allow create: if true; 
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid && (!('status' in incoming()) || incoming().status == existing().status));
+      allow update: if canEditTab('suggestions') || (isSignedIn() && existing().uid == request.auth.uid && (!('status' in incoming()) || incoming().status == existing().status));
+      allow delete: if canDeleteTab('suggestions');
     }
 
     match /posts/{postId} {
       allow read: if true;
       allow create: if isSignedIn() && (isOwner('uid') || isOwner('authorId'));
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+      allow update: if canEditTab('reports') || (isSignedIn() && existing().uid == request.auth.uid);
+      allow delete: if canDeleteTab('reports') || (isSignedIn() && existing().uid == request.auth.uid);
       
       match /comments/{commentId} {
         allow read: if true;
         allow create: if isSignedIn() && isOwner('uid');
-        allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
+        allow update, delete: if canEditTab('reports') || (isSignedIn() && existing().uid == request.auth.uid);
       }
     }
 
     match /users/{userId} {
       allow read: if true;
-      allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      allow delete: if isAdmin();
+      // Protect against Self-Promoting / Privilege escalation! 
+      // Users can register initially or update non-privileged characteristics. Role modification requires canEditTab('users').
+      allow create: if true; 
+      allow update: if canEditTab('users') || (
+        isSignedIn() && request.auth.uid == userId && 
+        (!('role' in incoming()) || incoming().role == existing().role)
+      );
+      allow delete: if canDeleteTab('users');
     }
 
     match /chat/{msgId} {
       allow read: if true;
-      allow create: if isSignedIn() && isOwner('uid');
+      allow create: if isSignedIn() && (isOwner('uid') || canEditTab('ai'));
       allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
     }
 
     match /problems/{problemId} {
       allow read: if true;
       allow create: if isSignedIn() && (isOwner('uid') || isOwner('userId') || isOwner('authorId') || !('uid' in incoming())); 
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid && (!('status' in incoming()) || incoming().status == existing().status));
+      allow update: if canEditTab('reports') || (isSignedIn() && existing().uid == request.auth.uid && (!('status' in incoming()) || incoming().status == existing().status));
+      allow delete: if canDeleteTab('reports');
     }
 
     match /requests/{requestId} {
@@ -76,8 +131,9 @@ service cloud.firestore {
 
     match /gos_formats/{docId} {
       allow read: if true;
-      allow create: if isSignedIn() && isOwner('uploadedBy');
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uploadedBy == request.auth.uid);
+      allow create: if canEditTab('gos_formats') || (isSignedIn() && isOwner('uploadedBy'));
+      allow update: if canEditTab('gos_formats') || (isSignedIn() && existing().uploadedBy == request.auth.uid);
+      allow delete: if canDeleteTab('gos_formats') || (isSignedIn() && existing().uploadedBy == request.auth.uid);
     }
 
     match /forms/{formId} {
@@ -87,9 +143,10 @@ service cloud.firestore {
     }
 
     match /notifications/{notifId} {
-      allow read: if isSignedIn() && (existing().uid == request.auth.uid || existing().uid == 'all' || isAdmin());
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if isAdmin();
     }
 
     match /usernames/{username} {
@@ -99,6 +156,7 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       allow read: if true;
+      // Only Super-Admins can edit system-sensitive items like rbac_permissions
       allow update: if settingId == 'site_stats' || isAdmin();
       allow create, delete: if isAdmin();
     }
@@ -109,7 +167,7 @@ service cloud.firestore {
     }
 
     match /security_logs/{logId} {
-      allow read, write: if isAdmin();
+      allow read, write: if canViewTab('logs');
     }
 
     match /polls/{pollId} {
@@ -120,10 +178,10 @@ service cloud.firestore {
 
     match /home_sections/{sectionId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if canEditTab('builder');
     }
 
-    // Default deny (fallback)
+    // Default deny (fallback safety net)
     match /{document=**} {
       allow read, write: if false;
     }

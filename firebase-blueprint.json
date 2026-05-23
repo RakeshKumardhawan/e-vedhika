@@ -98,9 +98,27 @@
       "properties": {
         "uid": { "type": "string" }
       }
+    },
+    "UserPin": {
+      "title": "User PIN Security Record",
+      "description": "Indicates custom PIN setups for Editors & Moderators.",
+      "type": "object",
+      "properties": {
+        "pin": { "type": "string" },
+        "role": { "type": "string" },
+        "updatedAt": { "type": "integer" }
+      }
     }
   },
   "firestore": {
+    "/user_pins/{userId}": {
+      "schema": "UserPin",
+      "description": "Security access PINs for Editor/Moderator staff."
+    },
+    "/settings/{settingId}": {
+      "schema": "object",
+      "description": "System config settings directory (e.g. rbac_permissions)."
+    },
     "/gos_formats/{docId}": {
       "schema": "GosFormat",
       "description": "GOs and Application documents."
