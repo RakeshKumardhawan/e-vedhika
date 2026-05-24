@@ -127,6 +127,45 @@ async function startServer() {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
+  // --- About Page Content Management ---
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  const aboutContentPath = path.join(dataDir, 'about_content.json');
+  if (!fs.existsSync(aboutContentPath)) {
+    const defaultAbout = {
+      title: "e-Vedhika గురించి (About e-Vedhika)",
+      content: "ఈ వేదిక పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి అధికారులు మరియు సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన తాజా సమాచారం, GO లు, మరియు ఇతర సౌకర్యాలను పొందవచ్చు.\n\n- ప్రభుత్వ జీవోలు (GOs)\n- ఫార్మాట్లు మరియు రిపోర్టులు\n- సిబ్బంది డైరెక్టరీ\n- నాలెడ్జ్ హబ్",
+      lastUpdated: new Date().toISOString()
+    };
+    fs.writeFileSync(aboutContentPath, JSON.stringify(defaultAbout, null, 2));
+  }
+
+  app.get("/api/about", (req, res) => {
+    try {
+      const content = fs.readFileSync(aboutContentPath, "utf8");
+      res.json(JSON.parse(content));
+    } catch (err) {
+      res.status(500).json({ error: "Failed to read about content" });
+    }
+  });
+
+  app.post("/api/about", (req, res) => {
+    try {
+      const { title, content } = req.body;
+      const updatedData = {
+        title: title || "e-Vedhika గురించి (About e-Vedhika)",
+        content: content || "",
+        lastUpdated: new Date().toISOString()
+      };
+      fs.writeFileSync(aboutContentPath, JSON.stringify(updatedData, null, 2));
+      res.json({ success: true, data: updatedData });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update about content" });
+    }
+  });
+
   const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, uploadsDir)
@@ -360,6 +399,23 @@ async function startServer() {
     fs.mkdirSync(farmerPrivateDir, { recursive: true });
   }
 
+  // --- Serve Farmer Registry Reports ---
+  app.get("/api/reports/:filename", (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const safeFilename = path.basename(filename);
+      const filePath = path.join(farmerPrivateDir, safeFilename);
+      
+      if (fs.existsSync(filePath)) {
+        res.download(filePath);
+      } else {
+        res.status(404).json({ error: "File not found" });
+      }
+    } catch (err) {
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
   const farmerStorage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, farmerPrivateDir);
@@ -395,6 +451,7 @@ async function startServer() {
     captchaChallenge?: string;
     captchaSolution?: string;
     userFeedback?: string;
+    uid?: string;
   }
 
   const farmerJobs: Record<string, FarmerJob> = {};
@@ -413,49 +470,53 @@ async function startServer() {
 
   const loadFarmerJobs = () => {
     try {
+      // For privacy and strict compliance with the "no data saved" rule,
+      // we do not load old jobs between server restarts. 
+      // This ensures that all temporary data is effectively wiped when the session ends or server restarts.
       if (fs.existsSync(jobsDbPath)) {
-        const raw = fs.readFileSync(jobsDbPath, "utf8");
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed.farmerJobs === "object") {
-          // Restore jobs from persisted db
-          Object.assign(farmerJobs, parsed.farmerJobs);
-          
-          // Re-queue any that are incomplete (queued/processing) at startup
-          for (const jobId of Object.keys(farmerJobs)) {
-            const j = farmerJobs[jobId];
-            if (j.status === "queued" || j.status === "processing") {
-              const file1Path = path.join(farmerPrivateDir, jobId + '-file1.xlsx');
-              const file2Path = path.join(farmerPrivateDir, jobId + '-file2.xlsx');
-              
-              if (fs.existsSync(file1Path) && fs.existsSync(file2Path)) {
-                console.log(`[FARMER REGISTRY RECOVERY] Job ${jobId} was interrupted. Automatically re-queuing...`);
-                j.status = "queued";
-                j.progress = 0;
-                j.processedRecords = 0;
-                j.error = null;
-                if (!farmerQueue.includes(jobId)) {
-                  farmerQueue.push(jobId);
-                }
-              } else {
-                console.log(`[FARMER REGISTRY RECOVERY] Job ${jobId} was interrupted but input files are missing on disk. Marking as failed.`);
-                j.status = "failed";
-                j.error = "సర్వర్ రీస్టార్ట్ కారణంగా ప్రక్రియ పునఃప్రారంభించవలసి వచ్చింది, కానీ అప్‌లోడ్ చేసిన ఫైళ్లు లభించలేదు. దయచేసి ఫైళ్లను మళ్లీ సమర్పించగలరు.";
-              }
-            }
-          }
-          saveFarmerJobs();
-        }
+        fs.unlinkSync(jobsDbPath);
+        console.log("[FARMER REGISTRY] Persistence wiped for maximum security.");
       }
-    } catch (loadErr) {
-      console.error("[FARMER REGISTRY] Error loading persistence database:", loadErr);
+    } catch (err) {
+      console.error("[FARMER REGISTRY] Cleanup error during startup:", err);
     }
   };
 
   // Run initial loading state on app startup
   loadFarmerJobs();
 
+  // Periodic cleanup of old data (over 10 minutes old) to ensure "no data saved" permanently
+  setInterval(() => {
+    const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+    Object.keys(farmerJobs).forEach(id => {
+      const job = farmerJobs[id];
+      const jobTime = new Date(job.createdAt).getTime();
+      if (jobTime < tenMinutesAgo) {
+        console.log(`[FARMER REGISTRY] Auto-cleaning old job ${id} for privacy compliance.`);
+        if (job.outputPath) {
+          try {
+            const p = path.join(process.cwd(), job.outputPath);
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+          } catch (_) {}
+        }
+        delete farmerJobs[id];
+      }
+    });
+    saveFarmerJobs();
+  }, 60 * 1000); // Check every minute
+
   // Admin APIs for Farmer Registry
   app.get("/api/admin/farmer-jobs", (req, res) => {
+    const { uid } = req.query;
+    if (uid && typeof uid === "string") {
+      const filteredJobs: Record<string, FarmerJob> = {};
+      Object.keys(farmerJobs).forEach(id => {
+        if (farmerJobs[id].uid === uid) {
+          filteredJobs[id] = farmerJobs[id];
+        }
+      });
+      return res.json({ jobs: filteredJobs });
+    }
     res.json({ jobs: farmerJobs });
   });
 
@@ -1185,16 +1246,6 @@ async function startServer() {
 
           console.log(`[FARMER REGISTRY WORKER] Job ${job.id} completed successfully. Generated FILE 4 at: ${outPath}`);
 
-          // STEP 7: Clean up temporary files (FILE 1, FILE 2, and temporary FILE 3)
-          const cleanFile = (p: string) => {
-            try {
-              if (fs.existsSync(p)) fs.unlinkSync(p);
-            } catch (_) {}
-          };
-          cleanFile(file1Path);
-          cleanFile(file2Path);
-          cleanFile(file3Path);
-
           // Point 9: Active RAM Garbage Collection Optimization to avoid OOM limits
           (rows1 as any) = null;
           (rows2 as any) = null;
@@ -1211,6 +1262,19 @@ async function startServer() {
           job.status = "failed";
           job.error = err.message || "An unexpected error occurred during Excel processing.";
           saveFarmerJobs();
+        } finally {
+          // Guaranteed cleanup of temporary input files
+          const cleanFile = (p: string) => {
+            try {
+              if (fs.existsSync(p)) fs.unlinkSync(p);
+            } catch (_) {}
+          };
+          const f1 = path.join(farmerPrivateDir, job.id + '-file1.xlsx');
+          const f2 = path.join(farmerPrivateDir, job.id + '-file2.xlsx');
+          const f3 = path.join(farmerPrivateDir, job.id + '-file3.xlsx');
+          cleanFile(f1);
+          cleanFile(f2);
+          cleanFile(f3);
         }
       }
     } finally {
@@ -1254,6 +1318,7 @@ async function startServer() {
 
       const verificationMode = req.body.verificationMode === "real_live" ? "real_live" : "lightweight";
       const rateLimitMs = parseInt(req.body.rateLimitMs) || 1500;
+      const uid = req.body.uid || "";
 
       farmerJobs[jobId] = {
         id: jobId,
@@ -1271,7 +1336,8 @@ async function startServer() {
         verificationMode,
         rateLimitMs: verificationMode === "real_live" ? rateLimitMs : 150,
         browserLogs: verificationMode === "real_live" ? [`[${new Date().toLocaleTimeString()}] 📥 Job queued for real-time web verification.`] : [],
-        verifiedResults: []
+        verifiedResults: [],
+        uid: uid
       } as any;
 
       farmerQueue.push(jobId);

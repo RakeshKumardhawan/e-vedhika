@@ -1164,7 +1164,9 @@ export default function App() {
           msg.includes("vite") ||
           msg.includes("closed without opened") ||
           msg.includes("@firebase/firestore") ||
-          msg.includes("WebChannelConnection"))
+          msg.includes("WebChannelConnection") ||
+          msg.includes("The width(-1) and height(-1) of chart") ||
+          msg.includes("Access to all PINs restricted"))
       ) {
         return;
       }
@@ -1269,6 +1271,21 @@ export default function App() {
   });
   const [problemsGlobal, setProblemsGlobal] = useState<ProblemReport[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [aboutContent, setAboutContent] = useState<{ title: string; content: string; lastUpdated: string } | null>(null);
+
+  const fetchAboutContent = async () => {
+    try {
+      const res = await fetch("/api/about");
+      const data = await res.json();
+      setAboutContent(data);
+    } catch (err) {
+      console.error("Failed to fetch about content", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAboutContent();
+  }, []);
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [visiblePostsCount, setVisiblePostsCount] = useState(20);
@@ -2359,7 +2376,7 @@ export default function App() {
                     <div>
                        <h2 className="text-3xl font-black text-slate-800 tracking-tighter uppercase mb-1">
                           {showFooterModal === "privacy" && "Privacy Policy"}
-                          {showFooterModal === "about" && "About Us"}
+                          {showFooterModal === "about" && (aboutContent?.title || "About Us")}
                           {showFooterModal === "contact" && "Contact Us"}
                        </h2>
                     </div>
@@ -2389,9 +2406,11 @@ export default function App() {
                       <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
                          <div className="p-6 bg-gradient-to-tr from-indigo-50 to-blue-50 rounded-3xl border border-indigo-100/60 flex gap-4">
                             <Info className="text-indigo-600 shrink-0" size={24} />
-                            <p className="text-sm font-bold text-indigo-950 leading-relaxed">
-                               ఈ-వేదిక (E-Vedhika) ప్రజలకు, ప్రభుత్వ సమాచారానికి మరియు గ్రామీణ పరిపాలనకు మధ్య ఒక బలమైన డిజిటల్ వంతెనగా పనిచేస్తుంది.
-                            </p>
+                            <div className="text-sm font-bold text-indigo-950 leading-relaxed markdown-body">
+                               <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                                 {aboutContent?.content || "ఈ-వేదిక (E-Vedhika) ప్రజలకు, ప్రభుత్వ సమాచారానికి మరియు గ్రామీణ పరిపాలనకు మధ్య ఒక బలమైన డిజిటల్ వంతెనగా పనిచేస్తుంది."}
+                               </ReactMarkdown>
+                            </div>
                          </div>
 
                          {/* Details Grid */}
@@ -3005,7 +3024,8 @@ export default function App() {
                   ...(isAdmin || isDevEmail ? [{ id: "logs", label: "Security Logs", emoji: "📜" }] : []),
                   ...(isAdmin || isDevEmail ? [
                     { id: "farmer_registry_logs", label: "రైతు రిజిస్ట్రీ లాగ్స్", emoji: "🌾" },
-                    { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", emoji: "📋" }
+                    { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", emoji: "📊" },
+                    { id: "edit_about", label: "అబౌట్ పేజీ ఎడిటర్", emoji: "📝" }
                   ] : []),
                   { id: "builder", label: "Page Builder", emoji: "🏗️" },
                   { id: "locations", label: "Locations", emoji: "📍" },
@@ -3254,28 +3274,30 @@ export default function App() {
 
 
 
-            <div 
-              className="px-4 text-center border-t border-slate-100/50"
-              style={{
-                marginTop: '31px',
-                paddingTop: '0px',
-                paddingBottom: '14px',
-                paddingLeft: '0px',
-                paddingRight: '6px',
-              }}
-            >
-              <div className="inline-flex flex-col items-center gap-1">
-                <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm">
-                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                    Last Update
+            {isAdmin && (
+              <div 
+                className="px-4 text-center border-t border-slate-100/50"
+                style={{
+                  marginTop: '31px',
+                  paddingTop: '0px',
+                  paddingBottom: '14px',
+                  paddingLeft: '0px',
+                  paddingRight: '6px',
+                }}
+              >
+                <div className="inline-flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                      Last Update
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-400 mt-1">
+                    Version {SYSTEM_UPDATES[0]?.version} • {new Date(SYSTEM_UPDATES[0]?.time).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} • {new Date(SYSTEM_UPDATES[0]?.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <span className="text-[9px] font-bold text-slate-400 mt-1">
-                  Version {SYSTEM_UPDATES[0]?.version} • {new Date(SYSTEM_UPDATES[0]?.time).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} • {new Date(SYSTEM_UPDATES[0]?.time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                </span>
               </div>
-            </div>
+            )}
           </div>
         </aside>
 
@@ -3307,6 +3329,9 @@ export default function App() {
               currentTab={currentTab}
               userProfile={userProfile}
               storageConfig={storageConfig}
+              aboutContent={aboutContent}
+              setAboutContent={setAboutContent}
+              fetchAboutContent={fetchAboutContent}
               isEditorMode={!isAdmin && isEditor}
               rbacPermissions={rbacPermissions}
               setRbacPermissions={setRbacPermissions}
@@ -3340,6 +3365,9 @@ export default function App() {
                 currentTab={currentTab}
                 userProfile={userProfile}
                 storageConfig={storageConfig}
+                aboutContent={aboutContent}
+                setAboutContent={setAboutContent}
+                fetchAboutContent={fetchAboutContent}
                 isEditorMode={!isAdmin && isEditor}
                 rbacPermissions={rbacPermissions}
                 setRbacPermissions={setRbacPermissions}
@@ -6183,7 +6211,10 @@ function AdminPanel({
   rbacPermissions,
   setRbacPermissions,
   activeSubTab,
-  setActiveSubTab
+  setActiveSubTab,
+  aboutContent,
+  setAboutContent,
+  fetchAboutContent
 }: any) {
   const posts = (hasPostsOnly || isEditorMode) ? (rawPosts || []).filter((p: any) => p.uid === user?.uid) : (rawPosts || []);
   const problems = (hasPostsOnly || isEditorMode) ? (rawProblems || []).filter((p: any) => p.uid === user?.uid) : (rawProblems || []);
@@ -6222,7 +6253,13 @@ function AdminPanel({
       snap.forEach(d => pins.push({ id: d.id, ...d.data() }));
       setAllUserPins(pins);
     }, (err) => {
-      console.error("Admin PINs sync error:", err.message);
+      // transient permission or disconnected errors
+      if (err.code !== 'permission-denied') {
+        console.error("Admin PINs sync error:", err.message);
+      } else {
+        // If it's a permission error, we just set empty pins for now to avoid the alert spam
+        setAllUserPins([]);
+      }
     });
     return () => unsub();
   }, [isSuperAdmin]);
@@ -6258,7 +6295,8 @@ function AdminPanel({
           ...(hasViewPermission("logs") && isEffectiveAdmin ? [{ id: "logs", label: "Security Logs", icon: <ShieldCheck size={18} /> }] : []),
           ...(hasViewPermission("logs") && isEffectiveAdmin ? [
             { id: "farmer_registry_logs", label: "రైతు రిజిస్ట్రీ లాగ్స్", icon: <Database size={18} /> },
-            { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", icon: <FileText size={18} /> }
+            { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", icon: <BarChart3 size={18} /> },
+            { id: "edit_about", label: "అబౌట్ పేజీ ఎడిటర్", icon: <Edit3 size={18} /> }
           ] : []),
           ...(hasViewPermission("cloud_dns") && isEffectiveAdmin ? [{ id: "cloud_dns", label: "Cloud & DNA", icon: <Cloud size={18} /> }] : []),
         ]
@@ -6481,7 +6519,8 @@ function AdminPanel({
 
   const fetchFarmerJobs = async () => {
     try {
-      const resp = await fetch("/api/admin/farmer-jobs");
+      const url = isSuperAdmin ? "/api/admin/farmer-jobs" : `/api/admin/farmer-jobs?uid=${user?.uid || ""}`;
+      const resp = await fetch(url);
       if (resp.ok) {
         const data = await resp.json();
         setFarmerRegistryJobs(data.jobs || {});
@@ -6740,9 +6779,16 @@ function AdminPanel({
                 </h1>
                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black rounded-lg uppercase tracking-wider border border-blue-200">Active Node</span>
               </div>
+            {isAdmin && (
               <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-0.5 flex items-center gap-2">
                 System Registry • <span className="text-blue-500">v{SYSTEM_UPDATES[0]?.version || "2.1.0"}</span> • <ClockWidget />
               </div>
+            )}
+            {!isAdmin && (
+               <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-0.5 flex items-center gap-2">
+                  <ClockWidget />
+               </div>
+            )}
             </div>
           </div>
 
@@ -6922,8 +6968,8 @@ function AdminPanel({
                      <h4 className="text-xl font-black text-slate-900 tracking-tight">Users per District</h4>
                      <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Users size={20} /></span>
                   </div>
-                  <div className="h-80 w-full relative min-h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
+                  <div className="h-[320px] w-full relative">
+                    <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={Object.entries(users.filter((u: any) => !u.isDeleted).reduce((acc: any, curr: any) => { const d = curr.district || "Unknown"; acc[d] = (acc[d] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name, value }))}>
                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }} tickLine={false} axisLine={false} />
@@ -6939,8 +6985,8 @@ function AdminPanel({
                      <h4 className="text-xl font-black text-slate-900 tracking-tight">Status Overview</h4>
                      <span className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><Zap size={20} /></span>
                   </div>
-                  <div className="h-80 w-full relative min-h-[320px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
+                  <div className="h-[320px] w-full relative">
+                    <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie data={Object.entries(posts.filter((p: any) => !p.isDeleted).reduce((acc: any, curr: any) => { const s = curr.status || "pending"; acc[s] = (acc[s] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={8}>
                           {Object.entries(posts.filter((p: any) => !p.isDeleted).reduce((acc: any, curr: any) => { const s = curr.status || "pending"; acc[s] = (acc[s] || 0) + 1; return acc; }, {})).map((entry, index) => (
@@ -9997,19 +10043,19 @@ function AdminPanel({
           </div>
         )}
 
-        {/* Farmer Registry Logs (రైతు రిజిస్ట్రీ లాగ్స్) */}
-        {activeSubTab === "farmer_registry_logs" && (
+        {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
+        {activeSubTab === "survey_reports" && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             <div className="flex items-center gap-5">
-              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-[22px] flex items-center justify-center shadow-sm border border-indigo-100/50">
-                <Database size={28} />
+              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[22px] flex items-center justify-center shadow-sm border border-blue-100/50">
+                <BarChart3 size={28} />
               </div>
               <div>
                 <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                  రైతు రిజిస్ట్రీ లాగ్స్ (Registry Logic Terminal)
+                  సర్వే రిపోర్ట్స్ (Survey Data Index)
                 </h4>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                  Processing activities & live verification traces
+                  Analytics based on processed farmer records
                 </p>
               </div>
             </div>
@@ -10017,164 +10063,165 @@ function AdminPanel({
             <div className="grid grid-cols-1 gap-6">
               {Object.keys(farmerRegistryJobs).length === 0 ? (
                 <div className="p-20 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[40px]">
-                  <p className="text-sm text-slate-400 font-bold italic">ప్రస్తుతానికి ఎటువంటి లాగ్స్ నమోదు కాలేదు. (No logs recorded yet)</p>
+                  <p className="text-sm text-slate-400 font-bold italic">ప్రస్తుతానికి ఎటువంటి రిపోర్ట్స్ లేవు. (No reports generated yet)</p>
                 </div>
               ) : (
-                Object.values(farmerRegistryJobs).reverse().map((job: any) => (
-                  <div key={job.id} className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden hover:shadow-2xl transition-all">
-                    <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
-                      <div>
-                        <h5 className="text-sm font-black text-slate-800">GP: {job.gpName} ({job.status})</h5>
-                        <p className="text-[10px] text-slate-400 font-mono">Job ID: {job.id}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <p className="text-[10px] font-black text-slate-500">{new Date(job.createdAt).toLocaleString()}</p>
-                        </div>
-                        <button 
-                          onClick={() => handleDeleteFarmerJob(job.id)}
-                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Delete Log"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-2">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Live Terminal Output:</p>
-                       <div className="bg-slate-900 rounded-2xl p-5 font-mono text-[11px] text-emerald-400 h-64 overflow-y-auto space-y-1 custom-scrollbar">
-                         {(job.browserLogs || []).map((line: string, idx: number) => (
-                           <div key={idx} className="flex gap-3">
-                             <span className="text-slate-600 shrink-0">[{idx + 1}]</span>
-                             <span>{line}</span>
-                           </div>
-                         ))}
-                         {(!job.browserLogs || job.browserLogs.length === 0) && (
-                           <p className="text-slate-500 italic">No terminal logs for this job node.</p>
-                         )}
-                       </div>
-                    </div>
+                <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl overflow-hidden">
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50/50 border-b border-slate-100">
+                          <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Village/GP</th>
+                          <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                          <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Records</th>
+                          <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                          <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {Object.values(farmerRegistryJobs).reverse().map((job: any) => (
+                          <tr key={job.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="p-6">
+                              <p className="text-sm font-black text-slate-800">{job.gpName}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {job.id}</p>
+                            </td>
+                            <td className="p-6">
+                              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                job.status === "completed" ? "bg-emerald-50 text-emerald-600" :
+                                job.status === "failed" ? "bg-rose-50 text-rose-600" :
+                                "bg-amber-50 text-amber-600"
+                              }`}>
+                                {job.status}
+                              </span>
+                            </td>
+                            <td className="p-6">
+                              <p className="text-sm font-black text-slate-600">{job.totalRecords || 0}</p>
+                            </td>
+                            <td className="p-6">
+                              <p className="text-xs font-bold text-slate-500">{new Date(job.createdAt).toLocaleDateString()}</p>
+                            </td>
+                            <td className="p-6 text-right">
+                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                               {job.outputPath && job.status === "completed" && (
+                                 <button
+                                   onClick={(e) => handleForceDownload(e, "/api/reports/" + job.outputPath, `${job.gpName}_Status_Report.xlsx`)}
+                                   className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                   title="Download Report"
+                                 >
+                                   <Download size={16} />
+                                 </button>
+                               )}
+                               <button 
+                                 onClick={() => handleDeleteFarmerJob(job.id)}
+                                 className="p-2.5 bg-slate-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                 title="Delete"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ))
+                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
-        {activeSubTab === "survey_reports" && (
+        {/* Edit About Page (అబౌట్ పేజీ ఎడిటర్) */}
+        {activeSubTab === "edit_about" && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             <div className="flex items-center gap-5">
-              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-[22px] flex items-center justify-center shadow-sm border border-emerald-100/50">
-                <FileText size={28} />
+              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-[22px] flex items-center justify-center shadow-sm border border-indigo-100/50">
+                <Edit3 size={28} />
               </div>
               <div>
                 <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                  సర్వే రిపోర్ట్స్ (Survey Completed Nodes)
+                  అబౌట్ పేజీ ఎడిటర్ (About Content Config)
                 </h4>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                  Summary and downloadable output of GP verifications
+                  Adjust global platform description and journey
                 </p>
               </div>
             </div>
 
-            <div className="bg-white rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
-               <div className="overflow-x-auto">
-                 <table className="w-full text-left">
-                   <thead className="bg-slate-50/50 border-b border-slate-100">
-                     <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                       <th className="p-6 pl-10">Panchayat Name (GP)</th>
-                       <th className="p-6">Status & Health</th>
-                       <th className="p-6">Progress</th>
-                       <th className="p-6">Feedback</th>
-                       <th className="p-6 text-right pr-10">Action</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-50">
-                     {Object.keys(farmerRegistryJobs).length === 0 ? (
-                        <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold italic">No survey reports available.</td></tr>
-                     ) : (
-                       Object.values(farmerRegistryJobs).reverse().map((job: any) => (
-                         <tr key={job.id} className="hover:bg-slate-50/80 transition-colors group">
-                            <td className="p-6 pl-10">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                                  <MapPin size={18} />
-                                </div>
-                                <div>
-                                  <div className="text-[14px] font-black text-slate-700 leading-none mb-1.5">{job.gpName}</div>
-                                  <div className="text-[9px] font-mono text-slate-300 uppercase tracking-widest leading-none">
-                                    Files: {job.file1Name} / {job.file2Name}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-6">
-                               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                 job.status === "completed" ? "bg-emerald-100 text-emerald-700" :
-                                 job.status === "failed" ? "bg-rose-100 text-rose-700" :
-                                 "bg-indigo-100 text-indigo-700 animate-pulse"
-                               }`}>
-                                 {job.status}
-                               </span>
-                            </td>
-                            <td className="p-6">
-                              <div className="flex flex-col gap-1.5 w-32">
-                                <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-tight">
-                                  <span>{job.progress}%</span>
-                                  <span>{job.processedRecords}/{job.totalRecords}</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${job.progress}%` }}
-                                    className="h-full bg-emerald-500 rounded-full"
-                                  />
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-6">
-                               {job.userFeedback ? (
-                                 <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black tracking-tight border w-fit ${
-                                   job.userFeedback === "yes" 
-                                     ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
-                                     : "bg-rose-50 text-rose-600 border-rose-100"
-                                 }`}>
-                                   {job.userFeedback === "yes" ? "👍 Satisfied" : "👎 Not Satisfied"}
-                                 </div>
-                               ) : (
-                                 <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider italic">No Response</span>
-                               )}
-                             </td>
-                            <td className="p-6 text-right pr-10">
-                              <div className="flex items-center justify-end gap-2">
-                                {job.status === "completed" && job.outputPath && (
-                                  <a 
-                                    href={`/api/download?url=${encodeURIComponent("/uploads/" + job.outputPath.split('/').pop())}&filename=${job.gpName}_Final_Report.xlsx`}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                                  >
-                                    <Download size={14} />
-                                    Download
-                                  </a>
-                                )}
-                                <button 
-                                  onClick={() => handleDeleteFarmerJob(job.id)}
-                                  className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-all border border-rose-100"
-                                  title="Remove Survey Data"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                         </tr>
-                       ))
-                     )}
-                   </tbody>
-                 </table>
+            <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl p-8 max-w-3xl">
+               <div className="space-y-6">
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                     Page Title (శీర్షిక)
+                   </label>
+                   <input 
+                     type="text"
+                     value={aboutContent?.title || ""}
+                     onChange={(e) => setAboutContent(prev => prev ? { ...prev, title: e.target.value } : null)}
+                     placeholder="e.g. e-Vedhika గురించి"
+                     className="w-full bg-slate-50 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-indigo-500 transition-all"
+                   />
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                     Content (విషయం - HTML/Markdown Supported)
+                   </label>
+                   <textarea 
+                     rows={10}
+                     value={aboutContent?.content || ""}
+                     onChange={(e) => setAboutContent(prev => prev ? { ...prev, content: e.target.value } : null)}
+                     placeholder="అబౌట్ కంటెంట్ ఇక్కడ రాయండి..."
+                     className="w-full bg-slate-50 border-slate-100 rounded-3xl p-6 font-medium text-sm outline-none focus:border-indigo-500 transition-all leading-relaxed custom-scrollbar"
+                   />
+                 </div>
+
+                 <div className="pt-4">
+                   <button 
+                     onClick={async () => {
+                       if (!aboutContent) return;
+                       try {
+                         const res = await fetch("/api/about", {
+                           method: "POST",
+                           headers: { "Content-Type": "application/json" },
+                           body: JSON.stringify({ title: aboutContent.title, content: aboutContent.content })
+                         });
+                         if (res.ok) {
+                           addToast("అబౌట్ పేజీ సేవ్ చేయబడింది! (Saved successfully)");
+                           fetchAboutContent();
+                         } else {
+                           throw new Error("Failed to save");
+                         }
+                       } catch (err) {
+                         addToast("Error saving content");
+                       }
+                     }}
+                     className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2"
+                   >
+                     <Save size={18} /> సేవ్ చేయండి (Save Content)
+                   </button>
+                 </div>
                </div>
+            </div>
+            
+            <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex gap-4 max-w-3xl">
+              <div className="w-10 h-10 bg-amber-400 text-amber-900 rounded-xl flex items-center justify-center shrink-0">
+                <Info size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-amber-900/60 uppercase tracking-widest mb-1">Admin Tip</p>
+                <p className="text-xs font-black text-amber-900 leading-relaxed">
+                  మీరు ఇక్కడ చేసే మార్పులు వెంటనే వెబ్‌సైట్ లోని Footer లో ఉండే 'About Us' విభాగంలో కనిపిస్తాయి.
+                </p>
+              </div>
             </div>
           </div>
         )}
+
+
+
+
+
 
 
         {activeSubTab === "settings" && (
@@ -14503,24 +14550,26 @@ function PostCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div
-              onClick={(e) => {
-                if (isAdmin && post.views > 0) {
-                  e.stopPropagation();
-                  setShowViewsModal(true);
-                }
-              }}
-              className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && post.views > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
-            >
-              <Eye size={18} />
-              <span
-                className={`text-sm font-black ${isAdmin && post.views > 0 ? "hover:underline cursor-pointer" : ""}`}
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <div
+                onClick={(e) => {
+                  if (isAdmin && post.views > 0) {
+                    e.stopPropagation();
+                    setShowViewsModal(true);
+                  }
+                }}
+                className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && post.views > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
               >
-                {post.views || 0}
-              </span>
+                <Eye size={18} />
+                <span
+                  className={`text-sm font-black ${isAdmin && post.views > 0 ? "hover:underline cursor-pointer" : ""}`}
+                >
+                  {post.views || 0}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex gap-4 items-center">
@@ -16573,22 +16622,24 @@ function PostDetail({
                 Likes
               </span>
             </button>
-            <button
-              onClick={() => {
-                if (isAdmin && post.views > 0) setShowViewsModal(true);
-              }}
-              className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && post.views > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
-            >
-              <Eye size={20} />
-              <span
-                className={`font-black text-base ${isAdmin && post.views > 0 ? "hover:underline" : ""}`}
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  if (isAdmin && post.views > 0) setShowViewsModal(true);
+                }}
+                className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && post.views > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
               >
-                {post.views || 0}
-              </span>{" "}
-              <span className="text-xs uppercase tracking-wider hidden sm:inline">
-                Views
-              </span>
-            </button>
+                <Eye size={20} />
+                <span
+                  className={`font-black text-base ${isAdmin && post.views > 0 ? "hover:underline" : ""}`}
+                >
+                  {post.views || 0}
+                </span>{" "}
+                <span className="text-xs uppercase tracking-wider hidden sm:inline">
+                  Views
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

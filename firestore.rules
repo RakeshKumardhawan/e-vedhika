@@ -17,9 +17,15 @@ function isSuperAdmin() {
 }
 
 // 2. ADMIN/MODERATOR: సూపర్ అడ్మిన్ లేదా భవిష్యత్తులో అడ్మిన్ ప్యానెల్ ద్వారా యాడ్ చేయబడిన వారు
+// బ్రేకప్ సర్క్యులర్ డిపెండెన్సీ: exists() కాలింగ్ isAdmin() ని నివారించాలి
 function isAdmin() { 
   return isSuperAdmin() || 
          (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))); 
+}
+
+// గ్లోబల్ సూపర్ అడ్మిన్ పర్మిషన్: ఏ ఎర్రర్ రాకుండా ఉండటానికి
+match /{anyPath=**} {
+  allow read, write: if isSuperAdmin();
 }
 
 function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -45,7 +51,7 @@ match /pins/{pinId} {
 
 // ADMINS కలెక్షన్: కొత్త ఎడిటర్స్ ని యాడ్ చేసే పవర్ కేవలం "Super Admin" కి మాత్రమే
 match /admins/{adminId} {
-  allow read: if isValidId(adminId) && isAdmin();
+  allow read: if isValidId(adminId) && (isSuperAdmin() || (isSignedIn() && request.auth.uid == adminId));
   allow write: if isSuperAdmin(); 
 }
 

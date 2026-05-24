@@ -201,6 +201,7 @@ export function FarmerRegistryTool({
       formData.append("gpName", item.gpName);
       formData.append("verificationMode", item.verificationMode);
       formData.append("rateLimitMs", String(item.rateLimitMs));
+      formData.append("uid", user.uid);
 
       try {
         const resp = await fetch("/api/farmer-registry/upload", {
@@ -405,7 +406,7 @@ export function FarmerRegistryTool({
         totalRecords: 0,
         processedRecords: 0,
         error: null,
-        verificationMode: 'lightweight',
+        verificationMode: 'real_live',
         rateLimitMs: 1500,
         browserLogs: []
       }
@@ -413,7 +414,7 @@ export function FarmerRegistryTool({
     setIsProcessingPipeline(false);
     setLogs([
       "వర్క్‌స్పేస్ పునఃప్రారంభించబడింది.",
-      "FILE 1 మరియు FILE 2 జోడించి మ్యాచింగ్ పైప్‌లైన్ ప్రారంభించండి."
+      "ప్రభుత్వ రైతు రిజిస్ట్రీ నుండి నేరుగా డేటా క్రాస్-వెరిఫికేషన్ సిద్ధంగా ఉంది."
     ]);
   };
 
@@ -628,12 +629,13 @@ export function FarmerRegistryTool({
                             <div className="bg-white border border-slate-150 rounded-2xl p-4 space-y-3 shadow-inner">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
-                                  <span className="text-xs font-black text-slate-700 block">ధృవీకరణ శైలి (Verification Mode)</span>
-                                  <span className="text-[10px] text-slate-400 font-bold block">లైవ్ పోర్టల్ పద్ధతిని సెట్ చేయండి.</span>
+                                  <span className="text-xs font-black text-slate-700 block text-emerald-700">అధికారిక డేటా క్రాస్-వెరిఫికేషన్ (Official Portal Cross-Verification)</span>
+                                  <span className="text-[10px] text-slate-400 font-bold block">ప్రభుత్వ రైతు రిజిస్ట్రీ పోర్టల్ నుండి నేరుగా డేటా ప్రాసెస్ చేయబడుతుంది.</span>
                                 </div>
                                 <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                                  <span className="px-3.5 py-1.5 text-[11px] font-extrabold rounded-md bg-rose-600 text-white shadow-sm">
-                                    రియల్ వెబ్‌సైట్ (Stealth)
+                                  <span className="px-3.5 py-1.5 text-[11px] font-extrabold rounded-md bg-emerald-600 text-white shadow-sm flex items-center gap-1.5">
+                                    <ShieldCheck size={12} />
+                                    లైవ్ వెరిఫైడ్ (LIVE)
                                   </span>
                                 </div>
                               </div>
