@@ -1408,7 +1408,7 @@ async function startServer() {
       if (postId) {
         try {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
-          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}`;
+          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/%28default%29/documents/posts/${postId}`;
           const firestoreResp = await fetchObj(firestoreUrl);
           
           if (firestoreResp.ok) {
@@ -1423,18 +1423,20 @@ async function startServer() {
             const mediaUrl = fields.mediaUrl?.stringValue || "";
 
             html = html.replace(/<title>.*?<\/title>/, `<title>${postTitle} - E-Vedhika</title>`);
-            html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/, `<meta property="og:title" content="${postTitle}" />`);
-            html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/, `<meta property="og:description" content="${postDesc}" />`);
-            html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/, `<meta name="twitter:title" content="${postTitle}" />`);
-            html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/, `<meta name="twitter:description" content="${postDesc}" />`);
+            // Be more flexible with the meta tag structure
+            html = html.replace(/<meta\s+property="og:title"\s+content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${postTitle}" />`);
+            html = html.replace(/<meta\s+property="og:description"\s+content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${postDesc}" />`);
+            html = html.replace(/<meta\s+name="twitter:title"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:title" content="${postTitle}" />`);
+            html = html.replace(/<meta\s+name="twitter:description"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:description" content="${postDesc}" />`);
+            
             if (mediaUrl) {
               const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${req.protocol}://${req.get('host')}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
-              html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/, `<meta property="og:image" content="${absMediaUrl}" />`);
-              html = html.replace(/<meta property="og:image:secure_url" content=".*?"\s*\/?>/, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
-              html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/, `<meta name="twitter:image" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+property="og:image"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
             }
-            html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/, `<meta property="og:url" content="${fullBaseUrl}${req.originalUrl}" />`);
-            html = html.replace(/<meta name="twitter:url" content=".*?"\s*\/?>/, `<meta name="twitter:url" content="${fullBaseUrl}${req.originalUrl}" />`);
+            html = html.replace(/<meta\s+property="og:url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:url" content="${fullBaseUrl}${req.originalUrl}" />`);
+            html = html.replace(/<meta\s+name="twitter:url"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:url" content="${fullBaseUrl}${req.originalUrl}" />`);
           }
         } catch (err) {
           console.error("Failed to generate dynamic OG preview:", err);

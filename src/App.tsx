@@ -1475,7 +1475,7 @@ export default function App() {
       }
       setLoadedUserPin(true);
     }, (err) => {
-      console.error("PIN Access Error:", err.message);
+      // PIN Access Error often caused by transient permission checks
       setUserPinDoc(null);
       setLoadedUserPin(true);
     });

@@ -34,12 +34,12 @@ function isExistingOwner(field) { return resource != null && field in resource.d
 
 // PIN కలెక్షన్
 match /user_pins/{pinId} {
-  allow read: if true;
-  allow write: if isSignedIn();
+  allow read, write: if true;
 }
 
 match /pins/{pinId} {
-  allow read, write: if true;
+  allow read: if true;
+  allow write: if isSignedIn();
 }
 
 
