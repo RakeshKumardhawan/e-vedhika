@@ -1917,9 +1917,8 @@ export default function App() {
 
       try {
         const isAdminEmail = [
-          "rakeshkumardhawan123@gmail.com",
-          "mpo.kasipett@gmail.com",
-        ].includes(result.user.email || "");
+          "rakeshkumardhawan123@gmail.com"
+        ].includes(result.user.email?.toLowerCase() || "");
         await addDoc(collection(db, "security_logs"), {
           [isAdminEmail ? "admin" : "userEmail"]: result.user.email,
           action: `Google Login (${navigator.userAgent.substring(0, 50)}...)`,
@@ -2387,13 +2386,54 @@ export default function App() {
                     )}
 
                     {showFooterModal === "about" && (
-                      <div className="space-y-6">
-                         <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 flex gap-4">
-                            <Info className="text-indigo-500 shrink-0" size={24} />
-                            <p className="text-sm font-bold text-indigo-700 leading-relaxed">This platform acts as a strong digital bridge between citizens and the government.</p>
+                      <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                         <div className="p-6 bg-gradient-to-tr from-indigo-50 to-blue-50 rounded-3xl border border-indigo-100/60 flex gap-4">
+                            <Info className="text-indigo-600 shrink-0" size={24} />
+                            <p className="text-sm font-bold text-indigo-950 leading-relaxed">
+                               ఈ-వేదిక (E-Vedhika) ప్రజలకు, ప్రభుత్వ సమాచారానికి మరియు గ్రామీణ పరిపాలనకు మధ్య ఒక బలమైన డిజిటల్ వంతెనగా పనిచేస్తుంది.
+                            </p>
                          </div>
-                         <div className="space-y-4 text-slate-600 font-medium">
-                            <p>E-Vedhika is a state-of-the-art digital system designed to increase transparency from the village and ward level to the state level. It helps every citizen to get information directly from the government and resolve their issues.</p>
+
+                         {/* Details Grid */}
+                         <div className="space-y-6 text-slate-700">
+                            {/* Who built it */}
+                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-start">
+                               <div className="p-3 bg-indigo-600 text-white rounded-xl font-bold text-sm select-none">
+                                  రూపకర్త
+                                </div>
+                               <div>
+                                  <h3 className="text-base font-black text-slate-800 mb-1">రాకేష్ కుమార్ ధావన్ (Rakesh Kumar Dhawan)</h3>
+                                  <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                                     ఈ-వేదిక పోర్టల్‌ను కేవలం ఒక వ్యక్తి రూపకల్పనగా కాకుండా, గ్రామీణ పరిపాలన మరియు రైతు సేవలను అత్యంత వేగవంతం చేయడానికి సహాయపడే ఒక సమగ్ర వ్యవస్థగా **రాకేష్ కుమార్ ధావన్** గారు రూపొందించారు.
+                                  </p>
+                               </div>
+                            </div>
+
+                            {/* How it was made */}
+                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-start">
+                               <div className="p-3 bg-blue-600 text-white rounded-xl font-bold text-sm select-none">
+                                  విధానం
+                                </div>
+                               <div>
+                                  <h3 className="text-base font-black text-slate-800 mb-1">అత్యాధునిక సాంకేతిక పరిజ్ఞానం (How it was Built)</h3>
+                                  <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                                     ఈ వ్యవస్థను **React, Tailwind CSS, Firestore Database మరియు Node.js** వంటి అత్యాధునిక సాఫ్ట్‌వేర్ టూల్స్ ఉపయోగించి నిర్మించారు. క్లిష్టమైన జీవోలు (GOs), పంచాయతీ చట్టాలు (PR Act Database) మరియు రైతు సర్వే నివేదికలను ఆటోమేటిక్ విధానంలో క్షణాల్లో విశ్లేషించి ప్రింట్ ఇవ్వగల విధంగా ఇది మలచబడింది.
+                                  </p>
+                               </div>
+                            </div>
+
+                            {/* When it was made */}
+                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-start">
+                               <div className="p-3 bg-emerald-600 text-white rounded-xl font-bold text-sm select-none">
+                                  ప్రయాణం
+                                </div>
+                               <div>
+                                  <h3 className="text-base font-black text-slate-800 mb-1">అభివృద్ధి కాలక్రమం (When was it Built)</h3>
+                                  <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                                     ఈ పోర్టల్ ప్రారంభంలో **2024 - 2025** మధ్య కాలంలో పునాది వేయబడింది. అప్పటి నుండి నిరంతరం నూతన సాంకేతిక మెరుగుదలలు, రైతు రిజిస్ట్రీ వెరిఫికేషన్ అప్‌డేట్స్ మరియు మరెన్నో అద్భుతమైన ఫీచర్లతో కూడిన సరికొత్త వెర్షన్లతో (ప్రస్తుతం వెర్షన్ 1.4+ / 2.0) రూపాంతరం చెందుతూ ముందుకు సాగుతోంది.
+                                  </p>
+                               </div>
+                            </div>
                          </div>
                       </div>
                     )}

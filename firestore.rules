@@ -1,187 +1,156 @@
 rules_version = '2';
 
 service cloud.firestore {
-  match /databases/{database}/documents {
-    
-    // -------------------------------------------------------------------------
-    // HELPERS & AUTH CHECKS
-    // -------------------------------------------------------------------------
-    function isSignedIn() { return request.auth != null; }
-    function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
-    
-    // Check if user is Main Developer/Admin
-    function isAdmin() { 
-      return isSignedIn() && (
-        ('email' in request.auth.token && request.auth.token.email.lower() == 'rakeshkumardhawan123@gmail.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin')
-      ); 
-    }
-    
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
-    function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
-    function isOwner(field) { return incoming()[field] == request.auth.uid; }
+match /databases/{database}/documents {
 
-    // -------------------------------------------------------------------------
-    // DYNAMIC RBAC EVALUATION ENGINE
-    // -------------------------------------------------------------------------
-    function hasPermission(tabId, action) {
-      let rbacDoc = /databases/$(database)/documents/settings/rbac_permissions;
-      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
-      
-      // Dynamic fallback check to avoid rules evaluation crashes on empty DB
-      return isSignedIn() && 
-        exists(rbacDoc) && 
-        exists(userDoc) &&
-        ('role' in get(userDoc).data) &&
-        (get(userDoc).data.role.lower() in get(rbacDoc).data.roles) &&
-        (tabId in get(rbacDoc).data.roles[get(userDoc).data.role.lower()]) &&
-        (action in get(rbacDoc).data.roles[get(userDoc).data.role.lower()][tabId]) &&
-        get(rbacDoc).data.roles[get(userDoc).data.role.lower()][tabId][action] == true;
-    }
+// -------------------------------------------------------------------------
+// HELPERS (సహాయక ఫంక్షన్లు)
+// -------------------------------------------------------------------------
+function isSignedIn() { return request.auth != null; }
+function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
 
-    function canViewTab(tabId) {
-      return isAdmin() || hasPermission(tabId, 'view');
-    }
+// 1. SUPER ADMIN: కేవలం ఈ ఈమెయిల్ కి మాత్రమే పూర్తి అధికారాలు (బాస్/వెబ్ డెవలపర్)
+function isSuperAdmin() {
+  return isSignedIn() && 
+         'email' in request.auth.token && 
+         (request.auth.token.email == 'rakeshkumardhawan123@gmail.com' || request.auth.token.email == 'Rakeshkumardhawan123@gmail.com');
+}
 
-    function canEditTab(tabId) {
-      return isAdmin() || hasPermission(tabId, 'edit');
-    }
+// 2. ADMIN/MODERATOR: సూపర్ అడ్మిన్ లేదా భవిష్యత్తులో అడ్మిన్ ప్యానెల్ ద్వారా యాడ్ చేయబడిన వారు
+function isAdmin() { 
+  return isSuperAdmin() || 
+         (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))); 
+}
 
-    function canDeleteTab(tabId) {
-      return isAdmin() || hasPermission(tabId, 'delete');
-    }
+function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+function incoming() { return request.resource.data; }
+function existing() { return resource == null ? {} : resource.data; }
+function isOwner(field) { return field in incoming() && incoming()[field] == request.auth.uid; }
+function isExistingOwner(field) { return resource != null && field in resource.data && resource.data[field] == request.auth.uid; }
 
-    // -------------------------------------------------------------------------
-    // COLLECTIONS ACCESS RULES
-    // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// COLLECTIONS
+// -------------------------------------------------------------------------
 
-    match /admins/{adminId} {
-      allow read: if isValidId(adminId);
-      allow write: if false; // Managed strictly via cloud console, or super admin email rules
-    }
+// PIN కలెక్షన్
+match /user_pins/{pinId} {
+  allow read: if true;
+  allow write: if isSignedIn();
+}
 
-    match /user_pins/{userId} {
-      // Pin security: access restricted to owner or admin. 
-      // Rakesh (rakeshkumardhawan123@gmail.com) can see all.
-      allow read, write: if isSignedIn() && (
-        request.auth.uid == userId || 
-        request.auth.token.email.lower() == "rakeshkumardhawan123@gmail.com" ||
-        isAdmin()
-      );
-    }
+match /pins/{pinId} {
+  allow read, write: if true;
+}
 
-    match /updates/{updateId} {
-      allow read: if true;
-      allow write: if canEditTab('updates');
-    }
 
-    match /suggestions/{suggestionId} {
-      allow read: if true;
-      allow create: if true; 
-      allow update: if canEditTab('suggestions') || (isSignedIn() && existing().uid == request.auth.uid && (!('status' in incoming()) || incoming().status == existing().status));
-      allow delete: if canDeleteTab('suggestions');
-    }
+// ADMINS కలెక్షన్: కొత్త ఎడిటర్స్ ని యాడ్ చేసే పవర్ కేవలం "Super Admin" కి మాత్రమే
+match /admins/{adminId} {
+  allow read: if isValidId(adminId) && isAdmin();
+  allow write: if isSuperAdmin(); 
+}
 
-    match /posts/{postId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (isOwner('uid') || isOwner('authorId'));
-      allow update: if canEditTab('reports') || (isSignedIn() && existing().uid == request.auth.uid);
-      allow delete: if canDeleteTab('reports') || (isSignedIn() && existing().uid == request.auth.uid);
-      
-      match /comments/{commentId} {
-        allow read: if true;
-        allow create: if isSignedIn() && isOwner('uid');
-        allow update, delete: if canEditTab('reports') || (isSignedIn() && existing().uid == request.auth.uid);
-      }
-    }
+match /updates/{updateId} {
+  allow read: if true;
+  allow write: if isAdmin(); // పబ్లిక్ యాక్సెస్ తీసేసి అడ్మిన్ కి మాత్రమే ఇచ్చాం
+}
 
-    match /users/{userId} {
-      allow read: if true;
-      // Protect against Self-Promoting / Privilege escalation! 
-      // Users can register initially or update non-privileged characteristics. Role modification requires canEditTab('users').
-      allow create: if true; 
-      allow update: if canEditTab('users') || (
-        isSignedIn() && request.auth.uid == userId && 
-        (!('role' in incoming()) || incoming().role == existing().role)
-      );
-      allow delete: if canDeleteTab('users');
-    }
+match /suggestions/{suggestionId} {
+  allow read: if true;
+  allow create: if true; 
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid') && (!('status' in incoming()) || incoming().status == (resource == null ? null : resource.data.status)));
+}
 
-    match /chat/{msgId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (isOwner('uid') || canEditTab('ai'));
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
-    }
-
-    match /problems/{problemId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (isOwner('uid') || isOwner('userId') || isOwner('authorId') || !('uid' in incoming())); 
-      allow update: if canEditTab('reports') || (isSignedIn() && existing().uid == request.auth.uid && (!('status' in incoming()) || incoming().status == existing().status));
-      allow delete: if canDeleteTab('reports');
-    }
-
-    match /requests/{requestId} {
-      allow read: if true;
-      allow create: if isSignedIn() && isOwner('uid');
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
-    }
-
-    match /gos_formats/{docId} {
-      allow read: if true;
-      allow create: if canEditTab('gos_formats') || (isSignedIn() && isOwner('uploadedBy'));
-      allow update: if canEditTab('gos_formats') || (isSignedIn() && existing().uploadedBy == request.auth.uid);
-      allow delete: if canDeleteTab('gos_formats') || (isSignedIn() && existing().uploadedBy == request.auth.uid);
-    }
-
-    match /forms/{formId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || (isSignedIn() && existing().uid == request.auth.uid);
-    }
-
-    match /notifications/{notifId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if isAdmin();
-    }
-
-    match /usernames/{username} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    match /settings/{settingId} {
-      allow read: if true;
-      // Only Super-Admins can edit system-sensitive items like rbac_permissions
-      allow update: if settingId == 'site_stats' || isAdmin();
-      allow create, delete: if isAdmin();
-    }
-
-    match /app_errors/{docId} {
-      allow create: if true;
-      allow read, update, delete: if isAdmin();
-    }
-
-    match /security_logs/{logId} {
-      allow read, write: if canViewTab('logs');
-    }
-
-    match /polls/{pollId} {
-      allow read: if true;
-      allow create, update: if isAdmin() || isSignedIn();
-      allow delete: if isAdmin();
-    }
-
-    match /home_sections/{sectionId} {
-      allow read: if true;
-      allow write: if canEditTab('builder');
-    }
-
-    // Default deny (fallback safety net)
-    match /{document=**} {
-      allow read, write: if false;
-    }
+match /posts/{postId} {
+  allow read: if true;
+  allow create: if isSignedIn() && (isOwner('uid') || isOwner('authorId'));
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
+  
+  match /comments/{commentId} {
+    allow read: if true;
+    allow create: if isSignedIn() && isOwner('uid');
+    allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   }
+}
+
+match /users/{userId} {
+  allow read: if true; 
+  allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+  allow delete: if isSuperAdmin(); // అకౌంట్స్ డిలీట్ చేసే పవర్ కేవలం సూపర్ అడ్మిన్ కి మాత్రమే
+}
+
+match /chat/{msgId} {
+  allow read: if true;
+  allow create: if isSignedIn() && isOwner('uid');
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
+}
+
+match /problems/{problemId} {
+  allow read: if true;
+  allow create: if isSignedIn() && (isOwner('uid') || isOwner('userId') || isOwner('authorId') || !('uid' in incoming())); 
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid') && (!('status' in incoming()) || incoming().status == (resource == null ? null : resource.data.status)));
+}
+
+match /requests/{requestId} {
+  allow read: if true;
+  allow create: if isSignedIn() && isOwner('uid');
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
+}
+
+match /gos_formats/{docId} {
+  allow read: if true;
+  allow create: if isSignedIn() && isOwner('uploadedBy');
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uploadedBy'));
+}
+
+match /forms/{formId} {
+  allow read: if true;
+  allow create: if isSignedIn();
+  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
+}
+
+match /notifications/{notifId} {
+  allow read: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || resource.data.uid == 'all' || isAdmin());
+  allow create: if isSignedIn(); // Users can create notifications for mentions etc
+  allow update, delete: if isSignedIn() && (isExistingOwner('uid') || isAdmin());
+}
+
+match /usernames/{username} {
+  allow read: if true;
+  allow write: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid);
+}
+
+match /settings/{settingId} {
+  allow read: if true;
+  allow update: if settingId == 'site_stats' || isAdmin();
+  allow create, delete: if isSuperAdmin();
+}
+
+// యాప్ ఎర్రర్స్ చూడటం, డిలీట్ చేయడం కేవలం సూపర్ అడ్మిన్ మాత్రమే
+match /app_errors/{docId} {
+  allow create: if true;
+  allow read, update, delete: if isSuperAdmin(); 
+}
+
+// సెక్యూరిటీ లాగ్స్ కూడా కేవలం సూపర్ అడ్మిన్ కే
+match /security_logs/{logId} {
+  allow read, write: if isSuperAdmin(); 
+}
+
+match /polls/{pollId} {
+  allow read: if true;
+  allow create, update: if isAdmin() || isSignedIn();
+  allow delete: if isAdmin();
+}
+
+match /home_sections/{sectionId} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+
+// Default deny (fallback) - పైన పేర్కొనని కలెక్షన్స్ ఏవైనా ఉంటే వాటిని బ్లాక్ చేస్తుంది
+match /{document=**} {
+  allow read, write: if false;
+}
+
+}
 }

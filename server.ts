@@ -1401,9 +1401,9 @@ async function startServer() {
       const fullBaseUrl = `${protocol}://${host}`;
 
       // Global replacements for correct previews even on home page
-      html = html.replace(/https:\/\/e-vedhika\.onrender\.com\//g, `${fullBaseUrl}/`);
+      html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
       html = html.replace(/property="og:url" content="\/"/g, `property="og:url" content="${fullBaseUrl}/"`);
-      html = html.replace(/content="\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
+      html = html.replace(/content="(\.\/|\/)banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
 
       if (postId) {
         try {
@@ -1417,21 +1417,24 @@ async function startServer() {
 
             const postTitle = fields.title?.stringValue || "E-Vedhika Post";
             const rawContent = fields.content?.stringValue || "";
-            const postDesc = rawContent.slice(0, 160) + (rawContent.length > 160 ? "..." : "");
+            // Remove markdown or html tags from description for OG tags
+            const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`]/g, "").trim();
+            const postDesc = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
             const mediaUrl = fields.mediaUrl?.stringValue || "";
 
             html = html.replace(/<title>.*?<\/title>/, `<title>${postTitle} - E-Vedhika</title>`);
-            html = html.replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${postTitle}" />`);
-            html = html.replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${postDesc}" />`);
-            html = html.replace(/<meta name="twitter:title" content=".*?" \/>/, `<meta name="twitter:title" content="${postTitle}" />`);
-            html = html.replace(/<meta name="twitter:description" content=".*?" \/>/, `<meta name="twitter:description" content="${postDesc}" />`);
+            html = html.replace(/<meta property="og:title" content=".*?"\s*\/?>/, `<meta property="og:title" content="${postTitle}" />`);
+            html = html.replace(/<meta property="og:description" content=".*?"\s*\/?>/, `<meta property="og:description" content="${postDesc}" />`);
+            html = html.replace(/<meta name="twitter:title" content=".*?"\s*\/?>/, `<meta name="twitter:title" content="${postTitle}" />`);
+            html = html.replace(/<meta name="twitter:description" content=".*?"\s*\/?>/, `<meta name="twitter:description" content="${postDesc}" />`);
             if (mediaUrl) {
-              const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${req.protocol}://${req.get('host')}${mediaUrl}`;
-              html = html.replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${absMediaUrl}" />`);
-              html = html.replace(/<meta name="twitter:image" content=".*?" \/>/, `<meta name="twitter:image" content="${absMediaUrl}" />`);
+              const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${req.protocol}://${req.get('host')}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
+              html = html.replace(/<meta property="og:image" content=".*?"\s*\/?>/, `<meta property="og:image" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta property="og:image:secure_url" content=".*?"\s*\/?>/, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta name="twitter:image" content=".*?"\s*\/?>/, `<meta name="twitter:image" content="${absMediaUrl}" />`);
             }
-            html = html.replace(/<meta property="og:url" content=".*?" \/>/, `<meta property="og:url" content="${req.protocol}://${req.get('host')}${req.originalUrl}" />`);
-            html = html.replace(/<meta name="twitter:url" content=".*?" \/>/, `<meta name="twitter:url" content="${req.protocol}://${req.get('host')}${req.originalUrl}" />`);
+            html = html.replace(/<meta property="og:url" content=".*?"\s*\/?>/, `<meta property="og:url" content="${fullBaseUrl}${req.originalUrl}" />`);
+            html = html.replace(/<meta name="twitter:url" content=".*?"\s*\/?>/, `<meta name="twitter:url" content="${fullBaseUrl}${req.originalUrl}" />`);
           }
         } catch (err) {
           console.error("Failed to generate dynamic OG preview:", err);
