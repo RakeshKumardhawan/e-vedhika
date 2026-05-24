@@ -353,7 +353,7 @@ async function startServer() {
   });
 
   app.use('/uploads', express.static(uploadsDir));
-
+  
   // --- Farmer Registry Live Verification Private Setup & Background Worker ---
   const farmerPrivateDir = path.join('/tmp', 'farmer-registry-private');
   if (!fs.existsSync(farmerPrivateDir)) {
@@ -394,6 +394,7 @@ async function startServer() {
     captchaRequired?: boolean;
     captchaChallenge?: string;
     captchaSolution?: string;
+    userFeedback?: string;
   }
 
   const farmerJobs: Record<string, FarmerJob> = {};
@@ -452,6 +453,51 @@ async function startServer() {
 
   // Run initial loading state on app startup
   loadFarmerJobs();
+
+  // Admin APIs for Farmer Registry
+  app.get("/api/admin/farmer-jobs", (req, res) => {
+    res.json({ jobs: farmerJobs });
+  });
+
+  app.delete("/api/admin/farmer-jobs/:id", (req, res) => {
+    const { id } = req.params;
+    const job = farmerJobs[id];
+    if (job) {
+      console.log(`[ADMIN] Deleting farmer job: ${id}`);
+      
+      // Cleanup files on disk
+      try {
+        const file1 = path.join(farmerPrivateDir, id + '-file1.xlsx');
+        const file2 = path.join(farmerPrivateDir, id + '-file2.xlsx');
+        if (fs.existsSync(file1)) fs.unlinkSync(file1);
+        if (fs.existsSync(file2)) fs.unlinkSync(file2);
+        if (job.outputPath) {
+          const outPath = path.join(process.cwd(), job.outputPath);
+          if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+        }
+      } catch (err) {
+        console.error(`[ADMIN] Cleanup failed for job ${id}:`, err);
+      }
+
+      delete farmerJobs[id];
+      saveFarmerJobs();
+      res.json({ success: true, message: `Job ${id} deleted.` });
+    } else {
+      res.status(404).json({ success: false, message: "Job not found." });
+    }
+  });
+
+  app.post("/api/farmer-jobs/:id/feedback", (req, res) => {
+    const { id } = req.params;
+    const { feedback } = req.body;
+    if (farmerJobs[id]) {
+      farmerJobs[id].userFeedback = feedback;
+      saveFarmerJobs();
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, message: "Job not found." });
+    }
+  });
 
   const maskAadhaarLog = (aadhaar: string) => {
     if (!aadhaar) return "N/A";

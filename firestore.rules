@@ -62,15 +62,13 @@ service cloud.firestore {
     }
 
     match /user_pins/{userId} {
-      // Pin security layout: isolated, only owner reads/writes their private PIN
-      // Super Admin (rakeshkumardhawan123@gmail.com) can manage all pins
+      // Pin security: access restricted to owner or admin. 
+      // Rakesh (rakeshkumardhawan123@gmail.com) can see all.
       allow read, write: if isSignedIn() && (
         request.auth.uid == userId || 
+        request.auth.token.email.lower() == "rakeshkumardhawan123@gmail.com" ||
         isAdmin()
       );
-      // Allow listing for Admins
-      allow list: if isAdmin();
-      allow delete: if isAdmin();
     }
 
     match /updates/{updateId} {

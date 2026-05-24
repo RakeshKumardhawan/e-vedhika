@@ -15,9 +15,11 @@ import {
   Play,
   Plus,
   ArrowRight,
-  Lock
+  Lock,
+  Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { AuthModal } from "./AuthModal";
 
 interface JobStatus {
   id: string;
@@ -60,9 +62,17 @@ interface GPWorkRow {
 interface FarmerRegistryToolProps {
   user?: any;
   onLoginClick?: () => void;
+  handleGoogleLogin: () => void;
+  addToast: (msg: string) => void;
 }
 
-export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolProps = {}) {
+export function FarmerRegistryTool({ 
+  user, 
+  onLoginClick,
+  handleGoogleLogin,
+  addToast
+}: FarmerRegistryToolProps) {
+  const [showAuthLocal, setShowAuthLocal] = useState(false);
   const [gpRows, setGpRows] = useState<GPWorkRow[]>([
     {
       id: "gp-" + Date.now() + "-1",
@@ -166,6 +176,12 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
   };
 
   const startPipelineVerification = async () => {
+    if (!user) {
+      addToast("ఫైల్స్ అప్లోడ్ చేయడానికి దయచేసి లాగిన్ అవ్వండి.");
+      onLoginClick?.();
+      return;
+    }
+
     const itemsToProcess = gpRows.filter(x => x.status === "pending" && x.file1 && x.file2);
     if (itemsToProcess.length === 0) {
       setLogs(prev => [...prev, "⚠️ క్యూలో ప్రాసెస్ చేయడానికి పూర్తి ఫైల్ జతలు ఏవీ లేవు! దయచేసి FILE 1 మరియు FILE 2 రెండింటినీ ఎంచుకోండి."]);
@@ -326,9 +342,53 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
     }
   };
 
+  const [showFeedback, setShowFeedback] = useState<string | null>(null);
+
   const handleDownload = (item: GPWorkRow) => {
     if (!item.jobId || item.status !== "completed") return;
-    window.location.href = `/api/farmer-registry/download/${item.jobId}`;
+    
+    // Format: [PANCHAYAT_NAME] FARMER REGISTRY BALANCE FARMERS.xlsx
+    const cleanGpName = item.gpName.trim().toUpperCase();
+    const fileName = `${cleanGpName} FARMER REGISTRY BALANCE FARMERS`.replace(/\s+/g, ' ') + ".xlsx";
+    
+    const link = document.createElement("a");
+    link.href = `/api/farmer-registry/download/${item.jobId}`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Show feedback after a small delay
+    setTimeout(() => {
+      setShowFeedback(item.id);
+    }, 1500);
+  };
+
+  const shareReport = async (item: GPWorkRow) => {
+    if (!item.jobId || item.status !== "completed") return;
+
+    const shareUrl = window.location.origin + "/Farmer_Registry";
+    const shareText = `*E-Vedhika | Farmer Registry Verification Result*\n\nGP: ${item.gpName}\nStatus: Verified ✅\n\nDownload Final File 4: ${shareUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Farmer Registry Report",
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.log("Error sharing:", err);
+      }
+    } else {
+      // Fallback: Copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert("రిపోర్ట్ లింక్ కాపీ చేయబడింది! (Link copied to clipboard)");
+      } catch (err) {
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank");
+      }
+    }
   };
 
   const clearAll = () => {
@@ -376,15 +436,39 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
               <h1 className="text-2xl md:text-3xl font-black tracking-tight mt-1 text-white">
                 Farmer Registry Live Verification
               </h1>
-              <p className="text-sm text-slate-300 font-bold tracking-normal mt-1">
-                రైతు రిజిస్ట్రీ ఎన్‌రోల్‌మెంట్ ఆటోమేటిక్ ల్యాండ్ విలీనం మరియు లైవ్ వెరిఫికేషన్ నివేదిక సాధనం
-              </p>
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                <p className="text-sm text-slate-300 font-bold tracking-normal">
+                  రైతు రిజిస్ట్రీ ఎన్‌రోల్‌మెంట్ ఆటోమేటిక్ ల్యాండ్ విలీనం మరియు లైవ్ వెరిఫికేషన్ నివేదిక సాధనం
+                </p>
+                <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] font-black text-emerald-300 uppercase tracking-wider">100% Website Status Tracking</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="space-y-6">
+        {/* New Status Update Banner */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-indigo-600/10 border border-indigo-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm"
+        >
+          <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+            <RefreshCw size={24} />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-indigo-900 uppercase tracking-tight">ముఖ్య గమనిక (Status Tracking Guide)</h4>
+            <p className="text-xs text-indigo-800 font-bold mt-1 leading-relaxed">
+              మీరు అప్లోడ్ చేసిన ఫైల్స్ యొక్క స్టేటస్ ను ఇప్పుడు 100% ఈ వెబ్సైట్ ద్వారానే నేరుగా చూసుకోవచ్చు. 
+              ప్రతి రికార్డు వెరిఫికేషన్ ప్రోగ్రెస్ ను రియల్-టైమ్ లో ట్రాక్ చేయబడుతుంది.
+            </p>
+          </div>
+        </motion.div>
+
         {/* Workspace row designer */}
         <div className="space-y-6">
           <div className="bg-white rounded-3xl border border-slate-100 shadow-xl p-6 md:p-8 space-y-6">
@@ -446,7 +530,7 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
                             ? "bg-indigo-100 text-indigo-700 animate-pulse"
                             : "bg-slate-200 text-slate-500"
                         }`}>
-                          {row.status === "pending" ? "వారధి సిద్ధంగా ఉంది" : row.status}
+                          {row.status === "pending" ? "వారధి సిద్ధంగా ఉంది" : row.status.replace('_', ' ')}
                         </span>
 
                         {gpRows.length > 1 && row.status === "pending" && (
@@ -469,15 +553,15 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
                               <Lock size={18} />
                             </div>
                             <div>
-                              <p className="text-xs font-black text-slate-700">ఫైల్స్ అప్‌లోడ్ చేయడానికి దయచేసి లాగిన్ అవ్వండి</p>
-                              <p className="text-[10px] text-slate-400 font-medium mt-1">రైతు రిజిస్ట్రీ ఆధారిత ఆటోమేటిక్ ల్యాండ్ విలీనం మరియు తనిఖీల కొరకు లాగిన్ అవ్వడం తప్పనిసరి.</p>
+                              <p className="text-xs font-black text-slate-700">ముందుగా లాగిన్ చేయండి</p>
+                              <p className="text-[10px] text-slate-400 font-medium mt-1">ముందుకు సాగడానికి మరియు ఫైల్స్ అప్లోడ్ చేయడానికి దయచేసి లాగిన్ అవ్వండి.</p>
                             </div>
                             <button
                               type="button"
                               onClick={onLoginClick}
                               className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-indigo-500/15 cursor-pointer transition-all hover:-translate-y-0.5 active:translate-y-0"
                             >
-                              లాగిన్ అవ్వండి (Login Now)
+                              లాగిన్ చేసి ముందుకు సాగండి (Login to Continue)
                             </button>
                           </div>
                         ) : (
@@ -560,18 +644,18 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
                                     <span className="text-[10px] text-slate-500 font-bold">ధృవీకరణ వేగం (Verification Speed):</span>
                                     <span className="text-[10px] bg-emerald-50 text-emerald-700 font-black px-2 py-0.5 rounded border border-emerald-150 flex items-center gap-1">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                      గరిష్ట వేగం (Full Speed - 100% Instant)
+                                      గరిష్ట వేగం (Full Speed - 100% Website Tracking)
                                     </span>
                                   </div>
                                   <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-1">
-                                    ఆలస్యాలు ఏమీ లేకుండా పూర్తి వేగంతో తనిఖీ జరుగుతుంది.
+                                    వెబ్సైట్ ద్వారానే 100% పారదర్శకంగా తనిఖీ ప్రక్రియను పర్యవేక్షించవచ్చు.
                                   </p>
                                 </div>
 
                                 <div className="text-[10px] bg-emerald-50 rounded-xl p-3 border border-emerald-200/50 flex gap-2 text-emerald-850 font-medium leading-relaxed">
                                   <Info size={14} className="flex-shrink-0 text-emerald-700 mt-0.5" />
                                   <div>
-                                    <b>స్మార్ట్ ఆటోమేషన్:</b> నిజమైన అగ్రిస్టాక్ పోర్టల్ తనిఖీలలో ఎలాంటి ఆలస్యం మరియు CAPTCHA అడ్డంకులు లేకుండా సులువుగా, వేగంగా సమయం ఆదా చేస్తూ ధృవీకరణ పూర్తి చేయబడుతుంది.
+                                    <b>స్మార్ట్ ఆటోమేషన్:</b> మీరు అప్లోడ్ చేసిన ఫైల్స్ ను సిస్టిమ్ ఆటోమేటిక్ గా అగ్రిస్టాక్ వెబ్సైట్ తో పోల్చి చూస్తుంది. దీనివల్ల మీరు మ్యాన్యువల్ గా చెక్ చేయవలసిన అవసరం లేదు.
                                   </div>
                                 </div>
                               </div>
@@ -580,71 +664,182 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
                         )}
                       </div>
                     ) : (
-                      /* Execution details (uploading, queued, processing, complete, failed) */
-                      <div className="bg-white/80 rounded-xl p-4 border border-slate-100 flex flex-col justify-center items-stretch gap-3">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${
+                              row.status === "completed" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                              row.status === "failed" ? "bg-rose-50 text-rose-600 border border-rose-100" :
+                              "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                            }`}>
                               {row.status === "completed" ? (
-                                <CheckCircle className="text-emerald-600" size={18} />
+                                <CheckCircle className="text-emerald-600" size={22} />
                               ) : row.status === "failed" ? (
-                                <AlertTriangle className="text-rose-600" size={18} />
+                                <AlertTriangle className="text-rose-600" size={22} />
                               ) : (
-                                <Loader2 className="animate-spin text-indigo-600" size={18} />
+                                <Loader2 className="animate-spin text-indigo-600" size={22} />
                               )}
                             </div>
                             <div>
-                              <p className="text-xs font-black text-slate-700">
-                                {row.status === "uploading" && "శాటిలైట్ ఫైళ్లు విలీనం చేయబడుతున్నాయి..."}
-                                {row.status === "queued" && `వెరిఫికేషన్ క్యూలో ఉంది (${row.verificationMode === "real_live" ? "రియల్ లైవ్ మోడ్" : "లైట్ వేగం"})...`}
-                                {row.status === "processing" && `అగ్రిస్టాక్ పోర్టల్‌లో లైవ్ చెక్ జరపబడుతోంది (${row.verificationMode === "real_live" ? "Stealth" : "Analytic"})...`}
-                                {row.status === "completed" && "పూర్తిగా నివేదిక సిద్ధంగా ఉంది!"}
-                                {row.status === "failed" && "ప్రక్రియ విఫలమైంది."}
-                              </p>
-                              <p className="text-[10px] text-slate-400">
+                               <div className="flex items-center gap-2">
+                                  <p className="text-sm font-black text-slate-800">
+                                    {row.status === "uploading" && "శాటిలైట్ ఫైళ్లు విలీనం చేయబడుతున్నాయి..."}
+                                    {row.status === "queued" && `వెరిఫికేషన్ క్యూలో ఉంది...`}
+                                    {row.status === "processing" && `అగ్రిస్టాక్ పోర్టల్‌లో లైవ్ చెక్...`}
+                                    {row.status === "completed" && "పూర్తిగా నివేదిక సిద్ధంగా ఉంది!"}
+                                    {row.status === "failed" && "ప్రక్రియ విఫలమైంది."}
+                                  </p>
+                                  {row.status === "processing" && (
+                                    <span className="text-[10px] font-black text-indigo-600 animate-pulse bg-indigo-50 px-1.5 py-0.5 rounded">WEBSITE TRACKING LIVE</span>
+                                  )}
+                               </div>
+                              <p className="text-[11px] text-slate-400 font-bold truncate max-w-[200px] md:max-w-xs">
                                 {row.file1?.name} &amp; {row.file2?.name}
                               </p>
                             </div>
                           </div>
 
                           {row.status === "completed" && (
-                            user ? (
-                              <button
-                                onClick={() => handleDownload(row)}
-                                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-emerald-500/15 transition-all hover:-translate-y-0.5"
-                              >
-                                <Download size={12} />
-                                <span>FINAL FILE 4</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={onLoginClick}
-                                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-indigo-500/15 transition-all hover:-translate-y-0.5"
-                              >
-                                <Lock size={12} />
-                                <span>లాగిన్ అవ్వండి (Login to Download)</span>
-                              </button>
-                            )
+                            <div className="space-y-4">
+                              <div className="sm:shrink-0 flex items-center gap-2">
+                                <button
+                                  onClick={() => handleDownload(row)}
+                                  className="flex-1 sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[14px] text-[13px] font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all hover:-translate-y-1 active:scale-95 group-hover:scale-105"
+                                >
+                                  <Download size={14} className="animate-bounce" />
+                                  <span>FINAL FILE DOWNLOAD</span>
+                                </button>
+                                <button
+                                  onClick={() => shareReport(row)}
+                                  className="p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-[14px] transition-all hover:-translate-y-1 active:scale-95 border border-indigo-100"
+                                  title="రిపోర్ట్ షేర్ చేయండి (Share Status)"
+                                >
+                                  <Share2 size={16} />
+                                </button>
+                              </div>
+
+                              {showFeedback === row.id && (
+                                <motion.div 
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col items-center gap-3 text-center"
+                                >
+                                  <div className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center">
+                                    <RefreshCw size={20} />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-black text-indigo-900">మీకు మా సేవ నచ్చిందా? (Did you like our service?)</p>
+                                    <div className="flex gap-4 mt-3">
+                                      <button 
+                                        onClick={async () => {
+                                          try {
+                                            await fetch(`/api/farmer-jobs/${row.id}/feedback`, {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ feedback: "yes" })
+                                            });
+                                          } catch (e) {}
+                                          addToast("ధన్యవాదాలు! (Thank you for your feedback!)");
+                                          setShowFeedback(null);
+                                        }}
+                                        className="px-4 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl text-[10px] font-black hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                      >
+                                        అవును (Yes) 👍
+                                      </button>
+                                      <button 
+                                        onClick={async () => {
+                                          try {
+                                            await fetch(`/api/farmer-jobs/${row.id}/feedback`, {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ feedback: "no" })
+                                            });
+                                          } catch (e) {}
+                                          addToast("మేము మా సేవను మెరుగుపరుస్తాము. (We will improve our service.)");
+                                          setShowFeedback(null);
+                                        }}
+                                        className="px-4 py-1.5 bg-white border border-indigo-200 text-slate-500 rounded-xl text-[10px] font-black hover:bg-slate-100 transition-all shadow-sm"
+                                      >
+                                        లేదు (No) 👎
+                                      </button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                          )}
+
+                          {row.status === "paused_captcha" && row.captchaRequired && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3 shadow-md border-b-4 border-b-amber-500">
+                               <div className="flex items-center gap-2">
+                                  <Lock size={16} className="text-amber-600" />
+                                  <span className="text-xs font-black text-amber-900 uppercase">సెక్యూరిటీ వెరిఫికేషన్ (Solve CAPTCHA)</span>
+                               </div>
+                               <div className="flex flex-col sm:flex-row items-center gap-3">
+                                  <div className="bg-white p-2 rounded-lg border border-amber-200 shadow-inner">
+                                     <img src={row.captchaChallenge} alt="Captcha" className="h-10 w-auto" />
+                                  </div>
+                                  <div className="flex-1 w-full sm:w-auto">
+                                     <input 
+                                        type="text"
+                                        placeholder="కోడ్ ఎంటర్ చేయండి"
+                                        value={row.captchaSolutionText || ""}
+                                        onChange={(e) => {
+                                           const val = e.target.value;
+                                           setGpRows(prev => prev.map(x => x.id === row.id ? { ...x, captchaSolutionText: val } : x));
+                                        }}
+                                        className="w-full px-4 py-2 rounded-xl border-2 border-amber-200 focus:border-amber-500 outline-none font-black text-center tracking-widest text-lg"
+                                     />
+                                  </div>
+                                  <button
+                                     onClick={() => solveCaptchaValue(row.id, row.jobId!, row.captchaSolutionText || "")}
+                                     className="w-full sm:w-auto px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                                  >
+                                     SUBMIT
+                                  </button>
+                               </div>
+                            </div>
                           )}
                         </div>
 
                         {/* Progress Bar */}
                         {(row.status === "processing" || row.status === "queued" || row.status === "uploading" || row.status === "paused_captcha") && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                              <span>మొత్తం ప్రగతి: ({row.processedRecords} / {row.totalRecords || "?"})</span>
-                              <span>{row.progress}%</span>
+                          <div className="space-y-2 mt-1 px-1">
+                            <div className="flex justify-between items-end">
+                              <div>
+                                 <span className="text-[11px] font-black text-slate-600 block">రియల్-టైమ్ ప్రోగ్రెస్</span>
+                                 <span className="text-[10px] font-bold text-slate-400">ప్రస్తుత రికార్డు: {row.processedRecords} / {row.totalRecords || "?"}</span>
+                              </div>
+                              <div className="text-right">
+                                <motion.span 
+                                  key={row.progress}
+                                  initial={{ scale: 1.2, color: "#4f46e5" }}
+                                  animate={{ scale: 1, color: "#64748b" }}
+                                  className="text-xl font-black italic tracking-tighter"
+                                >
+                                  {row.progress}%
+                                </motion.span>
+                              </div>
                             </div>
-                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                              <div 
-                                className="bg-indigo-600 h-full transition-all duration-350"
-                                style={{ width: `${row.progress}%` }}
-                              />
+                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${row.progress}%` }}
+                                className="h-full rounded-full relative overflow-hidden shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+                                style={{ 
+                                  background: "linear-gradient(90deg, #4f46e5, #0ea5e9, #10b981)",
+                                  backgroundSize: "200% 100%"
+                                }}
+                              >
+                                <motion.div 
+                                  animate={{ x: ["0%", "100%"] }}
+                                  transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/2"
+                                />
+                              </motion.div>
                             </div>
                           </div>
                         )}
-
-
 
                         {row.status === "failed" && (
                           <div className="text-[11px] text-rose-500 font-bold bg-rose-50 p-2.5 rounded-lg border border-rose-100">
@@ -656,17 +851,25 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
                   </motion.div>
                 ))}
               </AnimatePresence>
+
+              {showAuthLocal && (
+                <AuthModal
+                  onClose={() => setShowAuthLocal(false)}
+                  addToast={addToast}
+                  handleGoogleLogin={handleGoogleLogin}
+                />
+              )}
             </div>
 
             {/* Actions Panel */}
             {gpRows.length > 0 && (
-              <div className="flex flex-col sm:flex-row gap-4 pt-3">
+              <div className="flex flex-col-reverse sm:flex-row gap-4 pt-3">
                 <button
                   onClick={clearAll}
                   disabled={isProcessingPipeline}
-                  className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-1 border border-slate-200"
+                  className="px-5 py-4 bg-white hover:bg-slate-50 text-slate-500 disabled:opacity-50 text-xs font-black uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm active:scale-95"
                 >
-                  <Trash2 size={14} />
+                  <RefreshCw size={14} className={isProcessingPipeline ? "animate-spin" : ""} />
                   సర్వం రీసెట్ చేయి
                 </button>
 
@@ -674,30 +877,32 @@ export function FarmerRegistryTool({ user, onLoginClick }: FarmerRegistryToolPro
                   <button
                     disabled={isProcessingPipeline || gpRows.filter(x => x.status === "pending" && x.file1 && x.file2).length === 0}
                     onClick={startPipelineVerification}
-                    className={`flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg ${
+                    className={`flex-1 py-4 rounded-2xl text-[13px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-3 transition-all shadow-xl ${
                       !isProcessingPipeline && gpRows.filter(x => x.status === "pending" && x.file1 && x.file2).length > 0
-                        ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 hover:-translate-y-0.5"
+                        ? "bg-slate-900 border-b-4 border-slate-950 hover:bg-slate-800 text-white shadow-slate-900/10 hover:-translate-y-1 active:translate-y-0.5 active:border-b-0"
                         : "bg-slate-100 text-slate-400 cursor-not-allowed"
                     }`}
                   >
                     {isProcessingPipeline ? (
                       <>
-                        <Loader2 className="animate-spin" size={15} />
-                        <span>ఆటోమేటిక్ పైప్‌లైన్ రన్నింగ్ లో ఉంది...</span>
+                        <Loader2 className="animate-spin text-indigo-400" size={18} />
+                        <span>పైప్‌లైన్ ప్రాసెసింగ్ లో ఉంది...</span>
                       </>
                     ) : (
                       <>
-                        <Play size={14} />
-                        <span>ఆటోమేటిక్ పైప్‌లైన్ ప్రారంభించు (Start Pipeline)</span>
+                        <span className="w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                          <Play size={12} className="ml-0.5" />
+                        </span>
+                        <span>ఆటోమేటిక్ పైప్‌లైన్ ప్రారంభించు (START PIPELINE)</span>
                       </>
                     )}
                   </button>
                 ) : (
                   <button
                     onClick={onLoginClick}
-                    className="flex-1 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-all shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 hover:-translate-y-0.5 animate-pulse"
+                    className="flex-1 py-4 rounded-2xl text-[13px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-3 transition-all shadow-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/15 hover:-translate-y-1 animate-pulse"
                   >
-                    <Lock size={14} />
+                    <Lock size={16} />
                     <span>లాగిన్ అవ్వండి (Login to Start Pipeline)</span>
                   </button>
                 )}

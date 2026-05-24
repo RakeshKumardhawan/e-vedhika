@@ -14,6 +14,7 @@ import {
 } from "react-router-dom";
 import { ManaBot } from "./components/ManaBot";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
+import { SYSTEM_UPDATES } from "./data/updates";
 import {
   Bell,
   Menu,
@@ -122,6 +123,18 @@ import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
 import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
+import { PR_ACT_DB, PRSection } from "./data/prActData";
+import { ExcelPrinterTool } from "./ExcelPrinterTool";
+import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
+import { KnowledgeHubSection, PRActHub } from "./components/KnowledgeHub";
+import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
+import { AuthModal } from "./components/AuthModal";
+import { PollsScreen } from "./components/PollsScreen";
+
+const formatPostTitle = (title: string | undefined): string => {
+  if (!title) return "";
+  return title.trim();
+};
 
 let XLSX: any = null;
 let jsPDF: any = null;
@@ -368,56 +381,7 @@ const logUserActivity = async (actionDesc: string, details?: any) => {
   }
 };
 
-function EVAnimatedLogo({ size = 64 }: { size?: number }) {
-  return (
-    <div className="logo-pro relative" style={{ width: size, height: size }}>
-      <div className="logo-particles">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
 
-      <svg viewBox="0 0 64 64" width="64" height="64">
-        <defs>
-          <linearGradient id="modal-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#22c55e" />
-            <stop offset="100%" stopColor="#0ea5e9" />
-          </linearGradient>
-          <linearGradient id="modal-ringG" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#22c55e" />
-            <stop offset="50%" stopColor="#facc15" />
-            <stop offset="100%" stopColor="#0ea5e9" />
-          </linearGradient>
-        </defs>
-
-        <circle
-          className="logo-ring"
-          cx="32"
-          cy="32"
-          r="29"
-          fill="none"
-          stroke="url(#modal-ringG)"
-          strokeWidth="2.5"
-          strokeDasharray="10 5"
-        />
-        <circle cx="32" cy="32" r="25" fill="url(#modal-g)" />
-        <circle cx="32" cy="32" r="21" fill="#0d3b66" />
-        <text
-          x="50%"
-          y="54%"
-          dominantBaseline="middle"
-          textAnchor="middle"
-          fill="#fff"
-          fontSize="18"
-          fontWeight="900"
-          fontFamily="Segoe UI"
-        >
-          EV
-        </text>
-      </svg>
-    </div>
-  );
-}
 
 export function requireLoginAlert(userObj?: any): boolean {
   const account = userObj || auth.currentUser;
@@ -507,659 +471,7 @@ interface UserProfile {
   timeSpentMinutes?: number;
 }
 
-const DEPRECATED_DISTRICTS_DATA: Record<string, string[]> = {
-  Adilabad: [
-    "Adilabad",
-    "Bazarhathnoor",
-    "Bela",
-    "Bheempur",
-    "Bhoraj",
-    "Boath",
-    "Gadiguda",
-    "Gudihathnur",
-    "Ichoda",
-    "Inderavelly",
-    "Jainad",
-    "Mavala",
-    "Narnoor",
-    "Neradigonda",
-    "Sirikonda",
-    "Sathnala",
-    "Sonala",
-    "Talamadugu",
-    "Tamsi",
-    "Utnur",
-  ],
-  "Bhadradri Kothagudem": [
-    "Allapalli",
-    "Annapureddypalli",
-    "Aswapuram",
-    "Aswaraopeta",
-    "Bhadrachalam",
-    "Burgampadu",
-    "Chandrugonda",
-    "Cherla",
-    "Chunchupalli",
-    "Dammapeta",
-    "Dummugudem",
-    "Gundala",
-    "Julurpad",
-    "Karakagudem",
-    "Laxmidevipalli",
-    "Manuguru",
-    "Mulakalapalle",
-    "Palawancha",
-    "Pinapaka",
-    "Sujathanagar",
-    "Tekulapalle",
-    "Yellandu",
-  ],
-  Hanumakonda: [
-    "Atmakur",
-    "Bheemadevarpalle",
-    "Damera",
-    "Dharmasagar",
-    "Elkathurthi",
-    "Hasanparthy",
-    "Inavolue",
-    "Kamalapur",
-    "Nadikuda",
-    "Parkal",
-    "Shayampet",
-    "Velair",
-  ],
-  Hyderabad: [
-    "Amberpet",
-    "Asifnagar",
-    "Bahadurpura",
-    "Bandra",
-    "Charminar",
-    "Golconda",
-    "Himayatnagar",
-    "Khairatabad",
-    "Marredpally",
-    "Musheerabad",
-    "Nampally",
-    "Saidabad",
-    "Secunderabad",
-    "Shaikpet",
-    "Tirumalagiri",
-    "Ameerpet",
-  ],
-  Jagtial: [
-    "Bheemaram",
-    "Bheerpur",
-    "Buggaram",
-    "Dharmapuri",
-    "Endapalli",
-    "Gollapalle",
-    "Ibrahimpatnam",
-    "Jagitial Rural",
-    "Jagtial",
-    "Kathlapur",
-    "Kodimial",
-    "Korutla",
-    "Mallapur",
-    "Mallial",
-    "Medipalle",
-    "Metpalle",
-    "Pegadapalle",
-    "Raikal",
-    "Sarangapur",
-    "Velgatoor",
-  ],
-  Jangaon: [
-    "Bachannapeta",
-    "Chilpur",
-    "Devaruppula",
-    "Ghanpur(Stn)",
-    "Jangaon",
-    "Kodakandla",
-    "Lingala Ghanpur",
-    "Narmetta",
-    "Palakurthi",
-    "Raghunatha Palle",
-    "Tharigoppula",
-    "Zaffergadh",
-  ],
-  "Jayashankar Bhupalpally": [
-    "Bhupalpally",
-    "Chityal",
-    "Ghanpur (Mulug)",
-    "Kataram",
-    "Mahadevpur",
-    "Malharrao",
-    "Mogullapally",
-    "Mutharam (Mahadevpur)",
-    "Palimela",
-    "Regonda",
-    "Tekumatla",
-  ],
-  "Jogulamba Gadwal": [
-    "Alampur",
-    "Dharur",
-    "Gadwal",
-    "Ghattu",
-    "Ieeja",
-    "Itikyal",
-    "Maldakal",
-    "Manopad",
-    "Rajoli",
-    "Undavelly",
-    "Waddepalle",
-    "Kaloor Timmanadoddi",
-  ],
-  Kamareddy: [
-    "Banswada",
-    "Bhiknoor",
-    "Birkur",
-    "Domakonda",
-    "Farooqnagar",
-    "Gandhari",
-    "Jukkal",
-    "Kamareddy",
-    "Lingampet",
-    "Machareddy",
-    "Madnoor",
-    "Nizamsagar",
-    "Pitlam",
-    "Sadashivanagar",
-    "Yellareddy",
-    "Nasrullabad",
-    "Tadwai",
-    "Bhimgal",
-    "Ramareddy",
-    "Rajampet",
-    "Bibipet",
-    "Pedda Kodapgal",
-    "Dongli",
-    "Gudam",
-    "Palvancha",
-  ],
-  Karimnagar: [
-    "Chigurumamidi",
-    "Choppadandi",
-    "Ellandhakunta",
-    "Gangadhara",
-    "Ganneruvaram",
-    "Huzurabad",
-    "Jammikunta",
-    "Karimnagar",
-    "Kothapally",
-    "Manakondur",
-    "Ramadugu",
-    "Shankarapatnam",
-    "Thimmapur",
-    "V Saidapur",
-    "Veenavanka",
-  ],
-  Khammam: [
-    "Bonakal",
-    "Chinthakani",
-    "Enkuru",
-    "Kalluru",
-    "Kamepalle",
-    "Khammam Rural",
-    "Konijerla",
-    "Kusumanchi",
-    "Madhira",
-    "Mudigonda",
-    "Nelakondapalle",
-    "Penuballi",
-    "Raghunadhapalem",
-    "Sathupalle",
-    "Singareni",
-    "Thallada",
-    "Thirumalayapalem",
-    "Vemsoor",
-    "Wyra",
-    "Yerrupalem",
-  ],
-  "Komaram Bheem Asifabad": [
-    "Asifabad",
-    "Bejjur",
-    "Chintalamanepally",
-    "Dahegaon",
-    "Jainoor",
-    "Kagaznagar",
-    "Kerameri",
-    "Kouthala",
-    "Penchikalpet",
-    "Rebbena",
-    "Sirpur (T)",
-    "Sirpur (U)",
-    "Tiryani",
-    "Wankidi",
-  ],
-  Mahabubabad: [
-    "Bayyaram",
-    "Dornakal",
-    "Gangaram",
-    "Garla",
-    "Gudur",
-    "Kothaguda",
-    "Kuravi",
-    "Mahabubabad",
-    "Maripeda",
-    "Narsimhulapet",
-    "Peddavangara",
-    "Thorrur",
-    "Kessamudram",
-    "Nellikudur",
-    "Danthalapalle",
-    "Seerole",
-  ],
-  Mahabubnagar: [
-    "Addakal",
-    "Balanagar",
-    "Bhoothpur",
-    "Chinna Chinta Kunta",
-    "Devarkadara",
-    "Gandeed",
-    "Hanwada",
-    "Jadcherla",
-    "Koilkonda",
-    "Koukuntla",
-    "Mahbubnagar",
-    "Midjil",
-    "Mohammadabad",
-    "Moosapet",
-    "Nawabpet",
-    "Rajapur",
-  ],
-  Mancherial: [
-    "Bellampalle",
-    "Bheemaram",
-    "Bheemini",
-    "Chennur",
-    "Dandepalle",
-    "Hajipur",
-    "Jaipur",
-    "Jannaram",
-    "Kannepally",
-    "Kasipet",
-    "Kotapalle",
-    "Luxettipet",
-    "Mandamarri",
-    "Nennal",
-    "Tandur",
-    "Vemanpalle",
-  ],
-  Medak: [
-    "Alladurg",
-    "Chegunta",
-    "Chilpiched",
-    "Havelighanpur",
-    "Kowdipalle",
-    "Kulcharam",
-    "Manoharabad",
-    "Masaipet",
-    "Medak",
-    "Narsapur",
-    "Narsingi",
-    "Nizampet",
-    "Papannapet",
-    "Ramayampet",
-    "Regode",
-    "Shankarampet (A)",
-    "Shankarampet (R)",
-    "Shivampet",
-    "Tekmal",
-    "Tupran",
-    "Yeldurthy",
-  ],
-  "Medchal-Malkajgiri": [
-    "Alwal",
-    "Balanagar",
-    "Dundigal Gandimaisamma",
-    "Ghatkesar",
-    "Kapra",
-    "Keesara",
-    "Kukatpally",
-    "Malkajgiri",
-    "Medchal",
-    "Medipally",
-    "Qutubullapur",
-    "Shamirpet",
-    "Uppal",
-    "Bolarum",
-    "Chengicherla",
-  ],
-  Mulugu: [
-    "Eturnagaram",
-    "Govindaraopet",
-    "Mangapet",
-    "Mulugu",
-    "SS Tadvai",
-    "Vazeed",
-    "Venkatapuram",
-    "Kannaigudem",
-    "Tadvai",
-  ],
-  Nagarkurnool: [
-    "Achampet",
-    "Amrabad",
-    "Balmoor",
-    "Bijinapalle",
-    "Charakonda",
-    "Kalwakurthy",
-    "Kodair",
-    "Kollapur",
-    "Lingal",
-    "Nagarkurnool",
-    "Padara",
-    "Peddakothapalle",
-    "Pentlavelli",
-    "Tadoor",
-    "Telkapalle",
-    "Thimmajipet",
-    "Uppununthala",
-    "Urkonda",
-    "Vangoor",
-  ],
-  Nalgonda: [
-    "Adavidevulapally",
-    "Anumula",
-    "Chandam Pet",
-    "Chandur",
-    "Chintha Palle",
-    "Chityala",
-    "Dameracherla",
-    "Devarakonda",
-    "Gattuppal",
-    "Gudipally",
-    "Gundla Palle",
-    "Gurrampode",
-    "Kangal",
-    "Kattangoor",
-    "Kethepalle",
-    "Kondamallepally",
-    "Madugulapally",
-    "Marri Guda",
-    "Miryalaguda",
-    "Munugode",
-    "Nakrekal",
-    "Nalgonda",
-    "Nampalle",
-    "Narketpalle",
-    "Neredugomma",
-    "Nidamanur",
-    "Pedda Adiserlapalle",
-    "Peddavura",
-    "Saligouraram",
-    "Thipparthi",
-    "Thirumalagiri sagar",
-    "Thripuraram",
-    "Vemulapalle",
-  ],
-  Narayanpet: [
-    "Damaragidda",
-    "Dhanwada",
-    "Kosgi",
-    "Krishna",
-    "Maddur",
-    "Maganoor",
-    "Makthal",
-    "Marikal",
-    "Narayanpet",
-    "Utkoor",
-    "Narva",
-  ],
-  Nirmal: [
-    "Basar",
-    "Bhainsa",
-    "Dilawarpur",
-    "Kaddampeddur",
-    "Khanapur",
-    "Kuntala",
-    "Lokeshwaram",
-    "Mamda",
-    "Mudhole",
-    "Nirmal",
-    "Nirmal Rural",
-    "Pemdhal",
-    "Sarangapur",
-    "Soan",
-    "Tanur",
-    "Dasturabad",
-    "Pembarthi",
-  ],
-  Nizamabad: [
-    "Aloor",
-    "Armur",
-    "Balkonda",
-    "Bheemgal",
-    "Bodhan",
-    "Chandur",
-    "Dhar Palle",
-    "Dich Palle",
-    "Donkeshwar",
-    "Indalwai",
-    "Jakranpalle",
-    "Kammar Palle",
-    "Kotgiri",
-    "Makloor",
-    "Mendora",
-    "Mortad",
-    "Mosara",
-    "Mugpal",
-    "Mupkal",
-    "Nandipet",
-    "Navipet",
-    "Nizamabad",
-    "Pothangal",
-    "Ranjal",
-    "Rudrur",
-    "Saloora",
-    "Sirkonda",
-    "Varni",
-    "Velpur",
-    "Yeda Palle",
-    "Yergatla",
-  ],
-  Peddapalli: [
-    "Anthergoam",
-    "Dharmaram",
-    "Eligaid",
-    "Julapalli",
-    "Kamanpur",
-    "Manthani",
-    "Mutharam (Manthani)",
-    "Odela",
-    "Palakurthy",
-    "Peddapalli",
-    "Ramagiri",
-    "Ramagundam",
-    "Srirampur",
-    "Sulthanabad",
-  ],
-  "Rajanna Sircilla": [
-    "Boinpalle",
-    "Chandurthi",
-    "Ellanthakunta",
-    "Gambhiraopet",
-    "Konaraopeta",
-    "Mustabad",
-    "Sircilla",
-    "Vemulawada",
-    "Vemulawada Rural",
-    "Yellareddy Peth",
-    "Thangallapalli",
-  ],
-  Rangareddy: [
-    "Abdullapurmet",
-    "Amangal",
-    "Balapur",
-    "Chevella",
-    "Farooqnagar",
-    "Gandipet",
-    "Hayathnagar",
-    "Ibrahimpatnam",
-    "Jillelaguda",
-    "Kadthal",
-    "Kondurg",
-    "Kothur",
-    "Madgul",
-    "Maheshwaram",
-    "Manchal",
-    "Moinabad",
-    "Nandigama",
-    "Rajendranagar",
-    "Saroornagar",
-    "Serilingampally",
-    "Shabad",
-    "Shamshabad",
-    "Shankarpalle",
-    "Talakondapalle",
-    "Yacharam",
-  ],
-  Sangareddy: [
-    "Ameenpur",
-    "Andole",
-    "Chowtakur",
-    "Gummadidala",
-    "Hathnoora",
-    "Jharasangam",
-    "Jinnaram",
-    "Kalher",
-    "Kandi",
-    "Kangti",
-    "Kohir",
-    "Kondapur",
-    "Manoor",
-    "Mogadampally",
-    "Munpalle",
-    "Nagalgidda",
-    "Narayankhed",
-    "Nizampet",
-    "Nyalkal",
-    "Patancheru",
-    "Pulkal",
-    "Raikode",
-    "Sadasivpet",
-    "Sangareddy",
-    "Sirgapur",
-    "Vatpally",
-    "Zahirabad",
-  ],
-  Siddipet: [
-    "AkbarpetNA Bhoompally",
-    "Akkannapeta",
-    "Bejjanki",
-    "Cheriyal",
-    "Chinna Kodur",
-    "Dhoolmitta",
-    "Doultabad",
-    "Dubbak",
-    "Gajwel",
-    "Husnabad",
-    "Jagdevpur",
-    "Koheda",
-    "Komuravelli",
-    "Kondapak",
-    "Kukunoorpally",
-    "Maddur",
-    "Markook",
-    "Mirdoddi",
-    "Mulug",
-    "Nanganur",
-    "Narayanaraopet",
-    "Raipole",
-    "Siddipet",
-    "Siddipet Rural",
-    "Thoguta",
-    "Wargal",
-  ],
-  Suryapet: [
-    "Atmakur (S)",
-    "Chilkur",
-    "Chinthapalem",
-    "Garidepally",
-    "Huzurnagar",
-    "Jajireddygudem",
-    "Kodad",
-    "Maddirala",
-    "Mattampally",
-    "Mellachervu",
-    "Mothey",
-    "Munagala",
-    "Nadigudem",
-    "Neredcherla",
-    "Nuthankal",
-    "Palakeedu",
-    "Penpahad",
-    "Suryapet",
-    "Thirumalagiri",
-    "Tungaturthi",
-  ],
-  Vikarabad: [
-    "Basheerabad",
-    "Bommraspet",
-    "Dharur",
-    "Doma",
-    "Kodangal",
-    "Kotepally",
-    "Kulkacherla",
-    "Marpalle",
-    "Mominpet",
-    "Nawabpet",
-    "Pargi",
-    "Peddemul",
-    "Pudur",
-    "Tandur",
-    "Vikarabad",
-    "Yelal",
-  ],
-  Wanaparthy: [
-    "Amarchinta",
-    "Atmakur",
-    "Chinnambavi",
-    "Ghanpur",
-    "Gopalpeta",
-    "Khila Ghanpur",
-    "Kothakota",
-    "Madanapur",
-    "Pangal",
-    "Pebbair",
-    "Peddamandadi",
-    "Revally",
-    "Srirangapur",
-    "Veepangandla",
-    "Wanaparthy",
-  ],
-  Warangal: [
-    "Chennaraopet",
-    "Duggondi",
-    "Geesugonda",
-    "Khanapur",
-    "Nallabelly",
-    "Narsampet",
-    "Nekkonda",
-    "Parvathagiri",
-    "Raiparthy",
-    "Sangem",
-    "Wardhannapet",
-  ],
-  "Yadadri Bhuvanagiri": [
-    "Addagudur",
-    "Alair",
-    "Atmakur (M)",
-    "Bibinagar",
-    "Bhudan Pochampally",
-    "Bhuvanagiri",
-    "Bommalaramaram",
-    "Choutuppal",
-    "Gundala",
-    "Motakondur",
-    "Mothkur",
-    "Narayanapur",
-    "Rajapet",
-    "Ramannapet",
-    "Turkapally",
-    "Valigonda",
-    "Yadagirigutta",
-  ],
-};
+
 
 interface Suggestion {
   id: string;
@@ -1507,7 +819,7 @@ function getValidTime(obj: any): number {
     }
   }
   return Date.now();
-}
+};
 
 export const triggerNotification = (title: string, body: string) => {
   playNotificationSound();
@@ -1582,350 +894,14 @@ export const playNotificationSound = () => {
       oscillator.stop(globalAudioContext.currentTime + startTime + duration);
     };
 
-    playNote(1318.51, 0, 0.4);
-    playNote(1760.0, 0.15, 0.6);
-  } catch (e) {
-    console.error("Audio playback error:", e);
+    playNote(880, 0, 0.1);
+    playNote(1108.73, 0.1, 0.1);
+    playNote(1318.51, 0.2, 0.3);
+  } catch (error) {
+    console.error("Error playing notification sound:", error);
   }
 };
 
-const formatPostTitle = (title: string | undefined | null) => {
-  if (!title) return "";
-  return title.replace(/🛑🚀/g, "🛑\n🚀").replace(/🛑 🚀/g, "🛑\n🚀");
-};
-
-export const SYSTEM_UPDATES = [
-  {
-    id: `update-v1.5.3`,
-    isSystemElement: true,
-    version: "v1.5.3",
-    title: "12/05/2026: పెర్ఫార్మెన్స్ బూస్ట్ & ఆటో రికవరీ స్పీడప్",
-    badge: "PERFORMANCE",
-    text: "1. ⚡ **స్పీడ్ బూస్ట్**: సిస్టమ్ లోడింగ్ సమయాన్ని మరియు ఏఐ బాట్ స్పందన సమయాన్ని తగ్గించాము.\n2. 🤖 **ఫాస్ట్ రికవరీ**: ఏవైనా ఎర్రర్స్ వస్తే సిస్టమ్ ఇప్పుడు మునుపటి కంటే రెండు రెట్లు వేగంగా రీస్టార్ట్ అవుతుంది.\n3. 🎨 **రిఫ్రెష్డ్ లుక్**: రికవరీ స్క్రీన్‌ను మరింత అందంగా మరియు స్పష్టంగా అప్‌డేట్ చేశాము.\n4. 🛡️ **స్టెబిలిటీ ప్యాచ్**: హోమ్ పేజీ లోడింగ్ లో వచ్చే చిన్న చిన్న ఇబ్బందులను తొలగించాము.",
-    time: Date.now(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: `update-v1.5.2`,
-    isSystemElement: true,
-    version: "v1.5.2",
-    title: "12/05/2026: అల్టిమేట్ పేజీ బిల్డర్ (Dynamic Layouts)",
-    badge: "HUGE UPDATE",
-    text: "1. 🏗️ **డైనమిక్ సెక్షన్స్**: ఇప్పుడు మీరు హోమ్ పేజీ సెక్షన్స్ ని అడ్మిన్ ప్యానెల్ నుండి క్రియేట్, ఎడిట్, డిలీట్ మరియు రీ-ఆర్డర్ చేయవచ్చు.\n2. 👁️ **లైవ్ ప్రివ్యూ**: మార్పులు చేసేటప్పుడే అవి ఎలా ఉంటాయో అడ్మిన్ ప్యానెల్ లోనే చూడవచ్చు.\n3. ☁️ **రియల్-టైమ్ సింక్**: మీరు 'Publish' చేసిన వెంటనే మార్పులు సేవ్ అయి అందరికీ కనిపిస్తాయి.\n4. 🙈 **హైడ్/షో**: ఏదైనా సెక్షన్‌ను డిలీట్ చేయకుండానే తాత్కాలికంగా దాచిపెట్టవచ్చు.",
-    time: Date.now(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: `update-v1.5.0`,
-    isSystemElement: true,
-    version: "v1.5.0",
-    title: "12/05/2026: బాట్ విజిబిలిటీ & పేజీ బిల్డర్ వెర్షన్ 2.0",
-    badge: "MAJOR UPDATE",
-    text: "1. 🤖 **AI బాట్ ఫిక్స్**: ఏఐ బాట్ (ManaBot) కనిపించని సమస్యను పరిష్కరించాము. ఇప్పుడు అది అన్ని డివైజ్‌లలో స్పష్టంగా కనిపిస్తుంది.\n2. 🏗️ **ఫంక్షనల్ పేజీ బిల్డర్**: పేజీ బిల్డర్‌లో ఇప్పుడు మీరు ఎలిమెంట్స్ ని యాడ్ చేయడం మరియు వాటిని తొలగించడం చేయవచ్చు. ఇది ఇప్పుడు సంపూర్ణంగా పనిచేస్తుంది.\n3. 🛡️ **ఎర్రర్ హ్యాండ్లింగ్**: సిస్టమ్ లో వచ్చే ఎర్రర్స్ ని ఇప్పుడు మీరు తెలుగులో సులభంగా అర్థం చేసుకునేలా అప్‌డేట్ చేశాము.",
-    time: Date.now(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: `update-v1.4.9`,
-    isSystemElement: true,
-    version: "v1.4.9",
-    title: "11/05/2026: సిస్టమ్ రికవరీ బాట్ & పేజీ బిల్డర్",
-    badge: "NEW FEATURES",
-    text: "1. 🤖 **సిస్టమ్ రికవరీ బాట్**: ఎర్రర్స్ వస్తే ఆటోమాటిక్ గా క్లియర్ చేసి వెబ్‌సైట్‌ను మళ్లీ రన్ చేయడానికి రికవరీ బాట్ అనుసంధానించబడింది.\n2. 🏗️ **పేజీ బిల్డర్**: అడ్మిన్ ప్యానెల్‌లో కొత్తగా పేజీలను క్రియేట్ చేయడానికి మరియు డిజైన్ చేయడానికి Page Builder ఆప్షన్ తీసుకురాబడింది.\n3. 🖼️ **PWA లోగో అప్‌డేట్**: బ్రౌజర్ క్యాచెను పక్కనపెట్టి కొత్త PWA లోగో వెంటనే యూజర్లకు కనబడేలా వెర్షన్ అప్‌డేట్ చేసాం.",
-    time: 1778500200000,
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.4.8",
-    isSystemElement: true,
-    version: "v1.4.8",
-    title: "10/05/2026: సిస్టమ్ అప్‌డేట్స్ & అనలిటిక్స్ ఫీచర్స్",
-    badge: "DAILY UPDATE",
-    text: 'నేటి సిస్టమ్ అప్‌డేట్స్‌లో భాగంగా పోర్టల్‌లో ఈ క్రింది మార్పులు చేసాము:\n\n1. 💎 **టెక్స్ట్ ఫార్మాటింగ్ టూల్‌బార్**: ఇప్పుడు మీరు పోస్ట్‌లను వ్రాసేటప్పుడు వర్డ్ ఫైల్ లాగా బోల్డ్, ఇటాలిక్ మరియు లైన్ బ్రేక్స్ ఉపయోగించవచ్చు.\n2. 🎨 **UI అప్‌డేట్స్**: కస్టమ్ లోగో, మొబైల్ హోమ్ స్క్రీన్ ఐకాన్ మరియు ఫెవికాన్ కలపబడ్డాయి.\n3. 📊 **అడ్మిన్ అనలిటిక్స్**: అడ్మిన్‌లకి మాత్రమే, పోస్ట్‌లో Views లేదా Likes కౌంట్ మీద క్లిక్ చేస్తే చూసిన/లైక్ చేసిన వారి లిస్ట్ వస్తుంది.\n4. 📖 **పోస్ట్ రీడింగ్ UX**: "Read Post" మీద క్లిక్ చేస్తే ఆ పోస్ట్ ఫుల్ వ్యూ వస్తుంది, మరియు "Back to Feed" బటన్ యాడ్ చేసాం.\n5. 🚀 **నావిగేషన్**: ఎగువన ఉన్న "EV" లోగో మీద క్లిక్ చేస్తే ఏ పేజీ నుంచి అయినా నేరుగా హోమ్ పేజీకి వస్తారు.\n6. 🔗 **సోషల్ షేరింగ్**: పోస్ట్‌లను షేర్ చేసినప్పుడు సరైన థంబ్‌నెయిల్ మరియు టైటిల్‌తో "ప్రివ్యూ" (OG Image & Tags) వచ్చేలా ఫిక్స్ చేసాము.',
-    time: new Date("2026-05-10T23:59:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.7.2",
-    isSystemElement: true,
-    version: "v1.7.2",
-    title: "09/05/2026: కేటగిరీల పునరుద్ధరణ (Restoration)",
-    badge: "BUGFIX",
-    text: "యూజర్ కోరిక మేరకు అన్ని పోస్ట్ కేటగిరీలను యథావిధిగా పునరుద్ధరించడం జరిగింది. అల్లాగే Admin Panel లో ఏర్పడిన Firestore Update ఎర్రర్‌ను ఫిక్స్ చేశాము.",
-    time: new Date("2026-05-09T18:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.7.1",
-    isSystemElement: true,
-    version: "v1.7.1",
-    title: "09/05/2026: కేటగిరీల జాబితా క్లీనప్",
-    badge: "UPDATE",
-    text: "పోస్ట్ కేటగిరీల జాబితా నుండి అనవసరమైన అంశాలను తొలగించడం జరిగింది మరియు Useful Information కేటగిరీని అప్డేట్ చేసాము.",
-    time: new Date("2026-05-09T17:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.7.0",
-    isSystemElement: true,
-    version: "v1.7.0",
-    title: "09/05/2026: హాష్‌ట్యాగ్స్ & వ్యూస్ అప్డేట్",
-    badge: "NEW",
-    text: "పోస్ట్ కంటెంట్‌లోని #hashtags ఆటోమేటిక్‌గా ట్యాగ్స్‌గా మారుతాయి. వ్యూస్ కౌంట్ ఒక యూజర్ కి ఒకసారి మాత్రమే లెక్కించబడుతుంది.",
-    time: new Date("2026-05-09T16:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.6.2",
-    isSystemElement: true,
-    version: "v1.6.2",
-    title: "09/05/2026: మల్టీ-కేటగిరీ సపోర్ట్",
-    badge: "NEW",
-    text: "ఇకపై ఒక పోస్ట్ కి 3 కేటగిరీల వరకు ఎంచుకోవచ్చు. కేటగిరీల జాబితాను క్లీనప్ చేయడం జరిగింది.",
-    time: new Date("2026-05-09T15:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.6.1",
-    isSystemElement: true,
-    version: "v1.6.1",
-    title: "09/05/2026: కేటగిరీలకు ఐకాన్స్ జోడింపు",
-    badge: "NEW",
-    text: "కేటగిరీలకు ఐకాన్స్ (Emojis) జోడించడం జరిగింది మరియు మరిన్ని ఇష్యూ రిపోర్టింగ్ కేటగిరీలను అందుబాటులోకి తెచ్చాం.",
-    time: new Date("2026-05-09T14:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.4.6",
-    isSystemElement: true,
-    version: "v1.4.6",
-    title: "08/05/2026: సింగిల్ చాట్ బాట్ (ManaBot) సింప్లిఫికేషన్",
-    badge: "UPDATE",
-    text: 'యూజర్స్ కి కన్ఫ్యూజన్ లేకుండా లైవ్ చాట్ లో ఉన్న ఏఐ బాట్ ని మరియు వర్క్ స్పేస్ లో ఉన్న ట్రైనింగ్ బాట్ ని తీసేసి.. అన్నిటికీ కలిపి కేవలం ఒకే ఒక పవర్ఫుల్ చాట్ బాట్ "E-VEDHIKA Assistant" ని మాత్రమే ఉంచాము. PR Act సెర్చ్ లోని బాట్ ఐకాన్‌ను కూడా మార్చాము.',
-    time: new Date("2026-05-08T12:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.4.4",
-    isSystemElement: true,
-    version: "v1.4.4",
-    title: "మే 08, 2026: PR Act Hub ఫీచర్స్",
-    badge: "NEW",
-    text: "మన పంచాయతీ సెక్షన్‌లోని PR Act Hub లో కొత్త సెర్చ్ ఫీచర్, క్విక్ జంప్ లింక్స్ మరియు ఒరిజినల్ PDF డౌన్‌లోడ్ చేసుకునే అవకాశం యాడ్ చేయడం జరిగింది.",
-    time: new Date("2026-05-08T11:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.4.1",
-    isSystemElement: true,
-    version: "v1.4.1",
-    title: "మే 08, 2026: వెబ్సైట్ విజిటర్ కౌంట్ అప్డేట్",
-    badge: "HOTFIX",
-    text: "గతంలో పోర్టల్ ని సందర్శించిన వారి సంఖ్య సరిగ్గా చూపించట్లేదు , ఇప్పుడు ఒరిజినల్ కౌంట్ కనిపించేలా విజిటర్ కౌంటర్ ని ఫిక్స్ చెయ్యడం జరిగింది.",
-    time: new Date("2026-05-08T10:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.4.0",
-    isSystemElement: true,
-    version: "v1.4.0",
-    text: (
-      <div className="text-left space-y-4">
-        <div className="flex items-center gap-3">
-          <kbd className="bg-slate-900 text-white px-2 py-1 rounded text-xs font-black uppercase tracking-widest">
-            v1.4.0
-          </kbd>
-          <p className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            మే 06, 2026: స్మార్ట్ అప్డేట్స్
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              NEW UI
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>Applications, Formats & GOs:</strong> యూజర్స్ అందరు తమకు
-              కావాల్సిన గవర్నమెంట్ అప్లికేషన్లు, ఫార్మాట్‌లు మరియు GOస్‌ను
-              అప్లోడ్ (పబ్లిక్ అప్లోడ్) చేసుకుని ఇతరులకు షేర్ చేసుకునే మరియు
-              సులభంగా వెతుక్కునే సదుపాయం.
-            </span>
-          </div>
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              NEW PWA
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>ఆటో-అప్డేట్ ఫీచర్ (Auto-Update Notifier):</strong> యాప్ లో
-              ఎప్పటికప్పుడు కొత్త ఫీచర్స్ వచ్చిన వెంటనే స్క్రీన్ మీద పాపప్
-              ద్వారా తెలిసేలా స్మార్ట్ అలర్ట్ సిస్టమ్ జోడించాం.
-            </span>
-          </div>
-        </div>
-      </div>
-    ),
-    time: new Date("2026-05-06T10:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.3.0",
-    isSystemElement: true,
-    version: "v1.3.0",
-    text: (
-      <div className="text-left space-y-4">
-        <div className="flex items-center gap-3">
-          <kbd className="bg-slate-900 text-white px-2 py-1 rounded text-xs font-black uppercase tracking-widest">
-            v1.3.0
-          </kbd>
-          <p className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            మే 01, 2026: డాక్యుమెంట్స్
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              PROFILE
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>మై యాక్టివిటీ & రిపోర్ట్స్ (My Activity):</strong> యూజర్స్
-              తమ సొంత ప్రొఫైల్, వాళ్ళు పెట్టిన పోస్ట్‌లు మరియు పనుల గురించి
-              రిపోర్ట్స్ చూసుకునే సెక్షన్ రడీ చేసాం.
-            </span>
-          </div>
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              OFFLINE
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>PWA యాప్ & ఆఫ్‌లైన్ సపోర్ట్:</strong> మొబైల్ లో ఒక యాప్ లా
-              ఇన్స్టాల్ చేసుకునే అవకాశం మరియు ఇంటర్నెట్ లేనప్పుడు కూడా చూసిన
-              డేటా చదువుకోగలిగే ఆఫ్‌లైన్ సపోర్ట్.
-            </span>
-          </div>
-        </div>
-      </div>
-    ),
-    time: new Date("2026-05-01T10:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.2.0",
-    isSystemElement: true,
-    version: "v1.2.0",
-    text: (
-      <div className="text-left space-y-4">
-        <div className="flex items-center gap-3">
-          <kbd className="bg-slate-900 text-white px-2 py-1 rounded text-xs font-black uppercase tracking-widest">
-            v1.2.0
-          </kbd>
-          <p className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            ఏప్రిల్ 20, 2026: పర్సనలైజేషన్
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-purple-50 text-purple-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              CHAT
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>లైవ్ చాట్ (Live Chat):</strong> యూజర్ల మధ్యన రియల్ టైం
-              డిస్కషన్స్ మరియు ముఖ్యమైన విషయాల పంచుకోవడానికి పబ్లిక్ లైవ్ చాట్
-              గ్రూప్స్ ప్రారంభం.
-            </span>
-          </div>
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-orange-50 text-orange-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              UNION
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>యూనియన్ కార్నర్ (Union Corner):</strong> వివిధ ఎంప్లాయ్
-              యూనియన్స్ మరియు సంఘాల సమాచారం త్వరగా అందరికీ చేరేలా ఒక స్పెషల్
-              వాయిస్ బోర్డ్.
-            </span>
-          </div>
-        </div>
-      </div>
-    ),
-    time: new Date("2026-04-20T10:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "update-v1.0.1",
-    isSystemElement: true,
-    version: "v1.0.1",
-    text: (
-      <div className="text-left space-y-4">
-        <div className="flex items-center gap-3">
-          <kbd className="bg-slate-900 text-white px-2 py-1 rounded text-xs font-black uppercase tracking-widest">
-            v1.0.1
-          </kbd>
-          <p className="font-bold text-slate-800 text-lg flex items-center gap-2">
-            ఏప్రిల్ 15, 2026: కమ్యూనికేషన్
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-          <div className="flex gap-4 items-start">
-            <kbd className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase mt-0.5 whitespace-nowrap">
-              FEEDBACK
-            </kbd>
-            <span className="text-sm text-slate-600 leading-relaxed">
-              <strong>సజెషన్స్ & ఫీడ్బ్యాక్ (Public Suggestions):</strong>{" "}
-              ఎవరైనా సరే ఏమైనా కొత్త సజెషన్స్ ఇవ్వడానికి, లేదా కంప్లైంట్
-              ఇవ్వడానికి లైవ్ పబ్లిక్ సెక్షన్ మరియు ఓటింగ్ సిస్టమ్ జోడింపు.
-            </span>
-          </div>
-        </div>
-      </div>
-    ),
-    time: new Date("2026-04-15T10:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-  {
-    id: "foundation",
-    isSystemElement: true,
-    version: "v1.0.0",
-    text: (
-      <div className="text-left space-y-4">
-        <div className="flex items-center gap-3">
-          <kbd className="bg-slate-900 text-white px-2 py-1 rounded text-xs font-black uppercase tracking-widest">
-            v1.0.0
-          </kbd>
-          <p className="font-bold text-slate-700 text-lg">
-            ఏప్రిల్ 11, 2026: ఎలక్ట్రానిక్ వేదికకు నాంది. పబ్లిక్ ఎంగేజ్మెంట్ !
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-slate-600 text-sm leading-relaxed">
-            పంచాయతీ ఆపరేటర్ల మరియు ఉద్యోగుల డిజిటల్ అవసరాలకోసం మా కు వచ్చిన
-            అమూల్యమైన ఆలోచనలతో ఎలక్ట్రానిక్ వేదికకు నాంది. గూగుల్ **Gemini**
-            మరియు **Chat GPT** కృత్రిమ మేధస్సుల సహాయంతో ఈ పోర్టల్‌ తొలి విడుదల
-            మరియు పబ్లిక్ ఆర్టికల్స్ సిస్టం ప్రారంభించాము.
-          </p>
-        </div>
-      </div>
-    ),
-    time: new Date("2026-04-11T14:00:00Z").getTime(),
-    type: "changelog",
-    status: "Approved",
-  },
-];
 
 export const handleShare = async (
   title: string,
@@ -2226,7 +1202,7 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
-  const isFarmerRegistryPath = location.pathname.endsWith("/farmer_registry") || location.pathname.endsWith("/farmer-registry");
+  const isFarmerRegistryPath = location.pathname.toLowerCase().endsWith("/farmer_registry") || location.pathname.toLowerCase().endsWith("/farmer-registry");
   const tabFromUrl = searchParams.get("tab");
   const [currentTab, setCurrentTab] = useState(
     isFarmerRegistryPath ? "farmer_registry" : (tabFromUrl || "home")
@@ -2253,7 +1229,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const isFarmerRegistry = location.pathname.endsWith("/farmer_registry") || location.pathname.endsWith("/farmer-registry");
+    const path = location.pathname.toLowerCase();
+    const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
     if (isFarmerRegistry) {
       if (currentTab !== "farmer_registry") {
         setCurrentTab("farmer_registry");
@@ -2267,7 +1244,8 @@ export default function App() {
   }, [searchParams, currentTab, location.pathname]);
 
   useEffect(() => {
-    const isFarmerRegistry = location.pathname.endsWith("/farmer_registry") || location.pathname.endsWith("/farmer-registry");
+    const path = location.pathname.toLowerCase();
+    const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
     if (isFarmerRegistry && currentTab !== "farmer_registry") {
       navigate(`/?tab=${currentTab}`);
     }
@@ -2497,12 +1475,7 @@ export default function App() {
       }
       setLoadedUserPin(true);
     }, (err) => {
-      console.error("user_pins error details:", {
-        code: err.code,
-        message: err.message,
-        uid: user?.uid,
-        path: `user_pins/${user?.uid}`
-      });
+      console.error("PIN Access Error:", err.message);
       setUserPinDoc(null);
       setLoadedUserPin(true);
     });
@@ -3345,9 +2318,22 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <FarmerRegistryTool user={user} onLoginClick={() => setShowAuthModal(true)} />
+            <FarmerRegistryTool 
+              user={user} 
+              onLoginClick={() => setShowAuthModal(true)} 
+              handleGoogleLogin={handleGoogleLogin}
+              addToast={addToast}
+            />
           </motion.div>
         </div>
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            addToast={addToast}
+            handleGoogleLogin={handleGoogleLogin}
+            districtsData={DEFAULT_DISTRICTS_DATA}
+          />
+        )}
       </div>
     );
   }
@@ -3977,6 +2963,10 @@ export default function App() {
                   { id: "users", label: "User Access", emoji: "🔑" },
                   ...(isAdmin || isDevEmail ? [{ id: "staff_management", label: "Staff Nodes", emoji: "🛡️" }] : []),
                   ...(isAdmin || isDevEmail ? [{ id: "logs", label: "Security Logs", emoji: "📜" }] : []),
+                  ...(isAdmin || isDevEmail ? [
+                    { id: "farmer_registry_logs", label: "రైతు రిజిస్ట్రీ లాగ్స్", emoji: "🌾" },
+                    { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", emoji: "📋" }
+                  ] : []),
                   { id: "builder", label: "Page Builder", emoji: "🏗️" },
                   { id: "locations", label: "Locations", emoji: "📍" },
                   { id: "suggestions", label: "Feedback", emoji: "💬" },
@@ -4165,12 +3155,15 @@ export default function App() {
                 />
 
                 <motion.a
-                  href="/farmer_registry"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/Farmer_Registry"
                   whileHover={{ x: 5 }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.history.pushState({}, "", "/Farmer_Registry");
+                    setCurrentTab("farmer_registry");
+                    setSidebarOpen(false);
+                  }}
                   className={`side-btn text-sans cursor-pointer ${currentTab === "farmer_registry" ? "active-tab text-white" : "hover:bg-slate-50"}`}
                 >
                   <span className="side-btn-emoji">🌾</span>
@@ -5819,7 +4812,12 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                 >
-                  <FarmerRegistryTool user={user} onLoginClick={() => setShowAuthModal(true)} />
+                  <FarmerRegistryTool 
+                    user={user} 
+                    onLoginClick={() => setShowAuthModal(true)} 
+                    handleGoogleLogin={handleGoogleLogin}
+                    addToast={addToast}
+                  />
                 </motion.div>
               )}
 
@@ -7183,6 +6181,8 @@ function AdminPanel({
       const pins: any[] = [];
       snap.forEach(d => pins.push({ id: d.id, ...d.data() }));
       setAllUserPins(pins);
+    }, (err) => {
+      console.error("Admin PINs sync error:", err.message);
     });
     return () => unsub();
   }, [isSuperAdmin]);
@@ -7216,6 +6216,10 @@ function AdminPanel({
             { id: "staff_management", label: "Staff & Permissions", icon: <Shield size={18} /> },
           ] : []),
           ...(hasViewPermission("logs") && isEffectiveAdmin ? [{ id: "logs", label: "Security Logs", icon: <ShieldCheck size={18} /> }] : []),
+          ...(hasViewPermission("logs") && isEffectiveAdmin ? [
+            { id: "farmer_registry_logs", label: "రైతు రిజిస్ట్రీ లాగ్స్", icon: <Database size={18} /> },
+            { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", icon: <FileText size={18} /> }
+          ] : []),
           ...(hasViewPermission("cloud_dns") && isEffectiveAdmin ? [{ id: "cloud_dns", label: "Cloud & DNA", icon: <Cloud size={18} /> }] : []),
         ]
       },
@@ -7433,6 +6437,40 @@ function AdminPanel({
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [logsError, setLogsError] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [farmerRegistryJobs, setFarmerRegistryJobs] = useState<any>({});
+
+  const fetchFarmerJobs = async () => {
+    try {
+      const resp = await fetch("/api/admin/farmer-jobs");
+      if (resp.ok) {
+        const data = await resp.json();
+        setFarmerRegistryJobs(data.jobs || {});
+      }
+    } catch (e) {
+      console.error("Failed to fetch farmer jobs", e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === "farmer_registry_logs" || activeSubTab === "survey_reports") {
+      fetchFarmerJobs();
+      const interval = setInterval(fetchFarmerJobs, 10000); // Poll every 10s
+      return () => clearInterval(interval);
+    }
+  }, [activeSubTab]);
+
+  const handleDeleteFarmerJob = async (id: string) => {
+    if (!window.confirm("ఈ లాగ్ మరియు రిపోర్ట్ శాశ్వతంగా తొలగించబడుతుంది. మీరు నిశ్చయించుకున్నారా?")) return;
+    try {
+      const resp = await fetch(`/api/admin/farmer-jobs/${id}`, { method: "DELETE" });
+      if (resp.ok) {
+        addToast("లాగ్ విజయవంతంగా తొలగించబడింది.");
+        fetchFarmerJobs();
+      }
+    } catch (e) {
+      addToast("తొలగించడం సాధ్యం కాలేదు.");
+    }
+  };
 
   const handleBulkApprove = async () => {
     let col =
@@ -7844,8 +6882,8 @@ function AdminPanel({
                      <h4 className="text-xl font-black text-slate-900 tracking-tight">Users per District</h4>
                      <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Users size={20} /></span>
                   </div>
-                  <div className="h-80 w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 w-full relative min-h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
                       <BarChart data={Object.entries(users.filter((u: any) => !u.isDeleted).reduce((acc: any, curr: any) => { const d = curr.district || "Unknown"; acc[d] = (acc[d] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name, value }))}>
                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 700 }} tickLine={false} axisLine={false} />
@@ -7861,8 +6899,8 @@ function AdminPanel({
                      <h4 className="text-xl font-black text-slate-900 tracking-tight">Status Overview</h4>
                      <span className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><Zap size={20} /></span>
                   </div>
-                  <div className="h-80 w-full relative">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-80 w-full relative min-h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
                       <PieChart>
                         <Pie data={Object.entries(posts.filter((p: any) => !p.isDeleted).reduce((acc: any, curr: any) => { const s = curr.status || "pending"; acc[s] = (acc[s] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={90} paddingAngle={8}>
                           {Object.entries(posts.filter((p: any) => !p.isDeleted).reduce((acc: any, curr: any) => { const s = curr.status || "pending"; acc[s] = (acc[s] || 0) + 1; return acc; }, {})).map((entry, index) => (
@@ -10918,6 +9956,186 @@ function AdminPanel({
             )}
           </div>
         )}
+
+        {/* Farmer Registry Logs (రైతు రిజిస్ట్రీ లాగ్స్) */}
+        {activeSubTab === "farmer_registry_logs" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-[22px] flex items-center justify-center shadow-sm border border-indigo-100/50">
+                <Database size={28} />
+              </div>
+              <div>
+                <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
+                  రైతు రిజిస్ట్రీ లాగ్స్ (Registry Logic Terminal)
+                </h4>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  Processing activities & live verification traces
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {Object.keys(farmerRegistryJobs).length === 0 ? (
+                <div className="p-20 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[40px]">
+                  <p className="text-sm text-slate-400 font-bold italic">ప్రస్తుతానికి ఎటువంటి లాగ్స్ నమోదు కాలేదు. (No logs recorded yet)</p>
+                </div>
+              ) : (
+                Object.values(farmerRegistryJobs).reverse().map((job: any) => (
+                  <div key={job.id} className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden hover:shadow-2xl transition-all">
+                    <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
+                      <div>
+                        <h5 className="text-sm font-black text-slate-800">GP: {job.gpName} ({job.status})</h5>
+                        <p className="text-[10px] text-slate-400 font-mono">Job ID: {job.id}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-slate-500">{new Date(job.createdAt).toLocaleString()}</p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteFarmerJob(job.id)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Delete Log"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-6 space-y-2">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Live Terminal Output:</p>
+                       <div className="bg-slate-900 rounded-2xl p-5 font-mono text-[11px] text-emerald-400 h-64 overflow-y-auto space-y-1 custom-scrollbar">
+                         {(job.browserLogs || []).map((line: string, idx: number) => (
+                           <div key={idx} className="flex gap-3">
+                             <span className="text-slate-600 shrink-0">[{idx + 1}]</span>
+                             <span>{line}</span>
+                           </div>
+                         ))}
+                         {(!job.browserLogs || job.browserLogs.length === 0) && (
+                           <p className="text-slate-500 italic">No terminal logs for this job node.</p>
+                         )}
+                       </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
+        {activeSubTab === "survey_reports" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-[22px] flex items-center justify-center shadow-sm border border-emerald-100/50">
+                <FileText size={28} />
+              </div>
+              <div>
+                <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
+                  సర్వే రిపోర్ట్స్ (Survey Completed Nodes)
+                </h4>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  Summary and downloadable output of GP verifications
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                   <thead className="bg-slate-50/50 border-b border-slate-100">
+                     <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                       <th className="p-6 pl-10">Panchayat Name (GP)</th>
+                       <th className="p-6">Status & Health</th>
+                       <th className="p-6">Progress</th>
+                       <th className="p-6">Feedback</th>
+                       <th className="p-6 text-right pr-10">Action</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-50">
+                     {Object.keys(farmerRegistryJobs).length === 0 ? (
+                        <tr><td colSpan={5} className="p-20 text-center text-slate-300 font-bold italic">No survey reports available.</td></tr>
+                     ) : (
+                       Object.values(farmerRegistryJobs).reverse().map((job: any) => (
+                         <tr key={job.id} className="hover:bg-slate-50/80 transition-colors group">
+                            <td className="p-6 pl-10">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                                  <MapPin size={18} />
+                                </div>
+                                <div>
+                                  <div className="text-[14px] font-black text-slate-700 leading-none mb-1.5">{job.gpName}</div>
+                                  <div className="text-[9px] font-mono text-slate-300 uppercase tracking-widest leading-none">
+                                    Files: {job.file1Name} / {job.file2Name}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-6">
+                               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                 job.status === "completed" ? "bg-emerald-100 text-emerald-700" :
+                                 job.status === "failed" ? "bg-rose-100 text-rose-700" :
+                                 "bg-indigo-100 text-indigo-700 animate-pulse"
+                               }`}>
+                                 {job.status}
+                               </span>
+                            </td>
+                            <td className="p-6">
+                              <div className="flex flex-col gap-1.5 w-32">
+                                <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-tight">
+                                  <span>{job.progress}%</span>
+                                  <span>{job.processedRecords}/{job.totalRecords}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${job.progress}%` }}
+                                    className="h-full bg-emerald-500 rounded-full"
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-6">
+                               {job.userFeedback ? (
+                                 <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black tracking-tight border w-fit ${
+                                   job.userFeedback === "yes" 
+                                     ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                     : "bg-rose-50 text-rose-600 border-rose-100"
+                                 }`}>
+                                   {job.userFeedback === "yes" ? "👍 Satisfied" : "👎 Not Satisfied"}
+                                 </div>
+                               ) : (
+                                 <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider italic">No Response</span>
+                               )}
+                             </td>
+                            <td className="p-6 text-right pr-10">
+                              <div className="flex items-center justify-end gap-2">
+                                {job.status === "completed" && job.outputPath && (
+                                  <a 
+                                    href={`/api/download?url=${encodeURIComponent("/uploads/" + job.outputPath.split('/').pop())}&filename=${job.gpName}_Final_Report.xlsx`}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                                  >
+                                    <Download size={14} />
+                                    Download
+                                  </a>
+                                )}
+                                <button 
+                                  onClick={() => handleDeleteFarmerJob(job.id)}
+                                  className="p-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-all border border-rose-100"
+                                  title="Remove Survey Data"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                         </tr>
+                       ))
+                     )}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+          </div>
+        )}
+
 
         {activeSubTab === "settings" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -16684,275 +15902,9 @@ function ChatSection({
   );
 }
 
-import { PR_ACT_DB, PRSection } from "./data/prActData";
-import { ExcelPrinterTool } from "./ExcelPrinterTool";
-import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
 
-function KnowledgeHubSection() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isolatedSection, setIsolatedSection] = useState<PRSection | null>(
-    null,
-  );
 
-  const getFilteredData = () => {
-    if (!searchTerm.trim()) return PR_ACT_DB;
 
-    const term = searchTerm.toLowerCase().trim();
-
-    const isExactNumber = /^\d+$/.test(term);
-    if (isExactNumber) {
-      const exactMatch = PR_ACT_DB.filter(
-        (s: PRSection) => s.number === term && s.type === "section",
-      );
-      if (exactMatch.length > 0) return exactMatch;
-    }
-
-    const normalize = (str: string) =>
-      str
-        .toLowerCase()
-        .replace(/[\s\(\)\[\]\{\}\.,!?'"అఆఇఈఉఊఎఏఐఒఓఔఅంఅఃa-zA-Z]/g, "");
-    const isTelugu = /[\u0C00-\u0C7F]/.test(term);
-
-    return PR_ACT_DB.filter((c: PRSection) => {
-
-      if (
-        c.title.toLowerCase().includes(term) ||
-        c.content.toLowerCase().includes(term) ||
-        c.keywords.some((k: string) => k.toLowerCase().includes(term)) ||
-        (c.practical_use && c.practical_use.toLowerCase().includes(term))
-      ) {
-        return true;
-      }
-
-      if (isTelugu) {
-        const normTerm = normalize(term);
-        if (normTerm.length > 2) {
-          const normTitle = normalize(c.title);
-          const normContent = normalize(c.content);
-          if (normTitle.includes(normTerm) || normContent.includes(normTerm))
-            return true;
-        }
-      }
-
-      return false;
-    });
-  };
-
-  const filteredData = getFilteredData();
-
-  if (isolatedSection) {
-    return (
-      <div className="fixed inset-0 z-[10000] bg-slate-50 flex flex-col h-[100dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="bg-indigo-600 p-6 flex items-center justify-between shadow-md shrink-0">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsolatedSection(null)}
-              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <h2 className="text-xl font-black text-white capitalize tracking-wide">
-              {isolatedSection.type === "section"
-                ? `సెక్షన్ ${isolatedSection.number}`
-                : `షెడ్యూల్ ${isolatedSection.number}`}
-            </h2>
-          </div>
-          <div className="bg-amber-400 px-3 py-1 rounded-full text-indigo-900 text-[10px] font-black uppercase tracking-wider">
-            Isolated View
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar pb-24">
-          <div className="max-w-3xl mx-auto space-y-8">
-            <div>
-              <span className="text-indigo-600 font-bold text-xs uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full mb-3 inline-block">
-                {isolatedSection.type === "section"
-                  ? "TPRA 2018 SECTION"
-                  : "TPRA 2018 SCHEDULE"}
-              </span>
-              <h1 className="text-2xl md:text-4xl font-black text-slate-800 leading-tight">
-                {isolatedSection.title}
-              </h1>
-            </div>
-
-            <div className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50">
-              <h3 className="flex items-center gap-2 font-black text-slate-400 uppercase text-sm tracking-widest mb-4">
-                <FileText size={16} /> లీగల్ టెక్స్ట్ (Legal Text)
-              </h3>
-              <p className="text-slate-700 leading-relaxed font-semibold text-lg">
-                {isolatedSection.content}
-              </p>
-            </div>
-
-            {isolatedSection.practical_use && (
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 p-6 md:p-8 rounded-[32px] border border-amber-200 shadow-lg shadow-amber-900/5">
-                <h3 className="flex items-center gap-2 font-black text-amber-600 uppercase text-sm tracking-widest mb-4">
-                  <AlertCircle size={16} /> రియల్ లైఫ్ రిఫరెన్స్ (Real-Life
-                  Reference)
-                </h3>
-                <p className="text-amber-900 leading-relaxed font-bold">
-                  {isolatedSection.practical_use}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-indigo-600 p-6 sm:p-8 rounded-[32px] text-white shadow-xl overflow-hidden relative group">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-10 -mt-10 blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-400/10 rounded-full -ml-10 -mb-10 blur-2xl"></div>
-
-        <div className="relative z-10">
-          <div className="bg-white/10 w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 border border-white/20 backdrop-blur-sm">
-            Offline Law Book App
-          </div>
-          <h2 className="text-2xl sm:text-4xl font-black flex items-center gap-3 mb-2 leading-tight">
-            <Book size={32} className="text-yellow-400 shrink-0" /> TS PR Act
-            2018 <br className="sm:hidden" />
-            పాకెట్ గైడ్
-          </h2>
-          <p className="text-indigo-100 text-xs sm:text-sm font-bold uppercase tracking-widest mb-8 max-w-lg opacity-90 leading-relaxed">
-            290 సెక్షన్లు, 8 షెడ్యూల్స్ - అడ్వాన్స్డ్ స్మార్ట్ సెర్చ్ తో
-            కచ్చితమైన డేటా మీ అరచేతిలో. ఏదీ కలపకుండా దేనికదే విడివిడిగా
-            (Individual Sections) ఒరిజినల్ డేటాతో.
-          </p>
-
-          <div className="max-w-xl">
-            <div className="relative flex items-center group/search">
-              <input
-                type="text"
-                placeholder="ఉదా: 114 లేదా నాలా లేదా అక్రమ కట్టడాలు..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white text-slate-800 placeholder:text-slate-400 pl-6 pr-16 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-yellow-400/30 transition-all font-black text-sm sm:text-base border-2 border-transparent focus:border-yellow-400 shadow-2xl"
-              />
-              {!searchTerm && (
-                <div className="absolute right-4 bg-indigo-500 p-2 rounded-xl text-yellow-300 pointer-events-none">
-                  <Bot size={20} />
-                </div>
-              )}
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-4 text-slate-400 hover:text-indigo-600 transition-colors p-2"
-                >
-                  <XCircle size={20} />
-                </button>
-              )}
-            </div>
-            <p className="text-indigo-200 text-[10px] font-semibold mt-3 ml-2">
-              💡 గమనిక: బ్రాకెట్లు, స్పెల్లింగ్ మిస్టేక్స్ ఉన్నా సరి చేసి
-              ఒరిజినల్ సెక్షన్ తీస్తుంది.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-2">
-        {["114", "73", "140", "కార్యదర్శి", "పన్ను"].map((tag) => (
-          <button
-            key={tag}
-            onClick={() => setSearchTerm(tag)}
-            className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-black text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all active:scale-95 shadow-sm"
-          >
-            {tag}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-4">
-        {filteredData.length === 0 ? (
-          <div className="text-center py-16 text-slate-500 font-bold bg-white rounded-[32px] border border-slate-200 shadow-sm flex flex-col items-center">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-400">
-              <Search size={24} />
-            </div>
-            <p className="text-lg">
-              మీరు వెతుకుతున్న "{searchTerm}" సంబంధించిన సెక్షన్ దొరకలేదు.
-            </p>
-            <p className="text-xs text-slate-400 mt-2">
-              దయచేసి నంబర్ లేదా సరైన పదాన్ని ప్రయత్నించండి.
-            </p>
-          </div>
-        ) : (
-          filteredData.map((c: PRSection) => (
-            <div
-              key={c.id}
-              className="group bg-white border border-slate-200 rounded-[28px] overflow-hidden shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 transform hover:-translate-y-1"
-            >
-              <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-start gap-6">
-                {/* Badge Section */}
-                <div className="shrink-0">
-                  <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex flex-col items-center justify-center border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-70">
-                      {c.type === "section" ? "SEC" : "SCH"}
-                    </span>
-                    <span className="text-2xl font-black">{c.number}</span>
-                  </div>
-                </div>
-
-                {/* Content Section */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-slate-800 text-lg sm:text-xl mb-3 leading-tight group-hover:text-indigo-700 transition-colors">
-                    {c.title}
-                  </h3>
-                  <p className="text-sm font-semibold text-slate-600 line-clamp-3 leading-relaxed mb-4">
-                    {c.content}
-                  </p>
-
-                  {c.practical_use && (
-                    <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl flex items-start gap-3 mb-4">
-                      <AlertCircle
-                        size={16}
-                        className="text-amber-500 shrink-0 mt-0.5"
-                      />
-                      <p className="text-xs font-bold text-amber-800 leading-relaxed max-w-prose line-clamp-2">
-                        {c.practical_use}
-                      </p>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setIsolatedSection(c)}
-                    className="w-full sm:w-auto mt-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border border-indigo-100"
-                  >
-                    ఈ సెక్షన్ మాత్రమే ఓపెన్ చెయ్ 🚀
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {!searchTerm && (
-        <div className="bg-slate-900 text-white p-6 md:p-8 rounded-[32px] mt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
-          <div className="relative z-10 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div>
-              <h4 className="font-black text-sm uppercase tracking-widest text-amber-400 mb-2 flex items-center gap-2">
-                <CheckCircle2 size={16} /> 100% Individual View
-              </h4>
-              <p className="text-xs text-slate-300 leading-relaxed font-medium max-w-xl">
-                పై డేటా అంతా కచ్చితమైన ఒరిజినల్ సెక్షన్ నంబర్లతో పొందుపరచబడింది.
-                ఇందులో డమ్మీ కంటెంట్ లేకుండా, రియల్ లైఫ్ లో వాడుకునేలా పక్కాగా
-                స్ప్లిట్ చేయబడింది.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PRActHub({ user }: { user: any }) {
-  return <KnowledgeHubSection />;
-}
 
 function PostDetail({
   postId,
@@ -17915,698 +16867,9 @@ function PostComments({
   );
 }
 
-function AuthModal({
-  onClose,
-  addToast,
-  handleGoogleLogin,
-  districtsData,
-}: {
-  onClose: () => void;
-  addToast: (s: string) => void;
-  handleGoogleLogin: () => void;
-  districtsData: Record<string, string[]>;
-}) {
-  const [isSignup, setIsSignup] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const [surname, setSurname] = useState("");
-  const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
-  const [gender, setGender] = useState("");
-  const [state, setState] = useState("Telangana");
-  const [district, setDistrict] = useState("");
-  const [mandal, setMandal] = useState("");
-  const [village, setVillage] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [designation, setDesignation] = useState("");
 
-  const mandals = district ? districtsData[district] || [] : [];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
-
-    setLoading(true);
-    try {
-      if (!isSignup) {
-        await signInWithEmailAndPassword(auth, email, password);
-
-        onClose();
-      } else {
-        if (
-          !username ||
-          !email ||
-          !password ||
-          !name ||
-          !surname ||
-          (gender !== "Female" && !mobile)
-        ) {
-          addToast("Please fill all required fields (*)");
-          setLoading(false);
-          return;
-        }
-        if (password !== confirmPassword) {
-          addToast("Passwords do not match");
-          setLoading(false);
-          return;
-        }
-        if (password.length < 6) {
-          addToast("Password must be at least 6 characters");
-          setLoading(false);
-          return;
-        }
-
-        const lowerUsername = username.toLowerCase().trim();
-        const usernameDoc = await getDoc(doc(db, "usernames", lowerUsername));
-        if (usernameDoc.exists()) {
-          addToast("Username already taken. Choose another.");
-          setLoading(false);
-          return;
-        }
-
-        const cred = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password,
-        );
-        const user = cred.user;
-        await updateProfile(user, { displayName: username });
-
-        await setDoc(doc(db, "usernames", lowerUsername), { uid: user.uid });
-
-        await setDoc(doc(db, "users", user.uid), {
-          surname,
-          name,
-          username,
-          gender,
-          state,
-          district,
-          mandal,
-          village,
-          designation,
-          mobile,
-          email,
-          time: Date.now(),
-        });
-
-        if (designation === "Citizen") {
-          Swal.fire({
-            title: "సిటిజన్ గారికి నమస్కారం",
-            text: "ప్రస్తుతం ఈ వేదిక Webportal సిటిజన్ సర్వీస్ ఇంకా అందుబాటులోకి రాలేదు. రాగానే మీ మొబైల్ నెంబర్ కి మెసేజ్ లేదా ఇమెయిల్ ద్వారా మీకు సమాచారం ఇవ్వడం జరుగుతుంది.",
-            icon: "info",
-            confirmButtonText: "సరే (OK)",
-            confirmButtonColor: "#0d3b66",
-          });
-        } else {
-          addToast("Account created successfully!");
-        }
-        onClose();
-      }
-    } catch (err: any) {
-      addToast(getFriendlyError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[4000] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.93, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-[450px] bg-white rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200/50"
-      >
-        <div className="bg-gradient-to-b from-[#0f2e4a] to-[#0a1f33] p-5 text-white text-center relative flex flex-col items-center border-b border-indigo-950/20 shadow-inner">
-          <button
-            aria-label="Close auth modal"
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-90"
-          >
-            <X size={16} />
-          </button>
-
-          <div className="mb-2 bg-white/5 p-2 rounded-full border border-white/10 shadow-md">
-            <EVAnimatedLogo size={36} />
-          </div>
-
-          <h2
-            className="text-xl sm:text-2xl font-black uppercase tracking-wider leading-none mb-1 flex items-center gap-1"
-            style={{
-              color: "#fbe947",
-              fontFamily: '"Arial Black", Impact, sans-serif',
-            }}
-          >
-            E<span style={{ color: "#facc15" }}>-</span>VEDHIKA
-          </h2>
-          <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.22em] pl-0.5">
-            Access Your Portal
-          </p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-5 bg-white custom-scrollbar">
-          <div className="mb-5 text-center">
-            <h3 className="text-lg sm:text-xl font-black text-[#0f2e4a] tracking-tight">
-              {isSignup ? "Create Account" : "Welcome Back"}
-            </h3>
-            <p className="text-xs font-semibold text-slate-500 mt-1">
-              {isSignup
-                ? "Fill in your details to get started."
-                : "Sign in with your credentials."}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignup && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      Surname <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      value={surname}
-                      onChange={(e) => setSurname(e.target.value)}
-                      placeholder="Surname"
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      Name <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Name"
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                    Username / Display Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Display name"
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      Gender
-                    </label>
-                    <select
-                      value={gender}
-                      onChange={(e) => {
-                        setGender(e.target.value);
-                        if (e.target.value === "Female") setMobile("");
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
-                    >
-                      <option value="">Select Gender</option>
-                      <option>Male</option>
-                      <option>Female</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  {gender !== "Female" && (
-                    <div className="flex flex-col">
-                      <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                        Mobile No <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        value={mobile}
-                        onChange={(e) => setMobile(e.target.value)}
-                        placeholder="Phone"
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      State
-                    </label>
-                    <select
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
-                    >
-                      <option>Telangana</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      District <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={district}
-                      onChange={(e) => {
-                        setDistrict(e.target.value);
-                        setMandal("");
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
-                    >
-                      <option value="">Select District</option>
-                      {Object.keys(districtsData)
-                        .sort()
-                        .map((d) => (
-                          <option key={d}>{d}</option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      Mandal
-                    </label>
-                    <select
-                      value={mandal}
-                      onChange={(e) => setMandal(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
-                      disabled={!district}
-                    >
-                      <option value="">Select Mandal</option>
-                      {mandals.map((m, idx) => (
-                        <option key={`${m}_${idx}`} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                      Village / GP
-                    </label>
-                    <input
-                      value={village}
-                      onChange={(e) => setVillage(e.target.value)}
-                      placeholder="Enter Village"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col">
-                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                    Designation
-                  </label>
-                  <input
-                    value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
-                    placeholder="Type Designation"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="flex flex-col">
-              <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                Email Address <span className="text-rose-500">*</span>
-              </label>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="email@example.com"
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-              />
-            </div>
-
-            <div className={isSignup ? "grid grid-cols-2 gap-3" : "flex flex-col"}>
-              <div className="flex flex-col">
-                <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                  Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                />
-              </div>
-              {isSignup && (
-                <div className="flex flex-col">
-                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
-                    Confirm Password
-                  </label>
-                  <input
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    type="password"
-                    placeholder="••••••••"
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                  />
-                </div>
-              )}
-            </div>
-
-            <button
-              aria-label={isSignup ? "Register Now" : "Sign In Now"}
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:via-blue-700 hover:to-indigo-800 text-white py-3 px-5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/15 hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-50 disabled:transform-none flex justify-center items-center gap-2 cursor-pointer"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin text-white" size={15} />
-              ) : isSignup ? (
-                "Register Now"
-              ) : (
-                "Sign In Now"
-              )}
-            </button>
-          </form>
-
-          {!isSignup && (
-            <>
-              <div className="my-4 flex items-center gap-3">
-                <div className="flex-1 h-[1px] bg-slate-200"></div>
-                <span className="text-[10px] font-extrabold text-slate-400 tracking-widest">
-                  OR
-                </span>
-                <div className="flex-1 h-[1px] bg-slate-200"></div>
-              </div>
-
-              <button
-                aria-label="Continue with Google"
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full border-2 border-slate-200 hover:border-slate-300 py-2.5 rounded-xl font-black text-slate-700 hover:text-slate-900 text-xs uppercase flex items-center justify-center gap-2.5 hover:bg-slate-50/50 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    fill="#EA4335"
-                  />
-                </svg>
-                Continue with Google
-              </button>
-              <div className="mt-2 text-center">
-                <p className="text-[10px] text-slate-400 font-bold leading-tight">
-                  లాగిన్ ఆలస్యం అయితే పైన ఉన్న బాణం ↗ గుర్తుపై క్లిక్ చేసి <br/> 
-                  కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి. అప్పుడు త్వరగా అవుతుంది.
-                </p>
-              </div>
-            </>
-          )}
-
-          <div className="mt-5 text-center pb-2">
-            <button
-              aria-label={isSignup ? "Switch to Sign In" : "Switch to Sign Up"}
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-[#0f2e4a] hover:text-indigo-600 font-extrabold text-xs uppercase tracking-wide transition-colors"
-            >
-              {isSignup
-                ? "Already have an account? Sign In"
-                : "Don't have an account? Sign Up"}
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function PollsScreen({
-  user,
-  addToast,
-}: {
-  user: any;
-  addToast: (msg: string) => void;
-}) {
-  const [polls, setPolls] = useState<any[]>([]);
-  const [newPollQuestion, setNewPollQuestion] = useState("");
-  const [newPollOptions, setNewPollOptions] = useState(["", ""]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, "polls"), orderBy("createdAt", "desc")),
-      (snap) => {
-        setPolls(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching polls:", error);
-        setLoading(false);
-      },
-    );
-    return () => unsub();
-  }, []);
-
-  const handleCreatePoll = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return addToast("లాగిన్ అవసరం (Login required)");
-    if (!newPollQuestion.trim() || newPollOptions.some((opt) => !opt.trim()))
-      return addToast("అన్ని వివరాలు నింపండి (Fill all fields)");
-
-    try {
-      await addDoc(collection(db, "polls"), {
-        question: newPollQuestion,
-        options: newPollOptions.map((opt) => ({ text: opt, votes: 0 })),
-        votedBy: {},
-        createdBy: user.uid,
-        createdAt: Date.now(),
-      });
-      setNewPollQuestion("");
-      setNewPollOptions(["", ""]);
-      addToast("పోల్ విజయవంతంగా సృష్టించబడింది (Poll created)");
-    } catch (err: any) {
-      addToast(getFriendlyError(err));
-    }
-  };
-
-  const handleVote = async (
-    pollId: string,
-    optionIndex: number,
-    currentPoll: any,
-  ) => {
-    if (!user) return addToast("లాగిన్ అవసరం (Login required)");
-    if (currentPoll.votedBy[user.uid] !== undefined)
-      return addToast("మీరు ఇప్పటికే ఓటు వేశారు (Already voted)");
-
-    try {
-      const pollRef = doc(db, "polls", pollId);
-      const newOptions = [...currentPoll.options];
-      newOptions[optionIndex].votes += 1;
-
-      await updateDoc(pollRef, {
-        options: newOptions,
-        [`votedBy.${user.uid}`]: optionIndex,
-      });
-      addToast("మీ ఓటు నమోదైంది (Vote recorded)");
-    } catch (err: any) {
-      addToast(getFriendlyError(err));
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <AdBanner />
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
-          <Vote size={24} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-            ప్రజాభిప్రాయ సేకరణ (Polls)
-          </h2>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Village Voting & Opinions
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-100 shadow-sm mb-8">
-        <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <Plus size={16} className="text-primary" /> కొత్త పోల్ సృష్టించండి
-          (Create Poll)
-        </h3>
-        <form onSubmit={handleCreatePoll} className="space-y-4">
-          <input
-            type="text"
-            value={newPollQuestion}
-            onChange={(e) => setNewPollQuestion(e.target.value)}
-            placeholder="ప్రశ్న (ఉదా: ముందుగా ఏ పని చేయాలి? పార్క్ లేదా రోడ్డు?)"
-            className="w-full bg-slate-50 border-slate-100 rounded-2xl p-4 text-sm font-bold placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20"
-            required
-          />
-          <div className="space-y-2">
-            {newPollOptions.map((opt, i) => (
-              <div key={i} className="flex gap-2">
-                <input
-                  type="text"
-                  value={opt}
-                  onChange={(e) => {
-                    const newOpts = [...newPollOptions];
-                    newOpts[i] = e.target.value;
-                    setNewPollOptions(newOpts);
-                  }}
-                  placeholder={`ఆప్షన్ (Option) ${i + 1}`}
-                  className="flex-1 bg-slate-50 border-slate-100 rounded-2xl p-4 text-sm font-bold placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/20"
-                  required
-                />
-                {i >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewPollOptions(
-                        newPollOptions.filter((_, idx) => idx !== i),
-                      )
-                    }
-                    className="p-4 text-slate-400 hover:text-danger bg-slate-50 rounded-2xl transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => setNewPollOptions([...newPollOptions, ""])}
-            className="text-[10px] font-black text-primary hover:text-blue-700 transition-colors flex items-center gap-1 uppercase tracking-widest pl-1 mt-2"
-          >
-            <Plus size={14} /> యాడ్ ఆప్షన్ (Add Option)
-          </button>
-          <button
-            type="submit"
-            className="w-full mt-4 bg-primary text-white py-4 rounded-2xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform uppercase tracking-widest text-sm"
-          >
-            పబ్లిష్ చేయండి (Publish Poll)
-          </button>
-        </form>
-      </div>
-
-      <div className="space-y-4">
-        {loading ? (
-          <div className="text-center py-10">
-            <div className="w-8 h-8 mx-auto border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-          </div>
-        ) : polls.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 font-bold">
-            ఇంకా ఎటువంటి పోల్స్ లేవు (No polls yet)
-          </div>
-        ) : (
-          polls.map((poll) => {
-            const totalVotes = poll.options.reduce(
-              (acc: number, opt: any) => acc + opt.votes,
-              0,
-            );
-            const userVotedIndex = user ? poll.votedBy[user.uid] : undefined;
-
-            return (
-              <div
-                key={poll.id}
-                className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group"
-              >
-                <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 text-[9px] uppercase tracking-widest px-3 py-1.5 rounded-bl-xl font-black">
-                  {totalVotes} Votes
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-slate-800 mb-4 mt-2 pr-12">
-                  {poll.question}
-                </h3>
-                <div className="space-y-3">
-                  {poll.options.map((opt: any, i: number) => {
-                    const percent =
-                      totalVotes > 0
-                        ? Math.round((opt.votes / totalVotes) * 100)
-                        : 0;
-                    const isSelected = userVotedIndex === i;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => handleVote(poll.id, i, poll)}
-                        disabled={userVotedIndex !== undefined}
-                        className={`w-full relative overflow-hidden rounded-xl border text-left transition-all ${userVotedIndex !== undefined ? (isSelected ? "border-primary bg-blue-50/50" : "border-slate-100 bg-slate-50 opacity-70") : "border-slate-100 bg-white hover:border-primary/50 hover:bg-slate-50"}`}
-                      >
-                        <div
-                          className={`absolute top-0 left-0 bottom-0 transition-all duration-1000 ${isSelected ? "bg-blue-100" : "bg-slate-200/50"}`}
-                          style={{ width: `${percent}%` }}
-                        />
-                        <div className="relative p-4 flex justify-between items-center z-10">
-                          <span
-                            className={`text-sm font-bold ${isSelected ? "text-primary" : "text-slate-700"}`}
-                          >
-                            {opt.text}
-                          </span>
-                          {userVotedIndex !== undefined && (
-                            <span
-                              className={`text-xs font-black ${isSelected ? "text-primary" : "text-slate-400"}`}
-                            >
-                              {percent}%
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-400 tracking-wider">
-                  <span className="uppercase">
-                    Created:{" "}
-                    {new Date(poll.createdAt).toLocaleDateString("en-IN")}
-                  </span>
-                  <button
-                    onClick={() => {
-                      const shareText = `దయచేసి ఈ పోల్ లో పాల్గొనండి:\n*${poll.question}*\n\nమా గ్రామం యాప్ లో ఓటు వేయడానికి కింది లింక్ ద్వారా వెళ్ళండి:\n${window.location.origin}`;
-                      if (navigator.share) {
-                        navigator
-                          .share({ title: "Vote in Poll", text: shareText })
-                          .catch(console.error);
-                      } else {
-                        window.open(
-                          `https://wa.me/?text=${encodeURIComponent(shareText)}`,
-                          "_blank",
-                        );
-                      }
-                    }}
-                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg hover:bg-slate-100 hover:text-blue-600 transition-colors uppercase tracking-widest"
-                  >
-                    <Share2 size={14} /> Share Poll
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
 
 function SuggestionForm({
   addToast,
