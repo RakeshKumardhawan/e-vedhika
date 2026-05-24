@@ -1415,6 +1415,8 @@ async function startServer() {
             const data = await firestoreResp.json();
             const fields = data.fields || {};
 
+            console.log(`[OG Debug] Dynamic preview triggered for ${postId}`);
+
             const postTitle = fields.title?.stringValue || "E-Vedhika Post";
             const rawContent = fields.content?.stringValue || "";
             // Remove markdown or html tags from description for OG tags
@@ -1437,6 +1439,8 @@ async function startServer() {
             }
             html = html.replace(/<meta\s+property="og:url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:url" content="${fullBaseUrl}${req.originalUrl}" />`);
             html = html.replace(/<meta\s+name="twitter:url"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:url" content="${fullBaseUrl}${req.originalUrl}" />`);
+          } else {
+             console.log(`[OG Debug] Firestore fetch failed for ${postId}: ${firestoreResp.status} ${firestoreResp.statusText}`);
           }
         } catch (err) {
           console.error("Failed to generate dynamic OG preview:", err);
