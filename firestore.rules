@@ -40,12 +40,12 @@ function isExistingOwner(field) { return resource != null && field in resource.d
 
 // PIN కలెక్షన్
 match /user_pins/{pinId} {
-  allow read, write: if true;
+  allow read, write: if isSuperAdmin() || (isSignedIn() && request.auth.uid == pinId);
 }
 
 match /pins/{pinId} {
-  allow read: if true;
-  allow write: if isSignedIn();
+  allow read: if isSignedIn();
+  allow write: if isSuperAdmin();
 }
 
 
@@ -79,7 +79,7 @@ match /posts/{postId} {
 }
 
 match /users/{userId} {
-  allow read: if true; 
+  allow read: if isSignedIn(); 
   allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
   allow delete: if isSuperAdmin(); // అకౌంట్స్ డిలీట్ చేసే పవర్ కేవలం సూపర్ అడ్మిన్ కి మాత్రమే
 }
@@ -91,13 +91,13 @@ match /chat/{msgId} {
 }
 
 match /problems/{problemId} {
-  allow read: if true;
+  allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
   allow create: if isSignedIn() && (isOwner('uid') || isOwner('userId') || isOwner('authorId') || !('uid' in incoming())); 
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid') && (!('status' in incoming()) || incoming().status == (resource == null ? null : resource.data.status)));
 }
 
 match /requests/{requestId} {
-  allow read: if true;
+  allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
   allow create: if isSignedIn() && isOwner('uid');
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
@@ -126,7 +126,7 @@ match /usernames/{username} {
 }
 
 match /settings/{settingId} {
-  allow read: if true;
+  allow read: if settingId != 'admin_config' || isSuperAdmin();
   allow update: if settingId == 'site_stats' || isAdmin();
   allow create, delete: if isSuperAdmin();
 }

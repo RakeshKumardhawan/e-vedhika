@@ -11,6 +11,70 @@ import { GoogleGenAI } from "@google/genai";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
+import * as admin from 'firebase-admin';
+
+let isFirebaseAdminInitialized = false;
+
+function initFirebaseAdmin() {
+  if (isFirebaseAdminInitialized) return true;
+  if (admin.apps.length > 0) {
+    isFirebaseAdminInitialized = true;
+    return true;
+  }
+  try {
+    admin.initializeApp({
+      projectId: "e-vedhika-258f2"
+    });
+    isFirebaseAdminInitialized = true;
+    return true;
+  } catch (error: any) {
+    console.warn("Firebase Admin failed to initialize. Fallback will be used if in dev mode:", error?.message);
+    return false;
+  }
+}
+
+const verifyToken = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: missing or invalid token' });
+  }
+  const token = authHeader.split('Bearer ')[1];
+  
+  const isInitialized = initFirebaseAdmin();
+  
+  if (isInitialized) {
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      (req as any).user = decodedToken;
+      return next();
+    } catch (error: any) {
+      console.error('Error verifying token with Firebase Admin:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("Dev environment: Falling back to token decoding.");
+      } else {
+        return res.status(401).json({ error: 'Unauthorized: token verification failed' });
+      }
+    }
+  }
+
+  // Fallback for development mode when firebase-admin is not initialized/configured locally
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = Buffer.from(parts[1], 'base64').toString('utf8');
+        const decoded = JSON.parse(payload);
+        (req as any).user = decoded;
+        return next();
+      }
+    } catch (e) {
+      console.error('Failed to parse dev token fallback:', e);
+    }
+    return res.status(401).json({ error: 'Unauthorized: invalid token format' });
+  }
+
+  return res.status(500).json({ error: 'Internal Server Error: Security services not available' });
+};
 
 
 import { createProxyMiddleware } from "http-proxy-middleware";
@@ -151,7 +215,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/about", (req, res) => {
+  app.post("/api/about", verifyToken, (req, res) => {
     try {
       const { title, content } = req.body;
       const updatedData = {
@@ -182,7 +246,7 @@ async function startServer() {
     limits: { fileSize: 1024 * 1024 * 1024 } // 1GB limit
   });
 
-  app.post("/api/upload", (req, res) => {
+  app.post("/api/upload", verifyToken, (req, res) => {
     console.log("POST /api/upload hit. Content-Type:", req.headers['content-type']);
     
     upload.single('file')(req, res, async (err) => {
@@ -506,8 +570,15 @@ async function startServer() {
   }, 60 * 1000); // Check every minute
 
   // Admin APIs for Farmer Registry
-  app.get("/api/admin/farmer-jobs", (req, res) => {
+  app.get("/api/admin/farmer-jobs", verifyToken, (req, res) => {
     const { uid } = req.query;
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    // NOTE: In a real app we would check Firestore 'admins' collection, but here we fall back to super-admin email check
+    // or we only allow the user to see their own if not admin
+    if (userRole !== "admin" && uid !== (req as any).user?.uid) {
+        return res.status(403).json({ error: "Forbidden: You can only view your own jobs" });
+    }
+    
     if (uid && typeof uid === "string") {
       const filteredJobs: Record<string, FarmerJob> = {};
       Object.keys(farmerJobs).forEach(id => {
@@ -517,13 +588,23 @@ async function startServer() {
       });
       return res.json({ jobs: filteredJobs });
     }
+    
+    if (userRole !== "admin") {
+         return res.status(403).json({ error: "Forbidden: Admins only" });
+    }
+
     res.json({ jobs: farmerJobs });
   });
 
-  app.delete("/api/admin/farmer-jobs/:id", (req, res) => {
+  app.delete("/api/admin/farmer-jobs/:id", verifyToken, (req, res) => {
     const { id } = req.params;
     const job = farmerJobs[id];
     if (job) {
+      const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+      if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+          return res.status(403).json({ error: "Forbidden: You can only delete your own jobs" });
+      }
+
       console.log(`[ADMIN] Deleting farmer job: ${id}`);
       
       // Cleanup files on disk
@@ -548,10 +629,14 @@ async function startServer() {
     }
   });
 
-  app.post("/api/farmer-jobs/:id/feedback", (req, res) => {
+  app.post("/api/farmer-jobs/:id/feedback", verifyToken, (req, res) => {
     const { id } = req.params;
     const { feedback } = req.body;
     if (farmerJobs[id]) {
+        const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+        if (userRole !== "admin" && farmerJobs[id].uid !== (req as any).user?.uid) {
+            return res.status(403).json({ error: "Forbidden: You can only feedback your own jobs" });
+        }
       farmerJobs[id].userFeedback = feedback;
       saveFarmerJobs();
       res.json({ success: true });
@@ -1351,10 +1436,14 @@ async function startServer() {
   });
 
   // Solve Captcha REST endpoint
-  app.post("/api/farmer-registry/jobs/:id/solve-captcha", express.json(), (req, res) => {
+  app.post("/api/farmer-registry/jobs/:id/solve-captcha", verifyToken, express.json(), (req, res) => {
     const job = farmerJobs[req.params.id];
     if (!job) {
       return res.status(404).json({ error: "Verification job not found." });
+    }
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+        return res.status(403).json({ error: "Forbidden" });
     }
 
     const { code } = req.body;
@@ -1393,10 +1482,14 @@ async function startServer() {
   });
 
   // Update Dynamic Throttling Rate Limit
-  app.post("/api/farmer-registry/jobs/:id/update-rate-limit", express.json(), (req, res) => {
+  app.post("/api/farmer-registry/jobs/:id/update-rate-limit", verifyToken, express.json(), (req, res) => {
     const job = farmerJobs[req.params.id];
     if (!job) {
       return res.status(404).json({ error: "Verification job not found." });
+    }
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+        return res.status(403).json({ error: "Forbidden" });
     }
 
     const { rateLimitMs } = req.body;
@@ -1412,19 +1505,39 @@ async function startServer() {
   });
 
   // Check job status REST endpoint
-  app.get("/api/farmer-registry/jobs/:id", (req, res) => {
+  app.get("/api/farmer-registry/jobs/:id", verifyToken, (req, res) => {
     const job = farmerJobs[req.params.id];
     if (!job) {
       return res.status(404).json({ error: "Verification job not found." });
+    }
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+        return res.status(403).json({ error: "Forbidden" });
     }
     return res.json(job);
   });
 
   // File download REST endpoint
-  app.get("/api/farmer-registry/download/:id", (req, res) => {
+  app.get("/api/farmer-registry/download/:id", async (req, res) => {
+    const token = req.query.token as string;
+    if (!token) {
+      return res.status(401).send("Unauthorized: no token");
+    }
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      (req as any).user = decodedToken;
+    } catch(err) {
+      return res.status(401).send("Unauthorized: invalid token");
+    }
+
     const job = farmerJobs[req.params.id];
     if (!job || !job.outputPath) {
       return res.status(404).send("File not found or processing has not completed yet.");
+    }
+    
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+        return res.status(403).send("Forbidden: You can only download your own files");
     }
 
     const filePath = path.join(farmerPrivateDir, job.outputPath);

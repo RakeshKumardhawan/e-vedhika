@@ -19,6 +19,7 @@ import {
   Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { auth } from "../../firebase";
 import { AuthModal } from "./AuthModal";
 
 interface JobStatus {
@@ -204,8 +205,12 @@ export function FarmerRegistryTool({
       formData.append("uid", user.uid);
 
       try {
+        const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
         const resp = await fetch("/api/farmer-registry/upload", {
           method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          },
           body: formData,
         });
 
@@ -258,7 +263,12 @@ export function FarmerRegistryTool({
 
         activeRows.forEach(async (item) => {
           try {
-            const resp = await fetch(`/api/farmer-registry/jobs/${item.jobId}`);
+            const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+            const resp = await fetch(`/api/farmer-registry/jobs/${item.jobId}`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            });
             if (!resp.ok) return;
 
             const jobStatus: JobStatus = await resp.json();
@@ -315,9 +325,13 @@ export function FarmerRegistryTool({
     }
 
     try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
       const resp = await fetch(`/api/farmer-registry/jobs/${jobId}/solve-captcha`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` 
+        },
         body: JSON.stringify({ code })
       });
 
@@ -345,15 +359,16 @@ export function FarmerRegistryTool({
 
   const [showFeedback, setShowFeedback] = useState<string | null>(null);
 
-  const handleDownload = (item: GPWorkRow) => {
+  const handleDownload = async (item: GPWorkRow) => {
     if (!item.jobId || item.status !== "completed") return;
     
     // Format: [PANCHAYAT_NAME] FARMER REGISTRY BALANCE FARMERS.xlsx
     const cleanGpName = item.gpName.trim().toUpperCase();
     const fileName = `${cleanGpName} FARMER REGISTRY BALANCE FARMERS`.replace(/\s+/g, ' ') + ".xlsx";
     
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
     const link = document.createElement("a");
-    link.href = `/api/farmer-registry/download/${item.jobId}`;
+    link.href = `/api/farmer-registry/download/${item.jobId}?token=${token}`;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -735,9 +750,13 @@ export function FarmerRegistryTool({
                                       <button 
                                         onClick={async () => {
                                           try {
+                                            const token = await auth.currentUser?.getIdToken();
                                             await fetch(`/api/farmer-jobs/${row.id}/feedback`, {
                                               method: "POST",
-                                              headers: { "Content-Type": "application/json" },
+                                              headers: { 
+                                                "Content-Type": "application/json",
+                                                "Authorization": `Bearer ${token}` 
+                                              },
                                               body: JSON.stringify({ feedback: "yes" })
                                             });
                                           } catch (e) {}
@@ -751,9 +770,13 @@ export function FarmerRegistryTool({
                                       <button 
                                         onClick={async () => {
                                           try {
+                                            const token = await auth.currentUser?.getIdToken();
                                             await fetch(`/api/farmer-jobs/${row.id}/feedback`, {
                                               method: "POST",
-                                              headers: { "Content-Type": "application/json" },
+                                              headers: { 
+                                                "Content-Type": "application/json",
+                                                "Authorization": `Bearer ${token}` 
+                                              },
                                               body: JSON.stringify({ feedback: "no" })
                                             });
                                           } catch (e) {}

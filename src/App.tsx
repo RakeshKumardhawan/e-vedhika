@@ -1392,6 +1392,10 @@ export default function App() {
   }, [currentTab]);
 
   useEffect(() => {
+    if (!user) {
+      setAllUsers([]);
+      return;
+    }
     const unsub = onSnapshot(
       collection(db, "users"),
       (snap) => {
@@ -1404,7 +1408,7 @@ export default function App() {
       (e) => console.error("Users List Error:", e),
     );
     return () => unsub();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     let interval: any;
@@ -1468,15 +1472,18 @@ export default function App() {
   const [loadedUserPin, setLoadedUserPin] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!isDevEmail) return;
     const unsub = onSnapshot(doc(db, "settings", "admin_config"), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.pin) setCurrentAdminPin(data.pin);
         if (data.storageType) setStorageConfig(data.storageType);
       }
+    }, (err) => {
+      console.log("Not authorized to read admin config (expected for non-admins).");
     });
     return () => unsub();
-  }, []);
+  }, [isDevEmail]);
 
   useEffect(() => {
     if (!user) {
@@ -1594,6 +1601,8 @@ export default function App() {
     };
   }, []);
 
+  const [authLoading, setAuthLoading] = useState(true);
+
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -1602,9 +1611,30 @@ export default function App() {
         setUserRole("user");
         hasGreetedRef.current = false;
       }
+      setAuthLoading(false);
     });
     return () => unsubAuth();
   }, []);
+
+  useEffect(() => {
+    // Protected Tabs Redirection Control
+    const protectedTabs = ["admin", "editor", "my_activity", "farmer_registry", "workspace", "excel_print", "problems"];
+    // Wait for auth to resolve and bypass checking if loaded
+    if (!authLoading) {
+      if (!user && protectedTabs.includes(currentTab)) {
+        setCurrentTab("home");
+        setSearchParams(new URLSearchParams());
+        requireLoginAlert();
+      } else if (user && (currentTab === "admin" || currentTab === "editor")) {
+        // Enforce user roles for admin and editor if they managed to set the tab
+        if (!canAccessAdmin) {
+           setCurrentTab("home");
+           setSearchParams(new URLSearchParams());
+           addToast("Access Denied: You do not have permissions for this section.");
+        }
+      }
+    }
+  }, [authLoading, user, currentTab, canAccessAdmin, setSearchParams]);
 
   useEffect(() => {
 
@@ -2189,7 +2219,7 @@ export default function App() {
               </h2>
               
               <p className="text-slate-400 font-bold mb-4 uppercase text-xs tracking-widest">
-                Account: {user?.email} ({isDevEmail ? "Website Creator" : isAdmin ? "Super Admin" : userProfile?.role || "Staff Node"})
+                Account: {user?.email} ({isDevEmail ? "Developer" : isAdmin ? "Super Admin" : userProfile?.role || "Staff User"})
               </p>
 
               {!isAdmin && loadedUserPin && !userPinDoc?.pin ? (
@@ -2271,7 +2301,7 @@ export default function App() {
                     }}
                   />
                   <p className="text-[10px] text-slate-500 font-bold uppercase mt-4 block">
-                    {isAdmin ? "Standard master PIN verifies Super Admin Nodes" : "మీ వ్యక్తిగత సెక్యూరిటీ పిన్ను నమోదు చేయండి"}
+                    {isAdmin ? "Master PIN verifies Admin Access" : "Enter your personal security PIN"}
                   </p>
                 </div>
               )}
@@ -3020,12 +3050,12 @@ export default function App() {
                   { id: "reports", label: "Posts & Issues", emoji: "🚩" },
                   { id: "updates", label: "Flash News", emoji: "⚡" },
                   { id: "users", label: "User Access", emoji: "🔑" },
-                  ...(isAdmin || isDevEmail ? [{ id: "staff_management", label: "Staff Nodes", emoji: "🛡️" }] : []),
+                  ...(isAdmin || isDevEmail ? [{ id: "staff_management", label: "Staff Management", emoji: "🛡️" }] : []),
                   ...(isAdmin || isDevEmail ? [{ id: "logs", label: "Security Logs", emoji: "📜" }] : []),
                   ...(isAdmin || isDevEmail ? [
-                    { id: "farmer_registry_logs", label: "రైతు రిజిస్ట్రీ లాగ్స్", emoji: "🌾" },
-                    { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", emoji: "📊" },
-                    { id: "edit_about", label: "అబౌట్ పేజీ ఎడిటర్", emoji: "📝" }
+                    { id: "farmer_registry_logs", label: "Farmer Registry Logs", emoji: "🌾" },
+                    { id: "survey_reports", label: "Survey Reports", emoji: "📊" },
+                    { id: "edit_about", label: "🏛️ About E-Vedhika", emoji: "📝" }
                   ] : []),
                   { id: "builder", label: "Page Builder", emoji: "🏗️" },
                   { id: "locations", label: "Locations", emoji: "📍" },
@@ -5331,7 +5361,7 @@ function EditProfileModal({
                       <Lock size={16} />
                    </div>
                    <div>
-                      <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest leading-none">Your Node Permissions</h4>
+                      <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest leading-none">Your Account Permissions</h4>
                       <p className="text-[8px] font-bold text-blue-400 uppercase mt-0.5 tracking-tight">Active for: {userProfile.role}</p>
                    </div>
                 </div>
@@ -6269,7 +6299,7 @@ function AdminPanel({
     { label: isEditorMode ? "My Active Citizens" : "Enrolled Citizens", value: users?.filter((u: any) => !(u.isDeleted || u.role === "deleted")).length || 0, icon: <Users size={22} />, color: "from-blue-600 to-indigo-600", trend: "+12%" },
     { label: isEditorMode ? "My Pending Issues" : "Pending Issues", value: (problems || []).filter((p: any) => !["solved", "resolved", "deleted"].includes((p.status || "").toLowerCase())).length, icon: <AlertTriangle size={22} />, color: "from-rose-600 to-orange-600", trend: "Critical" },
     { label: isEditorMode ? "My Contents" : "Total Contents", value: posts.length, icon: <Layout size={22} />, color: "from-emerald-600 to-teal-600", trend: "+5%" },
-    { label: "Content Node", value: storageConfig === "cloudflare" ? "R2 Active" : "Firebase", icon: <Database size={22} />, color: "from-purple-600 to-pink-600", trend: "Global" },
+    { label: "Cloud Storage", value: storageConfig === "cloudflare" ? "R2 Active" : "Firebase", icon: <Database size={22} />, color: "from-purple-600 to-pink-600", trend: "Global" },
   ];
 
   const menuCategories = [
@@ -6281,12 +6311,13 @@ function AdminPanel({
         ...(!(hasPostsOnly || isEditorMode) ? [
           ...(hasViewPermission("gos_formats") ? [{ id: "gos_formats", label: "GOs & Formats", icon: <FileText size={18} /> }] : []),
           ...(hasViewPermission("updates") ? [{ id: "updates", label: "Flash News", icon: <Zap size={18} /> }] : []),
+          ...(isEditor ? [{ id: "edit_about", label: "🏛️ About E-Vedhika", icon: <Info size={18} /> }] : []),
         ] : []),
       ]
     },
     ...(!(hasPostsOnly || isEditorMode) ? [
       {
-        title: "Security & Nodes",
+        title: "Security & Staff",
         items: [
           ...(hasViewPermission("users") ? [{ id: "users", label: "User Access", icon: <Fingerprint size={18} /> }] : []),
           ...(isSuperAdmin ? [
@@ -6294,9 +6325,8 @@ function AdminPanel({
           ] : []),
           ...(hasViewPermission("logs") && isEffectiveAdmin ? [{ id: "logs", label: "Security Logs", icon: <ShieldCheck size={18} /> }] : []),
           ...(hasViewPermission("logs") && isEffectiveAdmin ? [
-            { id: "farmer_registry_logs", label: "రైతు రిజిస్ట్రీ లాగ్స్", icon: <Database size={18} /> },
-            { id: "survey_reports", label: "సర్వే రిపోర్ట్స్", icon: <BarChart3 size={18} /> },
-            { id: "edit_about", label: "అబౌట్ పేజీ ఎడిటర్", icon: <Edit3 size={18} /> }
+            { id: "farmer_registry_logs", label: "Farmer Registry Logs", icon: <Database size={18} /> },
+            { id: "survey_reports", label: "Survey Reports", icon: <BarChart3 size={18} /> },
           ] : []),
           ...(hasViewPermission("cloud_dns") && isEffectiveAdmin ? [{ id: "cloud_dns", label: "Cloud & DNA", icon: <Cloud size={18} /> }] : []),
         ]
@@ -6520,7 +6550,12 @@ function AdminPanel({
   const fetchFarmerJobs = async () => {
     try {
       const url = isSuperAdmin ? "/api/admin/farmer-jobs" : `/api/admin/farmer-jobs?uid=${user?.uid || ""}`;
-      const resp = await fetch(url);
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+      const resp = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (resp.ok) {
         const data = await resp.json();
         setFarmerRegistryJobs(data.jobs || {});
@@ -6541,7 +6576,13 @@ function AdminPanel({
   const handleDeleteFarmerJob = async (id: string) => {
     if (!window.confirm("ఈ లాగ్ మరియు రిపోర్ట్ శాశ్వతంగా తొలగించబడుతుంది. మీరు నిశ్చయించుకున్నారా?")) return;
     try {
-      const resp = await fetch(`/api/admin/farmer-jobs/${id}`, { method: "DELETE" });
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+      const resp = await fetch(`/api/admin/farmer-jobs/${id}`, { 
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (resp.ok) {
         addToast("లాగ్ విజయవంతంగా తొలగించబడింది.");
         fetchFarmerJobs();
@@ -6646,7 +6687,7 @@ function AdminPanel({
     );
 
     let unsubLogs = () => {};
-    if (isAdmin) {
+    if (isSuperAdmin) {
       unsubLogs = onSnapshot(
         query(
           collection(db, "security_logs"),
@@ -6775,9 +6816,9 @@ function AdminPanel({
             <div>
               <div className="flex items-center gap-3 mb-1">
                  <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight leading-none">
-                  {menuCategories.flatMap(c => (c as any).items).find(i => (i as any).id === activeSubTab)?.label || "Terminal"}
+                  {menuCategories.flatMap(c => (c as any).items).find(i => (i as any).id === activeSubTab)?.label || "Control Panel"}
                 </h1>
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black rounded-lg uppercase tracking-wider border border-blue-200">Active Node</span>
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black rounded-lg uppercase tracking-wider border border-blue-200">Live Active</span>
               </div>
             {isAdmin && (
               <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] ml-0.5 flex items-center gap-2">
@@ -6872,14 +6913,14 @@ function AdminPanel({
                     
                     <div className="relative z-10">
                       <div className="flex items-center gap-3 mb-8">
-                         <span className={`px-4 py-1.5 ${isEditorMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-blue-500/20 text-blue-300 border-blue-500/30"} text-[10px] font-black uppercase tracking-[0.3em] rounded-full border backdrop-blur-md`}>{isEditorMode ? "Editor Hub Active" : "Admin Portal Root"}</span>
+                         <span className={`px-4 py-1.5 ${isEditorMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-blue-500/20 text-blue-300 border-blue-500/30"} text-[10px] font-black uppercase tracking-[0.3em] rounded-full border backdrop-blur-md`}>{isEditorMode ? "Editor Hub Active" : "Admin Portal"}</span>
                          <span className={`w-2 h-2 rounded-full ${isEditorMode ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.7)]" : "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]"} animate-pulse`}></span>
                       </div>
-                      <h3 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-none">{isEditorMode ? "Content Editor" : "Command Center"} <br/><span className={isEditorMode ? "text-emerald-400" : "text-blue-400"}>{isEditorMode ? "Workspace" : "Hyper-Node"}</span></h3>
+                      <h3 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-none">{isEditorMode ? "Content Editor" : "E-Vedhika Admin"} <br/><span className={isEditorMode ? "text-emerald-400" : "text-blue-400"}>{isEditorMode ? "Workspace" : "Control Panel"}</span></h3>
                       <p className="text-slate-400 font-bold max-w-xl text-balance leading-relaxed mb-12 text-lg">
                         {isEditorMode 
-                          ? "Submit reports, manage your issues, and monitor content flow. This specialized node provides a focused workspace for content editors."
-                          : "Welcome back to E-Vedhika Hyper-Terminal. All systems are operational. Monitor user traffic, handle reports, and orchestrate cloud nodes from this central framework."
+                          ? "Submit reports, manage your issues, and monitor content flow with simplified editor permissions."
+                          : "Welcome back to the E-Vedhika Admin Portal. All services are fully operational. Monitor citizen reports, inspect agricultural surveys, and manage platform roles from here."
                         }
                       </p>
                       <div className="flex flex-wrap gap-5">
@@ -6888,7 +6929,7 @@ function AdminPanel({
                         </button>
                         {!isEditorMode && (
                           <button onClick={() => setActiveSubTab("cloud_dns")} className="px-10 py-5 bg-white/5 text-white border border-white/10 backdrop-blur-2xl rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95">
-                            Infrastructure
+                            Cloud Settings
                           </button>
                         )}
                       </div>
@@ -6910,11 +6951,11 @@ function AdminPanel({
                          {/* Placeholder for small charts or lists */}
                          <div className="bg-slate-50 rounded-[36px] border border-slate-100 p-8 flex flex-col items-center justify-center text-center">
                             <Users size={40} className="text-slate-300 mb-4" />
-                            <p className="text-sm font-bold text-slate-500">Live Traffic Monitor Under Calibration</p>
+                            <p className="text-sm font-bold text-slate-500">System Activity Logs Safe</p>
                          </div>
                          <div className="bg-slate-50 rounded-[36px] border border-slate-100 p-8 flex flex-col items-center justify-center text-center">
                             <ShieldCheck size={40} className="text-slate-300 mb-4" />
-                            <p className="text-sm font-bold text-slate-500">Security Nodes: All Encrypted</p>
+                            <p className="text-sm font-bold text-slate-500">All Database Operations Encrypted</p>
                          </div>
                     </div>
                   </div>
@@ -7198,9 +7239,9 @@ function AdminPanel({
                                   {item.title || item.type || "Untitled Report"}
                                 </h4>
                                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-1">
-                                  <span>{item.authorName || (item.userName === "Admin" ? "Administrator" : "User Node")}</span>
+                                  <span>{item.authorName || (item.userName === "Admin" ? "Administrator" : "Citizen")}</span>
                                   <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                  <span className="uppercase tracking-widest">{item.district || "Regional Terminal"}</span>
+                                  <span className="uppercase tracking-widest">{item.district || "General Region"}</span>
                                 </div>
                               </div>
                             </div>
@@ -9549,7 +9590,7 @@ function AdminPanel({
                       అడ్మిన్ ఏఐ & సిస్టమ్ రోగనిర్ధారణ కేంద్రం
                     </h4>
                     <p className="text-[9px] font-black text-indigo-300 uppercase tracking-[0.2em] mt-0.5">
-                      Admin AI Hub & Live Error Diagnostics Terminal • Powered by Gemini 3.5 Flash
+                      Admin AI & Automated Diagnostics Center • Powered by Gemini 3.5 Flash
                     </p>
                   </div>
                 </div>
@@ -10140,7 +10181,7 @@ function AdminPanel({
               </div>
               <div>
                 <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                  అబౌట్ పేజీ ఎడిటర్ (About Content Config)
+                  About Us (అబౌట్ విషయం)
                 </h4>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
                   Adjust global platform description and journey
@@ -10181,9 +10222,13 @@ function AdminPanel({
                      onClick={async () => {
                        if (!aboutContent) return;
                        try {
+                         const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
                          const res = await fetch("/api/about", {
                            method: "POST",
-                           headers: { "Content-Type": "application/json" },
+                           headers: { 
+                             "Content-Type": "application/json",
+                             "Authorization": `Bearer ${token}`
+                           },
                            body: JSON.stringify({ title: aboutContent.title, content: aboutContent.content })
                          });
                          if (res.ok) {
@@ -10482,9 +10527,9 @@ function AdminPanel({
                   <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30">Infrastructure v2</span>
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse"></span>
                 </div>
-                <h3 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-none">Cloud, DNS & SEO <br/><span className="text-blue-400">Hyper-Terminal</span></h3>
+                <h3 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-none">Cloud, DNS & SEO <br/><span className="text-blue-400">Control Panel</span></h3>
                 <p className="text-slate-400 font-medium max-w-xl text-balance leading-relaxed">
-                  Real-time infrastructure orchestration. Manage primary storage nodes, verify global DNS propagation, and monitor SEO crawls from a unified command center.
+                  Real-time infrastructure and website configuration. Manage primary cloud storage providers, monitor domain DNS propagation, and adjust search indexing presets from a single workspace.
                 </p>
               </div>
 
@@ -14793,6 +14838,11 @@ function PostForm({
           
           const xhr = new XMLHttpRequest();
           xhr.open('POST', '/api/upload', true);
+          
+          if (auth.currentUser) {
+            const token = await auth.currentUser.getIdToken();
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
           
           xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) {
