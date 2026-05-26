@@ -115,6 +115,7 @@ import {
   Settings2,
   ShieldOff,
   Maximize2,
+  FileSpreadsheet,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -131,6 +132,7 @@ import { KnowledgeHubSection, PRActHub } from "./components/KnowledgeHub";
 import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
 import { PollsScreen } from "./components/PollsScreen";
+import { ExcelMerger } from "./components/ExcelMerger";
 
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
@@ -13315,6 +13317,12 @@ function DigitalWorkspaceSection({
       icon: Book,
       desc: "A to Z Interactive Guide",
     },
+    {
+      id: "excel-merge",
+      title: "Excel File Merger",
+      icon: FileSpreadsheet,
+      desc: "Merge Multiple Excel Files",
+    },
   ];
 
   return (
@@ -13515,6 +13523,21 @@ function DigitalWorkspaceSection({
             }}
           >
             <PRActHub user={user} />
+          </motion.div>
+        )}
+        {activeTool === "excel-merge" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <ExcelMerger />
           </motion.div>
         )}
       </AnimatePresence>
