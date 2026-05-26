@@ -481,3 +481,31 @@ body.dark-theme .no-invert {
 .role-badge.admin { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.15); }
 .role-badge.editor { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.15); }
 .role-badge.citizen { background: rgba(79, 70, 229, 0.1); color: #4f46e5; border: 1px solid rgba(79, 70, 229, 0.15); }
+
+/* Accessibility Font Zoom Styles */
+.text-zoom-large {
+  font-size: 1.1rem !important;
+}
+.text-zoom-large p {
+  font-size: 1.125rem !important;
+  line-height: 1.7 !important;
+}
+.text-zoom-large h1, .text-zoom-large h2, .text-zoom-large h3, .text-zoom-large h4, .text-zoom-large h5 {
+  font-size: 1.25em !important;
+}
+.text-zoom-large span, .text-zoom-large input, .text-zoom-large button, .text-zoom-large textarea {
+  font-size: 1.05em !important;
+}
+.text-zoom-xlarge {
+  font-size: 1.25rem !important;
+}
+.text-zoom-xlarge p {
+  font-size: 1.28rem !important;
+  line-height: 1.8 !important;
+}
+.text-zoom-xlarge h1, .text-zoom-xlarge h2, .text-zoom-xlarge h3, .text-zoom-xlarge h4, .text-zoom-xlarge h5 {
+  font-size: 1.4em !important;
+}
+.text-zoom-xlarge span, .text-zoom-xlarge input, .text-zoom-xlarge button, .text-zoom-xlarge textarea {
+  font-size: 1.15em !important;
+}

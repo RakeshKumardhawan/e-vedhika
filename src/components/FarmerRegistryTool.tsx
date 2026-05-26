@@ -172,13 +172,13 @@ export function FarmerRegistryTool({
 
     setLogs(prev => [
       ...prev,
-      `ఫైల్ అప్‌లోడ్: ${file.name} (${field === "file1" ? "FILE 1" : "FILE 2"} గా యాడ్ చేయబడింది)`
+      `File upload: ${file.name} (added as ${field === "file1" ? "FILE 1" : "FILE 2"})`
     ]);
   };
 
   const startPipelineVerification = async () => {
     if (!user) {
-      addToast("ఫైల్స్ అప్లోడ్ చేయడానికి దయచేసి లాగిన్ అవ్వండి.");
+      addToast("Please login first to upload files.");
       onLoginClick?.();
       return;
     }

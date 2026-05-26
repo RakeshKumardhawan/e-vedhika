@@ -69,7 +69,7 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
           },
           (error) => {
             console.error("Firebase upload error:", error);
-            addToast("అప్‌లోడ్ విఫలమైంది: " + error.message);
+            addToast("Upload failed: " + error.message);
             setUploading(false);
           },
           async () => {
