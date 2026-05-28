@@ -133,6 +133,7 @@ import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
 import { PollsScreen } from "./components/PollsScreen";
 import { ExcelMerger } from "./components/ExcelMerger";
+import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
 
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
@@ -794,15 +795,17 @@ function PostSkeleton({ count = 3 }: { count?: number }) {
 
 function HeroSkeleton() {
   return (
-    <div className="w-full bg-slate-900 rounded-[56px] p-8 sm:p-20 animate-pulse mb-8 min-h-[400px] flex flex-col justify-center items-center relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-indigo-500/10 blur-[100px] rounded-full" />
-      <div className="h-4 bg-slate-800 rounded-full w-24 mb-8 opacity-50" />
-      <div className="h-16 bg-slate-800 rounded-2xl w-3/4 mb-6" />
-      <div className="h-16 bg-slate-800 rounded-2xl w-1/2 mb-10" />
-      <div className="h-6 bg-slate-800 rounded-full w-2/3 mb-4 opacity-70" />
-      <div className="flex gap-4 mt-8">
-        <div className="h-12 bg-slate-800 rounded-2xl w-32" />
-        <div className="h-12 bg-slate-800 rounded-2xl w-32 opacity-50" />
+    <div className="w-full max-w-5xl mx-auto rounded-[32px] p-6 sm:p-12 mb-8 min-h-[220px] sm:min-h-[260px] flex flex-col items-center justify-center text-center border border-slate-100 shadow-sm relative overflow-hidden bg-white">
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50" />
+      <div className="relative z-10 flex flex-col items-center gap-5">
+        <div className="relative flex items-center justify-center">
+           <div className="w-12 h-12 border-4 border-slate-200 rounded-full"></div>
+           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+        </div>
+        <div className="space-y-2 animate-pulse">
+          <h3 className="text-lg sm:text-xl font-black text-slate-700 tracking-tight">లోడ్ అవుతోంది...</h3>
+          <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">దయచేసి వేచి ఉండండి (Please wait...)</p>
+        </div>
       </div>
     </div>
   );
@@ -1383,8 +1386,15 @@ export default function App() {
   const fetchAboutContent = async () => {
     try {
       const res = await fetch("/api/about");
-      const data = await res.json();
-      setAboutContent(data);
+      if (res.ok) {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await res.json();
+          setAboutContent(data);
+        } else {
+          console.warn("About content response was not JSON");
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch about content", err);
     }
@@ -1675,10 +1685,17 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.uid) return;
+    
+    // Initial tracking update on mount
+    updateDoc(doc(db, "users", user.uid), {
+      lastActive: Date.now()
+    }).catch(() => {});
+
     const interval = setInterval(async () => {
       try {
         await updateDoc(doc(db, "users", user.uid), {
           timeSpentMinutes: increment(1),
+          lastActive: Date.now()
         });
       } catch (e) {
         // Silent fail for non-admins if profile doc doesn't exist yet
@@ -1749,10 +1766,6 @@ export default function App() {
       "admin",
       "editor",
       "my_activity",
-      "farmer_registry",
-      "workspace",
-      "excel_print",
-      "problems",
     ];
     // Wait for auth to resolve and bypass checking if loaded
     if (!authLoading) {
@@ -3105,7 +3118,9 @@ export default function App() {
                 </div>
                 <div className="hidden sm:flex flex-col justify-center relative z-10">
                   <span className="text-white text-[12px] font-black tracking-wide leading-tight drop-shadow-sm">
-                    {userProfile?.username || "Panchayat Member"}
+                    {userProfile?.name 
+                      ? `${userProfile.name} ${userProfile.surname || ""}`.trim() 
+                      : userProfile?.username || user?.displayName || "Panchayat Member"}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-2 h-2 rounded-full bg-[#10b981] shadow-[0_0_6px_#10b981] animate-pulse"></span>
@@ -3252,17 +3267,7 @@ export default function App() {
         </div>
 
         <div className="hidden min-[400px]:flex items-center gap-2 sm:gap-6 ml-2 sm:ml-4">
-          <div className="hidden lg:flex flex-col items-end">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 leading-none mb-1">
-              System Live
-            </span>
-            <span className="text-[11px] font-mono font-bold text-slate-500">
-              {new Date().toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-              })}
-            </span>
-          </div>
+          <SystemLiveClock />
         </div>
       </nav>
 
@@ -5647,7 +5652,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <ExcelPrinterTool />
+                    <ExcelPrinterTool user={user} addToast={addToast} />
                   </motion.div>
                 )}
 
@@ -6531,6 +6536,36 @@ function EditProfileModal({
           </div>
         </form>
       </motion.div>
+    </div>
+  );
+}
+
+function SystemLiveClock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  return (
+    <div className="hidden lg:flex flex-col items-end">
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 leading-none">
+          System Live
+        </span>
+      </div>
+      <span className="text-[11px] font-mono font-bold text-slate-500 tracking-wider">
+        {time.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        })} &bull; {time.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        })}
+      </span>
     </div>
   );
 }
@@ -7690,8 +7725,13 @@ function AdminPanel({
         },
       });
       if (resp.ok) {
-        const data = await resp.json();
-        setFarmerRegistryJobs(data.jobs || {});
+        const contentType = resp.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const data = await resp.json();
+          setFarmerRegistryJobs(data.jobs || {});
+        } else {
+          console.warn("Farmer jobs response was not JSON");
+        }
       }
     } catch (e) {
       console.error("Failed to fetch farmer jobs", e);
@@ -8042,10 +8082,16 @@ function AdminPanel({
                       transition={{ delay: idx * 0.1 }}
                       className="group bg-white p-10 rounded-[48px] border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-3xl hover:shadow-indigo-600/10 transition-all duration-700 ease-out overflow-hidden relative cursor-pointer"
                       onClick={() => {
-                        if (stat.label === "పౌరుల నమోదు")
+                        const lbl = stat.label;
+                        if (lbl === "పౌరుల నమోదు" || lbl === "Enrolled Citizens" || lbl === "My Active Citizens") {
                           setActiveSubTab("users");
-                        if (stat.label === "పరిష్కారం కాని సమస్యలు")
+                        } else if (lbl === "పరిష్కారం కాని సమస్యలు" || lbl === "Pending Issues" || lbl === "My Pending Issues") {
                           setActiveSubTab("reports");
+                        } else if (lbl === "Total Contents" || lbl === "My Contents") {
+                          setActiveSubTab("reports");
+                        } else if (lbl === "Cloud Storage") {
+                          setActiveSubTab("cloud_dns");
+                        }
                       }}
                     >
                       <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-slate-50 rounded-full group-hover:scale-[1.8] transition-transform duration-1000 ease-out opacity-60"></div>
@@ -9287,6 +9333,22 @@ function AdminPanel({
                               <span className="text-blue-600 font-bold">
                                 {u.timeSpentMinutes || 0} Minutes
                               </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+                              <span>Status</span>
+                              {u.lastActive && (Date.now() - u.lastActive < 120000) ? (
+                                <span className="flex flex-col items-end gap-1">
+                                  <span className="flex items-center gap-1.5 text-emerald-600 font-bold tracking-normal bg-emerald-50 px-2 py-0.5 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse relative -top-[0.5px]"></span>
+                                    Online • {u.timeSpentMinutes || 0}m Session
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1.5 text-slate-500 font-bold tracking-normal bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                                  <span className="w-1 h-1 rounded-full bg-slate-300 relative -top-[0.5px]"></span>
+                                  Offline {u.lastActive ? `(${Math.max(1, Math.floor((Date.now() - u.lastActive) / 60000))}m ago)` : ""} • {u.timeSpentMinutes || 0}m Session
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
                               <span>Access Level</span>
@@ -13318,6 +13380,12 @@ function DigitalWorkspaceSection({
       desc: "A to Z Interactive Guide",
     },
     {
+      id: "monthly-activity",
+      title: "Monthly Activity Data",
+      icon: FileSpreadsheet,
+      desc: "Format Monthly Activity Reports",
+    },
+    {
       id: "excel-merge",
       title: "Excel File Merger",
       icon: FileSpreadsheet,
@@ -13525,6 +13593,21 @@ function DigitalWorkspaceSection({
             <PRActHub user={user} />
           </motion.div>
         )}
+        {activeTool === "monthly-activity" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <MonthlyActivityFormatter addToast={addToast} />
+          </motion.div>
+        )}
         {activeTool === "excel-merge" && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -13537,7 +13620,7 @@ function DigitalWorkspaceSection({
               paddingTop: "20px",
             }}
           >
-            <ExcelMerger />
+            <ExcelMerger user={user} addToast={addToast} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -14071,6 +14154,8 @@ function MultiDayAnalyzer({
   const onUpload = async (e: any) => {
     const files = Array.from(e.target.files) as File[];
     if (files.length === 0) return;
+
+    if (requireLoginAlert(user)) return;
 
     setIsAnalyzing(true);
     await loadHeavyModules();
@@ -17334,10 +17419,7 @@ function PostForm({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (!auth.currentUser) {
-      addToast("దయచేసి ముందుగా లాగిన్ అవ్వండి! (Please login first)");
-      return;
-    }
+    if (requireLoginAlert()) return;
 
     const paramsFiles = Array.from(files);
 

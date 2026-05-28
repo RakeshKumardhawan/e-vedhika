@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../../firebase";
 import { AuthModal } from "./AuthModal";
+import { requireLoginAlert } from "../App";
 
 interface JobStatus {
   id: string;
@@ -147,6 +148,8 @@ export function FarmerRegistryTool({
 
   const handleFileChange = (id: string, field: "file1" | "file2", file: File | null) => {
     if (!file) return;
+
+    if (requireLoginAlert(user)) return;
 
     setGpRows(prev => prev.map(x => {
       if (x.id === id) {

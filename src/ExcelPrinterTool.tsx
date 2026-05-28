@@ -1,8 +1,9 @@
 import React, { useState, useRef } from "react";
 import { FileUp, Printer, FileSpreadsheet, X } from "lucide-react";
+import { requireLoginAlert } from "./App";
 import "./ExcelPrinterTool.css";
 
-export function ExcelPrinterTool() {
+export function ExcelPrinterTool({ user, addToast }: { user?: any; addToast?: (s: string) => void }) {
   const [data, setData] = useState<any[][]>([]);
   const [fileName, setFileName] = useState<string>("");
   const printRef = useRef<HTMLDivElement>(null);
@@ -10,6 +11,8 @@ export function ExcelPrinterTool() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (requireLoginAlert(user)) return;
 
     setFileName(file.name);
 
