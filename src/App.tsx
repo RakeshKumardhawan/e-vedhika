@@ -17456,8 +17456,9 @@ function PostForm({
         async (resolve, reject) => {
           try {
             const adminSnap = await getDoc(doc(db, "settings", "admin_config"));
-            const isFirebaseStorage =
-              adminSnap.exists() && adminSnap.data().storageType === "firebase";
+            const savedStorageType = adminSnap.exists() ? adminSnap.data().storageType : "firebase";
+            // Force Firebase storage if we know R2 env vars are likely not set, or just use it as default
+            const isFirebaseStorage = savedStorageType === "firebase" || true; // FORCE FIREBASE FOR NOW to prevent ephemeral storage data loss
 
             if (isFirebaseStorage) {
               const metadata = {

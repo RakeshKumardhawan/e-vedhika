@@ -52,7 +52,8 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
 
     try {
       const adminSnap = await getDoc(doc(db, "settings", "admin_config"));
-      const isFirebaseStorage = adminSnap.exists() && adminSnap.data().storageType === "firebase";
+      // Force Firebase storage if we know R2 env vars are likely not set, or just use it as default
+      const isFirebaseStorage = true;
 
       if (isFirebaseStorage) {
         const metadata = {
