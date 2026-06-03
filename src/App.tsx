@@ -15,6 +15,7 @@ import {
 import { ManaBot } from "./components/ManaBot";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
 import { SYSTEM_UPDATES } from "./data/updates";
+import { askMana } from "./services/geminiService";
 import {
   Bell,
   Menu,
@@ -1371,9 +1372,8 @@ export default function App() {
   const [requests, setRequests] = useState<RequestData[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const approvedSuggestions = suggestions.filter((s) => {
-    if (!s.status) return true;
-    const stat = s.status.toLowerCase();
-    return stat === "approved" || stat === "resolved" || stat === "accepted";
+    if (!s.status) return false;
+    return s.status.toLowerCase() === "approved";
   });
   const [problemsGlobal, setProblemsGlobal] = useState<ProblemReport[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -1592,6 +1592,24 @@ export default function App() {
   const [storageConfig, setStorageConfig] = useState<"cloudflare" | "firebase">(
     "cloudflare",
   );
+  
+  const DEFAULT_SUGGESTION_CATEGORIES = [
+    "General Suggestion",
+    "App Improvement",
+    "Service Feedback",
+    "Technical Issue",
+    "Request Feature",
+  ];
+  const [suggestionCategories, setSuggestionCategories] = useState<string[]>(DEFAULT_SUGGESTION_CATEGORIES);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "suggestion_categories"), (snap) => {
+      if (snap.exists() && snap.data().data) {
+        setSuggestionCategories(snap.data().data);
+      }
+    });
+    return () => unsub();
+  }, []);
   const [userPinDoc, setUserPinDoc] = useState<any>(null);
   const [loadedUserPin, setLoadedUserPin] = useState<boolean>(false);
 
@@ -3349,7 +3367,7 @@ export default function App() {
                     : []),
                   { id: "builder", label: "Page Builder", emoji: "🏗️" },
                   { id: "locations", label: "Locations", emoji: "📍" },
-                  { id: "suggestions", label: "Feedback", emoji: "💬" },
+                  { id: "suggestions", label: "Public Suggestions and Feedback", emoji: "💬" },
                   { id: "settings", label: "System Config", emoji: "⚙️" },
                   { id: "ai", label: "Gemini AI", emoji: "🤖" },
                 ].map((item) => (
@@ -3462,6 +3480,20 @@ export default function App() {
                               requireLoginAlert();
                             } else {
                               setCurrentTab("my_activity");
+                              setSidebarOpen(false);
+                            }
+                          }}
+                        />
+                        <MenuButton
+                          label="⚙️ Edit Profile"
+                          emoji="⚙️"
+                          tourId="menu-edit-profile"
+                          active={false}
+                          onClick={() => {
+                            if (!user) {
+                              requireLoginAlert();
+                            } else {
+                              setShowProfileModal(true);
                               setSidebarOpen(false);
                             }
                           }}
@@ -3649,6 +3681,7 @@ export default function App() {
                 posts={posts}
                 problems={problemsGlobal}
                 suggestions={suggestions}
+                suggestionCategories={suggestionCategories}
                 users={allUsers}
                 user={user}
                 setAdminLocked={setAdminLocked}
@@ -3692,6 +3725,7 @@ export default function App() {
                   posts={posts}
                   problems={problemsGlobal}
                   suggestions={suggestions}
+                  suggestionCategories={suggestionCategories}
                   users={allUsers}
                   user={user}
                   setAdminLocked={setAdminLocked}
@@ -4693,6 +4727,7 @@ export default function App() {
                     <ChatSection
                       messages={chatMessages}
                       user={user}
+                      isAdmin={isAdmin}
                       addToast={addToast}
                       userProfile={userProfile}
                     />
@@ -4715,7 +4750,7 @@ export default function App() {
                         <ArrowLeft size={16} /> Back to Home
                       </button>
                     </div>
-                    <PollsScreen user={user} addToast={addToast} />
+                    <PollsScreen user={user} isAdmin={isAdmin} addToast={addToast} />
                   </motion.div>
                 )}
 
@@ -5685,6 +5720,7 @@ export default function App() {
                       problems={problemsGlobal}
                       suggestions={approvedSuggestions}
                       posts={posts}
+                      setShowProfileModal={setShowProfileModal}
                     />
                   </motion.div>
                 )}
@@ -5918,6 +5954,7 @@ export default function App() {
                   <SuggestionForm
                     addToast={addToast}
                     onCancel={() => setShowSuggestionForm(false)}
+                    categories={suggestionCategories}
                   />
                 </div>
               </div>
@@ -6361,10 +6398,17 @@ function EditProfileModal({
             )}
           </div>
 
+          <div className="mt-4 mb-2 px-1 pb-1 border-b border-slate-100">
+            <h3 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
+               <Building size={12} />
+               Office / Workplace Address
+            </h3>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                State
+                Office State
               </label>
               <select
                 className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl outline-none font-bold text-xs cursor-not-allowed"
@@ -6375,7 +6419,7 @@ function EditProfileModal({
             </div>
             <div>
               <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                District
+                Office District
               </label>
               <select
                 value={district}
@@ -6398,7 +6442,7 @@ function EditProfileModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Mandal
+                Office Mandal
               </label>
               <select
                 value={mandal}
@@ -6416,7 +6460,7 @@ function EditProfileModal({
             </div>
             <div>
               <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Village / GP
+                Office Village / GP
               </label>
               <input
                 value={village}
@@ -6811,7 +6855,7 @@ function LocationManager({
   );
 }
 
-function MyActivity({ user, userProfile, problems, suggestions, posts }: any) {
+function MyActivity({ user, userProfile, problems, suggestions, posts, setShowProfileModal }: any) {
   const [activeTab, setActiveTab] = useState<"problems" | "suggestions">(
     "problems",
   );
@@ -6835,6 +6879,12 @@ function MyActivity({ user, userProfile, problems, suggestions, posts }: any) {
             Track the status of your submitted issues and feedback
           </p>
         </div>
+        <button
+          onClick={() => setShowProfileModal(true)}
+          className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-6 py-2.5 rounded-xl font-bold transition-colors text-sm flex items-center gap-2 shadow-sm"
+        >
+          <User size={16} /> Edit Profile
+        </button>
       </div>
 
       <div className="flex gap-4 mb-6 border-b border-slate-100 pb-2 overflow-x-auto custom-scrollbar">
@@ -7206,7 +7256,7 @@ function AdminPanel({
   setActiveSubTab,
   aboutContent,
   setAboutContent,
-  fetchAboutContent,
+  suggestionCategories,
 }: any) {
   const posts =
     hasPostsOnly || isEditorMode
@@ -7446,7 +7496,7 @@ function AdminPanel({
                 ? [
                     {
                       id: "suggestions",
-                      label: "Admin Feedback",
+                      label: "Public Suggestions and Feedback",
                       icon: <MessageSquare size={18} />,
                     },
                   ]
@@ -8437,6 +8487,9 @@ function AdminPanel({
 
             {(activeSubTab === "reports" || activeSubTab === "suggestions") && (
               <div className="space-y-8 pb-20">
+                {activeSubTab === "suggestions" && (
+                  <SuggestionCategoriesManager categories={suggestionCategories} addToast={addToast} />
+                )}
                 {activeSubTab === "reports" && (
                   <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200 mb-6">
                     {["posts", "issues"].map((type) => (
@@ -8635,19 +8688,19 @@ function AdminPanel({
                                 <div className="ml-2">
                                   <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
                                     {item.title ||
+                                      item.name ||
                                       item.type ||
                                       "Untitled Report"}
                                   </h4>
                                   <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-1">
                                     <span>
                                       {item.authorName ||
-                                        (item.userName === "Admin"
-                                          ? "Administrator"
-                                          : "Citizen")}
+                                        item.userName ||
+                                        (activeSubTab === "suggestions" ? "Citizen" : "Citizen")}
                                     </span>
                                     <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                     <span className="uppercase tracking-widest">
-                                      {item.district || "General Region"}
+                                      {item.district || item.village || "General Region"}
                                     </span>
                                   </div>
                                 </div>
@@ -8661,8 +8714,8 @@ function AdminPanel({
                                   "
                                   {item.desc ||
                                     item.text ||
-                                    item.problem ||
                                     item.suggestion ||
+                                    item.problem ||
                                     "No descriptor signal received."}
                                   "
                                 </p>
@@ -11443,7 +11496,7 @@ function AdminPanel({
                             desc: "మండలాలు, గ్రామ పంచాయతీల జాబితా ఎడిట్ చెయ్",
                           },
                           suggestions: {
-                            name: "Admin Feedback ( సలహాలు )",
+                            name: "Suggestion & Feedback ( సలహాలు )",
                             desc: "పౌరుల సలహాల స్వీకరణ మరియు వారి ఫీడ్ బ్యాక్ సమాధానాలు",
                           },
                           trash: {
@@ -11936,7 +11989,7 @@ function AdminPanel({
                           desc: "మండలాలు, గ్రామ పంచాయతీల జాబితా ఎడిట్ చెయ్",
                         },
                         suggestions: {
-                          name: "Admin Feedback ( సలహాలు )",
+                          name: "Suggestion & Feedback ( సలహాలు )",
                           desc: "పౌరుల సలహాల స్వీకరణ మరియు వారి ఫీడ్ బ్యాక్ సమాధానాలు",
                         },
                         trash: {
@@ -13276,11 +13329,13 @@ function UsersListModal({
   uids,
   allUsers,
   onClose,
+  anonymousCount = 0,
 }: {
   title: string;
   uids: string[];
   allUsers: UserProfile[];
   onClose: () => void;
+  anonymousCount?: number;
 }) {
   const usersList = uids.map(
     (uid) =>
@@ -13305,13 +13360,35 @@ function UsersListModal({
         </button>
         <h3 className="font-black text-primary text-xl mb-4 uppercase tracking-widest">
           {title}{" "}
-          <span className="text-slate-400 text-sm">({uids.length})</span>
+          <span className="text-slate-400 text-sm">
+            ({uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Any` : ""})
+          </span>
         </h3>
         <div className="space-y-3">
-          {usersList.length === 0 && (
+          {usersList.length === 0 && anonymousCount === 0 && (
             <p className="text-slate-400 text-xs font-bold text-center py-4 uppercase">
               No users found
             </p>
+          )}
+          {anonymousCount > 0 && (
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+               <div className="flex items-center gap-3">
+                 <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase overflow-hidden text-xs">
+                   <User size={14} />
+                 </div>
+                 <div>
+                   <h4 className="text-xs font-black text-slate-800 leading-tight">
+                     Anonymous Visitors
+                   </h4>
+                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                     Session Views
+                   </p>
+                 </div>
+               </div>
+               <span className="text-xs font-black bg-slate-200 text-slate-600 px-2 py-1 rounded-lg">
+                 +{anonymousCount}
+               </span>
+            </div>
           )}
           {usersList.map((u, i) => (
             <div
@@ -17236,26 +17313,25 @@ function PostCard({
             </div>
           </div>
 
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <div
-                onClick={(e) => {
-                  if (isAdmin && post.views > 0) {
-                    e.stopPropagation();
-                    setShowViewsModal(true);
-                  }
-                }}
-                className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && post.views > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
+          {/* Views - Visible to all, clickable only by admin */}
+          <div className="flex items-center gap-2">
+            <div
+              onClick={(e) => {
+                if (isAdmin && post.views > 0) {
+                  e.stopPropagation();
+                  setShowViewsModal(true);
+                }
+              }}
+              className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && post.views > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
+            >
+              <Eye size={18} />
+              <span
+                className={`text-sm font-black ${isAdmin && post.views > 0 ? "hover:underline cursor-pointer" : ""}`}
               >
-                <Eye size={18} />
-                <span
-                  className={`text-sm font-black ${isAdmin && post.views > 0 ? "hover:underline cursor-pointer" : ""}`}
-                >
-                  {post.views || 0}
-                </span>
-              </div>
+                {post.views || 0}
+              </span>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="flex gap-4 items-center">
@@ -17376,6 +17452,7 @@ function PostCard({
           uids={post.viewedBy || []}
           allUsers={allUsers}
           onClose={() => setShowViewsModal(false)}
+          anonymousCount={Math.max(0, (post.views || 0) - (post.viewedBy?.length || 0))}
         />
       )}
     </motion.div>
@@ -18812,24 +18889,66 @@ function MenuButton({
 function ChatSection({
   messages,
   user,
+  isAdmin,
   addToast,
   userProfile,
 }: {
   messages: ChatMessage[];
   user: any;
+  isAdmin?: boolean;
   addToast: (s: string) => void;
   userProfile: UserProfile | null;
 }) {
   const [msg, setMsg] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isBotMode, setIsBotMode] = useState(false);
+  const [botMessages, setBotMessages] = useState<ChatMessage[]>([{
+    id: "welcome",
+    msg: "Hello! I am Mana Bot. You can ask me anything about the application or village data.",
+    time: Date.now(),
+    uid: "bot",
+    userName: "Mana Bot"
+  }]);
+  const [isBotLoading, setIsBotLoading] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, botMessages]);
 
   const send = async () => {
     if (!msg.trim()) return;
     if (requireLoginAlert(user)) return;
+
+    if (isBotMode) {
+      const userText = msg.trim();
+      setMsg("");
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        msg: userText,
+        time: Date.now(),
+        uid: user.uid,
+        userName: userProfile?.name || user.displayName || "You"
+      };
+      setBotMessages((prev) => [...prev, userMessage]);
+      setIsBotLoading(true);
+
+      try {
+        const response = await askMana(userText, "User is chatting in Village Real-Time Chat bot mode.");
+        const botMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          msg: response || "I could not process your request.",
+          time: Date.now() + 1,
+          uid: "bot",
+          userName: "Mana Bot"
+        };
+        setBotMessages((prev) => [...prev, botMessage]);
+      } catch (err) {
+        addToast("Error communicating with bot");
+      } finally {
+        setIsBotLoading(false);
+      }
+      return;
+    }
 
     try {
       await addDoc(collection(db, "chat"), {
@@ -18845,54 +18964,105 @@ function ChatSection({
     }
   };
 
+  const deleteMessage = async (msgId: string) => {
+    if (!isAdmin) return;
+    try {
+      await deleteDoc(doc(db, "chat", msgId));
+      addToast("Message deleted");
+    } catch (err) {
+      addToast("Failed to delete message");
+    }
+  };
+
   return (
-    <div className="bg-white rounded-3xl border shadow-sm flex flex-col h-[600px] overflow-hidden">
-      <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
-        <div className="font-black text-primary flex items-center gap-3">
-          <MessageCircle size={20} />
-          LIVE FEED
+    <div className="bg-[#e5ddd5] rounded-3xl border shadow-sm flex flex-col h-[600px] overflow-hidden" style={{ backgroundImage: "url('https://whatsapp-clone-web.netlify.app/static/media/bg-chat-tile-light.698007dc.png')", backgroundSize: 'contain', backgroundRepeat: 'repeat' }}>
+      <div className="p-4 bg-[#075e54] text-white flex items-center justify-between shadow-md z-10 rounded-t-3xl border-b border-[#054c44]">
+        <div className="font-bold flex items-center gap-3">
+          <MessageCircle size={20} className="text-white" />
+          <span className="tracking-wide">{isBotMode ? "Chat with Mana Bot" : "Village Real-Time Chat"}</span>
         </div>
+        <button
+          onClick={() => setIsBotMode(!isBotMode)}
+          className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${isBotMode ? "bg-white text-[#075e54]" : "bg-[#128c7e] text-white hover:bg-[#0da492]"}`}
+        >
+          <Bot size={14} />
+          {isBotMode ? "Switch to Community" : "Chat with Bot"}
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f8fafc] custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
         <AnimatePresence initial={false}>
-          {messages.map((m) => (
+          {(isBotMode ? botMessages : messages).map((m) => (
             <motion.div
               key={m.id}
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className={`flex ${m.uid === user?.uid ? "justify-end" : "justify-start"}`}
+              className={`flex group ${m.uid === user?.uid ? "justify-end" : "justify-start"}`}
             >
-              <div className="flex flex-col max-w-[80%]">
-                <span
-                  className={`text-[10px] font-black uppercase mb-1 px-1 ${m.uid === user?.uid ? "text-right text-primary/40" : "text-slate-400"}`}
-                >
-                  {m.userName || "Portal User"}
-                </span>
+              <div className="flex flex-col max-w-[80%] md:max-w-[65%]">
+                {m.uid !== user?.uid && (
+                  <span className="text-[10px] font-bold mb-1 px-1 text-[#075e54]">
+                    {m.userName || "Portal User"}
+                  </span>
+                )}
                 <div
-                  className={`p-3 rounded-2xl text-sm font-medium shadow-sm whitespace-pre-wrap ${m.uid === user?.uid ? "bg-primary text-white rounded-tr-none" : "bg-white border rounded-tl-none"}`}
-                  style={m.uid === user?.uid ? { background: "#0d3b66" } : {}}
+                  className={`relative p-2.5 px-3.5 rounded-xl text-[14px] shadow-sm whitespace-pre-wrap leading-snug ${m.uid === user?.uid ? "bg-[#dcf8c6] text-slate-800 rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none"}`}
                 >
-                  {m.msg}
+                  <div className="mr-8 break-words text-left">
+                    {isBotMode && m.uid === "bot" ? (
+                      <div className="prose prose-sm prose-slate max-w-none prose-p:leading-snug prose-headings:text-base prose-p:my-1 text-slate-800">
+                        <ReactMarkdown remarkPlugins={[remarkBreaks]}>{m.msg}</ReactMarkdown>
+                      </div>
+                    ) : (m.msg)}
+                  </div>
+                  <span className="text-[9px] text-slate-400 absolute bottom-1.5 right-2 flex items-center gap-1">
+                    {new Date(m.time).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    {m.uid === user?.uid && <span className="text-blue-500 font-bold">✓✓</span>}
+                  </span>
+                  
+                  {isAdmin && !isBotMode && (
+                    <button 
+                      onClick={() => m.id && deleteMessage(m.id)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+                      title="Delete completely"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
           ))}
+          {isBotLoading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div className="flex flex-col max-w-[80%] md:max-w-[65%]">
+                <span className="text-[10px] font-bold mb-1 px-1 text-[#075e54]">Mana Bot</span>
+                <div className="relative p-3 px-4 rounded-xl text-[14px] shadow-sm bg-white text-slate-800 rounded-tl-none">
+                  <Loader2 size={16} className="animate-spin text-slate-400" />
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
         <div ref={scrollRef} />
       </div>
-      <div className="p-4 border-t flex gap-2">
-        <input
-          value={msg}
-          onChange={(e) => setMsg(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type..."
-          className="mb-0 flex-1 bg-slate-50 border border-slate-200 p-3 rounded-xl focus:outline-none focus:border-primary/50 text-sm"
-        />
+      <div className="p-3 bg-[#f0f0f0] flex gap-2 items-center rounded-b-3xl border-t border-slate-300">
+        <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1 shadow-sm border border-slate-200">
+          <input
+            value={msg}
+            onChange={(e) => setMsg(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="Type a message..."
+            className="w-full bg-transparent p-2 focus:outline-none text-[15px]"
+          />
+        </div>
         <button
           aria-label="Send message"
           onClick={send}
-          className="bg-primary text-white p-3 rounded-xl"
-          style={{ background: "#0d3b66" }}
+          className="bg-[#128c7e] text-white p-3.5 rounded-full hover:bg-[#075e54] transition-colors shadow-sm flex items-center justify-center min-w-[48px]"
         >
           <Send size={18} />
         </button>
@@ -19749,24 +19919,23 @@ function PostDetail({
                 Likes
               </span>
             </button>
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  if (isAdmin && post.views > 0) setShowViewsModal(true);
-                }}
-                className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && post.views > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
+            {/* Views - Visible to all, clickable only by admin */}
+            <button
+              onClick={() => {
+                if (isAdmin && post.views > 0) setShowViewsModal(true);
+              }}
+              className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && post.views > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
+            >
+              <Eye size={20} />
+              <span
+                className={`font-black text-base ${isAdmin && post.views > 0 ? "hover:underline" : ""}`}
               >
-                <Eye size={20} />
-                <span
-                  className={`font-black text-base ${isAdmin && post.views > 0 ? "hover:underline" : ""}`}
-                >
-                  {post.views || 0}
-                </span>{" "}
-                <span className="text-xs uppercase tracking-wider hidden sm:inline">
-                  Views
-                </span>
-              </button>
-            )}
+                {post.views || 0}
+              </span>{" "}
+              <span className="text-xs uppercase tracking-wider hidden sm:inline">
+                Views
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -19826,6 +19995,7 @@ function PostDetail({
           uids={post.viewedBy || []}
           allUsers={allUsers}
           onClose={() => setShowViewsModal(false)}
+          anonymousCount={Math.max(0, (post.views || 0) - (post.viewedBy?.length || 0))}
         />
       )}
     </motion.div>
@@ -19849,6 +20019,9 @@ function PostComments({
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [submittingEdit, setSubmittingEdit] = useState(false);
   const [showLikesModalFor, setShowLikesModalFor] = useState<{
     id: string;
     uids: string[];
@@ -19866,6 +20039,12 @@ function PostComments({
           id: d.id,
           ...d.data(),
         }));
+        fetchedComments.sort((a: any, b: any) => {
+          const aLikes = a.likes?.length || 0;
+          const bLikes = b.likes?.length || 0;
+          if (aLikes !== bLikes) return bLikes - aLikes;
+          return (b.time || 0) - (a.time || 0);
+        });
         setComments(fetchedComments);
         setCommentsLoaded(true);
         if (post.commentCount !== fetchedComments.length) {
@@ -19922,6 +20101,23 @@ function PostComments({
       addToast("Error: " + (e.message || String(e)));
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editCommentText.trim()) return;
+    setSubmittingEdit(true);
+    try {
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        text: editCommentText,
+        edited: true,
+      });
+      setEditingCommentId(null);
+      setEditCommentText("");
+    } catch (e: any) {
+      addToast("Failed to edit comment");
+    } finally {
+      setSubmittingEdit(false);
     }
   };
 
@@ -20018,27 +20214,72 @@ function PostComments({
                     })}
                   </span>
                   {(auth.currentUser?.uid === c.uid || isAdmin) && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await deleteDoc(
-                            doc(db, "posts", post.id, "comments", c.id),
-                          );
-                          await updateDoc(doc(db, "posts", post.id), {
-                            commentCount: increment(-1),
-                          });
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="text-slate-400 hover:text-red-500"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <div className="flex items-center gap-2 ml-2">
+                      {auth.currentUser?.uid === c.uid && (
+                        <button
+                          onClick={() => {
+                            setEditingCommentId(c.id);
+                            setEditCommentText(c.text);
+                          }}
+                          className="text-slate-400 hover:text-blue-500"
+                        >
+                          <Edit3 size={12} />
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          try {
+                            await deleteDoc(
+                              doc(db, "posts", post.id, "comments", c.id),
+                            );
+                            await updateDoc(doc(db, "posts", post.id), {
+                              commentCount: increment(-1),
+                            });
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
-              <p className="text-slate-700 leading-relaxed">{c.text}</p>
+              {editingCommentId === c.id ? (
+                <div className="mt-2">
+                  <textarea
+                    value={editCommentText}
+                    onChange={(e) => setEditCommentText(e.target.value)}
+                    className="w-full text-base bg-white p-3 rounded-xl border-2 border-slate-200 focus:border-blue-400 outline-none shadow-sm transition-all text-slate-700 min-h-[80px]"
+                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      disabled={submittingEdit || !editCommentText.trim()}
+                      onClick={() => handleEditComment(c.id)}
+                      className="text-xs font-black bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {submittingEdit ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      disabled={submittingEdit}
+                      onClick={() => {
+                        setEditingCommentId(null);
+                        setEditCommentText("");
+                      }}
+                      className="text-xs font-black bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-slate-700 leading-relaxed">
+                  {c.text}
+                  {c.edited && <span className="text-[10px] text-slate-400 ml-2 italic">(edited)</span>}
+                </p>
+              )}
               <div className="flex items-center gap-2 mt-2">
                 <button
                   onClick={() => {
@@ -20095,20 +20336,163 @@ function PostComments({
   );
 }
 
+
+function SuggestionCategoriesManager({
+  categories,
+  addToast,
+}: {
+  categories: string[];
+  addToast: (s: string) => void;
+}) {
+  const [cats, setCats] = useState<string[]>(categories);
+  const [newCat, setNewCat] = useState('');
+  const [editingCat, setEditingCat] = useState<{old: string, new: string} | null>(null);
+
+  useEffect(() => {
+    setCats(categories);
+  }, [categories]);
+
+  const saveToDb = async (newCategories: string[]) => {
+    try {
+      await setDoc(doc(db, "settings", "suggestion_categories"), {
+        data: newCategories,
+        updatedAt: Date.now()
+      });
+      addToast("Categories updated successfully");
+    } catch (e: any) {
+      addToast("Error saving categories: " + e.message);
+    }
+  };
+
+  const handleAdd = () => {
+    if (!newCat.trim()) return;
+    if (cats.includes(newCat.trim())) {
+      addToast("Category already exists");
+      return;
+    }
+    const updated = [...cats, newCat.trim()];
+    setCats(updated);
+    setNewCat('');
+    saveToDb(updated);
+  };
+
+  const handleDelete = (catToRemove: string) => {
+    const updated = cats.filter((c) => c !== catToRemove);
+    setCats(updated);
+    saveToDb(updated);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingCat) return;
+    const trimmedNew = editingCat.new.trim();
+    if (!trimmedNew) return;
+    
+    // Check if duplicate
+    if (trimmedNew !== editingCat.old && cats.includes(trimmedNew)) {
+       addToast("Category already exists");
+       return;
+    }
+    const updated = cats.map(c => c === editingCat.old ? trimmedNew : c);
+    setCats(updated);
+    setEditingCat(null);
+    saveToDb(updated);
+  };
+
+  return (
+    <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-sm border border-slate-100">
+      <div className="mb-8">
+        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+          <MessageSquare size={24} className="text-primary" />
+          Manage Suggestion Categories
+        </h3>
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+          Add or remove categories for the Suggestions & Feedback form
+        </p>
+      </div>
+      
+      <div className="flex flex-wrap gap-3 mb-8">
+        {cats.map((cat, idx) => (
+          editingCat?.old === cat ? (
+             <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
+               <input 
+                 value={editingCat.new}
+                 onChange={e => setEditingCat({...editingCat, new: e.target.value})}
+                 className="bg-white px-2 py-1 border border-slate-200 rounded outline-none text-sm font-bold text-slate-800"
+                 onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                 autoFocus
+               />
+               <button onClick={handleSaveEdit} className="text-blue-500 hover:text-blue-700 p-1">
+                 <Check size={16} />
+               </button>
+               <button onClick={() => setEditingCat(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                 <X size={16} />
+               </button>
+             </div>
+          ) : (
+             <div key={idx} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl group transition-all hover:border-slate-300">
+               <span className="text-sm font-bold text-slate-700">{cat}</span>
+               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                 <button
+                   onClick={() => setEditingCat({old: cat, new: cat})}
+                   className="text-slate-400 hover:text-blue-500 transition-colors"
+                   title="Edit"
+                 >
+                   <Edit3 size={14} />
+                 </button>
+                 <button
+                   onClick={() => handleDelete(cat)}
+                   className="text-slate-400 hover:text-red-500 transition-colors"
+                   title="Delete"
+                 >
+                   <Trash2 size={14} />
+                 </button>
+               </div>
+             </div>
+          )
+        ))}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <input 
+          value={newCat}
+          onChange={(e) => setNewCat(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          placeholder="New Category Name"
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-primary/50 font-bold text-sm min-w-[250px]"
+        />
+        <button
+          onClick={handleAdd}
+          className="bg-primary text-white hover:bg-primary/90 px-6 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2"
+        >
+          <Plus size={16} /> Add Category
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SuggestionForm({
   addToast,
   onCancel,
+  categories,
 }: {
   addToast: (s: string) => void;
   onCancel: () => void;
+  categories: string[];
 }) {
   const [name, setName] = useState("");
   const [village, setVillage] = useState("");
   const [mobile, setMobile] = useState("");
-  const [category, setCategory] = useState("General Suggestion");
+  const [category, setCategory] = useState(categories[0] || "General Suggestion");
   const [suggestion, setSuggestion] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (categories.length > 0 && !categories.includes(category)) {
+      setCategory(categories[0]);
+    }
+  }, [categories, category]);
 
   const handleSubmit = async () => {
     if (requireLoginAlert()) return;
@@ -20249,15 +20633,15 @@ function SuggestionForm({
             విభాగం
           </label>
           <select
-            value={category}
+            value={category || "General Suggestion"}
             onChange={(e) => setCategory(e.target.value)}
             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700 appearance-none"
           >
-            <option value="General Suggestion">General Suggestion</option>
-            <option value="App Improvement">App Improvement</option>
-            <option value="Service Feedback">Service Feedback</option>
-            <option value="Technical Issue">Technical Issue</option>
-            <option value="Request Feature">Request Feature</option>
+            {categories.length > 0 ? categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            )) : (
+              <option value="General Suggestion">General Suggestion</option>
+            )}
           </select>
         </div>
 

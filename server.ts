@@ -171,7 +171,7 @@ async function startServer() {
       });
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           systemInstruction: systemInstruction,
@@ -182,7 +182,11 @@ async function startServer() {
       res.json({ text });
     } catch (error: any) {
       console.error("Gemini API error:", error);
-      res.status(500).json({ error: error.message || "Failed to generate content" });
+      let errorMessage = "క్షమించాలి, ప్రస్తుతం నేను స్పందించలేకపోతున్నాను. దయచేసి మళ్ళీ ప్రయత్నించండి."
+      if (error.message && error.message.includes("dunning decision")) {
+         errorMessage = "మీ Gemini API కీ బిల్లింగ్ సమస్య కారణంగా నిలిపివేయబడింది. దయచేసి Google Cloud Console ని తనిఖీ చేయండి. (Lightning dunning decision denied).";
+      }
+      res.status(200).json({ text: errorMessage, isError: true });
     }
   });
 

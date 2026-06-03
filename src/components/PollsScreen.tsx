@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
-import { Plus, Vote, X, Share2 } from "lucide-react";
+import { Plus, Vote, X, Share2, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
 
 const getFriendlyError = (err: any) => {
   const code = err.code;
@@ -27,9 +28,11 @@ function AdBanner() {
 
 export function PollsScreen({
   user,
+  isAdmin,
   addToast,
 }: {
   user: any;
+  isAdmin?: boolean;
   addToast: (msg: string) => void;
 }) {
   const [polls, setPolls] = useState<any[]>([]);
@@ -95,6 +98,28 @@ export function PollsScreen({
       addToast("మీ ఓటు నమోదైంది (Vote recorded)");
     } catch (err: any) {
       addToast(getFriendlyError(err));
+    }
+  };
+
+  const handleDeletePoll = async (pollId: string) => {
+    if (!isAdmin) return;
+    const res = await Swal.fire({
+      title: "పోల్ తొలగించాలా?",
+      text: "ఈ పోల్ శాశ్వతంగా తొలగించబడుతుంది.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "తొలగించు (Delete)",
+      cancelButtonText: "రద్దు చేయి (Cancel)",
+      confirmButtonColor: "#ef4444",
+    });
+    
+    if (res.isConfirmed) {
+      try {
+        await deleteDoc(doc(db, "polls", pollId));
+        addToast("పోల్ తొలగించబడింది (Poll deleted)");
+      } catch (err: any) {
+        addToast(getFriendlyError(err));
+      }
     }
   };
 
@@ -198,8 +223,19 @@ export function PollsScreen({
                 key={poll.id}
                 className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group"
               >
-                <div className="absolute top-0 right-0 bg-blue-50 text-blue-600 text-[9px] uppercase tracking-widest px-3 py-1.5 rounded-bl-xl font-black">
-                  {totalVotes} Votes
+                <div className="absolute top-0 right-0 flex items-center">
+                  <div className="bg-blue-50 text-blue-600 text-[9px] uppercase tracking-widest px-3 py-1.5 rounded-bl-xl font-black border-l border-b border-slate-100">
+                    {totalVotes} Votes
+                  </div>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => handleDeletePoll(poll.id)}
+                      className="bg-red-50 text-red-600 hover:bg-red-100 p-1.5 rounded-bl-xl border-l border-b border-slate-100 transition-colors"
+                      title="Delete Poll"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-slate-800 mb-4 mt-2 pr-12">
                   {poll.question}
