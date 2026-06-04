@@ -99,6 +99,7 @@ import {
   RotateCcw,
   MapPin,
   Plus,
+  Check,
   Mic,
   Layout,
   LayoutGrid,
@@ -117,6 +118,7 @@ import {
   ShieldOff,
   Maximize2,
   FileSpreadsheet,
+  Package,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -1122,6 +1124,31 @@ export const getLatestAttachment = (attachments: any[]) => {
     return 0;
   })[0];
 };
+
+const DEFAULT_ABOUT_CONTENT = `ఈ వేదిక **'పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి'** సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన సౌకర్యాలను సులభంగా పొందవచ్చు.
+
+### 🌟 **మా ప్లాట్ఫారమ్లో అందుబాటులో ఉండేవి:**
+
+* 📜 **ప్రభుత్వ జీవోలు (GOs):** ఎప్పటికప్పుడు తాజా ప్రభుత్వ ఉత్తర్వులు మరియు సర్క్యులర్స్.
+* 📊 **ఫార్మాట్లు మరియు రిపోర్టులు:** రోజువారీ పనులకు అవసరమైన టెంప్లేట్స్ మరియు ఆటోమేటెడ్ రిపోర్ట్స్.
+* 📚 **నాలెడ్జ్ హబ్:** విధుల్లో సహాయపడే అవసరమైన మార్గదర్శకాలు మరియు విషయ పరిజ్ఞానం.
+
+---
+
+# 👨💻 **నా గురించి (About Me)**
+
+నమస్కారం! 👋 నా పేరు **ధావన్ రాకేష్ కుమార్**. నేను ఒక సాధారణ మధ్యతరగతి కుటుంబం నుండి వచ్చాను. చిన్నప్పటి నుంచే నాకు కంప్యూటర్లు మరియు ఇంటర్నెట్ ప్రపంచం అంటే చాలా ఇష్టం, ఆ ఆసక్తే నన్ను ఎప్పుడూ కొత్త విషయాలు నేర్చుకునేలా చేసింది.
+
+ప్రస్తుతం నేను ఒక **'ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్'** గా పని చేస్తున్నాను. ఒక ఆపరేటర్గా రోజువారీ అడ్మినిస్ట్రేటివ్ పనులు, మాన్యువల్ డేటా ఎంట్రీలు మరియు గడువులోపు రిపోర్ట్స్ తయారు చేయడంలో ఉండే నిజమైన ఒత్తిడి నాకు బాగా తెలుసు. ఆ సమస్యలను కేవలం భరించడమే కాకుండా, వాటికి ఒక సాంకేతిక పరిష్కారం ఆలోచించాలనుకున్నాను. నా విధుల్లో నేను ఎదుర్కొన్న ఇబ్బందులు, గమనించిన లోపాలే నన్ను ఈ ప్రాజెక్ట్ వైపు నడిపించాయి.
+
+> *"నేను పడిన కష్టం మరెవరూ పడకూడదనే ఉద్దేశ్యంతో, క్షేత్రస్థాయిలో పనిచేసే ప్రతి ఒక్కరికీ ఉపయోగపడాలనే నా సొంత ఆసక్తితో ఈ **'ఈ-వేదిక'** ని రూపొందించాను."*
+
+### 🤖 **టెక్నాలజీ మరియు ఏఐ (AI) సహాయం:**
+
+ఈ వెబ్సైట్ను మరింత అడ్వాన్స్డ్గా, ఎలాంటి లోపాలు లేకుండా తయారు చేయడానికి కోడింగ్ విషయంలో **Google Gemini** మరియు **ChatGPT** వంటి ఏఐ (AI) టూల్స్ సహాయం తీసుకున్నాను. నా క్షేత్రస్థాయి అనుభవానికి, ఈ ఏఐ టూల్స్ సాంకేతికత తోడవడంతో **React, Node.js, Firebase** వంటి ఆధునిక వెబ్ టెక్నాలజీలను ఉపయోగించి ఈ ప్లాట్ఫారమ్ను వేగంగా మరియు సురక్షితంగా మీ ముందుకు తీసుకురాగలిగాను.
+
+🎯 **నా లక్ష్యం:**
+సమయాన్ని ఆదా చేస్తూ, పారదర్శకమైన సేవలను అందించే ఇలాంటి మరిన్ని టూల్స్ను అభివృద్ధి చేయడం మరియు ప్రతి ఒక్కరికీ సాంకేతికతను సులభతరం చేయడమే నా లక్ష్యం.`;
 
 export default function App() {
   const navigate = useNavigate();
@@ -2646,72 +2673,12 @@ export default function App() {
                       <Info className="text-indigo-600 shrink-0" size={24} />
                       <div className="text-sm font-bold text-indigo-950 leading-relaxed markdown-body">
                         <ReactMarkdown rehypePlugins={[rehypeRaw]}>
-                          {aboutContent?.content ||
-                            "ఈ-వేదిక (E-Vedhika) ప్రజలకు, ప్రభుత్వ సమాచారానికి మరియు గ్రామీణ పరిపాలనకు మధ్య ఒక బలమైన డిజిటల్ వంతెనగా పనిచేస్తుంది."}
+                          {aboutContent?.content || DEFAULT_ABOUT_CONTENT}
                         </ReactMarkdown>
                       </div>
                     </div>
 
-                    {/* Details Grid */}
-                    <div className="space-y-6 text-slate-700">
-                      {/* Who built it */}
-                      <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-start">
-                        <div className="p-3 bg-indigo-600 text-white rounded-xl font-bold text-sm select-none">
-                          రూపకర్త
-                        </div>
-                        <div>
-                          <h3 className="text-base font-black text-slate-800 mb-1">
-                            రాకేష్ కుమార్ ధావన్ (Rakesh Kumar Dhawan)
-                          </h3>
-                          <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                            ఈ-వేదిక పోర్టల్‌ను కేవలం ఒక వ్యక్తి రూపకల్పనగా
-                            కాకుండా, గ్రామీణ పరిపాలన మరియు రైతు సేవలను అత్యంత
-                            వేగవంతం చేయడానికి సహాయపడే ఒక సమగ్ర వ్యవస్థగా
-                            **రాకేష్ కుమార్ ధావన్** గారు రూపొందించారు.
-                          </p>
-                        </div>
-                      </div>
 
-                      {/* How it was made */}
-                      <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-start">
-                        <div className="p-3 bg-blue-600 text-white rounded-xl font-bold text-sm select-none">
-                          విధానం
-                        </div>
-                        <div>
-                          <h3 className="text-base font-black text-slate-800 mb-1">
-                            అత్యాధునిక సాంకేతిక పరిజ్ఞానం (How it was Built)
-                          </h3>
-                          <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                            ఈ వ్యవస్థను **React, Tailwind CSS, Firestore
-                            Database మరియు Node.js** వంటి అత్యాధునిక సాఫ్ట్‌వేర్
-                            టూల్స్ ఉపయోగించి నిర్మించారు. క్లిష్టమైన జీవోలు
-                            (GOs), పంచాయతీ చట్టాలు (PR Act Database) మరియు రైతు
-                            సర్వే నివేదికలను ఆటోమేటిక్ విధానంలో క్షణాల్లో
-                            విశ్లేషించి ప్రింట్ ఇవ్వగల విధంగా ఇది మలచబడింది.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* When it was made */}
-                      <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-start">
-                        <div className="p-3 bg-emerald-600 text-white rounded-xl font-bold text-sm select-none">
-                          ప్రయాణం
-                        </div>
-                        <div>
-                          <h3 className="text-base font-black text-slate-800 mb-1">
-                            అభివృద్ధి కాలక్రమం (When was it Built)
-                          </h3>
-                          <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                            ఈ పోర్టల్ ప్రారంభంలో **2024 - 2025** మధ్య కాలంలో
-                            పునాది వేయబడింది. అప్పటి నుండి నిరంతరం నూతన సాంకేతిక
-                            మెరుగుదలలు, రైతు రిజిస్ట్రీ వెరిఫికేషన్ అప్‌డేట్స్
-                            మరియు మరెన్నో అద్భుతమైన ఫీచర్లతో కూడిన సరికొత్త
-                            వెర్షన్లతో (ప్రస్తుతం వెర్షన్ 1.4+ / 2.0) రూపాంతరం
-                            చెందుతూ ముందుకు సాగుతోంది.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -4641,65 +4608,112 @@ export default function App() {
                             </div>
                           )}
 
-                        {/* Footer - Black Strip Layout */}
-                        <footer
-                          className="bg-black py-4 md:py-0 min-h-[64px] px-6 md:px-12 mt-8 -mx-3 sm:-mx-6 lg:-mx-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between font-sans text-sm gap-4"
-                          id="vedhika-footer"
-                          style={{
-                            marginBottom:
-                              "calc((env(safe-area-inset-bottom) + 16px) * -1)",
-                            paddingBottom: "env(safe-area-inset-bottom)",
-                          }}
-                        >
-                          <div className="flex items-center gap-6 md:gap-12 w-full md:w-auto justify-center md:justify-start pl-0 sm:pl-8">
-                            <button
-                              onClick={() => {
-                                document
-                                  .querySelector("main")
-                                  ?.scrollTo({ top: 0, behavior: "smooth" });
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                              className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center bg-[#b13b16] hover:bg-[#c94318] text-white transition-colors"
-                              aria-label="Scroll to top"
+                        {/* Unified Banner & Footer Section */}
+                        <div className="mt-12 -mx-3 sm:-mx-6 lg:-mx-8 bg-[#1565c0]/60 backdrop-blur-xl border-t border-white/20 shadow-2xl overflow-hidden rounded-t-[32px]">
+                          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                            <footer
+                              className="flex flex-col lg:flex-row items-center justify-between font-sans gap-6 text-white relative"
+                              id="vedhika-footer"
                             >
-                              <ChevronUp size={28} strokeWidth={2.5} />
-                            </button>
-                            <p className="text-gray-300 text-sm whitespace-nowrap">
-                              Copyright ©2026{" "}
-                              <span className="text-[#b13b16] font-medium">
-                                E-VEDHIKA
-                              </span>
-                            </p>
+                              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 sm:gap-6 w-full lg:w-auto">
+                                <button
+                                  onClick={() => {
+                                    document
+                                      .querySelector("main")
+                                      ?.scrollTo({ top: 0, behavior: "smooth" });
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                  }}
+                                  className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl transition-all shadow-lg backdrop-blur-sm"
+                                  aria-label="Scroll to top"
+                                >
+                                  <ChevronUp size={24} strokeWidth={2.5} />
+                                </button>
+                                
+                                <div className="flex flex-col items-center sm:items-start gap-1">
+                                  <p className="text-white/90 text-sm font-medium whitespace-nowrap">
+                                    Copyright ©2026{" "}
+                                    <span className="text-[#fbe947] font-medium">
+                                      E-VEDHIKA
+                                    </span>
+                                  </p>
+                                  <p className="text-white/70 text-xs font-medium tracking-wider uppercase">
+                                    All Rights Reserved.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Merged unified single banner for Stats & Links */}
+                              <div 
+                                className="flex items-center justify-center flex-wrap gap-x-3 sm:gap-x-5 gap-y-3 text-white/90 w-full xl:w-auto bg-white/5 px-4 sm:px-6 py-4 sm:py-3.5 rounded-2xl sm:rounded-full border border-white/10 text-[11px] sm:text-xs font-bold tracking-wide uppercase shadow-sm"
+                                id="vedhika-statistics-banner"
+                              >
+                                {/* Statistics Area */}
+                                <div className="flex items-center gap-2">
+                                  <Users className="w-4 h-4 text-[#fbe947]" />
+                                  <span>
+                                    {(visitorCount !== null ? visitorCount + 12345 : "...").toLocaleString()}
+                                    <span className="text-white/60 ml-1.5 hidden sm:inline">VISITORS</span>
+                                  </span>
+                                </div>
+                                <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
+                                <div className="flex items-center gap-2">
+                                  <Package className="w-4 h-4 text-[#fbe947]" />
+                                  <span>
+                                    {SYSTEM_UPDATES[0]?.version || "V1.6.2"}
+                                    <span className="text-white/60 ml-1.5 hidden sm:inline">VER</span>
+                                  </span>
+                                </div>
+                                <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
+                                <div className="flex items-center gap-2">
+                                  <RefreshCw className="w-4 h-4 text-[#fbe947]" />
+                                  <span>
+                                    {SYSTEM_UPDATES[0]?.time
+                                      ? new Date(SYSTEM_UPDATES[0].time).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                                      : "30/05/26"}
+                                    <span className="text-white/60 ml-1.5 hidden sm:inline">UPDATED</span>
+                                  </span>
+                                </div>
+
+                                {/* Divider connecting Stats & Links visually (only on large screens) */}
+                                <div className="hidden xl:block w-px h-4 bg-white/20 mx-2" />
+                                <div className="w-full h-px bg-white/10 xl:hidden my-2" />
+
+                                {/* Links Area */}
+                                <button
+                                  onClick={() => {
+                                    document
+                                      .querySelector("main")
+                                      ?.scrollTo({ top: 0, behavior: "smooth" });
+                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                  }}
+                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                >
+                                  Home
+                                </button>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <button
+                                  onClick={() => setShowFooterModal("about")}
+                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                  id="footer-about-btn"
+                                >
+                                  About
+                                </button>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <button
+                                  onClick={() => setShowFooterModal("contact")}
+                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                  id="footer-contact-btn"
+                                >
+                                  Contact Us
+                                </button>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <span className="hover:text-[#fbe947] cursor-pointer transition-colors duration-300 ease-in-out">
+                                  Index Page
+                                </span>
+                              </div>
+                            </footer>
                           </div>
-                          <div className="flex items-center justify-center flex-wrap gap-4 md:gap-8 text-gray-300 text-sm w-full md:w-auto mb-2 md:mb-0 pr-0 sm:pr-8">
-                            <button
-                              onClick={() => {
-                                document
-                                  .querySelector("main")
-                                  ?.scrollTo({ top: 0, behavior: "smooth" });
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                              className="hover:text-white transition-colors"
-                            >
-                              Home
-                            </button>
-                            <button
-                              onClick={() => setShowFooterModal("about")}
-                              className="hover:text-white transition-colors"
-                            >
-                              About
-                            </button>
-                            <button
-                              onClick={() => setShowFooterModal("contact")}
-                              className="hover:text-white transition-colors"
-                            >
-                              Contact Us
-                            </button>
-                            <span className="hover:text-white cursor-pointer transition-colors">
-                              Index Page
-                            </span>
-                          </div>
-                        </footer>
+                        </div>
                       </div>
                     )}
                   </motion.div>
@@ -7257,6 +7271,7 @@ function AdminPanel({
   aboutContent,
   setAboutContent,
   suggestionCategories,
+  fetchAboutContent,
 }: any) {
   const posts =
     hasPostsOnly || isEditorMode
@@ -13452,9 +13467,9 @@ function DigitalWorkspaceSection({
     },
     {
       id: "pract",
-      title: "PR Act Hub",
+      title: "Knowledge Hub",
       icon: Book,
-      desc: "A to Z Interactive Guide",
+      desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
     },
     {
       id: "monthly-activity",
@@ -17380,11 +17395,71 @@ function PostCard({
         <div className="mt-6 pt-6 border-t border-slate-100">
           <div className="space-y-4 mb-4">
             {comments.map((c) => (
-              <div key={c.id} className="text-sm bg-slate-50 p-3 rounded-2xl">
-                <span className="font-black text-primary mr-2 uppercase text-[10px]">
-                  {c.userName}:
-                </span>
-                <span className="text-slate-600">{c.text}</span>
+              <div key={c.id} className="text-sm bg-slate-50 p-3 rounded-2xl relative group flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-black text-primary mr-2 uppercase text-[10px]">
+                    {c.userName}:
+                  </span>
+                  <span className="text-slate-600">{c.text}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const likes = c.likes || [];
+                        const uid = auth.currentUser?.uid;
+                        if (!uid) {
+                          addToast("Please login first to like comments");
+                          return;
+                        }
+                        if (likes.includes(uid)) {
+                          await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                            likes: arrayRemove(uid),
+                          });
+                        } else {
+                          await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                            likes: arrayUnion(uid),
+                          });
+                        }
+                      }}
+                      className={`p-1.5 rounded-lg transition-all ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
+                      title={c.likes?.includes(auth.currentUser?.uid) ? "Unlike" : "Like"}
+                    >
+                      <Heart
+                        size={14}
+                        fill={c.likes?.includes(auth.currentUser?.uid) ? "currentColor" : "none"}
+                      />
+                    </button>
+                    {c.likes?.length > 0 && (
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {c.likes.length}
+                      </span>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!window.confirm("Are you sure you want to delete this comment?")) return;
+                        try {
+                          await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
+                          await updateDoc(doc(db, "posts", post.id), {
+                            commentCount: increment(-1),
+                          });
+                          addToast("Comment deleted");
+                        } catch (err) {
+                          console.error(err);
+                          addToast("Error deleting comment");
+                        }
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Delete Comment"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {comments.length === 0 && (
@@ -20228,6 +20303,7 @@ function PostComments({
                       )}
                       <button
                         onClick={async () => {
+                          if (!window.confirm("Are you sure you want to delete this comment?")) return;
                           try {
                             await deleteDoc(
                               doc(db, "posts", post.id, "comments", c.id),
@@ -20240,6 +20316,7 @@ function PostComments({
                           }
                         }}
                         className="text-slate-400 hover:text-red-500"
+                        title="Delete Comment"
                       >
                         <Trash2 size={12} />
                       </button>

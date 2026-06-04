@@ -132,11 +132,10 @@ export function KnowledgeHubSection() {
 
         <div className="relative z-10">
           <div className="bg-white/10 w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 border border-white/20 backdrop-blur-sm">
-            Offline Law Book App
+            Knowledge Hub
           </div>
           <h2 className="text-2xl sm:text-4xl font-black flex items-center gap-3 mb-2 leading-tight">
-            <Book size={32} className="text-yellow-400 shrink-0" /> TS PR Act
-            2018 <br className="sm:hidden" />
+            <Book size={32} className="text-yellow-400 shrink-0" /> నాలెడ్జ్ హబ్ (PR Act) <br className="sm:hidden" />
             పాకెట్ గైడ్
           </h2>
           <p className="text-indigo-100 text-xs sm:text-sm font-bold uppercase tracking-widest mb-8 max-w-lg opacity-90 leading-relaxed">
