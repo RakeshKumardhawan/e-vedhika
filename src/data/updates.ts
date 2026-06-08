@@ -16,11 +16,10 @@ export const SYSTEM_UPDATES: UpdateEntry[] = [
     version: "V1.6.3",
     time: 1780594724000,
     date: "04, జూన్ 2026",
-    badge: "LATEST",
+    badge: "UPDATE",
     title: "నాలెడ్జ్ హబ్ & అడ్వాన్స్డ్ కామెంట్ సిస్టం 🚀",
     description: "PR Act Hub ని 'నాలెడ్జ్ హబ్' గా మార్చాము. అలాగే కామెంట్స్ ని లైక్ చేయడం మరియు అడ్మిన్ కామెంట్స్ ని కన్ఫర్మేషన్ తో డిలీట్ చేసే అడ్వాన్స్డ్ ఫీచర్స్ తీసుకువచ్చాము.",
     color: "bg-rose-500",
-    isHot: true,
   },
   {
     id: "sys_v162",

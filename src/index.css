@@ -49,6 +49,7 @@ body {
 
 /* --- HEADER --- */
 header {
+  background: #0d3b66; /* Fallback for older browsers */
   background: var(--primary);
   height: calc(var(--header-h) + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
@@ -57,6 +58,7 @@ header {
   display: flex;
   justify-content: flex-start; 
   align-items: center;
+  border-bottom: 2px solid #fbbf24; /* Fallback for older browsers */
   border-bottom: 2px solid var(--accent);
   box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
@@ -69,15 +71,22 @@ header {
   margin: 0;
   letter-spacing: -0.5px;
   text-transform: uppercase;
-  background: linear-gradient(
-    to right, 
-    #10b981, #06b6d4, #3b82f6, #10b981
-  );
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: color-shimmer 4s linear infinite;
-  filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4));
+  color: #fbbf24; /* Fallback color for older browsers */
+}
+
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .brand-title {
+    background: linear-gradient(
+      to right, 
+      #10b981, #06b6d4, #3b82f6, #10b981
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: color-shimmer 4s linear infinite;
+    filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4));
+  }
 }
 @media (min-width: 640px) {
   .brand-title { font-size: 24px; }
@@ -508,4 +517,15 @@ body.dark-theme .no-invert {
 }
 .text-zoom-xlarge span, .text-zoom-xlarge input, .text-zoom-xlarge button, .text-zoom-xlarge textarea {
   font-size: 1.15em !important;
+}
+
+/* 🌟 Windows XP / Windows 7 Older Browser Fallback 🌟 */
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .text-transparent {
+    color: #0ea5e9 !important; /* Elegant fallback color instead of transparent */
+    background: none !important;
+    background-clip: unset !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: unset !important;
+  }
 }

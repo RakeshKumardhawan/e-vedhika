@@ -384,6 +384,64 @@ export async function sendCommentNotifications(
   }
 }
 
+export async function sendLikeNotification(
+  postId: string,
+  commentId: string,
+  commentText: string,
+  commentAuthorUid: string,
+  commentAuthorName: string,
+  likerUid: string,
+  likerName: string,
+) {
+  try {
+    const time = Date.now();
+
+    // 1st Person: Notify the comment author if the liker is not the comment author themself
+    if (commentAuthorUid && commentAuthorUid !== likerUid) {
+      await addDoc(collection(db, "notifications"), {
+        uid: commentAuthorUid,
+        title: "మీ కామెంట్ లైక్ చేయబడింది (Comment Liked)",
+        message: `${likerName} E-Vedhika సైట్‌లో మీ కామెంట్‌ను ఇష్టపడ్డారు (లైక్ చేశారు). పోస్ట్‌ను చూడటానికి ఇక్కడ క్లిక్ చేయండి.`,
+        type: "comment_like",
+        read: false,
+        time: time,
+        postId: postId,
+      });
+    }
+
+    // 2nd group: Notify ALL other users who commented on this post (except the liker and the comment author)
+    const commentsSnap = await getDocs(
+      collection(db, "posts", postId, "comments"),
+    );
+    const uids = new Set<string>();
+    commentsSnap.forEach((d) => {
+      const data = d.data();
+      if (data.uid) uids.add(data.uid);
+    });
+
+    uids.delete(likerUid);
+    uids.delete(commentAuthorUid);
+
+    for (const targetUid of Array.from(uids)) {
+      try {
+        await addDoc(collection(db, "notifications"), {
+          uid: targetUid,
+          title: "కామెంట్‌పై కొత్త స్పందన (Reaction on Post)",
+          message: `${likerName} మీరు పాల్గొన్న ఈ-వేదిక పోస్ట్‌లోని ఒక కామెంట్‌ను లైక్ చేశారు.`,
+          type: "comment_like",
+          read: false,
+          time: time,
+          postId: postId,
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  } catch (err) {
+    console.error("Error sending like notification", err);
+  }
+}
+
 const logUserActivity = async (actionDesc: string, details?: any) => {
   if (!auth.currentUser) return;
   try {
@@ -559,6 +617,7 @@ interface Notification {
   read: boolean;
   time: number;
   link?: string;
+  readBy?: string[];
 }
 
 const APP_STYLES = `
@@ -851,6 +910,20 @@ function getValidTime(obj: any): number {
   return Date.now();
 }
 
+function getPostDisplayViews(post: any, isUserAdmin: boolean) {
+  if (!post) return 0;
+  const realViews = post.views || 0;
+  if (post.id === "qkQ9PDCxO0myy5l2seda") {
+    // Admin or editor sees original views.
+    if (isUserAdmin) {
+      return realViews;
+    }
+    // Users or guests see dummy base views + live new visits. (Kept less than the total 12,985 visitors)
+    return realViews + 543;
+  }
+  return realViews;
+}
+
 export const triggerNotification = (title: string, body: string) => {
   playNotificationSound();
 
@@ -985,6 +1058,8 @@ export const handleForceDownload = async (
 ) => {
   e.preventDefault();
   e.stopPropagation();
+
+  if (requireLoginAlert()) return;
 
   if (!url) return;
 
@@ -1326,12 +1401,13 @@ export default function App() {
     location.pathname.toLowerCase().endsWith("/farmer_registry") ||
     location.pathname.toLowerCase().endsWith("/farmer-registry");
   const tabFromUrl = searchParams.get("tab");
+  const resolvedTab = tabFromUrl === "reports" ? "my_activity" : tabFromUrl;
   const [currentTab, setCurrentTab] = useState(
-    isFarmerRegistryPath ? "farmer_registry" : tabFromUrl || "home",
+    isFarmerRegistryPath ? "farmer_registry" : resolvedTab || "home",
   );
   const [isPriorityOpen, setIsPriorityOpen] = useState(
     !isFarmerRegistryPath &&
-      (tabFromUrl === "emergency" || tabFromUrl === "my_activity"),
+      (tabFromUrl === "emergency" || tabFromUrl === "my_activity" || tabFromUrl === "reports"),
   );
 
   useEffect(() => {
@@ -1362,8 +1438,9 @@ export default function App() {
       return;
     }
     const tab = searchParams.get("tab");
-    if (tab && tab !== currentTab) {
-      setCurrentTab(tab);
+    const resolvedTab = tab === "reports" ? "my_activity" : tab;
+    if (resolvedTab && resolvedTab !== currentTab) {
+      setCurrentTab(resolvedTab);
     }
   }, [searchParams, currentTab, location.pathname]);
 
@@ -1371,10 +1448,25 @@ export default function App() {
     const path = location.pathname.toLowerCase();
     const isFarmerRegistry =
       path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
-    if (isFarmerRegistry && currentTab !== "farmer_registry") {
-      navigate(`/?tab=${currentTab}`);
+    if (isFarmerRegistry) {
+      if (currentTab !== "farmer_registry") {
+        navigate(`/?tab=${currentTab}`);
+      }
+      return;
     }
-  }, [currentTab, location.pathname, navigate]);
+    const currentParam = searchParams.get("tab");
+    const resolvedParam = currentParam === "reports" ? "my_activity" : currentParam;
+
+    if (currentTab && currentTab !== (resolvedParam || "home")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (currentTab === "home") {
+        newParams.delete("tab");
+      } else {
+        newParams.set("tab", currentTab);
+      }
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [currentTab, location.pathname, navigate, searchParams, setSearchParams]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -1408,7 +1500,11 @@ export default function App() {
     title: string;
     content: string;
     lastUpdated: string;
-  } | null>(null);
+  }>({
+    title: "e-Vedhika గురించి (About e-Vedhika)",
+    content: "ఈ వేదిక పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి అధికారులు మరియు సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన తాజా సమాచారం, GO లు, మరియు ఇతర సౌకర్యాలను పొందవచ్చు.\n\n- ప్రభుత్వ జీవోలు (GOs)\n- ఫార్మాట్లు మరియు రిపోర్టులు\n- సిబ్బంది డైరెక్టరీ\n- నాలెడ్జ్ హబ్",
+    lastUpdated: ""
+  });
 
   const fetchAboutContent = async () => {
     try {
@@ -1417,13 +1513,15 @@ export default function App() {
         const contentType = res.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const data = await res.json();
-          setAboutContent(data);
+          if (data && data.title && data.content) {
+            setAboutContent(data);
+          }
         } else {
           console.warn("About content response was not JSON");
         }
       }
     } catch (err) {
-      console.error("Failed to fetch about content", err);
+      console.warn("Could not fetch latest about content, using default local content instead:", err);
     }
   };
 
@@ -1715,10 +1813,18 @@ export default function App() {
         if (!sessionStorage.getItem(viewedSessionKey)) {
           sessionStorage.setItem(viewedSessionKey, "true");
           const userId = auth.currentUser?.uid;
-          if (!userId || !post.viewedBy?.includes(userId)) {
+          const updateData: any = {
+            views: increment(1),
+          };
+          if (userId && !post.viewedBy?.includes(userId)) {
+            updateData.viewedBy = arrayUnion(userId);
+          }
+          updateDoc(doc(db, "posts", post.id), updateData).catch(() => {});
+        } else {
+          const userId = auth.currentUser?.uid;
+          if (userId && !post.viewedBy?.includes(userId)) {
             updateDoc(doc(db, "posts", post.id), {
-              views: increment(1),
-              ...(userId ? { viewedBy: arrayUnion(userId) } : {}),
+              viewedBy: arrayUnion(userId),
             }).catch(() => {});
           }
         }
@@ -2285,6 +2391,17 @@ export default function App() {
   };
 
   if (location.pathname.endsWith("/Evdka")) {
+    if (authLoading || (user && profileLoading)) {
+      return (
+        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans antialiased flex flex-col justify-center items-center p-4">
+          <div className="relative w-12 h-12 mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-white/10"></div>
+          </div>
+          <p className="text-xs font-semibold tracking-wide text-white/75 font-sans">అడ్మిన్ డేటా లోడ్ అవుతోంది... దయచేసి వేచి ఉండండి...</p>
+        </div>
+      );
+    }
     if (!canAccessAdmin) {
       return (
         <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans selection:bg-accent/20 selection:text-primary antialiased flex flex-col justify-center items-center p-4">
@@ -2926,20 +3043,6 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-5">
-          <div
-            className="hidden sm:flex flex-col items-center justify-center mr-2 sm:mr-4 shrink-0"
-            title="Total Website Visits"
-          >
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#94a3b8] mb-[2px]">
-              Visits
-            </span>
-            <span className="text-[11px] font-mono font-black text-[#60a5fa] bg-[#0f2e4a] px-2 py-0.5 rounded-md border border-[#1e40af]/30 shadow-inner">
-              {visitorCount !== null
-                ? (visitorCount + 12345).toLocaleString()
-                : "-----"}
-            </span>
-          </div>
-
           <div className="relative">
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0 sm:mr-3 rounded-full hover:bg-white/10"
@@ -3052,17 +3155,35 @@ export default function App() {
                   {notifications.length > 0 && (
                     <button
                       onClick={async () => {
-                        const unread = notifications.filter((n) => !n.read);
+                        const unread = notifications.filter((n) =>
+                          n.uid === "all"
+                            ? !n.readBy?.includes(user?.uid || "")
+                            : !n.read,
+                        );
                         try {
                           await Promise.all(
-                            unread.map((n) =>
-                              updateDoc(doc(db, "notifications", n.id), {
-                                read: true,
-                              }),
-                            ),
+                            unread.map((n) => {
+                              if (n.uid === "all") {
+                                return updateDoc(
+                                  doc(db, "notifications", n.id),
+                                  {
+                                    readBy: arrayUnion(user?.uid),
+                                  },
+                                );
+                              } else {
+                                return updateDoc(
+                                  doc(db, "notifications", n.id),
+                                  {
+                                    read: true,
+                                  },
+                                );
+                              }
+                            }),
                           );
                           addToast("Marked all as read");
-                        } catch (e) {}
+                        } catch (e) {
+                          console.error("Failed marking all notifications as read:", e);
+                        }
                       }}
                       className="w-full p-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-primary bg-slate-50 border-t border-slate-100 transition-colors"
                     >
@@ -3920,10 +4041,10 @@ export default function App() {
                                         </h2>
                                       </div>
                                       <Link
-                                        to="?tab=reports"
+                                        to="?tab=my_activity"
                                         className="group flex items-center gap-1.5 text-slate-400 hover:text-indigo-600 font-bold text-xs uppercase tracking-widest transition-colors"
                                       >
-                                        View Full Archive
+                                        My Activity & Reports
                                         <ArrowUpRight
                                           size={14}
                                           className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
@@ -4648,29 +4769,29 @@ export default function App() {
                                 id="vedhika-statistics-banner"
                               >
                                 {/* Statistics Area */}
-                                <div className="flex items-center gap-2">
-                                  <Users className="w-4 h-4 text-[#fbe947]" />
+                                <div className="flex items-center gap-1.5">
+                                  <Users className="w-3.5 h-3.5 text-[#fbe947]" />
                                   <span>
                                     {(visitorCount !== null ? visitorCount + 12345 : "...").toLocaleString()}
-                                    <span className="text-white/60 ml-1.5 hidden sm:inline">VISITORS</span>
+                                    <span className="text-white/80 ml-1">VISITORS</span>
                                   </span>
                                 </div>
                                 <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
-                                <div className="flex items-center gap-2">
-                                  <Package className="w-4 h-4 text-[#fbe947]" />
+                                <div className="flex items-center gap-1.5">
+                                  <Package className="w-3.5 h-3.5 text-[#fbe947]" />
                                   <span>
                                     {SYSTEM_UPDATES[0]?.version || "V1.6.2"}
-                                    <span className="text-white/60 ml-1.5 hidden sm:inline">VER</span>
+                                    <span className="text-white/80 ml-1">VER</span>
                                   </span>
                                 </div>
                                 <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
-                                <div className="flex items-center gap-2">
-                                  <RefreshCw className="w-4 h-4 text-[#fbe947]" />
+                                <div className="flex items-center gap-1.5">
+                                  <RefreshCw className="w-3.5 h-3.5 text-[#fbe947]" />
                                   <span>
                                     {SYSTEM_UPDATES[0]?.time
                                       ? new Date(SYSTEM_UPDATES[0].time).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })
                                       : "30/05/26"}
-                                    <span className="text-white/60 ml-1.5 hidden sm:inline">UPDATED</span>
+                                    <span className="text-white/80 ml-1">UPDATED</span>
                                   </span>
                                 </div>
 
@@ -7768,7 +7889,7 @@ function AdminPanel({
 
   const [reportsType, setReportsType] = useState<"issues" | "posts">("posts");
   const [reportsFilter, setReportsFilter] = useState<
-    "All" | "Pending" | "Approved" | "Flagged" | "Resolved" | "Deleted"
+    "All" | "New" | "In-Progress" | "Pending" | "Approved" | "Flagged" | "Resolved" | "Deleted"
   >("All");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [allProblems, setAllProblems] = useState<ProblemReport[]>([]);
@@ -8562,7 +8683,7 @@ function AdminPanel({
                     >
                       <Download size={14} /> Export XLS
                     </button>
-                    {["All", "Approved", "Pending", "Resolved", "Deleted"].map(
+                    {["All", "New", "In-Progress", "Pending", "Approved", "Resolved", "Deleted"].map(
                       (f) => (
                         <button
                           aria-label={f}
@@ -8626,8 +8747,8 @@ function AdminPanel({
                 </div>
 
                 <div className="overflow-x-auto min-h-[400px]">
-                  <table className="w-full text-left border-separate border-spacing-y-4">
-                    <thead>
+                  <table className="w-full text-left border-separate border-spacing-y-4 block md:table">
+                    <thead className="hidden md:table-header-group">
                       <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                         <th className="pb-4 pl-8 font-black">
                           Context & Interaction
@@ -8640,7 +8761,7 @@ function AdminPanel({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="space-y-4">
+                    <tbody className="space-y-4 block md:table-row-group">
                       {(activeSubTab === "reports"
                         ? reportsType === "posts"
                           ? posts
@@ -8658,9 +8779,9 @@ function AdminPanel({
                               (item.status || "").toLowerCase() === "pending"
                             );
                           return (
-                            (item.status || "").toLowerCase() ===
-                            reportsFilter.toLowerCase()
-                          );
+                              (item.status || "").toLowerCase() ===
+                              reportsFilter.toLowerCase()
+                            );
                         })
                         .map((item, idx) => (
                           <motion.tr
@@ -8668,9 +8789,9 @@ function AdminPanel({
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
                             key={item.id}
-                            className={`group bg-white rounded-[32px] overflow-hidden shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all border border-slate-100 ${activeSubTab === "suggestions" ? "border-l-4 border-l-amber-400 bg-amber-50/10" : ""}`}
+                            className={`group bg-white rounded-[32px] overflow-hidden shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all border border-slate-100 flex flex-col md:table-row md:space-y-0 ${activeSubTab === "suggestions" ? "border-l-4 border-l-amber-400 bg-amber-50/10" : ""}`}
                           >
-                            <td className="py-4 pl-6">
+                            <td className="p-4 sm:p-6 block md:table-cell md:py-4 md:pl-6">
                               <div className="flex items-center gap-4 mb-3">
                                 <div
                                   className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-inner ${
@@ -8755,29 +8876,32 @@ function AdminPanel({
                                 </button>
                               </div>
                             </td>
-                            <td className="py-6">
+                            <td className="p-4 sm:px-6 md:py-6 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0">
                               <div className="space-y-4">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span
-                                    className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                      (
-                                        item.status || "pending"
-                                      ).toLowerCase() === "approved" ||
-                                      (
-                                        item.status || "pending"
-                                      ).toLowerCase() === "resolved" ||
-                                      (
-                                        item.status || "pending"
-                                      ).toLowerCase() === "solved"
-                                        ? "bg-emerald-50 border-emerald-100 text-emerald-600"
-                                        : (
-                                              item.status || "pending"
-                                            ).toLowerCase() === "flagged"
-                                          ? "bg-rose-50 border-rose-100 text-rose-600"
-                                          : "bg-amber-50 border-amber-100 text-amber-600"
-                                    }`}
+                                    className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${(() => {
+                                      const s = (item.status || "pending").toLowerCase();
+                                      if (s === "new") {
+                                        return "bg-blue-50 border-blue-200 text-blue-700 shadow-[0_1px_2px_rgba(59,130,246,0.1)]";
+                                      }
+                                      if (s === "in-progress" || s === "inprogress" || s === "in progress") {
+                                        return "bg-amber-50 border-amber-200 text-amber-700 shadow-[0_1px_2px_rgba(245,158,11,0.1)]";
+                                      }
+                                      if (s === "resolved" || s === "solved" || s === "approved") {
+                                        return "bg-emerald-50 border-emerald-250 text-emerald-700 shadow-[0_1px_2px_rgba(16,185,129,0.1)]";
+                                      }
+                                      if (s === "flagged") {
+                                        return "bg-rose-50 border-rose-200 text-rose-700 shadow-[0_1px_2px_rgba(244,63,94,0.1)]";
+                                      }
+                                      if (s === "deleted") {
+                                        return "bg-slate-100 border-slate-200 text-slate-500";
+                                      }
+                                      // default pending or processing
+                                      return "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-[0_1px_2px_rgba(99,102,241,0.1)]";
+                                    })()}`}
                                   >
-                                    {item.status || "Processing"}
+                                    {item.status || "Pending"}
                                   </span>
                                   <span className="text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1.5 flex-wrap max-w-xs">
                                     <Hash size={12} className="flex-shrink-0" />{" "}
@@ -8823,8 +8947,8 @@ function AdminPanel({
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4 text-right pr-6">
-                              <div className="flex justify-end items-center gap-2">
+                            <td className="p-4 sm:px-6 py-4 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0 bg-slate-50/50 md:bg-transparent">
+                              <div className="flex justify-end items-center gap-2 w-full md:w-auto">
                                 <select
                                   value={(
                                     item.status || "pending"
@@ -8859,8 +8983,10 @@ function AdminPanel({
                                       addToast(getFriendlyError(err));
                                     }
                                   }}
-                                  className="bg-slate-50 border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest p-2 pr-8 rounded-xl focus:border-blue-500 outline-none w-auto min-w-[150px] shadow-sm cursor-pointer"
+                                  className="bg-slate-50 border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest p-2 pr-8 rounded-xl focus:border-blue-500 outline-none w-full md:w-auto min-w-[130px] shadow-sm cursor-pointer h-10"
                                 >
+                                  <option value="new">New</option>
+                                  <option value="in-progress">In-Progress</option>
                                   <option value="pending">Pending</option>
                                   <option value="approved">Approved</option>
                                   <option value="flagged">Flagged</option>
@@ -16902,6 +17028,10 @@ function PostCard({
                     href={post.mediaUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => {
+                      if (requireLoginAlert()) { e.preventDefault(); return; }
+                      handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document");
+                    }}
                     className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
                   >
                     <div className="flex items-center h-full min-w-0">
@@ -17289,7 +17419,7 @@ function PostCard({
                   addToast(getFriendlyError(err));
                 }
               }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all ${post.likedBy?.includes(auth.currentUser?.uid || "") ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
+              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${post.likedBy?.includes(auth.currentUser?.uid || "") ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
             >
               <Heart
                 size={18}
@@ -17332,18 +17462,19 @@ function PostCard({
           <div className="flex items-center gap-2">
             <div
               onClick={(e) => {
-                if (isAdmin && post.views > 0) {
+                const displayViews = getPostDisplayViews(post, isAdmin);
+                if (isAdmin && displayViews > 0) {
                   e.stopPropagation();
                   setShowViewsModal(true);
                 }
               }}
-              className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && post.views > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
+              className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
             >
               <Eye size={18} />
               <span
-                className={`text-sm font-black ${isAdmin && post.views > 0 ? "hover:underline cursor-pointer" : ""}`}
+                className={`text-sm font-black ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:underline cursor-pointer" : ""}`}
               >
-                {post.views || 0}
+                {getPostDisplayViews(post, isAdmin)}
               </span>
             </div>
           </div>
@@ -17394,8 +17525,16 @@ function PostCard({
       {showComments && (
         <div className="mt-6 pt-6 border-t border-slate-100">
           <div className="space-y-4 mb-4">
-            {comments.map((c) => (
-              <div key={c.id} className="text-sm bg-slate-50 p-3 rounded-2xl relative group flex items-start justify-between gap-2">
+            <AnimatePresence initial={false}>
+              {comments.map((c) => (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-sm bg-slate-50 p-3 rounded-2xl relative group flex items-start justify-between gap-2"
+                >
                 <div>
                   <span className="font-black text-primary mr-2 uppercase text-[10px]">
                     {c.userName}:
@@ -17421,9 +17560,21 @@ function PostCard({
                           await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
                             likes: arrayUnion(uid),
                           });
+                          const likerName = auth.currentUser!.displayName ||
+                            auth.currentUser!.email?.split("@")[0] ||
+                            "User";
+                          sendLikeNotification(
+                            post.id,
+                            c.id,
+                            c.text || "",
+                            c.uid || "",
+                            c.userName || "User",
+                            uid,
+                            likerName,
+                          );
                         }
                       }}
-                      className={`p-1.5 rounded-lg transition-all ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
+                      className={`p-1.5 rounded-lg transition-all active:scale-95 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
                       title={c.likes?.includes(auth.currentUser?.uid) ? "Unlike" : "Like"}
                     >
                       <Heart
@@ -17460,8 +17611,9 @@ function PostCard({
                     </button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
+            </AnimatePresence>
             {comments.length === 0 && (
               <p className="text-xs text-slate-400 italic text-center py-2">
                 No comments yet
@@ -17527,7 +17679,7 @@ function PostCard({
           uids={post.viewedBy || []}
           allUsers={allUsers}
           onClose={() => setShowViewsModal(false)}
-          anonymousCount={Math.max(0, (post.views || 0) - (post.viewedBy?.length || 0))}
+          anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
         />
       )}
     </motion.div>
@@ -19184,12 +19336,21 @@ function PostDetail({
             isInitial = false;
             const data = snapshot.data();
             const uid = auth.currentUser?.uid;
-            if (uid && data && !data.viewedBy?.includes(uid)) {
+            const viewedSessionKey = `session_post_detail_viewed_${postId}`;
+            const hasViewedInSession = sessionStorage.getItem(viewedSessionKey);
+            if (!hasViewedInSession) {
+              sessionStorage.setItem(viewedSessionKey, "true");
               const updateData: any = {
                 views: increment(1),
-                viewedBy: arrayUnion(uid),
               };
+              if (uid && data && !data.viewedBy?.includes(uid)) {
+                updateData.viewedBy = arrayUnion(uid);
+              }
               updateDoc(docRef, updateData).catch((e) => console.error(e));
+            } else if (uid && data && !data.viewedBy?.includes(uid)) {
+              updateDoc(docRef, {
+                viewedBy: arrayUnion(uid),
+              }).catch((e) => console.error(e));
             }
             setLoading(false);
           }
@@ -19664,6 +19825,10 @@ function PostDetail({
                       href={post.mediaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => {
+                        if (requireLoginAlert()) { e.preventDefault(); return; }
+                        handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document");
+                      }}
                       className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
                     >
                       <div className="flex items-center h-full min-w-0">
@@ -19960,7 +20125,7 @@ function PostDetail({
                 if (likedBy.includes(userId)) {
                   await updateDoc(doc(db, "posts", post.id), {
                     likes: increment(-1),
-                    likedBy: likedBy.filter((id) => id !== userId),
+                    likedBy: arrayRemove(userId),
                   });
                 } else {
                   await updateDoc(doc(db, "posts", post.id), {
@@ -19969,7 +20134,7 @@ function PostDetail({
                   });
                 }
               }}
-              className="flex items-center gap-2 text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2 rounded-xl transition-colors cursor-pointer group"
+              className="flex items-center gap-2 text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2 rounded-xl transition-colors active:scale-95 cursor-pointer group"
             >
               <Heart
                 size={20}
@@ -19997,15 +20162,16 @@ function PostDetail({
             {/* Views - Visible to all, clickable only by admin */}
             <button
               onClick={() => {
-                if (isAdmin && post.views > 0) setShowViewsModal(true);
+                const displayViews = getPostDisplayViews(post, isAdmin);
+                if (isAdmin && displayViews > 0) setShowViewsModal(true);
               }}
-              className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && post.views > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
+              className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
             >
               <Eye size={20} />
               <span
-                className={`font-black text-base ${isAdmin && post.views > 0 ? "hover:underline" : ""}`}
+                className={`font-black text-base ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:underline" : ""}`}
               >
-                {post.views || 0}
+                {getPostDisplayViews(post, isAdmin)}
               </span>{" "}
               <span className="text-xs uppercase tracking-wider hidden sm:inline">
                 Views
@@ -20070,7 +20236,7 @@ function PostDetail({
           uids={post.viewedBy || []}
           allUsers={allUsers}
           onClose={() => setShowViewsModal(false)}
-          anonymousCount={Math.max(0, (post.views || 0) - (post.viewedBy?.length || 0))}
+          anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
         />
       )}
     </motion.div>
@@ -20122,7 +20288,7 @@ function PostComments({
         });
         setComments(fetchedComments);
         setCommentsLoaded(true);
-        if (post.commentCount !== fetchedComments.length) {
+        if (auth.currentUser && post.commentCount !== fetchedComments.length) {
           updateDoc(doc(db, "posts", post.id), {
             commentCount: fetchedComments.length,
           }).catch(() => {});
@@ -20256,9 +20422,14 @@ function PostComments({
             </p>
           </div>
         )}
+        <AnimatePresence initial={false}>
         {comments.map((c) => (
-          <div
+          <motion.div
             key={c.id}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.3 }}
             className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex gap-4 items-start"
           >
             <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex-shrink-0 flex items-center justify-center text-slate-400 font-black border border-white shadow-sm mt-1">
@@ -20374,9 +20545,21 @@ function PostComments({
                       updateDoc(doc(db, "posts", post.id, "comments", c.id), {
                         likes: arrayUnion(uid),
                       });
+                      const likerName = auth.currentUser!.displayName ||
+                        auth.currentUser!.email?.split("@")[0] ||
+                        "User";
+                      sendLikeNotification(
+                        post.id,
+                        c.id,
+                        c.text || "",
+                        c.uid || "",
+                        c.userName || "User",
+                        uid,
+                        likerName,
+                      );
                     }
                   }}
-                  className={`text-xs flex items-center gap-1 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500 hover:text-slate-400" : "text-slate-400 hover:text-red-500"} group transition-colors p-1 -ml-1 rounded-md`}
+                  className={`text-xs flex items-center gap-1 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500 hover:text-slate-400" : "text-slate-400 hover:text-red-500"} active:scale-95 group transition-colors p-1 -ml-1 rounded-md`}
                 >
                   <Heart
                     size={12}
@@ -20398,8 +20581,9 @@ function PostComments({
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
       {showLikesModalFor && (
         <UsersListModal
