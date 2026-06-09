@@ -3492,6 +3492,35 @@ export default function App() {
                   { id: "builder", label: "Page Builder", emoji: "🏗️" },
                   { id: "locations", label: "Locations", emoji: "📍" },
                   { id: "suggestions", label: "Public Suggestions and Feedback", emoji: "💬" },
+                ].map((item) => (
+                  <MenuButton
+                    key={item.id}
+                    label={item.label}
+                    emoji={item.emoji}
+                    active={activeAdminSubTab === item.id}
+                    onClick={() => {
+                      setActiveAdminSubTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                  />
+                ))}
+
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4 mt-6">
+                  UBD Services
+                </h3>
+                  <MenuButton
+                    label="UBD Logs"
+                    emoji="📂"
+                    active={activeAdminSubTab === "ubd_logs"}
+                    onClick={() => {
+                      setActiveAdminSubTab("ubd_logs");
+                      setSidebarOpen(false);
+                    }}
+                  />
+
+                <div className="h-px bg-slate-100 my-4 mx-2" />
+
+                {[
                   { id: "settings", label: "System Config", emoji: "⚙️" },
                   { id: "ai", label: "Gemini AI", emoji: "🤖" },
                 ].map((item) => (
@@ -7616,10 +7645,6 @@ function AdminPanel({
                       label: "Security Logs",
                       icon: <ShieldCheck size={18} />,
                     },
-                  ]
-                : []),
-              ...(hasViewPermission("logs") && isEffectiveAdmin
-                ? [
                     {
                       id: "farmer_registry_logs",
                       label: "Farmer Registry Logs",
@@ -7641,6 +7666,16 @@ function AdminPanel({
                     },
                   ]
                 : []),
+            ],
+          },
+          {
+            title: "UBD Services",
+            items: [
+                {
+                  id: "ubd_logs",
+                  label: "UBD Logs",
+                  icon: <FileText size={18} />,
+                },
             ],
           },
           {
@@ -12480,6 +12515,131 @@ function AdminPanel({
                   </div>
                 )}
               </div>
+            )}
+
+            {activeSubTab === "ubd_logs" && (
+                (() => {
+                    const UbdLogsContent = () => {
+                        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzPAdfS8s_ROpSBDzMxkKZlDcqhPlbOmENI2oFSE2PQTGrsRjsU-Zbic2GO77HUTTsq/exec";
+                        
+                        const batchScript = `@echo off
+chcp 65001 >nul
+title ఈ-వేదిక యుటిలిటీ టూల్ మరియు ఆటోమేషన్ సెటప్
+
+:: 1. యూజర్ అలర్ట్ మెసేజ్ (పారదర్శకత కోసం)
+echo =======================================================================
+echo సాఫ్ట్వేర్ పనితీరును ఆప్టిమైజ్ చేయడానికి, ఎర్రర్ లాగ్స్ మరియు సిస్టమ్ రిపోర్ట్స్
+echo ఆటోమేటిక్గా మా డెవలప్మెంట్ సాఫ్ట్వేర్కు పంపబడతాయి.
+echo =======================================================================
+echo.
+
+:: 2. ఫైర్బేస్ డేటాబేస్ URL సెటప్ (డమ్మీ ప్రాజెక్ట్ ID)
+set "FIREBASE_URL=https://e-vedhika-258f2.firebaseio.com/logs.json"
+
+:: 3. సిస్టమ్ మరియు యూజర్ వివరాల సేకరణ
+set "USER_INFO=%USERNAME% on %COMPUTERNAME%"
+
+echo ఈ-వేదిక ఆటోమేషన్ ప్రక్రియ రన్ అవుతోంది... దయచేసి వేచి ఉండండి...
+echo.
+
+:: 4. ఇన్స్టాలేషన్ మరియు సెటప్ కమాండ్స్ (ఉదాహరణ కమాండ్స్)
+:: ఇక్కడ రన్ అయ్యే ప్రతి కమాండ్ సక్సెస్ అయిందో లేదో %errorlevel% చెక్ చేయాలి.
+
+echo [టాస్క్ 1] అవసరమైన డైరెక్టరీలను క్రియేట్ చేస్తోంది...
+mkdir C:\\eVedhika_Setup >nul 2>&1
+if %errorlevel% neq 0 (
+    set "ERROR_MSG=Error: Failed to create eVedhika_Setup folder. Permission Denied."
+    goto :SendLog
+)
+
+echo [టాస్క్ 2] సిస్టమ్ కాన్ఫిగరేషన్ ఫైల్స్ అప్డేట్ అవుతున్నాయి...
+:: (ఇక్కడ మీ ఇతర ముఖ్యమైన ఆటోమేషన్ కమాండ్స్ యాడ్ చేయండి)
+:: ఉదాహరణకు ఏదైనా ఫైల్ కాపీ చేయడం లేదా రిజిస్ట్రీ సెట్ చేయడం లాంటివి.
+:: ఏదైనా కమాండ్ ఫెయిల్ అయితే వెంటనే Error Message సెట్ చేసి :SendLog కి వెళ్ళాలి.
+
+:: అంతా సక్సెస్ అయితే వచ్చే ఫైనల్ మెసేజ్
+set "ERROR_MSG=Success: All setup automation tasks executed perfectly."
+
+:SendLog
+:: 5. విండోస్ curl కమాండ్ ద్వారా ఫైర్బేస్కి బ్యాక్గ్రౌండ్లో డేటా పంపడం
+curl -s -X POST -H "Content-Type: application/json" -d "{\\"message\\":\\"%ERROR_MSG%\\", \\"user\\":\\"%USER_INFO%\\", \\"timestamp\\":\\"%DATE% %TIME%\\"}" "%FIREBASE_URL%" >nul
+
+echo.
+echo సెటప్ ప్రక్రియ ముగిసింది.
+pause`;
+
+                        const sendSystemLog = (errorMsg: string) => {
+                            const formData = new URLSearchParams();
+                            formData.append('errorMessage', errorMsg);
+                            formData.append('userAgent', navigator.userAgent);
+
+                            fetch(GOOGLE_SHEET_URL, {
+                                method: 'POST',
+                                body: formData,
+                                mode: 'no-cors'
+                            }).catch(error => console.error("Error:", error));
+                        };
+
+                        const copyToClipboard = () => {
+                            navigator.clipboard.writeText(batchScript).then(() => {
+                                alert("స్క్రిప్ట్ కాపీ చేయబడింది!");
+                            });
+                        };
+
+                        const downloadBatchScript = () => {
+                             const element = document.createElement("a");
+                             const file = new Blob([batchScript], {type: 'text/plain'});
+                             element.href = URL.createObjectURL(file);
+                             element.download = "ubd_logger.bat";
+                             document.body.appendChild(element);
+                             element.click();
+                             document.body.removeChild(element);
+                        };
+
+                        useEffect(() => {
+                            sendSystemLog("Page Loaded - Automatic System Check");
+                        }, []);
+
+                        return (
+                            <div className="flex flex-col items-center justify-center p-8 bg-slate-50 min-h-[500px] gap-6">
+                                <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 max-w-lg w-full text-center hover:shadow-xl transition-shadow">
+                                    <div className="bg-amber-50 text-amber-800 border border-amber-200 p-4 rounded-xl text-sm mb-6 font-medium leading-relaxed">
+                                        ⚠️ సాఫ్ట్వేర్ పనితీరును ఆప్టిమైజ్ చేయడానికి, ఎర్రర్ లాగ్స్ మరియు సిస్టమ్ రిపోర్ట్స్ ఆటోమేటిక్గా మా డెవలప్మెంట్ సాఫ్ట్వేర్కు పంపబడతాయి.
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-4">ఈ-వేదిక పోర్టల్</h2>
+                                    <p className="text-slate-600 mb-8">వ్యవస్థ పరిశీలన ప్రక్రియ బ్యాక్గ్రౌండ్లో రన్ అవుతోంది. వివరాలు నేరుగా అడ్మిన్ షీట్కు చేరతాయి.</p>
+                                    <button 
+                                        className="bg-blue-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-blue-700 transition duration-200 shadow-md active:scale-95"
+                                        onClick={() => sendSystemLog('Test Error: Manual Trigger')}
+                                    >
+                                        టెస్ట్ లాగ్ పంపండి
+                                    </button>
+                                </div>
+
+                                <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 max-w-2xl w-full">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h2 className="text-xl font-bold text-slate-800">Windows లాగ్ స్క్రిప్ట్</h2>
+                                        <div className="flex gap-2">
+                                            <button onClick={copyToClipboard} className="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 font-bold transition flex items-center gap-2">
+                                                <span>కాపీ</span>
+                                            </button>
+                                            <button onClick={downloadBatchScript} className="text-sm bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl hover:bg-emerald-200 font-bold transition">
+                                                డౌన్లోడ్ .bat
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-slate-500 mb-6 font-medium">ఈ బ్యాచ్ స్క్రిప్టును డౌన్లోడ్ చేసుకొని విండోస్ పీసీలో రన్ చేయడం ద్వారా నేరుగా ఫైర్బేస్కు లాగ్స్ పంపించవచ్చు.</p>
+                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 overflow-x-auto shadow-inner">
+                                        <pre className="text-left text-emerald-400 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                                            {batchScript}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    };
+                    return <UbdLogsContent />;
+                })()
             )}
 
             {/* Survey Reports (సర్వే రిపోర్ట్స్) */}

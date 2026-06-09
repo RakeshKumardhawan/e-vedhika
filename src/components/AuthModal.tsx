@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import Swal from "sweetalert2";
@@ -44,6 +45,22 @@ export function AuthModal({
 
   const mandals = district ? districtsData[district] || [] : [];
 
+  const handlePasswordReset = async () => {
+    if (!email) {
+      addToast("Please enter your email address first.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      addToast("Password reset email sent!");
+    } catch (err: any) {
+      addToast(getFriendlyError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getFriendlyError = (err: any) => {
     const code = err.code;
     if (code === "auth/user-not-found") return "User not found";
@@ -60,6 +77,7 @@ export function AuthModal({
     setLoading(true);
     try {
       if (!isSignup) {
+        console.log("Attempting sign in:", email);
         await signInWithEmailAndPassword(auth, email, password);
         onClose();
       } else {
@@ -134,6 +152,7 @@ export function AuthModal({
       }
     } catch (err: any) {
       addToast(getFriendlyError(err));
+      alert(getFriendlyError(err));
     } finally {
       setLoading(false);
     }
@@ -388,6 +407,16 @@ export function AuthModal({
                 </div>
               )}
             </div>
+
+            {!isSignup && (
+              <button
+                type="button"
+                onClick={handlePasswordReset}
+                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors w-full text-right"
+              >
+                Forgot Password?
+              </button>
+            )}
 
             <button
               aria-label={isSignup ? "Register Now" : "Sign In Now"}
