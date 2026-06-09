@@ -51,74 +51,23 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
     setProgress(0);
 
     try {
-      const adminSnap = await getDoc(doc(db, "settings", "admin_config"));
-      // Force Firebase storage if we know R2 env vars are likely not set, or just use it as default
-      const isFirebaseStorage = true;
-
-      if (isFirebaseStorage) {
-        const metadata = {
-          contentDisposition: `attachment; filename="${file.name}"`
-        };
-        const fileRef = ref(storage, "gos_formats/" + Date.now() + "-" + file.name.replace(/[^a-zA-Z0-9.-]/g, "_"));
-        const uploadTask = uploadBytesResumable(fileRef, file, metadata);
-
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setProgress(p);
-          },
-          (error) => {
-            console.error("Firebase upload error:", error);
-            addToast("Upload failed: " + error.message);
-            setUploading(false);
-          },
-          async () => {
-             try {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                setProgress(100);
-
-                await addDoc(collection(db, 'gos_formats'), {
-                  title,
-                  description,
-                  category: activeTab,
-                  whatIsIt: activeTab === 'Application' ? whatIsIt : '',
-                  whoUses: activeTab === 'Application' ? whoUses : '',
-                  url: downloadURL,
-                  storagePath: downloadURL,
-                  fileName: file.name,
-                  fileNameDisplay: fileNameDisplay || file.name,
-                  size: file.size,
-                  time: Date.now(),
-                  uploadedBy: user.uid
-                });
-
-                addToast("Document Uploaded Successfully!");
-                setUploading(false);
-                setShowUpload(false);
-                setTitle('');
-                setDescription('');
-                setWhatIsIt('');
-                setWhoUses('');
-                setFileNameDisplay('');
-                setFile(null);
-                setProgress(0);
-             } catch (err: any) {
-               console.error("Failed to save doc metadata:", err);
-               addToast("సమీక్ష లోపం సంభవించింది: " + err.message);
-               setUploading(false);
-             }
-          }
-        );
-        return;
-      }
-
-      // CLOUDFLARE R2 via backend logic
+      // ALWAYS USE BACKEND / CLOUDFLARE R2
+      // No more Firebase Storage -> fixes billing disabled 402 errors.
       const formData = new FormData();
       formData.append('file', file);
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/upload', true);
+
+      // Add auth token if available (though this component isn't explicitly passing one before, let's keep it safe)
+      if (user && user.getIdToken) {
+        try {
+          const token = await user.getIdToken();
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        } catch(e) {
+          console.warn("Failed to get token for upload", e);
+        }
+      }
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {

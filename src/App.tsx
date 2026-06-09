@@ -1133,11 +1133,11 @@ export const handleForceDownload = async (
       link.href = url;
       link.download = extractedFilename;
     } else {
-      // Use proxy for all remote downloads to ensure filename stripping logic is applied
-      // and browser correctly handles the download filename header.
-      const proxyUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(extractedFilename)}`;
-      link.href = proxyUrl;
-
+      // Bypass the proxy to avoid "Site wasn't available" errors for large files.
+      // Use the direct URL and let the browser's native download handle it.
+      link.href = url;
+      link.target = "_blank";
+      
       const finalLower = extractedFilename.toLowerCase();
       if (
         finalLower !== "download" &&
@@ -17759,55 +17759,8 @@ function PostForm({
       return new Promise<{ name: string; url: string; version: string }>(
         async (resolve, reject) => {
           try {
-            const adminSnap = await getDoc(doc(db, "settings", "admin_config"));
-            const savedStorageType = adminSnap.exists() ? adminSnap.data().storageType : "firebase";
-            // Force Firebase storage if we know R2 env vars are likely not set, or just use it as default
-            const isFirebaseStorage = savedStorageType === "firebase" || true; // FORCE FIREBASE FOR NOW to prevent ephemeral storage data loss
-
-            if (isFirebaseStorage) {
-              const metadata = {
-                contentDisposition: `attachment; filename="${file.name}"`,
-              };
-              const fileRef = ref(
-                storage,
-                "uploads/" +
-                  Date.now() +
-                  "-" +
-                  file.name.replace(/[^a-zA-Z0-9.-]/g, "_"),
-              );
-              const uploadTask = uploadBytesResumable(fileRef, file, metadata);
-
-              uploadTask.on(
-                "state_changed",
-                (snapshot) => {
-                  const progress =
-                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                  setUploadProgress(progress);
-                },
-                (error) => {
-                  console.error("Firebase upload error:", error);
-                  reject(error);
-                },
-                async () => {
-                  try {
-                    const downloadURL = await getDownloadURL(
-                      uploadTask.snapshot.ref,
-                    );
-                    setUploadProgress(100);
-                    resolve({
-                      name: file.name,
-                      url: downloadURL,
-                      version: "1.0",
-                    });
-                  } catch (err: any) {
-                    reject(err);
-                  }
-                },
-              );
-              return;
-            }
-
-            // CLOUDFLARE R2 via backend logic
+            // ALWAYS USE BACKEND / CLOUDFLARE R2
+            // No more Firebase Storage -> fixes billing disabled 402 errors.
             const formData = new FormData();
             formData.append("file", file);
 
