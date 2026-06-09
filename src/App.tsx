@@ -912,16 +912,21 @@ function getValidTime(obj: any): number {
 
 function getPostDisplayViews(post: any, isUserAdmin: boolean) {
   if (!post) return 0;
-  const realViews = post.views || 0;
-  if (post.id === "qkQ9PDCxO0myy5l2seda") {
-    // Admin or editor sees original views.
-    if (isUserAdmin) {
-      return realViews;
-    }
-    // Users or guests see dummy base views + live new visits. (Kept less than the total 12,985 visitors)
-    return realViews + 543;
+  if (isUserAdmin) return post.views || 0;
+  
+  // Fake count for public
+  let baseViews = post.views || 0;
+  
+  // Ensure it's at least 500 if it's less than 500
+  if (baseViews < 500) {
+      let hash = 0;
+      for (let i = 0; i < post.id.length; i++) {
+          hash = post.id.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return 500 + (Math.abs(hash) % 50); // 500 to 550
   }
-  return realViews;
+  
+  return baseViews;
 }
 
 export const triggerNotification = (title: string, body: string) => {
@@ -1257,6 +1262,37 @@ export default function App() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (user?.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com") {
+      const runSync = async () => {
+        try {
+          const snap = await getDocs(collection(db, "posts"));
+          for (const d of snap.docs) {
+            const data = d.data();
+            const sub = await getDocs(collection(db, "posts", d.id, "comments"));
+            
+            // Deduplicate logic identical to how they are read
+            const legacyComments = data.comments || [];
+            const combinedMap = new Map();
+            legacyComments.forEach((c: any) => {
+              const cid = c.id || c.time?.toString() || Math.random().toString();
+              combinedMap.set(cid, { ...c, id: cid, isLegacy: true });
+            });
+            sub.forEach((c) => {
+              combinedMap.set(c.id, c.data());
+            });
+            const trueCount = Array.from(combinedMap.values()).length;
+            
+            if (data.commentCount !== trueCount) {
+              await updateDoc(doc(db, "posts", d.id), { commentCount: trueCount }).catch(()=>{});
+            }
+          }
+        } catch (e) {}
+      };
+      runSync();
+    }
+  }, [user]);
 
   const isDevEmail =
     user?.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com";
@@ -9480,11 +9516,7 @@ function AdminPanel({
                             </div>
                             <div>
                               <h4 className="font-black text-primary text-sm mb-1 flex items-center gap-2">
-                                {u.name || u.surname
-                                  ? `${u.name || ""} ${u.surname || ""}`.trim()
-                                  : u.email
-                                    ? u.email.split("@")[0]
-                                    : "Unknown User"}
+                                {(`${u.name || ""} ${u.surname || ""}`.trim()) || (u.email ? u.email.split("@")[0] : "Unknown User")}
                                 {u.hidden && (
                                   <span className="bg-amber-100 text-amber-600 text-[8px] px-1.5 py-0.5 rounded-full uppercase font-black">
                                     Hidden
@@ -13486,6 +13518,7 @@ function UsersListModal({
         name: "",
         surname: "",
         designation: "",
+        email: "",
       },
   );
 
@@ -13502,7 +13535,7 @@ function UsersListModal({
         <h3 className="font-black text-primary text-xl mb-4 uppercase tracking-widest">
           {title}{" "}
           <span className="text-slate-400 text-sm">
-            ({uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Any` : ""})
+            ({uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Anon` : ""})
           </span>
         </h3>
         <div className="space-y-3">
@@ -13541,14 +13574,12 @@ function UsersListModal({
                   {(u as any).photoURL ? (
                     <img src={(u as any).photoURL} alt="" />
                   ) : (
-                    u.username?.[0] || "U"
+                    u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
                   )}
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-800 leading-tight">
-                    {u.name && u.surname
-                      ? `${u.name} ${u.surname}`
-                      : u.username}
+                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
                   </h4>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                     {u.designation || "User"}
@@ -14146,9 +14177,7 @@ function DirectorySection({ allUsers }: { allUsers: UserProfile[] }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-black text-primary text-base truncate leading-tight">
-                    {u.name || u.surname
-                      ? `${u.name || ""} ${u.surname || ""}`.trim()
-                      : "Active Member"}
+                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || "Active Member"}
                   </h4>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 truncate">
                     {u.designation || "PR Officer"}
@@ -17453,7 +17482,7 @@ function PostCard({
             >
               <MessageSquare size={18} />
               <span className="text-sm font-black">
-                {post.commentCount || 0}
+                {post.commentCount ?? post.comments?.length ?? 0}
               </span>
             </div>
           </div>
@@ -20229,21 +20258,38 @@ function PostComments({
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const fetchedComments = snap.docs.map((d) => ({
+        const dbComments = snap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
-        fetchedComments.sort((a: any, b: any) => {
+        
+        const legacyComments = post.comments || [];
+        const combinedMap = new Map();
+        
+        legacyComments.forEach((c: any) => {
+            const cid = c.id || c.time?.toString() || Math.random().toString();
+            combinedMap.set(cid, { ...c, id: cid, isLegacy: true });
+        });
+        
+        dbComments.forEach((c: any) => {
+            combinedMap.set(c.id, c);
+        });
+        
+        const combinedComments = Array.from(combinedMap.values());
+        combinedComments.sort((a: any, b: any) => {
           const aLikes = a.likes?.length || 0;
           const bLikes = b.likes?.length || 0;
           if (aLikes !== bLikes) return bLikes - aLikes;
           return (b.time || 0) - (a.time || 0);
         });
-        setComments(fetchedComments);
+        
+        setComments(combinedComments);
         setCommentsLoaded(true);
-        if (auth.currentUser && post.commentCount !== fetchedComments.length) {
+        
+        const currentCount = post.commentCount ?? legacyComments.length;
+        if (currentCount !== combinedComments.length) {
           updateDoc(doc(db, "posts", post.id), {
-            commentCount: fetchedComments.length,
+            commentCount: combinedComments.length,
           }).catch(() => {});
         }
       },
@@ -20325,7 +20371,7 @@ function PostComments({
         />
         Community Comments{" "}
         <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full">
-          {commentsLoaded ? comments.length : post.commentCount || 0}
+          {commentsLoaded ? comments.length : (post.commentCount ?? post.comments?.length ?? 0)}
         </span>
       </h3>
       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
