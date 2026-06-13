@@ -1281,7 +1281,10 @@ export default function App() {
             sub.forEach((c) => {
               combinedMap.set(c.id, c.data());
             });
-            const trueCount = Array.from(combinedMap.values()).length;
+            const trueCount = Array.from(combinedMap.values()).reduce((acc: number, c: any) => {
+              const repliesCount = c.replies && Array.isArray(c.replies) ? c.replies.length : 0;
+              return acc + 1 + repliesCount;
+            }, 0);
             
             if (data.commentCount !== trueCount) {
               await updateDoc(doc(db, "posts", d.id), { commentCount: trueCount }).catch(()=>{});
@@ -7427,6 +7430,39 @@ const DEFAULT_PERMISSIONS: any = {
     changelog: { view: true, edit: false, delete: false },
   },
 };
+
+function AdminUserTooltip({ uid, userName, allUsers, isAdmin }: { uid?: string, userName: string, allUsers?: any[], isAdmin?: boolean }) {
+  if (!uid || !isAdmin || !allUsers) return <>{userName}</>;
+  const u = allUsers.find(u => u.id === uid);
+  if (!u) return <>{userName}</>;
+
+  return (
+    <div className="relative group/tooltip inline-block cursor-help">
+      <span>{userName}</span>
+      <div className="absolute bottom-full left-0 mb-2 hidden group-hover/tooltip:block w-64 p-3 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-[999] text-white">
+        <div className="text-[11px] flex flex-col gap-1.5 font-normal tracking-wide normal-case break-words whitespace-normal">
+          <div className="flex items-center gap-2 border-b border-slate-700 pb-1.5 mb-1.5">
+             <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold shrink-0 text-sm">
+                {(u.name || u.username || userName)[0].toUpperCase()}
+             </div>
+             <div>
+                <div className="font-bold text-white text-[13px]">{u.name || u.username || userName}</div>
+                {(u.role || u.districtRole) && (
+                   <div className="text-[10px] text-blue-400 font-medium">
+                      Role: {u.role || u.districtRole}
+                   </div>
+                )}
+             </div>
+          </div>
+          {u.email && <div className="text-slate-300"><span className="text-slate-500 font-bold">Email: </span> {u.email}</div>}
+          {u.contact && <div className="text-slate-300"><span className="text-slate-500 font-bold">Phone: </span> {u.contact}</div>}
+          {u.district && <div className="text-slate-300"><span className="text-slate-500 font-bold">District: </span> {u.district}</div>}
+          {u.constituency && <div className="text-slate-300"><span className="text-slate-500 font-bold">Constituency: </span> {u.constituency}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AdminPanel({
   addToast,
@@ -16656,6 +16692,46 @@ function PostCard({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
+  const [editReplyId, setEditReplyId] = useState<{ commentId: string; replyId: string } | null>(null);
+  const [editReplyText, setEditReplyText] = useState("");
+  const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; target: "reply" | "comment" } | null>(null);
+
+  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setReplyText(val);
+    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
+    const match = val.match(lastWordRegex);
+    if (match) {
+      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "reply" });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewComment(val);
+    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
+    const match = val.match(lastWordRegex);
+    if (match) {
+      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "comment" });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleMentionSelect = (username: string) => {
+    if (!mentionQuery) return;
+    if (mentionQuery.target === "reply") {
+      const newText = replyText.substring(0, mentionQuery.index) + `@${username} ` + replyText.substring(mentionQuery.index + mentionQuery.query.length + 1);
+      setReplyText(newText);
+    } else {
+      const newText = newComment.substring(0, mentionQuery.index) + `@${username} ` + newComment.substring(mentionQuery.index + mentionQuery.query.length + 1);
+      setNewComment(newText);
+    }
+    setMentionQuery(null);
+  };
 
   const handleAddReply = async (commentId: string) => {
     if (!replyText.trim() || !auth.currentUser) return;
@@ -16678,6 +16754,9 @@ function PostCard({
 
       await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
         replies: arrayUnion(newReply),
+      });
+      await updateDoc(doc(db, "posts", post.id), {
+        commentCount: increment(1)
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
@@ -16705,12 +16784,45 @@ function PostCard({
   const handleDeleteReply = async (commentId: string, reply: any) => {
     if (!window.confirm("Are you sure you want to delete this reply?")) return;
     try {
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        replies: arrayRemove(reply),
-      });
+      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+      if (commentDoc.exists()) {
+        const data = commentDoc.data();
+        const currentReplies = data.replies || [];
+        const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
+        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+          replies: newReplies,
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          commentCount: increment(-1)
+        });
+      }
     } catch (err) {
       console.error(err);
       addToast("Failed to delete reply");
+    }
+  };
+
+  const handleEditReplySubmit = async (commentId: string) => {
+    if (!editReplyText.trim() || !editReplyId) return;
+    setSubmittingReplyEdit(true);
+    try {
+      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+      if (!commentDoc.exists()) return;
+      const data = commentDoc.data();
+      const currentReplies = data.replies || [];
+      const newReplies = currentReplies.map((r: any) =>
+        r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
+      );
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        replies: newReplies,
+      });
+      setEditReplyId(null);
+      setEditReplyText("");
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to edit reply");
+    } finally {
+      setSubmittingReplyEdit(false);
     }
   };
 
@@ -17753,7 +17865,7 @@ function PostCard({
                   <div className="text-sm bg-slate-50 p-3 rounded-2xl flex items-start justify-between gap-2">
                     <div>
                       <span className="font-black text-primary mr-2 uppercase text-[10px]">
-                        {c.userName}:
+                        <AdminUserTooltip uid={c.uid} userName={c.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />:
                       </span>
                       <span className="text-slate-600">{c.text}</span>
                     </div>
@@ -17811,15 +17923,16 @@ function PostCard({
                           Reply
                         </button>
                       </div>
-                      {isAdmin && (
+                      {(auth.currentUser?.uid === c.uid || isAdmin) && (
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
                             if (!window.confirm("Are you sure you want to delete this comment?")) return;
                             try {
+                              const repliesCount = c.replies ? c.replies.length : 0;
                               await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
                               await updateDoc(doc(db, "posts", post.id), {
-                                commentCount: increment(-1),
+                                commentCount: increment(-(1 + repliesCount)),
                               });
                               addToast("Comment deleted");
                             } catch (err) {
@@ -17827,7 +17940,7 @@ function PostCard({
                               addToast("Error deleting comment");
                             }
                           }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                           title="Delete Comment"
                         >
                           <Trash2 size={14} />
@@ -17844,7 +17957,7 @@ function PostCard({
                           <div className="flex-1">
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] font-bold text-slate-700">
-                                {reply.userName || "User"}
+                                <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
                                 {reply.isAdminComment && (
                                   <span className="ml-1 bg-blue-600 text-white text-[8px] px-1 py-0.5 rounded uppercase tracking-widest">
                                     Official
@@ -17859,18 +17972,56 @@ function PostCard({
                                   })}
                                 </span>
                                 {(auth.currentUser?.uid === reply.uid || isAdmin) && (
-                                  <button
-                                    onClick={() => handleDeleteReply(c.id, reply)}
-                                    className="text-slate-300 hover:text-red-500 transition-colors"
-                                  >
-                                    <Trash2 size={10} />
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    {(auth.currentUser?.uid === reply.uid) && (
+                                      <button
+                                        onClick={() => {
+                                          setEditReplyId({ commentId: c.id, replyId: reply.id });
+                                          setEditReplyText(reply.text);
+                                        }}
+                                        className="text-slate-300 hover:text-blue-500 transition-colors"
+                                      >
+                                        <Edit2 size={10} />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteReply(c.id, reply)}
+                                      className="text-slate-300 hover:text-red-500 transition-colors"
+                                    >
+                                      <Trash2 size={10} />
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             </div>
-                            <p className="text-xs text-slate-600 mt-0.5">
-                              {reply.text}
-                            </p>
+                            {editReplyId?.replyId === reply.id ? (
+                              <div className="mt-2 flex gap-2">
+                                <input
+                                  value={editReplyText}
+                                  onChange={(e) => setEditReplyText(e.target.value)}
+                                  className="flex-1 text-xs bg-slate-50 p-2 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
+                                  onKeyDown={(e) => e.key === "Enter" && handleEditReplySubmit(c.id)}
+                                />
+                                <button
+                                  onClick={() => handleEditReplySubmit(c.id)}
+                                  disabled={submittingReplyEdit || !editReplyText.trim()}
+                                  className="bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-bold disabled:opacity-50"
+                                >
+                                  {submittingReplyEdit ? "..." : "Save"}
+                                </button>
+                                <button
+                                  onClick={() => setEditReplyId(null)}
+                                  className="text-[10px] font-bold text-slate-400 px-2"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-600 mt-0.5">
+                                {reply.text}
+                                {reply.edited && <span className="text-[9px] text-slate-400 ml-1">(edited)</span>}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -17879,10 +18030,26 @@ function PostCard({
 
                   {/* Reply Input Box */}
                   {replyingToId === c.id && auth.currentUser && (
-                    <div className="mt-1 flex gap-2 pl-4 border-l-2 border-primary/20">
+                    <div className="mt-1 flex gap-2 pl-4 border-l-2 border-primary/20 relative">
+                      {mentionQuery?.target === "reply" && (
+                        <div className="absolute bottom-full mb-1 left-4 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                          {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                            <button
+                              key={u.id}
+                              onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+                            >
+                              <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                                {(u.username || u.name || "U")[0].toUpperCase()}
+                              </div>
+                              <span className="truncate">{u.username || u.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <input
                         value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
+                        onChange={handleReplyChange}
                         placeholder="Write a reply..."
                         className="flex-1 text-xs bg-slate-50 p-2 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
                         onKeyDown={(e) => e.key === "Enter" && handleAddReply(c.id)}
@@ -17905,10 +18072,26 @@ function PostCard({
               </p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 relative">
+            {mentionQuery?.target === "comment" && (
+              <div className="absolute bottom-full mb-1 left-0 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                      {(u.username || u.name || "U")[0].toUpperCase()}
+                    </div>
+                    <span className="truncate">{u.username || u.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={handleCommentChange}
               placeholder="Add a comment..."
               className="flex-1 bg-slate-50 px-4 py-2 rounded-xl text-sm border-2 border-transparent focus:border-primary/20 outline-none"
             />
@@ -20590,6 +20773,46 @@ function PostComments({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submittingReply, setSubmittingReply] = useState(false);
+  const [editReplyId, setEditReplyId] = useState<{ commentId: string; replyId: string } | null>(null);
+  const [editReplyText, setEditReplyText] = useState("");
+  const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; target: "reply" | "comment" } | null>(null);
+
+  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setReplyText(val);
+    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
+    const match = val.match(lastWordRegex);
+    if (match) {
+      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "reply" });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewComment(val);
+    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
+    const match = val.match(lastWordRegex);
+    if (match) {
+      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "comment" });
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleMentionSelect = (username: string) => {
+    if (!mentionQuery) return;
+    if (mentionQuery.target === "reply") {
+      const newText = replyText.substring(0, mentionQuery.index) + `@${username} ` + replyText.substring(mentionQuery.index + mentionQuery.query.length + 1);
+      setReplyText(newText);
+    } else {
+      const newText = newComment.substring(0, mentionQuery.index) + `@${username} ` + newComment.substring(mentionQuery.index + mentionQuery.query.length + 1);
+      setNewComment(newText);
+    }
+    setMentionQuery(null);
+  };
 
   const handleAddReply = async (commentId: string) => {
     if (!replyText.trim() || !auth.currentUser) return;
@@ -20612,6 +20835,9 @@ function PostComments({
 
       await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
         replies: arrayUnion(newReply),
+      });
+      await updateDoc(doc(db, "posts", post.id), {
+        commentCount: increment(1)
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
@@ -20639,12 +20865,45 @@ function PostComments({
   const handleDeleteReply = async (commentId: string, reply: any) => {
     if (!window.confirm("Are you sure you want to delete this reply?")) return;
     try {
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        replies: arrayRemove(reply),
-      });
+      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+      if (commentDoc.exists()) {
+        const data = commentDoc.data();
+        const currentReplies = data.replies || [];
+        const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
+        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+          replies: newReplies,
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          commentCount: increment(-1)
+        });
+      }
     } catch (err) {
       console.error(err);
       addToast("Failed to delete reply");
+    }
+  };
+
+  const handleEditReplySubmit = async (commentId: string) => {
+    if (!editReplyText.trim() || !editReplyId) return;
+    setSubmittingReplyEdit(true);
+    try {
+      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+      if (!commentDoc.exists()) return;
+      const data = commentDoc.data();
+      const currentReplies = data.replies || [];
+      const newReplies = currentReplies.map((r: any) =>
+        r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
+      );
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        replies: newReplies,
+      });
+      setEditReplyId(null);
+      setEditReplyText("");
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to edit reply");
+    } finally {
+      setSubmittingReplyEdit(false);
     }
   };
 
@@ -20684,10 +20943,14 @@ function PostComments({
         setComments(combinedComments);
         setCommentsLoaded(true);
         
+        const trueCombinedCount = combinedComments.reduce((acc: number, c: any) => {
+          const repliesCount = c.replies && Array.isArray(c.replies) ? c.replies.length : 0;
+          return acc + 1 + repliesCount;
+        }, 0);
         const currentCount = post.commentCount ?? legacyComments.length;
-        if (currentCount !== combinedComments.length) {
+        if (currentCount !== trueCombinedCount) {
           updateDoc(doc(db, "posts", post.id), {
-            commentCount: combinedComments.length,
+            commentCount: trueCombinedCount,
           }).catch(() => {});
         }
       },
@@ -20770,7 +21033,7 @@ function PostComments({
         />
         Community Comments{" "}
         <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full">
-          {commentsLoaded ? comments.length : (post.commentCount ?? post.comments?.length ?? 0)}
+          {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
         </span>
       </h3>
       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
@@ -20778,10 +21041,26 @@ function PostComments({
           Add your perspective
         </label>
         {auth.currentUser && !auth.currentUser.isAnonymous ? (
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 relative">
+            {mentionQuery?.target === "comment" && (
+              <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3"
+                  >
+                    <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                      {(u.username || u.name || "U")[0].toUpperCase()}
+                    </div>
+                    <span className="truncate text-slate-700 font-bold">{u.username || u.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={handleCommentChange}
               onKeyDown={(e) => e.key === "Enter" && !submittingComment && handleAddComment()}
               placeholder="Type your comment here..."
               className="flex-1 text-base bg-white p-4 rounded-xl border-2 border-transparent focus:border-accent outline-none shadow-sm transition-all text-slate-700"
@@ -20837,9 +21116,7 @@ function PostComments({
               <div className="flex flex-row justify-between items-center sm:items-baseline mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[15px] font-black text-primary">
-                    {c.userName && !c.userName.includes("@")
-                      ? c.userName
-                      : "User"}
+                    <AdminUserTooltip uid={c.uid} userName={c.userName && !c.userName.includes("@") ? c.userName : "User"} allUsers={allUsers} isAdmin={isAdmin} />
                   </span>
                   {(c.isAdminComment ||
                     c.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3") && (
@@ -20874,11 +21151,12 @@ function PostComments({
                         onClick={async () => {
                           if (!window.confirm("Are you sure you want to delete this comment?")) return;
                           try {
+                            const repliesCount = c.replies ? c.replies.length : 0;
                             await deleteDoc(
                               doc(db, "posts", post.id, "comments", c.id),
                             );
                             await updateDoc(doc(db, "posts", post.id), {
-                              commentCount: increment(-1),
+                              commentCount: increment(-(1 + repliesCount)),
                             });
                           } catch (err) {
                             console.error(err);
@@ -20999,7 +21277,7 @@ function PostComments({
                       <div className="flex-1">
                         <div className="flex justify-between items-center">
                           <span className="text-[13px] font-bold text-slate-700">
-                            {reply.userName || "User"}
+                            <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
                             {reply.isAdminComment && (
                               <span className="ml-2 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm">
                                 Official
@@ -21014,18 +21292,56 @@ function PostComments({
                               })}
                             </span>
                             {(auth.currentUser?.uid === reply.uid || isAdmin) && (
-                              <button
-                                onClick={() => handleDeleteReply(c.id, reply)}
-                                className="text-slate-300 hover:text-red-500 transition-colors"
-                              >
-                                <Trash2 size={10} />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {(auth.currentUser?.uid === reply.uid) && (
+                                  <button
+                                    onClick={() => {
+                                      setEditReplyId({ commentId: c.id, replyId: reply.id });
+                                      setEditReplyText(reply.text);
+                                    }}
+                                    className="text-slate-300 hover:text-blue-500 transition-colors"
+                                  >
+                                    <Edit2 size={10} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteReply(c.id, reply)}
+                                  className="text-slate-300 hover:text-red-500 transition-colors"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
-                        <p className="text-sm text-slate-600 mt-0.5">
-                          {reply.text}
-                        </p>
+                        {editReplyId?.replyId === reply.id ? (
+                          <div className="mt-2 flex gap-2 w-full">
+                            <input
+                              value={editReplyText}
+                              onChange={(e) => setEditReplyText(e.target.value)}
+                              className="flex-1 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
+                              onKeyDown={(e) => e.key === "Enter" && handleEditReplySubmit(c.id)}
+                            />
+                            <button
+                              onClick={() => handleEditReplySubmit(c.id)}
+                              disabled={submittingReplyEdit || !editReplyText.trim()}
+                              className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
+                            >
+                              {submittingReplyEdit ? "..." : "Save"}
+                            </button>
+                            <button
+                              onClick={() => setEditReplyId(null)}
+                              className="text-xs font-bold text-slate-400 px-2"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-600 mt-0.5">
+                            {reply.text}
+                            {reply.edited && <span className="text-[10px] text-slate-400 ml-1">(edited)</span>}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -21034,10 +21350,26 @@ function PostComments({
 
               {/* Reply Input Box */}
               {replyingToId === c.id && auth.currentUser && (
-                <div className="mt-3 flex gap-2 pl-4 border-l-2 border-primary/20">
+                <div className="mt-3 flex gap-2 pl-4 border-l-2 border-primary/20 relative">
+                  {mentionQuery?.target === "reply" && (
+                    <div className="absolute bottom-full mb-1 left-4 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                      {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                        <button
+                          key={u.id}
+                          onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                            {(u.username || u.name || "U")[0].toUpperCase()}
+                          </div>
+                          <span className="truncate">{u.username || u.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <input
                     value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
+                    onChange={handleReplyChange}
                     placeholder="Write a reply..."
                     className="flex-1 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
                     onKeyDown={(e) => e.key === "Enter" && handleAddReply(c.id)}
