@@ -147,6 +147,22 @@ async function startServer() {
   });
 
 
+  // UBD Logs endpoint
+  app.post("/api/deployment-logs", async (req, res) => {
+    try {
+      const data = req.body;
+      const db = admin.firestore();
+      await db.collection("deploymentLogs").add({
+        ...data,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error saving deployment log:", error);
+      res.status(500).json({ error: "Failed to save log" });
+    }
+  });
+
   // Gemini Proxy
   app.post("/api/chat", async (req, res) => {
     try {
@@ -1561,12 +1577,15 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== "production") {
+    const hmrPort = 24678 + Math.floor(Math.random() * 10000); // randomize HMR port
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: { port: hmrPort }
+      },
       appType: "spa",
     });
     
-
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
@@ -1592,7 +1611,8 @@ async function startServer() {
       if (postId) {
         try {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
-          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/%28default%29/documents/posts/${postId}`;
+          const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db/documents/posts/${postId}?key=${apiKey}`;
           const firestoreResp = await fetchObj(firestoreUrl);
           
           if (firestoreResp.ok) {
@@ -1634,8 +1654,16 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 
+  server.on('error', (e: any) => {
+    if (e.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use.`);
+      // the process should exit smoothly
+      process.exit(1); 
+    }
   });
 }
 

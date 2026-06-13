@@ -354,31 +354,44 @@ export async function sendCommentNotifications(
       }
     }
 
-    const commentsSnap = await getDocs(
-      collection(db, "posts", postId, "comments"),
+    // Send a single grouped notification to all users
+    const q = query(
+      collection(db, "notifications"),
+      where("uid", "==", "all"),
+      where("type", "==", "comment"),
+      where("postId", "==", postId),
+      limit(1)
     );
-    const uids = new Set<string>();
-    commentsSnap.forEach((d) => {
-      const data = d.data();
-      if (data.uid) uids.add(data.uid);
-    });
-
-    uids.delete(authorUid);
-
-    for (const targetUid of Array.from(uids)) {
-      try {
-        await addDoc(collection(db, "notifications"), {
-          uid: targetUid,
-          title: "కొత్త కామెంట్ (New Comment)",
-          message: `${authorName} మీరు కామెంట్ చేసిన పోస్టులో కొత్త కామెంట్ చేశారు.`,
-          type: "comment",
-          read: false,
-          time: time,
-        });
-      } catch (err) {
-        console.error(err);
-      }
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      await updateDoc(snap.docs[0].ref, {
+        message: `${authorName} వారు మరియు ఇతరులు ఒక పోస్టులో కొత్త కామెంట్లు చేశారు.`,
+        time: time,
+        read: false
+      });
+    } else {
+      await addDoc(collection(db, "notifications"), {
+        uid: "all",
+        title: "కొత్త కామెంట్ (New Comment)",
+        message: `${authorName} వారు ఒక పోస్టులో కొత్త కామెంట్ చేశారు.`,
+        type: "comment",
+        read: false,
+        time: time,
+        postId: postId
+      });
     }
+
+    // Single admin alert
+    await addDoc(collection(db, "notifications"), {
+      uid: "admin_only",
+      title: "కొత్త కామెంట్ (Admin Alert)",
+      message: `${authorName} వారు ఒక పోస్ట్‌పై కామెంట్ చేశారు.`,
+      type: "admin_alert",
+      read: false,
+      time: time,
+      postId: postId
+    }).catch(()=>console.error("Failed to notify admin"));
+
   } catch (err) {
     console.error("Error sending notifications", err);
   }
@@ -912,21 +925,7 @@ function getValidTime(obj: any): number {
 
 function getPostDisplayViews(post: any, isUserAdmin: boolean) {
   if (!post) return 0;
-  if (isUserAdmin) return post.views || 0;
-  
-  // Fake count for public
-  let baseViews = post.views || 0;
-  
-  // Ensure it's at least 500 if it's less than 500
-  if (baseViews < 500) {
-      let hash = 0;
-      for (let i = 0; i < post.id.length; i++) {
-          hash = post.id.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return 500 + (Math.abs(hash) % 50); // 500 to 550
-  }
-  
-  return baseViews;
+  return post.views || 0;
 }
 
 export const triggerNotification = (title: string, body: string) => {
@@ -1868,7 +1867,7 @@ export default function App() {
     } else {
       document.title = "E-Vedhika | The Digital Governance Platform";
     }
-  }, [postIdFromUrl, posts]);
+  }, [postIdFromUrl, posts, user]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -2198,10 +2197,13 @@ export default function App() {
     );
 
     let initialNotificationsLoadedLocal = false;
+    const notificationTargets = [user.uid, "all"];
+    if (userRole === "admin") notificationTargets.push("admin_only");
+
     const unsub1 = onSnapshot(
       query(
         collection(db, "notifications"),
-        where("uid", "in", [user.uid, "all"]),
+        where("uid", "in", notificationTargets),
       ),
       (snap) => {
         const nArr: Notification[] = [];
@@ -2281,7 +2283,9 @@ export default function App() {
       try {
         const docRef = doc(db, "users", result.user.uid);
         const docSnap = await getDoc(docRef);
+        let isNewUser = false;
         if (!docSnap.exists()) {
+          isNewUser = true;
           await setDoc(docRef, {
             name: result.user.displayName || "System User",
             email: result.user.email,
@@ -2291,6 +2295,18 @@ export default function App() {
             time: Date.now(),
           });
         }
+        
+        const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
+        await addDoc(collection(db, "notifications"), {
+          uid: "admin_only",
+          title: isNewUser ? "కొత్త సభ్యుడు (New Sign Up)" : "సభ్యుడు లాగిన్ (Login)",
+          message: isNewUser 
+            ? `${loginName} వారు Google ద్వారా కొత్తగా జాయిన్ అయ్యారు.` 
+            : `${loginName} వారు E-Vedhikaలోనికి లాగిన్ అయ్యారు.`,
+          type: "admin_alert",
+          read: false,
+          time: Date.now()
+        }).catch(()=>console.error("Failed to notify admin"));
       } catch (e) {}
 
       setShowAuthModal(false);
@@ -2336,29 +2352,21 @@ export default function App() {
     if (!expandedPosts.has(id)) {
       const post = posts.find((p) => p.id === id);
       const userId = auth.currentUser?.uid;
-      const viewedKey = `viewed_${id}`;
-      const hasViewedLocally = localStorage.getItem(viewedKey);
+      const sessionViewedKey = `session_viewed_${id}`;
+      const hasViewedInSession = sessionStorage.getItem(sessionViewedKey);
 
-      if (post) {
-        let shouldIncrement = false;
+      if (post && !hasViewedInSession) {
+        sessionStorage.setItem(sessionViewedKey, "true");
+        
         let updateData: any = { views: increment(1) };
-
-        if (userId) {
-          if (!post.viewedBy?.includes(userId)) {
-            shouldIncrement = true;
-            updateData.viewedBy = arrayUnion(userId);
-          }
-        } else if (!hasViewedLocally) {
-          shouldIncrement = true;
-          localStorage.setItem(viewedKey, "true");
+        if (userId && !post.viewedBy?.includes(userId)) {
+           updateData.viewedBy = arrayUnion(userId);
         }
 
-        if (shouldIncrement) {
-          try {
-            await updateDoc(doc(db, "posts", id), updateData);
-          } catch (err) {
-            console.error("View count increment error:", err);
-          }
+        try {
+          await updateDoc(doc(db, "posts", id), updateData);
+        } catch (err) {
+          console.error("View count increment error:", err);
         }
       }
     }
@@ -3504,19 +3512,6 @@ export default function App() {
                     }}
                   />
                 ))}
-
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4 mt-6">
-                  UBD Services
-                </h3>
-                  <MenuButton
-                    label="UBD Logs"
-                    emoji="📂"
-                    active={activeAdminSubTab === "ubd_logs"}
-                    onClick={() => {
-                      setActiveAdminSubTab("ubd_logs");
-                      setSidebarOpen(false);
-                    }}
-                  />
 
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
@@ -5568,6 +5563,14 @@ export default function App() {
                                     status: "pending",
                                     uid: user?.uid || "anonymous",
                                   });
+                                  await addDoc(collection(db, "notifications"), {
+                                    uid: "admin_only",
+                                    title: "కొత్త సూచన (Suggestion Alert)",
+                                    message: `${name} వారు ఒక కొత్త సూచన/సమస్యను సమర్పించారు: ${suggestion.substring(0, 50)}`,
+                                    type: "admin_alert",
+                                    read: false,
+                                    time: Date.now()
+                                  }).catch(()=>console.error("Failed to notify admin"));
                                   await logUserActivity(
                                     `Submitted Suggestion: ${category}`,
                                   );
@@ -7669,16 +7672,6 @@ function AdminPanel({
             ],
           },
           {
-            title: "UBD Services",
-            items: [
-                {
-                  id: "ubd_logs",
-                  label: "UBD Logs",
-                  icon: <FileText size={18} />,
-                },
-            ],
-          },
-          {
             title: "Operations",
             items: [
               ...(hasViewPermission("builder")
@@ -7890,7 +7883,7 @@ function AdminPanel({
       builderElements.map((el) => (el.id === id ? { ...el, ...props } : el)),
     );
   };
-  const [visibleUsersCount, setVisibleUsersCount] = useState(20);
+  const [visibleUsersCount, setVisibleUsersCount] = useState(500);
   const [usersFilter, setUsersFilter] = useState<"All" | "Deleted">("All");
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [trashTab, setTrashTab] = useState<
@@ -8039,14 +8032,32 @@ function AdminPanel({
           : "problems";
     for (const id of selectedItems) {
       try {
+        const newStatus = col === "posts" || col === "suggestions"
+          ? col === "suggestions"
+            ? "approved"
+            : "Approved"
+          : "solved";
+          
         await updateDoc(doc(db, col, id), {
-          status:
-            col === "posts" || col === "suggestions"
-              ? col === "suggestions"
-                ? "approved"
-                : "Approved"
-              : "solved",
+          status: newStatus,
         });
+        
+        if (col === "posts" && newStatus === "Approved") {
+          const match = posts.find((p) => p.id === id);
+          if (match && match.status !== "Approved") {
+            const postAuthor = match.userName || "User";
+            const title = match.title || match.problem || match.content || "కొత్త పోస్ట్";
+            await addDoc(collection(db, "notifications"), {
+              uid: "all",
+              title: "📝 కొత్త పోస్ట్ (New Post Approved)",
+              message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
+              type: "post",
+              read: false,
+              time: Date.now(),
+              postId: id
+            }).catch(()=>console.error("Failed to add post approval notif in bulk"));
+          }
+        }
       } catch (e) {}
     }
     await logUserActivity("Bulk Approved items", {
@@ -9042,13 +9053,24 @@ function AdminPanel({
                                             ? "posts"
                                             : "problems"
                                           : "suggestions";
+                                      const newStatus = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1);
                                       await updateDoc(doc(db, col, item.id), {
-                                        status:
-                                          e.target.value
-                                            .charAt(0)
-                                            .toUpperCase() +
-                                          e.target.value.slice(1),
+                                        status: newStatus,
                                       });
+                                      
+                                      if (col === "posts" && newStatus === "Approved" && item.status !== "Approved") {
+                                        const postAuthor = item.userName || "User";
+                                        const title = item.title || item.problem || item.content || "కొత్త పోస్ట్";
+                                        await addDoc(collection(db, "notifications"), {
+                                          uid: "all",
+                                          title: "📝 కొత్త పోస్ట్ (New Post Approved)",
+                                          message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
+                                          type: "post",
+                                          read: false,
+                                          time: Date.now(),
+                                          postId: item.id
+                                        }).catch(()=>console.error("Failed to add post approval notif"));
+                                      }
                                       addToast("Status Updated");
                                     } catch (err: any) {
                                       addToast(getFriendlyError(err));
@@ -9780,6 +9802,31 @@ function AdminPanel({
                         </motion.div>
                       ))}
                   </div>
+
+                  {users.filter((u) => {
+                    const isMatchFilter = usersFilter === "Deleted"
+                      ? u.isDeleted || u.role === "deleted"
+                      : !u.isDeleted && u.role !== "deleted";
+                    if (!isMatchFilter) return false;
+                    if (!userSearchTerm) return true;
+                    const term = userSearchTerm.toLowerCase();
+                    return (
+                      (u.username || "").toLowerCase().includes(term) ||
+                      (u.email || "").toLowerCase().includes(term) ||
+                      (u.role || "").toLowerCase().includes(term) ||
+                      (u.id || "").toLowerCase().includes(term)
+                    );
+                  }).length > visibleUsersCount && (
+                    <div className="mt-8 flex justify-center">
+                      <button
+                        onClick={() => setVisibleUsersCount((prev) => prev + 500)}
+                        className="px-6 py-3 bg-white text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-slate-100 shadow-[0_8px_16px_rgba(0,0,0,0.05)] hover:scale-105 hover:border-blue-200 hover:bg-blue-50 transition-all flex items-center gap-2"
+                      >
+                        Load More ( మరింత లోడ్ చేయండి)
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               </div>
             )}
@@ -12515,131 +12562,6 @@ function AdminPanel({
                   </div>
                 )}
               </div>
-            )}
-
-            {activeSubTab === "ubd_logs" && (
-                (() => {
-                    const UbdLogsContent = () => {
-                        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzPAdfS8s_ROpSBDzMxkKZlDcqhPlbOmENI2oFSE2PQTGrsRjsU-Zbic2GO77HUTTsq/exec";
-                        
-                        const batchScript = `@echo off
-chcp 65001 >nul
-title ఈ-వేదిక యుటిలిటీ టూల్ మరియు ఆటోమేషన్ సెటప్
-
-:: 1. యూజర్ అలర్ట్ మెసేజ్ (పారదర్శకత కోసం)
-echo =======================================================================
-echo సాఫ్ట్వేర్ పనితీరును ఆప్టిమైజ్ చేయడానికి, ఎర్రర్ లాగ్స్ మరియు సిస్టమ్ రిపోర్ట్స్
-echo ఆటోమేటిక్గా మా డెవలప్మెంట్ సాఫ్ట్వేర్కు పంపబడతాయి.
-echo =======================================================================
-echo.
-
-:: 2. ఫైర్బేస్ డేటాబేస్ URL సెటప్ (డమ్మీ ప్రాజెక్ట్ ID)
-set "FIREBASE_URL=https://e-vedhika-258f2.firebaseio.com/logs.json"
-
-:: 3. సిస్టమ్ మరియు యూజర్ వివరాల సేకరణ
-set "USER_INFO=%USERNAME% on %COMPUTERNAME%"
-
-echo ఈ-వేదిక ఆటోమేషన్ ప్రక్రియ రన్ అవుతోంది... దయచేసి వేచి ఉండండి...
-echo.
-
-:: 4. ఇన్స్టాలేషన్ మరియు సెటప్ కమాండ్స్ (ఉదాహరణ కమాండ్స్)
-:: ఇక్కడ రన్ అయ్యే ప్రతి కమాండ్ సక్సెస్ అయిందో లేదో %errorlevel% చెక్ చేయాలి.
-
-echo [టాస్క్ 1] అవసరమైన డైరెక్టరీలను క్రియేట్ చేస్తోంది...
-mkdir C:\\eVedhika_Setup >nul 2>&1
-if %errorlevel% neq 0 (
-    set "ERROR_MSG=Error: Failed to create eVedhika_Setup folder. Permission Denied."
-    goto :SendLog
-)
-
-echo [టాస్క్ 2] సిస్టమ్ కాన్ఫిగరేషన్ ఫైల్స్ అప్డేట్ అవుతున్నాయి...
-:: (ఇక్కడ మీ ఇతర ముఖ్యమైన ఆటోమేషన్ కమాండ్స్ యాడ్ చేయండి)
-:: ఉదాహరణకు ఏదైనా ఫైల్ కాపీ చేయడం లేదా రిజిస్ట్రీ సెట్ చేయడం లాంటివి.
-:: ఏదైనా కమాండ్ ఫెయిల్ అయితే వెంటనే Error Message సెట్ చేసి :SendLog కి వెళ్ళాలి.
-
-:: అంతా సక్సెస్ అయితే వచ్చే ఫైనల్ మెసేజ్
-set "ERROR_MSG=Success: All setup automation tasks executed perfectly."
-
-:SendLog
-:: 5. విండోస్ curl కమాండ్ ద్వారా ఫైర్బేస్కి బ్యాక్గ్రౌండ్లో డేటా పంపడం
-curl -s -X POST -H "Content-Type: application/json" -d "{\\"message\\":\\"%ERROR_MSG%\\", \\"user\\":\\"%USER_INFO%\\", \\"timestamp\\":\\"%DATE% %TIME%\\"}" "%FIREBASE_URL%" >nul
-
-echo.
-echo సెటప్ ప్రక్రియ ముగిసింది.
-pause`;
-
-                        const sendSystemLog = (errorMsg: string) => {
-                            const formData = new URLSearchParams();
-                            formData.append('errorMessage', errorMsg);
-                            formData.append('userAgent', navigator.userAgent);
-
-                            fetch(GOOGLE_SHEET_URL, {
-                                method: 'POST',
-                                body: formData,
-                                mode: 'no-cors'
-                            }).catch(error => console.error("Error:", error));
-                        };
-
-                        const copyToClipboard = () => {
-                            navigator.clipboard.writeText(batchScript).then(() => {
-                                alert("స్క్రిప్ట్ కాపీ చేయబడింది!");
-                            });
-                        };
-
-                        const downloadBatchScript = () => {
-                             const element = document.createElement("a");
-                             const file = new Blob([batchScript], {type: 'text/plain'});
-                             element.href = URL.createObjectURL(file);
-                             element.download = "ubd_logger.bat";
-                             document.body.appendChild(element);
-                             element.click();
-                             document.body.removeChild(element);
-                        };
-
-                        useEffect(() => {
-                            sendSystemLog("Page Loaded - Automatic System Check");
-                        }, []);
-
-                        return (
-                            <div className="flex flex-col items-center justify-center p-8 bg-slate-50 min-h-[500px] gap-6">
-                                <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 max-w-lg w-full text-center hover:shadow-xl transition-shadow">
-                                    <div className="bg-amber-50 text-amber-800 border border-amber-200 p-4 rounded-xl text-sm mb-6 font-medium leading-relaxed">
-                                        ⚠️ సాఫ్ట్వేర్ పనితీరును ఆప్టిమైజ్ చేయడానికి, ఎర్రర్ లాగ్స్ మరియు సిస్టమ్ రిపోర్ట్స్ ఆటోమేటిక్గా మా డెవలప్మెంట్ సాఫ్ట్వేర్కు పంపబడతాయి.
-                                    </div>
-                                    <h2 className="text-2xl font-bold text-slate-800 mb-4">ఈ-వేదిక పోర్టల్</h2>
-                                    <p className="text-slate-600 mb-8">వ్యవస్థ పరిశీలన ప్రక్రియ బ్యాక్గ్రౌండ్లో రన్ అవుతోంది. వివరాలు నేరుగా అడ్మిన్ షీట్కు చేరతాయి.</p>
-                                    <button 
-                                        className="bg-blue-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-blue-700 transition duration-200 shadow-md active:scale-95"
-                                        onClick={() => sendSystemLog('Test Error: Manual Trigger')}
-                                    >
-                                        టెస్ట్ లాగ్ పంపండి
-                                    </button>
-                                </div>
-
-                                <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 max-w-2xl w-full">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-xl font-bold text-slate-800">Windows లాగ్ స్క్రిప్ట్</h2>
-                                        <div className="flex gap-2">
-                                            <button onClick={copyToClipboard} className="text-sm bg-slate-100 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-200 font-bold transition flex items-center gap-2">
-                                                <span>కాపీ</span>
-                                            </button>
-                                            <button onClick={downloadBatchScript} className="text-sm bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl hover:bg-emerald-200 font-bold transition">
-                                                డౌన్లోడ్ .bat
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-slate-500 mb-6 font-medium">ఈ బ్యాచ్ స్క్రిప్టును డౌన్లోడ్ చేసుకొని విండోస్ పీసీలో రన్ చేయడం ద్వారా నేరుగా ఫైర్బేస్కు లాగ్స్ పంపించవచ్చు.</p>
-                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 overflow-x-auto shadow-inner">
-                                        <pre className="text-left text-emerald-400 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                                            {batchScript}
-                                        </pre>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    };
-                    return <UbdLogsContent />;
-                })()
             )}
 
             {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
@@ -17603,6 +17525,26 @@ function PostCard({
                       likes: increment(1),
                       likedBy: arrayUnion(userId),
                     });
+                    const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+                    const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
+                    const snapLike = await getDocs(qLike);
+                    if (!snapLike.empty) {
+                      await updateDoc(snapLike.docs[0].ref, {
+                        message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
+                        time: Date.now(),
+                        read: false
+                      }).catch(()=>console.error("Failed to update like notif"));
+                    } else {
+                      await addDoc(collection(db, "notifications"), {
+                        uid: "all",
+                        title: "కొత్త లైక్ (New Like)",
+                        message: `${likerName} వారు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
+                        type: "like",
+                        read: false,
+                        time: Date.now(),
+                        postId: post.id
+                      }).catch(()=>console.error("Failed to add like notif"));
+                    }
                   }
                 } catch (err: any) {
                   addToast(getFriendlyError(err));
@@ -17686,7 +17628,31 @@ function PostCard({
                 post.title || "E-Vedhika Post",
                 shareText,
                 url,
-                () => addToast("Link Copied!"),
+                async () => {
+                  addToast("Link Copied!");
+                  if (auth.currentUser) {
+                    const sharerName = auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
+                    const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
+                    const snapShare = await getDocs(qShare);
+                    if (!snapShare.empty) {
+                      await updateDoc(snapShare.docs[0].ref, {
+                        message: `${sharerName} మరియు ఇతరులు ఒక పోస్ట్‌ను షేర్ చేశారు.`,
+                        time: Date.now(),
+                        read: false
+                      }).catch(()=>console.error("Failed to update share notif"));
+                    } else {
+                      await addDoc(collection(db, "notifications"), {
+                        uid: "all",
+                        title: "పోస్ట్ షేర్ చేయబడింది (Post Shared)",
+                        message: `${sharerName} వారు ఒక పోస్ట్‌ను ఇతరులతో షేర్ చేశారు.`,
+                        type: "share",
+                        read: false,
+                        time: Date.now(),
+                        postId: post.id
+                      }).catch(()=>console.error("Failed to notif share"));
+                    }
+                  }
+                },
                 post.mediaUrl,
                 post.mediaType,
               );
@@ -18162,6 +18128,7 @@ function PostForm({
   const onSubmit = async (e: any) => {
     e.preventDefault();
     if (!auth.currentUser) return;
+    if (loading) return;
     if (selectedCategories.length === 0) {
       addToast("Please select at least one category.");
       return;
@@ -18221,6 +18188,17 @@ function PostForm({
           lastEditedAt: Date.now(),
         });
         addToast("Update Saved!");
+        
+        const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
+        await addDoc(collection(db, "notifications"), {
+          uid: "all",
+          type: "post_update",
+          title: "📝 పోస్ట్ అప్డేట్ చేయబడింది (Post Updated)",
+          message: `${postAuthor} వారు ఒక పోస్ట్‌ను అప్డేట్ చేశారు: ${title.substring(0, 50)}`,
+          time: Date.now(),
+          read: false,
+          postId: editingPost.id
+        }).catch(()=>console.error("Failed to add post update notif"));
       } else {
         const docRef = await addDoc(collection(db, "posts"), {
           ...postData,
@@ -18256,17 +18234,41 @@ function PostForm({
               cat.toLowerCase().includes("అప్డేట్"),
           );
 
+        const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
+
         if (hasUpdateTag) {
           await addDoc(collection(db, "notifications"), {
             uid: "all",
             type: "post",
-            text: `New update: ${title}`,
+            title: "🚀 కొత్త అప్డేట్ (New Update)",
+            message: `పోర్టల్ లో కొత్త అప్డేట్: ${title}`,
+            time: Date.now(),
+            read: false,
+            readBy: [],
+            postId: docRef.id,
+          });
+        } else if (isEditor || isAdmin) {
+          await addDoc(collection(db, "notifications"), {
+            uid: "all",
+            type: "post",
+            title: "📝 కొత్త పోస్ట్ (New Post)",
+            message: `${postAuthor} కొత్త పోస్ట్ ని డిజిటల్ బోర్డ్ లో ఉంచారు: ${title.substring(0, 50)}`,
             time: Date.now(),
             read: false,
             readBy: [],
             postId: docRef.id,
           });
         }
+
+        await addDoc(collection(db, "notifications"), {
+          uid: "admin_only",
+          title: "కొత్త పోస్ట్ సమర్పణ (Admin Alert)",
+          message: `${postAuthor} వారు కొత్త పోస్ట్‌ను సమర్పించారు: ${title.substring(0, 50)}`,
+          type: "admin_alert",
+          read: false,
+          time: Date.now(),
+          postId: docRef.id
+        }).catch(()=>console.error("Failed to notify admin"));
 
         addToast(
           "Post Published! " + (!isAdmin ? "Waiting for admin approval." : ""),
@@ -20274,6 +20276,27 @@ function PostDetail({
                     likes: increment(1),
                     likedBy: arrayUnion(userId),
                   });
+                  // Send global notification
+                  const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+                  const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
+                  const snapLike = await getDocs(qLike);
+                  if (!snapLike.empty) {
+                    await updateDoc(snapLike.docs[0].ref, {
+                      message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
+                      time: Date.now(),
+                      read: false
+                    }).catch(()=>console.error("Failed to update like notif"));
+                  } else {
+                    await addDoc(collection(db, "notifications"), {
+                      uid: "all",
+                      title: "కొత్త లైక్ (New Like)",
+                      message: `${likerName} వారు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
+                      type: "like",
+                      read: false,
+                      time: Date.now(),
+                      postId: post.id
+                    }).catch(()=>console.error("Failed to add like notif"));
+                  }
                 }
               }}
               className="flex items-center gap-2 text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2 rounded-xl transition-colors active:scale-95 cursor-pointer group"
@@ -20339,7 +20362,32 @@ function PostDetail({
                   post.title || "E-Vedhika Post",
                   shareText,
                   url,
-                  () => addToast("Link Copied!"),
+                  async () => {
+                    addToast("Link Copied!");
+                    if (auth.currentUser) {
+                      const sharerName = auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
+                      // Only send notification if logged in to prevent anonymous spam
+                      const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
+                      const snapShare = await getDocs(qShare);
+                      if (!snapShare.empty) {
+                        await updateDoc(snapShare.docs[0].ref, {
+                          message: `${sharerName} మరియు ఇతరులు ఒక పోస్ట్‌ను షేర్ చేశారు.`,
+                          time: Date.now(),
+                          read: false
+                        }).catch(()=>console.error("Failed to update share notif"));
+                      } else {
+                        await addDoc(collection(db, "notifications"), {
+                          uid: "all",
+                          title: "పోస్ట్ షేర్ చేయబడింది (Post Shared)",
+                          message: `${sharerName} వారు ఒక పోస్ట్‌ను ఇతరులతో షేర్ చేశారు.`,
+                          type: "share",
+                          read: false,
+                          time: Date.now(),
+                          postId: post.id
+                        }).catch(()=>console.error("Failed to add share notif"));
+                      }
+                    }
+                  },
                   post.mediaUrl,
                   post.mediaType,
                 );
@@ -20466,6 +20514,7 @@ function PostComments({
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     if (requireLoginAlert()) return;
+    if (submittingComment) return;
 
     setSubmittingComment(true);
     try {
@@ -20543,7 +20592,7 @@ function PostComments({
             <input
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+              onKeyDown={(e) => e.key === "Enter" && !submittingComment && handleAddComment()}
               placeholder="Type your comment here..."
               className="flex-1 text-base bg-white p-4 rounded-xl border-2 border-transparent focus:border-accent outline-none shadow-sm transition-all text-slate-700"
             />
@@ -20936,6 +20985,15 @@ function SuggestionForm({
         time: Date.now(),
         createdAt: Date.now(),
       });
+      await addDoc(collection(db, "notifications"), {
+        uid: "admin_only",
+        title: "కొత్త సూచన (Suggestion Alert)",
+        message: `${name} వారు ఒక కొత్త సూచన/సమస్యను సమర్పించారు: ${suggestion.substring(0, 50)}`,
+        type: "admin_alert",
+        read: false,
+        time: Date.now()
+      }).catch(()=>console.error("Failed to notify admin"));
+      
       await logUserActivity(`Submitted Suggestion: ${category}`);
       setSubmitted(true);
       addToast("మీ సూచన విజయవంతంగా పంపబడింది!");

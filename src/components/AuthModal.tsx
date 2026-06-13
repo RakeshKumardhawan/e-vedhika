@@ -8,7 +8,7 @@ import {
   updateProfile,
   sendPasswordResetEmail,
 } from "firebase/auth";
-import { setDoc, doc, getDoc } from "firebase/firestore";
+import { setDoc, doc, getDoc, collection, addDoc } from "firebase/firestore";
 import Swal from "sweetalert2";
 import { EVAnimatedLogo } from "./EVAnimatedLogo";
 import { DEFAULT_DISTRICTS_DATA } from "../data/districts";
@@ -78,7 +78,15 @@ export function AuthModal({
     try {
       if (!isSignup) {
         console.log("Attempting sign in:", email);
-        await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        await addDoc(collection(db, "notifications"), {
+          uid: "admin_only",
+          title: "సభ్యుడు లాగిన్ (Login)",
+          message: `${cred.user.displayName || email.split("@")[0] || "User"} వారు E-Vedhikaలోనికి లాగిన్ అయ్యారు.`,
+          type: "admin_alert",
+          read: false,
+          time: Date.now()
+        }).catch(()=>console.error("Failed to notify admin"));
         onClose();
       } else {
         if (
@@ -148,6 +156,16 @@ export function AuthModal({
         } else {
           addToast("Account created successfully!");
         }
+
+        await addDoc(collection(db, "notifications"), {
+          uid: "admin_only",
+          title: "కొత్త సభ్యుడు (New Sign Up)",
+          message: `${username} వారు E-Vedhikaలో కొత్తగా జాయిన్ అయ్యారు.`,
+          type: "admin_alert",
+          read: false,
+          time: Date.now()
+        }).catch(()=>console.error("Failed to notify admin"));
+
         onClose();
       }
     } catch (err: any) {
