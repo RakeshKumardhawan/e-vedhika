@@ -16653,6 +16653,66 @@ function PostCard({
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  const handleAddReply = async (commentId: string) => {
+    if (!replyText.trim() || !auth.currentUser) return;
+    setSubmittingReply(true);
+    try {
+      const authorName = isAdmin
+        ? "Admin"
+        : auth.currentUser!.displayName ||
+          auth.currentUser!.email?.split("@")[0] ||
+          "User";
+
+      const newReply = {
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+        text: replyText,
+        time: Date.now(),
+        uid: auth.currentUser!.uid,
+        userName: authorName,
+        isAdminComment: isAdmin,
+      };
+
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        replies: arrayUnion(newReply),
+      });
+
+      const parentComment = comments.find((c) => c.id === commentId);
+      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
+        await addDoc(collection(db, "notifications"), {
+          uid: parentComment.uid,
+          title: "కొత్త రిప్లై (New Reply)",
+          message: `${authorName} మీ కామెంట్ పై ఒక రిప్లై ఇచ్చారు.`,
+          type: "comment_reply",
+          read: false,
+          time: Date.now(),
+          postId: post.id,
+        }).catch(() => console.error("Failed to fetch notification"));
+      }
+
+      setReplyingToId(null);
+      setReplyText("");
+    } catch (e: any) {
+      addToast("Failed to add reply");
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async (commentId: string, reply: any) => {
+    if (!window.confirm("Are you sure you want to delete this reply?")) return;
+    try {
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        replies: arrayRemove(reply),
+      });
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to delete reply");
+    }
+  };
 
   useEffect(() => {
     if (showComments) {
@@ -17688,85 +17748,155 @@ function PostCard({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.25 }}
-                  className="text-sm bg-slate-50 p-3 rounded-2xl relative group flex items-start justify-between gap-2"
+                  className="w-full flex flex-col gap-2 relative group"
                 >
-                <div>
-                  <span className="font-black text-primary mr-2 uppercase text-[10px]">
-                    {c.userName}:
-                  </span>
-                  <span className="text-slate-600">{c.text}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const likes = c.likes || [];
-                        const uid = auth.currentUser?.uid;
-                        if (!uid) {
-                          addToast("Please login first to like comments");
-                          return;
-                        }
-                        if (likes.includes(uid)) {
-                          await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                            likes: arrayRemove(uid),
-                          });
-                        } else {
-                          await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                            likes: arrayUnion(uid),
-                          });
-                          const likerName = auth.currentUser!.displayName ||
-                            auth.currentUser!.email?.split("@")[0] ||
-                            "User";
-                          sendLikeNotification(
-                            post.id,
-                            c.id,
-                            c.text || "",
-                            c.uid || "",
-                            c.userName || "User",
-                            uid,
-                            likerName,
-                          );
-                        }
-                      }}
-                      className={`p-1.5 rounded-lg transition-all active:scale-95 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
-                      title={c.likes?.includes(auth.currentUser?.uid) ? "Unlike" : "Like"}
-                    >
-                      <Heart
-                        size={14}
-                        fill={c.likes?.includes(auth.currentUser?.uid) ? "currentColor" : "none"}
-                      />
-                    </button>
-                    {c.likes?.length > 0 && (
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {c.likes.length}
+                  <div className="text-sm bg-slate-50 p-3 rounded-2xl flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-black text-primary mr-2 uppercase text-[10px]">
+                        {c.userName}:
                       </span>
-                    )}
+                      <span className="text-slate-600">{c.text}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const likes = c.likes || [];
+                            const uid = auth.currentUser?.uid;
+                            if (!uid) {
+                              addToast("Please login first to like comments");
+                              return;
+                            }
+                            if (likes.includes(uid)) {
+                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                                likes: arrayRemove(uid),
+                              });
+                            } else {
+                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                                likes: arrayUnion(uid),
+                              });
+                              const likerName = auth.currentUser!.displayName ||
+                                auth.currentUser!.email?.split("@")[0] ||
+                                "User";
+                              sendLikeNotification(
+                                post.id,
+                                c.id,
+                                c.text || "",
+                                c.uid || "",
+                                c.userName || "User",
+                                uid,
+                                likerName,
+                              );
+                            }
+                          }}
+                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
+                          title={c.likes?.includes(auth.currentUser?.uid) ? "Unlike" : "Like"}
+                        >
+                          <Heart
+                            size={14}
+                            fill={c.likes?.includes(auth.currentUser?.uid) ? "currentColor" : "none"}
+                          />
+                        </button>
+                        {c.likes?.length > 0 && (
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {c.likes.length}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setReplyingToId(replyingToId === c.id ? null : c.id)}
+                          className="text-[10px] font-bold text-slate-400 hover:text-primary transition-colors ml-2 flex items-center gap-1"
+                        >
+                          <MessageCircle size={10} />
+                          Reply
+                        </button>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!window.confirm("Are you sure you want to delete this comment?")) return;
+                            try {
+                              await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
+                              await updateDoc(doc(db, "posts", post.id), {
+                                commentCount: increment(-1),
+                              });
+                              addToast("Comment deleted");
+                            } catch (err) {
+                              console.error(err);
+                              addToast("Error deleting comment");
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="Delete Comment"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {isAdmin && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!window.confirm("Are you sure you want to delete this comment?")) return;
-                        try {
-                          await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
-                          await updateDoc(doc(db, "posts", post.id), {
-                            commentCount: increment(-1),
-                          });
-                          addToast("Comment deleted");
-                        } catch (err) {
-                          console.error(err);
-                          addToast("Error deleting comment");
-                        }
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      title="Delete Comment"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+
+                  {/* Replies List */}
+                  {c.replies && c.replies.length > 0 && (
+                    <div className="mt-2 space-y-2 pl-4 border-l-2 border-slate-100">
+                      {c.replies.map((reply: any) => (
+                        <div key={reply.id} className="flex gap-2 items-start bg-white p-2 rounded-xl">
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] font-bold text-slate-700">
+                                {reply.userName || "User"}
+                                {reply.isAdminComment && (
+                                  <span className="ml-1 bg-blue-600 text-white text-[8px] px-1 py-0.5 rounded uppercase tracking-widest">
+                                    Official
+                                  </span>
+                                )}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] text-slate-400 font-bold">
+                                  {new Date(reply.time || Date.now()).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric"
+                                  })}
+                                </span>
+                                {(auth.currentUser?.uid === reply.uid || isAdmin) && (
+                                  <button
+                                    onClick={() => handleDeleteReply(c.id, reply)}
+                                    className="text-slate-300 hover:text-red-500 transition-colors"
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              {reply.text}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </div>
-              </motion.div>
+
+                  {/* Reply Input Box */}
+                  {replyingToId === c.id && auth.currentUser && (
+                    <div className="mt-1 flex gap-2 pl-4 border-l-2 border-primary/20">
+                      <input
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Write a reply..."
+                        className="flex-1 text-xs bg-slate-50 p-2 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
+                        onKeyDown={(e) => e.key === "Enter" && handleAddReply(c.id)}
+                      />
+                      <button
+                        disabled={submittingReply || !replyText.trim()}
+                        onClick={() => handleAddReply(c.id)}
+                        className="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-opacity-90 flex items-center gap-1"
+                      >
+                        {submittingReply ? <Loader2 size={12} className="animate-spin" /> : "Send"}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
             ))}
             </AnimatePresence>
             {comments.length === 0 && (
@@ -20457,6 +20587,66 @@ function PostComments({
     id: string;
     uids: string[];
   } | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  const handleAddReply = async (commentId: string) => {
+    if (!replyText.trim() || !auth.currentUser) return;
+    setSubmittingReply(true);
+    try {
+      const authorName = isAdmin
+        ? "Admin"
+        : auth.currentUser!.displayName ||
+          auth.currentUser!.email?.split("@")[0] ||
+          "User";
+
+      const newReply = {
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
+        text: replyText,
+        time: Date.now(),
+        uid: auth.currentUser!.uid,
+        userName: authorName,
+        isAdminComment: isAdmin,
+      };
+
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        replies: arrayUnion(newReply),
+      });
+
+      const parentComment = comments.find((c) => c.id === commentId);
+      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
+        await addDoc(collection(db, "notifications"), {
+          uid: parentComment.uid,
+          title: "కొత్త రిప్లై (New Reply)",
+          message: `${authorName} మీ కామెంట్ పై ఒక రిప్లై ఇచ్చారు.`,
+          type: "comment_reply",
+          read: false,
+          time: Date.now(),
+          postId: post.id,
+        }).catch(() => console.error("Failed to fetch notification"));
+      }
+
+      setReplyingToId(null);
+      setReplyText("");
+    } catch (e: any) {
+      addToast("Failed to add reply");
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async (commentId: string, reply: any) => {
+    if (!window.confirm("Are you sure you want to delete this reply?")) return;
+    try {
+      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+        replies: arrayRemove(reply),
+      });
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to delete reply");
+    }
+  };
 
   useEffect(() => {
     const q = query(
@@ -20787,7 +20977,81 @@ function PostComments({
                 >
                   {c.likes?.length || 0}
                 </button>
+                <button
+                  onClick={() =>
+                    setReplyingToId(replyingToId === c.id ? null : c.id)
+                  }
+                  className="text-xs font-bold text-slate-400 hover:text-primary transition-colors ml-4 flex gap-1 items-center"
+                >
+                  <MessageCircle size={12} />
+                  Reply
+                </button>
               </div>
+
+              {/* Replies List */}
+              {c.replies && c.replies.length > 0 && (
+                <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-100">
+                  {c.replies.map((reply: any) => (
+                    <div key={reply.id} className="flex gap-3 items-start">
+                      <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] text-slate-400 font-bold shrink-0">
+                        {(reply.userName || "U")[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[13px] font-bold text-slate-700">
+                            {reply.userName || "User"}
+                            {reply.isAdminComment && (
+                              <span className="ml-2 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm">
+                                Official
+                              </span>
+                            )}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400 font-bold">
+                              {new Date(reply.time || Date.now()).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric"
+                              })}
+                            </span>
+                            {(auth.currentUser?.uid === reply.uid || isAdmin) && (
+                              <button
+                                onClick={() => handleDeleteReply(c.id, reply)}
+                                className="text-slate-300 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-0.5">
+                          {reply.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Reply Input Box */}
+              {replyingToId === c.id && auth.currentUser && (
+                <div className="mt-3 flex gap-2 pl-4 border-l-2 border-primary/20">
+                  <input
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply..."
+                    className="flex-1 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddReply(c.id)}
+                  />
+                  <button
+                    disabled={submittingReply || !replyText.trim()}
+                    onClick={() => handleAddReply(c.id)}
+                    className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-opacity-90 flex items-center gap-1"
+                  >
+                    {submittingReply ? <Loader2 size={14} className="animate-spin" /> : "Send"}
+                  </button>
+                </div>
+              )}
+
             </div>
           </motion.div>
         ))}
