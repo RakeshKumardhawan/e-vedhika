@@ -3031,6 +3031,7 @@ export default function App() {
         <div
           className="brand-wrapper cursor-pointer flex items-center gap-1.5 sm:gap-4 min-w-0"
           onClick={() => {
+            navigate("/");
             setCurrentTab("home");
             setSidebarOpen(false);
             if (searchParams.has("postId")) {
@@ -3779,22 +3780,30 @@ export default function App() {
                 />
 
                 <motion.a
-                  href="/Farmer_Registry"
-                  whileHover={{ x: 5 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.history.pushState({}, "", "/Farmer_Registry");
-                    setCurrentTab("farmer_registry");
-                    setSidebarOpen(false);
-                  }}
-                  className={`side-btn text-sans cursor-pointer ${currentTab === "farmer_registry" ? "active-tab text-white" : "hover:bg-slate-50"}`}
-                >
-                  <Wheat size={20} className={currentTab === "farmer_registry" ? "text-white" : "text-slate-500"} strokeWidth={currentTab === "farmer_registry" ? 2.5 : 2} />
-                  <span className="text-sm tracking-tight font-bold">
-                    Farmer Registry Live Verification
-                  </span>
-                </motion.a>
+  href="/Farmer_Registry"
+  whileHover={{ scale: 1.01 }}
+  whileTap={{ scale: 0.97 }}
+  onClick={(e) => {
+    e.preventDefault();
+    window.history.pushState({}, "", "/Farmer_Registry");
+    setCurrentTab("farmer_registry");
+    setSidebarOpen(false);
+  }}
+  style={{ width: "100%", border: "none" }}
+  className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${currentTab === "farmer_registry" ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20" : "bg-transparent text-slate-600 hover:bg-slate-100/80"}`}
+>
+  <div
+    className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 transition-colors ${getIconColors("Farmer Registry Live Verification", currentTab === "farmer_registry")}`}
+  >
+    <Wheat size={18} strokeWidth={2.5} />
+  </div>
+  <span className="text-[13px] tracking-tight text-left flex-1">
+    Farmer Registry Live Verification
+  </span>
+  {currentTab === "farmer_registry" && (
+    <motion.div layoutId="navIndicator" className="w-1.5 h-1.5 bg-white rounded-full opacity-80" />
+  )}
+</motion.a>
 
                 {showInstallButton && (
                   <div className="mt-8 px-4">
@@ -19670,6 +19679,24 @@ function PostForm({
   );
 }
 
+function getIconColors(label: string, active: boolean) {
+  if (active) return 'bg-white/20 text-white';
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) hash = label.charCodeAt(i) + ((hash << 5) - hash);
+  const colorSchemes = [
+    'bg-sky-100/70 text-sky-600 group-hover:bg-sky-100 group-hover:text-sky-700',
+    'bg-emerald-100/70 text-emerald-600 group-hover:bg-emerald-100 group-hover:text-emerald-700',
+    'bg-purple-100/70 text-purple-600 group-hover:bg-purple-100 group-hover:text-purple-700',
+    'bg-amber-100/70 text-amber-600 group-hover:bg-amber-100 group-hover:text-amber-700',
+    'bg-rose-100/70 text-rose-600 group-hover:bg-rose-100 group-hover:text-rose-700',
+    'bg-cyan-100/70 text-cyan-600 group-hover:bg-cyan-100 group-hover:text-cyan-700',
+    'bg-indigo-100/70 text-indigo-600 group-hover:bg-indigo-100 group-hover:text-indigo-700',
+    'bg-pink-100/70 text-pink-600 group-hover:bg-pink-100 group-hover:text-pink-700',
+    'bg-orange-100/70 text-orange-600 group-hover:bg-orange-100 group-hover:text-orange-700',
+  ];
+  return colorSchemes[Math.abs(hash) % colorSchemes.length];
+}
+
 function MenuButton({
   label,
   active,
@@ -19688,23 +19715,31 @@ function MenuButton({
   return (
     <motion.button
       id={tourId || `nav-menu-${label.replace(/[^a-zA-Z0-9]/g, "-")}`}
-      whileHover={{ x: 5 }}
+      whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`side-btn ${active ? "active-tab" : "hover:bg-slate-50"}`}
+      style={{ width: "100%", border: "none" }}
+      className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${
+        active
+          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
+          : "bg-transparent text-slate-600 hover:bg-slate-100/80"
+      }`}
     >
       {emoji ? (
-        <span className="side-btn-emoji">{emoji}</span>
+        <span className="text-[18px] w-9 h-9 flex justify-center items-center mr-3">{emoji}</span>
       ) : (
         Icon && (
-          <Icon
-            size={20}
-            className={active ? "text-white" : "text-slate-500"}
-            strokeWidth={active ? 2.5 : 2}
-          />
+          <div
+            className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 transition-colors ${getIconColors(label, active)}`}
+          >
+            <Icon size={18} strokeWidth={2.5} />
+          </div>
         )
       )}
-      <span className="text-sm tracking-tight">{label}</span>
+      <span className="text-[13px] tracking-tight text-left flex-1">{label}</span>
+      {active && (
+        <motion.div layoutId="navIndicator" className="w-1.5 h-1.5 bg-white rounded-full opacity-80" />
+      )}
     </motion.button>
   );
 }
