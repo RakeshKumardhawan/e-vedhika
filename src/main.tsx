@@ -91,7 +91,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
             <h1 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '8px', letterSpacing: '-0.02em', color: '#f8fafc' }}>E-Vedhika System Check</h1>
             <p style={{ fontSize: '15px', fontWeight: '500', lineHeight: '1.6', marginBottom: '20px', color: '#94a3b8' }}>
               We noticed a minor issue. We're performing a quick system refresh to keep things running smoothly.
-              <br/><span style={{ fontSize: '13px', opacity: 0.7 }}>(చిన్న లోపం సరిదిద్దబడుతోంది... దయచేసి వేచి ఉండండి)</span>
+              <br/><span style={{ fontSize: "13px", opacity: 0.7 }}>(చిన్న లోపం సరిదిద్దబడుతోంది... దయచేసి వేచి ఉండండి)</span><br/><textarea readOnly style={{width:"100%", height:"100px", color:"red", background:"black", fontSize:"10px", marginTop:"10px"}} value={this.state.error?.stack || this.state.error?.message}></textarea>
             </p>
             <div style={{ padding: '12px 24px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '16px', border: '1px solid rgba(99, 102, 241, 0.1)', display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '700', color: '#818cf8', marginBottom: '24px' }}>
               Refreshing in {this.state.countdown}s

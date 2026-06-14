@@ -984,7 +984,7 @@ export const triggerNotification = (title: string, body: string, playSound: bool
 
 let globalAudioContext: AudioContext | null = null;
 
-export const playNotificationSound = (soundId?: string) => {
+export const playNotificationSound = () => {
   try {
     const AudioContextClass =
       window.AudioContext || (window as any).webkitAudioContext;
@@ -1211,7 +1211,7 @@ export const getLatestAttachment = (attachments: any[]) => {
     (att) =>
       !(
         /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-        (att.url || "").includes("image") ||
+        att.url.includes("image") ||
         /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.name || "")
       ),
   );
@@ -1242,27 +1242,27 @@ export const getLatestAttachment = (attachments: any[]) => {
 
 const DEFAULT_ABOUT_CONTENT = `ఈ వేదిక **'పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి'** సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన సౌకర్యాలను సులభంగా పొందవచ్చు.
 
-###  **మా ప్లాట్ఫారమ్లో అందుబాటులో ఉండేవి:**
+### �� **మా ప్లాట్ఫారమ్లో అందుబాటులో ఉండేవి:**
 
-*  **ప్రభుత్వ జీవోలు (GOs):** ఎప్పటికప్పుడు తాజా ప్రభుత్వ ఉత్తర్వులు మరియు సర్క్యులర్స్.
-*  **ఫార్మాట్లు మరియు రిపోర్టులు:** రోజువారీ పనులకు అవసరమైన టెంప్లేట్స్ మరియు ఆటోమేటెడ్ రిపోర్ట్స్.
-*  **నాలెడ్జ్ హబ్:** విధుల్లో సహాయపడే అవసరమైన మార్గదర్శకాలు మరియు విషయ పరిజ్ఞానం.
+* �� **ప్రభుత్వ జీవోలు (GOs):** ఎప్పటికప్పుడు తాజా ప్రభుత్వ ఉత్తర్వులు మరియు సర్క్యులర్స్.
+* �� **ఫార్మాట్లు మరియు రిపోర్టులు:** రోజువారీ పనులకు అవసరమైన టెంప్లేట్స్ మరియు ఆటోమేటెడ్ రిపోర్ట్స్.
+* �� **నాలెడ్జ్ హబ్:** విధుల్లో సహాయపడే అవసరమైన మార్గదర్శకాలు మరియు విషయ పరిజ్ఞానం.
 
 ---
 
-#  **నా గురించి (About Me)**
+# ���� **నా గురించి (About Me)**
 
-నమస్కారం! నా పేరు **ధావన్ రాకేష్ కుమార్**. నేను ఒక సాధారణ మధ్యతరగతి కుటుంబం నుండి వచ్చాను. చిన్నప్పటి నుంచే నాకు కంప్యూటర్లు మరియు ఇంటర్నెట్ ప్రపంచం అంటే చాలా ఇష్టం, ఆ ఆసక్తే నన్ను ఎప్పుడూ కొత్త విషయాలు నేర్చుకునేలా చేసింది.
+నమస్కారం! �� నా పేరు **ధావన్ రాకేష్ కుమార్**. నేను ఒక సాధారణ మధ్యతరగతి కుటుంబం నుండి వచ్చాను. చిన్నప్పటి నుంచే నాకు కంప్యూటర్లు మరియు ఇంటర్నెట్ ప్రపంచం అంటే చాలా ఇష్టం, ఆ ఆసక్తే నన్ను ఎప్పుడూ కొత్త విషయాలు నేర్చుకునేలా చేసింది.
 
 ప్రస్తుతం నేను ఒక **'ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్'** గా పని చేస్తున్నాను. ఒక ఆపరేటర్గా రోజువారీ అడ్మినిస్ట్రేటివ్ పనులు, మాన్యువల్ డేటా ఎంట్రీలు మరియు గడువులోపు రిపోర్ట్స్ తయారు చేయడంలో ఉండే నిజమైన ఒత్తిడి నాకు బాగా తెలుసు. ఆ సమస్యలను కేవలం భరించడమే కాకుండా, వాటికి ఒక సాంకేతిక పరిష్కారం ఆలోచించాలనుకున్నాను. నా విధుల్లో నేను ఎదుర్కొన్న ఇబ్బందులు, గమనించిన లోపాలే నన్ను ఈ ప్రాజెక్ట్ వైపు నడిపించాయి.
 
 > *"నేను పడిన కష్టం మరెవరూ పడకూడదనే ఉద్దేశ్యంతో, క్షేత్రస్థాయిలో పనిచేసే ప్రతి ఒక్కరికీ ఉపయోగపడాలనే నా సొంత ఆసక్తితో ఈ **'ఈ-వేదిక'** ని రూపొందించాను."*
 
-###  **టెక్నాలజీ మరియు ఏఐ (AI) సహాయం:**
+### �� **టెక్నాలజీ మరియు ఏఐ (AI) సహాయం:**
 
 ఈ వెబ్సైట్ను మరింత అడ్వాన్స్డ్గా, ఎలాంటి లోపాలు లేకుండా తయారు చేయడానికి కోడింగ్ విషయంలో **Google Gemini** మరియు **ChatGPT** వంటి ఏఐ (AI) టూల్స్ సహాయం తీసుకున్నాను. నా క్షేత్రస్థాయి అనుభవానికి, ఈ ఏఐ టూల్స్ సాంకేతికత తోడవడంతో **React, Node.js, Firebase** వంటి ఆధునిక వెబ్ టెక్నాలజీలను ఉపయోగించి ఈ ప్లాట్ఫారమ్ను వేగంగా మరియు సురక్షితంగా మీ ముందుకు తీసుకురాగలిగాను.
 
- **నా లక్ష్యం:**
+�� **నా లక్ష్యం:**
 సమయాన్ని ఆదా చేస్తూ, పారదర్శకమైన సేవలను అందించే ఇలాంటి మరిన్ని టూల్స్ను అభివృద్ధి చేయడం మరియు ప్రతి ఒక్కరికీ సాంకేతికతను సులభతరం చేయడమే నా లక్ష్యం.`;
 
 export default function App() {
@@ -1886,7 +1886,7 @@ export default function App() {
         document.title = `${post.title || "Post"} | E-Vedhika`;
         // Update meta tags for client-side aware crawlers
         let description = post.content
-          ? String(post.content || "").replace(/<[^>]*>?/gm, "").substring(0, 160)
+          ? post.content.replace(/<[^>]*>?/gm, "").substring(0, 160)
           : "";
         let metaDesc = document.querySelector('meta[name="description"]');
         if (metaDesc) {
@@ -1912,13 +1912,13 @@ export default function App() {
           const updateData: any = {
             views: increment(1),
           };
-          if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
+          if (userId && !post.viewedBy?.includes(userId)) {
             updateData.viewedBy = arrayUnion(userId);
           }
           updateDoc(doc(db, "posts", post.id), updateData).catch(() => {});
         } else {
           const userId = auth.currentUser?.uid;
-          if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
+          if (userId && !post.viewedBy?.includes(userId)) {
             updateDoc(doc(db, "posts", post.id), {
               viewedBy: arrayUnion(userId),
             }).catch(() => {});
@@ -2282,7 +2282,7 @@ export default function App() {
         setNotifications(nArr.sort((a, b) => b.time - a.time));
         setUnreadCount(
           nArr.filter((n) =>
-            n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read,
+            n.uid === "all" ? !(n as any).readBy?.includes(user?.uid) : !n.read,
           ).length,
         );
 
@@ -2432,7 +2432,7 @@ export default function App() {
         sessionStorage.setItem(sessionViewedKey, "true");
         
         let updateData: any = { views: increment(1) };
-        if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
+        if (userId && !post.viewedBy?.includes(userId)) {
            updateData.viewedBy = arrayUnion(userId);
         }
 
@@ -2484,7 +2484,7 @@ export default function App() {
 
     recognition.onstart = () => {
       setIsRecordingProblem(true);
-      addToast("🎤 రికార్డింగ్ ప్రారంభమైంది (Recording started)...");
+      addToast("�� రికార్డింగ్ ప్రారంభమైంది (Recording started)...");
     };
 
     recognition.onresult = (event: any) => {
@@ -2558,7 +2558,7 @@ export default function App() {
                   Google Identity Verification
                 </button>
                 <div className="mt-4 p-3.5 bg-amber-500/15 rounded-xl border border-amber-500/30 text-amber-200 text-[11px] leading-relaxed font-semibold text-left">
-                  {" "}
+                  ��{" "}
                   <span className="font-extrabold text-amber-400">
                     లాగిన్ ఆలస్యం అవుతుంటే:
                   </span>{" "}
@@ -2745,7 +2745,7 @@ export default function App() {
                       if (val === requiredPin) {
                         setAdminLocked(false);
                         setAdminPinInput("");
-                        addToast("🔓 సెషన్ అన్‌లాక్ చేయబడింది!");
+                        addToast("�� సెషన్ అన్‌లాక్ చేయబడింది!");
                       }
                     }}
                   />
@@ -2796,7 +2796,7 @@ export default function App() {
         <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="flex justify-between items-center mb-6 border-b border-slate-200/60 pb-4">
             <div className="flex items-center gap-3">
-              <span className="text-3xl"></span>
+              <span className="text-3xl">��</span>
               <div>
                 <h1 className="text-2xl font-black text-slate-800 tracking-tighter">
                   Farmer Registry Live Verification
@@ -3204,7 +3204,7 @@ export default function App() {
                         {notifications.map((n) => {
                           const isUnread =
                             n.uid === "all"
-                              ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
+                              ? !(n as any).readBy?.includes(user?.uid)
                               : !n.read;
                           return (
                             <div
@@ -3437,7 +3437,7 @@ export default function App() {
                   ? visibleUpdates
                       .map((u) => u.text || (u as any).msg || (u as any).update)
                       .join("  •  ")
-                  : "✨ Welcome to E-Vedhika Portal ✨ • 🚀 The E-Vedhika Portal is now live – Empowering Governance with Digital Excellence 🚀";
+                  : "�� Welcome to E-Vedhika Portal... �� • �� The E-Vedhika Portal is now live – Empowering Governance with Digital Excellence.. ��";
               })()}
             </span>
           </div>
@@ -3535,45 +3535,49 @@ export default function App() {
                   Admin Panel
                 </h3>
                 {[
-                  { id: "dash", label: "Analytics Hub", icon: BarChart3 },
-                  { id: "reports", label: "Posts & Issues", icon: FileText },
-                  { id: "updates", label: "Flash News", icon: Zap },
-                  { id: "users", label: "User Access", icon: Users },
+                  { id: "dash", label: "Analytics Hub", emoji: "��" },
+                  { id: "reports", label: "Posts & Issues", emoji: "��" },
+                  { id: "updates", label: "Flash News", emoji: "⚡" },
+                  { id: "users", label: "User Access", emoji: "��" },
                   ...(isAdmin || isDevEmail
                     ? [
                         {
                           id: "staff_management",
-                          label: "Staff Management", icon: Shield,
+                          label: "Staff Management",
+                          emoji: "��️",
                         },
                       ]
                     : []),
                   ...(isAdmin || isDevEmail
-                    ? [{ id: "logs", label: "Security Logs", icon: ShieldAlert }]
+                    ? [{ id: "logs", label: "Security Logs", emoji: "��" }]
                     : []),
                   ...(isAdmin || isDevEmail
                     ? [
                         {
                           id: "farmer_registry_logs",
-                          label: "Farmer Registry Logs", icon: FileText,
+                          label: "Farmer Registry Logs",
+                          emoji: "��",
                         },
                         {
                           id: "survey_reports",
-                          label: "Survey Reports", icon: Database,
+                          label: "Survey Reports",
+                          emoji: "��",
                         },
                         {
                           id: "edit_about",
-                          label: "About E-Vedhika", icon: Info,
+                          label: "��️ About E-Vedhika",
+                          emoji: "��",
                         },
                       ]
                     : []),
-                  { id: "builder", label: "Page Builder", icon: Wrench },
-                  { id: "locations", label: "Locations", icon: MapPin },
-                  { id: "suggestions", label: "Public Suggestions and Feedback", icon: MessageSquare },
+                  { id: "builder", label: "Page Builder", emoji: "��️" },
+                  { id: "locations", label: "Locations", emoji: "��" },
+                  { id: "suggestions", label: "Public Suggestions and Feedback", emoji: "��" },
                 ].map((item) => (
                   <MenuButton
                     key={item.id}
                     label={item.label}
-                    icon={item.icon}
+                    emoji={item.emoji}
                     active={activeAdminSubTab === item.id}
                     onClick={() => {
                       setActiveAdminSubTab(item.id);
@@ -3585,13 +3589,13 @@ export default function App() {
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
                 {[
-                  { id: "settings", label: "System Config", icon: Settings },
-                  { id: "ai", label: "Gemini AI", icon: Bot },
+                  { id: "settings", label: "System Config", emoji: "⚙️" },
+                  { id: "ai", label: "Gemini AI", emoji: "��" },
                 ].map((item) => (
                   <MenuButton
                     key={item.id}
                     label={item.label}
-                    icon={item.icon}
+                    emoji={item.emoji}
                     active={activeAdminSubTab === item.id}
                     onClick={() => {
                       setActiveAdminSubTab(item.id);
@@ -3603,7 +3607,8 @@ export default function App() {
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
                 <MenuButton
-                  label="Return to Portal" icon={ArrowLeft}
+                  label="Return to Portal"
+                  emoji="��"
                   active={false}
                   onClick={() => {
                     window.location.href = "/";
@@ -3616,7 +3621,8 @@ export default function App() {
                   Navigations
                 </h3>
                 <MenuButton
-                  label="Home" icon={Home}
+                  label="Home"
+                  emoji="��"
                   tourId="menu-home"
                   active={currentTab === "home" && !postIdFromUrl}
                   onClick={() => {
@@ -3630,7 +3636,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Mana Panchayath" icon={Building}
+                  label="��️ Mana Panchayath"
+                  emoji="��"
                   tourId="menu-mana-panchayath"
                   active={currentTab === "workspace"}
                   onClick={() => {
@@ -3675,7 +3682,8 @@ export default function App() {
                         className="flex flex-col gap-1 px-1 pb-1 overflow-hidden"
                       >
                         <MenuButton
-                          label="Emergency Contacts" icon={AlertTriangle}
+                          label="�� Emergency Contacts"
+                          emoji="��"
                           tourId="menu-emergency"
                           active={currentTab === "emergency"}
                           onClick={() => {
@@ -3684,7 +3692,8 @@ export default function App() {
                           }}
                         />
                         <MenuButton
-                          label="My Activity & Reports" icon={Activity}
+                          label="�� My Activity & Reports"
+                          emoji="��"
                           tourId="menu-my-activity"
                           active={currentTab === "my_activity"}
                           onClick={() => {
@@ -3697,7 +3706,8 @@ export default function App() {
                           }}
                         />
                         <MenuButton
-                          label="Edit Profile" icon={Settings}
+                          label="⚙️ Edit Profile"
+                          emoji="⚙️"
                           tourId="menu-edit-profile"
                           active={false}
                           onClick={() => {
@@ -3715,7 +3725,8 @@ export default function App() {
                 </div>
 
                 <MenuButton
-                  label="Live Chat" icon={MessageCircle}
+                  label="Live Chat"
+                  emoji="��"
                   tourId="menu-live-chat"
                   active={currentTab === "chat"}
                   onClick={() => {
@@ -3724,7 +3735,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Union Corner & Polls" icon={Vote}
+                  label="Union Corner & Polls"
+                  emoji="��"
                   tourId="menu-union-corner"
                   active={currentTab === "union"}
                   onClick={() => {
@@ -3733,7 +3745,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="What's New!" icon={Megaphone}
+                  label="What's New! ��"
+                  emoji="✨"
                   tourId="menu-whats-new"
                   active={currentTab === "changelog"}
                   onClick={() => {
@@ -3742,7 +3755,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Public Suggestions & Feedback" icon={MessageSquare}
+                  label="�� Public suggestions & Feedback"
+                  emoji="��"
                   tourId="menu-suggestions"
                   active={currentTab === "suggestions"}
                   onClick={() => {
@@ -3751,7 +3765,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Applications, Formats & GOs" icon={FileText}
+                  label="�� Applications, Formats & GOs"
+                  emoji="��"
                   tourId="menu-applications"
                   active={currentTab === "gos_formats"}
                   onClick={() => {
@@ -3760,7 +3775,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Useful Information" icon={Info}
+                  label="�� Useful Information"
+                  emoji="��"
                   tourId="menu-useful-info"
                   active={currentTab === "useful_links"}
                   onClick={() => {
@@ -3769,7 +3785,8 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Excel A4 Print" icon={FileSpreadsheet}
+                  label="�� Excel A4 Print"
+                  emoji="��"
                   tourId="menu-excel-print"
                   active={currentTab === "excel_print"}
                   onClick={() => {
@@ -3790,7 +3807,7 @@ export default function App() {
                   }}
                   className={`side-btn text-sans cursor-pointer ${currentTab === "farmer_registry" ? "active-tab text-white" : "hover:bg-slate-50"}`}
                 >
-                  <Wheat size={20} className={currentTab === "farmer_registry" ? "text-white" : "text-slate-500"} strokeWidth={currentTab === "farmer_registry" ? 2.5 : 2} />
+                  <span className="side-btn-emoji">��</span>
                   <span className="text-sm tracking-tight font-bold">
                     Farmer Registry Live Verification
                   </span>
@@ -3825,7 +3842,8 @@ export default function App() {
 
                 {(isAdmin || isEditor || isDevEmail) && (
                   <MenuButton
-                    label="Admin Panel" icon={Shield}
+                    label="Admin Panel"
+                    emoji="⚙️"
                     tourId="menu-admin-new-tab"
                     active={location.pathname.endsWith("/Evdka")}
                     onClick={() => {
@@ -4073,7 +4091,7 @@ export default function App() {
                                                       " ",
                                                     )[0]
                                                   }
-                                                  !
+                                                  ! ��
                                                 </span>
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block">
                                                   Welcome to{" "}
@@ -4085,7 +4103,7 @@ export default function App() {
                                             ) : (
                                               <div className="space-y-1 sm:space-y-2">
                                                 <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block">
-                                                  Hello, {timeGreeting}! 👋
+                                                  Hello, {timeGreeting}! ��
                                                 </span>
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block">
                                                   Welcome to{" "}
@@ -4104,7 +4122,7 @@ export default function App() {
                                           className="mt-3 text-sm sm:text-base font-medium leading-relaxed text-slate-300/80 max-w-md mx-auto"
                                         >
                                           {el.content ||
-                                            "All Problems One Solution 💡"}
+                                            "All Problems One Solution ��"}
                                         </motion.p>
                                         <motion.div
                                           initial={{ opacity: 0, y: 15 }}
@@ -4121,7 +4139,7 @@ export default function App() {
                                             }
                                             className="rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-blue-600 hover:to-indigo-700 hover:scale-105 active:scale-95 transition-all text-center"
                                           >
-                                            Get Started <ChevronRight size={16} className="ml-1" />
+                                            Get Started ��
                                           </button>
                                           <button
                                             onClick={() =>
@@ -4129,7 +4147,7 @@ export default function App() {
                                             }
                                             className="rounded-xl px-6 py-2.5 text-xs font-bold text-slate-200 border border-white/10 bg-white/5 backdrop-blur-md hover:bg-white/10 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
                                           >
-                                            Help Center <MessageCircle size={16} className="ml-1" />
+                                            Help Center ��
                                           </button>
                                         </motion.div>
                                       </div>
@@ -4734,7 +4752,7 @@ export default function App() {
                                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
                                         <div className="flex-1 w-full">
                                           <h3 className="text-xl sm:text-2xl font-black text-primary uppercase tracking-tighter text-center sm:text-left">
-                                            {el.title || "🔔 Updates"}
+                                            {el.title || "�� Updates"}
                                           </h3>
                                         </div>
                                       </div>
@@ -5157,7 +5175,7 @@ export default function App() {
                                               }) => {
                                                 const text = String(children);
                                                 if (
-                                                  text.includes("✨ What's New")
+                                                  text.includes("�� What's New")
                                                 ) {
                                                   return (
                                                     <h3
@@ -5169,7 +5187,7 @@ export default function App() {
                                                   );
                                                 }
                                                 if (
-                                                  text.includes("🐛 Bug Fixes")
+                                                  text.includes("��️ Bug Fixes")
                                                 ) {
                                                   return (
                                                     <h3
@@ -5313,7 +5331,7 @@ export default function App() {
                     <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[60vh]">
                       <div className="border-b border-slate-100 pb-4 mb-6">
                         <h2 className="text-xl sm:text-2xl font-black text-rose-600 flex flex-row items-center flex-wrap gap-2">
-                          <span className="flex items-center gap-2"><AlertTriangle size={18} /> Emergency & Helpline Contacts</span>
+                          <span>�� Emergency & Helpline Contacts</span>
                         </h2>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                           అత్యవసర ఫోన్ నంబర్లు
@@ -5325,37 +5343,37 @@ export default function App() {
                           {
                             name: "Police (పోలీస్)",
                             number: "100",
-                            icon: "",
+                            icon: "��",
                             color: "blue",
                           },
                           {
                             name: "Ambulance (అంబులెన్స్)",
                             number: "108",
-                            icon: "",
+                            icon: "��",
                             color: "rose",
                           },
                           {
                             name: "Fire (అగ్నిమాపక దళం)",
                             number: "101",
-                            icon: "",
+                            icon: "��",
                             color: "red",
                           },
                           {
                             name: "Women Helpline (మహిళల హెల్ప్‌లైన్)",
                             number: "1091",
-                            icon: "",
+                            icon: "��️",
                             color: "purple",
                           },
                           {
                             name: "Child Helpline (ఛైల్డ్ హెల్ప్‌లైన్)",
                             number: "1098",
-                            icon: "",
+                            icon: "��",
                             color: "amber",
                           },
                           {
                             name: "Cyber Crime (సైబర్ క్రైమ్)",
                             number: "1930",
-                            icon: "",
+                            icon: "��",
                             color: "indigo",
                           },
                           {
@@ -5367,13 +5385,13 @@ export default function App() {
                           {
                             name: "Farmers Helpline (రైతుల హెల్ప్‌లైన్)",
                             number: "155251",
-                            icon: "",
+                            icon: "��",
                             color: "green",
                           },
                           {
                             name: "Disha Helpline (దిశ)",
                             number: "181",
-                            icon: "",
+                            icon: "��",
                             color: "pink",
                           },
                         ].map((contact, i) => (
@@ -6001,7 +6019,7 @@ export default function App() {
                     </div>
                     <div className="section-card card-gold !border-t-danger">
                       <h2 className="text-2xl font-black text-primary mb-6">
-                         Report an Issue
+                        �� Report an Issue
                       </h2>
                       <div className="bg-red-50 p-6 rounded-2xl border border-red-100 mb-8">
                         <form
@@ -7147,7 +7165,7 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 pb-6 border-b border-slate-100 gap-4">
         <div>
           <h2 className="text-2xl font-black text-primary flex items-center gap-2 mb-2">
-            <span className="text-3xl"></span> My Activity & Reports
+            <span className="text-3xl">��</span> My Activity & Reports
           </h2>
           <p className="text-sm font-bold text-slate-500 uppercase tracking-widest pl-1">
             Track the status of your submitted issues and feedback
@@ -7735,7 +7753,7 @@ function AdminPanel({
                 ? [
                     {
                       id: "edit_about",
-                      label: " About E-Vedhika",
+                      label: "��️ About E-Vedhika",
                       icon: <Info size={18} />,
                     },
                   ]
@@ -8175,7 +8193,7 @@ function AdminPanel({
             const title = match.title || match.problem || match.content || "కొత్త పోస్ట్";
             await addDoc(collection(db, "notifications"), {
               uid: "all",
-              title: " కొత్త పోస్ట్ (New Post Approved)",
+              title: "�� కొత్త పోస్ట్ (New Post Approved)",
               message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
               type: "post",
               read: false,
@@ -8844,7 +8862,7 @@ function AdminPanel({
                         className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${reportsType === type ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-700"}`}
                       >
                         {type === "posts"
-                          ? " Community Posts"
+                          ? "�� Community Posts"
                           : "⚠️ Citizen Issues"}
                       </button>
                     ))}
@@ -9189,7 +9207,7 @@ function AdminPanel({
                                         const title = item.title || item.problem || item.content || "కొత్త పోస్ట్";
                                         await addDoc(collection(db, "notifications"), {
                                           uid: "all",
-                                          title: " కొత్త పోస్ట్ (New Post Approved)",
+                                          title: "�� కొత్త పోస్ట్ (New Post Approved)",
                                           message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
                                           type: "post",
                                           read: false,
@@ -9404,7 +9422,7 @@ function AdminPanel({
                   <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-6 bg-white rounded-[32px] shadow-sm border border-slate-100">
                     <div>
                       <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                         Access Control
+                        ��️ Access Control
                       </h3>
                       <p className="text-sm font-bold text-slate-500 mt-1">
                         Manage user roles, visibility and suspensions.
@@ -10317,8 +10335,8 @@ function AdminPanel({
                                                   ? "Good Afternoon"
                                                   : "Good Evening";
                                             return userProfile?.name
-                                              ? `Hello, ${timeGreeting}, ${userProfile.name}! Welcome to E-Vedhika. ✨`
-                                              : `Hello, ${timeGreeting}! Welcome to E-Vedhika. ✨`;
+                                              ? `Hello, ${timeGreeting}, ${userProfile.name}! �� Welcome to E-Vedhika. ✨`
+                                              : `Hello, ${timeGreeting}! �� Welcome to E-Vedhika. ✨`;
                                           })()}
                                         </h1>
                                         <p className="text-xs sm:text-sm text-white/80 font-medium leading-relaxed max-w-sm">
@@ -11093,7 +11111,7 @@ function AdminPanel({
 
                         await addDoc(collection(db, "notifications"), {
                           uid: "all",
-                          title: "✨ New Update",
+                          title: "�� New Update",
                           message:
                             text.substring(0, 80) +
                             (text.length > 80 ? "..." : ""),
@@ -11269,7 +11287,7 @@ function AdminPanel({
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xl font-black text-primary mb-2">
-                      ✨ What's New Management
+                      �� What's New Management
                     </h4>
                     <p className="text-xs text-slate-400 font-medium tracking-tight">
                       Manage the "What's New" (changelog) entries for citizens.
@@ -11443,7 +11461,7 @@ function AdminPanel({
                                           }) => {
                                             const text = String(children);
                                             if (
-                                              text.includes("✨ What's New")
+                                              text.includes("�� What's New")
                                             ) {
                                               return (
                                                 <h3
@@ -11454,7 +11472,7 @@ function AdminPanel({
                                                 </h3>
                                               );
                                             }
-                                            if (text.includes("🐛 Bug Fixes")) {
+                                            if (text.includes("��️ Bug Fixes")) {
                                               return (
                                                 <h3
                                                   className="flex items-center gap-2 text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-3 mb-1.5 border border-rose-100 shadow-sm"
@@ -11826,7 +11844,7 @@ function AdminPanel({
                               : "text-slate-500 hover:text-slate-700"
                           }`}
                         >
-                           {role}
+                          �� {role}
                         </button>
                       ))}
                     </div>
@@ -12005,7 +12023,7 @@ function AdminPanel({
                                 auth.currentUser?.email || "Super Admin",
                             },
                           );
-                          addToast(" permissions updated successfully!");
+                          addToast("�� permissions updated successfully!");
                         } catch (err: any) {
                           addToast(err.message);
                         }
@@ -12242,7 +12260,7 @@ function AdminPanel({
                           <Bot size={120} className="text-emerald-900" />
                         </div>
                         <h4 className="text-emerald-800 text-sm font-black uppercase tracking-wider mb-2 flex items-center gap-2 font-mono">
-                           డయాగ్నోసిస్ ఫలితం (AI Diagnosis Report)
+                          �� డయాగ్నోసిస్ ఫలితం (AI Diagnosis Report)
                         </h4>
                         <div className="text-xs text-slate-700 leading-relaxed max-w-none prose prose-slate">
                           <ReactMarkdown>{aiDiagnosis}</ReactMarkdown>
@@ -12319,7 +12337,7 @@ function AdminPanel({
                             : "text-slate-500 hover:text-slate-705"
                         }`}
                       >
-                         {role.toUpperCase()}
+                        �� {role.toUpperCase()}
                       </button>
                     ))}
                   </div>
@@ -12494,7 +12512,7 @@ function AdminPanel({
                           updatedBy: auth.currentUser?.email || "Super Admin",
                         });
                         addToast(
-                          " కార్యాచరణ అనుమతులు డైనమిక్గా అప్‌డేట్ అయ్యాయి!",
+                          "�� కార్యాచరణ అనుమతులు డైనమిక్గా అప్‌డేట్ అయ్యాయి!",
                         );
                       } catch (err: any) {
                         addToast("మార్పులు చేయడంలో విఫలమైంది: " + err.message);
@@ -13297,13 +13315,13 @@ function AdminPanel({
                             id: "cloudflare",
                             name: "Cloudflare R2",
                             desc: "Infinite scaling, low cost edge storage",
-                            icon: "",
+                            icon: "��",
                           },
                           {
                             id: "firebase",
                             name: "Firebase Storage",
                             desc: "Real-time, persistent hot bucket",
-                            icon: "",
+                            icon: "��",
                           },
                         ].map((node) => (
                           <button
@@ -14273,7 +14291,7 @@ function FormsHub({
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center font-black">
-                    
+                    ��
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-800 leading-tight">
@@ -14357,7 +14375,7 @@ function DirectorySection({ allUsers }: { allUsers: UserProfile[] }) {
           <Users size={100} />
         </div>
         <h2 className="text-3xl font-black text-primary mb-2 flex items-center gap-3">
-           సభ్యుల డైరెక్టరీ{" "}
+          �� సభ్యుల డైరెక్టరీ{" "}
           <span className="text-slate-400 text-sm font-bold">
             (Member Directory)
           </span>
@@ -14574,19 +14592,19 @@ function StatusCell({ status }: { status: string }) {
   if (status === "M")
     return (
       <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-[10px] font-black border border-cyan-200">
-         MEETING
+        �� MEETING
       </span>
     );
   if (status === "T")
     return (
       <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black border border-amber-200">
-         TRAINING
+        �� TRAINING
       </span>
     );
   if (status === "L")
     return (
       <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[10px] font-black border border-slate-200">
-         LEAVE
+        �� LEAVE
       </span>
     );
   return <span className="text-slate-300 font-bold">-</span>;
@@ -15646,7 +15664,7 @@ function TrainingCenter() {
               key={guide}
               className="p-4 bg-slate-50 border rounded-2xl flex justify-between items-center cursor-pointer hover:bg-slate-100"
             >
-              <span className="font-bold text-sm"> {guide}</span>
+              <span className="font-bold text-sm">�� {guide}</span>
               <Play size={16} className="text-primary" />
             </div>
           ),
@@ -16107,7 +16125,7 @@ function DSRAnalyzer({
           setUploadProgress(0);
         }, 500);
         addToast(
-          `విజయవంతంగా ప్రాసెస్ చేయబడింది! ${processed.length} గ్రామ పంచాయతీలు దొరికాయి. `,
+          `విజయవంతంగా ప్రాసెస్ చేయబడింది! ${processed.length} గ్రామ పంచాయతీలు దొరికాయి. ��`,
         );
       } catch (err) {
         console.error("DSR Processing Error:", err);
@@ -17154,7 +17172,7 @@ function PostCard({
                 components={{
                   h3: ({ node, children, ...props }) => {
                     const text = String(children);
-                    if (text.includes("✨ What's New")) {
+                    if (text.includes("�� What's New")) {
                       return (
                         <h3
                           className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm"
@@ -17164,7 +17182,7 @@ function PostCard({
                         </h3>
                       );
                     }
-                    if (text.includes("🐛 Bug Fixes")) {
+                    if (text.includes("��️ Bug Fixes")) {
                       return (
                         <h3
                           className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm"
@@ -17233,14 +17251,14 @@ function PostCard({
             {post.attachments.filter(
               (att) =>
                 /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                (att.url || "").includes("image"),
+                att.url.includes("image"),
             ).length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
                 {post.attachments
                   .filter(
                     (att) =>
                       /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                      (att.url || "").includes("image"),
+                      att.url.includes("image"),
                   )
                   .map((att, idx) => (
                     <div
@@ -17401,7 +17419,7 @@ function PostCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
-                  const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
+                  |const attToDownload = getLatestAttachment(post.attachments) | if (!attToDownload) return;
                   handleForceDownload(
                     e,
                     attToDownload.url,
@@ -17539,7 +17557,7 @@ function PostCard({
               components={{
                 h3: ({ children }) => {
                   const text = String(children);
-                  if (text.includes("✨ What's New")) {
+                  if (text.includes("�� What's New")) {
                     return (
                       <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm">
                         {children}
@@ -17593,7 +17611,7 @@ function PostCard({
                 {post.attachments.map((att, idx) => {
                   const isImage =
                     /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                    (att.url || "").includes("image");
+                    att.url.includes("image");
                   return (
                     <div key={idx} className="w-full">
                       {isImage ? (
@@ -17824,7 +17842,7 @@ function PostCard({
                 e.stopPropagation();
                 const userId = auth.currentUser?.uid;
                 if (requireLoginAlert()) return;
-                const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+                const likedBy = post.likedBy || [];
                 try {
                   if (likedBy.includes(userId)) {
                     await updateDoc(doc(db, "posts", post.id), {
@@ -17861,12 +17879,12 @@ function PostCard({
                   addToast(getFriendlyError(err));
                 }
               }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
+              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${post.likedBy?.includes(auth.currentUser?.uid || "") ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
             >
               <Heart
                 size={18}
                 fill={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
+                  post.likedBy?.includes(auth.currentUser?.uid || "")
                     ? "currentColor"
                     : "none"
                 }
@@ -17934,7 +17952,7 @@ function PostCard({
                     .replace(/[#*`]/g, "")
                     .substring(0, 150)
                 : "";
-              const shareText = ` *${post.title || "E-Vedhika Post"}*\n\n${plainContent ? `${plainContent}...\n\n` : ""}Read more details on E-Vedhika link below:\n`;
+              const shareText = `�� *${post.title || "E-Vedhika Post"}*\n\n${plainContent ? `${plainContent}...\n\n` : ""}Read more details on E-Vedhika link below:\n`;
               handleShare(
                 post.title || "E-Vedhika Post",
                 shareText,
@@ -18041,12 +18059,12 @@ function PostCard({
                               );
                             }
                           }}
-                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
-                          title={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "Unlike" : "Like"}
+                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
+                          title={c.likes?.includes(auth.currentUser?.uid) ? "Unlike" : "Like"}
                         >
                           <Heart
                             size={14}
-                            fill={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "currentColor" : "none"}
+                            fill={c.likes?.includes(auth.currentUser?.uid) ? "currentColor" : "none"}
                           />
                         </button>
                         {c.likes?.length > 0 && (
@@ -18479,36 +18497,36 @@ function PostForm({
       ? editingPost.categories
       : editingPost?.category
         ? [editingPost.category]
-        : [" General"];
+        : ["�� General"];
 
     const mapping: Record<string, string> = {
-      " General": " General",
-      " General (సాధారణం)": " General",
-      " Updates": " Updates",
-      " Updates (అప్‌డేట్స్)": " Updates",
-      " Portal Update": " Updates",
-      " Daily Reports": " Progress Reports",
-      " Progress Reports (నివేదికలు)": " Progress Reports",
-      " Election": " Election News",
-      " TSEC Poll Issue": " Election News",
-      " Election News (ఎన్నికలు)": " Election News",
-      " Mana Panchayath": " Gram Panchayat",
-      " Gram Panchayat (పంచాయతీ)": " Gram Panchayat",
-      " Suggestions & Feedback": " Ideas & Feedback",
-      " Ideas & Feedback (సూచనలు)": " Ideas & Feedback",
-      " Applications & GOs": " GOs & Circulars",
-      " GOs & Circulars (జీవోలు)": " GOs & Circulars",
-      " Useful Information": " Useful Links",
-      " Useful Links (ముఖ్యమైన లింకులు)": " Useful Links",
-      " ePanchayat Issue": " Technical Support",
-      " Online Tax Collection Issue": " Taxes & Finance",
-      " Taxes & Finance (పన్నులు)": " Taxes & Finance",
-      " Housing & Layouts (ఇళ్లు/లేఅవుట్లు)": " Housing & Layouts",
-      " Ubd Portal Issue": " Technical Support",
-      " eGramSwaraj doubts": " Technical Support",
-      " Technical Support (సాంకేతిక సహాయం)": " Technical Support",
-      " Technical Support (సహాయం)": " Technical Support",
-      " Applications (దరఖాస్తులు)": " Applications",
+      "�� General": "�� General",
+      "�� General (సాధారణం)": "�� General",
+      "�� Updates": "�� Updates",
+      "�� Updates (అప్‌డేట్స్)": "�� Updates",
+      "�� Portal Update": "�� Updates",
+      "�� Daily Reports": "�� Progress Reports",
+      "�� Progress Reports (నివేదికలు)": "�� Progress Reports",
+      "��️ Election": "��️ Election News",
+      "��️ TSEC Poll Issue": "��️ Election News",
+      "��️ Election News (ఎన్నికలు)": "��️ Election News",
+      "��️ Mana Panchayath": "��️ Gram Panchayat",
+      "��️ Gram Panchayat (పంచాయతీ)": "��️ Gram Panchayat",
+      "�� Suggestions & Feedback": "�� Ideas & Feedback",
+      "�� Ideas & Feedback (సూచనలు)": "�� Ideas & Feedback",
+      "�� Applications & GOs": "�� GOs & Circulars",
+      "�� GOs & Circulars (జీవోలు)": "�� GOs & Circulars",
+      "�� Useful Information": "�� Useful Links",
+      "�� Useful Links (ముఖ్యమైన లింకులు)": "�� Useful Links",
+      "�� ePanchayat Issue": "��️ Technical Support",
+      "�� Online Tax Collection Issue": "�� Taxes & Finance",
+      "�� Taxes & Finance (పన్నులు)": "�� Taxes & Finance",
+      "�� Housing & Layouts (ఇళ్లు/లేఅవుట్లు)": "�� Housing & Layouts",
+      "�� Ubd Portal Issue": "��️ Technical Support",
+      "��️ eGramSwaraj doubts": "��️ Technical Support",
+      "��️ Technical Support (సాంకేతిక సహాయం)": "��️ Technical Support",
+      "��️ Technical Support (సహాయం)": "��️ Technical Support",
+      "�� Applications (దరఖాస్తులు)": "�� Applications",
     };
     return raw.map((cat) => mapping[cat] || cat);
   });
@@ -18551,18 +18569,18 @@ function PostForm({
   };
 
   const CATEGORIES = [
-    " General",
-    " Updates",
-    " Progress Reports",
-    " Election News",
-    " Gram Panchayat",
-    " GOs & Circulars",
-    " Taxes & Finance",
-    " Housing & Layouts",
-    " Technical Support",
-    " Ideas & Feedback",
-    " Applications",
-    " Useful Links",
+    "�� General",
+    "�� Updates",
+    "�� Progress Reports",
+    "��️ Election News",
+    "��️ Gram Panchayat",
+    "�� GOs & Circulars",
+    "�� Taxes & Finance",
+    "�� Housing & Layouts",
+    "��️ Technical Support",
+    "�� Ideas & Feedback",
+    "�� Applications",
+    "�� Useful Links",
   ];
 
   const toggleCategory = (cat: string) => {
@@ -18645,7 +18663,7 @@ function PostForm({
         await addDoc(collection(db, "notifications"), {
           uid: "all",
           type: "post_update",
-          title: " పోస్ట్ అప్డేట్ చేయబడింది (Post Updated)",
+          title: "�� పోస్ట్ అప్డేట్ చేయబడింది (Post Updated)",
           message: `${postAuthor} వారు ఒక పోస్ట్‌ను అప్డేట్ చేశారు: ${title.substring(0, 50)}`,
           time: Date.now(),
           read: false,
@@ -18692,7 +18710,7 @@ function PostForm({
           await addDoc(collection(db, "notifications"), {
             uid: "all",
             type: "post",
-            title: " కొత్త అప్డేట్ (New Update)",
+            title: "�� కొత్త అప్డేట్ (New Update)",
             message: `పోర్టల్ లో కొత్త అప్డేట్: ${title}`,
             time: Date.now(),
             read: false,
@@ -18703,7 +18721,7 @@ function PostForm({
           await addDoc(collection(db, "notifications"), {
             uid: "all",
             type: "post",
-            title: " కొత్త పోస్ట్ (New Post)",
+            title: "�� కొత్త పోస్ట్ (New Post)",
             message: `${postAuthor} కొత్త పోస్ట్ ని డిజిటల్ బోర్డ్ లో ఉంచారు: ${title.substring(0, 50)}`,
             time: Date.now(),
             read: false,
@@ -18749,7 +18767,7 @@ function PostForm({
     >
       <div className="flex justify-between items-center mb-6">
         <h3 className="font-black text-primary uppercase text-lg flex items-center gap-2">
-          {editingPost ? "✏️ Edit Update" : "✨ New Update"}
+          {editingPost ? "✏️ Edit Update" : "�� New Update"}
         </h3>
         <button
           aria-label="Close edit modal"
@@ -18936,7 +18954,7 @@ function PostForm({
                           Swal.showValidationMessage("URL is required");
                           return null;
                         }
-                        return { name: name || " Download File", url };
+                        return { name: name || "�� Download File", url };
                       },
                     }).then((result) => {
                       if (result.isConfirmed && result.value) {
@@ -18955,19 +18973,19 @@ function PostForm({
                 <div className="h-6 w-px bg-slate-200 mx-1"></div>
                 <button
                   type="button"
-                  onClick={() => wrapText("### ✨ What's New\n- ", "\n")}
+                  onClick={() => wrapText("### �� What's New\n- ", "\n")}
                   className="px-2 py-1 hover:bg-blue-600 hover:text-white rounded-lg transition-all text-blue-600 border border-blue-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest"
                   title="Insert Whats New Section"
                 >
-                  ✨ New
+                  �� New
                 </button>
                 <button
                   type="button"
-                  onClick={() => wrapText("### 🐛 Bug Fixes\n- ", "\n")}
+                  onClick={() => wrapText("### ��️ Bug Fixes\n- ", "\n")}
                   className="px-2 py-1 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-rose-600 border border-rose-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest"
                   title="Insert Bug Fixes Section"
                 >
-                  🐛 Fixes
+                  ��️ Fixes
                 </button>
                 <button
                   type="button"
@@ -19068,14 +19086,14 @@ function PostForm({
                     components={{
                       h3: ({ node, children, ...props }) => {
                         const text = String(children);
-                        if (text.includes("✨ What's New")) {
+                        if (text.includes("�� What's New")) {
                           return (
                             <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm">
                               {children}
                             </h3>
                           );
                         }
-                        if (text.includes("🐛 Bug Fixes")) {
+                        if (text.includes("��️ Bug Fixes")) {
                           return (
                             <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm">
                               {children}
@@ -19126,7 +19144,7 @@ function PostForm({
                       {attachments.map((att, idx) => {
                         const isImage =
                           /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                          (att.url || "").includes("image");
+                          att.url.includes("image");
                         return (
                           <div
                             key={idx}
@@ -19353,7 +19371,7 @@ function PostForm({
                               );
                               return null;
                             }
-                            return { name: name || " File Attachment", url };
+                            return { name: name || "�� File Attachment", url };
                           },
                         }).then((result) => {
                           if (result.isConfirmed && result.value) {
@@ -19606,7 +19624,7 @@ function PostForm({
             <button
               type="button"
               onClick={() => {
-                wrapText("### ✨ What's New\n- ", "\n");
+                wrapText("### �� What's New\n- ", "\n");
                 addToast("Section added to Content editor");
               }}
               className="flex flex-col items-center justify-center p-6 bg-[#EDF3FF] border-2 border-blue-100 rounded-3xl hover:border-blue-300 transition-all text-blue-600 shadow-sm group active:scale-95"
@@ -19621,7 +19639,7 @@ function PostForm({
             <button
               type="button"
               onClick={() => {
-                wrapText("### 🐛 Bug Fixes\n- ", "\n");
+                wrapText("### ��️ Bug Fixes\n- ", "\n");
                 addToast("Section added to Content editor");
               }}
               className="flex flex-col items-center justify-center p-6 bg-[#FFF2F2] border-2 border-rose-100 rounded-3xl hover:border-rose-300 transition-all text-rose-600 shadow-sm group active:scale-95"
@@ -19660,11 +19678,11 @@ function PostForm({
       >
         {loading
           ? editingPost
-            ? "SAVING... "
-            : "PUBLISHING... "
+            ? "SAVING... ��"
+            : "PUBLISHING... ��"
           : editingPost
-            ? "SAVE CHANGES "
-            : "PUBLISH NOW "}
+            ? "SAVE CHANGES ��"
+            : "PUBLISH NOW ��"}
       </button>
     </motion.form>
   );
@@ -19939,11 +19957,11 @@ function PostDetail({
               const updateData: any = {
                 views: increment(1),
               };
-              if (uid && data && !(Array.isArray(data.viewedBy) ? data.viewedBy.includes(auth.currentUser?.uid || "") : false)) {
+              if (uid && data && !data.viewedBy?.includes(uid)) {
                 updateData.viewedBy = arrayUnion(uid);
               }
               updateDoc(docRef, updateData).catch((e) => console.error(e));
-            } else if (uid && data && !(Array.isArray(data.viewedBy) ? data.viewedBy.includes(auth.currentUser?.uid || "") : false)) {
+            } else if (uid && data && !data.viewedBy?.includes(uid)) {
               updateDoc(docRef, {
                 viewedBy: arrayUnion(uid),
               }).catch((e) => console.error(e));
@@ -20216,7 +20234,7 @@ function PostDetail({
                   components={{
                     h3: ({ node, children, ...props }) => {
                       const text = String(children);
-                      if (text.includes("✨ What's New")) {
+                      if (text.includes("�� What's New")) {
                         return (
                           <h3
                             className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-blue-100 shadow-sm"
@@ -20226,7 +20244,7 @@ function PostDetail({
                           </h3>
                         );
                       }
-                      if (text.includes("🐛 Bug Fixes")) {
+                      if (text.includes("��️ Bug Fixes")) {
                         return (
                           <h3
                             className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-rose-100 shadow-sm"
@@ -20278,14 +20296,14 @@ function PostDetail({
               {post.attachments.filter(
                 (att) =>
                   /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                  (att.url || "").includes("image"),
+                  att.url.includes("image"),
               ).length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
                   {post.attachments
                     .filter(
                       (att) =>
                         /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                        (att.url || "").includes("image"),
+                        att.url.includes("image"),
                     )
                     .map((att, idx) => (
                       <div
@@ -20368,7 +20386,7 @@ function PostDetail({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => {
-                    const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
+                    |const attToDownload = getLatestAttachment(post.attachments) | if (!attToDownload) return;
                     handleForceDownload(
                       e,
                       attToDownload.url,
@@ -20506,7 +20524,7 @@ function PostDetail({
                 components={{
                   h3: ({ node, children, ...props }) => {
                     const text = String(children);
-                    if (text.includes("✨ What's New")) {
+                    if (text.includes("�� What's New")) {
                       return (
                         <h3
                           className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-blue-100 shadow-sm"
@@ -20516,7 +20534,7 @@ function PostDetail({
                         </h3>
                       );
                     }
-                    if (text.includes("🐛 Bug Fixes")) {
+                    if (text.includes("��️ Bug Fixes")) {
                       return (
                         <h3
                           className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-rose-100 shadow-sm"
@@ -20577,7 +20595,7 @@ function PostDetail({
                   {post.attachments.map((att, idx) => {
                     const isImage =
                       /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                      (att.url || "").includes("image");
+                      att.url.includes("image");
                     return (
                       <div key={idx}>
                         {isImage ? (
@@ -20688,7 +20706,8 @@ function PostDetail({
                               </div>
                               <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
                                 Download File •{" "}
-                                {(att.url || "").split(".")
+                                {att.url
+                                  .split(".")
                                   .pop()
                                   ?.split("?")[0]
                                   .toUpperCase() || "FILE"}
@@ -20714,7 +20733,7 @@ function PostDetail({
                   addToast("Please login first");
                   return;
                 }
-                const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+                const likedBy = post.likedBy || [];
                 if (likedBy.includes(userId)) {
                   await updateDoc(doc(db, "posts", post.id), {
                     likes: increment(-1),
@@ -20753,7 +20772,7 @@ function PostDetail({
               <Heart
                 size={20}
                 className={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
+                  post.likedBy?.includes(auth.currentUser?.uid || "")
                     ? "fill-primary text-primary"
                     : "text-primary group-hover:scale-110 transition-transform"
                 }
@@ -21252,7 +21271,7 @@ function PostComments({
               <div className="flex flex-row justify-between items-center sm:items-baseline mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[15px] font-black text-primary">
-                    <AdminUserTooltip uid={c.uid} userName={c.userName && !String(c.userName).includes("@") ? c.userName : "User"} allUsers={allUsers} isAdmin={isAdmin} />
+                    <AdminUserTooltip uid={c.uid} userName={c.userName && !c.userName.includes("@") ? c.userName : "User"} allUsers={allUsers} isAdmin={isAdmin} />
                   </span>
                   {(c.isAdminComment ||
                     c.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3") && (
@@ -21371,12 +21390,12 @@ function PostComments({
                       );
                     }
                   }}
-                  className={`text-xs flex items-center gap-1 ${(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "text-red-500 hover:text-slate-400" : "text-slate-400 hover:text-red-500"} active:scale-95 group transition-colors p-1 -ml-1 rounded-md`}
+                  className={`text-xs flex items-center gap-1 ${c.likes?.includes(auth.currentUser?.uid) ? "text-red-500 hover:text-slate-400" : "text-slate-400 hover:text-red-500"} active:scale-95 group transition-colors p-1 -ml-1 rounded-md`}
                 >
                   <Heart
                     size={12}
                     fill={
-                      (Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false)
+                      c.likes?.includes(auth.currentUser?.uid)
                         ? "currentColor"
                         : "none"
                     }
