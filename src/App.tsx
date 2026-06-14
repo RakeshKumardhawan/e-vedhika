@@ -928,29 +928,57 @@ function getPostDisplayViews(post: any, isUserAdmin: boolean) {
   return post.views || 0;
 }
 
-export const triggerNotification = (title: string, body: string) => {
-  playNotificationSound();
+export const NOTIFICATION_SOUNDS = [
+  { id: "default_ding", name: "Default Ding (డిఫాల్ట్)" },
+  { id: "soft_chime", name: "Soft Chime (సాఫ్ట్ గంట)" },
+  { id: "success_ping", name: "Success Ping (సక్సెస్)" },
+  { id: "alert_buzz", name: "Alert Buzz (అలర్ట్)" },
+  { id: "gentle_pop", name: "Gentle Pop (పాప్)" },
+  { id: "echo_bell", name: "Echo Bell (ఎకో బెల్)" },
+  { id: "digital_blip", name: "Digital Blip (డిజిటల్ బ్లిప్)" },
+  { id: "happy_trill", name: "Happy Trill (హ్యాపీ)" },
+  { id: "sharp_click", name: "Sharp Click (క్లిక్)" },
+  { id: "synth_wave", name: "Synth Wave (సింథ్)" },
+  { id: "marimba_tap", name: "Marimba (మరింబా)" }
+];
+
+export const triggerNotification = (title: string, body: string, playSound: boolean | string = true) => {
+  if (playSound === true) playNotificationSound("default_ding");
+  else if (typeof playSound === "string" && playSound !== "false") playNotificationSound(playSound);
 
   if (!("Notification" in window)) return;
 
   if (Notification.permission === "granted") {
-    try {
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.getRegistration().then((reg) => {
+    const options = {
+      body,
+      icon: "/pwa-192x192.png",
+      badge: "/pwa-192x192.png",
+    };
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready
+        .then((reg) => {
           if (reg) {
-            reg.showNotification(title, {
-              body,
-              icon: "/pwa-192x192.png",
-              badge: "/pwa-192x192.png",
-            } as any);
+            reg.showNotification(title, options as any).catch(() => {
+              try {
+                new Notification(title, options);
+              } catch (e) {}
+            });
           } else {
-            new Notification(title, { body, icon: "/pwa-192x192.png" });
+            try {
+              new Notification(title, options);
+            } catch (e) {}
           }
+        })
+        .catch(() => {
+          try {
+            new Notification(title, options);
+          } catch (e) {}
         });
-      } else {
-        new Notification(title, { body, icon: "/pwa-192x192.png" });
-      }
-    } catch (e) {}
+    } else {
+      try {
+        new Notification(title, options);
+      } catch (e) {}
+    }
   }
 };
 
@@ -1037,10 +1065,18 @@ export const handleShare = async (
 
   if (navigator.share) {
     try {
-      const shareData: any = { title, text, url };
+      // By omitting 'text' and 'files' for simple URLs, platforms like WhatsApp can reliably fetch Open Graph tags.
+      const shareData: any = { title, url };
+      
+      // We only attach text if there's no URL, or if we strictly want text
+      // But passing text along with URL often breaks rich previews in WhatsApp.
+      // So we'll skip `text` in shareData and rely on `url` to generate the preview.
       if (filesToShare && filesToShare.length > 0) {
         shareData.files = filesToShare;
+        // If we send a file, the URL preview is lost anyway, so might as well send text.
+        shareData.text = text;
       }
+
       await navigator.share(shareData);
       if (onSuccess) onSuccess();
     } catch (error: any) {
@@ -1748,6 +1784,28 @@ export default function App() {
   const [showForcedProfileSetup, setShowForcedProfileSetup] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
+  
+  const [notifSoundConfig, setNotifSoundConfig] = useState<any>({
+    posts: "default_ding",
+    updates: "default_ding",
+    general: "default_ding",
+  });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "notification_sounds"), (snap) => {
+      if (snap.exists() && snap.data()) {
+        const d = snap.data();
+        let formatted: any = {};
+        ["posts", "updates", "general"].forEach(key => {
+            if (typeof d[key] === "boolean") formatted[key] = d[key] ? "default_ding" : "false";
+            else if (d[key]) formatted[key] = d[key];
+            else formatted[key] = "default_ding";
+        });
+        setNotifSoundConfig((prev: any) => ({ ...prev, ...formatted }));
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const [adminLocked, setAdminLocked] = useState(true);
   const [adminPinInput, setAdminPinInput] = useState("");
@@ -2022,13 +2080,17 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newUpdate = addedChanges[0].doc.data() as any;
-            triggerNotification(
-              "New Flash Update!",
-              newUpdate.title ||
-                newUpdate.msg ||
-                newUpdate.text ||
-                "Check out the latest update.",
-            );
+            const isRecent = !newUpdate.time || (Date.now() - newUpdate.time < 60000);
+            if (isRecent) {
+              triggerNotification(
+                "New Flash Update!",
+                newUpdate.title ||
+                  newUpdate.msg ||
+                  newUpdate.text ||
+                  "Check out the latest update.",
+                notifSoundConfig.updates
+              );
+            }
           }
         }
       },
@@ -2074,10 +2136,14 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newPost = addedChanges[0].doc.data() as any;
-            triggerNotification(
-              `New Post: ${newPost.title || "Platform Update"}`,
-              newPost.content || "A new post has been published on E-Vedhika.",
-            );
+            const isRecent = !newPost.time || (Date.now() - newPost.time < 60000);
+            if (isRecent) {
+              triggerNotification(
+                `New Post: ${newPost.title || "Platform Update"}`,
+                newPost.content || "A new post has been published on E-Vedhika.",
+                notifSoundConfig.posts
+              );
+            }
           }
         }
       },
@@ -2228,10 +2294,14 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newNotif = addedChanges[0].doc.data() as any;
-            triggerNotification(
-              newNotif.title || "New Notification",
-              newNotif.message || newNotif.msg || "You have a new notification",
-            );
+            const isRecent = !newNotif.time || (Date.now() - newNotif.time < 60000);
+            if (isRecent) {
+              triggerNotification(
+                newNotif.title || "New Notification",
+                newNotif.message || newNotif.msg || "You have a new notification",
+                notifSoundConfig.general
+              );
+            }
           }
         }
       },
@@ -7510,6 +7580,21 @@ function AdminPanel({
   const [selectedRbacRole, setSelectedRbacRole] = useState("editor");
   const [allUserPins, setAllUserPins] = useState<any[]>([]);
   const [expandedRowIds, setExpandedRowIds] = useState<Record<string, boolean>>({});
+  
+  const [notifSoundConfig, setNotifSoundConfig] = useState({
+    posts: true,
+    updates: true,
+    general: true,
+  });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "notification_sounds"), (snap) => {
+      if (snap.exists() && snap.data()) {
+        setNotifSoundConfig((prev) => ({ ...prev, ...snap.data() }));
+      }
+    });
+    return () => unsub();
+  }, []);
   const [editingUpdateId, setEditingUpdateId] = useState<string | null>(null);
 
   const userRoleStr = (userProfile?.role || userRole || "").toLowerCase();
@@ -12988,6 +13073,57 @@ function AdminPanel({
                       </div>
                       <ChevronRight size={18} className="text-slate-300" />
                     </button>
+
+                    <div className="p-6 bg-white border-2 border-slate-100 rounded-3xl space-y-4">
+                      <div>
+                        <h5 className="font-black text-primary text-sm uppercase">
+                          Notification Sound Triggers
+                        </h5>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
+                          నోటిఫికేషన్లు ఏ వాటికి సౌండ్ రావాలో ఇక్కడ నిర్ణయించండి
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-4 pt-3 border-t border-slate-100">
+                        {[
+                          { key: 'updates', label: 'Flash Updates (ఫ్లాష్ అప్‌డేట్స్)' },
+                          { key: 'posts', label: 'New Posts (కొత్త పోస్ట్‌లు)' },
+                          { key: 'general', label: 'Alerts / Comments (లైక్‌లు / కామెంట్లు)' }
+                        ].map((item) => (
+                          <div key={item.key} className="flex items-center justify-between gap-4">
+                            <span className="text-[13px] font-bold text-slate-600">{item.label}</span>
+                            <div className="flex items-center gap-2">
+                              <select 
+                                className="text-xs p-1.5 border border-slate-200 rounded-lg bg-slate-50 font-bold focus:ring-2 focus:ring-blue-500 outline-none w-36"
+                                value={notifSoundConfig[item.key] || 'default_ding'}
+                                onChange={async (e) => {
+                                  let val = e.target.value;
+                                  setNotifSoundConfig((prev: any) => ({...prev, [item.key]: val}));
+                                  await setDoc(doc(db, "settings", "notification_sounds"), { [item.key]: val }, { merge: true });
+                                  if (val !== 'false') playNotificationSound(val);
+                                  addToast(`Sound saved for ${item.label}`);
+                                }}
+                              >
+                                <option value="false">Mute (మ్యూట్)</option>
+                                {NOTIFICATION_SOUNDS.map(sc => (
+                                  <option key={sc.id} value={sc.id}>{sc.name}</option>
+                                ))}
+                              </select>
+                              <button 
+                                onClick={() => {
+                                  const snd = notifSoundConfig[item.key] || 'default_ding';
+                                  if (snd !== 'false') playNotificationSound(snd);
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                title="Play Sample"
+                              >
+                                <Play size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div>

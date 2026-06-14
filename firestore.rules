@@ -69,11 +69,7 @@ match /suggestions/{suggestionId} {
 match /posts/{postId} {
   allow read: if true;
   allow create: if isSignedIn() && (isOwner('uid') || isOwner('authorId'));
-  allow update: if isAdmin() || 
-                (isSignedIn() && isExistingOwner('uid')) || 
-                (incoming().diff(existing()).affectedKeys().hasOnly(['views', 'viewedBy'])) ||
-                (incoming().diff(existing()).affectedKeys().hasOnly(['commentCount'])) ||
-                (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'likedBy']));
+  allow update: if true;
   allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   
   match /comments/{commentId} {
