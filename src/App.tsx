@@ -12,7 +12,7 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { ManaBot } from "./components/ManaBot";
+
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
@@ -6263,7 +6263,7 @@ export default function App() {
           </div>
         </main>
       </div>
-      <ManaBot currentTab={currentTab} userName={userProfile?.name} />
+      
 
       {/* IMAGE LIGHTBOX MODAL */}
       {lightboxImage && (
@@ -6331,6 +6331,22 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <button
+        onClick={() => {
+          if (!user) {
+            requireLoginAlert();
+            return;
+          }
+          setEditingPost(null);
+          setShowPostForm(true);
+        }}
+        className={`fixed ${showBackToTop ? 'bottom-[88px]' : 'bottom-6'} right-6 z-[999] p-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl hover:bg-blue-700 hover:scale-110 active:scale-95 transition-all flex items-center justify-center cursor-pointer border border-blue-400 group focus:outline-none focus:ring-4 focus:ring-blue-500/50`}
+        title="పోస్ట్ చేయండి (Create Post)"
+      >
+        <span className="hidden w-0 overflow-hidden group-hover:w-auto md:group-hover:inline-block font-black text-xs uppercase tracking-wider mr-2 ml-1 transition-all">Create Post</span>
+        <Plus size={24} strokeWidth={3} />
+      </button>
 
       {showBackToTop && (
         <button
@@ -7581,16 +7597,23 @@ function AdminPanel({
   const [allUserPins, setAllUserPins] = useState<any[]>([]);
   const [expandedRowIds, setExpandedRowIds] = useState<Record<string, boolean>>({});
   
-  const [notifSoundConfig, setNotifSoundConfig] = useState({
-    posts: true,
-    updates: true,
-    general: true,
+  const [notifSoundConfig, setNotifSoundConfig] = useState<any>({
+    posts: "default_ding",
+    updates: "default_ding",
+    general: "default_ding",
   });
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "notification_sounds"), (snap) => {
       if (snap.exists() && snap.data()) {
-        setNotifSoundConfig((prev) => ({ ...prev, ...snap.data() }));
+        const d = snap.data();
+        let formatted: any = {};
+        ["posts", "updates", "general"].forEach(key => {
+            if (typeof d[key] === "boolean") formatted[key] = d[key] ? "default_ding" : "false";
+            else if (d[key]) formatted[key] = d[key];
+            else formatted[key] = "default_ding";
+        });
+        setNotifSoundConfig((prev: any) => ({ ...prev, ...formatted }));
       }
     });
     return () => unsub();
@@ -13557,7 +13580,7 @@ function AdminPanel({
           </div>
         )}
       </main>
-      <ManaBot currentTab={currentTab} userName={userProfile?.name} />
+      
     </div>
   );
 }
