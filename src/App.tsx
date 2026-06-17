@@ -1903,27 +1903,6 @@ export default function App() {
         let ogImage = document.querySelector('meta[property="og:image"]');
         if (ogImage && post.mediaUrl)
           ogImage.setAttribute("content", post.mediaUrl);
-
-        // Auto-increment view for direct links
-        const viewedSessionKey = `session_viewed_${post.id}`;
-        if (!sessionStorage.getItem(viewedSessionKey)) {
-          sessionStorage.setItem(viewedSessionKey, "true");
-          const userId = auth.currentUser?.uid;
-          const updateData: any = {
-            views: increment(1),
-          };
-          if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
-            updateData.viewedBy = arrayUnion(userId);
-          }
-          updateDoc(doc(db, "posts", post.id), updateData).catch(() => {});
-        } else {
-          const userId = auth.currentUser?.uid;
-          if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
-            updateDoc(doc(db, "posts", post.id), {
-              viewedBy: arrayUnion(userId),
-            }).catch(() => {});
-          }
-        }
       }
     } else {
       document.title = "E-Vedhika | The Digital Governance Platform";
@@ -2841,7 +2820,7 @@ export default function App() {
   }
 
   return (
-    <div className={`h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
+    <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
       {showFooterModal && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
           <motion.div

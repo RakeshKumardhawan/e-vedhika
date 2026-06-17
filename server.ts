@@ -1612,7 +1612,7 @@ async function startServer() {
         try {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
           const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
-          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db/documents/posts/${postId}?key=${apiKey}`;
+          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
           const firestoreResp = await fetchObj(firestoreUrl, { headers: { "Referer": "https://e-vedhika.online/" } });
           
           if (firestoreResp.ok) {
@@ -1633,9 +1633,10 @@ async function startServer() {
             html = html.replace(/<meta\s+property="og:description"\s+content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${postDesc}" />`);
             html = html.replace(/<meta\s+name="twitter:title"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:title" content="${postTitle}" />`);
             html = html.replace(/<meta\s+name="twitter:description"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:description" content="${postDesc}" />`);
+            html = html.replace(/<meta\s+property="og:type"\s+content=".*?"\s*\/?>/gi, `<meta property="og:type" content="article" />`);
             
             if (mediaUrl) {
-              const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${req.protocol}://${req.get('host')}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
+              const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${fullBaseUrl}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
               html = html.replace(/<meta\s+property="og:image"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${absMediaUrl}" />`);
               html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
               html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
