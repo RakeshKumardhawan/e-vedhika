@@ -20319,9 +20319,9 @@ function PostDetail({
         {post.attachments &&
         (post.downloadStyle === "techspot" ||
           (!post.downloadStyle && post.attachments.length >= 2)) ? (
-          <div className="flex flex-col md:flex-row gap-8 mt-4">
+          <div className="flex flex-col gap-6 mt-4">
             <div className="flex-1 min-w-0">
-              <div className="prose prose-slate prose-lg md:prose-xl max-w-none text-slate-700 leading-relaxed font-serif whitespace-pre-wrap">
+              <div className="prose prose-slate prose-lg max-w-none text-slate-700 leading-relaxed font-serif whitespace-pre-wrap">
                 <ReactMarkdown
                   remarkPlugins={[remarkBreaks]}
                   rehypePlugins={[rehypeRaw]}
@@ -20479,7 +20479,7 @@ function PostDetail({
               )}
             </div>
 
-            <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 md:pl-10 flex flex-col">
+            <div className="w-full shrink-0 border-t border-gray-100 pt-6 flex flex-col">
               <div className="mb-5">
                 <a
                   href={(() => {

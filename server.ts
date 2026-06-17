@@ -313,6 +313,7 @@ async function startServer() {
               Key: fileKey,
               Body: fs.readFileSync(req.file.path),
               ContentType: contentType,
+              ContentDisposition: `attachment; filename="${req.file.originalname}"`
             };
 
             const command = new PutObjectCommand(uploadParams);
