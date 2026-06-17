@@ -3954,6 +3954,7 @@ export default function App() {
                 addToast={addToast}
                 userProfile={userProfile}
                 allUsers={allUsers}
+                storageConfig={storageConfig}
                 onEdit={(p) => {
                   setEditingPost(p);
                   setShowPostForm(true);
@@ -6178,6 +6179,7 @@ export default function App() {
                   <PostForm
                     key={editingPost?.id || "new"}
                     addToast={addToast}
+                    storageConfig={storageConfig}
                     onCancel={() => {
                       setShowPostForm(false);
                       setEditingPost(null);
@@ -18321,6 +18323,7 @@ function PostForm({
   editingPost,
   isAdmin,
   isEditor,
+  storageConfig,
 }: {
   addToast: (s: string) => void;
   onCancel: () => void;
@@ -18328,6 +18331,7 @@ function PostForm({
   editingPost: Post | null;
   isAdmin: boolean;
   isEditor: boolean;
+  storageConfig: "cloudflare" | "firebase";
 }) {
   const [loading, setLoading] = useState(false);
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
@@ -20008,6 +20012,7 @@ function PostDetail({
   userProfile,
   allUsers,
   onEdit,
+  storageConfig,
 }: {
   postId: string;
   onBack: () => void;
@@ -20016,6 +20021,7 @@ function PostDetail({
   userProfile: UserProfile | null;
   allUsers: UserProfile[];
   onEdit: (p: Post) => void;
+  storageConfig: "cloudflare" | "firebase";
 }) {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20983,6 +20989,7 @@ function PostDetail({
           userProfile={userProfile}
           isAdmin={isAdmin}
           allUsers={allUsers}
+          storageConfig={storageConfig}
         />
       </div>
       {showLikesModal && (
@@ -21012,12 +21019,14 @@ function PostComments({
   userProfile,
   isAdmin,
   allUsers,
+  storageConfig,
 }: {
   post: Post;
   addToast: (s: string) => void;
   userProfile: UserProfile | null;
   isAdmin: boolean;
   allUsers: UserProfile[];
+  storageConfig: "cloudflare" | "firebase";
 }) {
   const [comments, setComments] = useState<any[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);

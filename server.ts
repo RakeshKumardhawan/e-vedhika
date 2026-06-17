@@ -11,7 +11,7 @@ import { GoogleGenAI } from "@google/genai";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 let isFirebaseAdminInitialized = false;
 
