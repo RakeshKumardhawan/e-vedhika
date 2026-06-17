@@ -18385,38 +18385,63 @@ function PostForm({
       }
 
       return new Promise<{ name: string; url: string; version: string }>(
-        (resolve, reject) => {
+        async (resolve, reject) => {
           try {
             const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
             const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-            const storageRef = ref(storage, `uploads/${uniqueFilename}`);
             
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            uploadTask.on(
-              "state_changed",
-              (snapshot) => {
-                const progress =
-                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setUploadProgress(progress);
-              },
-              (error) => {
-                reject(error);
-              },
-              async () => {
-                try {
-                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                  setUploadProgress(100);
-                  resolve({
-                    name: file.name,
-                    url: downloadURL,
-                    version: "1.0",
-                  });
-                } catch (err) {
-                  reject(err);
-                }
+            if (storageConfig === "cloudflare") {
+              try {
+                const token = await auth.currentUser?.getIdToken();
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/api/upload', {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${token}` },
+                  body: formData
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
+                
+                setUploadProgress(100);
+                resolve({
+                  name: file.name,
+                  url: data.url,
+                  version: "1.0",
+                });
+              } catch (err) {
+                reject(err);
               }
-            );
+            } else {
+              const storageRef = ref(storage, `uploads/${uniqueFilename}`);
+              
+              const uploadTask = uploadBytesResumable(storageRef, file);
+
+              uploadTask.on(
+                "state_changed",
+                (snapshot) => {
+                  const progress =
+                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                  setUploadProgress(progress);
+                },
+                (error) => {
+                  reject(error);
+                },
+                async () => {
+                  try {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    setUploadProgress(100);
+                    resolve({
+                      name: file.name,
+                      url: downloadURL,
+                      version: "1.0",
+                    });
+                  } catch (err) {
+                    reject(err);
+                  }
+                }
+              );
+            }
           } catch (error) {
             reject(error);
           }
@@ -19000,9 +19025,26 @@ function PostForm({
                          }
                          const safeFileName = (file.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
                          const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeFileName}`;
-                         const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
-                         await uploadBytes(storageRef, file);
-                         const downloadURL = await getDownloadURL(storageRef);
+                         
+                         let downloadURL = "";
+                         if (storageConfig === "cloudflare") {
+                           const token = await auth.currentUser?.getIdToken();
+                           const formData = new FormData();
+                           formData.append('file', file);
+                           const response = await fetch('/api/upload', {
+                             method: 'POST',
+                             headers: { 'Authorization': `Bearer ${token}` },
+                             body: formData
+                           });
+                           const data = await response.json();
+                           if (!response.ok) throw new Error(data.error || 'R2 upload failed');
+                           downloadURL = data.url;
+                         } else {
+                           const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
+                           await uploadBytes(storageRef, file);
+                           downloadURL = await getDownloadURL(storageRef);
+                         }
+                         
                          newContent += `\n\n![Pasted Image](${downloadURL})`;
                       }
                       setContent(newContent);
@@ -21204,11 +21246,25 @@ function PostComments({
 
           const safeName = (commentFile.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-          const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
           
-          await uploadBytes(storageRef, fileToUpload);
+          if (storageConfig === "cloudflare") {
+            const token = await auth.currentUser?.getIdToken();
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}` },
+              body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'R2 upload failed');
+            uploadedImageUrl = data.url;
+          } else {
+            const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
+            await uploadBytes(storageRef, fileToUpload);
+            uploadedImageUrl = await getDownloadURL(storageRef);
+          }
           
-          uploadedImageUrl = await getDownloadURL(storageRef);
           addToast("Screenshot uploaded successfully!");
         } catch (e: any) {
           addToast(`Failed to upload screenshot: ${e.message || "Unknown error"}`);
