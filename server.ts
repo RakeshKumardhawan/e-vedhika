@@ -1606,7 +1606,7 @@ async function startServer() {
       // Global replacements for correct previews even on home page
       html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
       html = html.replace(/property="og:url" content="\/"/g, `property="og:url" content="${fullBaseUrl}/"`);
-      html = html.replace(/content="(\.\/|\/)banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
+      html = html.replace(/content="https:\/\/e-vedhika\.online\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
 
       if (postId) {
         try {

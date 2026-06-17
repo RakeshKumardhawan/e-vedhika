@@ -1065,16 +1065,10 @@ export const handleShare = async (
 
   if (navigator.share) {
     try {
-      // By omitting 'text' and 'files' for simple URLs, platforms like WhatsApp can reliably fetch Open Graph tags.
-      const shareData: any = { title, url };
-      
-      // We only attach text if there's no URL, or if we strictly want text
-      // But passing text along with URL often breaks rich previews in WhatsApp.
-      // So we'll skip `text` in shareData and rely on `url` to generate the preview.
+      const shareData: any = { title, text, url };
+
       if (filesToShare && filesToShare.length > 0) {
         shareData.files = filesToShare;
-        // If we send a file, the URL preview is lost anyway, so might as well send text.
-        shareData.text = text;
       }
 
       await navigator.share(shareData);
@@ -3862,7 +3856,7 @@ export default function App() {
         </aside>
 
         <main
-          className="flex-1 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-3 sm:p-6 lg:p-8"
+          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-3 sm:p-6 lg:p-8"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
         >
           {location.pathname.endsWith("/Evdka") &&
@@ -5138,6 +5132,15 @@ export default function App() {
                                             remarkPlugins={[remarkBreaks]}
                                             rehypePlugins={[rehypeRaw]}
                                             components={{
+                                              img: (props) => (
+                                                <span className="block my-6">
+                                                  <img 
+                                                    {...props} 
+                                                    className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" 
+                                                    loading="lazy" 
+                                                  />
+                                                </span>
+                                              ),
                                               h3: ({
                                                 node,
                                                 children,
@@ -8359,7 +8362,7 @@ function AdminPanel({
   return (
     <div className="flex bg-[#f8fafc] font-sans selection:bg-blue-100 selection:text-blue-900 overflow-hidden w-full relative">
       {/* Main Framework Container - sidebar removed as it is now unified in App.tsx */}
-      <main className="flex-1 bg-[#f8fafc] flex flex-col relative">
+      <main className="flex-1 min-w-0 bg-[#f8fafc] flex flex-col relative">
         {/* Dynamic Header */}
         <div
           role="banner"
@@ -11424,6 +11427,15 @@ function AdminPanel({
                                         remarkPlugins={[remarkBreaks]}
                                         rehypePlugins={[rehypeRaw]}
                                         components={{
+                                          img: (props) => (
+                                            <span className="block my-6">
+                                              <img 
+                                                {...props} 
+                                                className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" 
+                                                loading="lazy" 
+                                              />
+                                            </span>
+                                          ),
                                           h3: ({
                                             node,
                                             children,
@@ -17140,6 +17152,15 @@ function PostCard({
                 remarkPlugins={[remarkBreaks]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
+                  img: (props) => (
+                    <span className="block my-8">
+                      <img 
+                        {...props} 
+                        className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
+                        loading="lazy" 
+                      />
+                    </span>
+                  ),
                   h3: ({ node, children, ...props }) => {
                     const text = String(children);
                     if (text.includes("✨ What's New")) {
@@ -17525,6 +17546,15 @@ function PostCard({
               remarkPlugins={[remarkBreaks]}
               rehypePlugins={[rehypeRaw]}
               components={{
+                img: (props) => (
+                  <span className="block my-8">
+                    <img 
+                      {...props} 
+                      className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
+                      loading="lazy" 
+                    />
+                  </span>
+                ),
                 h3: ({ children }) => {
                   const text = String(children);
                   if (text.includes("✨ What's New")) {
@@ -18352,66 +18382,38 @@ function PostForm({
       }
 
       return new Promise<{ name: string; url: string; version: string }>(
-        async (resolve, reject) => {
+        (resolve, reject) => {
           try {
-            // ALWAYS USE BACKEND / CLOUDFLARE R2
-            // No more Firebase Storage -> fixes billing disabled 402 errors.
-            const formData = new FormData();
-            formData.append("file", file);
+            const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+            const storageRef = ref(storage, `uploads/${uniqueFilename}`);
+            
+            const uploadTask = uploadBytesResumable(storageRef, file);
 
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "/api/upload", true);
-
-            if (auth.currentUser) {
-              const token = await auth.currentUser.getIdToken();
-              xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-            }
-
-            xhr.upload.onprogress = (event) => {
-              if (event.lengthComputable) {
-                const progress = (event.loaded / event.total) * 100;
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const progress =
+                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                 setUploadProgress(progress);
-              }
-            };
-
-            xhr.onload = () => {
-              if (xhr.status === 200) {
+              },
+              (error) => {
+                reject(error);
+              },
+              async () => {
                 try {
-                  const response = JSON.parse(xhr.responseText);
-                  if (response.url) {
-                    setUploadProgress(100);
-                    // Ensure proxy URLs are absolute if needed, but our backend can return full Cloudflare R2 URL or relative /uploads path
-                    resolve({
-                      name: file.name,
-                      url: response.url,
-                      version: "1.0",
-                    });
-                  } else {
-                    reject(new Error("URL not returned from server"));
-                  }
-                } catch (e) {
-                  reject(new Error("Invalid response from server"));
-                }
-              } else {
-                try {
-                  const errResp = JSON.parse(xhr.responseText);
-                  reject(
-                    new Error(
-                      errResp.error ||
-                        "Upload failed with status " + xhr.status,
-                    ),
-                  );
-                } catch (e) {
-                  reject(new Error("Upload failed with status " + xhr.status));
+                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  setUploadProgress(100);
+                  resolve({
+                    name: file.name,
+                    url: downloadURL,
+                    version: "1.0",
+                  });
+                } catch (err) {
+                  reject(err);
                 }
               }
-            };
-
-            xhr.onerror = () => {
-              reject(new Error("Network error occurred during upload"));
-            };
-
-            xhr.send(formData);
+            );
           } catch (error) {
             reject(error);
           }
@@ -18972,13 +18974,47 @@ function PostForm({
                 required
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Write details here (Markdown supported)..."
+                onPaste={async (e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  const files: File[] = [];
+                  for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf("image") !== -1) {
+                      const file = items[i].getAsFile();
+                      if (file) files.push(file);
+                    }
+                  }
+                  if (files.length > 0) {
+                    e.preventDefault();
+                    addToast("Uploading pasted image...");
+                    try {
+                      let newContent = content;
+                      for (const file of files) {
+                         const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                         const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+                         const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
+                         const uploadTask = uploadBytesResumable(storageRef, file);
+                         await new Promise((resolve, reject) => {
+                           uploadTask.on("state_changed", () => {}, reject, () => resolve(null));
+                         });
+                         const downloadURL = await getDownloadURL(storageRef);
+                         newContent += `\n\n![Pasted Image](${downloadURL})`;
+                      }
+                      setContent(newContent);
+                      addToast("Image pasted into markdown successfully!");
+                    } catch (err: any) {
+                      addToast("Failed to upload pasted image.");
+                      console.error(err);
+                    }
+                  }
+                }}
+                placeholder="Write details here (Markdown supported)... You can paste screenshots here!"
                 rows={8}
                 className="w-full bg-slate-50 p-3 rounded-b-2xl border-2 border-t-0 border-slate-200 focus:border-primary/20 outline-none text-sm font-medium leading-relaxed"
               />
             </>
           ) : (
-            <div className="w-full bg-white p-6 rounded-2xl border-2 border-slate-200 min-h-[300px] overflow-y-auto">
+            <div className="w-full bg-white p-6 rounded-2xl border-2 border-slate-200 min-h-[300px] overflow-auto break-words">
               {/* Full Post Preview */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -19054,6 +19090,15 @@ function PostForm({
                     remarkPlugins={[remarkBreaks]}
                     rehypePlugins={[rehypeRaw]}
                     components={{
+                      img: (props) => (
+                        <span className="block my-8">
+                          <img 
+                            {...props} 
+                            className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
+                            loading="lazy" 
+                          />
+                        </span>
+                      ),
                       h3: ({ node, children, ...props }) => {
                         const text = String(children);
                         if (text.includes("✨ What's New")) {
@@ -20228,6 +20273,15 @@ function PostDetail({
                   remarkPlugins={[remarkBreaks]}
                   rehypePlugins={[rehypeRaw]}
                   components={{
+                    img: (props) => (
+                      <span className="block my-8">
+                        <img 
+                          {...props} 
+                          className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
+                          loading="lazy" 
+                        />
+                      </span>
+                    ),
                     h3: ({ node, children, ...props }) => {
                       const text = String(children);
                       if (text.includes("✨ What's New")) {
@@ -20518,6 +20572,15 @@ function PostDetail({
                 remarkPlugins={[remarkBreaks]}
                 rehypePlugins={[rehypeRaw]}
                 components={{
+                  img: (props) => (
+                    <span className="block my-8">
+                      <img 
+                        {...props} 
+                        className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
+                        loading="lazy" 
+                      />
+                    </span>
+                  ),
                   h3: ({ node, children, ...props }) => {
                     const text = String(children);
                     if (text.includes("✨ What's New")) {
@@ -20927,6 +20990,8 @@ function PostComments({
   const [editReplyText, setEditReplyText] = useState("");
   const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; target: "reply" | "comment" } | null>(null);
+  const [commentFile, setCommentFile] = useState<File | null>(null);
+  const uploadFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -21115,12 +21180,40 @@ function PostComments({
   }, [post.id, post.commentCount]);
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && !commentFile) return;
     if (requireLoginAlert()) return;
     if (submittingComment) return;
 
     setSubmittingComment(true);
     try {
+      let uploadedImageUrl = null;
+      if (commentFile) {
+        addToast("Uploading screenshot...");
+        try {
+          const safeName = commentFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+          const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
+          const uploadTask = uploadBytesResumable(storageRef, commentFile);
+          
+          await new Promise((resolve, reject) => {
+            uploadTask.on(
+              "state_changed",
+              () => {},
+              reject,
+              () => resolve(null)
+            );
+          });
+          
+          uploadedImageUrl = await getDownloadURL(storageRef);
+          addToast("Screenshot uploaded successfully!");
+        } catch (e) {
+          addToast("Failed to upload screenshot");
+          console.error("Screenshot upload error", e);
+          setSubmittingComment(false);
+          return;
+        }
+      }
+
       const authorName = isAdmin
         ? "Admin"
         : auth.currentUser!.displayName ||
@@ -21135,8 +21228,10 @@ function PostComments({
         isAdminComment: isAdmin,
         likes: [],
         edited: false,
+        mediaUrl: uploadedImageUrl
       });
       setNewComment("");
+      setCommentFile(null);
 
       await updateDoc(doc(db, "posts", post.id), {
         commentCount: increment(1),
@@ -21192,32 +21287,74 @@ function PostComments({
         </label>
         {auth.currentUser && !auth.currentUser.isAnonymous ? (
           <div className="flex flex-col sm:flex-row gap-3 relative">
-            {mentionQuery?.target === "comment" && (
-              <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3"
-                  >
-                    <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                      {(u.username || u.name || "U")[0].toUpperCase()}
-                    </div>
-                    <span className="truncate text-slate-700 font-bold">{u.username || u.name}</span>
+            <div className="flex-1 flex flex-col gap-2 relative">
+              {mentionQuery?.target === "comment" && (
+                <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                  {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                    <button
+                      key={u.id}
+                      onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3"
+                    >
+                      <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                        {(u.username || u.name || "U")[0].toUpperCase()}
+                      </div>
+                      <span className="truncate text-slate-700 font-bold">{u.username || u.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {commentFile && (
+                <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg">
+                  <Paperclip size={14} className="text-slate-500" />
+                  <span className="text-xs text-slate-600 truncate flex-1">{commentFile.name}</span>
+                  <button onClick={() => setCommentFile(null)} className="text-red-500 p-1 hover:bg-red-50 rounded">
+                    <Trash2 size={14} />
                   </button>
-                ))}
+                </div>
+              )}
+              <div className="flex relative">
+                <input
+                  value={newComment}
+                  onChange={handleCommentChange}
+                  onKeyDown={(e) => e.key === "Enter" && !submittingComment && handleAddComment()}
+                  onPaste={(e) => {
+                    const items = e.clipboardData?.items;
+                    if (!items) return;
+                    for (let i = 0; i < items.length; i++) {
+                      if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        if (file) setCommentFile(file);
+                        break;
+                      }
+                    }
+                  }}
+                  placeholder="Type your comment here..."
+                  className="flex-1 text-base bg-white p-4 pr-12 rounded-xl border-2 border-transparent focus:border-accent outline-none shadow-sm transition-all text-slate-700"
+                />
+                <button
+                  onClick={() => uploadFileInputRef.current?.click()}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-primary transition-colors bg-white rounded-lg"
+                  title="Attach Screenshot"
+                >
+                  <Paperclip size={20} />
+                </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={uploadFileInputRef}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setCommentFile(file);
+                    e.target.value = "";
+                  }}
+                />
               </div>
-            )}
-            <input
-              value={newComment}
-              onChange={handleCommentChange}
-              onKeyDown={(e) => e.key === "Enter" && !submittingComment && handleAddComment()}
-              placeholder="Type your comment here..."
-              className="flex-1 text-base bg-white p-4 rounded-xl border-2 border-transparent focus:border-accent outline-none shadow-sm transition-all text-slate-700"
-            />
+            </div>
             <button
               aria-label="Post Comment"
-              disabled={submittingComment || !newComment.trim()}
+              disabled={submittingComment || (!newComment.trim() && !commentFile)}
               onClick={handleAddComment}
               className="bg-primary text-white py-4 px-8 rounded-xl font-black uppercase tracking-wider disabled:opacity-50 hover:bg-opacity-90 flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
             >
@@ -21349,10 +21486,19 @@ function PostComments({
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-700 leading-relaxed">
-                  {c.text}
-                  {c.edited && <span className="text-[10px] text-slate-400 ml-2 italic">(edited)</span>}
-                </p>
+                <div className="space-y-3">
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap word-break">
+                    {c.text}
+                    {c.edited && <span className="text-[10px] text-slate-400 ml-2 italic">(edited)</span>}
+                  </p>
+                  {c.mediaUrl && (
+                    <div className="rounded-xl overflow-hidden border border-slate-200">
+                      <a href={c.mediaUrl} target="_blank" rel="noopener noreferrer">
+                        <img src={c.mediaUrl} alt="Attached screenshot" className="max-w-full max-h-[300px] object-contain hover:opacity-90 transition-opacity bg-slate-50" loading="lazy" />
+                      </a>
+                    </div>
+                  )}
+                </div>
               )}
               <div className="flex items-center gap-2 mt-2">
                 <button
