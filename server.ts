@@ -1612,7 +1612,7 @@ async function startServer() {
         try {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
           const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
-          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
+          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db/documents/posts/${postId}?key=${apiKey}`;
           const firestoreResp = await fetchObj(firestoreUrl, { headers: { "Referer": "https://e-vedhika.online/" } });
           
           if (firestoreResp.ok) {

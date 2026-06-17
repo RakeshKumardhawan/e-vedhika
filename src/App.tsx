@@ -18989,21 +18989,23 @@ function PostForm({
                     addToast("Uploading pasted image...");
                     try {
                       let newContent = content;
-                      for (const file of files) {
-                         const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-                         const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+                      for (let file of files) {
+                         if (file.type.startsWith("image/")) {
+                           const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, initialQuality: 0.8 };
+                           const compressedBlob = await imageCompression(file, options);
+                           file = new File([compressedBlob], file.name || "image.png", { type: file.type, lastModified: Date.now() });
+                         }
+                         const safeFileName = (file.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                         const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeFileName}`;
                          const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
-                         const uploadTask = uploadBytesResumable(storageRef, file);
-                         await new Promise((resolve, reject) => {
-                           uploadTask.on("state_changed", () => {}, reject, () => resolve(null));
-                         });
+                         await uploadBytes(storageRef, file);
                          const downloadURL = await getDownloadURL(storageRef);
                          newContent += `\n\n![Pasted Image](${downloadURL})`;
                       }
                       setContent(newContent);
                       addToast("Image pasted into markdown successfully!");
                     } catch (err: any) {
-                      addToast("Failed to upload pasted image.");
+                      addToast(`Failed to upload pasted image: ${err.message || "Unknown error"}`);
                       console.error(err);
                     }
                   }
@@ -21190,24 +21192,23 @@ function PostComments({
       if (commentFile) {
         addToast("Uploading screenshot...");
         try {
-          const safeName = commentFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          let fileToUpload = commentFile;
+          if (commentFile.type.startsWith("image/")) {
+            const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, initialQuality: 0.8 };
+            const compressedBlob = await imageCompression(commentFile, options);
+            fileToUpload = new File([compressedBlob], commentFile.name || "image.png", { type: commentFile.type, lastModified: Date.now() });
+          }
+
+          const safeName = (commentFile.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
           const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
-          const uploadTask = uploadBytesResumable(storageRef, commentFile);
           
-          await new Promise((resolve, reject) => {
-            uploadTask.on(
-              "state_changed",
-              () => {},
-              reject,
-              () => resolve(null)
-            );
-          });
+          await uploadBytes(storageRef, fileToUpload);
           
           uploadedImageUrl = await getDownloadURL(storageRef);
           addToast("Screenshot uploaded successfully!");
-        } catch (e) {
-          addToast("Failed to upload screenshot");
+        } catch (e: any) {
+          addToast(`Failed to upload screenshot: ${e.message || "Unknown error"}`);
           console.error("Screenshot upload error", e);
           setSubmittingComment(false);
           return;

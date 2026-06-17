@@ -4,7 +4,16 @@ service cloud.firestore {
 match /databases/{database}/documents {
 
 match /posts/{postId} {
-  allow read, update: if true;
+  allow read: if true;
+  
+  // ఎవరైనా (లాగిన్ అవని వారు కూడా) లింక్ ఓపెన్ చేసినప్పుడు views పెరగడానికి:
+  allow update: if incoming().diff(existing()).affectedKeys().hasOnly(['views', 'viewedBy']) || 
+                   incoming().diff(existing()).affectedKeys().hasOnly(['commentCount']) ||
+                   (incoming().diff(existing()).affectedKeys().hasAll(['views']) && incoming().keys().hasAll(['views'])); // Just fallback for simple increments
+                   
+  // అడ్మిన్ లేదా పోస్ట్ ఓనర్ కి అన్ని అప్డేట్ పర్మిషన్స్:
+  allow update: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
+  
   allow create: if isSignedIn() && (isOwner('uid') || isOwner('authorId'));
   allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   
