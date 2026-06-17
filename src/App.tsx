@@ -1065,10 +1065,13 @@ export const handleShare = async (
 
   if (navigator.share) {
     try {
-      const shareData: any = { title, text, url };
+      const shareData: any = { title, url };
 
       if (filesToShare && filesToShare.length > 0) {
         shareData.files = filesToShare;
+        // Only include text if we are sharing a file, because passing text 
+        // with a URL breaks native link previews in WhatsApp Android.
+        shareData.text = text;
       }
 
       await navigator.share(shareData);

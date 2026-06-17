@@ -1587,6 +1587,10 @@ async function startServer() {
     });
     
     app.use(vite.middlewares);
+
+    // In dev mode, vite.middlewares handles the routing. We can't easily intercept *after* it,
+    // but the above is standard. We will let dev testing rely on frontend, 
+    // BUT we will also add a generic fallback catch-all just in case.
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, { index: false }));
