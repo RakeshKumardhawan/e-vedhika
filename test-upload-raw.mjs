@@ -8,7 +8,7 @@ async function test() {
   body += '--' + boundary + '--\r\n';
 
   try {
-    const req = await fetch('http://127.0.0.1:3000/api/upload', {
+    const req = await fetch('http://0.0.0.0:3000/api/upload', {
       method: 'POST',
       headers: { 
         'Authorization': 'Bearer a.eyAidWlkIjogInRlc3QtMTIzIiB9.c',

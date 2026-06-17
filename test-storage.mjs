@@ -1,20 +1,11 @@
-import { initializeApp, cert } from 'firebase-admin/app';
+import admin from 'firebase-admin';
+import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import * as fs from 'fs';
 
-const serviceAccount = JSON.parse(fs.readFileSync('./firebase-applet-config.json', 'utf8'));
-
-initializeApp({
-  credential: cert(serviceAccount)
-});
-
+initializeApp();
 const db = getFirestore();
-
-async function main() {
-  await db.collection('settings').doc('admin_config').set({
-    storageType: 'cloudflare'
-  }, { merge: true });
-  console.log("Updated storageType to cloudflare");
+async function test() {
+  const doc = await db.collection('settings').doc('admin_config').get();
+  console.log(doc.data());
 }
-
-main().catch(console.error);
+test();
