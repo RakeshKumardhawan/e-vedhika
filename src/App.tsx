@@ -31,6 +31,7 @@ import {
   Handshake,
   Lightbulb,
   AlertTriangle,
+  Sparkles,
   Send,
   LogOut,
   ChevronDown,
@@ -13697,6 +13698,7 @@ function SmartAssistant({
   const [input, setInput] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deepThinking, setDeepThinking] = useState(false);
 
   const handleAsk = async () => {
     if (!input.trim()) return;
@@ -13705,7 +13707,11 @@ function SmartAssistant({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: input, systemInstruction }),
+        body: JSON.stringify({ 
+          prompt: input, 
+          systemInstruction,
+          modelType: deepThinking ? "complex" : "general"
+        }),
       });
 
       if (!res.ok) {
@@ -13729,26 +13735,40 @@ function SmartAssistant({
         <Icon size={18} className="text-primary" />
         <h4 className="font-bold text-sm text-primary">{title}</h4>
       </div>
-      <div className="flex gap-2">
-        <input
-          className="flex-1 bg-white border p-2 rounded-xl text-sm"
-          placeholder={placeholder}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-        />
-        <button
-          aria-label="Ask assistant"
-          onClick={handleAsk}
-          disabled={loading}
-          className="bg-primary text-white p-2 rounded-xl disabled:opacity-50"
-        >
-          {loading ? (
-            <Loader2 className="animate-spin" size={18} />
-          ) : (
-            <Send size={18} />
-          )}
-        </button>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <input
+            className="flex-1 bg-white border p-2 rounded-xl text-sm"
+            placeholder={placeholder}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAsk()}
+          />
+          <button
+            aria-label="Ask assistant"
+            onClick={handleAsk}
+            disabled={loading}
+            className="bg-primary text-white p-2 rounded-xl disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <Send size={18} />
+            )}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 px-1">
+          <input
+            type="checkbox"
+            id="deep-thinking-toggle"
+            checked={deepThinking}
+            onChange={(e) => setDeepThinking(e.target.checked)}
+            className="rounded text-primary focus:ring-primary h-4 w-4"
+          />
+          <label htmlFor="deep-thinking-toggle" className="text-xs font-bold text-slate-500 cursor-pointer">
+            ✨ Deep Thinking (Pro Model)
+          </label>
+        </div>
       </div>
       {response && (
         <div className="mt-3 p-3 bg-white rounded-xl text-xs text-slate-600 border border-slate-100 markdown-body">
@@ -18332,6 +18352,7 @@ function PostForm({
   storageConfig: "cloudflare" | "firebase";
 }) {
   const [loading, setLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState("");
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
   const [title, setTitle] = useState(editingPost?.title || "");
   const [content, setContent] = useState(editingPost?.content || "");
@@ -18997,6 +19018,84 @@ function PostForm({
                 >
                   ⚡ Improv
                 </button>
+                <div className="flex-1" />
+                <div className="flex gap-1 ml-auto">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!content.trim()) {
+                        addToast("దయచేసి ముందుగా కొంత కంటెంట్ (Content) ఎంటర్ చేయండి.");
+                        return;
+                      }
+                      setIsAiLoading("సంక్షిప్తం చేస్తోంది (Summarizing)...");
+                      try {
+                        const res = await fetch("/api/chat", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ 
+                            prompt: `Please summarize the following text into 3-4 professional bullet points. Output ONLY the summary text in the same language as the input:\n\n${content}`,
+                            systemInstruction: "You are a professional editor. Output ONLY the summary.",
+                            modelType: "fast"
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.text && !data.isError) {
+                          setContent(data.text);
+                          addToast("విజయవంతంగా కుదించబడింది! (Summarized successfully!)");
+                        } else {
+                          addToast(data.text || "Failed to summarize content.");
+                        }
+                      } catch (e) {
+                        addToast("AI సమ్మరైజ్ సమయంలో లోపం ఏర్పడింది. (Error occurred!)");
+                      } finally {
+                        setIsAiLoading("");
+                      }
+                    }}
+                    disabled={!!isAiLoading}
+                    className="px-2 py-1 hover:bg-slate-800 hover:text-white rounded-lg transition-all text-slate-700 border border-slate-200 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                    title="Summarize Content with AI"
+                  >
+                    Summarize
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!content.trim()) {
+                        addToast("దయచేసి ముందుగా కొంత కంటెంట్ (Content) ఎంటర్ చేయండి.");
+                        return;
+                      }
+                      setIsAiLoading("మెరుగుపరుస్తోంది (Enhancing)...");
+                      try {
+                        const res = await fetch("/api/chat", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ 
+                            prompt: `Enhance the following text. Fix grammar/spelling, make it sound highly professional and polished while keeping its original meaning and language (if it's in Telugu, keep it in Telugu. If English, keep it in English). Return ONLY the enhanced text:\n\n${content}`,
+                            systemInstruction: "You are a professional editor. Output ONLY the edited text, no pleasantries.",
+                            modelType: "general"
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.text && !data.isError) {
+                          setContent(data.text);
+                          addToast("విజయవంతంగా మెరుగుపరచబడింది! (Enhanced successfully!)");
+                        } else {
+                          addToast(data.text || "Failed to enhance content.");
+                        }
+                      } catch (e) {
+                        addToast("AI మెరుగుదల సమయంలో లోపం ఏర్పడింది. (Error occurred!)");
+                      } finally {
+                        setIsAiLoading("");
+                      }
+                    }}
+                    disabled={!!isAiLoading}
+                    className="px-2 py-1 hover:bg-indigo-600 hover:text-white rounded-lg transition-all text-indigo-600 border border-indigo-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest bg-white disabled:opacity-50"
+                    title="Enhance with AI"
+                  >
+                    {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} 
+                    AI Enhance
+                  </button>
+                </div>
               </div>
               <textarea
                 ref={textareaRef}
