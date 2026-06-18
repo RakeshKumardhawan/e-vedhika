@@ -1169,27 +1169,25 @@ export const handleForceDownload = async (
     if (url.startsWith("data:")) {
       link.href = url;
       link.download = extractedFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
-      // Bypass the proxy to avoid "Site wasn't available" errors for large files.
-      // Use the direct URL and let the browser's native download handle it.
-      link.href = url;
-      link.target = "_blank";
-      
-      const finalLower = extractedFilename.toLowerCase();
-      if (
-        finalLower !== "download" &&
-        finalLower !== "document" &&
-        finalLower !== "attachment" &&
-        finalLower !== "download.zip" &&
-        !finalLower.startsWith("download")
-      ) {
-        link.download = extractedFilename;
+      const isRemoteHttp = url.startsWith('http://') || url.startsWith('https://');
+      if (isRemoteHttp) {
+        // Direct download using our reliable server-side backend proxy
+        link.href = `/api/download?url=${encodeURIComponent(url)}&name=${encodeURIComponent(extractedFilename)}`;
+        // No need for target=_blank since it will prompt file download
+      } else {
+        link.href = url;
+        link.target = "_blank";
       }
+      link.download = extractedFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   } catch (error) {
     console.error("Download failed:", error);
     const link = document.createElement("a");

@@ -236,6 +236,42 @@ async function startServer() {
     }
   });
 
+  app.get("/api/download", (req, res) => {
+    const fileUrl = req.query.url as string;
+    const fileName = req.query.name as string || 'download';
+    
+    if (!fileUrl) {
+      return res.status(400).send("Missing URL parameter");
+    }
+
+    try {
+      const httpModule = fileUrl.startsWith('https') ? require('https') : require('http');
+      
+      httpModule.get(fileUrl, (proxyRes: any) => {
+        if (proxyRes.statusCode !== 200) {
+          return res.status(proxyRes.statusCode || 500).send("Failed to fetch upstream file");
+        }
+        res.setHeader("Content-Type", proxyRes.headers["content-type"] || "application/octet-stream");
+        
+        // Force download behavior using proper UTF-8 encoded filename
+        const encodedName = encodeURIComponent(fileName.replace(/"/g, ''));
+        res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodedName}`);
+        
+        if (proxyRes.headers["content-length"]) {
+          res.setHeader("Content-Length", proxyRes.headers["content-length"]);
+        }
+
+        proxyRes.pipe(res);
+      }).on('error', (err: any) => {
+        console.error("Proxy download failed:", err);
+        res.status(500).send("Internal Server Error");
+      });
+    } catch (error) {
+      console.error("Proxy download outer error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
   app.post("/api/about", verifyToken, (req, res) => {
     try {
       const { title, content } = req.body;
@@ -1617,7 +1653,7 @@ async function startServer() {
         try {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
           const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
-          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db/documents/posts/${postId}?key=${apiKey}`;
+          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
           const firestoreResp = await fetchObj(firestoreUrl, { headers: { "Referer": "https://e-vedhika.online/" } });
           
           if (firestoreResp.ok) {
@@ -1643,6 +1679,7 @@ async function startServer() {
             if (mediaUrl) {
               const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${fullBaseUrl}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
               html = html.replace(/<meta\s+property="og:image"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+itemprop="image"\s+content=".*?"\s*\/?>/gi, `<meta itemprop="image" content="${absMediaUrl}" />`);
               html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
               html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
             }

@@ -19,12 +19,24 @@ export default defineConfig(({mode}) => {
           short_name: 'E-Vedhika',
           description: 'E-Vedhika All problems one solution',
           theme_color: '#2563eb',
+          background_color: '#ffffff',
+          display: 'standalone',
           icons: [
             {
               src: 'ev-logo-v2.svg',
               sizes: 'any',
               type: 'image/svg+xml',
               purpose: 'any maskable'
+            },
+            {
+              src: 'ev-logo-v2.png',
+              sizes: '192x192',
+              type: 'image/png'
+            },
+            {
+              src: 'ev-logo-v2.png',
+              sizes: '512x512',
+              type: 'image/png'
             }
           ]
         },
