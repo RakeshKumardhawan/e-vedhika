@@ -1744,6 +1744,7 @@ export default function App() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const allUpdates = useMemo(() => {
     const merged = new Map<string, any>();
@@ -5121,6 +5122,7 @@ export default function App() {
                                                 <span className="block my-6">
                                                   <img 
                                                     {...props} 
+                                                    referrerPolicy="no-referrer"
                                                     className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" 
                                                     loading="lazy" 
                                                   />
@@ -11479,6 +11481,7 @@ function AdminPanel({
                                             <span className="block my-6">
                                               <img 
                                                 {...props} 
+                                                referrerPolicy="no-referrer"
                                                 className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" 
                                                 loading="lazy" 
                                               />
@@ -17223,6 +17226,7 @@ function PostCard({
                     <span className="block my-8">
                       <img 
                         {...props} 
+                        referrerPolicy="no-referrer"
                         className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
                         loading="lazy" 
                       />
@@ -17336,6 +17340,7 @@ function PostCard({
                         src={att.url}
                         alt={att.name}
                         loading="lazy"
+                        referrerPolicy="no-referrer"
                         className="w-full h-40 object-cover transition-transform group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -17384,12 +17389,13 @@ function PostCard({
               <div className="mb-4">
                 {post.mediaType?.startsWith("video") ? (
                   <video src={post.mediaUrl} controls className="post-media" />
-                ) : post.mediaType?.startsWith("image") ? (
+                ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
                   <img
                     src={post.mediaUrl}
                     alt={post.title}
                     className="post-media"
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                   />
                 ) : post.mediaType?.startsWith("audio") ? (
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -17519,7 +17525,7 @@ function PostCard({
             <div className="flex flex-col gap-2 w-full">
               {post.mediaUrl &&
                 !post.mediaType?.startsWith("video") &&
-                !post.mediaType?.startsWith("image") &&
+                !(post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image")) &&
                 !post.mediaType?.startsWith("audio") &&
                 post.mediaType !== "link" && (
                   <a
@@ -17617,6 +17623,7 @@ function PostCard({
                   <span className="block my-8">
                     <img 
                       {...props} 
+                      referrerPolicy="no-referrer"
                       className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
                       loading="lazy" 
                     />
@@ -17816,12 +17823,13 @@ function PostCard({
             <div className="mb-4">
               {post.mediaType?.startsWith("video") ? (
                 <video src={post.mediaUrl} controls className="post-media" />
-              ) : post.mediaType?.startsWith("image") ? (
+              ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
                 <img
                   src={post.mediaUrl}
                   alt={post.title}
                   className="post-media"
                   loading="lazy"
+                  referrerPolicy="no-referrer"
                 />
               ) : post.mediaType?.startsWith("audio") ? (
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -19218,6 +19226,7 @@ function PostForm({
                     <img
                       src={currentUserProfile.photoURL}
                       alt="Author"
+                      referrerPolicy="no-referrer"
                       className="w-10 h-10 rounded-full object-cover border-2 border-slate-100 shadow-sm"
                     />
                   ) : (
@@ -19290,6 +19299,7 @@ function PostForm({
                         <span className="block my-8">
                           <img 
                             {...props} 
+                            referrerPolicy="no-referrer"
                             className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
                             loading="lazy" 
                           />
@@ -19342,63 +19352,36 @@ function PostForm({
                     No content to preview...
                   </span>
                 )}
-
-                {attachments.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-                    <div className="flex items-center gap-2 mb-1 px-1">
-                      <Paperclip size={12} className="text-slate-400" />
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Attached Files (Preview)
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {attachments.map((att, idx) => {
-                        const isImage =
-                          /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                          (att.url || "").includes("image");
-                        return (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl relative group"
-                          >
-                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-100 shrink-0 shadow-sm overflow-hidden">
-                              {isImage ? (
-                                <img
-                                  src={att.url}
-                                  alt="Attached"
-                                  className="w-full h-full object-cover"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <FileText size={16} className="text-blue-500" />
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <span className="text-[11px] font-bold text-slate-700 truncate">
-                                {att.name}
-                              </span>
-                              <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">
-                                Link Provided
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAttachments((prev) =>
-                                  prev.filter((_, i) => i !== idx),
-                                )
-                              }
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border border-white"
-                            >
-                              <X size={10} strokeWidth={4} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {attachments.filter(
+                (att) =>
+                  /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+                  (att.url || "").includes("image"),
+              ).length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                  {attachments
+                    .filter(
+                      (att) =>
+                        /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+                        (att.url || "").includes("image"),
+                    )
+                    .map((att, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl overflow-hidden border-2 border-slate-50 shadow-sm relative group"
+                      >
+                        <img
+                          src={att.url}
+                          alt={att.name}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                    ))}
+                </div>
+              )}
 
               {websiteName && (
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group">
@@ -19415,7 +19398,7 @@ function PostForm({
                 <div className="mb-4">
                   {media.type?.startsWith("video") ? (
                     <video src={media.url} controls className="post-media" />
-                  ) : media.type?.startsWith("image") ? (
+                  ) : media.type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(media.url || "") || (media.url || "").includes("image") ? (
                     <img
                       src={media.url}
                       alt="Media preview"
@@ -19637,14 +19620,18 @@ function PostForm({
                           <GripVertical size={14} />
                         </div>
 
-                        <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                          <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                            <ArrowDown
-                              size={12}
-                              className="text-[#666666]"
-                              strokeWidth={4}
-                            />
-                          </div>
+                        <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc] relative overflow-hidden">
+                          {/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || (att.url || "").includes("image") ? (
+                            <img src={att.url} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="Thumb" loading="lazy" />
+                          ) : (
+                            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
+                              <ArrowDown
+                                size={12}
+                                className="text-[#666666]"
+                                strokeWidth={4}
+                              />
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col px-3 min-w-0">
                           <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
@@ -20385,6 +20372,7 @@ function PostDetail({
               <img
                 src={post.userPhoto}
                 alt="Author"
+                referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -20407,10 +20395,11 @@ function PostDetail({
                 controls
                 className="w-full max-h-[500px]"
               />
-            ) : post.mediaType?.startsWith("image") ? (
+            ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
               <img
                 src={post.mediaUrl}
                 alt="Post media"
+                referrerPolicy="no-referrer"
                 className="w-full object-cover max-h-[500px]"
               />
             ) : post.mediaType?.startsWith("audio") ? (
@@ -20501,6 +20490,7 @@ function PostDetail({
                       <span className="block my-8">
                         <img 
                           {...props} 
+                          referrerPolicy="no-referrer"
                           className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
                           loading="lazy" 
                         />
@@ -20597,6 +20587,7 @@ function PostDetail({
                           src={att.url}
                           alt={att.name}
                           loading="lazy"
+                          referrerPolicy="no-referrer"
                           className="w-full h-48 object-cover transition-transform group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
@@ -20704,7 +20695,7 @@ function PostDetail({
               <div className="flex flex-col gap-2 w-full">
                 {post.mediaUrl &&
                   !post.mediaType?.startsWith("video") &&
-                  !post.mediaType?.startsWith("image") &&
+                  !(post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image")) &&
                   !post.mediaType?.startsWith("audio") &&
                   post.mediaType !== "link" && (
                     <a
@@ -20800,6 +20791,7 @@ function PostDetail({
                     <span className="block my-8">
                       <img 
                         {...props} 
+                        referrerPolicy="no-referrer"
                         className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
                         loading="lazy" 
                       />
@@ -20894,6 +20886,7 @@ function PostDetail({
                             <img
                               src={att.url}
                               alt={att.name}
+                              referrerPolicy="no-referrer"
                               className="w-full h-48 object-cover transition-transform group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
@@ -21734,7 +21727,7 @@ function PostComments({
                   {c.mediaUrl && (
                     <div className="rounded-xl overflow-hidden border border-slate-200">
                       <a href={c.mediaUrl} target="_blank" rel="noopener noreferrer">
-                        <img src={c.mediaUrl} alt="Attached screenshot" className="max-w-full max-h-[300px] object-contain hover:opacity-90 transition-opacity bg-slate-50" loading="lazy" />
+                        <img src={c.mediaUrl} alt="Attached screenshot" referrerPolicy="no-referrer" className="max-w-full max-h-[300px] object-contain hover:opacity-90 transition-opacity bg-slate-50" loading="lazy" />
                       </a>
                     </div>
                   )}
