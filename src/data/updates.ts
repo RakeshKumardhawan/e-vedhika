@@ -12,6 +12,16 @@ export interface UpdateEntry {
 
 export const SYSTEM_UPDATES: UpdateEntry[] = [
   {
+    id: "sys_v164",
+    version: "V1.6.4",
+    time: Date.now(),
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "UPDATE",
+    title: "ట్రాఫిక్ ఎనలిటిక్స్ & ఫైల్ అప్‌డేట్స్ 🚀",
+    description: "యూజర్స్ ఏ ప్లాట్‌ఫామ్ ద్వారా (WhatsApp, Facebook, etc.) వెబ్‌సైట్‌ను విజిట్ చేస్తున్నారో ట్రాక్ చేయడానికి కొత్త ఎనలిటిక్స్ ఫీచర్ మరియు అడ్మిన్ ప్యానెల్‌లో విజువలైజేషన్, అలాగే పోస్ట్‌ల ఫైల్స్ అప్‌లోడ్‌లో కొత్త బ్యాడ్జ్ కేటగిరీల ఫీచర్ తీసుకురాబడింది.",
+    color: "bg-blue-500",
+  },
+  {
     id: "sys_v163",
     version: "V1.6.3",
     time: 1780594724000,

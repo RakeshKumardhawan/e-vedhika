@@ -120,6 +120,7 @@ import {
   Maximize2,
   FileSpreadsheet,
   Package,
+  CornerDownRight,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -536,6 +537,7 @@ interface Post {
     url: string;
     version?: string;
     status?: "New" | "Old";
+    badgePrefix?: string;
   }[];
   downloadStyle?: "classic" | "techspot";
 }
@@ -1499,44 +1501,26 @@ export default function App() {
 
   useEffect(() => {
     const path = location.pathname.toLowerCase();
-    const isFarmerRegistry =
-      path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
+    const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
+    
     if (isFarmerRegistry) {
       if (currentTab !== "farmer_registry") {
         setCurrentTab("farmer_registry");
       }
       return;
     }
-    const tab = searchParams.get("tab");
-    const resolvedTab = tab === "reports" ? "my_activity" : tab;
-    if (resolvedTab && resolvedTab !== currentTab) {
-      setCurrentTab(resolvedTab);
-    }
-  }, [searchParams, currentTab, location.pathname]);
 
-  useEffect(() => {
-    const path = location.pathname.toLowerCase();
-    const isFarmerRegistry =
-      path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
-    if (isFarmerRegistry) {
-      if (currentTab !== "farmer_registry") {
-        navigate(`/?tab=${currentTab}`);
-      }
-      return;
-    }
     const currentParam = searchParams.get("tab");
     const resolvedParam = currentParam === "reports" ? "my_activity" : currentParam;
 
-    if (currentTab && currentTab !== (resolvedParam || "home")) {
+    if (resolvedParam && resolvedParam !== currentTab && resolvedParam !== "") {
+      setCurrentTab(resolvedParam);
+    } else if (currentTab && resolvedParam !== currentTab) {
       const newParams = new URLSearchParams(searchParams);
-      if (currentTab === "home") {
-        newParams.delete("tab");
-      } else {
-        newParams.set("tab", currentTab);
-      }
+      newParams.set("tab", currentTab);
       setSearchParams(newParams, { replace: true });
     }
-  }, [currentTab, location.pathname, navigate, searchParams, setSearchParams]);
+  }, [searchParams, currentTab, location.pathname, setSearchParams]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -3006,13 +2990,11 @@ export default function App() {
         <div
           className="brand-wrapper cursor-pointer flex items-center gap-1.5 sm:gap-4 min-w-0"
           onClick={() => {
-            navigate("/");
+            const newSearch = new URLSearchParams();
+            newSearch.set("tab", "home");
+            navigate({ pathname: "/", search: newSearch.toString() });
             setCurrentTab("home");
             setSidebarOpen(false);
-            if (searchParams.has("postId")) {
-              searchParams.delete("postId");
-              setSearchParams(searchParams);
-            }
           }}
         >
           {/* లోగో HTML స్ట్రక్చర్ */}
@@ -5724,15 +5706,9 @@ export default function App() {
                                     required
                                   >
                                     <option value="">విభాగం ఎంచుకోండి</option>
-                                    <option>Home</option>
-                                    <option>Latest News</option>
-                                    <option>Services</option>
-                                    <option>Missing Features</option>
-                                    <option>Discussion Forum</option>
-                                    <option>User Login</option>
-                                    <option>FAQ</option>
-                                    <option>Search</option>
-                                    <option>Suggestion for website</option>
+                                    {suggestionCategories.map((cat, idx) => (
+                                      <option key={idx} value={cat}>{cat}</option>
+                                    ))}
                                   </select>
                                 </div>
                               </div>
@@ -8820,6 +8796,74 @@ function AdminPanel({
                       </ResponsiveContainer>
                     </div>
                   </div>
+                  
+                  <div className="bg-white p-10 rounded-[60px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all col-span-1 lg:col-span-2 mt-8 lg:mt-0 xl:col-span-3">
+                    <div className="flex items-center justify-between mb-8">
+                      <h4 className="text-xl font-black text-slate-900 tracking-tight">
+                        Traffic Sources
+                      </h4>
+                      <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                        <Globe size={20} />
+                      </span>
+                    </div>
+                    <div className="h-[320px] w-full relative">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart
+                          data={[
+                            { name: "Direct Link", users: posts.reduce((acc: number, p: any) => acc + (p.source_direct || 0), 0) },
+                            { name: "WhatsApp", users: posts.reduce((acc: number, p: any) => acc + (p.source_whatsapp || 0), 0) },
+                            { name: "Facebook", users: posts.reduce((acc: number, p: any) => acc + (p.source_facebook || 0), 0) },
+                            { name: "Twitter", users: posts.reduce((acc: number, p: any) => acc + (p.source_twitter || 0), 0) },
+                            { name: "Other", users: posts.reduce((acc: number, p: any) => acc + (p.source_other || 0), 0) }
+                          ]}
+                          margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: "#64748B", fontSize: 12, fontWeight: 700 }}
+                            dy={10}
+                          />
+                          <YAxis 
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: "#64748B", fontSize: 12, fontWeight: 700 }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              borderRadius: "24px",
+                              border: "none",
+                              boxShadow: "0 20px 40px rgba(0,0,0,0.05)",
+                              fontWeight: 800,
+                            }}
+                            cursor={{ fill: "#f1f5f9" }}
+                          />
+                          <Bar 
+                            dataKey="users" 
+                            fill="#3b82f6" 
+                            radius={[8, 8, 0, 0]}
+                            barSize={40}
+                          >
+                            {[
+                              { name: "Direct Link" },
+                              { name: "WhatsApp" },
+                              { name: "Facebook" },
+                              { name: "Twitter" },
+                              { name: "Other" }
+                            ].map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={["#94a3b8", "#25D366", "#1877F2", "#1DA1F2", "#8b5cf6"][index]} 
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -17540,7 +17584,7 @@ function PostCard({
                         title="Version Number"
                       >
                         <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                          v
+                          {att.badgePrefix || "v"}
                         </span>
                         <span className="text-[9px] font-bold text-blue-600 leading-none">
                           {att.version || "1.0"}
@@ -17730,7 +17774,7 @@ function PostCard({
                                 title="Version Number"
                               >
                                 <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                                  v
+                                  {att.badgePrefix || "v"}
                                 </span>
                                 <span className="text-[9px] font-bold text-blue-600 leading-none">
                                   {att.version || "1.0"}
@@ -18131,21 +18175,25 @@ function PostCard({
 
                   {/* Replies List */}
                   {c.replies && c.replies.length > 0 && (
-                    <div className="mt-2 space-y-2 pl-4 border-l-2 border-slate-100">
+                    <div className="mt-3 space-y-3 pl-5 border-l-2 border-indigo-100 relative">
                       {c.replies.map((reply: any) => (
-                        <div key={reply.id} className="flex gap-2 items-start bg-white p-2 rounded-xl">
-                          <div className="flex-1">
-                            <div className="flex justify-between items-center">
-                              <span className="text-[11px] font-bold text-slate-700">
+                        <div key={reply.id} className="flex gap-3 items-start relative pb-1">
+                          <CornerDownRight size={14} className="absolute -left-6 top-1 text-indigo-300" />
+                          <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-[10px] text-indigo-500 font-black shrink-0 shadow-sm">
+                            {(reply.userName || "U")[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1 bg-slate-50 p-3 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-slate-100 shadow-sm">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[12px] font-black text-slate-800">
                                 <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
                                 {reply.isAdminComment && (
-                                  <span className="ml-1 bg-blue-600 text-white text-[8px] px-1 py-0.5 rounded uppercase tracking-widest">
+                                  <span className="ml-2 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm">
                                     Official
                                   </span>
                                 )}
                               </span>
                               <div className="flex items-center gap-2">
-                                <span className="text-[9px] text-slate-400 font-bold">
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                                   {new Date(reply.time || Date.now()).toLocaleDateString(undefined, {
                                     month: "short",
                                     day: "numeric"
@@ -18175,31 +18223,31 @@ function PostCard({
                               </div>
                             </div>
                             {editReplyId?.replyId === reply.id ? (
-                              <div className="mt-2 flex gap-2">
+                              <div className="mt-2 flex gap-2 w-full">
                                 <input
                                   value={editReplyText}
                                   onChange={(e) => setEditReplyText(e.target.value)}
-                                  className="flex-1 text-xs bg-slate-50 p-2 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
+                                  className="flex-1 text-sm bg-white p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
                                   onKeyDown={(e) => e.key === "Enter" && handleEditReplySubmit(c.id)}
                                 />
                                 <button
                                   onClick={() => handleEditReplySubmit(c.id)}
                                   disabled={submittingReplyEdit || !editReplyText.trim()}
-                                  className="bg-blue-500 text-white px-2 py-1 rounded-lg text-[10px] font-bold disabled:opacity-50"
+                                  className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
                                 >
                                   {submittingReplyEdit ? "..." : "Save"}
                                 </button>
                                 <button
                                   onClick={() => setEditReplyId(null)}
-                                  className="text-[10px] font-bold text-slate-400 px-2"
+                                  className="text-xs font-bold text-slate-400 px-2"
                                 >
                                   Cancel
                                 </button>
                               </div>
                             ) : (
-                              <p className="text-xs text-slate-600 mt-0.5">
+                              <p className="text-[13px] text-slate-700 leading-relaxed">
                                 {reply.text}
-                                {reply.edited && <span className="text-[9px] text-slate-400 ml-1">(edited)</span>}
+                                {reply.edited && <span className="text-[9px] text-slate-400 ml-1.5 italic font-medium">(edited)</span>}
                               </p>
                             )}
                           </div>
@@ -19657,11 +19705,27 @@ function PostForm({
                         {/* Version Label / Dropdown */}
                         <div
                           className="flex items-center gap-0.5 bg-blue-50/50 px-1 py-0.5 rounded border border-blue-100/50"
-                          title="Change Version"
+                          title="Change Version & Type"
                         >
-                          <span className="text-[9px] font-black text-blue-500 uppercase leading-none pl-1">
-                            v
-                          </span>
+                          <select
+                            value={att.badgePrefix || "v"}
+                            onChange={(e) => {
+                              const newPrefix = e.target.value;
+                              setAttachments((prev) =>
+                                prev.map((a, i) =>
+                                  i === idx ? { ...a, badgePrefix: newPrefix } : a,
+                                ),
+                              );
+                            }}
+                            className="text-[9px] font-black text-blue-500 uppercase leading-none bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[12px] text-center pl-1"
+                          >
+                            <option value="v">v</option>
+                            <option value="Alapa">Alapa</option>
+                            <option value="EXE">EXE</option>
+                            <option value="Doc">Doc</option>
+                            <option value="PDF">PDF</option>
+                            <option value="Tool">Tool</option>
+                          </select>
                           <select
                             value={att.version || "1.0"}
                             onChange={(e) => {
@@ -20137,28 +20201,8 @@ function PostDetail({
       (snapshot) => {
         if (snapshot.exists()) {
           setPost({ id: snapshot.id, ...snapshot.data() } as Post);
-          if (isInitial) {
-            isInitial = false;
-            const data = snapshot.data();
-            const uid = auth.currentUser?.uid;
-            const viewedSessionKey = `session_post_detail_viewed_${postId}`;
-            const hasViewedInSession = sessionStorage.getItem(viewedSessionKey);
-            if (!hasViewedInSession) {
-              sessionStorage.setItem(viewedSessionKey, "true");
-              const updateData: any = {
-                views: increment(1),
-              };
-              if (uid && data && !(Array.isArray(data.viewedBy) ? data.viewedBy.includes(auth.currentUser?.uid || "") : false)) {
-                updateData.viewedBy = arrayUnion(uid);
-              }
-              updateDoc(docRef, updateData).catch((e) => console.error(e));
-            } else if (uid && data && !(Array.isArray(data.viewedBy) ? data.viewedBy.includes(auth.currentUser?.uid || "") : false)) {
-              updateDoc(docRef, {
-                viewedBy: arrayUnion(uid),
-              }).catch((e) => console.error(e));
-            }
-            setLoading(false);
-          }
+          setLoading(false);
+          isInitial = false;
         } else {
           if (isInitial) addToast("Post not found");
           setLoading(false);
@@ -20174,6 +20218,36 @@ function PostDetail({
     );
     return () => unsub();
   }, [postId]);
+
+  useEffect(() => {
+    if (!post) return;
+    const uid = auth.currentUser?.uid;
+    const docRef = doc(db, "posts", postId);
+    const viewedSessionKey = `session_post_detail_viewed_${postId}`;
+    const hasViewedInSession = sessionStorage.getItem(viewedSessionKey);
+
+    if (!hasViewedInSession) {
+      sessionStorage.setItem(viewedSessionKey, "true");
+      
+      let sourceKey = "source_direct";
+      const referrer = document.referrer.toLowerCase();
+      if (referrer.includes("whatsapp")) sourceKey = "source_whatsapp";
+      else if (referrer.includes("facebook") || referrer.includes("fb")) sourceKey = "source_facebook";
+      else if (referrer.includes("t.co") || referrer.includes("twitter")) sourceKey = "source_twitter";
+      else if (referrer) sourceKey = "source_other";
+
+      const updateData: any = { 
+        views: increment(1),
+        [sourceKey]: increment(1)
+      };
+      if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
+        updateData.viewedBy = arrayUnion(uid);
+      }
+      updateDoc(docRef, updateData).catch((e) => console.error(e));
+    } else if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
+      updateDoc(docRef, { viewedBy: arrayUnion(uid) }).catch((e) => console.error(e));
+    }
+  }, [postId, post, auth.currentUser?.uid]);
 
   if (loading) {
     return (
@@ -20695,7 +20769,7 @@ function PostDetail({
                           title="Version Number"
                         >
                           <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                            v
+                            {att.badgePrefix || "v"}
                           </span>
                           <span className="text-[9px] font-bold text-blue-600 leading-none">
                             {att.version || "1.0"}
@@ -21730,15 +21804,16 @@ function PostComments({
 
               {/* Replies List */}
               {c.replies && c.replies.length > 0 && (
-                <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-100">
+                <div className="mt-3 space-y-3 pl-5 border-l-2 border-indigo-100 relative">
                   {c.replies.map((reply: any) => (
-                    <div key={reply.id} className="flex gap-3 items-start">
-                      <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] text-slate-400 font-bold shrink-0">
+                    <div key={reply.id} className="flex gap-3 items-start relative pb-1">
+                      <CornerDownRight size={14} className="absolute -left-6 top-1 text-indigo-300" />
+                      <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-[10px] text-indigo-500 font-black shrink-0 shadow-sm">
                         {(reply.userName || "U")[0].toUpperCase()}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[13px] font-bold text-slate-700">
+                      <div className="flex-1 bg-slate-50 p-3 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-slate-100 shadow-sm">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[12px] font-black text-slate-800">
                             <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
                             {reply.isAdminComment && (
                               <span className="ml-2 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm">
@@ -21747,7 +21822,7 @@ function PostComments({
                             )}
                           </span>
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-slate-400 font-bold">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
                               {new Date(reply.time || Date.now()).toLocaleDateString(undefined, {
                                 month: "short",
                                 day: "numeric"
@@ -21781,7 +21856,7 @@ function PostComments({
                             <input
                               value={editReplyText}
                               onChange={(e) => setEditReplyText(e.target.value)}
-                              className="flex-1 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
+                              className="flex-1 text-sm bg-white p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
                               onKeyDown={(e) => e.key === "Enter" && handleEditReplySubmit(c.id)}
                             />
                             <button
@@ -21799,9 +21874,9 @@ function PostComments({
                             </button>
                           </div>
                         ) : (
-                          <p className="text-sm text-slate-600 mt-0.5">
+                          <p className="text-[13px] text-slate-700 leading-relaxed">
                             {reply.text}
-                            {reply.edited && <span className="text-[10px] text-slate-400 ml-1">(edited)</span>}
+                            {reply.edited && <span className="text-[9px] text-slate-400 ml-1.5 italic font-medium">(edited)</span>}
                           </p>
                         )}
                       </div>
