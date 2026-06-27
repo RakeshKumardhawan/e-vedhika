@@ -140,6 +140,8 @@ import { AuthModal } from "./components/AuthModal";
 import { PollsScreen } from "./components/PollsScreen";
 import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
@@ -1265,16 +1267,66 @@ const DEFAULT_ABOUT_CONTENT = `ఈ వేదిక **'పంచాయతీ ర�
 సమయాన్ని ఆదా చేస్తూ, పారదర్శకమైన సేవలను అందించే ఇలాంటి మరిన్ని టూల్స్ను అభివృద్ధి చేయడం మరియు ప్రతి ఒక్కరికీ సాంకేతికతను సులభతరం చేయడమే నా లక్ష్యం.`;
 
 function LandingPage({ 
-  onLoginClick, 
+  onEnterSite, 
+  onLoginClick,
   onShowFooter,
   landingPageData
 }: { 
+  onEnterSite: () => void;
   onLoginClick: () => void;
   onShowFooter: (type: "privacy" | "about" | "contact") => void;
   landingPageData: any;
 }) {
+  const [isWarping, setIsWarping] = useState(false);
+
+  const handleEnterWorld = () => {
+    setIsWarping(true);
+    setTimeout(() => {
+      setIsWarping(false);
+      onEnterSite();
+    }, 1500);
+  };
+
   return (
     <div className="w-full h-full overflow-y-auto bg-slate-50 font-sans text-slate-800">
+      <AnimatePresence>
+        {isWarping && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] bg-[#0d3b66] flex items-center justify-center overflow-hidden"
+          >
+            <motion.div
+              initial={{ scale: 1, opacity: 0.5 }}
+              animate={{ scale: [1, 50, 100], opacity: [0.5, 1, 0] }}
+              transition={{ duration: 1.5, ease: "easeIn" }}
+              className="absolute w-20 h-20 rounded-full border-[20px] border-blue-400/50 shadow-[0_0_100px_50px_rgba(59,130,246,1)]"
+            />
+            <motion.div
+              initial={{ scale: 1, rotate: 0 }}
+              animate={{ scale: [1, 50], rotate: [0, 90] }}
+              transition={{ duration: 1.5, ease: "easeIn", delay: 0.2 }}
+              className="absolute w-10 h-10 rounded-full border-[10px] border-emerald-400 shadow-[0_0_100px_50px_rgba(52,211,153,1)]"
+            />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: 1.2 }}
+              className="absolute inset-0 bg-white"
+            />
+            <motion.h1 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1.2 }}
+              transition={{ duration: 1, delay: 0.2 }}
+              className="relative z-10 text-white font-black text-4xl sm:text-6xl tracking-[0.2em] italic text-center"
+            >
+              ENTERING<br />E-VEDHIKA...
+            </motion.h1>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -1351,18 +1403,41 @@ function LandingPage({
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 space-y-16">
         <section className="text-center space-y-6 max-w-4xl mx-auto">
-          <h2 className="text-4xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
+          <h2 
+            className="text-4xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight"
+            style={{
+              fontSize: "20px",
+              lineHeight: "34px"
+            }}
+          >
             {landingPageData.heroTitle} <span className="text-blue-600">{landingPageData.heroHighlight}</span>
           </h2>
-          <p className="text-lg lg:text-xl text-slate-600 leading-relaxed font-medium max-w-3xl mx-auto">
-            {landingPageData.heroSubtitle}
-          </p>
+          <div 
+            className="text-lg lg:text-xl text-slate-600 leading-relaxed font-medium max-w-3xl mx-auto ql-editor"
+            style={{
+              fontSize: "16px",
+              textAlign: "justify",
+              lineHeight: "22.5px",
+              fontWeight: "bold",
+              fontStyle: "normal",
+              width: "770.988px",
+              height: "auto",
+              minHeight: "1000px",
+              marginLeft: "50.0039px",
+              marginRight: "50.0039px",
+              marginBottom: "20px",
+              fontFamily: "Courier New"
+            }}
+            dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
+          />
           <div className="pt-4 flex justify-center gap-4">
             <button 
-              onClick={onLoginClick}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-blue-600/30 text-lg flex items-center gap-2"
+              onClick={handleEnterWorld}
+              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-blue-600/30 text-lg flex items-center gap-2 group relative overflow-hidden"
             >
-              Access Dashboard
+              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full -translate-x-full transition-transform duration-500 ease-out skew-x-12" />
+              Enter The E-VEDHIKA website
+              <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </section>
@@ -1376,9 +1451,7 @@ function LandingPage({
               </svg>
             </div>
             <h3 className="text-xl font-black text-slate-800 mb-4">{landingPageData.card1Title}</h3>
-            <p className="text-slate-600 leading-relaxed">
-              {landingPageData.card1Desc}
-            </p>
+            <div className="text-slate-600 leading-relaxed ql-editor px-0" dangerouslySetInnerHTML={{__html: landingPageData.card1Desc}} />
           </div>
           
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -1388,9 +1461,7 @@ function LandingPage({
               </svg>
             </div>
             <h3 className="text-xl font-black text-slate-800 mb-4">{landingPageData.card2Title}</h3>
-            <p className="text-slate-600 leading-relaxed">
-              {landingPageData.card2Desc}
-            </p>
+            <div className="text-slate-600 leading-relaxed ql-editor px-0" dangerouslySetInnerHTML={{__html: landingPageData.card2Desc}} />
           </div>
 
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -1400,9 +1471,7 @@ function LandingPage({
               </svg>
             </div>
             <h3 className="text-xl font-black text-slate-800 mb-4">{landingPageData.card3Title}</h3>
-            <p className="text-slate-600 leading-relaxed">
-              {landingPageData.card3Desc}
-            </p>
+            <div className="text-slate-600 leading-relaxed ql-editor px-0" dangerouslySetInnerHTML={{__html: landingPageData.card3Desc}} />
           </div>
         </section>
 
@@ -1410,11 +1479,9 @@ function LandingPage({
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent" />
           <div className="relative z-10 max-w-3xl mx-auto">
             <h2 className="text-3xl lg:text-4xl font-black mb-6">{landingPageData.ctaTitle}</h2>
-            <p className="text-blue-100 text-lg leading-relaxed mb-8">
-              {landingPageData.ctaDesc}
-            </p>
+            <div className="text-blue-100 text-lg leading-relaxed mb-8 ql-editor px-0" dangerouslySetInnerHTML={{__html: landingPageData.ctaDesc}} />
             <button 
-              onClick={onLoginClick}
+              onClick={handleEnterWorld}
               className="px-8 py-3 bg-white text-blue-900 hover:bg-blue-50 font-black rounded-xl transition-colors shadow-lg"
             >
               Get Started Now
@@ -1476,6 +1543,9 @@ export default function App() {
   const postIdFromUrl = searchParams.get("postId");
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  const [hasEnteredSite, setHasEnteredSite] = useState(() => {
+    return localStorage.getItem("ev_entered_site") === "true";
+  });
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "editor" | "user">("user");
@@ -3235,8 +3305,16 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {(!user && !location.pathname.endsWith("/Evdka") && !isFarmerRegistryPath) ? (
-        <LandingPage onLoginClick={triggerLogin} onShowFooter={setShowFooterModal} landingPageData={landingPageData} />
+      {(!hasEnteredSite && !user && !location.pathname.endsWith("/Evdka") && !isFarmerRegistryPath) ? (
+        <LandingPage 
+          onEnterSite={() => {
+            setHasEnteredSite(true);
+            localStorage.setItem("ev_entered_site", "true");
+          }} 
+          onLoginClick={triggerLogin} 
+          onShowFooter={setShowFooterModal} 
+          landingPageData={landingPageData} 
+        />
       ) : (
       <>
       <header className="sticky top-0 z-[1001] shadow-2xl bg-[#103052] border-b-[3px] border-accent flex items-center">
@@ -7972,6 +8050,20 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
     }
   };
 
+  const renderRichText = (label: string, name: string) => {
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
+        <ReactQuill
+          theme="snow"
+          value={formData[name] || ""}
+          onChange={(val) => setFormData((prev: any) => ({ ...prev, [name]: val }))}
+          className="bg-white"
+        />
+      </div>
+    );
+  };
+
   const renderInput = (label: string, name: string, isTextarea = false) => {
     return (
       <div className="mb-4">
@@ -8018,31 +8110,31 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
           <h4 className="font-black text-slate-800 mb-4 text-lg">Hero Section</h4>
           {renderInput("Hero Title", "heroTitle")}
           {renderInput("Hero Highlight (Blue Text)", "heroHighlight")}
-          {renderInput("Hero Subtitle", "heroSubtitle", true)}
+          {renderRichText("Hero Subtitle", "heroSubtitle")}
         </div>
 
         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h4 className="font-black text-slate-800 mb-4 text-lg">Card 1</h4>
           {renderInput("Card 1 Title", "card1Title")}
-          {renderInput("Card 1 Description", "card1Desc", true)}
+          {renderRichText("Card 1 Description", "card1Desc")}
         </div>
 
         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h4 className="font-black text-slate-800 mb-4 text-lg">Card 2</h4>
           {renderInput("Card 2 Title", "card2Title")}
-          {renderInput("Card 2 Description", "card2Desc", true)}
+          {renderRichText("Card 2 Description", "card2Desc")}
         </div>
 
         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h4 className="font-black text-slate-800 mb-4 text-lg">Card 3</h4>
           {renderInput("Card 3 Title", "card3Title")}
-          {renderInput("Card 3 Description", "card3Desc", true)}
+          {renderRichText("Card 3 Description", "card3Desc")}
         </div>
 
         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h4 className="font-black text-slate-800 mb-4 text-lg">Call To Action Section</h4>
           {renderInput("CTA Title", "ctaTitle")}
-          {renderInput("CTA Description", "ctaDesc", true)}
+          {renderRichText("CTA Description", "ctaDesc")}
         </div>
       </div>
     </div>
