@@ -1,0 +1,2025 @@
+250-      email: auth.currentUser?.email,
+251-      emailVerified: auth.currentUser?.emailVerified,
+252-      isAnonymous: auth.currentUser?.isAnonymous,
+253-      tenantId: auth.currentUser?.tenantId,
+254-      providerInfo:
+255:        auth.currentUser?.providerData?.map((provider) => ({
+256-          providerId: provider.providerId,
+257-          email: provider.email,
+258-        })) || [],
+259-    },
+260-    operationType,
+--
+329-) {
+330-  try {
+331-    const time = Date.now();
+332-
+333-    const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+334:    const mentions = [...commentText.matchAll(mentionRegex)].map((m) =>
+335-      m[1].toLowerCase(),
+336-    );
+337-    const uniqueMentions = [...new Set(mentions)];
+338-
+339-    for (const username of uniqueMentions) {
+--
+843-}
+844-
+845-function PostSkeleton({ count = 3 }: { count?: number }) {
+846-  return (
+847-    <div className="space-y-4 w-full">
+848:      {Array.from({ length: count }).map((_, i) => (
+849-        <div
+850-          key={i}
+851-          className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 animate-pulse"
+852-        >
+853-          <div className="flex gap-4 items-start mb-4">
+--
+1226-    if (b.status === "New" && a.status !== "New") return 1;
+1227-
+1228-    const vA = extractV(a.name || "", a.version);
+1229-    const vB = extractV(b.name || "", b.version);
+1230-
+1231:    const pA = vA.split(".").map((n) => parseInt(n) || 0);
+1232:    const pB = vB.split(".").map((n) => parseInt(n) || 0);
+1233-    for (let i = 0; i < Math.max(pA.length, pB.length); i++) {
+1234-      const nA = pA[i] || 0;
+1235-      const nB = pB[i] || 0;
+1236-      if (nA !== nB) return nB - nA; // descending
+1237-    }
+--
+2729-    }
+2730-    if (!canAccessAdmin) {
+2731-      return (
+2732-        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans selection:bg-accent/20 selection:text-primary antialiased flex flex-col justify-center items-center p-4">
+2733-          <AnimatePresence>
+2734:            {toasts.map((t) => (
+2735-              <motion.div
+2736-                key={t.id}
+2737-                initial={{ opacity: 0, y: -20 }}
+2738-                animate={{ opacity: 1, y: 0 }}
+2739-                exit={{ opacity: 0 }}
+--
+2819-
+2820-    if (adminLocked) {
+2821-      return (
+2822-        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans selection:bg-accent/20 selection:text-primary antialiased">
+2823-          <AnimatePresence>
+2824:            {toasts.map((t) => (
+2825-              <motion.div
+2826-                key={t.id}
+2827-                initial={{ opacity: 0, y: -20 }}
+2828-                animate={{ opacity: 1, y: 0 }}
+2829-                exit={{ opacity: 0 }}
+--
+2981-
+2982-  if (isFarmerRegistryPath) {
+2983-    return (
+2984-      <div className="h-[100dvh] overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 font-sans selection:bg-accent/20 selection:text-primary antialiased">
+2985-        <AnimatePresence>
+2986:          {toasts.map((t) => (
+2987-            <motion.div
+2988-              key={t.id}
+2989-              initial={{ opacity: 0, y: -20 }}
+2990-              animate={{ opacity: 1, y: 0 }}
+2991-              exit={{ opacity: 0 }}
+--
+3181-            </div>
+3182-          </motion.div>
+3183-        </div>
+3184-      )}
+3185-      <AnimatePresence>
+3186:        {toasts.map((t) => (
+3187-          <motion.div
+3188-            key={t.id}
+3189-            initial={{ opacity: 0, y: -20 }}
+3190-            animate={{ opacity: 1, y: 0 }}
+3191-            exit={{ opacity: 0 }}
+--
+3410-                    </button>
+3411-                  </div>
+3412-                  <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+3413-                    {notifications.length > 0 ? (
+3414-                      <div className="divide-y divide-slate-50">
+3415:                        {notifications.map((n) => {
+3416-                          const isUnread =
+3417-                            n.uid === "all"
+3418-                              ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
+3419-                              : !n.read;
+3420-                          return (
+--
+3488-                            ? !n.readBy?.includes(user?.uid || "")
+3489-                            : !n.read,
+3490-                        );
+3491-                        try {
+3492-                          await Promise.all(
+3493:                            unread.map((n) => {
+3494-                              if (n.uid === "all") {
+3495-                                return updateDoc(
+3496-                                  doc(db, "notifications", n.id),
+3497-                                  {
+3498-                                    readBy: arrayUnion(user?.uid),
+--
+3644-                    u.status !== "hidden" &&
+3645-                    u.status?.toLowerCase() !== "deleted",
+3646-                );
+3647-                return visibleUpdates.length > 0
+3648-                  ? visibleUpdates
+3649:                      .map((u) => u.text || (u as any).msg || (u as any).update)
+3650-                      .join("  •  ")
+3651-                  : "✨ Welcome to E-Vedhika Portal ✨ • 🚀 The E-Vedhika Portal is now live – Empowering Governance with Digital Excellence 🚀";
+3652-              })()}
+3653-            </span>
+3654-          </div>
+--
+3779-                    : []),
+3780-                  { id: "builder", label: "Page Builder", icon: Wrench },
+3781-                  { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
+3782-                  { id: "locations", label: "Locations", icon: MapPin },
+3783-                  { id: "suggestions", label: "Public Suggestions and Feedback", icon: MessageSquare },
+3784:                ].map((item) => (
+3785-                  <MenuButton
+3786-                    key={item.id}
+3787-                    label={item.label}
+3788-                    icon={item.icon}
+3789-                    active={activeAdminSubTab === item.id}
+--
+3797-                <div className="h-px bg-slate-100 my-4 mx-2" />
+3798-
+3799-                {[
+3800-                  { id: "settings", label: "System Config", icon: Settings },
+3801-                  { id: "ai", label: "Gemini AI", icon: Bot },
+3802:                ].map((item) => (
+3803-                  <MenuButton
+3804-                    key={item.id}
+3805-                    label={item.label}
+3806-                    icon={item.icon}
+3807-                    active={activeAdminSubTab === item.id}
+--
+3993-                {customMenus.length > 0 && (
+3994-                  <div className="mt-4 pt-4 border-t border-slate-100/50">
+3995-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2">
+3996-                      Dynamic Menus
+3997-                    </p>
+3998:                    {customMenus.map(menu => (
+3999-                      <MenuButton
+4000-                        key={menu.id}
+4001-                        label={menu.label}
+4002-                        icon={LayoutList}
+4003-                        active={currentTab === `custom_menu_${menu.id}`}
+--
+4267-                        {(siteConfig?.elements && siteConfig.elements.length > 0
+4268-                          ? siteConfig.elements
+4269-                          : DEFAULT_HOME_ELEMENTS
+4270-                        )
+4271-                          .filter((el: any) => !el.hidden)
+4272:                          .map((el: any) => {
+4273-                            let sizeClass = "w-full";
+4274-                            if (el.size === "small")
+4275-                              sizeClass = "max-w-xl w-full mx-auto";
+4276-                            else if (el.size === "medium")
+4277-                              sizeClass = "max-w-3xl w-full mx-auto";
+--
+4447-                                      </Link>
+4448-                                    </div>
+4449-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+4450-                                      {filteredPosts
+4451-                                        .slice(0, 4)
+4452:                                        .map((post: any, idx: number) => (
+4453-                                          <motion.div
+4454-                                            initial={{ opacity: 0, y: 20 }}
+4455-                                            whileInView={{ opacity: 1, y: 0 }}
+4456-                                            transition={{ delay: idx * 0.1 }}
+4457-                                            viewport={{ once: true }}
+--
+4499-                                        title: "Citizen First",
+4500-                                        desc: "Designed with accessibility and simplicity at its core for everyone.",
+4501-                                        icon: <Users size={24} />,
+4502-                                        color: "violet",
+4503-                                      },
+4504:                                    ].map((feat, i) => (
+4505-                                      <motion.div
+4506-                                        key={i}
+4507-                                        initial={{ opacity: 0, y: 20 }}
+4508-                                        whileInView={{ opacity: 1, y: 0 }}
+4509-                                        transition={{ delay: i * 0.1 }}
+--
+4603-                                        },
+4604-                                        {
+4605-                                          name: "Public Data",
+4606-                                          icon: <BarChart3 size={24} />,
+4607-                                        },
+4608:                                      ].map((link, i) => (
+4609-                                        <motion.a
+4610-                                          key={i}
+4611-                                          href="#"
+4612-                                          initial={{ opacity: 0, scale: 0.95 }}
+4613-                                          whileInView={{ opacity: 1, scale: 1 }}
+--
+4640-                                      {[
+4641-                                        { v: "15,200+", l: "Citizens Covered" },
+4642-                                        { v: "98%", l: "Resolution Rate" },
+4643-                                        { v: "24/7", l: "Digital Access" },
+4644-                                        { v: "500+", l: "Daily Visitors" },
+4645:                                      ].map((stat, i) => (
+4646-                                        <div
+4647-                                          key={i}
+4648-                                          className={`p-6 bg-${el.color || "blue"}-50 rounded-[32px] text-center border border-white shadow-sm hover:shadow-lg transition-all`}
+4649-                                        >
+4650-                                          <h4
+--
+4669-                                    <p className="text-center text-slate-500 mb-10 max-w-xl mx-auto">
+4670-                                      {el.content ||
+4671-                                        "Find answers to the most common queries about the e-Vedhika platform and digital services."}
+4672-                                    </p>
+4673-                                    <div className="space-y-4">
+4674:                                      {[1, 2, 3].map((i) => (
+4675-                                        <div
+4676-                                          key={i}
+4677-                                          className="p-6 bg-slate-50 rounded-[24px] border border-slate-100 hover:bg-slate-100/80 transition-colors"
+4678-                                        >
+4679-                                          <div className="flex justify-between items-center w-full text-left">
+--
+4746-                                      <button className="text-primary font-bold hover:underline hidden sm:block">
+4747-                                        View All
+4748-                                      </button>
+4749-                                    </div>
+4750-                                    <div className="space-y-4">
+4751:                                      {[1, 2].map((i) => (
+4752-                                        <div
+4753-                                          key={i}
+4754-                                          className="flex flex-col sm:flex-row gap-4 sm:gap-6 bg-slate-50 p-4 sm:p-6 rounded-[24px] hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200"
+4755-                                        >
+4756-                                          <div className="bg-white rounded-2xl p-4 text-center min-w-[100px] shadow-sm border border-slate-100 flex flex-col justify-center">
+--
+4823-                                        {el.content ||
+4824-                                          "Quickly find the services you need."}
+4825-                                      </p>
+4826-                                    </div>
+4827-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+4828:                                      {[1, 2, 3, 4, 5, 6].map((i) => (
+4829-                                        <div
+4830-                                          key={i}
+4831-                                          className="flex items-start gap-4 p-5 bg-white rounded-[24px] shadow-sm border border-slate-100 hover:shadow-md transition-all"
+4832-                                        >
+4833-                                          <div
+--
+4854-                                  <div className="py-12 bg-slate-50 rounded-[40px] border border-slate-100 mb-8">
+4855-                                    <h3 className="text-2xl sm:text-3xl font-black text-center text-slate-800 mb-10">
+4856-                                      {el.title || "నాయకులు / అధికారులు"}
+4857-                                    </h3>
+4858-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 px-4 md:px-12">
+4859:                                      {[1, 2, 3].map((i) => (
+4860-                                        <div
+4861-                                          key={i}
+4862-                                          className="bg-white p-6 rounded-[32px] text-center shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all"
+4863-                                        >
+4864-                                          <div className="w-24 h-24 mx-auto bg-slate-200 rounded-full mb-4 overflow-hidden border-4 border-slate-50 shadow-sm">
+--
+4899-                                        <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white z-10 group-hover:scale-110 transition shadow-xl">
+4900-                                          <Play size={24} fill="currentColor" />
+4901-                                        </div>
+4902-                                      </div>
+4903-                                      <div className="flex flex-col gap-4 justify-between">
+4904:                                        {[1, 2, 3].map((i) => (
+4905-                                          <div
+4906-                                            key={i}
+4907-                                            className="bg-white/5 p-3 sm:p-4 rounded-[24px] flex gap-4 items-center group cursor-pointer border border-white/5 hover:border-white/20 hover:bg-white/10 transition"
+4908-                                          >
+4909-                                            <div className="aspect-video w-20 sm:w-28 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+--
+4940-                                    <p className="text-slate-500 mb-8">
+4941-                                      {el.content ||
+4942-                                        "Download necessary applications and government orders."}
+4943-                                    </p>
+4944-                                    <div className="space-y-4">
+4945:                                      {[1, 2, 3].map((i) => (
+4946-                                        <div
+4947-                                          key={i}
+4948-                                          className="flex items-center justify-between p-4 sm:p-5 bg-slate-50 rounded-[24px] hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200 group"
+4949-                                        >
+4950-                                          <div className="flex items-center gap-4">
+--
+5336-                            u.type === "changelog" &&
+5337-                            u.status?.toLowerCase() !== "deleted",
+5338-                        )
+5339-                        .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
+5340-                        .slice(0, visibleUpdatesCount)
+5341:                        .map((u: any, i) => (
+5342-                          <motion.div
+5343-                            initial={{ opacity: 0, x: -20 }}
+5344-                            whileInView={{ opacity: 1, x: 0 }}
+5345-                            viewport={{ once: true }}
+5346-                            transition={{ delay: Math.min(i * 0.1, 0.5) }}
+--
+5535-                                              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+5536-                                                Attachments & Docs
+5537-                                              </span>
+5538-                                            </div>
+5539-                                            <div className="flex flex-wrap gap-2">
+5540:                                              {u.attachments.map(
+5541-                                                (att: any, idx: number) => (
+5542-                                                  <a
+5543-                                                    key={idx}
+5544-                                                    href={att.url}
+5545-                                                    onClick={(e) =>
+--
+5664-                            name: "Disha Helpline (దిశ)",
+5665-                            number: "181",
+5666-                            icon: "",
+5667-                            color: "pink",
+5668-                          },
+5669:                        ].map((contact, i) => (
+5670-                          <div
+5671-                            key={i}
+5672-                            className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 flex items-center justify-between group hover:border-rose-200 hover:shadow-md transition-all"
+5673-                          >
+5674-                            <div className="flex items-center gap-4">
+--
+5749-                                [...approvedSuggestions]
+5750-                                  .sort(
+5751-                                    (a, b) => getValidTime(b) - getValidTime(a),
+5752-                                  )
+5753-                                  .slice(0, visibleSuggestionsCount)
+5754:                                  .map((s) => (
+5755-                                    <motion.div
+5756-                                      key={s.id}
+5757-                                      initial={{ opacity: 0, y: 10 }}
+5758-                                      animate={{
+5759-                                        opacity: 1,
+--
+6018-                                    name="category"
+6019-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
+6020-                                    required
+6021-                                  >
+6022-                                    <option value="">విభాగం ఎంచుకోండి</option>
+6023:                                    {suggestionCategories.map((cat, idx) => (
+6024-                                      <option key={idx} value={cat}>{cat}</option>
+6025-                                    ))}
+6026-                                  </select>
+6027-                                </div>
+6028-                              </div>
+--
+6143-                            desc: "తెలంగాణ ప్రభుత్వ జీఓల సెర్చ్ ఇంజిన్",
+6144-                            url: "https://goir.telangana.gov.in/",
+6145-                            color:
+6146-                              "bg-violet-50 text-violet-700 border-violet-100",
+6147-                          },
+6148:                        ].map((link) => (
+6149-                          <button
+6150-                            key={link.name}
+6151-                            onClick={() => setSelectedIframeUrl(link.url)}
+6152-                            className={`p-5 rounded-3xl border transition-all hover:scale-[1.02] active:scale-95 flex flex-col gap-2 shadow-sm text-left ${link.color}`}
+6153-                          >
+--
+6284-                            <div className="p-8 text-center bg-white rounded-3xl border border-slate-100 text-slate-500 font-bold shadow-sm">
+6285-                              No items added to this menu yet.
+6286-                            </div>
+6287-                          ) : (
+6288-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+6289:                              {cards.map(card => (
+6290-                                <a
+6291-                                  key={card.id}
+6292-                                  href={card.linkUrl || "#"}
+6293-                                  target={card.linkUrl ? "_blank" : undefined}
+6294-                                  rel={card.linkUrl ? "noopener noreferrer" : undefined}
+--
+6477-                        </form>
+6478-                      </div>
+6479-                      <div className="space-y-4">
+6480-                        {problemsGlobal
+6481-                          .slice(0, visibleProblemsCount)
+6482:                          .map((p) => (
+6483-                            <div
+6484-                              key={p.id}
+6485-                              className="p-4 bg-white border border-slate-200 rounded-2xl border-l-4 border-danger"
+6486-                            >
+6487-                              <div className="flex justify-between items-start mb-2">
+--
+6905-                  "suggestions",
+6906-                  "trash",
+6907-                  "logs",
+6908-                  "settings",
+6909-                  "ai",
+6910:                ].map((tab) => {
+6911-                  const perms =
+6912-                    rbacPermissions?.[userProfile.role!]?.[tab] || {};
+6913-                  if (!perms.view) return null;
+6914-                  return (
+6915-                    <div
+--
+7076-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
+7077-              >
+7078-                <option value="">Select District</option>
+7079-                {Object.keys(districtsData)
+7080-                  .sort()
+7081:                  .map((d) => (
+7082-                    <option key={d}>{d}</option>
+7083-                  ))}
+7084-              </select>
+7085-            </div>
+7086-          </div>
+--
+7095-                onChange={(e) => setMandal(e.target.value)}
+7096-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
+7097-                disabled={!district}
+7098-              >
+7099-                <option value="">Select Mandal</option>
+7100:                {mandals.map((m, idx) => (
+7101-                  <option key={`${m}_${idx}`} value={m}>
+7102-                    {m}
+7103-                  </option>
+7104-                ))}
+7105-              </select>
+--
+7359-      </div>
+7360-
+7361-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+7362-        {Object.keys(districtsData)
+7363-          .sort()
+7364:          .map((d) => (
+7365-            <div
+7366-              key={d}
+7367-              className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden flex flex-col group"
+7368-            >
+7369-              <div className="p-5 flex items-center justify-between bg-slate-50/50 group-hover:bg-slate-50 transition-colors">
+--
+7459-                      <Plus size={16} />
+7460-                    </button>
+7461-                  </div>
+7462-
+7463-                  <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+7464:                    {districtsData[d].map((m: string) => (
+7465-                      <div
+7466-                        key={m}
+7467-                        className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2"
+7468-                      >
+7469-                        <span className="text-xs font-bold text-slate-600">
+--
+7551-      </div>
+7552-
+7553-      <div className="space-y-4">
+7554-        {activeTab === "problems" &&
+7555-          (myProblems.length > 0 ? (
+7556:            myProblems.map((p: any) => (
+7557-              <div
+7558-                key={p.id}
+7559-                className="p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-slate-300 transition-all"
+7560-              >
+7561-                <div className="flex-1">
+--
+7588-            </div>
+7589-          ))}
+7590-
+7591-        {activeTab === "suggestions" &&
+7592-          (mySuggestions.length > 0 ? (
+7593:            mySuggestions.map((s: any) => (
+7594-              <div
+7595-                key={s.id}
+7596-                className="p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-slate-300 transition-all"
+7597-              >
+7598-                <div className="flex-1">
+--
+7812-          </AnimatePresence>
+7813-
+7814-          {imageAds.length > 1 && (
+7815-            <>
+7816-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+7817:                {imageAds.map((_, i) => (
+7818-                  <button
+7819-                    key={i}
+7820-                    onClick={() => setIndex(i)}
+7821-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${i === index ? "bg-white scale-125 shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "bg-white/40 hover:bg-white/60"}`}
+7822-                  />
+--
+7841-            </>
+7842-          )}
+7843-        </div>
+7844-      )}
+7845-
+7846:      {adsenseAds.map((ad, i) => (
+7847-        <div
+7848-          key={ad.id}
+7849-          className="w-full bg-slate-50 border border-slate-100 rounded-3xl p-4 overflow-hidden"
+7850-        >
+7851-          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center mb-2">
+--
+8149-            <button onClick={handleAddMenu} className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 p-2 rounded-xl transition-colors">
+8150-              <Plus size={18} />
+8151-            </button>
+8152-          </div>
+8153-          <div className="space-y-2">
+8154:            {customMenus.map((m: any) => (
+8155-              <div 
+8156-                key={m.id} 
+8157-                className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border ${activeMenuId === m.id ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-slate-50 border-transparent hover:bg-slate-100'}`}
+8158-                onClick={() => setActiveMenuId(m.id)}
+8159-              >
+--
+8200-                >
+8201-                  <Plus size={16} /> Add Card
+8202-                </button>
+8203-              </div>
+8204-              <div className="space-y-4">
+8205:                {customMenuCards.filter((c: any) => c.menuId === activeMenuId).map((c: any) => (
+8206-                  <div key={c.id} className="flex flex-col sm:flex-row gap-4 bg-slate-50 p-4 rounded-[24px] border border-slate-100">
+8207-                    {c.imageUrl && (
+8208-                      <div className="w-full sm:w-32 h-32 rounded-[16px] overflow-hidden shrink-0">
+8209-                        <img src={c.imageUrl} className="w-full h-full object-cover" alt="Card preview" />
+8210-                      </div>
+--
+8733-    setBuilderElements(newElements);
+8734-  };
+8735-
+8736-  const updateElementProps = (id: number, props: any) => {
+8737-    setBuilderElements(
+8738:      builderElements.map((el) => (el.id === id ? { ...el, ...props } : el)),
+8739-    );
+8740-  };
+8741-  const [visibleUsersCount, setVisibleUsersCount] = useState(500);
+8742-  const [usersFilter, setUsersFilter] = useState<"All" | "Deleted">("All");
+8743-  const [userSearchTerm, setUserSearchTerm] = useState("");
+--
+8773-      addToast("No logs to export");
+8774-      return;
+8775-    }
+8776-
+8777-    const headers = ["Trace ID", "Subject", "Action", "Time", "Status"];
+8778:    const rows = filteredLogs.map((log) => [
+8779-      log.id || "",
+8780-      log.admin || log.userEmail || log.userId || "Anonymous",
+8781-      log.action || "System Event",
+8782-      new Date(getValidTime(log)).toLocaleString(),
+8783-      "Verified",
+--
+8786-    let csvContent =
+8787-      "data:text/csv;charset=utf-8," +
+8788-      headers.join(",") +
+8789-      "\n" +
+8790-      rows
+8791:        .map((e) =>
+8792-          e
+8793:            .map(String)
+8794:            .map((s) => `"${s.replace(/"/g, '""')}"`)
+8795-            .join(","),
+8796-        )
+8797-        .join("\n");
+8798-
+8799-    const encodedUri = encodeURI(csvContent);
+--
+8925-
+8926-  const handleRestartServer = async () => {
+8927-    try {
+8928-      if ("caches" in window) {
+8929-        const cacheNames = await caches.keys();
+8930:        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+8931-      }
+8932-      if ("serviceWorker" in navigator) {
+8933-        const regs = await navigator.serviceWorker.getRegistrations();
+8934-        for (let reg of regs) {
+8935-          await reg.update();
+--
+9195-          <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
+9196-            {activeSubTab === "dash" && (
+9197-              <div className="space-y-12 fade-in slide-in-from-bottom-6 animate-in duration-1000">
+9198-                {/* Bento Analytics Grid */}
+9199-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+9200:                  {stats.map((stat, idx) => (
+9201-                    <motion.div
+9202-                      key={idx}
+9203-                      initial={{ opacity: 0, y: 30 }}
+9204-                      animate={{ opacity: 1, y: 0 }}
+9205-                      transition={{ delay: idx * 0.1 }}
+--
+9396-                          {
+9397-                            label: "DDoS Shield",
+9398-                            status: "Enabled",
+9399-                            color: "emerald",
+9400-                          },
+9401:                        ].map((node, i) => (
+9402-                          <div
+9403-                            key={i}
+9404-                            className="flex items-center justify-between"
+9405-                          >
+9406-                            <span className="text-sm font-bold text-slate-300">
+--
+9443-                              .reduce((acc: any, curr: any) => {
+9444-                                const d = curr.district || "Unknown";
+9445-                                acc[d] = (acc[d] || 0) + 1;
+9446-                                return acc;
+9447-                              }, {}),
+9448:                          ).map(([name, value]) => ({ name, value }))}
+9449-                        >
+9450-                          <XAxis
+9451-                            dataKey="name"
+9452-                            tick={{
+9453-                              fontSize: 10,
+--
+9504-                                .reduce((acc: any, curr: any) => {
+9505-                                  const s = curr.status || "pending";
+9506-                                  acc[s] = (acc[s] || 0) + 1;
+9507-                                  return acc;
+9508-                                }, {}),
+9509:                            ).map(([name, value]) => ({
+9510-                              name:
+9511-                                name.charAt(0).toUpperCase() + name.slice(1),
+9512-                              value,
+9513-                            }))}
+9514-                            dataKey="value"
+--
+9525-                                .reduce((acc: any, curr: any) => {
+9526-                                  const s = curr.status || "pending";
+9527-                                  acc[s] = (acc[s] || 0) + 1;
+9528-                                  return acc;
+9529-                                }, {}),
+9530:                            ).map((entry, index) => (
+9531-                              <Cell
+9532-                                key={`cell-${index}`}
+9533-                                fill={
+9534-                                  [
+9535-                                    "#3b82f6",
+--
+9608-                              { name: "Direct Link" },
+9609-                              { name: "WhatsApp" },
+9610-                              { name: "Facebook" },
+9611-                              { name: "Twitter" },
+9612-                              { name: "Other" }
+9613:                            ].map((entry, index) => (
+9614-                              <Cell 
+9615-                                key={`cell-${index}`} 
+9616-                                fill={["#94a3b8", "#25D366", "#1877F2", "#1DA1F2", "#8b5cf6"][index]} 
+9617-                              />
+9618-                            ))}
+--
+9631-                {activeSubTab === "suggestions" && (
+9632-                  <SuggestionCategoriesManager categories={suggestionCategories} addToast={addToast} />
+9633-                )}
+9634-                {activeSubTab === "reports" && (
+9635-                  <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200 mb-6">
+9636:                    {["posts", "issues"].map((type) => (
+9637-                      <button
+9638-                        aria-label={type}
+9639-                        key={type}
+9640-                        onClick={() => setReportsType(type as any)}
+9641-                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${reportsType === type ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-700"}`}
+--
+9663-                          activeSubTab === "suggestions"
+9664-                            ? suggestions
+9665-                            : isPosts
+9666-                              ? posts
+9667-                              : problems;
+9668:                        const exportData = ds.map((item: any) => ({
+9669-                          Title: item.title || item.type || "",
+9670-                          Description: item.desc || item.text || "",
+9671-                          Category: item.category || "",
+9672-                          Status: item.status || "pending",
+9673-                          District: item.district || "",
+--
+9686-                      }}
+9687-                      className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border bg-green-50 border-green-100 text-green-700 hover:bg-green-600 hover:text-white flex items-center gap-2 shadow-sm"
+9688-                    >
+9689-                      <Download size={14} /> Export XLS
+9690-                    </button>
+9691:                    {["All", "New", "In-Progress", "Pending", "Approved", "Resolved", "Deleted"].map(
+9692-                      (f) => (
+9693-                        <button
+9694-                          aria-label={f}
+9695-                          key={f}
+9696-                          onClick={() => setReportsFilter(f as any)}
+--
+9729-                              (i) =>
+9730-                                (i.status || "").toLowerCase() === "deleted",
+9731-                            );
+9732-                            try {
+9733-                              await Promise.all(
+9734:                                deletedItems.map((item: any) =>
+9735-                                  deleteDoc(doc(db, col, item.id)),
+9736-                                ),
+9737-                              );
+9738-                              addToast(
+9739-                                `Permanently deleted ${deletedItems.length} items`,
+--
+9786-                          return (
+9787-                              (item.status || "").toLowerCase() ===
+9788-                              reportsFilter.toLowerCase()
+9789-                            );
+9790-                        })
+9791:                        .map((item, idx) => (
+9792-                          <motion.tr
+9793-                            initial={{ opacity: 0, y: 10 }}
+9794-                            animate={{ opacity: 1, y: 0 }}
+9795-                            transition={{ delay: idx * 0.05 }}
+9796-                            key={item.id}
+--
+9911-                                  <span className="text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1.5 flex-wrap max-w-xs">
+9912-                                    <Hash size={12} className="flex-shrink-0" />{" "}
+9913-                                    {item.categories &&
+9914-                                    item.categories.length > 0 ? (
+9915-                                      <div className="flex flex-wrap gap-1">
+9916:                                        {item.categories.map(
+9917-                                          (c: string, i: number) => (
+9918-                                            <span
+9919-                                              key={i}
+9920-                                              className={
+9921-                                                i > 0
+--
+10225-                        <button
+10226-                          aria-label="Export Data"
+10227-                          onClick={async () => {
+10228-                            addToast("Generating Export Data...");
+10229-                            if (!XLSX) await loadHeavyModules();
+10230:                            const exportData = users.map((u: any) => ({
+10231-                              Name: u.name || "",
+10232-                              Email: u.email || "",
+10233-                              Surname: u.surname || "",
+10234-                              Phone: u.mobile || "",
+10235-                              District: u.district || "",
+--
+10283-                                const deletedUsers = users.filter(
+10284-                                  (u) => u.isDeleted || u.role === "deleted",
+10285-                                );
+10286-                                try {
+10287-                                  await Promise.all(
+10288:                                    deletedUsers.map((u) =>
+10289-                                      deleteDoc(doc(db, "users", u.id)),
+10290-                                    ),
+10291-                                  );
+10292-                                  addToast(
+10293-                                    `Permanently deleted ${deletedUsers.length} users`,
+--
+10322-                          (u.id || "").toLowerCase().includes(term)
+10323-                        );
+10324-                      })
+10325-                      .sort((a, b) => (b.time || 0) - (a.time || 0))
+10326-                      .slice(0, visibleUsersCount)
+10327:                      .map((u) => (
+10328-                        <motion.div
+10329-                          layout
+10330-                          key={u.id}
+10331-                          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/40 relative overflow-hidden group"
+10332-                        >
+--
+10811-                          "Gallery Grid",
+10812-                          "Services Directory",
+10813-                          "Profiles / Staff",
+10814-                          "Video Showcase",
+10815-                          "Document Downloads",
+10816:                        ].map((el) => (
+10817-                          <div
+10818-                            key={el}
+10819-                            onClick={() => {
+10820-                              const newEl = {
+10821-                                id: Date.now(),
+--
+10865-                        axis="y"
+10866-                        values={builderElements}
+10867-                        onReorder={setBuilderElements}
+10868-                        className="space-y-4"
+10869-                      >
+10870:                        {builderElements.map((el, index) => (
+10871-                          <Reorder.Item
+10872-                            value={el}
+10873-                            key={el.id}
+10874-                            className={`group relative p-4 bg-white border cursor-grab active:cursor-grabbing ${el.hidden ? "opacity-50 grayscale border-slate-100 bg-slate-50" : "border-slate-200 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"} rounded-3xl text-left hover:border-blue-400 transition-colors ${editingElementId === el.id ? "ring-2 ring-blue-500/20 border-blue-400" : ""}`}
+10875-                          >
+--
+11069-                            No sections added. Canvas is empty.
+11070-                          </div>
+11071-                        ) : (
+11072-                          builderElements
+11073-                            .filter((el) => !el.hidden)
+11074:                            .map((el) => {
+11075-                              let sizeClass = "max-w-full";
+11076-                              if (el.size === "small")
+11077-                                sizeClass = "max-w-sm mx-auto";
+11078-                              else if (el.size === "medium")
+11079-                                sizeClass = "max-w-md mx-auto";
+--
+11143-                                        <p className="text-slate-500 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em]">
+11144-                                          Official Broadcasts & News
+11145-                                        </p>
+11146-                                      </div>
+11147-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+11148:                                        {[1, 2].map((i) => (
+11149-                                          <div
+11150-                                            key={i}
+11151-                                            className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-3"
+11152-                                          >
+11153-                                            <div className="flex items-center gap-2">
+--
+11163-                                    </div>
+11164-                                  )}
+11165-
+11166-                                  {el.type === "Feature Cards" && (
+11167-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+11168:                                      {[1, 2, 3].map((i) => (
+11169-                                        <div
+11170-                                          key={i}
+11171-                                          className="bg-white p-6 rounded-[24px] sm:rounded-[32px] border border-slate-100 shadow-sm"
+11172-                                        >
+11173-                                          <div
+--
+11214-                                      <p className="text-slate-500 text-xs mb-6 max-w-sm line-clamp-2">
+11215-                                        {el.content ||
+11216-                                          "Quick access to essential portal resources."}
+11217-                                      </p>
+11218-                                      <div className="grid grid-cols-2 gap-3">
+11219:                                        {[1, 2, 3, 4].map((i) => (
+11220-                                          <div
+11221-                                            key={i}
+11222-                                            className={`p-4 bg-white rounded-[16px] shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center`}
+11223-                                          >
+11224-                                            <div
+--
+11246-                                      </div>
+11247-                                      <div className="grid grid-cols-2 gap-4 px-2">
+11248-                                        {[
+11249-                                          { v: "15K+", l: "Citizens" },
+11250-                                          { v: "98%", l: "Success" },
+11251:                                        ].map((stat, i) => (
+11252-                                          <div
+11253-                                            key={i}
+11254-                                            className={`p-4 bg-${el.color || "blue"}-50 rounded-[20px] text-center shadow-sm`}
+11255-                                          >
+11256-                                            <h4
+--
+11275-                                      <p className="text-center text-slate-500 text-[10px] mb-6 line-clamp-2">
+11276-                                        {el.content ||
+11277-                                          "Common queries and answers."}
+11278-                                      </p>
+11279-                                      <div className="space-y-2">
+11280:                                        {[1, 2].map((i) => (
+11281-                                          <div
+11282-                                            key={i}
+11283-                                            className="p-4 bg-slate-50 rounded-[16px] border border-slate-100"
+11284-                                          >
+11285-                                            <div className="flex justify-between items-center w-full text-left">
+--
+11340-                                    <div className="p-6 bg-white border border-slate-100 shadow-sm rounded-[24px]">
+11341-                                      <h3 className="text-lg font-black text-slate-800 mb-4">
+11342-                                        {el.title || "రాబోయే కార్యక్రమాలు"}
+11343-                                      </h3>
+11344-                                      <div className="space-y-3">
+11345:                                        {[1, 2].map((i) => (
+11346-                                          <div
+11347-                                            key={i}
+11348-                                            className="flex gap-4 bg-slate-50 p-3 rounded-[16px]"
+11349-                                          >
+11350-                                            <div className="bg-white rounded-xl p-2 text-center min-w-[60px] shadow-sm">
+--
+11372-                                    <div className="p-6 bg-white border border-slate-100 shadow-sm rounded-[24px]">
+11373-                                      <h3 className="text-lg font-black text-slate-800 mb-2">
+11374-                                        {el.title || "గ్యాలరీ"}
+11375-                                      </h3>
+11376-                                      <div className="grid grid-cols-3 gap-2">
+11377:                                        {[1, 2, 3].map((i) => (
+11378-                                          <div
+11379-                                            key={i}
+11380-                                            className="aspect-square bg-slate-100 rounded-xl"
+11381-                                          ></div>
+11382-                                        ))}
+--
+11390-                                    >
+11391-                                      <h3 className="text-lg font-black text-slate-800 mb-4">
+11392-                                        {el.title || "సేవలు"}
+11393-                                      </h3>
+11394-                                      <div className="grid grid-cols-2 gap-3">
+11395:                                        {[1, 2, 3, 4].map((i) => (
+11396-                                          <div
+11397-                                            key={i}
+11398-                                            className="flex gap-2 p-3 bg-white rounded-[16px] shadow-sm items-center"
+11399-                                          >
+11400-                                            <div
+--
+11416-                                    <div className="p-6 bg-slate-50 border border-slate-100 shadow-sm rounded-[24px]">
+11417-                                      <h3 className="text-lg font-black text-slate-800 text-center mb-4">
+11418-                                        {el.title || "నాయకులు / అధికారులు"}
+11419-                                      </h3>
+11420-                                      <div className="grid grid-cols-3 gap-2">
+11421:                                        {[1, 2, 3].map((i) => (
+11422-                                          <div
+11423-                                            key={i}
+11424-                                            className="bg-white p-3 rounded-[16px] text-center shadow-sm"
+11425-                                          >
+11426-                                            <div className="w-10 h-10 mx-auto bg-slate-200 rounded-full mb-2"></div>
+--
+11452-                                    >
+11453-                                      <h3 className="text-lg font-black text-slate-800 mb-2">
+11454-                                        {el.title || "ముఖ్యమైన పత్రాలు"}
+11455-                                      </h3>
+11456-                                      <div className="space-y-2">
+11457:                                        {[1, 2].map((i) => (
+11458-                                          <div
+11459-                                            key={i}
+11460-                                            className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100"
+11461-                                          >
+11462-                                            <div className="flex items-center gap-2">
+--
+11512-                                      <div className="h-16 bg-slate-100 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-center p-4">
+11513-                                        <Search className="text-slate-300 w-5 h-5 mr-3" />
+11514-                                        <div className="h-3 bg-slate-200 rounded w-1/2" />
+11515-                                      </div>
+11516-                                      <div className="space-y-3">
+11517:                                        {[1, 2, 3].map((i) => (
+11518-                                          <div
+11519-                                            key={i}
+11520-                                            className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3"
+11521-                                          >
+11522-                                            <div className="flex items-center gap-3">
+--
+11594-                        "problems",
+11595-                        "suggestions",
+11596-                        "users",
+11597-                        "updates",
+11598-                      ] as const
+11599:                    ).map((tab) => (
+11600-                      <button
+11601-                        aria-label={tab}
+11602-                        key={tab}
+11603-                        onClick={() => setTrashTab(tab)}
+11604-                        className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${trashTab === tab ? "bg-white text-rose-500 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"}`}
+--
+11685-                                        confirmButtonText: "Yes, Empty Trash",
+11686-                                      });
+11687-                                      if (res.isConfirmed) {
+11688-                                        try {
+11689-                                          await Promise.all(
+11690:                                            list.map((item) =>
+11691-                                              deleteDoc(doc(db, col, item.id)),
+11692-                                            ),
+11693-                                          );
+11694-                                          addToast(
+11695-                                            `Permanently deleted ${list.length} ${trashTab}`,
+--
+11703-                                  >
+11704-                                    <Trash2 size={16} /> Empty {trashTab} Trash
+11705-                                  </button>
+11706-                                </td>
+11707-                              </tr>
+11708:                              {list.map((item, idx) => (
+11709-                                <tr
+11710-                                  key={item.id || idx}
+11711-                                  className="hover:bg-slate-50/50 transition-colors"
+11712-                                >
+11713-                                  <td className="p-5 pl-8">
+--
+11935-                        (u) =>
+11936-                          (u.type === "flash" || !u.type) &&
+11937-                          u.status?.toLowerCase() !== "deleted",
+11938-                      )
+11939-                      .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
+11940:                      .map((u, idx) => (
+11941-                        <div
+11942-                          key={u.id || `upd-${idx}`}
+11943-                          className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-blue-200 transition-all ${u.status === "hidden" ? "opacity-50 grayscale bg-slate-50 border-dashed" : ""}`}
+11944-                        >
+11945-                          <div className="flex items-center gap-4 flex-1">
+--
+12164-                      (u) =>
+12165-                        (u.type === "changelog" || u.status === "Approved") &&
+12166-                        u.status?.toLowerCase() !== "deleted",
+12167-                    )
+12168-                    .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
+12169:                    .map((upd: any) => (
+12170-                      <div
+12171-                        key={upd.id}
+12172-                        className={`p-6 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-shadow group ${upd.isSystemElement ? "opacity-80" : ""}`}
+12173-                      >
+12174-                        <div className="flex justify-between items-start gap-6">
+--
+12441-                    .filter((u: any) =>
+12442-                      ["admin", "editor", "moderator"].includes(
+12443-                        (u.role || "").toLowerCase(),
+12444-                      ),
+12445-                    )
+12446:                    .map((u: any) => {
+12447-                      const userPinData = allUserPins.find(
+12448-                        (p) => p.id === u.id,
+12449-                      );
+12450-                      return (
+12451-                        <motion.div
+--
+12550-                            <div className="pt-2">
+12551-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+12552-                                Role Assignment
+12553-                              </p>
+12554-                              <div className="flex gap-2">
+12555:                                {["admin", "editor", "moderator"].map(
+12556-                                  (role) => (
+12557-                                    <button
+12558-                                      key={role}
+12559-                                      onClick={async () => {
+12560-                                        try {
+--
+12621-                        Set permissions for staff roles globally
+12622-                      </p>
+12623-                    </div>
+12624-
+12625-                    <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-fit">
+12626:                      {["editor", "moderator"].map((role) => (
+12627-                        <button
+12628-                          key={role}
+12629-                          onClick={() => setSelectedRbacRole(role)}
+12630-                          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+12631-                            selectedRbacRole === role
+--
+12701-                          },
+12702-                          ai: {
+12703-                            name: "Gemini AI Node ( అసిస్టెంట్ )",
+12704-                            desc: "జెమినీ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అసిస్టెంట్ యాక్సెస్",
+12705-                          },
+12706:                        }).map(([key, item]) => {
+12707-                          const currentPerm = rbacPermissions?.[
+12708-                            selectedRbacRole
+12709-                          ]?.[key] ||
+12710-                            DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || {
+12711-                              view: false,
+--
+12892-                          {
+12893-                            name: "యూజర్ సెషన్లు",
+12894-                            status: "SECURE",
+12895-                            desc: "భద్రత ధ్రువీకరణ",
+12896-                          },
+12897:                        ].map((srv, idx) => (
+12898-                          <div
+12899-                            key={idx}
+12900-                            className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col items-center text-center"
+12901-                          >
+12902-                            <span className="text-[8px] font-black uppercase tracking-wide text-slate-450">
+--
+12929-                          {diagnosticLogs.length} LOGS CAPTURED
+12930-                        </span>
+12931-                      </div>
+12932-
+12933-                      <div className="flex-1 overflow-y-auto space-y-3 pr-1.5 scroll-smooth">
+12934:                        {diagnosticLogs.map((log) => (
+12935-                          <div
+12936-                            key={log.id}
+12937-                            onClick={() => {
+12938-                              setSelectedLogId(log.id);
+12939-                              setAiDiagnosis("");
+--
+13113-                      వ్యూ/ఎడిట్/డిలీట్ అనుమతులను ఇక్కడ డైనమిక్గా సెట్ చేయండి.
+13114-                    </p>
+13115-                  </div>
+13116-
+13117-                  <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
+13118:                    {["editor", "moderator"].map((role) => (
+13119-                      <button
+13120-                        key={role}
+13121-                        aria-label={`Select ${role}`}
+13122-                        onClick={() => setSelectedRbacRole(role)}
+13123-                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+--
+13194-                        },
+13195-                        ai: {
+13196-                          name: "Gemini AI Node ( అసిస్టెంట్ )",
+13197-                          desc: "జెమినీ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అసిస్టెంట్ యాక్సెస్",
+13198-                        },
+13199:                      }).map(([key, item]) => {
+13200-                        const currentPerm = rbacPermissions?.[
+13201-                          selectedRbacRole
+13202-                        ]?.[key] ||
+13203-                          DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || {
+13204-                            view: false,
+--
+13401-                                    .includes(logSearchTerm.toLowerCase()) ||
+13402-                                  (l.action || "")
+13403-                                    .toLowerCase()
+13404-                                    .includes(logSearchTerm.toLowerCase()),
+13405-                              )
+13406:                              .map((log: any, i: number) => (
+13407-                                <tr
+13408-                                  key={log.id || i}
+13409-                                  className="hover:bg-slate-50/80 transition-colors group"
+13410-                                >
+13411-                                  <td className="p-6 pl-10">
+--
+13546-                            </tr>
+13547-                          </thead>
+13548-                          <tbody className="divide-y divide-slate-50">
+13549-                            {Object.values(farmerRegistryJobs)
+13550-                              .reverse()
+13551:                              .map((job: any) => (
+13552-                                <tr
+13553-                                  key={job.id}
+13554-                                  className="hover:bg-slate-50/50 transition-colors group"
+13555-                                >
+13556-                                  <td className="p-6">
+--
+13899-                      <div className="space-y-4 pt-3 border-t border-slate-100">
+13900-                        {[
+13901-                          { key: 'updates', label: 'Flash Updates (ఫ్లాష్ అప్‌డేట్స్)' },
+13902-                          { key: 'posts', label: 'New Posts (కొత్త పోస్ట్‌లు)' },
+13903-                          { key: 'general', label: 'Alerts / Comments (లైక్‌లు / కామెంట్లు)' }
+13904:                        ].map((item) => (
+13905-                          <div key={item.key} className="flex items-center justify-between gap-4">
+13906-                            <span className="text-[13px] font-bold text-slate-600">{item.label}</span>
+13907-                            <div className="flex items-center gap-2">
+13908-                              <select 
+13909-                                className="text-xs p-1.5 border border-slate-200 rounded-lg bg-slate-50 font-bold focus:ring-2 focus:ring-blue-500 outline-none w-36"
+--
+13915-                                  if (val !== 'false') playNotificationSound(val);
+13916-                                  addToast(`Sound saved for ${item.label}`);
+13917-                                }}
+13918-                              >
+13919-                                <option value="false">Mute (మ్యూట్)</option>
+13920:                                {NOTIFICATION_SOUNDS.map(sc => (
+13921-                                  <option key={sc.id} value={sc.id}>{sc.name}</option>
+13922-                                ))}
+13923-                              </select>
+13924-                              <button 
+13925-                                onClick={() => {
+--
+14110-                            id: "firebase",
+14111-                            name: "Firebase Storage",
+14112-                            desc: "Real-time, persistent hot bucket",
+14113-                            icon: "",
+14114-                          },
+14115:                        ].map((node) => (
+14116-                          <button
+14117-                            key={node.id}
+14118-                            onClick={async () => {
+14119-                              if (storageConfig === node.id) return;
+14120-                              addToast(
+--
+14219-                            label: "SSL Vert",
+14220-                            status: "Encrypted",
+14221-                            val: "DigiCert TLS v1.3",
+14222-                            color: "blue",
+14223-                          },
+14224:                        ].map((item, i) => (
+14225-                          <div
+14226-                            key={i}
+14227-                            className="p-6 bg-slate-50 rounded-3xl border border-slate-100"
+14228-                          >
+14229-                            <div className="flex justify-between items-center mb-4">
+--
+14329-                            label: "Keywords",
+14330-                            val: "Trending",
+14331-                            color: "indigo",
+14332-                          },
+14333-                          { label: "Sitemap", val: "Indexed", color: "amber" },
+14334:                        ].map((m, i) => (
+14335-                          <div
+14336-                            key={i}
+14337-                            className="p-4 bg-white/5 border border-white/10 rounded-2xl"
+14338-                          >
+14339-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+--
+14609-  uids: string[];
+14610-  allUsers: UserProfile[];
+14611-  onClose: () => void;
+14612-  anonymousCount?: number;
+14613-}) {
+14614:  const usersList = uids.map(
+14615-    (uid) =>
+14616-      allUsers.find((u) => u.id === uid) || {
+14617-        id: uid,
+14618-        username: "Unknown User",
+14619-        name: "",
+--
+14663-               <span className="text-xs font-black bg-slate-200 text-slate-600 px-2 py-1 rounded-lg">
+14664-                 +{anonymousCount}
+14665-               </span>
+14666-            </div>
+14667-          )}
+14668:          {usersList.map((u, i) => (
+14669-            <div
+14670-              key={i}
+14671-              className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"
+14672-            >
+14673-              <div className="flex items-center gap-3">
+--
+14785-          <Share2 size={16} /> <span className="hidden sm:inline">Share</span>
+14786-        </button>
+14787-      </div>
+14788-
+14789-      <div className="mana-grid">
+14790:        {tools.map((t) => (
+14791-          <div
+14792-            key={t.id}
+14793-            className="mana-card"
+14794-            onClick={() => setActiveTool(t.id)}
+14795-          >
+--
+14878-                display: "flex",
+14879-                flexDirection: "column",
+14880-                gap: "15px",
+14881-              }}
+14882-            >
+14883:              {[1, 2, 3].map((step) => (
+14884-                <div
+14885-                  key={step}
+14886-                  style={{ display: "flex", alignItems: "center", gap: "15px" }}
+14887-                >
+14888-                  <div
+--
+15105-        {forms.length === 0 ? (
+15106-          <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+15107-            <p className="text-slate-400 font-bold">No forms uploaded yet.</p>
+15108-          </div>
+15109-        ) : (
+15110:          forms.map((f) => (
+15111-            <div
+15112-              key={f.id}
+15113-              className="p-4 bg-white border border-slate-200 rounded-2xl hover:shadow-md transition-shadow group"
+15114-            >
+15115-              <div className="flex justify-between items-start mb-3">
+--
+15164-  const [q, setQ] = useState("");
+15165-  const [distFilter, setDistFilter] = useState("");
+15166-  const [mandalFilter, setMandalFilter] = useState("");
+15167-
+15168-  const districts = [
+15169:    ...new Set(allUsers.map((u) => u.district).filter(Boolean)),
+15170-  ].sort() as string[];
+15171-  const mandals = distFilter
+15172-    ? ([
+15173-        ...new Set(
+15174-          allUsers
+15175-            .filter((u) => u.district === distFilter)
+15176:            .map((u) => u.mandal)
+15177-            .filter(Boolean),
+15178-        ),
+15179-      ].sort() as string[])
+15180-    : [];
+15181-
+--
+15228-                setMandalFilter("");
+15229-              }}
+15230-              className="bg-white px-4 py-3 rounded-2xl border border-slate-200 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[140px]"
+15231-            >
+15232-              <option value="">అన్ని జిల్లాలు (All Districts)</option>
+15233:              {districts.map((d) => (
+15234-                <option key={d} value={d}>
+15235-                  {d}
+15236-                </option>
+15237-              ))}
+15238-            </select>
+--
+15241-              onChange={(e) => setMandalFilter(e.target.value)}
+15242-              disabled={!distFilter}
+15243-              className="bg-white px-4 py-3 rounded-2xl border border-slate-200 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[140px] disabled:opacity-50"
+15244-            >
+15245-              <option value="">మండలం వారీగా (Mandal Wise)</option>
+15246:              {mandals.map((m) => (
+15247-                <option key={m} value={m}>
+15248-                  {m}
+15249-                </option>
+15250-              ))}
+15251-            </select>
+--
+15253-        </div>
+15254-      </div>
+15255-
+15256-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+15257-        {filtered.length > 0 ? (
+15258:          filtered.map((u) => (
+15259-            <motion.div
+15260-              initial={{ opacity: 0, scale: 0.95 }}
+15261-              animate={{ opacity: 1, scale: 1 }}
+15262-              key={u.id}
+15263-              className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/20 group hover:border-primary/20 transition-all flex flex-col h-full"
+--
+15489-  };
+15490-
+15491-  const toggleAllMandals = (expand: boolean) => {
+15492-    if (expand) {
+15493-      const mandals = Array.from(
+15494:        new Set(Array.from(aggregatedData.values()).map((v) => v.mandal)),
+15495-      );
+15496-      setExpandedMandals(new Set(mandals));
+15497-    } else {
+15498-      setExpandedMandals(new Set());
+15499-    }
+--
+15541-
+15542-          if (isHtml) {
+15543-            const parser = new DOMParser();
+15544-            const doc = parser.parseFromString(text, "text/html");
+15545-            const trs = doc.querySelectorAll("tr");
+15546:            const rows = Array.from(trs).map((tr) =>
+15547:              Array.from(tr.querySelectorAll("th, td")).map((td) => {
+15548-                let val = td.textContent?.trim().replace(/\s+/g, " ") || "";
+15549-                if (
+15550-                  val.includes("</th>") ||
+15551-                  val.includes("</td>") ||
+15552-                  val.includes("<th") ||
+--
+15563-                firstRow.length === 1 &&
+15564-                (firstRow[0].includes("<tr") || firstRow[0].includes("<td"))
+15565-              ) {
+15566-                const betterRows = text
+15567-                  .split(/<\/tr>/i)
+15568:                  .map((trStr) => {
+15569-                    return trStr
+15570-                      .split(/<\/td>|<\/th>/i)
+15571:                      .map((tdStr) => {
+15572-                        return tdStr.replace(/<\/?[^>]+(>|$)/g, "").trim();
+15573-                      })
+15574-                      .filter((c) => c !== "");
+15575-                  })
+15576-                  .filter((r) => r.length > 0);
+--
+15636-          let dataStartCol = -1;
+15637-
+15638-          for (let r = 0; r < Math.min(rows.length, 50); r++) {
+15639-            const row = rows[r];
+15640-            if (!row || !Array.isArray(row)) continue;
+15641:            const rStr = row.map((c) =>
+15642-              String(c || "")
+15643-                .toLowerCase()
+15644-                .replace(/\s+/g, " "),
+15645-            );
+15646-
+--
+15890-          attStr.includes("హాజరు")
+15891-        )
+15892-          s.present++;
+15893-      });
+15894-    });
+15895:    const exportData = Array.from(mandalSummary.entries()).map(([m, s]) => ({
+15896-      Mandal: m,
+15897-      "Total Checks": s.total,
+15898-      "Present Count": s.present,
+15899-      "Avg Attendance %":
+15900-        s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
+--
+16018-      [
+16019-        "S.No",
+16020-        "District",
+16021-        "Mandal",
+16022-        "Panchayat Name",
+16023:        ...allDates.map((d) => `Attendance\n${d}`),
+16024-      ],
+16025-    ];
+16026:    const body = filteredData.map((info, idx) => [
+16027-      idx + 1,
+16028-      info.district,
+16029-      info.mandal,
+16030-      info.gp,
+16031:      ...allDates.map((d) => info.attendance[d] || "-"),
+16032-    ]);
+16033-    autoTable(doc, {
+16034-      head: head,
+16035-      body: body,
+16036-      styles: { fontSize: 5 },
+--
+16038-    });
+16039-    doc.save(`MultiDay_Comparative_${new Date().toLocaleDateString()}.pdf`);
+16040-  };
+16041-
+16042-  const mandals = Array.from(
+16043:    new Set(Array.from(aggregatedData.values()).map((info) => info.mandal)),
+16044-  ).sort();
+16045-  const filteredData = Array.from(aggregatedData.values())
+16046-    .filter((info) => {
+16047-      const target =
+16048-        `${info.gp} ${info.mandal} ${info.district} ${info.division}`.toUpperCase();
+--
+16125-      {showDebug && parserDebug.length > 0 && (
+16126-        <div className="p-4 bg-slate-900 rounded-2xl text-[10px] font-mono text-emerald-400 space-y-2 overflow-auto max-h-64 border border-white/10 text-left">
+16127-          <div className="text-white font-bold mb-2 uppercase tracking-widest text-xs">
+16128-            Parser Analysis History
+16129-          </div>
+16130:          {parserDebug.map((d, i) => (
+16131-            <div key={i} className="border-b border-white/5 pb-2">
+16132-              <span className="text-blue-400 font-bold">
+16133-                [{d.file} / {d.sheet}]
+16134-              </span>
+16135-              <br />
+--
+16207-                  className="w-full bg-white border p-3 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all border-slate-300"
+16208-                  value={mandalFilter}
+16209-                  onChange={(e) => setMandalFilter(e.target.value)}
+16210-                >
+16211-                  <option value="All">All Mandals</option>
+16212:                  {mandals.map((m, idx) => (
+16213-                    <option key={`${m}_${idx}`} value={m}>
+16214-                      {m}
+16215-                    </option>
+16216-                  ))}
+16217-                </select>
+--
+16300-                        Mandal Name
+16301-                      </th>
+16302-                      <th className="p-3 border border-indigo-700 min-w-[150px] text-sm">
+16303-                        Panchayat Name
+16304-                      </th>
+16305:                      {sortedDates.map((d) => (
+16306-                        <th
+16307-                          key={d}
+16308-                          className="p-3 border border-indigo-700 min-w-[120px] text-center text-sm"
+16309-                        >
+16310-                          Attendance ({d})
+16311-                        </th>
+16312-                      ))}
+16313-                    </tr>
+16314-                  </thead>
+16315-                  <tbody className="divide-y divide-slate-100 bg-white">
+16316:                    {mandalList.map((mName) => {
+16317-                      const isEx = expandedMandals.has(mName);
+16318-                      const items = groupedByMandal[mName];
+16319-                      return (
+16320-                        <React.Fragment key={mName}>
+16321-                          <tr
+--
+16338-                                {items.length} GPs
+16339-                              </span>
+16340-                            </td>
+16341-                          </tr>
+16342-                          {isEx &&
+16343:                            items.map((info) => (
+16344-                              <tr
+16345-                                key={`${(info.mandal || "").toUpperCase()}_${(info.gp || "").toUpperCase()}`}
+16346-                                className="hover:bg-indigo-50/50 text-slate-700 border-b border-slate-100 group transition-colors"
+16347-                              >
+16348-                                <td className="p-3 border border-slate-200 text-center font-medium bg-slate-50 text-slate-400 group-hover:text-indigo-600 text-xs">
+--
+16357-                                  {info.mandal}
+16358-                                </td>
+16359-                                <td className="p-3 border border-slate-200 font-black text-slate-800 bg-white text-sm">
+16360-                                  {info.gp}
+16361-                                </td>
+16362:                                {sortedDates.map((d) => {
+16363-                                  const status = info.attendance[d] || "-";
+16364-                                  const time = info.times[d] || "-";
+16365-                                  const statusLower = status.toLowerCase();
+16366-                                  let color = "text-slate-400";
+16367-                                  if (
+--
+16439-                        matches: (s: string) =>
+16440-                          s.startsWith("t") ||
+16441-                          s.includes("శిక్షణ") ||
+16442-                          s.includes("training"),
+16443-                      },
+16444:                    ].map((st, idx) => (
+16445-                      <tr key={idx}>
+16446-                        <td
+16447-                          colSpan={4}
+16448-                          className="p-3 border border-black text-right uppercase text-[#004085]"
+16449-                        >
+16450-                          {st.label}
+16451-                        </td>
+16452:                        {sortedDates.map((d) => {
+16453-                          let count = 0;
+16454-                          filteredData.forEach((info) => {
+16455-                            const s = String(
+16456-                              info.attendance[d] || "",
+16457-                            ).toLowerCase();
+--
+16480-
+16481-function TrainingCenter() {
+16482-  return (
+16483-    <div className="space-y-4">
+16484-      <div className="grid gap-3">
+16485:        {["DSR Workflow", "EPFO Registration", "Aadhar Seeding Guide"].map(
+16486-          (guide) => (
+16487-            <div
+16488-              key={guide}
+16489-              className="p-4 bg-slate-50 border rounded-2xl flex justify-between items-center cursor-pointer hover:bg-slate-100"
+16490-            >
+--
+16592-          ) {
+16593-            const parser = new DOMParser();
+16594-            const doc = parser.parseFromString(text, "text/html");
+16595-            const trs = doc.querySelectorAll("tr");
+16596-            if (trs.length > 0) {
+16597:              allRows = Array.from(trs).map((tr) =>
+16598:                Array.from(tr.querySelectorAll("td, th")).map(
+16599-                  (td) => td.textContent?.trim().replace(/\s+/g, " ") || "",
+16600-                ),
+16601-              );
+16602-            }
+16603-          }
+--
+16640-          "గ్రామ పంచాయతీ",
+16641-          "gp",
+16642-        ];
+16643-
+16644-        for (let i = 0; i < Math.min(allRows.length, 100); i++) {
+16645:          const rowStrings = (allRows[i] || []).map((c) =>
+16646-            String(c || "")
+16647-              .toLowerCase()
+16648-              .trim(),
+16649-          );
+16650-          let score = 0;
+--
+16665-          }
+16666-        }
+16667-
+16668-        if (maxScore < 4 && allRows.length > 3) {
+16669-          const row4 =
+16670:            allRows[3]?.map((c) => String(c || "").toLowerCase()) || [];
+16671-          if (
+16672-            row4.some((s) => s.includes("mandal")) ||
+16673-            row4.some((s) => s.includes("panchayat"))
+16674-          )
+16675-            bestHeaderIdx = 3;
+--
+16682-            "క్షమించండి! మీ ఫైల్‌లో 'Mandal Name' మరియు 'Panchayat Name' కాలమ్స్ దొరకలేదు.",
+16683-          );
+16684-          return;
+16685-        }
+16686-
+16687:        let headers = allRows[bestHeaderIdx].map((h) =>
+16688-          String(h || "")
+16689-            .toLowerCase()
+16690-            .trim(),
+16691-        );
+16692-        if (bestHeaderIdx + 1 < allRows.length) {
+16693:          const nextRow = allRows[bestHeaderIdx + 1].map((h) =>
+16694-            String(h || "")
+16695-              .toLowerCase()
+16696-              .trim(),
+16697-          );
+16698-          nextRow.forEach((val, idx) => {
+--
+16970-
+16971-  const downloadMandalReport = async () => {
+16972-    await loadHeavyModules();
+16973-    if (Object.keys(mandalSummaries).length === 0) return;
+16974-
+16975:    const exportData = Object.entries(mandalSummaries).map(
+16976-      ([mandal, s]: [string, any]) => ({
+16977-        "Mandal Name": mandal,
+16978-        "Total GPs": s.total,
+16979-        "On Time (10:30 AM)": s.onTime,
+16980-        Meeting: s.meeting,
+--
+17000-
+17001-  const downloadFullReport = async () => {
+17002-    await loadHeavyModules();
+17003-    if (data.length === 0) return;
+17004-
+17005:    const exportData = data.map((r) => ({
+17006-      Mandal: r.mandal,
+17007-      "GP Name": r.gp,
+17008-      "Attendance Status": r.attStatus,
+17009-      "Attendance Time": r.attTime,
+17010-      "DSR Status": r.isMeeting
+--
+17381-                  Note: Total OnTime = OnTime + Meeting + Training + Leave
+17382-                </span>
+17383-              </div>
+17384-            </div>
+17385-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+17386:              {Object.entries(mandalSummaries).map(
+17387-                ([mandal, mStats]: [string, any], mIdx) => (
+17388-                  <button
+17389-                    aria-label={`View mandal ${mandal}`}
+17390-                    key={`${mandal}_${mIdx}`}
+17391-                    onClick={() => setSearchTerm(mandal)}
+--
+17547-                      Submitted
+17548-                    </th>
+17549-                  </tr>
+17550-                </thead>
+17551-                <tbody className="divide-y divide-slate-50">
+17552:                  {filteredData.map((row, i) => (
+17553-                    <tr
+17554-                      key={i}
+17555-                      className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0"
+17556-                    >
+17557-                      <td className="p-2 sm:p-4">
+--
+17791-    try {
+17792-      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+17793-      if (!commentDoc.exists()) return;
+17794-      const data = commentDoc.data();
+17795-      const currentReplies = data.replies || [];
+17796:      const newReplies = currentReplies.map((r: any) =>
+17797-        r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
+17798-      );
+17799-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+17800-        replies: newReplies,
+17801-      });
+--
+17816-        orderBy("time", "desc"),
+17817-      );
+17818-      const unsub = onSnapshot(
+17819-        q,
+17820-        (snap) => {
+17821:          const fetchedComments = snap.docs.map((d) => ({
+17822-            id: d.id,
+17823-            ...d.data(),
+17824-          }));
+17825-          setComments(fetchedComments);
+17826-          setCommentsLoaded(true);
+--
+17969-        )}
+17970-      </h4>
+17971-
+17972-      {post.tags && post.tags.length > 0 && (
+17973-        <div className="flex flex-wrap gap-1.5 mb-3">
+17974:          {post.tags.map((tag, i) => (
+17975-            <span
+17976-              key={i}
+17977-              className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-slate-200/50"
+17978-            >
+17979-              <Hash size={10} strokeWidth={3} /> {tag}
+--
+18092-                  .filter(
+18093-                    (att) =>
+18094-                      /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+18095-                      (att.url || "").includes("image"),
+18096-                  )
+18097:                  .map((att, idx) => (
+18098-                    <div
+18099-                      key={idx}
+18100-                      onClick={() =>
+18101-                        (window as any).setLightboxImage?.({
+18102-                          url: att.url,
+--
+18326-                        </span>
+18327-                      </div>
+18328-                    </div>
+18329-                  </a>
+18330-                )}
+18331:              {post.attachments?.map((att, idx) => (
+18332-                <a
+18333-                  key={idx}
+18334-                  href={att.url}
+18335-                  onClick={(e) =>
+18336-                    handleForceDownload(e, att.url, att.name || "Attachment")
+--
+18452-            <div className="mt-6 pt-4 border-t border-slate-100">
+18453-              <div className="text-[14px] text-gray-800 mb-3 font-sans font-black uppercase tracking-wider">
+18454-                Download
+18455-              </div>
+18456-              <div className="flex flex-col gap-2 w-full">
+18457:                {post.attachments.map((att, idx) => {
+18458-                  const isImage =
+18459-                    /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+18460-                    (att.url || "").includes("image");
+18461-                  return (
+18462-                    <div key={idx} className="w-full">
+--
+18855-
+18856-      {showComments && (
+18857-        <div className="mt-6 pt-6 border-t border-slate-100">
+18858-          <div className="space-y-4 mb-4">
+18859-            <AnimatePresence initial={false}>
+18860:              {comments.map((c) => (
+18861-                <motion.div
+18862-                  key={c.id}
+18863-                  initial={{ opacity: 0, y: 15 }}
+18864-                  animate={{ opacity: 1, y: 0 }}
+18865-                  exit={{ opacity: 0, y: -15 }}
+--
+18954-                  </div>
+18955-
+18956-                  {/* Replies List */}
+18957-                  {c.replies && c.replies.length > 0 && (
+18958-                    <div className="mt-3 space-y-3 pl-5 border-l-2 border-indigo-100 relative">
+18959:                      {c.replies.map((reply: any) => (
+18960-                        <div key={reply.id} className="flex gap-3 items-start relative pb-1">
+18961-                          <CornerDownRight size={14} className="absolute -left-6 top-1 text-indigo-300" />
+18962-                          <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-[10px] text-indigo-500 font-black shrink-0 shadow-sm">
+18963-                            {(reply.userName || "U")[0].toUpperCase()}
+18964-                          </div>
+--
+19039-                  {/* Reply Input Box */}
+19040-                  {replyingToId === c.id && auth.currentUser && (
+19041-                    <div className="mt-1 flex gap-2 pl-4 border-l-2 border-primary/20 relative">
+19042-                      {mentionQuery?.target === "reply" && (
+19043-                        <div className="absolute bottom-full mb-1 left-4 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+19044:                          {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+19045-                            <button
+19046-                              key={u.id}
+19047-                              onClick={() => handleMentionSelect(u.username || u.name || "User")}
+19048-                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+19049-                            >
+--
+19081-            )}
+19082-          </div>
+19083-          <div className="flex gap-2 relative">
+19084-            {mentionQuery?.target === "comment" && (
+19085-              <div className="absolute bottom-full mb-1 left-0 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+19086:                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+19087-                  <button
+19088-                    key={u.id}
+19089-                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
+19090-                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+19091-                  >
+--
+19377-      " eGramSwaraj doubts": " Technical Support",
+19378-      " Technical Support (సాంకేతిక సహాయం)": " Technical Support",
+19379-      " Technical Support (సహాయం)": " Technical Support",
+19380-      " Applications (దరఖాస్తులు)": " Applications",
+19381-    };
+19382:    return raw.map((cat) => mapping[cat] || cat);
+19383-  });
+19384-  const [tags, setTags] = useState(editingPost?.tags?.join(", ") || "");
+19385-  const [websiteName, setWebsiteName] = useState(
+19386-    editingPost?.websiteName || "",
+19387-  );
+--
+19455-      return;
+19456-    }
+19457-    setLoading(true);
+19458-    try {
+19459-      const extractedHashtags =
+19460:        content.match(/#(\w+)/g)?.map((tag) => tag.substring(1)) || [];
+19461-      const manualTags = tags
+19462-        .split(",")
+19463:        .map((tag) => tag.trim())
+19464-        .filter((tag) => tag !== "");
+19465-      const finalTags = Array.from(
+19466-        new Set([...manualTags, ...extractedHashtags]),
+19467-      );
+19468-
+19469:      const cleanAttachments = (attachments || []).map((att) => {
+19470-        const cleaned: any = { ...att };
+19471-        Object.keys(cleaned).forEach((key) => {
+19472-          if (cleaned[key] === undefined) delete cleaned[key];
+19473-        });
+19474-        return cleaned;
+--
+19649-          <div className="col-span-full">
+19650-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+19651-              Categories (Select up to 5)
+19652-            </label>
+19653-            <div className="flex flex-wrap gap-2 mb-2">
+19654:              {CATEGORIES.map((cat) => (
+19655-                <button
+19656-                  type="button"
+19657-                  key={cat}
+19658-                  onClick={() => toggleCategory(cat)}
+19659-                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
+--
+20045-                )}
+20046-              </h4>
+20047-
+20048-              {tags && (
+20049-                <div className="flex flex-wrap gap-1.5 mb-3">
+20050:                  {tags.split(",").map(
+20051-                    (tag, i) =>
+20052-                      tag.trim() && (
+20053-                        <span
+20054-                          key={i}
+20055-                          className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-slate-200/50"
+--
+20136-                    .filter(
+20137-                      (att) =>
+20138-                        /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+20139-                        (att.url || "").includes("image"),
+20140-                    )
+20141:                    .map((att, idx) => (
+20142-                      <div
+20143-                        key={idx}
+20144-                        className="rounded-2xl overflow-hidden border-2 border-slate-50 shadow-sm relative group"
+20145-                      >
+20146-                        <img
+--
+20378-                  axis="y"
+20379-                  values={attachments}
+20380-                  onReorder={setAttachments}
+20381-                  className="flex flex-col gap-2"
+20382-                >
+20383:                  {attachments.map((att, idx) => (
+20384-                    <Reorder.Item
+20385-                      key={att.url}
+20386-                      value={att}
+20387-                      className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] cursor-grab active:cursor-grabbing"
+20388-                    >
+--
+20419-                        <div className="flex bg-slate-100 p-0.5 rounded border border-slate-200">
+20420-                          <button
+20421-                            type="button"
+20422-                            onClick={() =>
+20423-                              setAttachments((prev) =>
+20424:                                prev.map((a, i) =>
+20425-                                  i === idx
+20426-                                    ? {
+20427-                                        ...a,
+20428-                                        status:
+20429-                                          a.status === "New"
+--
+20440-                          </button>
+20441-                          <button
+20442-                            type="button"
+20443-                            onClick={() =>
+20444-                              setAttachments((prev) =>
+20445:                                prev.map((a, i) =>
+20446-                                  i === idx
+20447-                                    ? {
+20448-                                        ...a,
+20449-                                        status:
+20450-                                          a.status === "Old"
+--
+20469-                          <select
+20470-                            value={att.badgePrefix || "v"}
+20471-                            onChange={(e) => {
+20472-                              const newPrefix = e.target.value;
+20473-                              setAttachments((prev) =>
+20474:                                prev.map((a, i) =>
+20475-                                  i === idx ? { ...a, badgePrefix: newPrefix } : a,
+20476-                                ),
+20477-                              );
+20478-                            }}
+20479-                            className="text-[9px] font-black text-blue-500 uppercase leading-none bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[12px] text-center pl-1"
+--
+20488-                          <select
+20489-                            value={att.version || "1.0"}
+20490-                            onChange={(e) => {
+20491-                              const newVer = e.target.value;
+20492-                              setAttachments((prev) =>
+20493:                                prev.map((a, i) =>
+20494-                                  i === idx ? { ...a, version: newVer } : a,
+20495-                                ),
+20496-                              );
+20497-                            }}
+20498-                            className="text-[9px] font-bold text-blue-600 leading-none bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[18px] text-center"
+--
+20506-                              "6.0",
+20507-                              "7.0",
+20508-                              "8.0",
+20509-                              "9.0",
+20510-                              "10.0",
+20511:                            ].map((v) => (
+20512-                              <option key={v} value={v}>
+20513-                                {v}
+20514-                              </option>
+20515-                            ))}
+20516-                          </select>
+--
+20842-          {isBotMode ? "Switch to Community" : "Chat with Bot"}
+20843-        </button>
+20844-      </div>
+20845-      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+20846-        <AnimatePresence initial={false}>
+20847:          {(isBotMode ? botMessages : messages).map((m) => (
+20848-            <motion.div
+20849-              key={m.id}
+20850-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+20851-              animate={{ opacity: 1, scale: 1, y: 0 }}
+20852-              className={`flex group ${m.uid === user?.uid ? "justify-end" : "justify-start"}`}
+--
+21076-
+21077-      <div className="space-y-6">
+21078-        <div className="flex items-center justify-between border-b pb-6">
+21079-          <div className="flex flex-wrap items-center gap-2">
+21080-            {post.categories && post.categories.length > 0 ? (
+21081:              post.categories.map((cat, idx) => (
+21082-                <span
+21083-                  key={idx}
+21084-                  className="cat-tag bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+21085-                >
+21086-                  {cat}
+--
+21125-          )}
+21126-        </h1>
+21127-
+21128-        {post.tags && post.tags.length > 0 && (
+21129-          <div className="flex flex-wrap gap-2">
+21130:            {post.tags.map((tag, i) => (
+21131-              <span
+21132-                key={i}
+21133-                className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-1.5"
+21134-              >
+21135-                <Hash size={12} className="text-primary/50" /> {tag}
+--
+21339-                    .filter(
+21340-                      (att) =>
+21341-                        /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+21342-                        (att.url || "").includes("image"),
+21343-                    )
+21344:                    .map((att, idx) => (
+21345-                      <div
+21346-                        key={idx}
+21347-                        onClick={() =>
+21348-                          (window as any).setLightboxImage?.({
+21349-                            url: att.url,
+--
+21496-                          </span>
+21497-                        </div>
+21498-                      </div>
+21499-                    </a>
+21500-                  )}
+21501:                {post.attachments?.map((att, idx) => (
+21502-                  <a
+21503-                    key={idx}
+21504-                    href={att.url}
+21505-                    onClick={(e) =>
+21506-                      handleForceDownload(e, att.url, att.name || "Attachment")
+--
+21637-                  <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+21638-                    Release Documents & File Attachments
+21639-                  </span>
+21640-                </div>
+21641-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+21642:                  {post.attachments.map((att, idx) => {
+21643-                    const isImage =
+21644-                      /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
+21645-                      (att.url || "").includes("image");
+21646-                    return (
+21647-                      <div key={idx}>
+--
+22096-    try {
+22097-      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+22098-      if (!commentDoc.exists()) return;
+22099-      const data = commentDoc.data();
+22100-      const currentReplies = data.replies || [];
+22101:      const newReplies = currentReplies.map((r: any) =>
+22102-        r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
+22103-      );
+22104-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+22105-        replies: newReplies,
+22106-      });
+--
+22120-      orderBy("time", "desc"),
+22121-    );
+22122-    const unsub = onSnapshot(
+22123-      q,
+22124-      (snap) => {
+22125:        const dbComments = snap.docs.map((d) => ({
+22126-          id: d.id,
+22127-          ...d.data(),
+22128-        }));
+22129-        
+22130-        const legacyComments = post.comments || [];
+--
+22293-        {auth.currentUser && !auth.currentUser.isAnonymous ? (
+22294-          <div className="flex flex-col sm:flex-row gap-3 relative">
+22295-            <div className="flex-1 flex flex-col gap-2 relative">
+22296-              {mentionQuery?.target === "comment" && (
+22297-                <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+22298:                  {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+22299-                    <button
+22300-                      key={u.id}
+22301-                      onClick={() => handleMentionSelect(u.username || u.name || "User")}
+22302-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3"
+22303-                    >
+--
+22390-              Be the first to start the conversation!
+22391-            </p>
+22392-          </div>
+22393-        )}
+22394-        <AnimatePresence initial={false}>
+22395:        {comments.map((c) => (
+22396-          <motion.div
+22397-            key={c.id}
+22398-            initial={{ opacity: 0, y: 15 }}
+22399-            animate={{ opacity: 1, y: 0 }}
+22400-            exit={{ opacity: 0, y: -15 }}
+--
+22568-              </div>
+22569-
+22570-              {/* Replies List */}
+22571-              {c.replies && c.replies.length > 0 && (
+22572-                <div className="mt-3 space-y-3 pl-5 border-l-2 border-indigo-100 relative">
+22573:                  {c.replies.map((reply: any) => (
+22574-                    <div key={reply.id} className="flex gap-3 items-start relative pb-1">
+22575-                      <CornerDownRight size={14} className="absolute -left-6 top-1 text-indigo-300" />
+22576-                      <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-[10px] text-indigo-500 font-black shrink-0 shadow-sm">
+22577-                        {(reply.userName || "U")[0].toUpperCase()}
+22578-                      </div>
+--
+22653-              {/* Reply Input Box */}
+22654-              {replyingToId === c.id && auth.currentUser && (
+22655-                <div className="mt-3 flex gap-2 pl-4 border-l-2 border-primary/20 relative">
+22656-                  {mentionQuery?.target === "reply" && (
+22657-                    <div className="absolute bottom-full mb-1 left-4 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+22658:                      {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+22659-                        <button
+22660-                          key={u.id}
+22661-                          onClick={() => handleMentionSelect(u.username || u.name || "User")}
+22662-                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+22663-                        >
+--
+22757-    // Check if duplicate
+22758-    if (trimmedNew !== editingCat.old && cats.includes(trimmedNew)) {
+22759-       addToast("Category already exists");
+22760-       return;
+22761-    }
+22762:    const updated = cats.map(c => c === editingCat.old ? trimmedNew : c);
+22763-    setCats(updated);
+22764-    setEditingCat(null);
+22765-    saveToDb(updated);
+22766-  };
+22767-
+--
+22776-          Add or remove categories for the Suggestions & Feedback form
+22777-        </p>
+22778-      </div>
+22779-      
+22780-      <div className="flex flex-wrap gap-3 mb-8">
+22781:        {cats.map((cat, idx) => (
+22782-          editingCat?.old === cat ? (
+22783-             <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
+22784-               <input 
+22785-                 value={editingCat.new}
+22786-                 onChange={e => setEditingCat({...editingCat, new: e.target.value})}
+--
+23011-          <select
+23012-            value={category || "General Suggestion"}
+23013-            onChange={(e) => setCategory(e.target.value)}
+23014-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700 appearance-none"
+23015-          >
+23016:            {categories.length > 0 ? categories.map((c) => (
+23017-              <option key={c} value={c}>{c}</option>
+23018-            )) : (
+23019-              <option value="General Suggestion">General Suggestion</option>
+23020-            )}
+23021-          </select>

@@ -3777,10 +3777,6 @@ export default function App() {
                         },
                       ]
                     : []),
-                  { id: "builder", label: "Page Builder", icon: Wrench },
-                  { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
-                  { id: "locations", label: "Locations", icon: MapPin },
-                  { id: "suggestions", label: "Public Suggestions and Feedback", icon: MessageSquare },
                 ].map((item) => (
                   <MenuButton
                     key={item.id}
@@ -3793,6 +3789,32 @@ export default function App() {
                     }}
                   />
                 ))}
+
+                {(isAdmin || isDevEmail) && (
+                  <>
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-6 mb-4">
+                      Operations
+                    </h3>
+                    {[
+                      { id: "builder", label: "Page Builder", icon: Wrench },
+                      { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
+                      { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
+                      { id: "locations", label: "Locations", icon: MapPin },
+                      { id: "suggestions", label: "Public Suggestions and Feedback", icon: MessageSquare },
+                    ].map((item) => (
+                      <MenuButton
+                        key={item.id}
+                        label={item.label}
+                        icon={item.icon}
+                        active={activeAdminSubTab === item.id}
+                        onClick={() => {
+                          setActiveAdminSubTab(item.id);
+                          setSidebarOpen(false);
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
 
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
