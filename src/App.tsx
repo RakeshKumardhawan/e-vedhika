@@ -121,6 +121,7 @@ import {
   FileSpreadsheet,
   Package,
   CornerDownRight,
+  LayoutList,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -1263,6 +1264,211 @@ const DEFAULT_ABOUT_CONTENT = `ఈ వేదిక **'పంచాయతీ ర�
  **నా లక్ష్యం:**
 సమయాన్ని ఆదా చేస్తూ, పారదర్శకమైన సేవలను అందించే ఇలాంటి మరిన్ని టూల్స్ను అభివృద్ధి చేయడం మరియు ప్రతి ఒక్కరికీ సాంకేతికతను సులభతరం చేయడమే నా లక్ష్యం.`;
 
+function LandingPage({ 
+  onLoginClick, 
+  onShowFooter,
+  landingPageData
+}: { 
+  onLoginClick: () => void;
+  onShowFooter: (type: "privacy" | "about" | "contact") => void;
+  landingPageData: any;
+}) {
+  return (
+    <div className="w-full h-full overflow-y-auto bg-slate-50 font-sans text-slate-800">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* లోగో HTML స్ట్రక్చర్ */}
+            <div className="logo-pro cursor-pointer transition-transform hover:scale-105 active:scale-95 duration-200 shrink-0">
+              {/* యానిమేటెడ్ పార్టికల్స్ */}
+              <div className="logo-particles">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+
+              {/* SVG లోగో */}
+              <svg
+                viewBox="0 0 64 64"
+                className="w-[36px] h-[36px] sm:w-[42px] sm:h-[42px] shrink-0"
+              >
+                <defs>
+                  {/* కలర్ గ్రేడియంట్స్ */}
+                  <linearGradient id="gLanding" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" />
+                    <stop offset="100%" stopColor="#0ea5e9" />
+                  </linearGradient>
+                  <linearGradient id="ringGLanding" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" />
+                    <stop offset="50%" stopColor="#facc15" />
+                    <stop offset="100%" stopColor="#0ea5e9" />
+                  </linearGradient>
+                </defs>
+
+                {/* బయటి రింగ్ */}
+                <circle
+                  className="logo-ring"
+                  cx="32"
+                  cy="32"
+                  r="29"
+                  fill="none"
+                  stroke="url(#ringGLanding)"
+                  strokeWidth="2.5"
+                  strokeDasharray="10 5"
+                />
+
+                {/* లోపలి సర్కిల్స్ */}
+                <circle cx="32" cy="32" r="25" fill="url(#gLanding)" />
+                <circle cx="32" cy="32" r="21" fill="#0d3b66" />
+
+                {/* EV టెక్స్ట్ */}
+                <text
+                  x="50%"
+                  y="54%"
+                  dominantBaseline="middle"
+                  textAnchor="middle"
+                  fill="#fff"
+                  fontSize="18"
+                  fontWeight="900"
+                  fontFamily="Segoe UI"
+                >
+                  EV
+                </text>
+              </svg>
+            </div>
+            <h1 className="text-2xl font-black tracking-tighter text-blue-900">E-VEDHIKA</h1>
+          </div>
+          <button 
+            onClick={onLoginClick}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm"
+          >
+            Login
+          </button>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 space-y-16">
+        <section className="text-center space-y-6 max-w-4xl mx-auto">
+          <h2 className="text-4xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">
+            {landingPageData.heroTitle} <span className="text-blue-600">{landingPageData.heroHighlight}</span>
+          </h2>
+          <p className="text-lg lg:text-xl text-slate-600 leading-relaxed font-medium max-w-3xl mx-auto">
+            {landingPageData.heroSubtitle}
+          </p>
+          <div className="pt-4 flex justify-center gap-4">
+            <button 
+              onClick={onLoginClick}
+              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-blue-600/30 text-lg flex items-center gap-2"
+            >
+              Access Dashboard
+            </button>
+          </div>
+        </section>
+
+        {/* SEO Content Section for Google AdSense */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-12">
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6">
+              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-black text-slate-800 mb-4">{landingPageData.card1Title}</h3>
+            <p className="text-slate-600 leading-relaxed">
+              {landingPageData.card1Desc}
+            </p>
+          </div>
+          
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mb-6">
+              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-black text-slate-800 mb-4">{landingPageData.card2Title}</h3>
+            <p className="text-slate-600 leading-relaxed">
+              {landingPageData.card2Desc}
+            </p>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center mb-6">
+              <svg className="w-6 h-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-black text-slate-800 mb-4">{landingPageData.card3Title}</h3>
+            <p className="text-slate-600 leading-relaxed">
+              {landingPageData.card3Desc}
+            </p>
+          </div>
+        </section>
+
+        <section className="bg-blue-900 rounded-[40px] p-12 text-center text-white space-y-8 mt-12 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent" />
+          <div className="relative z-10 max-w-3xl mx-auto">
+            <h2 className="text-3xl lg:text-4xl font-black mb-6">{landingPageData.ctaTitle}</h2>
+            <p className="text-blue-100 text-lg leading-relaxed mb-8">
+              {landingPageData.ctaDesc}
+            </p>
+            <button 
+              onClick={onLoginClick}
+              className="px-8 py-3 bg-white text-blue-900 hover:bg-blue-50 font-black rounded-xl transition-colors shadow-lg"
+            >
+              Get Started Now
+            </button>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200 mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="logo-pro shrink-0" style={{ transform: 'scale(0.8)', transformOrigin: 'left center' }}>
+                <div className="logo-particles">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <svg viewBox="0 0 64 64" className="w-[36px] h-[36px]">
+                  <defs>
+                    <linearGradient id="gLandingFooter" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" />
+                      <stop offset="100%" stopColor="#0ea5e9" />
+                    </linearGradient>
+                    <linearGradient id="ringGLandingFooter" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" />
+                      <stop offset="50%" stopColor="#facc15" />
+                      <stop offset="100%" stopColor="#0ea5e9" />
+                    </linearGradient>
+                  </defs>
+                  <circle className="logo-ring" cx="32" cy="32" r="29" fill="none" stroke="url(#ringGLandingFooter)" strokeWidth="2.5" strokeDasharray="10 5" />
+                  <circle cx="32" cy="32" r="25" fill="url(#gLandingFooter)" />
+                  <circle cx="32" cy="32" r="21" fill="#0d3b66" />
+                  <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="900" fontFamily="Segoe UI">EV</text>
+                </svg>
+              </div>
+              <span className="font-bold text-slate-800">E-VEDHIKA</span>
+            </div>
+            <div className="flex gap-6 text-sm font-bold text-slate-500">
+              <button onClick={() => onShowFooter("privacy")} className="hover:text-blue-600 transition-colors">Privacy Policy</button>
+              <button onClick={() => onShowFooter("about")} className="hover:text-blue-600 transition-colors">About Us</button>
+              <button onClick={() => onShowFooter("contact")} className="hover:text-blue-600 transition-colors">Contact Us</button>
+            </div>
+            <div className="text-sm text-slate-400 font-medium">
+              &copy; {new Date().getFullYear()} E-Vedhika. All rights reserved.
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1466,6 +1672,8 @@ export default function App() {
     searchParams.get("subtab") || "dash",
   );
   const [siteConfig, setSiteConfig] = useState<any>(null);
+  const [customMenus, setCustomMenus] = useState<CustomMenu[]>([]);
+  const [customMenuCards, setCustomMenuCards] = useState<CustomMenuCard[]>([]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
@@ -1560,6 +1768,31 @@ export default function App() {
     lastUpdated: ""
   });
 
+  const [landingPageData, setLandingPageData] = useState<any>({
+    heroTitle: "Streamlining Governance & Citizen Services in",
+    heroHighlight: "Andhra Pradesh",
+    heroSubtitle: "E-Vedhika is a comprehensive digital platform designed to bridge the gap between citizens and government administration. By digitizing records and streamlining grievance redressal, we ensure transparent, accountable, and efficient governance at the grassroots level.",
+    card1Title: "Farmer Registry & Verification",
+    card1Desc: "Our advanced Farmer Registry system digitizes land records, crop details, and farmer information. Using live verification tools, agricultural officers can validate data in real-time, reducing discrepancies and ensuring that government subsidies reach the right beneficiaries without delay. This robust registry acts as the backbone for all agricultural initiatives in the region.",
+    card2Title: "Grievance Redressal System",
+    card2Desc: "Citizens can directly lodge complaints and suggestions through our digital portal. The system automatically routes these issues to the concerned departmental officers. With built-in tracking and escalation matrix, the Grievance Redressal System ensures that no public issue goes unnoticed, fostering a culture of accountability and rapid response within the administration.",
+    card3Title: "Data Analytics & Reporting",
+    card3Desc: "E-Vedhika provides administrators with powerful data visualization and reporting tools. From tracking the number of resolved issues to analyzing demographic data, the platform generates comprehensive insights. These analytics empower decision-makers to identify trends, allocate resources efficiently, and formulate data-driven policies that benefit the entire community.",
+    ctaTitle: "Empowering Citizens through Technology",
+    ctaDesc: "By leveraging modern web technologies like React, Node.js, and secure cloud infrastructure, E-Vedhika delivers a seamless experience. Our goal is to make government services accessible to everyone, anywhere, at any time. The secure authentication system ensures that only authorized personnel can access sensitive administrative modules, while citizens enjoy a user-friendly public interface.",
+  });
+
+  const fetchLandingPageData = async () => {
+    try {
+      const snap = await getDoc(doc(db, "settings", "landing_page"));
+      if (snap.exists() && snap.data()) {
+        setLandingPageData(snap.data());
+      }
+    } catch (err) {
+      console.warn("Could not fetch landing page config:", err);
+    }
+  };
+
   const fetchAboutContent = async () => {
     try {
       const res = await fetch("/api/about");
@@ -1581,6 +1814,7 @@ export default function App() {
 
   useEffect(() => {
     fetchAboutContent();
+    fetchLandingPageData();
   }, []);
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -2110,11 +2344,25 @@ export default function App() {
       (err) => handleFirestoreError(err, OperationType.LIST, "posts"),
     );
 
+    const unsubCustomMenus = onSnapshot(collection(db, "customMenus"), (snap) => {
+      const data: CustomMenu[] = [];
+      snap.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as CustomMenu));
+      setCustomMenus(data.sort((a, b) => a.order - b.order));
+    });
+
+    const unsubCustomMenuCards = onSnapshot(collection(db, "customMenuCards"), (snap) => {
+      const data: CustomMenuCard[] = [];
+      snap.forEach((doc) => data.push({ id: doc.id, ...doc.data() } as CustomMenuCard));
+      setCustomMenuCards(data.sort((a, b) => (a.order || 0) - (b.order || 0)));
+    });
+
     return () => {
       unsubVisits();
       unsubUpdates();
       unsubSuggestions();
       unsubPosts();
+      unsubCustomMenus();
+      unsubCustomMenuCards();
     };
   }, []);
 
@@ -2987,6 +3235,10 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {(!user && !location.pathname.endsWith("/Evdka") && !isFarmerRegistryPath) ? (
+        <LandingPage onLoginClick={triggerLogin} onShowFooter={setShowFooterModal} landingPageData={landingPageData} />
+      ) : (
+      <>
       <header className="sticky top-0 z-[1001] shadow-2xl bg-[#103052] border-b-[3px] border-accent flex items-center">
         <div
           className="brand-wrapper cursor-pointer flex items-center gap-1.5 sm:gap-4 min-w-0"
@@ -3526,6 +3778,7 @@ export default function App() {
                       ]
                     : []),
                   { id: "builder", label: "Page Builder", icon: Wrench },
+                  { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
                   { id: "locations", label: "Locations", icon: MapPin },
                   { id: "suggestions", label: "Public Suggestions and Feedback", icon: MessageSquare },
                 ].map((item) => (
@@ -3737,6 +3990,42 @@ export default function App() {
                   }}
                 />
 
+                {customMenus.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-100/50">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2">
+                      Dynamic Menus
+                    </p>
+                    {customMenus.map(menu => (
+                      <MenuButton
+                        key={menu.id}
+                        label={menu.label}
+                        icon={LayoutList}
+                        active={currentTab === `custom_menu_${menu.id}`}
+                        onClick={() => {
+                          setCurrentTab(`custom_menu_${menu.id}`);
+                          setSidebarOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {isAdmin && (
+                  <div className="mt-4 pt-4 border-t border-slate-100/50">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-2">
+                      Admin Settings
+                    </p>
+                    <MenuButton
+                      label="Manage Dynamic Menus" icon={Wrench}
+                      active={currentTab === "manage_custom_menus"}
+                      onClick={() => {
+                        setCurrentTab("manage_custom_menus");
+                        setSidebarOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
+
                 <motion.a
   href="/Farmer_Registry"
   whileHover={{ scale: 1.01 }}
@@ -3880,6 +4169,11 @@ export default function App() {
                 setRbacPermissions={setRbacPermissions}
                 activeSubTab={activeAdminSubTab}
                 setActiveSubTab={setActiveAdminSubTab}
+                customMenus={customMenus}
+                customMenuCards={customMenuCards}
+                landingPageData={landingPageData}
+                setLandingPageData={setLandingPageData}
+                fetchLandingPageData={fetchLandingPageData}
               />
             )}
 
@@ -3922,6 +4216,11 @@ export default function App() {
                   setRbacPermissions={setRbacPermissions}
                   activeSubTab={activeAdminSubTab}
                   setActiveSubTab={setActiveAdminSubTab}
+                  customMenus={customMenus}
+                  customMenuCards={customMenuCards}
+                  landingPageData={landingPageData}
+                  setLandingPageData={setLandingPageData}
+                  fetchLandingPageData={fetchLandingPageData}
                 />
               )}
 
@@ -3988,32 +4287,45 @@ export default function App() {
                                 className={sizeClass}
                               >
                                 {el.type === "Hero Section" && (
-                                  <div className="relative isolate px-4 py-8 sm:px-8 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 rounded-[32px] overflow-hidden shadow-xl border border-white/5 group min-h-[220px] sm:min-h-[260px] flex items-center">
+                                  <div className="relative isolate px-4 py-10 sm:px-8 bg-slate-950 rounded-[32px] overflow-hidden shadow-2xl shadow-indigo-500/20 border border-white/10 group min-h-[220px] sm:min-h-[260px] flex items-center">
                                     {/* Abstract background blobs */}
                                     <div className="absolute inset-0 -z-10 overflow-hidden">
+                                      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
                                       <motion.div
                                         animate={{
-                                          scale: [1, 1.15, 1],
-                                          rotate: [0, 45, 0],
+                                          scale: [1, 1.2, 1],
+                                          rotate: [0, 90, 0],
+                                        }}
+                                        transition={{
+                                          duration: 20,
+                                          repeat: Infinity,
+                                          ease: "easeInOut",
+                                        }}
+                                        className="absolute -top-[40%] -right-[10%] w-[80%] h-[100%] bg-gradient-to-br from-blue-500 to-indigo-600 opacity-50 blur-[90px] rounded-full mix-blend-screen"
+                                      />
+                                      <motion.div
+                                        animate={{
+                                          scale: [1.2, 1, 1.2],
+                                          rotate: [90, 0, 90],
                                         }}
                                         transition={{
                                           duration: 15,
                                           repeat: Infinity,
-                                          ease: "linear",
+                                          ease: "easeInOut",
                                         }}
-                                        className="absolute -top-[20%] -right-[10%] w-[50%] h-[70%] bg-indigo-500/15 blur-[80px] rounded-full"
+                                        className="absolute -bottom-[30%] -left-[10%] w-[70%] h-[90%] bg-gradient-to-tr from-fuchsia-600 to-purple-600 opacity-40 blur-[100px] rounded-full mix-blend-screen"
                                       />
                                       <motion.div
                                         animate={{
-                                          scale: [1.15, 1, 1.15],
-                                          rotate: [45, 0, 45],
+                                          scale: [1, 1.5, 1],
+                                          opacity: [0.4, 0.8, 0.4],
                                         }}
                                         transition={{
-                                          duration: 12,
+                                          duration: 10,
                                           repeat: Infinity,
-                                          ease: "linear",
+                                          ease: "easeInOut",
                                         }}
-                                        className="absolute -bottom-[10%] -left-[10%] w-[40%] h-[60%] bg-purple-500/15 blur-[60px] rounded-full"
+                                        className="absolute top-[20%] left-[20%] w-[50%] h-[50%] bg-cyan-400/30 blur-[80px] rounded-full mix-blend-screen"
                                       />
                                     </div>
 
@@ -4034,7 +4346,7 @@ export default function App() {
                                                   : "Good Evening";
                                             return userProfile?.name ? (
                                               <div className="space-y-1 sm:space-y-2">
-                                                <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block">
+                                                <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block drop-shadow-sm">
                                                   Hello, {timeGreeting},{" "}
                                                   {
                                                     userProfile.name.split(
@@ -4043,21 +4355,21 @@ export default function App() {
                                                   }
                                                   !
                                                 </span>
-                                                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block">
+                                                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
-                                                  <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent italic">
+                                                  <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent italic drop-shadow-sm">
                                                     E-Vedhika. ✨
                                                   </span>
                                                 </h1>
                                               </div>
                                             ) : (
                                               <div className="space-y-1 sm:space-y-2">
-                                                <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block">
+                                                <span className="text-lg sm:text-xl md:text-2xl font-bold text-indigo-200 block drop-shadow-sm">
                                                   Hello, {timeGreeting}! 👋
                                                 </span>
-                                                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block">
+                                                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
-                                                  <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+                                                  <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-sm">
                                                     E-Vedhika. ✨
                                                   </span>
                                                 </h1>
@@ -5921,6 +6233,91 @@ export default function App() {
                   </motion.div>
                 )}
 
+                {currentTab === "manage_custom_menus" && isAdmin && (
+                  <motion.div
+                    key="manage_custom_menus"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex justify-between items-center mb-6">
+                      <button
+                        aria-label="Back to Home"
+                        onClick={() => setCurrentTab("home")}
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
+                      >
+                        <ArrowLeft size={16} /> Back to Home
+                      </button>
+                    </div>
+                    <CustomMenuAdmin 
+                      customMenus={customMenus}
+                      customMenuCards={customMenuCards}
+                      addToast={addToast}
+                    />
+                  </motion.div>
+                )}
+
+                {currentTab.startsWith("custom_menu_") && (
+                  <motion.div
+                    key={currentTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex justify-between items-center mb-6">
+                      <button
+                        aria-label="Back to Home"
+                        onClick={() => setCurrentTab("home")}
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
+                      >
+                        <ArrowLeft size={16} /> Back to Home
+                      </button>
+                    </div>
+                    {(() => {
+                      const menuId = currentTab.replace("custom_menu_", "");
+                      const menu = customMenus.find(m => m.id === menuId);
+                      const cards = customMenuCards.filter(c => c.menuId === menuId);
+                      return (
+                        <div className="space-y-6">
+                          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-widest">{menu?.label || "Custom Menu"}</h2>
+                          {cards.length === 0 ? (
+                            <div className="p-8 text-center bg-white rounded-3xl border border-slate-100 text-slate-500 font-bold shadow-sm">
+                              No items added to this menu yet.
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {cards.map(card => (
+                                <a
+                                  key={card.id}
+                                  href={card.linkUrl || "#"}
+                                  target={card.linkUrl ? "_blank" : undefined}
+                                  rel={card.linkUrl ? "noopener noreferrer" : undefined}
+                                  className="group flex flex-col bg-white rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 overflow-hidden"
+                                >
+                                  {card.imageUrl && (
+                                    <div className="h-48 overflow-hidden bg-slate-50 border-b border-slate-100 relative">
+                                      <img src={card.imageUrl} alt={card.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    </div>
+                                  )}
+                                  <div className="p-6 flex flex-col flex-1">
+                                    <h3 className="text-lg font-black text-slate-800 mb-2 leading-tight group-hover:text-blue-600 transition-colors">{card.title}</h3>
+                                    <p className="text-sm text-slate-600 font-medium leading-relaxed mb-4 flex-1 whitespace-pre-wrap">{card.description}</p>
+                                    {card.linkUrl && (
+                                      <div className="mt-auto flex items-center text-xs font-bold text-blue-500 uppercase tracking-widest group-hover:text-blue-600">
+                                        View Details <ExternalLink size={14} className="ml-1" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                )}
+
                 {currentTab === "farmer_registry" && (
                   <motion.div
                     key="farmer_registry"
@@ -6170,15 +6567,6 @@ export default function App() {
               </div>
             )}
 
-            {showAuthModal && (
-              <AuthModal
-                onClose={() => setShowAuthModal(false)}
-                addToast={addToast}
-                handleGoogleLogin={handleGoogleLogin}
-                districtsData={districtsData}
-              />
-            )}
-
             {showSuggestionForm && (
               <div className="fixed inset-0 z-[3000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-[24px] shadow-2xl custom-scrollbar relative">
@@ -6218,6 +6606,8 @@ export default function App() {
           </div>
         </main>
       </div>
+      </>
+      )}
       
 
       {/* IMAGE LIGHTBOX MODAL */}
@@ -6311,6 +6701,15 @@ export default function App() {
         >
           <ChevronUp size={24} strokeWidth={3} />
         </button>
+      )}
+
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          addToast={addToast}
+          handleGoogleLogin={handleGoogleLogin}
+          districtsData={districtsData}
+        />
       )}
     </div>
   );
@@ -7269,6 +7668,24 @@ interface Advertisement {
   time: number;
 }
 
+export interface CustomMenu {
+  id: string;
+  label: string;
+  iconName: string;
+  order: number;
+}
+
+export interface CustomMenuCard {
+  id: string;
+  menuId: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  linkUrl?: string;
+  order: number;
+  createdAt: number;
+}
+
 function AdsenseUnit({
   client,
   slot,
@@ -7505,6 +7922,326 @@ function AdminUserTooltip({ uid, userName, allUsers, isAdmin }: { uid?: string, 
   );
 }
 
+function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToast }: any) {
+  const [formData, setFormData] = useState(landingPageData || {});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (landingPageData) {
+      setFormData(landingPageData);
+    }
+  }, [landingPageData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setDoc(doc(db, "settings", "landing_page"), formData);
+      addToast("Landing Page Config saved successfully!");
+      fetchLandingPageData();
+    } catch (err) {
+      console.error(err);
+      addToast("Error saving Landing Page Config");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderInput = (label: string, name: string, isTextarea = false) => {
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
+        {isTextarea ? (
+          <textarea
+            name={name}
+            value={formData[name] || ""}
+            onChange={handleChange}
+            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all min-h-[120px]"
+          />
+        ) : (
+          <input
+            type="text"
+            name={name}
+            value={formData[name] || ""}
+            onChange={handleChange}
+            className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+          />
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-sm border border-slate-100">
+      <div className="flex justify-between items-center mb-8">
+        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+          <Globe size={24} className="text-primary" />
+          Landing Page Configuration
+        </h3>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-primary/90 transition-all flex items-center gap-2"
+        >
+          {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+
+      <div className="space-y-8">
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+          <h4 className="font-black text-slate-800 mb-4 text-lg">Hero Section</h4>
+          {renderInput("Hero Title", "heroTitle")}
+          {renderInput("Hero Highlight (Blue Text)", "heroHighlight")}
+          {renderInput("Hero Subtitle", "heroSubtitle", true)}
+        </div>
+
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+          <h4 className="font-black text-slate-800 mb-4 text-lg">Card 1</h4>
+          {renderInput("Card 1 Title", "card1Title")}
+          {renderInput("Card 1 Description", "card1Desc", true)}
+        </div>
+
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+          <h4 className="font-black text-slate-800 mb-4 text-lg">Card 2</h4>
+          {renderInput("Card 2 Title", "card2Title")}
+          {renderInput("Card 2 Description", "card2Desc", true)}
+        </div>
+
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+          <h4 className="font-black text-slate-800 mb-4 text-lg">Card 3</h4>
+          {renderInput("Card 3 Title", "card3Title")}
+          {renderInput("Card 3 Description", "card3Desc", true)}
+        </div>
+
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+          <h4 className="font-black text-slate-800 mb-4 text-lg">Call To Action Section</h4>
+          {renderInput("CTA Title", "ctaTitle")}
+          {renderInput("CTA Description", "ctaDesc", true)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomMenuAdmin({ customMenus, customMenuCards, addToast }: any) {
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  const handleAddMenu = async () => {
+    const { value: label } = await Swal.fire({
+      title: "New Custom Menu",
+      input: "text",
+      inputLabel: "Menu Title",
+      inputPlaceholder: "e.g., Useful Links",
+      showCancelButton: true,
+      inputValidator: (value) => {
+        if (!value) return "You need to write something!";
+      }
+    });
+
+    if (label) {
+      try {
+        await addDoc(collection(db, "customMenus"), {
+          label,
+          iconName: "LayoutList",
+          order: customMenus.length,
+          createdAt: Date.now()
+        });
+        addToast("Menu created successfully!");
+      } catch (e: any) {
+        addToast("Error: " + e.message);
+      }
+    }
+  };
+
+  const handleDeleteMenu = async (id: string) => {
+    const res = await Swal.fire({
+      title: "Are you sure?",
+      text: "This menu will be deleted. Ensure you delete its cards first if you want to clean up.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Yes, delete it!"
+    });
+    if (res.isConfirmed) {
+      await deleteDoc(doc(db, "customMenus", id));
+      addToast("Menu deleted!");
+      if (activeMenuId === id) setActiveMenuId(null);
+    }
+  };
+
+  const handleAddCard = async () => {
+    if (!activeMenuId) return;
+    const { value: formValues } = await Swal.fire({
+      title: "Add New Card",
+      html: `
+        <input id="swal-input1" class="swal2-input" placeholder="Card Title (required)">
+        <textarea id="swal-input2" class="swal2-textarea" placeholder="Description (required)"></textarea>
+        <input id="swal-input3" class="swal2-input" placeholder="Image URL (optional)">
+        <input id="swal-input4" class="swal2-input" placeholder="Link URL (optional)">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      preConfirm: () => {
+        const title = (document.getElementById("swal-input1") as HTMLInputElement).value;
+        const desc = (document.getElementById("swal-input2") as HTMLInputElement).value;
+        if (!title || !desc) {
+          Swal.showValidationMessage("Title and Description are required");
+          return null;
+        }
+        return {
+          title,
+          description: desc,
+          imageUrl: (document.getElementById("swal-input3") as HTMLInputElement).value,
+          linkUrl: (document.getElementById("swal-input4") as HTMLInputElement).value,
+        };
+      }
+    });
+
+    if (formValues) {
+      try {
+        await addDoc(collection(db, "customMenuCards"), {
+          menuId: activeMenuId,
+          ...formValues,
+          order: customMenuCards.filter((c: any) => c.menuId === activeMenuId).length,
+          createdAt: Date.now()
+        });
+        addToast("Card added!");
+      } catch (e: any) {
+        addToast("Error: " + e.message);
+      }
+    }
+  };
+
+  const handleDeleteCard = async (id: string) => {
+    const res = await Swal.fire({
+      title: "Delete Card?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444"
+    });
+    if (res.isConfirmed) {
+      await deleteDoc(doc(db, "customMenuCards", id));
+      addToast("Card deleted!");
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-20">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-[40px] text-white shadow-xl shadow-blue-900/20 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+          <LayoutList size={200} />
+        </div>
+        <div className="relative z-10 max-w-xl">
+          <h2 className="text-3xl font-black mb-2 tracking-tight">Dynamic Menus</h2>
+          <p className="text-blue-100 font-medium">Create new menu options for the sidebar and add cards to them dynamically.</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Menus List */}
+        <div className="w-full lg:w-1/3 bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 self-start">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">Menus</h3>
+            <button onClick={handleAddMenu} className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 p-2 rounded-xl transition-colors">
+              <Plus size={18} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {customMenus.map((m: any) => (
+              <div 
+                key={m.id} 
+                className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border ${activeMenuId === m.id ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-slate-50 border-transparent hover:bg-slate-100'}`}
+                onClick={() => setActiveMenuId(m.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <LayoutList size={18} className={activeMenuId === m.id ? "text-blue-500" : "text-slate-400"} />
+                  <span className={`font-bold ${activeMenuId === m.id ? 'text-blue-700' : 'text-slate-700'}`}>{m.label}</span>
+                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleDeleteMenu(m.id); }} 
+                  className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-white transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            {customMenus.length === 0 && (
+              <div className="text-center text-slate-400 font-medium py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                No menus created yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Cards Manager */}
+        <div className="w-full lg:w-2/3 bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 min-h-[400px]">
+          {!activeMenuId ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 font-medium py-20 text-center">
+              <div className="bg-slate-50 p-6 rounded-full mb-4">
+                <LayoutList size={40} className="text-slate-300" />
+              </div>
+              <p>Select a menu from the left to manage its content.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="font-black text-slate-800 uppercase tracking-widest text-sm">
+                    {customMenus.find((m: any) => m.id === activeMenuId)?.label} Cards
+                  </h3>
+                </div>
+                <button 
+                  onClick={handleAddCard} 
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-colors"
+                >
+                  <Plus size={16} /> Add Card
+                </button>
+              </div>
+              <div className="space-y-4">
+                {customMenuCards.filter((c: any) => c.menuId === activeMenuId).map((c: any) => (
+                  <div key={c.id} className="flex flex-col sm:flex-row gap-4 bg-slate-50 p-4 rounded-[24px] border border-slate-100">
+                    {c.imageUrl && (
+                      <div className="w-full sm:w-32 h-32 rounded-[16px] overflow-hidden shrink-0">
+                        <img src={c.imageUrl} className="w-full h-full object-cover" alt="Card preview" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-4">
+                        <h4 className="font-bold text-slate-800 text-lg">{c.title}</h4>
+                        <button 
+                          onClick={() => handleDeleteCard(c.id)} 
+                          className="text-slate-400 hover:text-red-500 p-2 rounded-xl bg-white hover:bg-red-50 transition-colors shadow-sm shrink-0"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-2 line-clamp-2">{c.description}</p>
+                      {c.linkUrl && (
+                        <div className="mt-3 inline-flex items-center text-xs font-bold text-blue-500 uppercase tracking-widest bg-blue-50 px-2 py-1 rounded-lg">
+                          <ExternalLink size={12} className="mr-1" /> Linked
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {customMenuCards.filter((c: any) => c.menuId === activeMenuId).length === 0 && (
+                  <div className="text-center text-slate-400 font-medium py-16 bg-slate-50 rounded-[24px] border border-dashed border-slate-200">
+                    No cards added to this menu yet.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminPanel({
   addToast,
   posts: rawPosts,
@@ -7538,6 +8275,11 @@ function AdminPanel({
   setAboutContent,
   suggestionCategories,
   fetchAboutContent,
+  customMenus,
+  customMenuCards,
+  landingPageData,
+  setLandingPageData,
+  fetchLandingPageData,
 }: any) {
   const posts =
     hasPostsOnly || isEditorMode
@@ -7779,6 +8521,20 @@ function AdminPanel({
                       id: "builder",
                       label: "Page Builder",
                       icon: <Boxes size={18} />,
+                    },
+                  ]
+                : []),
+              ...(isEffectiveAdmin
+                ? [
+                    {
+                      id: "custom_menus",
+                      label: "Dynamic Menus",
+                      icon: <LayoutList size={18} />,
+                    },
+                    {
+                      id: "landing_page_config",
+                      label: "Landing Page Config",
+                      icon: <Globe size={18} />,
                     },
                   ]
                 : []),
@@ -13607,6 +14363,22 @@ function AdminPanel({
             {activeSubTab === "locations" && (
               <LocationManager
                 districtsData={districtsData}
+                addToast={addToast}
+              />
+            )}
+
+            {activeSubTab === "custom_menus" && (
+              <CustomMenuAdmin 
+                customMenus={customMenus}
+                customMenuCards={customMenuCards}
+                addToast={addToast}
+              />
+            )}
+
+            {activeSubTab === "landing_page_config" && (
+              <LandingPageConfigAdmin
+                landingPageData={landingPageData}
+                fetchLandingPageData={fetchLandingPageData}
                 addToast={addToast}
               />
             )}
