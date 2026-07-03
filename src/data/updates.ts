@@ -12,6 +12,16 @@ export interface UpdateEntry {
 
 export const SYSTEM_UPDATES: UpdateEntry[] = [
   {
+    id: "sys_v165",
+    version: "V1.6.5",
+    time: Date.now(),
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "NEW",
+    title: "డైరెక్ట్ డౌన్లోడ్స్ & పర్మనెంట్ ఫైల్ సిస్టం 🚀",
+    description: "అప్‌డేట్స్ వచ్చిన ప్రతిసారీ ఫైల్స్ పోకుండా శాశ్వతంగా ఉండేలా (Permanent File Handling) మార్పులు చేసాము మరియు పోస్ట్‌లలో డైరెక్ట్ డౌన్లోడ్ లింక్ (Direct Download Link) ఇచ్చే కొత్త ఫీచర్ తీసుకువచ్చాము.",
+    color: "bg-fuchsia-500",
+  },
+  {
     id: "sys_v164",
     version: "V1.6.4",
     time: Date.now(),

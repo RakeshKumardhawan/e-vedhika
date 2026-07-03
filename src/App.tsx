@@ -541,6 +541,7 @@ interface Post {
     version?: string;
     status?: "New" | "Old";
     badgePrefix?: string;
+    isDirect?: boolean;
   }[];
   downloadStyle?: "classic" | "techspot";
 }
@@ -1098,6 +1099,7 @@ export const handleForceDownload = async (
   e: React.MouseEvent,
   url: string,
   fileName: string,
+  isDirect?: boolean
 ) => {
   e.preventDefault();
   e.stopPropagation();
@@ -1105,6 +1107,11 @@ export const handleForceDownload = async (
   if (requireLoginAlert()) return;
 
   if (!url) return;
+
+  if (isDirect || url.includes("drive.google.com") || url.includes("dropbox.com") || url.startsWith("blob:") || url.includes("1drv.ms")) {
+    window.open(url, '_blank');
+    return;
+  }
 
   try {
     let extractedFilename = fileName || "download";
@@ -1544,7 +1551,7 @@ export default function App() {
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const [hasEnteredSite, setHasEnteredSite] = useState(() => {
-    return localStorage.getItem("ev_entered_site") === "true";
+    return sessionStorage.getItem("ev_entered_site") === "true";
   });
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -3309,7 +3316,11 @@ export default function App() {
         <LandingPage 
           onEnterSite={() => {
             setHasEnteredSite(true);
-            localStorage.setItem("ev_entered_site", "true");
+            sessionStorage.setItem("ev_entered_site", "true");
+            if (!hasGreetedRef.current) {
+              hasGreetedRef.current = true;
+              addToast("Welcome to E-vedhika website!");
+            }
           }} 
           onLoginClick={triggerLogin} 
           onShowFooter={setShowFooterModal} 
@@ -18233,11 +18244,7 @@ function PostCard({
                         <a
                           href={att.url}
                           onClick={(e) =>
-                            handleForceDownload(
-                              e,
-                              att.url,
-                              att.name || "Attachment",
-                            )
+                            handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                           }
                           target="_blank"
                           rel="noopener noreferrer"
@@ -18370,11 +18377,7 @@ function PostCard({
                 rel="noopener noreferrer"
                 onClick={(e) => {
                   const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
-                  handleForceDownload(
-                    e,
-                    attToDownload.url,
-                    attToDownload.name || "Download.zip",
-                  );
+                  handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect);
                 }}
                 className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
                 style={{
@@ -18447,7 +18450,7 @@ function PostCard({
                   key={idx}
                   href={att.url}
                   onClick={(e) =>
-                    handleForceDownload(e, att.url, att.name || "Attachment")
+                    handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                   }
                   target="_blank"
                   rel="noopener noreferrer"
@@ -18596,11 +18599,7 @@ function PostCard({
                               href={att.url}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleForceDownload(
-                                  e,
-                                  att.url,
-                                  att.name || "Attachment",
-                                );
+                                handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect);
                               }}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -18631,11 +18630,7 @@ function PostCard({
                         <a
                           href={att.url}
                           onClick={(e) =>
-                            handleForceDownload(
-                              e,
-                              att.url,
-                              att.name || "Attachment",
-                            )
+                            handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                           }
                           target="_blank"
                           rel="noopener noreferrer"
@@ -19303,7 +19298,7 @@ function PostForm({
     editingPost?.versionStatus,
   );
   const [attachments, setAttachments] = useState<
-    { name: string; url: string; version?: string; status?: "New" | "Old" }[]
+    { name: string; url: string; version?: string; status?: "New" | "Old"; isDirect?: boolean }[]
   >(editingPost?.attachments || []);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
     editingPost?.downloadStyle || "techspot",
@@ -20430,6 +20425,10 @@ function PostForm({
                               <input id="swal-file-name" class="swal2-input mt-0 mb-4" placeholder="e.g. Detailed Report, Govt Order">
                               <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">Download URL</div>
                               <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://example.com/file.pdf">
+                              <div class="flex items-center gap-2 mt-4 text-left px-1">
+                                <input type="checkbox" id="swal-file-direct" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" checked>
+                                <label for="swal-file-direct" class="text-xs font-bold text-slate-700 uppercase">Direct Download (Don't Proxy)</label>
+                              </div>
                             `,
                           showCancelButton: true,
                           confirmButtonText: "Confirm & Add",
@@ -20445,13 +20444,18 @@ function PostForm({
                                 "swal-file-url",
                               ) as HTMLInputElement
                             ).value;
+                            const isDirect = (
+                              document.getElementById(
+                                "swal-file-direct",
+                              ) as HTMLInputElement
+                            ).checked;
                             if (!url) {
                               Swal.showValidationMessage(
                                 "File URL is required",
                               );
                               return null;
                             }
-                            return { name: name || " File Attachment", url };
+                            return { name: name || " File Attachment", url, isDirect };
                           },
                         }).then((result) => {
                           if (result.isConfirmed && result.value) {
@@ -21480,11 +21484,7 @@ function PostDetail({
                           <a
                             href={att.url}
                             onClick={(e) =>
-                              handleForceDownload(
-                                e,
-                                att.url,
-                                att.name || "Attachment",
-                              )
+                              handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                             }
                             target="_blank"
                             rel="noopener noreferrer"
@@ -21495,11 +21495,7 @@ function PostDetail({
                           <a
                             href={att.url}
                             onClick={(e) =>
-                              handleForceDownload(
-                                e,
-                                att.url,
-                                att.name || "Attachment",
-                              )
+                              handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                             }
                             download={att.name}
                             className="p-3 bg-white rounded-full text-green-600 hover:scale-110 transition-transform shadow-lg"
@@ -21538,11 +21534,7 @@ function PostDetail({
                   rel="noopener noreferrer"
                   onClick={(e) => {
                     const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
-                    handleForceDownload(
-                      e,
-                      attToDownload.url,
-                      attToDownload.name || "Download.zip",
-                    );
+                    handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect);
                   }}
                   className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
                   style={{
@@ -21617,7 +21609,7 @@ function PostDetail({
                     key={idx}
                     href={att.url}
                     onClick={(e) =>
-                      handleForceDownload(e, att.url, att.name || "Attachment")
+                      handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                     }
                     target="_blank"
                     rel="noopener noreferrer"
@@ -21780,11 +21772,7 @@ function PostDetail({
                                 href={att.url}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleForceDownload(
-                                    e,
-                                    att.url,
-                                    att.name || "Attachment",
-                                  );
+                                  handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect);
                                 }}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -21797,11 +21785,7 @@ function PostDetail({
                                 href={att.url}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleForceDownload(
-                                    e,
-                                    att.url,
-                                    att.name || "Attachment",
-                                  );
+                                  handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect);
                                 }}
                                 download={att.name}
                                 className="p-3 bg-white rounded-full text-green-600 hover:scale-110 transition-transform shadow-lg"
@@ -21835,11 +21819,7 @@ function PostDetail({
                           <a
                             href={att.url}
                             onClick={(e) =>
-                              handleForceDownload(
-                                e,
-                                att.url,
-                                att.name || "Attachment",
-                              )
+                              handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
                             }
                             target="_blank"
                             rel="noopener noreferrer"
