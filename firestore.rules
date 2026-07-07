@@ -22,7 +22,7 @@ match /posts/{postId} {
     allow read: if true;
     allow create: if isSignedIn() && isOwner('uid');
     allow update: if isAdmin() || (isSignedIn() && isExistingOwner('uid')) || 
-                  (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['likes']));
+                  (isSignedIn() && (incoming().diff(existing()).affectedKeys().hasOnly(['likes']) || incoming().diff(existing()).affectedKeys().hasOnly(['replies'])));
     allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   }
 }
@@ -129,7 +129,7 @@ match /notifications/{notifId} {
   allow update: if isSignedIn() && (
                   isExistingOwner('uid') || 
                   isAdmin() || 
-                  (resource.data.uid == 'all' && incoming().diff(existing()).affectedKeys().hasOnly(['readBy']))
+                  (resource.data.uid == 'all' && incoming().diff(existing()).affectedKeys().hasOnly(['readBy', 'message', 'time', 'read']))
                 );
   allow delete: if isSignedIn() && (isExistingOwner('uid') || isAdmin());
 }

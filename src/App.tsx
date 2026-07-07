@@ -122,6 +122,8 @@ import {
   Package,
   CornerDownRight,
   LayoutList,
+  Smartphone,
+  WifiOff,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -1918,6 +1920,34 @@ export default function App() {
     "privacy" | "about" | "contact" | null
   >(null);
 
+  const [showPWABanner, setShowPWABanner] = useState(false);
+  const [showPWAGuide, setShowPWAGuide] = useState<"ios" | "android_manual" | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    const isDismissed = localStorage.getItem("e_vedhika_pwa_dismissed") === "true";
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobileDevice && !isStandalone && !isDismissed) {
+      const timer = setTimeout(() => {
+        setShowPWABanner(true);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
@@ -1953,6 +1983,22 @@ export default function App() {
 
     setDeferredPrompt(null);
     setShowInstallButton(false);
+  };
+
+  const handleDismissPWA = () => {
+    localStorage.setItem("e_vedhika_pwa_dismissed", "true");
+    setShowPWABanner(false);
+  };
+
+  const handlePWAInstall = () => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIOS) {
+      setShowPWAGuide("ios");
+    } else if (deferredPrompt) {
+      handleInstallClick();
+    } else {
+      setShowPWAGuide("android_manual");
+    }
   };
   const suggestionsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -3127,6 +3173,12 @@ export default function App() {
 
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
+      {isOffline && (
+        <div className="bg-red-500 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 z-[2000]">
+          <WifiOff size={16} />
+          <span>మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. దయచేసి మీ ఇంటర్నెట్ కనెక్షన్‌ను తనిఖీ చేయండి. (You are offline)</span>
+        </div>
+      )}
       {showFooterModal && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
           <motion.div
@@ -6822,6 +6874,187 @@ export default function App() {
           districtsData={districtsData}
         />
       )}
+
+      {/* PWA Mobile Installation Banner */}
+      <AnimatePresence>
+        {showPWABanner && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed bottom-4 left-4 right-4 z-[1001] md:hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-4 shadow-2xl border border-indigo-500/20 flex flex-col gap-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+                  <Smartphone className="text-white" size={24} />
+                </div>
+                <div>
+                  <h4 className="text-[14px] font-black tracking-tight text-white text-left">
+                    E-Vedhika యాప్ ఇన్‌స్టాల్ చేసుకోండి 📱
+                  </h4>
+                  <p className="text-[11px] font-medium text-slate-300 mt-0.5 leading-normal text-left">
+                    సులభంగా, వేగంగా ఫిర్యాదులు నమోదు చేయడానికి మొబైల్ యాప్‌ను మీ హోమ్ స్క్రీన్‌కు జోడించండి.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleDismissPWA}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors shrink-0"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={handleDismissPWA}
+                className="flex-1 bg-white/10 hover:bg-white/15 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-all active:scale-95 text-center"
+              >
+                తర్వాత (Later)
+              </button>
+              <button
+                onClick={handlePWAInstall}
+                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-black py-2.5 rounded-xl text-xs shadow-lg shadow-blue-500/25 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                ఇప్పుడే ఇన్‌స్టాల్ చేయి (Install)
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PWA Mobile Installation Guides Modal */}
+      <AnimatePresence>
+        {showPWAGuide && (
+          <div className="fixed inset-0 z-[2005] flex items-end justify-center sm:items-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPWAGuide(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 100, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 100, scale: 0.95 }}
+              className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden border border-slate-100 flex flex-col p-6 text-slate-800 z-[2006]"
+            >
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                    <Smartphone size={20} />
+                  </div>
+                  <h3 className="text-[16px] font-black text-slate-800 tracking-tight text-left">
+                    యాప్ ఇన్‌స్టాల్ గైడ్ (Install App)
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowPWAGuide(null)}
+                  className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-800 transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {showPWAGuide === "ios" ? (
+                <div className="space-y-4">
+                  <p className="text-[13px] font-medium text-slate-600 leading-relaxed text-left">
+                    మీ <span className="font-bold text-slate-800">iPhone / iPad</span> లో ఈ యాప్‌ను ఇన్‌స్టాల్ చేయడానికి క్రింది స్టెప్స్ ఫాలో అవ్వండి:
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        Safari బ్రౌజర్ క్రింద ఉన్న <span className="text-blue-600 font-extrabold flex inline-flex items-center gap-0.5">Share బటన్ <Share2 size={14} className="inline inline-block" /></span> పై క్లిక్ చేయండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Tap the Share button at the bottom of the screen).</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        మెనులో క్రిందికి స్క్రోల్ చేసి <span className="text-indigo-600 font-extrabold">'Add to Home Screen' (హోమ్ స్క్రీన్‌కు చేర్చు)</span> ను ఎంచుకోండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Scroll down the menu and tap 'Add to Home Screen').</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        పైన కుడి వైపున ఉన్న <span className="text-green-600 font-extrabold">'Add' (చేర్చు)</span> బటన్ పై క్లిక్ చేయండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Tap 'Add' in the top right corner to complete installation).</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-[13px] font-medium text-slate-600 leading-relaxed text-left">
+                    మీ <span className="font-bold text-slate-800">Android ఫోన్</span> లో ఈ యాప్‌ను ఇన్‌స్టాల్ చేయడానికి క్రింది స్టెప్స్ ఫాలో అవ్వండి:
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        బ్రౌజర్ పైన కుడి వైపున ఉన్న <span className="text-blue-600 font-extrabold">త్రీ డాట్స్ (మెను - 3 చుక్కలు)</span> పై క్లిక్ చేయండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Tap the three dots menu icon in the top right corner).</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        అక్కడ ఉన్న <span className="text-indigo-600 font-extrabold">'Install app' (యాప్‌ను ఇన్‌స్టాల్ చేయి)</span> లేదా <span className="text-indigo-600 font-extrabold">'Add to Home Screen'</span> ఎంచుకోండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Tap 'Install app' or 'Add to Home Screen' in the list).</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        వచ్చిన బాక్స్‌లో <span className="text-green-600 font-extrabold">'Install' (ఇన్‌స్టాల్)</span> క్లిక్ చేయండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Confirm by clicking 'Install').</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowPWAGuide(null);
+                  localStorage.setItem("e_vedhika_pwa_dismissed", "true");
+                  setShowPWABanner(false);
+                }}
+                className="mt-6 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-center"
+              >
+                సరే (Got It)
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -18454,7 +18687,11 @@ function PostCard({
                   }
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
+                  className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
+                    att.isDirect
+                      ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
+                      : "bg-white border border-[#cccccc] hover:border-blue-500"
+                  }`}
                 >
                   <div className="flex items-center h-full min-w-0">
                     <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
@@ -18467,12 +18704,17 @@ function PostCard({
                       </div>
                     </div>
                     <div className="flex flex-col px-3 min-w-0">
-                      <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
+                      <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
                         {att.name}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pr-3">
+                  <div className="flex items-center gap-2 pr-3 shrink-0">
+                    {att.isDirect && (
+                      <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
+                        <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
+                      </span>
+                    )}
                     <div className="flex items-center gap-2">
                       <div
                         className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
@@ -18634,7 +18876,11 @@ function PostCard({
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
+                          className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
+                            att.isDirect
+                              ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
+                              : "bg-white border border-[#cccccc] hover:border-blue-500"
+                          }`}
                         >
                           <div className="flex items-center h-full min-w-0">
                             <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
@@ -18647,7 +18893,7 @@ function PostCard({
                               </div>
                             </div>
                             <div className="flex flex-col px-3 min-w-0">
-                              <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
+                              <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
                                 {att.name}
                               </span>
                               <span className="text-[9px] font-medium text-slate-400 truncate max-w-[200px]">
@@ -18655,7 +18901,12 @@ function PostCard({
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 pr-3">
+                          <div className="flex items-center gap-2 pr-3 shrink-0">
+                            {att.isDirect && (
+                              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
+                                <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
+                              </span>
+                            )}
                             <div className="flex items-center gap-2">
                               <div
                                 className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
@@ -19298,7 +19549,7 @@ function PostForm({
     editingPost?.versionStatus,
   );
   const [attachments, setAttachments] = useState<
-    { name: string; url: string; version?: string; status?: "New" | "Old"; isDirect?: boolean }[]
+    { name: string; url: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean }[]
   >(editingPost?.attachments || []);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
     editingPost?.downloadStyle || "techspot",
@@ -21613,7 +21864,11 @@ function PostDetail({
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
+                    className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
+                      att.isDirect
+                        ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
+                        : "bg-white border border-[#cccccc] hover:border-blue-500"
+                    }`}
                   >
                     <div className="flex items-center h-full min-w-0">
                       <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
@@ -21626,12 +21881,17 @@ function PostDetail({
                         </div>
                       </div>
                       <div className="flex flex-col px-3 min-w-0">
-                        <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
+                        <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
                           {att.name}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 pr-3">
+                    <div className="flex items-center gap-2 pr-3 shrink-0">
+                      {att.isDirect && (
+                        <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
+                          <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
+                        </span>
+                      )}
                       <div className="flex items-center gap-2">
                         <div
                           className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
@@ -21823,14 +22083,22 @@ function PostDetail({
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-4 p-4 bg-slate-50 hover:bg-blue-50 border-2 border-slate-100 hover:border-blue-200 rounded-2xl transition-all group h-full"
+                            className={`flex items-center gap-4 p-4 border-2 rounded-2xl transition-all group h-full ${
+                              att.isDirect
+                                ? "bg-blue-50/70 border-blue-300 hover:border-blue-400 hover:bg-blue-100/50"
+                                : "bg-slate-50 hover:bg-blue-50 border-slate-100 hover:border-blue-200"
+                            }`}
                           >
-                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border-2 border-slate-100 group-hover:border-blue-100 shrink-0 shadow-sm transition-transform group-hover:scale-105">
-                              <FileText size={20} className="text-blue-500" />
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 shrink-0 shadow-sm transition-transform group-hover:scale-105 ${
+                              att.isDirect
+                                ? "bg-blue-100 border-blue-200 text-blue-600"
+                                : "bg-white border-slate-100 group-hover:border-blue-100 text-blue-500"
+                            }`}>
+                              <FileText size={20} />
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-black text-slate-800 truncate group-hover:text-blue-800">
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-sm font-black truncate ${att.isDirect ? "text-blue-800" : "text-slate-800 group-hover:text-blue-800"}`}>
                                   {att.name}
                                 </span>
                                 {att.version && (
@@ -21846,13 +22114,20 @@ function PostDetail({
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
-                                Download File •{" "}
-                                {(att.url || "").split(".")
-                                  .pop()
-                                  ?.split("?")[0]
-                                  .toUpperCase() || "FILE"}
-                              </span>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
+                                  Download File •{" "}
+                                  {(att.url || "").split(".")
+                                    .pop()
+                                    ?.split("?")[0]
+                                    .toUpperCase() || "FILE"}
+                                </span>
+                                {att.isDirect && (
+                                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-sm flex items-center gap-0.5 shrink-0">
+                                    <Download size={9} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </a>
                         )}
