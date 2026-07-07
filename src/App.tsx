@@ -19108,11 +19108,22 @@ function PostCard({
                   className="w-full flex flex-col gap-2 relative group"
                 >
                   <div className="text-sm bg-slate-50 p-3 rounded-2xl flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-black text-primary mr-2 uppercase text-[10px]">
-                        <AdminUserTooltip uid={c.uid} userName={c.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />:
-                      </span>
-                      <span className="text-slate-600">{c.text}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-black text-primary uppercase text-[10px]">
+                          <AdminUserTooltip uid={c.uid} userName={c.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                          {new Date(c.time || Date.now()).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "numeric",
+                            hour12: true
+                          })}
+                        </span>
+                      </div>
+                      <span className="text-slate-600 break-words">{c.text}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="flex items-center gap-1">
@@ -19215,9 +19226,12 @@ function PostCard({
                               </span>
                               <div className="flex items-center gap-2">
                                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                                  {new Date(reply.time || Date.now()).toLocaleDateString(undefined, {
+                                  {new Date(reply.time || Date.now()).toLocaleString(undefined, {
                                     month: "short",
-                                    day: "numeric"
+                                    day: "numeric",
+                                    hour: "numeric",
+                                    minute: "numeric",
+                                    hour12: true
                                   })}
                                 </span>
                                 {(auth.currentUser?.uid === reply.uid || isAdmin) && (
