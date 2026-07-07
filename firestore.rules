@@ -151,9 +151,11 @@ match /app_errors/{docId} {
   allow read, update, delete: if isSuperAdmin(); 
 }
 
-// సెక్యూరిటీ లాగ్స్ కూడా కేవలం సూపర్ అడ్మిన్ కే
+// సెక్యూరిటీ లాగ్స్ అందరికి
 match /security_logs/{logId} {
-  allow read, write: if isSuperAdmin(); 
+  allow read: if true; 
+  allow create: if true;
+  allow update, delete: if isSuperAdmin();
 }
 
 match /polls/{pollId} {

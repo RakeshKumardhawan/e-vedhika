@@ -18,9 +18,10 @@ export default defineConfig(({mode}) => {
           name: 'E-Vedhika Portal',
           short_name: 'E-Vedhika',
           description: 'E-Vedhika All problems one solution',
-          theme_color: '#2563eb',
-          background_color: '#ffffff',
+          theme_color: '#0d3b66',
+          background_color: '#0d3b66',
           display: 'standalone',
+          orientation: 'portrait',
           icons: [
             {
               src: 'ev-logo-v2.svg',

@@ -531,3 +531,9 @@ body.dark-theme .no-invert {
     -webkit-text-fill-color: unset !important;
   }
 }
+
+/* Force mobile boundaries to prevent any overflow */
+html, body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}

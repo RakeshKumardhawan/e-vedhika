@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, startTransition } from "react";
 import {
   useSearchParams,
   Link,
@@ -16,6 +16,7 @@ import {
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
+import { SecurityLogsSection } from "./components/SecurityLogsSection";
 import {
   Bell,
   Menu,
@@ -334,6 +335,17 @@ export async function sendCommentNotifications(
   try {
     const time = Date.now();
 
+    // Global Notification for Comment
+    await addDoc(collection(db, "notifications"), {
+      uid: "all",
+      title: "కొత్త కామెంట్ (New Comment)",
+      message: `${authorName} వారు ఒక పోస్ట్‌ పై కామెంట్ చేశారు.`,
+      type: "comment",
+      read: false,
+      time: time,
+      postId: postId,
+    });
+
     const mentionRegex = /@([a-zA-Z0-9_]+)/g;
     const mentions = [...commentText.matchAll(mentionRegex)].map((m) =>
       m[1].toLowerCase(),
@@ -415,6 +427,17 @@ export async function sendLikeNotification(
 ) {
   try {
     const time = Date.now();
+
+    // Global Notification
+    await addDoc(collection(db, "notifications"), {
+      uid: "all",
+      title: "కామెంట్ లైక్ చేయబడింది (Comment Liked)",
+      message: `${likerName} వారు ఒక కామెంట్‌ను ఇష్టపడ్డారు (లైక్ చేశారు).`,
+      type: "comment_like",
+      read: false,
+      time: time,
+      postId: postId,
+    });
 
     // 1st Person: Notify the comment author if the liker is not the comment author themself
     if (commentAuthorUid && commentAuthorUid !== likerUid) {
@@ -1297,7 +1320,7 @@ function LandingPage({
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-slate-50 font-sans text-slate-800">
+    <div className="w-full h-full overflow-y-auto overflow-x-hidden bg-slate-50 font-sans text-slate-800">
       <AnimatePresence>
         {isWarping && (
           <motion.div
@@ -1422,21 +1445,7 @@ function LandingPage({
             {landingPageData.heroTitle} <span className="text-blue-600">{landingPageData.heroHighlight}</span>
           </h2>
           <div 
-            className="text-lg lg:text-xl text-slate-600 leading-relaxed font-medium max-w-3xl mx-auto ql-editor"
-            style={{
-              fontSize: "16px",
-              textAlign: "justify",
-              lineHeight: "22.5px",
-              fontWeight: "bold",
-              fontStyle: "normal",
-              width: "770.988px",
-              height: "auto",
-              minHeight: "1000px",
-              marginLeft: "50.0039px",
-              marginRight: "50.0039px",
-              marginBottom: "20px",
-              fontFamily: "Courier New"
-            }}
+            className="text-lg lg:text-xl text-slate-600 leading-relaxed font-medium max-w-3xl mx-auto ql-editor px-0 md:px-4"
             dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
           />
           <div className="pt-4 flex justify-center gap-4">
@@ -1831,10 +1840,12 @@ export default function App() {
   const [updates, setUpdates] = useState<Update[]>([]);
   const [requests, setRequests] = useState<RequestData[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const approvedSuggestions = suggestions.filter((s) => {
-    if (!s.status) return false;
-    return s.status.toLowerCase() === "approved";
-  });
+  const approvedSuggestions = useMemo(() => {
+    return suggestions.filter((s) => {
+      if (!s.status) return false;
+      return s.status.toLowerCase() === "approved";
+    });
+  }, [suggestions]);
   const [problemsGlobal, setProblemsGlobal] = useState<ProblemReport[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [aboutContent, setAboutContent] = useState<{
@@ -2330,6 +2341,7 @@ export default function App() {
       "admin",
       "editor",
       "my_activity",
+      "logs",
     ];
     // Wait for auth to resolve and bypass checking if loaded
     if (!authLoading) {
@@ -2340,7 +2352,15 @@ export default function App() {
       } else if (user && (currentTab === "admin" || currentTab === "editor")) {
         // Enforce user roles for admin and editor if they managed to set the tab
         if (!canAccessAdmin) {
-          setCurrentTab("home");
+          startTransition(() => { setCurrentTab("home"); });
+          setSearchParams(new URLSearchParams());
+          addToast(
+            "Access Denied: You do not have permissions for this section.",
+          );
+        }
+      } else if (user && currentTab === "logs") {
+        if (!(isAdmin || isDevEmail)) {
+          startTransition(() => { setCurrentTab("home"); });
           setSearchParams(new URLSearchParams());
           addToast(
             "Access Denied: You do not have permissions for this section.",
@@ -3387,8 +3407,8 @@ export default function App() {
             const newSearch = new URLSearchParams();
             newSearch.set("tab", "home");
             navigate({ pathname: "/", search: newSearch.toString() });
-            setCurrentTab("home");
-            setSidebarOpen(false);
+            startTransition(() => { setCurrentTab("home"); });
+                    setSidebarOpen(false);
           }}
         >
           {/* లోగో HTML స్ట్రక్చర్ */}
@@ -4009,7 +4029,7 @@ export default function App() {
                   tourId="menu-mana-panchayath"
                   active={currentTab === "workspace"}
                   onClick={() => {
-                    setCurrentTab("workspace");
+                    startTransition(() => { setCurrentTab("workspace"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4054,8 +4074,8 @@ export default function App() {
                           tourId="menu-emergency"
                           active={currentTab === "emergency"}
                           onClick={() => {
-                            setCurrentTab("emergency");
-                            setSidebarOpen(false);
+                            startTransition(() => { setCurrentTab("emergency"); });
+                    setSidebarOpen(false);
                           }}
                         />
                         <MenuButton
@@ -4066,8 +4086,8 @@ export default function App() {
                             if (!user) {
                               requireLoginAlert();
                             } else {
-                              setCurrentTab("my_activity");
-                              setSidebarOpen(false);
+                              startTransition(() => { setCurrentTab("my_activity"); });
+                    setSidebarOpen(false);
                             }
                           }}
                         />
@@ -4094,16 +4114,28 @@ export default function App() {
                   tourId="menu-live-chat"
                   active={currentTab === "chat"}
                   onClick={() => {
-                    setCurrentTab("chat");
+                    startTransition(() => { setCurrentTab("chat"); });
                     setSidebarOpen(false);
                   }}
                 />
+                
+                {(isAdmin || isDevEmail) && (
+                  <MenuButton
+                    label="Security Logs" icon={ShieldAlert}
+                    active={currentTab === "logs"}
+                    onClick={() => {
+                      startTransition(() => { setCurrentTab("logs"); });
+                      setSidebarOpen(false);
+                    }}
+                  />
+                )}
+
                 <MenuButton
                   label="Union Corner & Polls" icon={Vote}
                   tourId="menu-union-corner"
                   active={currentTab === "union"}
                   onClick={() => {
-                    setCurrentTab("union");
+                    startTransition(() => { setCurrentTab("union"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4112,7 +4144,7 @@ export default function App() {
                   tourId="menu-whats-new"
                   active={currentTab === "changelog"}
                   onClick={() => {
-                    setCurrentTab("changelog");
+                    startTransition(() => { setCurrentTab("changelog"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4121,7 +4153,7 @@ export default function App() {
                   tourId="menu-suggestions"
                   active={currentTab === "suggestions"}
                   onClick={() => {
-                    setCurrentTab("suggestions");
+                    startTransition(() => { setCurrentTab("suggestions"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4130,7 +4162,7 @@ export default function App() {
                   tourId="menu-applications"
                   active={currentTab === "gos_formats"}
                   onClick={() => {
-                    setCurrentTab("gos_formats");
+                    startTransition(() => { setCurrentTab("gos_formats"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4139,7 +4171,7 @@ export default function App() {
                   tourId="menu-useful-info"
                   active={currentTab === "useful_links"}
                   onClick={() => {
-                    setCurrentTab("useful_links");
+                    startTransition(() => { setCurrentTab("useful_links"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4148,7 +4180,7 @@ export default function App() {
                   tourId="menu-excel-print"
                   active={currentTab === "excel_print"}
                   onClick={() => {
-                    setCurrentTab("excel_print");
+                    startTransition(() => { setCurrentTab("excel_print"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4165,7 +4197,7 @@ export default function App() {
                         icon={LayoutList}
                         active={currentTab === `custom_menu_${menu.id}`}
                         onClick={() => {
-                          setCurrentTab(`custom_menu_${menu.id}`);
+                          startTransition(() => { setCurrentTab(`custom_menu_${menu.id}`); });
                           setSidebarOpen(false);
                         }}
                       />
@@ -4182,8 +4214,8 @@ export default function App() {
                       label="Manage Dynamic Menus" icon={Wrench}
                       active={currentTab === "manage_custom_menus"}
                       onClick={() => {
-                        setCurrentTab("manage_custom_menus");
-                        setSidebarOpen(false);
+                        startTransition(() => { setCurrentTab("manage_custom_menus"); });
+                    setSidebarOpen(false);
                       }}
                     />
                   </div>
@@ -4196,8 +4228,8 @@ export default function App() {
   onClick={(e) => {
     e.preventDefault();
     window.history.pushState({}, "", "/Farmer_Registry");
-    setCurrentTab("farmer_registry");
-    setSidebarOpen(false);
+    startTransition(() => { setCurrentTab("farmer_registry"); });
+                    setSidebarOpen(false);
   }}
   style={{ width: "100%", border: "none" }}
   className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${currentTab === "farmer_registry" ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20" : "bg-transparent text-slate-600 hover:bg-slate-100/80"}`}
@@ -5410,6 +5442,22 @@ export default function App() {
                   </motion.div>
                 )}
 
+                {currentTab === "logs" && (
+                  <motion.div
+                    key="logs"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <SecurityLogsSection
+                      logsError={logsError}
+                      logs={logs}
+                      logSearchTerm={logSearchTerm}
+                      setLogSearchTerm={setLogSearchTerm}
+                    />
+                  </motion.div>
+                )}
+
                 {currentTab === "chat" && (
                   <motion.div
                     key="chat"
@@ -5437,7 +5485,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-4">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => setCurrentTab("home")}
+                        onClick={() => startTransition(() => setCurrentTab("home"))}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -6406,7 +6454,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-6">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => setCurrentTab("home")}
+                        onClick={() => startTransition(() => setCurrentTab("home"))}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -6430,7 +6478,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-6">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => setCurrentTab("home")}
+                        onClick={() => startTransition(() => setCurrentTab("home"))}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -6525,7 +6573,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-4">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => setCurrentTab("home")}
+                        onClick={() => startTransition(() => setCurrentTab("home"))}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -8089,7 +8137,7 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
     <div className="space-y-6">
       {imageAds.length > 0 && currentAd && (
         <div className="relative w-full aspect-[21/9] sm:aspect-[24/7] bg-slate-200 rounded-[24px] sm:rounded-[40px] overflow-hidden shadow-2xl border-4 border-white">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={currentAd.id}
               initial={{ opacity: 0, x: 20 }}
@@ -9173,6 +9221,24 @@ function AdminPanel({
   const [logs, setLogs] = useState<any[]>([]);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [logsError, setLogsError] = useState(false);
+
+  useEffect(() => {
+    const unsubLogs = onSnapshot(
+      query(collection(db, "security_logs"), orderBy("time", "desc")),
+      (snap) => {
+        const lList: any[] = [];
+        snap.forEach((d) => lList.push({ id: d.id, ...d.data() }));
+        setLogs(lList);
+        setLogsError(false);
+      },
+      (err) => {
+        setLogsError(true);
+        console.error("Logs error:", err);
+      },
+    );
+    return () => unsubLogs();
+  }, []);
+
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [farmerRegistryJobs, setFarmerRegistryJobs] = useState<any>({});
 
@@ -9351,27 +9417,7 @@ function AdminPanel({
       (err) => handleFirestoreError(err, OperationType.LIST, "problems"),
     );
 
-    let unsubLogs = () => {};
-    if (isSuperAdmin) {
-      unsubLogs = onSnapshot(
-        query(collection(db, "security_logs"), orderBy("time", "desc")),
-        (snap) => {
-          const lList: any[] = [];
-          snap.forEach((d) => lList.push({ id: d.id, ...d.data() }));
-          setLogs(lList);
-          setLogsError(false);
-        },
-        (err) => {
-          setLogsError(true);
-          handleFirestoreError(err, OperationType.LIST, "security_logs");
-        },
-      );
-    }
-
-    return () => {
-      unsubProblems();
-      unsubLogs();
-    };
+    return () => unsubProblems();
   }, [isEditor, isAdmin]);
 
   const deleteUser = async (id: string) => {
@@ -9462,11 +9508,7 @@ function AdminPanel({
         {/* Dynamic Header */}
         <div
           role="banner"
-          className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 pt-6 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6"
-          style={{
-            paddingRight: "60.6367px",
-            paddingLeft: "60.6367px",
-          }}
+          className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 pt-6 px-4 md:px-8 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6"
         >
           <div className="flex items-center gap-5">
             <button
@@ -13674,185 +13716,12 @@ function AdminPanel({
             )}
 
             {activeSubTab === "logs" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-[22px] flex items-center justify-center shadow-sm border border-rose-100/50">
-                      <ShieldAlert size={28} />
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                        Security Audits
-                      </h4>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                        Digital Governance Logs
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 max-w-md relative group">
-                    <Search
-                      size={16}
-                      className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search interactions or admins..."
-                      className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-50 rounded-2xl text-sm font-bold placeholder:text-slate-300 focus:border-rose-200 focus:bg-rose-50/10 transition-all outline-none"
-                      onChange={(e) => setLogSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {logsError ? (
-                  <div className="p-16 text-center bg-rose-50 border-2 border-dashed border-rose-100 rounded-[40px] group">
-                    <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                      <Lock size={32} />
-                    </div>
-                    <h5 className="text-lg font-black text-rose-900 mb-2">
-                      Quantum Restriction
-                    </h5>
-                    <p className="text-sm text-rose-600 font-medium max-w-sm mx-auto leading-relaxed">
-                      Security protocols prevent log retrieval without proper
-                      synchronization.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-[40px] shadow-2xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
-                        <thead className="bg-slate-50/50 border-b border-slate-100">
-                          <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="p-6 pl-10">Operator Entity</th>
-                            <th className="p-6">Operation Protocol</th>
-                            <th className="p-6 text-right pr-10">
-                              Temporal Sync
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                          {logs.filter(
-                            (l: any) =>
-                              !logSearchTerm ||
-                              (l.admin || l.userEmail || "")
-                                .toLowerCase()
-                                .includes(logSearchTerm.toLowerCase()) ||
-                              (l.action || "")
-                                .toLowerCase()
-                                .includes(logSearchTerm.toLowerCase()),
-                          ).length === 0 ? (
-                            <tr>
-                              <td
-                                colSpan={3}
-                                className="p-20 text-center text-slate-300 font-bold italic text-sm"
-                              >
-                                No data packets detected in this sector.
-                              </td>
-                            </tr>
-                          ) : (
-                            logs
-                              .filter(
-                                (l: any) =>
-                                  !logSearchTerm ||
-                                  (l.admin || l.userEmail || "")
-                                    .toLowerCase()
-                                    .includes(logSearchTerm.toLowerCase()) ||
-                                  (l.action || "")
-                                    .toLowerCase()
-                                    .includes(logSearchTerm.toLowerCase()),
-                              )
-                              .map((log: any, i: number) => (
-                                <tr
-                                  key={log.id || i}
-                                  className="hover:bg-slate-50/80 transition-colors group"
-                                >
-                                  <td className="p-6 pl-10">
-                                    <div className="flex items-center gap-4">
-                                      <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center shrink-0 border border-slate-100 group-hover:bg-white group-hover:shadow-sm transition-all">
-                                        <User size={18} />
-                                      </div>
-                                      <div>
-                                        <div className="text-[14px] font-black text-slate-700 leading-none mb-1.5">
-                                          {log.admin ||
-                                            log.userEmail ||
-                                            "System Root"}
-                                        </div>
-                                        <div className="text-[9px] font-mono text-slate-300 uppercase tracking-widest leading-none">
-                                          ID:{" "}
-                                          {log.id?.substring(0, 8) || "GENESIS"}{" "}
-                                          {log.uid &&
-                                            `| UID: ${log.uid.substring(0, 5)}`}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="p-6">
-                                    <div className="flex flex-col gap-1">
-                                      <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-wider border border-slate-100 group-hover:bg-white group-hover:border-slate-200 transition-all w-fit">
-                                        {log.action?.includes("DELETE") ? (
-                                          <Trash2
-                                            size={12}
-                                            className="text-rose-500"
-                                          />
-                                        ) : log.action?.includes("UPDATE") ||
-                                          log.action?.includes("POST") ? (
-                                          <Edit3
-                                            size={12}
-                                            className="text-blue-500"
-                                          />
-                                        ) : (
-                                          <Activity
-                                            size={12}
-                                            className="text-emerald-500"
-                                          />
-                                        )}
-                                        {log.action}
-                                      </div>
-                                      {log.details && (
-                                        <div className="text-[8px] font-mono text-slate-400 bg-slate-50/50 p-2 rounded-lg max-w-xs truncate border border-dashed border-slate-100">
-                                          {typeof log.details === "string"
-                                            ? log.details
-                                            : JSON.stringify(log.details)}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="p-6 text-right pr-10">
-                                    <div className="text-[12px] font-black text-slate-600 leading-none mb-1.5">
-                                      {new Date(
-                                        getValidTime(log),
-                                      ).toLocaleDateString("en-IN", {
-                                        day: "2-digit",
-                                        month: "short",
-                                        year: "numeric",
-                                      })}
-                                    </div>
-                                    <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest leading-none">
-                                      {new Date(
-                                        getValidTime(log),
-                                      ).toLocaleTimeString("en-IN", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        second: "2-digit",
-                                      })}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    {logs.length > 0 && !logSearchTerm && (
-                      <div className="p-8 bg-slate-50/50 border-t border-slate-100 text-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Displaying all security events
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <SecurityLogsSection
+                logsError={logsError}
+                logs={logs}
+                logSearchTerm={logSearchTerm}
+                setLogSearchTerm={setLogSearchTerm}
+              />
             )}
 
             {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
@@ -16871,7 +16740,7 @@ function ToolCard({
     <motion.div
       whileHover={{ scale: 1.05, translateY: -5 }}
       whileTap={{ scale: 0.95 }}
-      onClick={onClick}
+      onClick={() => { startTransition(() => { onClick(); }); }}
       className="mana-card"
     >
       {emoji ? (
@@ -18100,6 +17969,17 @@ function PostCard({
         commentCount: increment(1)
       });
 
+      // Global notification for reply
+      await addDoc(collection(db, "notifications"), {
+        uid: "all",
+        title: "కొత్త రిప్లై (New Reply)",
+        message: `${authorName} వారు ఒక కామెంట్ పై రిప్లై ఇచ్చారు.`,
+        type: "comment_reply",
+        read: false,
+        time: Date.now(),
+        postId: post.id,
+      });
+
       const parentComment = comments.find((c) => c.id === commentId);
       if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
         await addDoc(collection(db, "notifications"), {
@@ -18112,6 +17992,7 @@ function PostCard({
           postId: post.id,
         }).catch(() => console.error("Failed to fetch notification"));
       }
+      await logUserActivity("Replied to a Comment on Post: " + post.id);
 
       setReplyingToId(null);
       setReplyText("");
@@ -21081,7 +20962,7 @@ function MenuButton({
       id={tourId || `nav-menu-${label.replace(/[^a-zA-Z0-9]/g, "-")}`}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.97 }}
-      onClick={onClick}
+      onClick={() => { startTransition(() => { onClick(); }); }}
       style={{ width: "100%", border: "none" }}
       className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${
         active
@@ -22416,6 +22297,17 @@ function PostComments({
         commentCount: increment(1)
       });
 
+      // Global notification for reply
+      await addDoc(collection(db, "notifications"), {
+        uid: "all",
+        title: "కొత్త రిప్లై (New Reply)",
+        message: `${authorName} వారు ఒక కామెంట్ పై రిప్లై ఇచ్చారు.`,
+        type: "comment_reply",
+        read: false,
+        time: Date.now(),
+        postId: post.id,
+      });
+
       const parentComment = comments.find((c) => c.id === commentId);
       if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
         await addDoc(collection(db, "notifications"), {
@@ -22428,6 +22320,7 @@ function PostComments({
           postId: post.id,
         }).catch(() => console.error("Failed to fetch notification"));
       }
+      await logUserActivity("Replied to a Comment on Post: " + post.id);
 
       setReplyingToId(null);
       setReplyText("");
@@ -22617,6 +22510,7 @@ function PostComments({
         auth.currentUser!.uid,
         authorName,
       );
+      await logUserActivity("Commented on Post: " + post.id);
     } catch (e: any) {
       console.error(e);
       addToast("Error: " + (e.message || String(e)));
