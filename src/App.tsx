@@ -207,6 +207,7 @@ import {
   arrayUnion,
   arrayRemove,
   setDoc,
+  deleteField,
 } from "firebase/firestore";
 import {
   ref,
@@ -1795,6 +1796,7 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // 1. Sync state from URL (handles initial load, direct link, and back/forward browser navigation)
   useEffect(() => {
     const path = location.pathname.toLowerCase();
     const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
@@ -1811,12 +1813,24 @@ export default function App() {
 
     if (resolvedParam && resolvedParam !== currentTab && resolvedParam !== "") {
       setCurrentTab(resolvedParam);
-    } else if (currentTab && resolvedParam !== currentTab) {
+    }
+  }, [searchParams, location.pathname]);
+
+  // 2. Sync URL from state (handles programmatic tab changes, ensuring URL updates correctly)
+  useEffect(() => {
+    const path = location.pathname.toLowerCase();
+    const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
+    if (isFarmerRegistry) return;
+
+    const currentParam = searchParams.get("tab");
+    const resolvedParam = currentParam === "reports" ? "my_activity" : currentParam;
+
+    if (currentTab && currentTab !== resolvedParam) {
       const newParams = new URLSearchParams(searchParams);
       newParams.set("tab", currentTab);
       setSearchParams(newParams, { replace: true });
     }
-  }, [searchParams, currentTab, location.pathname, setSearchParams]);
+  }, [currentTab, setSearchParams]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -2519,11 +2533,7 @@ export default function App() {
           const p = { id: snap.id, ...snap.data() } as UserProfile;
           setUserProfile(p);
 
-          if (!p.name && !p.username) {
-            setShowForcedProfileSetup(true);
-          } else {
-            setShowForcedProfileSetup(false);
-
+          if (p.name || p.username) {
             if (p.status === "Approved" && !hasGreetedRef.current) {
               hasGreetedRef.current = true;
               const honorific = p.gender === "Female" ? "Madam" : "Sir";
@@ -2532,7 +2542,6 @@ export default function App() {
           }
         } else {
           setUserProfile(null);
-          setShowForcedProfileSetup(true);
         }
         setProfileLoading(false);
       },
@@ -2676,6 +2685,48 @@ export default function App() {
       unsub1();
     };
   }, [user, userRole]);
+
+  // 3. Dynamically control forced profile setup - only show it when in "suggestions" tab and profile is incomplete
+  useEffect(() => {
+    if (!user || profileLoading) {
+      setShowForcedProfileSetup(false);
+      return;
+    }
+    const needsSetup = !userProfile || (!userProfile.name && !userProfile.username);
+    if (needsSetup && currentTab === "suggestions") {
+      setShowForcedProfileSetup(true);
+    } else {
+      setShowForcedProfileSetup(false);
+    }
+  }, [currentTab, userProfile, user, profileLoading]);
+
+  // 4. Auto-clean post qkQ9PDCxO0myy5l2seda image attachment when the admin logs in
+  useEffect(() => {
+    if (user && userProfile && (userRole === "admin" || userRole === "editor" || user.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3")) {
+      const cleanPostImage = async () => {
+        try {
+          const postRef = doc(db, "posts", "qkQ9PDCxO0myy5l2seda");
+          const snap = await getDoc(postRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.mediaUrl || data.mediaName || data.mediaType) {
+              console.log("Auto-cleaning image attachment from post qkQ9PDCxO0myy5l2seda...");
+              await updateDoc(postRef, {
+                mediaUrl: deleteField(),
+                mediaName: deleteField(),
+                mediaType: deleteField()
+              });
+              console.log("Post qkQ9PDCxO0myy5l2seda image successfully cleaned!");
+              addToast("పోస్ట్ నుండి ఇమేజ్ అటాచ్‌మెంట్ విజయవంతంగా తొలగించబడింది!");
+            }
+          }
+        } catch (e) {
+          console.error("Error auto-cleaning post image:", e);
+        }
+      };
+      cleanPostImage();
+    }
+  }, [user, userProfile, userRole]);
 
   const addToast = (msg: string) => {
     setToasts((prev) => {
@@ -5449,12 +5500,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
-                    <SecurityLogsSection
-                      logsError={logsError}
-                      logs={logs}
-                      logSearchTerm={logSearchTerm}
-                      setLogSearchTerm={setLogSearchTerm}
-                    />
+                    <SecurityLogsSection />
                   </motion.div>
                 )}
 
@@ -6800,7 +6846,6 @@ export default function App() {
                   setShowProfileModal(false);
                 }}
                 onExitForced={() => {
-                  auth.signOut();
                   setShowForcedProfileSetup(false);
                   setShowProfileModal(false);
                   setCurrentTab("home");
@@ -13716,12 +13761,7 @@ function AdminPanel({
             )}
 
             {activeSubTab === "logs" && (
-              <SecurityLogsSection
-                logsError={logsError}
-                logs={logs}
-                logSearchTerm={logSearchTerm}
-                setLogSearchTerm={setLogSearchTerm}
-              />
+              <SecurityLogsSection />
             )}
 
             {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
