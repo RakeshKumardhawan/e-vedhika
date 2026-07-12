@@ -18267,7 +18267,7 @@ function PostCard({
         <div className="flex flex-col md:flex-row gap-8 mt-4">
           <div className="flex-1 min-w-0">
             <div
-              className={`post-body mb-4 whitespace-pre-wrap ${isActualExpanded ? "" : "line-clamp-4"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
+              className={`post-body mb-4 whitespace-pre-wrap relative ${isActualExpanded ? "" : "max-h-[120px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
             >
               <ReactMarkdown
                 remarkPlugins={[remarkBreaks]}
@@ -18342,9 +18342,12 @@ function PostCard({
               >
                 {post.content || ""}
               </ReactMarkdown>
+              {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
+                <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+              )}
             </div>
 
-            {post.content && (post.content.length > 200 || post.content.includes("\n")) && (
+            {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
               <button
                 onClick={handleToggleExpansion}
                 className="text-primary hover:text-blue-700 font-black text-[12px] uppercase tracking-wider flex items-center gap-1 mt-1 mb-4 cursor-pointer hover:underline"
@@ -18665,7 +18668,7 @@ function PostCard({
       ) : (
         <>
           <div
-            className={`post-body mb-4 whitespace-pre-wrap ${isActualExpanded ? "" : "line-clamp-4"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
+            className={`post-body mb-4 whitespace-pre-wrap relative ${isActualExpanded ? "" : "max-h-[120px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
           >
             <ReactMarkdown
               remarkPlugins={[remarkBreaks]}
@@ -18709,9 +18712,12 @@ function PostCard({
             >
               {post.content || ""}
             </ReactMarkdown>
+            {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
+              <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+            )}
           </div>
 
-          {post.content && (post.content.length > 200 || post.content.includes("\n")) && (
+          {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
             <button
               onClick={handleToggleExpansion}
               className="text-primary hover:text-blue-700 font-black text-[12px] uppercase tracking-wider flex items-center gap-1 mt-1 mb-4 cursor-pointer hover:underline"
@@ -19136,7 +19142,66 @@ function PostCard({
 
       {showComments && (
         <div className="mt-6 pt-6 border-t border-slate-100">
-          <div className="space-y-4 mb-4">
+          <div className="flex gap-2 relative mb-4">
+            {mentionQuery?.target === "comment" && (
+              <div className="absolute bottom-full mb-1 left-0 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                      {(u.username || u.name || "U")[0].toUpperCase()}
+                    </div>
+                    <span className="truncate">{u.username || u.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <input
+              value={newComment}
+              onChange={handleCommentChange}
+              placeholder="Add a comment..."
+              className="flex-1 bg-slate-50 px-4 py-2 rounded-xl text-sm border-2 border-transparent focus:border-primary/20 outline-none"
+            />
+            <button
+              onClick={async () => {
+                if (!newComment.trim() || requireLoginAlert()) return;
+                try {
+                  const authorName =
+                    auth.currentUser!.displayName ||
+                    auth.currentUser!.email?.split("@")[0] ||
+                    "User";
+                  await addDoc(collection(db, "posts", post.id, "comments"), {
+                    text: newComment,
+                    time: Date.now(),
+                    uid: auth.currentUser!.uid,
+                    userName: authorName,
+                  });
+                  await updateDoc(doc(db, "posts", post.id), {
+                    commentCount: increment(1),
+                  });
+
+                  sendCommentNotifications(
+                    post.id,
+                    newComment,
+                    auth.currentUser!.uid,
+                    authorName,
+                  );
+
+                  setNewComment("");
+                } catch (e: any) {
+                  addToast("Error: " + e.message);
+                }
+              }}
+              className="bg-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"
+            >
+              SEND
+            </button>
+          </div>
+
+          <div className="space-y-4">
             <AnimatePresence initial={false}>
               {comments.map((c) => (
                 <motion.div
@@ -19374,64 +19439,6 @@ function PostCard({
                 No comments yet
               </p>
             )}
-          </div>
-          <div className="flex gap-2 relative">
-            {mentionQuery?.target === "comment" && (
-              <div className="absolute bottom-full mb-1 left-0 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                      {(u.username || u.name || "U")[0].toUpperCase()}
-                    </div>
-                    <span className="truncate">{u.username || u.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              value={newComment}
-              onChange={handleCommentChange}
-              placeholder="Add a comment..."
-              className="flex-1 bg-slate-50 px-4 py-2 rounded-xl text-sm border-2 border-transparent focus:border-primary/20 outline-none"
-            />
-            <button
-              onClick={async () => {
-                if (!newComment.trim() || requireLoginAlert()) return;
-                try {
-                  const authorName =
-                    auth.currentUser!.displayName ||
-                    auth.currentUser!.email?.split("@")[0] ||
-                    "User";
-                  await addDoc(collection(db, "posts", post.id, "comments"), {
-                    text: newComment,
-                    time: Date.now(),
-                    uid: auth.currentUser!.uid,
-                    userName: authorName,
-                  });
-                  await updateDoc(doc(db, "posts", post.id), {
-                    commentCount: increment(1),
-                  });
-
-                  sendCommentNotifications(
-                    post.id,
-                    newComment,
-                    auth.currentUser!.uid,
-                    authorName,
-                  );
-
-                  setNewComment("");
-                } catch (e: any) {
-                  addToast("Error: " + e.message);
-                }
-              }}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"
-            >
-              SEND
-            </button>
           </div>
         </div>
       )}
