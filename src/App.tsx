@@ -4541,7 +4541,7 @@ export default function App() {
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
                                                   <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent italic drop-shadow-sm">
-                                                    E-Vedhika Tech. 🚀
+                                                    E-Vedhika
                                                   </span>
                                                 </h1>
                                               </div>
@@ -4553,7 +4553,7 @@ export default function App() {
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
                                                   <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-sm">
-                                                    E-Vedhika Tech. 🚀
+                                                    E-Vedhika
                                                   </span>
                                                 </h1>
                                               </div>
