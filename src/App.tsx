@@ -13,6 +13,7 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import html2canvas from "html2canvas";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
@@ -1835,6 +1836,7 @@ export default function App() {
     null,
   );
   const [currentFilter, setCurrentFilter] = useState("All");
+  const [sharingPostForPoster, setSharingPostForPoster] = useState<Post | null>(null);
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [lightboxImage, setLightboxImage] = useState<{
     url: string;
@@ -1843,8 +1845,10 @@ export default function App() {
 
   useEffect(() => {
     (window as any).setLightboxImage = setLightboxImage;
+    (window as any).setSharingPostForPoster = setSharingPostForPoster;
     return () => {
       delete (window as any).setLightboxImage;
+      delete (window as any).setSharingPostForPoster;
     };
   }, []);
 
@@ -2863,12 +2867,44 @@ export default function App() {
     const cMatch = (p.content || "").toLowerCase().includes(q);
     const searchOk = !q || tMatch || cMatch;
     if (currentFilter === "All") return searchOk;
-    return (
-      searchOk &&
-      (p.category === currentFilter ||
-        p.subCategory === currentFilter ||
-        p.categories?.includes(currentFilter))
-    );
+    
+    // Smart Filter matching logic
+    const matchesSmartFilter = (post: Post, filter: string) => {
+      const cats = [
+        post.category,
+        post.subCategory,
+        ...(post.categories || []),
+        ...(post.tags || [])
+      ].map(c => (c || "").trim().toLowerCase());
+
+      if (filter === " GOs & Circulars") {
+        return cats.some(c => 
+          c.includes("go") || 
+          c.includes("circular") || 
+          c.includes("సర్క్యులర్") || 
+          c.includes("జీవో")
+        );
+      }
+      if (filter === " Updates") {
+        return cats.some(c => 
+          c.includes("update") || 
+          c.includes("అప్డేట్") || 
+          c.includes("నోటిస్") || 
+          c.includes("notice")
+        );
+      }
+      if (filter === " General") {
+        return cats.some(c => 
+          c.includes("general") || 
+          c.includes("జనరల్") || 
+          c.includes("discussion") || 
+          c.includes("చర్చ")
+        );
+      }
+      return cats.includes(filter.trim().toLowerCase());
+    };
+
+    return searchOk && matchesSmartFilter(p, currentFilter);
   });
 
   const handleRecordProblem = () => {
@@ -5256,23 +5292,60 @@ export default function App() {
 
                                 {el.type === "E-Vedhika Core Feed" && (
                                   <>
-                                    <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 p-6 sm:p-8 mb-8 flex flex-col gap-4">
+                                    <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 p-6 sm:p-8 mb-8 flex flex-col gap-6">
                                       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
                                         <div className="flex-1 w-full">
                                           <h3 className="text-xl sm:text-2xl font-black text-primary uppercase tracking-tighter text-center sm:text-left">
                                             {el.title || "🔔 Updates"}
                                           </h3>
                                         </div>
+                                        <button
+                                          onClick={() => {
+                                            if (!user) requireLoginAlert();
+                                            else setShowPostForm(true);
+                                          }}
+                                          className="px-6 py-3 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all text-xs sm:text-sm w-max flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                                        >
+                                          <PlusCircle size={18} /> Public Post
+                                        </button>
                                       </div>
-                                      <button
-                                        onClick={() => {
-                                          if (!user) requireLoginAlert();
-                                          else setShowPostForm(true);
-                                        }}
-                                        className="px-6 py-3 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all text-xs sm:text-sm w-full flex items-center justify-center gap-2 shrink-0"
-                                      >
-                                        <PlusCircle size={18} /> Public Post
-                                      </button>
+
+                                      <div className="border-t border-slate-100 pt-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <Filter size={14} className="text-primary animate-pulse" />
+                                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            కేటగిరీ స్మార్ట్ ఫిల్టర్లు (Smart Filters)
+                                          </span>
+                                        </div>
+                                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
+                                          {[
+                                            { id: "All", te: "అన్నీ", en: "All", icon: LayoutList, filter: "All" },
+                                            { id: "GOs", te: "సర్క్యులర్లు (GOs)", en: "GOs & Circulars", icon: FileText, filter: " GOs & Circulars" },
+                                            { id: "Updates", te: "అప్డేట్స్", en: "Updates", icon: Bell, filter: " Updates" },
+                                            { id: "General", te: "జనరల్ డిస్కషన్", en: "General Discussion", icon: MessageSquare, filter: " General" }
+                                          ].map((tab) => {
+                                            const TabIcon = tab.icon;
+                                            const isActive = currentFilter === tab.filter;
+                                            return (
+                                              <button
+                                                key={tab.id}
+                                                onClick={() => setCurrentFilter(tab.filter)}
+                                                className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                                                  isActive
+                                                    ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]"
+                                                    : "bg-slate-50 text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 border border-transparent hover:border-slate-200"
+                                                }`}
+                                              >
+                                                <TabIcon size={14} className={isActive ? "text-white" : "text-slate-400"} />
+                                                <div className="flex flex-col items-start leading-none">
+                                                  <span className="text-[11px]">{tab.te}</span>
+                                                  <span className="text-[8px] opacity-70 font-bold">{tab.en}</span>
+                                                </div>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
                                     </div>
                                     <div className="space-y-10">
                                       <AnimatePresence mode="popLayout">
@@ -6932,6 +7005,262 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* WHATSAPP POST CARD SHARING MODAL */}
+      {sharingPostForPoster && (() => {
+        const post = sharingPostForPoster;
+        const postUrl = `${window.location.origin}/?postId=${post.id}`;
+        const plainContent = post.content
+          ? post.content
+              .replace(/<[^>]*>?/gm, "")
+              .replace(/[#*`]/g, "")
+              .substring(0, 150)
+          : "";
+        
+        const shareText = `*📢 E-VEDHIKA ముఖ్యమైన సమాచారం*\n\n*${post.title}*\n\n${plainContent ? `_"${plainContent}..."_\n\n` : ""}పూర్తి వివరాల కోసం క్రింది లింక్ క్లిక్ చేయండి:\n👉 ${postUrl}\n\n_E-Vedhika - మీ పంచాయతీ మీ చేతుల్లో_`;
+
+        const handleDownloadPoster = async () => {
+          const element = document.getElementById(`poster-card-to-capture`);
+          if (!element) return;
+          try {
+            addToast("పోస్టర్ సిద్ధం చేయబడుతోంది... (Preparing poster...)");
+            const canvas = await html2canvas(element, {
+              useCORS: true,
+              allowTaint: false,
+              backgroundColor: "#ffffff",
+              scale: 2, // Ultra-sharp high resolution!
+            });
+            const imgData = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.download = `EVedhika_Poster_${post.id}.png`;
+            link.href = imgData;
+            link.click();
+            addToast("పోస్టర్ విజయవంతంగా డౌన్‌లోడ్ చేయబడింది! (Poster downloaded successfully!)");
+          } catch (err) {
+            console.error("html2canvas error:", err);
+            addToast("పోస్టర్ డౌన్‌లోడ్‌లో సమస్య ఏర్పడింది. (Error generating poster.)");
+          }
+        };
+
+        const handleWhatsAppShare = async () => {
+          // Copy text
+          try {
+            await navigator.clipboard.writeText(shareText);
+          } catch (err) {
+            console.warn("Clipboard copy failed", err);
+          }
+
+          const element = document.getElementById(`poster-card-to-capture`);
+          let sharedNatively = false;
+
+          if (element && navigator.share && navigator.canShare) {
+            try {
+              const canvas = await html2canvas(element, {
+                useCORS: true,
+                allowTaint: false,
+                backgroundColor: "#ffffff",
+                scale: 1.5,
+              });
+              
+              canvas.toBlob(async (blob) => {
+                if (blob) {
+                  const file = new File([blob], `EVedhika_Poster_${post.id}.png`, { type: "image/png" });
+                  if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                      title: post.title,
+                      text: shareText,
+                      files: [file],
+                    });
+                    sharedNatively = true;
+                    addToast("పోస్టర్ విజయవంతంగా షేర్ చేయబడింది! (Poster shared successfully!)");
+                  }
+                }
+              }, "image/png");
+            } catch (e) {
+              console.warn("Native share failed", e);
+            }
+          }
+
+          if (!sharedNatively) {
+            // Fallback download if element exists
+            if (element) {
+              try {
+                const canvas = await html2canvas(element, {
+                  useCORS: true,
+                  allowTaint: false,
+                  backgroundColor: "#ffffff",
+                  scale: 1.5,
+                });
+                const imgData = canvas.toDataURL("image/png");
+                const link = document.createElement("a");
+                link.download = `EVedhika_Poster_${post.id}.png`;
+                link.href = imgData;
+                link.click();
+              } catch (err) {
+                console.warn("Fallback download failed", err);
+              }
+            }
+
+            addToast("వాట్సాప్ సందేశం కాపీ చేయబడింది మరియు పోస్టర్ డౌన్‌లోడ్ చేయబడింది!");
+            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+            window.open(whatsappUrl, "_blank");
+          }
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-[9999] bg-slate-950/80 flex flex-col items-center justify-center p-4 backdrop-blur-md overflow-y-auto"
+            onClick={() => setSharingPostForPoster(null)}
+          >
+            <div
+              className="w-full max-w-4xl bg-slate-50 p-6 sm:p-8 rounded-[32px] border border-slate-200 shadow-2xl flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-stretch overflow-y-auto max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Left Side: The Poster Render */}
+              <div className="shrink-0 flex items-center justify-center">
+                <div
+                  id="poster-card-to-capture"
+                  className="w-[360px] min-h-[500px] p-6 bg-white border border-slate-100 rounded-[24px] shadow-lg flex flex-col justify-between relative overflow-hidden text-left"
+                >
+                  {/* Styled Header */}
+                  <div>
+                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-amber-500 to-blue-500" />
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 mt-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xs">
+                          EV
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-800 tracking-tight">E-VEDHIKA</h4>
+                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block leading-none">డిజిటల్ సమాచార వేదిక</span>
+                        </div>
+                      </div>
+                      <span className="text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-full">
+                        {(post.category || "General").trim()}
+                      </span>
+                    </div>
+
+                    {/* Poster Title */}
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug mb-3">
+                      {post.title}
+                    </h3>
+
+                    {/* Optional Post Image */}
+                    {post.mediaUrl && (post.mediaType?.startsWith("image") || !post.mediaType) && (
+                      <div className="w-full h-[140px] rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-50 shrink-0">
+                        <img
+                          src={post.mediaUrl}
+                          alt="Post attachment"
+                          className="w-full h-full object-cover"
+                          crossOrigin="anonymous"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    )}
+
+                    {/* Excerpt */}
+                    <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-6 whitespace-pre-line mb-4">
+                      {plainContent || "వివరాలు పోర్టల్ లో అందుబాటులో ఉన్నాయి."}
+                    </p>
+                  </div>
+
+                  {/* Footer Branding & QR Code */}
+                  <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-4 mt-auto">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">E-VEDHIKA PORTAL</span>
+                      <p className="text-[8px] text-slate-500 font-bold leading-normal">
+                        పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
+                      </p>
+                      <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
+                        {window.location.host}/?postId={post.id}
+                      </div>
+                    </div>
+                    {/* QR Code */}
+                    <div className="w-[70px] h-[70px] bg-slate-50 border border-slate-100 rounded-lg p-1 shrink-0 flex items-center justify-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(postUrl)}`}
+                        alt="QR Code"
+                        className="w-full h-full"
+                        crossOrigin="anonymous"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Side: Control Panels & Guidance */}
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md">
+                        వాట్సాప్ షేర్ అసిస్టెంట్ (WhatsApp Share Assistant)
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-800 mt-2">
+                        ఇమేజ్ కార్డ్ షేరింగ్ 📱
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setSharingPostForPoster(null)}
+                      className="p-2 hover:bg-slate-200 rounded-full transition-colors font-black text-slate-500 cursor-pointer text-lg"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <p className="text-xs font-bold text-slate-500 leading-relaxed mb-6">
+                    ఈ ముఖ్యమైన పోస్ట్‌ను కేవలం ఒక లింక్‌గా కాకుండా, ఒక ఆకర్షణీయమైన పోస్టర్ చిత్రం రూపంలో వాట్సాప్‌లో పంపవచ్చు.
+                  </p>
+
+                  {/* Steps Guidance */}
+                  <div className="space-y-4 mb-8 text-left bg-white p-5 rounded-2xl border border-slate-200">
+                    <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-2 mb-2">
+                      ఈజీ షేరింగ్ విధానం (How to Share):
+                    </h4>
+                    <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
+                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">1</div>
+                      <p>
+                        క్రింది <strong className="text-slate-800">వాట్సాప్‌లో షేర్</strong> బటన్ నొక్కండి. ఇది పోస్టర్ ఇమేజ్‌ను డౌన్‌లోడ్ చేసి, వాట్సాప్ సందేశాన్ని ఆటోమేటిక్‌గా కాపీ చేస్తుంది.
+                      </p>
+                    </div>
+                    <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
+                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">2</div>
+                      <p>
+                        వాట్సాప్ ఓపెన్ అయిన తర్వాత, మీరు షేర్ చేయాలనుకుంటున్న చాట్ లేదా గ్రూప్ ఎంచుకోండి.
+                      </p>
+                    </div>
+                    <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
+                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">3</div>
+                      <p>
+                        మీ ఫోన్ గ్యాలరీ నుండి డౌన్‌లోడ్ చేసిన <strong className="text-slate-800">పోస్టర్ చిత్రాన్ని సెలెక్ట్ చేసి</strong>, క్యాప్షన్ స్థలంలో <strong className="text-slate-800">లింక్ సందేశాన్ని పేస్ట్ చేసి</strong> పంపండి!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Button Panel */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={handleWhatsAppShare}
+                    className="flex-1 px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/10 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Smartphone size={18} />
+                    వాట్సాప్‌లో షేర్ (Share on WhatsApp)
+                  </button>
+                  <button
+                    onClick={handleDownloadPoster}
+                    className="px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Download size={18} />
+                    పోస్టర్ డౌన్‌లోడ్ (Download)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <button
         onClick={() => {
@@ -19120,10 +19449,24 @@ function PostCard({
                 post.mediaType,
               );
             }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
+            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all cursor-pointer"
           >
             <Share2 size={16} strokeWidth={2.5} />
             <span>Share</span>
+          </button>
+
+          <button
+            aria-label="Share WhatsApp Poster"
+            onClick={(e) => {
+              e.stopPropagation();
+              if ((window as any).setSharingPostForPoster) {
+                (window as any).setSharingPostForPoster(post);
+              }
+            }}
+            className="flex items-center gap-2 p-2 px-4 rounded-xl text-emerald-600 font-black text-xs uppercase bg-emerald-50 hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 cursor-pointer"
+          >
+            <Smartphone size={16} strokeWidth={2.5} />
+            <span>వాట్సాప్ కార్డ్</span>
           </button>
 
           <button
@@ -22218,11 +22561,26 @@ function PostDetail({
                   post.mediaType,
                 );
               }}
-              className="flex items-center gap-2 text-slate-500 hover:text-primary hover:bg-slate-50 px-4 py-2 rounded-xl transition-all"
+              className="flex items-center gap-2 text-slate-500 hover:text-primary hover:bg-slate-50 px-4 py-2 rounded-xl transition-all cursor-pointer"
             >
               <Share2 size={18} />
               <span className="text-xs font-black uppercase tracking-wider hidden sm:inline">
                 Share
+              </span>
+            </button>
+
+            <button
+              aria-label="Share WhatsApp Poster Card"
+              onClick={() => {
+                if ((window as any).setSharingPostForPoster) {
+                  (window as any).setSharingPostForPoster(post);
+                }
+              }}
+              className="flex items-center gap-2 text-emerald-600 hover:text-white hover:bg-emerald-600 bg-emerald-50/50 border border-emerald-100/50 px-4 py-2 rounded-xl transition-all cursor-pointer"
+            >
+              <Smartphone size={18} />
+              <span className="text-xs font-black uppercase tracking-wider hidden sm:inline">
+                వాట్సాప్ కార్డ్
               </span>
             </button>
           </div>
