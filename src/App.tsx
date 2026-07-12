@@ -126,6 +126,9 @@ import {
   LayoutList,
   Smartphone,
   WifiOff,
+  Cpu,
+  Laptop,
+  Code,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -135,6 +138,7 @@ import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
 import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
+import { TechToolsSection } from "./components/TechTools";
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
 import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
@@ -4095,10 +4099,10 @@ export default function App() {
             ) : (
               <>
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
-                  Navigations
+                  Navigations (నావిగేషన్స్)
                 </h3>
                 <MenuButton
-                  label="Home" icon={Home}
+                  label="టెక్ న్యూస్ & ఫీడ్ (Tech Feed)" icon={Home}
                   tourId="menu-home"
                   active={currentTab === "home" && !postIdFromUrl}
                   onClick={() => {
@@ -4112,96 +4116,20 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Mana Panchayath" icon={Building}
-                  tourId="menu-mana-panchayath"
-                  active={currentTab === "workspace"}
-                  onClick={() => {
-                    startTransition(() => { setCurrentTab("workspace"); });
-                    setSidebarOpen(false);
-                  }}
-                />
-                <div className="flex flex-col gap-1 mb-2 p-1 bg-blue-50/30 rounded-[20px] border border-blue-100/50 overflow-hidden transition-all duration-300">
-                  <button
-                    aria-label="Toggle Priority Services"
-                    onClick={() => setIsPriorityOpen(!isPriorityOpen)}
-                    className="flex items-center justify-between w-full p-3 hover:bg-blue-100/30 transition-colors rounded-[16px] group"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
-                        <Target size={16} className="text-white" />
-                      </div>
-                      <span className="text-[11px] font-black uppercase tracking-[0.1em] text-blue-600">
-                        Priority Services
-                      </span>
-                    </div>
-                    {isPriorityOpen ? (
-                      <ChevronUp
-                        size={16}
-                        className="text-blue-400 group-hover:text-blue-600 transition-colors"
-                      />
-                    ) : (
-                      <ChevronDown
-                        size={16}
-                        className="text-blue-400 group-hover:text-blue-600 transition-colors"
-                      />
-                    )}
-                  </button>
-
-                  <AnimatePresence>
-                    {isPriorityOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="flex flex-col gap-1 px-1 pb-1 overflow-hidden"
-                      >
-                        <MenuButton
-                          label="Emergency Contacts" icon={AlertTriangle}
-                          tourId="menu-emergency"
-                          active={currentTab === "emergency"}
-                          onClick={() => {
-                            startTransition(() => { setCurrentTab("emergency"); });
-                    setSidebarOpen(false);
-                          }}
-                        />
-                        <MenuButton
-                          label="My Activity & Reports" icon={Activity}
-                          tourId="menu-my-activity"
-                          active={currentTab === "my_activity"}
-                          onClick={() => {
-                            if (!user) {
-                              requireLoginAlert();
-                            } else {
-                              startTransition(() => { setCurrentTab("my_activity"); });
-                    setSidebarOpen(false);
-                            }
-                          }}
-                        />
-                        <MenuButton
-                          label="Edit Profile" icon={Settings}
-                          tourId="menu-edit-profile"
-                          active={false}
-                          onClick={() => {
-                            if (!user) {
-                              requireLoginAlert();
-                            } else {
-                              setShowProfileModal(true);
-                              setSidebarOpen(false);
-                            }
-                          }}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <MenuButton
-                  label="Live Chat" icon={MessageCircle}
+                  label="AI టెక్ అసిస్టెంట్ (AI Assistant)" icon={Cpu}
                   tourId="menu-live-chat"
                   active={currentTab === "chat"}
                   onClick={() => {
                     startTransition(() => { setCurrentTab("chat"); });
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="టెక్ టూల్స్ హబ్ (Tech Tools Hub)" icon={Code}
+                  tourId="menu-mana-panchayath"
+                  active={currentTab === "workspace"}
+                  onClick={() => {
+                    startTransition(() => { setCurrentTab("workspace"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4218,25 +4146,7 @@ export default function App() {
                 )}
 
                 <MenuButton
-                  label="Union Corner & Polls" icon={Vote}
-                  tourId="menu-union-corner"
-                  active={currentTab === "union"}
-                  onClick={() => {
-                    startTransition(() => { setCurrentTab("union"); });
-                    setSidebarOpen(false);
-                  }}
-                />
-                <MenuButton
-                  label="What's New!" icon={Megaphone}
-                  tourId="menu-whats-new"
-                  active={currentTab === "changelog"}
-                  onClick={() => {
-                    startTransition(() => { setCurrentTab("changelog"); });
-                    setSidebarOpen(false);
-                  }}
-                />
-                <MenuButton
-                  label="Public Suggestions & Feedback" icon={MessageSquare}
+                  label="కమ్యూనిటీ ఫోరం (Community Forum)" icon={MessageSquare}
                   tourId="menu-suggestions"
                   active={currentTab === "suggestions"}
                   onClick={() => {
@@ -4245,7 +4155,7 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Applications, Formats & GOs" icon={FileText}
+                  label="పరికరాల పోలిక (Gadgets Compare)" icon={Laptop}
                   tourId="menu-applications"
                   active={currentTab === "gos_formats"}
                   onClick={() => {
@@ -4254,20 +4164,11 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="Useful Information" icon={Info}
-                  tourId="menu-useful-info"
-                  active={currentTab === "useful_links"}
+                  label="పోర్టల్ అప్‌డేట్స్ (Portal Updates)" icon={Megaphone}
+                  tourId="menu-whats-new"
+                  active={currentTab === "changelog"}
                   onClick={() => {
-                    startTransition(() => { setCurrentTab("useful_links"); });
-                    setSidebarOpen(false);
-                  }}
-                />
-                <MenuButton
-                  label="Excel A4 Print" icon={FileSpreadsheet}
-                  tourId="menu-excel-print"
-                  active={currentTab === "excel_print"}
-                  onClick={() => {
-                    startTransition(() => { setCurrentTab("excel_print"); });
+                    startTransition(() => { setCurrentTab("changelog"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4640,7 +4541,7 @@ export default function App() {
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
                                                   <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent italic drop-shadow-sm">
-                                                    E-Vedhika. ✨
+                                                    E-Vedhika Tech. 🚀
                                                   </span>
                                                 </h1>
                                               </div>
@@ -4652,7 +4553,7 @@ export default function App() {
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
                                                   <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-sm">
-                                                    E-Vedhika. ✨
+                                                    E-Vedhika Tech. 🚀
                                                   </span>
                                                 </h1>
                                               </div>
@@ -4666,7 +4567,7 @@ export default function App() {
                                           className="mt-3 text-sm sm:text-base font-medium leading-relaxed text-slate-300/80 max-w-md mx-auto"
                                         >
                                           {el.content ||
-                                            "All Problems One Solution 💡"}
+                                            "మీ డిజిటల్ టెక్నాలజీ వేదిక • మొబైల్స్, కోడింగ్ & భవిష్యత్తు టెక్నాలజీలు (Your Tech Hub) 🚀"}
                                         </motion.p>
                                         <motion.div
                                           initial={{ opacity: 0, y: 15 }}
@@ -15298,57 +15199,16 @@ function DigitalWorkspaceSection({
   addToast: (s: string) => void;
   user: FirebaseUser | null;
 }) {
-  const [activeTool, setActiveTool] = useState<string | null>(null);
-
-  const tools = [
-    {
-      id: "dsr",
-      title: "DSR Analyzer",
-      icon: BarChart3,
-      desc: "Analyze Daily Status Reports",
-    },
-    {
-      id: "multiday",
-      title: "Multi-Day attendance",
-      icon: Layers,
-      desc: "Multiple Attendance Records",
-    },
-    {
-      id: "training",
-      title: "Digital Training",
-      icon: GraduationCap,
-      desc: "Workflows & Tutorials",
-    },
-    {
-      id: "pract",
-      title: "Knowledge Hub",
-      icon: Book,
-      desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
-    },
-    {
-      id: "monthly-activity",
-      title: "Monthly Activity Data",
-      icon: FileSpreadsheet,
-      desc: "Format Monthly Activity Reports",
-    },
-    {
-      id: "excel-merge",
-      title: "Excel File Merger",
-      icon: FileSpreadsheet,
-      desc: "Merge Multiple Excel Files",
-    },
-  ];
-
   return (
-    <div className="section-card card-blue relative">
-      <div className="flex justify-between items-start mb-1">
+    <div className="space-y-6">
+      <div className="flex justify-between items-start mb-2">
         <div>
           <motion.h2
             initial={{ x: -10, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             style={{
-              fontSize: "20px",
-              fontWeight: 800,
+              fontSize: "24px",
+              fontWeight: 900,
               color: "var(--primary)",
               marginBottom: "5px",
               display: "flex",
@@ -15356,220 +15216,18 @@ function DigitalWorkspaceSection({
               gap: "8px",
             }}
           >
-            <LayoutDashboard size={24} style={{ color: "#0891b2" }} /> Mana
-            Panchayath
+            <Cpu size={26} className="text-blue-600 animate-pulse" /> టెక్ టూల్స్ హబ్ (Tech Tools Hub)
           </motion.h2>
           <p
-            style={{ fontSize: "12px", color: "#64748b", marginBottom: "20px" }}
+            style={{ fontSize: "13px", color: "#64748b" }}
+            className="font-semibold"
           >
-            Advanced tools for PR & RD Officers.
+            టెక్నాలజీ సాధనాలు, కోడ్ షేరింగ్ మరియు నెట్‌వర్క్ సహాయకాలు (Smart interactive tools for enthusiasts).
           </p>
         </div>
-        <button
-          onClick={() => {
-            const url = `${window.location.origin}/?tab=workspace`;
-            handleShare(
-              "Mana Panchayath - E-Vedhika",
-              "Access advanced tools for PR & RD Officers on Mana Panchayath - E-Vedhika!",
-              url,
-              () => addToast("Link copied!"),
-            );
-          }}
-          className="flex items-center gap-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider h-fit mt-1"
-          title="Share Mana Panchayath"
-        >
-          <Share2 size={16} /> <span className="hidden sm:inline">Share</span>
-        </button>
       </div>
 
-      <div className="mana-grid">
-        {tools.map((t) => (
-          <div
-            key={t.id}
-            className="mana-card"
-            onClick={() => setActiveTool(t.id)}
-          >
-            <div
-              style={{
-                color: "var(--primary)",
-                marginBottom: "10px",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <t.icon size={32} />
-            </div>
-            <h4>{t.title}</h4>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {activeTool === "dsr" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              overflow: "hidden",
-              marginTop: "20px",
-              borderTop: "2px dashed #e2e8f0",
-              paddingTop: "20px",
-            }}
-          >
-            <DSRAnalyzer addToast={addToast} user={user} />
-          </motion.div>
-        )}
-        {activeTool === "multiday" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              overflow: "hidden",
-              marginTop: "20px",
-              borderTop: "2px dashed #e2e8f0",
-              paddingTop: "20px",
-            }}
-          >
-            <MultiDayAnalyzer addToast={addToast} user={user} />
-          </motion.div>
-        )}
-        {activeTool === "training" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              overflow: "hidden",
-              marginTop: "20px",
-              borderTop: "2px dashed #e2e8f0",
-              paddingTop: "20px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "15px",
-              }}
-            >
-              <h3
-                style={{
-                  color: "var(--primary)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  margin: 0,
-                }}
-              >
-                <GraduationCap /> Digital Workflows
-              </h3>
-            </div>
-
-            <div
-              style={{
-                padding: "10px 0",
-                display: "flex",
-                flexDirection: "column",
-                gap: "15px",
-              }}
-            >
-              {[1, 2, 3].map((step) => (
-                <div
-                  key={step}
-                  style={{ display: "flex", alignItems: "center", gap: "15px" }}
-                >
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      background: "var(--primary)",
-                      color: "white",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: "800",
-                    }}
-                  >
-                    {step}
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      background: "#f8fafc",
-                      padding: "15px",
-                      borderRadius: "12px",
-                      border: "1px solid #e2e8f0",
-                    }}
-                  >
-                    <span style={{ fontWeight: 700 }}>
-                      Workflow Step {step}
-                    </span>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#64748b",
-                        margin: "4px 0 0 0",
-                      }}
-                    >
-                      Detailed tutorial content for step {step} will appear
-                      here.
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-        {activeTool === "pract" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              overflow: "hidden",
-              marginTop: "20px",
-              borderTop: "2px dashed #e2e8f0",
-              paddingTop: "20px",
-            }}
-          >
-            <PRActHub user={user} />
-          </motion.div>
-        )}
-        {activeTool === "monthly-activity" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              overflow: "hidden",
-              marginTop: "20px",
-              borderTop: "2px dashed #e2e8f0",
-              paddingTop: "20px",
-            }}
-          >
-            <MonthlyActivityFormatter addToast={addToast} />
-          </motion.div>
-        )}
-        {activeTool === "excel-merge" && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{
-              overflow: "hidden",
-              marginTop: "20px",
-              borderTop: "2px dashed #e2e8f0",
-              paddingTop: "20px",
-            }}
-          >
-            <ExcelMerger user={user} addToast={addToast} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TechToolsSection addToast={addToast} user={user} />
     </div>
   );
 }
