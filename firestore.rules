@@ -6,15 +6,11 @@ match /databases/{database}/documents {
 match /posts/{postId} {
   allow read: if true;
   
-  // ఎవరైనా పోస్ట్‌ను లైక్ చేయడానికి, కామెంట్లు పెంచడానికి, వ్యూస్ పెంచడానికి లేదా షేర్ సోర్సెస్ అప్‌డేట్ చేయడానికి:
-  allow update: if (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+  // ఎవరైనా పోస్ట్‌ను లైక్ చేయడానికి, కామెంట్లు పెంచడానికి, వ్యూస్ పెంచడానికి లేదా షేర్ సోర్సెస్ అప్‌డేట్ చేయడానికి (లాగిన్‌తో సంబంధం లేకుండా):
+  allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                     'views', 'viewedBy', 'commentCount', 'likes', 'likedBy', 
                     'source_whatsapp', 'source_facebook', 'source_twitter', 'source_direct', 'source_other'
-                  ])) || 
-                  (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                    'views', 'viewedBy', 
-                    'source_whatsapp', 'source_facebook', 'source_twitter', 'source_direct', 'source_other'
-                  ]));
+                  ]);
 
   // అడ్మిన్ లేదా పోస్ట్ ఓనర్ కి అన్ని అప్డేట్ పర్మిషన్స్:
   allow update: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
@@ -24,9 +20,9 @@ match /posts/{postId} {
   
   match /comments/{commentId} {
     allow read: if true;
-    allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    allow create: if true; // ఎవరైనా కామెంట్ చేయవచ్చు (లాగిన్‌తో సంబంధం లేకుండా)
     allow update: if isAdmin() || (isSignedIn() && isExistingOwner('uid')) || 
-                  (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'replies']));
+                  request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'replies']); // ఎవరైనా లైక్ లేదా రిప్లై ఇవ్వవచ్చు
     allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   }
 }
@@ -128,14 +124,10 @@ match /forms/{formId} {
 }
 
 match /notifications/{notifId} {
-  allow read: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || resource.data.uid == 'all' || isAdmin());
-  allow create: if isSignedIn(); // Users can create notifications for mentions etc
-  allow update: if isSignedIn() && (
-                  isExistingOwner('uid') || 
-                  isAdmin() || 
-                  (resource.data.uid == 'all' && incoming().diff(existing()).affectedKeys().hasOnly(['readBy', 'message', 'time', 'read']))
-                );
-  allow delete: if isSignedIn() && (isExistingOwner('uid') || isAdmin());
+  allow read: if true; // ఎవరైనా నోటిఫికేషన్లు చదవవచ్చు
+  allow create: if true; // ఎవరైనా నోటిఫికేషన్లు క్రియేట్ చేయవచ్చు
+  allow update: if true; // ఎవరైనా అప్‌డేట్ చేయవచ్చు (readBy, read మొదలైనవి)
+  allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
 
 match /usernames/{username} {

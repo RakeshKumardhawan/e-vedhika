@@ -332,6 +332,35 @@ export function getFriendlyError(err: any): string {
   return msg;
 }
 
+export function getGuestUser() {
+  if (typeof window === "undefined") {
+    return { uid: "guest_server", name: "E-Vedhika Guest" };
+  }
+  let guestId = localStorage.getItem("ev_guest_id");
+  if (!guestId) {
+    guestId = "guest_" + Math.random().toString(36).substring(2, 11);
+    localStorage.setItem("ev_guest_id", guestId);
+  }
+  let guestName = localStorage.getItem("ev_guest_name");
+  if (!guestName) {
+    guestName = "అతిథి (Guest " + Math.random().toString(36).substring(2, 6).toUpperCase() + ")";
+    localStorage.setItem("ev_guest_name", guestName);
+  }
+  return { uid: guestId, name: guestName };
+}
+
+export function getCurrentUserUid(): string {
+  return auth.currentUser?.uid || getGuestUser().uid;
+}
+
+export function getCurrentUserName(isAdminUser?: boolean): string {
+  if (auth.currentUser) {
+    if (isAdminUser) return "Admin";
+    return auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
+  }
+  return getGuestUser().name;
+}
+
 export async function sendCommentNotifications(
   postId: string,
   commentText: string,
@@ -2601,7 +2630,78 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    // 1. Listen to Chat globally (for both logged-in and guest users)
+    const unsubChat = onSnapshot(
+      collection(db, "chat"),
+      (snap) => {
+        const cArr: ChatMessage[] = [];
+        snap.forEach((d) =>
+          cArr.push({ id: d.id, ...(d.data() as any) } as ChatMessage),
+        );
+        setChatMessages(cArr.sort((a, b) => (a.time || 0) - (b.time || 0)));
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, "chat"),
+    );
+
+    // 2. Listen to Notifications globally (for both logged-in and guest users)
+    let initialNotificationsLoadedLocal = false;
+    const notificationTargets = user ? [user.uid, "all"] : ["all"];
+    if (user && userRole === "admin") notificationTargets.push("admin_only");
+
+    const unsubNotifications = onSnapshot(
+      query(
+        collection(db, "notifications"),
+        where("uid", "in", notificationTargets),
+      ),
+      (snap) => {
+        const nArr: Notification[] = [];
+        snap.forEach((d) =>
+          nArr.push({ id: d.id, ...(d.data() as any) } as Notification),
+        );
+        setNotifications(nArr.sort((a, b) => b.time - a.time));
+        setUnreadCount(
+          nArr.filter((n) =>
+            n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read,
+          ).length,
+        );
+
+        if (!initialNotificationsLoadedLocal) {
+          initialNotificationsLoadedLocal = true;
+        } else {
+          const addedChanges = snap
+            .docChanges()
+            .filter((change) => change.type === "added");
+          if (addedChanges.length > 0) {
+            const newNotif = addedChanges[0].doc.data() as any;
+            const isRecent = !newNotif.time || (Date.now() - newNotif.time < 60000);
+            if (isRecent) {
+              triggerNotification(
+                newNotif.title || "New Notification",
+                newNotif.message || newNotif.msg || "You have a new notification",
+                notifSoundConfig.general
+              );
+            }
+          }
+        }
+      },
+      (err) => {
+        if (err.message.toLowerCase().includes("permission")) {
+          console.warn(
+            "Notifications permission denied - check firestore.rules",
+          );
+          return;
+        }
+        handleFirestoreError(err, OperationType.LIST, "notifications");
+      },
+    );
+
+    // 3. Authenticated-only listeners
+    if (!user) {
+      return () => {
+        unsubChat();
+        unsubNotifications();
+      };
+    }
 
     const unsubProfile = onSnapshot(
       doc(db, "users", user.uid),
@@ -2652,18 +2752,6 @@ export default function App() {
         handleFirestoreError(err, OperationType.GET, `admins/${user.uid}`),
     );
 
-    const unsubChat = onSnapshot(
-      collection(db, "chat"),
-      (snap) => {
-        const cArr: ChatMessage[] = [];
-        snap.forEach((d) =>
-          cArr.push({ id: d.id, ...(d.data() as any) } as ChatMessage),
-        );
-        setChatMessages(cArr.sort((a, b) => (a.time || 0) - (b.time || 0)));
-      },
-      (err) => handleFirestoreError(err, OperationType.LIST, "chat"),
-    );
-
     const problemsQuery =
       userRole === "admin" || userRole === "editor"
         ? collection(db, "problems")
@@ -2702,64 +2790,13 @@ export default function App() {
       },
     );
 
-    let initialNotificationsLoadedLocal = false;
-    const notificationTargets = [user.uid, "all"];
-    if (userRole === "admin") notificationTargets.push("admin_only");
-
-    const unsub1 = onSnapshot(
-      query(
-        collection(db, "notifications"),
-        where("uid", "in", notificationTargets),
-      ),
-      (snap) => {
-        const nArr: Notification[] = [];
-        snap.forEach((d) =>
-          nArr.push({ id: d.id, ...(d.data() as any) } as Notification),
-        );
-        setNotifications(nArr.sort((a, b) => b.time - a.time));
-        setUnreadCount(
-          nArr.filter((n) =>
-            n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read,
-          ).length,
-        );
-
-        if (!initialNotificationsLoadedLocal) {
-          initialNotificationsLoadedLocal = true;
-        } else {
-          const addedChanges = snap
-            .docChanges()
-            .filter((change) => change.type === "added");
-          if (addedChanges.length > 0) {
-            const newNotif = addedChanges[0].doc.data() as any;
-            const isRecent = !newNotif.time || (Date.now() - newNotif.time < 60000);
-            if (isRecent) {
-              triggerNotification(
-                newNotif.title || "New Notification",
-                newNotif.message || newNotif.msg || "You have a new notification",
-                notifSoundConfig.general
-              );
-            }
-          }
-        }
-      },
-      (err) => {
-        if (err.message.toLowerCase().includes("permission")) {
-          console.warn(
-            "Notifications permission denied - check firestore.rules",
-          );
-          return;
-        }
-        handleFirestoreError(err, OperationType.LIST, "notifications");
-      },
-    );
-
     return () => {
       unsubProfile();
       unsubAdminCheck();
       unsubChat();
       unsubProblems();
       unsubRequests();
-      unsub1();
+      unsubNotifications();
     };
   }, [user, userRole]);
 
@@ -18000,20 +18037,17 @@ function PostCard({
   };
 
   const handleAddReply = async (commentId: string) => {
-    if (!replyText.trim() || !auth.currentUser) return;
+    if (!replyText.trim() || requireLoginAlert()) return;
     setSubmittingReply(true);
     try {
-      const authorName = isAdmin
-        ? "Admin"
-        : auth.currentUser!.displayName ||
-          auth.currentUser!.email?.split("@")[0] ||
-          "User";
+      const authorName = getCurrentUserName(isAdmin);
+      const authorUid = getCurrentUserUid();
 
       const newReply = {
         id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
         text: replyText,
         time: Date.now(),
-        uid: auth.currentUser!.uid,
+        uid: authorUid,
         userName: authorName,
         isAdminComment: isAdmin,
       };
@@ -18037,7 +18071,7 @@ function PostCard({
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
-      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
+      if (parentComment && parentComment.uid && parentComment.uid !== authorUid) {
         await addDoc(collection(db, "notifications"), {
           uid: parentComment.uid,
           title: "కొత్త రిప్లై (New Reply)",
@@ -18990,8 +19024,7 @@ function PostCard({
               aria-label="Like Post"
               onClick={async (e) => {
                 e.stopPropagation();
-                const userId = auth.currentUser?.uid;
-                if (requireLoginAlert()) return;
+                const userId = getCurrentUserUid();
                 const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
                 try {
                   if (likedBy.includes(userId)) {
@@ -19004,7 +19037,7 @@ function PostCard({
                       likes: increment(1),
                       likedBy: arrayUnion(userId),
                     });
-                    const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+                    const likerName = getCurrentUserName();
                     const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
                     const snapLike = await getDocs(qLike);
                     if (!snapLike.empty) {
@@ -19029,12 +19062,12 @@ function PostCard({
                   addToast(getFriendlyError(err));
                 }
               }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
+              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(getCurrentUserUid()) : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
             >
               <Heart
                 size={18}
                 fill={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
+                  (Array.isArray(post.likedBy) ? post.likedBy.includes(getCurrentUserUid()) : false)
                     ? "currentColor"
                     : "none"
                 }
@@ -19199,27 +19232,25 @@ function PostCard({
               onClick={async () => {
                 if (!newComment.trim() || requireLoginAlert()) return;
                 try {
-                  const authorName =
-                    auth.currentUser!.displayName ||
-                    auth.currentUser!.email?.split("@")[0] ||
-                    "User";
+                  const authorName = getCurrentUserName(isAdmin);
+                  const authorUid = getCurrentUserUid();
                   await addDoc(collection(db, "posts", post.id, "comments"), {
                     text: newComment,
                     time: Date.now(),
-                    uid: auth.currentUser!.uid,
+                    uid: authorUid,
                     userName: authorName,
                   });
                   await updateDoc(doc(db, "posts", post.id), {
                     commentCount: increment(1),
                   });
-
+ 
                   sendCommentNotifications(
                     post.id,
                     newComment,
-                    auth.currentUser!.uid,
+                    authorUid,
                     authorName,
                   );
-
+ 
                   setNewComment("");
                 } catch (e: any) {
                   addToast("Error: " + e.message);
@@ -19266,39 +19297,33 @@ function PostCard({
                           onClick={async (e) => {
                             e.stopPropagation();
                             const likes = c.likes || [];
-                            const uid = auth.currentUser?.uid;
-                            if (!uid) {
-                              addToast("Please login first to like comments");
-                              return;
-                            }
+                            const uid = getCurrentUserUid();
                             if (likes.includes(uid)) {
-                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                                likes: arrayRemove(uid),
-                              });
+                               await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                                 likes: arrayRemove(uid),
+                               });
                             } else {
-                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                                likes: arrayUnion(uid),
-                              });
-                              const likerName = auth.currentUser!.displayName ||
-                                auth.currentUser!.email?.split("@")[0] ||
-                                "User";
-                              sendLikeNotification(
-                                post.id,
-                                c.id,
-                                c.text || "",
-                                c.uid || "",
-                                c.userName || "User",
-                                uid,
-                                likerName,
-                              );
+                               await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                                 likes: arrayUnion(uid),
+                               });
+                               const likerName = getCurrentUserName();
+                               sendLikeNotification(
+                                 post.id,
+                                 c.id,
+                                 c.text || "",
+                                 c.uid || "",
+                                 c.userName || "User",
+                                 uid,
+                                 likerName,
+                               );
                             }
                           }}
-                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
-                          title={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "Unlike" : "Like"}
+                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${(Array.isArray(c.likes) ? c.likes.includes(getCurrentUserUid()) : false) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
+                          title={(Array.isArray(c.likes) ? c.likes.includes(getCurrentUserUid()) : false) ? "Unlike" : "Like"}
                         >
                           <Heart
                             size={14}
-                            fill={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "currentColor" : "none"}
+                            fill={(Array.isArray(c.likes) ? c.likes.includes(getCurrentUserUid()) : false) ? "currentColor" : "none"}
                           />
                         </button>
                         {c.likes?.length > 0 && (
@@ -19314,7 +19339,7 @@ function PostCard({
                           Reply
                         </button>
                       </div>
-                      {(auth.currentUser?.uid === c.uid || isAdmin) && (
+                      {(isAdmin || (getCurrentUserUid() === c.uid && Date.now() - (c.time || 0) <= 3600000)) && (
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
@@ -19369,9 +19394,9 @@ function PostCard({
                                     hour12: true
                                   })}
                                 </span>
-                                {(auth.currentUser?.uid === reply.uid || isAdmin) && (
+                                {(isAdmin || (getCurrentUserUid() === reply.uid && Date.now() - (reply.time || 0) <= 3600000)) && (
                                   <div className="flex items-center gap-2">
-                                    {(auth.currentUser?.uid === reply.uid) && (
+                                    {(getCurrentUserUid() === reply.uid) && (
                                       <button
                                         onClick={() => {
                                           setEditReplyId({ commentId: c.id, replyId: reply.id });
@@ -22378,20 +22403,17 @@ function PostComments({
   };
 
   const handleAddReply = async (commentId: string) => {
-    if (!replyText.trim() || !auth.currentUser) return;
+    if (!replyText.trim() || requireLoginAlert()) return;
     setSubmittingReply(true);
     try {
-      const authorName = isAdmin
-        ? "Admin"
-        : auth.currentUser!.displayName ||
-          auth.currentUser!.email?.split("@")[0] ||
-          "User";
+      const authorName = getCurrentUserName(isAdmin);
+      const authorUid = getCurrentUserUid();
 
       const newReply = {
         id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
         text: replyText,
         time: Date.now(),
-        uid: auth.currentUser!.uid,
+        uid: authorUid,
         userName: authorName,
         isAdminComment: isAdmin,
       };
@@ -22415,7 +22437,7 @@ function PostComments({
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
-      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
+      if (parentComment && parentComment.uid && parentComment.uid !== authorUid) {
         await addDoc(collection(db, "notifications"), {
           uid: parentComment.uid,
           title: "కొత్త రిప్లై (New Reply)",
@@ -22561,12 +22583,16 @@ function PostComments({
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
           
           if (storageConfig === "cloudflare") {
-            const token = await auth.currentUser?.getIdToken();
+            const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
             const formData = new FormData();
             formData.append('file', fileToUpload);
+            const headers: Record<string, string> = {};
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+            }
             const response = await fetch('/api/upload', {
               method: 'POST',
-              headers: { 'Authorization': `Bearer ${token}` },
+              headers,
               body: formData
             });
             const data = await response.json();
@@ -22587,16 +22613,13 @@ function PostComments({
         }
       }
 
-      const authorName = isAdmin
-        ? "Admin"
-        : auth.currentUser!.displayName ||
-          auth.currentUser!.email?.split("@")[0] ||
-          "User";
+      const authorName = getCurrentUserName(isAdmin);
+      const authorUid = getCurrentUserUid();
 
       await addDoc(collection(db, "posts", post.id, "comments"), {
         text: newComment,
         time: Date.now(),
-        uid: auth.currentUser!.uid,
+        uid: authorUid,
         userName: authorName,
         isAdminComment: isAdmin,
         likes: [],
@@ -22613,7 +22636,7 @@ function PostComments({
       sendCommentNotifications(
         post.id,
         newComment,
-        auth.currentUser!.uid,
+        authorUid,
         authorName,
       );
       await logUserActivity("Commented on Post: " + post.id);
@@ -22795,9 +22818,9 @@ function PostComments({
                       minute: "2-digit",
                     })}
                   </span>
-                  {(auth.currentUser?.uid === c.uid || isAdmin) && (
+                  {(isAdmin || (getCurrentUserUid() === c.uid && Date.now() - (c.time || 0) <= 3600000)) && (
                     <div className="flex items-center gap-2 ml-2">
-                      {auth.currentUser?.uid === c.uid && (
+                      {getCurrentUserUid() === c.uid && (
                         <button
                           onClick={() => {
                             setEditingCommentId(c.id);
@@ -22962,9 +22985,9 @@ function PostComments({
                                 day: "numeric"
                               })}
                             </span>
-                            {(auth.currentUser?.uid === reply.uid || isAdmin) && (
+                            {(isAdmin || (getCurrentUserUid() === reply.uid && Date.now() - (reply.time || 0) <= 3600000)) && (
                               <div className="flex items-center gap-2">
-                                {(auth.currentUser?.uid === reply.uid) && (
+                                {(getCurrentUserUid() === reply.uid) && (
                                   <button
                                     onClick={() => {
                                       setEditReplyId({ commentId: c.id, replyId: reply.id });
