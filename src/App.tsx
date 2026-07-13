@@ -1315,56 +1315,12 @@ function LandingPage({
   onShowFooter: (type: "privacy" | "about" | "contact") => void;
   landingPageData: any;
 }) {
-  const [isWarping, setIsWarping] = useState(false);
-
   const handleEnterWorld = () => {
-    setIsWarping(true);
-    setTimeout(() => {
-      setIsWarping(false);
-      onEnterSite();
-    }, 1500);
+    onEnterSite();
   };
 
   return (
     <div className="w-full h-full overflow-y-auto overflow-x-hidden bg-slate-50 font-sans text-slate-800">
-      <AnimatePresence>
-        {isWarping && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[99999] bg-[#0d3b66] flex items-center justify-center overflow-hidden"
-          >
-            <motion.div
-              initial={{ scale: 1, opacity: 0.5 }}
-              animate={{ scale: [1, 50, 100], opacity: [0.5, 1, 0] }}
-              transition={{ duration: 1.5, ease: "easeIn" }}
-              className="absolute w-20 h-20 rounded-full border-[20px] border-blue-400/50 shadow-[0_0_100px_50px_rgba(59,130,246,1)]"
-            />
-            <motion.div
-              initial={{ scale: 1, rotate: 0 }}
-              animate={{ scale: [1, 50], rotate: [0, 90] }}
-              transition={{ duration: 1.5, ease: "easeIn", delay: 0.2 }}
-              className="absolute w-10 h-10 rounded-full border-[10px] border-emerald-400 shadow-[0_0_100px_50px_rgba(52,211,153,1)]"
-            />
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3, delay: 1.2 }}
-              className="absolute inset-0 bg-white"
-            />
-            <motion.h1 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1.2 }}
-              transition={{ duration: 1, delay: 0.2 }}
-              className="relative z-10 text-white font-black text-4xl sm:text-6xl tracking-[0.2em] italic text-center"
-            >
-              ENTERING<br />E-VEDHIKA...
-            </motion.h1>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -1463,6 +1419,119 @@ function LandingPage({
               Enter The E-VEDHIKA website
               <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </button>
+          </div>
+        </section>
+
+        {/* Bilingual Platform & Creator Information (ఈ-വേదిక సమాచారం మరియు నా గురించి) */}
+        <section className="bg-white rounded-[32px] p-8 md:p-12 shadow-md border border-slate-100 space-y-12 text-left">
+          {/* Section Heading */}
+          <div className="text-center space-y-2">
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+              ఈ-വേదిక సమాచారం & నా గురించి <span className="text-blue-600">/ About E-Vedhika & Me</span>
+            </h3>
+            <p className="text-slate-500 font-semibold uppercase text-xs tracking-wider">
+              పూర్తి వివరాలు తెలుగు మరియు ఇంగ్లీష్‌లలో • Complete Details in Telugu & English
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Left Card: E-Vedhika Complete Info */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 shrink-0">
+                  <Info size={20} />
+                </div>
+                <h4 className="text-2xl font-bold text-slate-800">
+                  ఈ-వేదిక గురించి <span className="text-blue-600 text-lg font-medium">/ About E-Platform</span>
+                </h4>
+              </div>
+
+              {/* Telugu Content */}
+              <div className="space-y-4">
+                <p className="text-slate-700 font-medium leading-relaxed">
+                  ఈ వేదిక <strong>'పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి'</strong> సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన సౌకర్యాలను సులభంగా పొందవచ్చు.
+                </p>
+                <ul className="space-y-3.5 text-slate-600 font-medium">
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span><strong>ప్రభుత్వ జీవోలు (GOs):</strong> ఎప్పటికప్పుడు తాజా ప్రభుత్వ ఉత్తర్వులు మరియు సర్క్యులర్స్.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span><strong>ఫార్మాట్లు మరియు రిపోర్టులు:</strong> రోజువారీ పనులకు అవసరమైన టెంప్లేట్స్ మరియు ఆటోమేటెడ్ రిపోర్ట్స్.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-blue-600 font-bold mt-0.5">•</span>
+                    <span><strong>నాలెడ్జ్ హబ్:</strong> విధుల్లో సహాయపడే అవసరమైన మార్గదర్శకాలు మరియు విషయ పరిజ్ఞానం.</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Divider for Bilingual */}
+              <div className="border-t border-slate-100/50 pt-4" />
+
+              {/* English Content */}
+              <div className="space-y-4">
+                <p className="text-slate-600 font-medium leading-relaxed italic">
+                  E-Vedhika is custom-designed for the 'Panchayat Raj and Rural Development' department. Here, you can easily access and streamline all administrative tools, formats, and guidelines.
+                </p>
+                <ul className="space-y-3.5 text-slate-500 font-medium text-sm">
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-blue-400 font-bold mt-0.5">•</span>
+                    <span><strong>Government Orders (GOs):</strong> Stay updated with the latest government orders, rules, and circulars instantly.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-blue-400 font-bold mt-0.5">•</span>
+                    <span><strong>Formats & Automated Reports:</strong> Download ready-to-use templates and generate reports, saving valuable time.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="text-blue-400 font-bold mt-0.5">•</span>
+                    <span><strong>Knowledge Hub:</strong> Access reference manuals, instructional material, and knowledge bases to simplify your work.</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Right Card: About Me (Creator) */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+                  <User size={20} />
+                </div>
+                <h4 className="text-2xl font-bold text-slate-800">
+                  నా గురించి <span className="text-emerald-600 text-lg font-medium">/ About Me</span>
+                </h4>
+              </div>
+
+              {/* Telugu Content */}
+              <div className="space-y-4">
+                <p className="text-slate-700 font-medium leading-relaxed">
+                  నమస్కారం! నా పేరు <strong>ధావన్ రాకేష్ కుమార్</strong>. నేను ఒక సాధారణ మధ్యతరగతి కుటుంబం నుండి వచ్చాను. చిన్నప్పటి నుంచే నాకు కంప్యూటర్లు మరియు ఇంటర్నెట్ ప్రపంచం అంటే చాలా ఇష్టం, ఆ ఆసక్తే నన్ను ఎప్పుడూ కొత్త విషయాలు నేర్చుకునేలా చేసింది.
+                </p>
+                <p className="text-slate-700 font-medium leading-relaxed">
+                  ప్రస్తుతం నేను ఒక <strong>'ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్'</strong> గా పని చేస్తున్నాను. ఒక ఆపరేటర్గా రోజువారీ అడ్మినిస్ట్రేటివ్ పనులు, మాన్యువల్ డేటా ఎంట్రీలు మరియు గడువులోపు రిపోర్ట్స్ తయారు చేయడంలో ఉండే నిజమైన ఒత్తిడి నాకు బాగా తెలుసు. ఆ సమస్యలను కేవలం భరించడమే కాకుండా, వాటికి ఒక సాంకేతిక పరిష్కారం ఆలోచించాలనుకున్నాను. నా విధుల్లో నేను ఎదుర్కొన్న ఇబ్బందులు, గమనించిన లోపాలే నన్ను ఈ ప్రాజెక్ట్ వైపు నడిపించాయి.
+                </p>
+                <blockquote className="border-l-4 border-blue-500 pl-4 py-1 italic bg-blue-50/50 rounded-r-xl text-slate-800 font-medium text-sm">
+                  "నేను పడిన కష్టం మరెవరూ పడకూడదనే ఉద్దేశ్యంతో, క్షేత్రస్థాయిలో పనిచేసే ప్రతి ఒక్కరికీ ఉపయోగపడాలనే నా సొంత ఆసక్తితో ఈ 'ఈ-వేదిక' ని రూపొందించాను."
+                </blockquote>
+              </div>
+
+              {/* Divider for Bilingual */}
+              <div className="border-t border-slate-100/50 pt-4" />
+
+              {/* English Content */}
+              <div className="space-y-4 text-sm">
+                <p className="text-slate-600 font-medium leading-relaxed italic">
+                  Hello! My name is <strong>Dhawan Rakesh Kumar</strong>. I come from a humble middle-class family. Since childhood, my passion for computers and the internet drove me to learn and build technology solutions.
+                </p>
+                <p className="text-slate-600 font-medium leading-relaxed italic">
+                  Currently, I work as an <strong>'e-Panchayat Computer Operator'</strong>. Having experienced firsthand the stress of daily administrative loads, manual entry tasks, and tight reporting deadlines, I felt compelled to create a technical solution. This portal is the outcome of my journey to resolve real field challenges.
+                </p>
+                <blockquote className="border-l-4 border-emerald-500 pl-4 py-1 italic bg-emerald-50/30 rounded-r-xl text-slate-700 font-medium text-xs">
+                  "Driven by the motto of ensuring no one else faces the same challenges I encountered, I crafted 'E-Vedhika' with a personal commitment to serve field-level staff."
+                </blockquote>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -2988,35 +3057,32 @@ export default function App() {
               System Admin
             </h1>
             {!user ? (
-              <div className="bg-slate-900 border-2 border-slate-800 p-8 rounded-3xl w-full shadow-2xl">
-                <p className="text-slate-400 font-bold mb-6 text-sm">
-                  Please identify yourself to access the administration console.
+              <div className="bg-slate-900 border-2 border-slate-800 p-8 rounded-3xl w-full shadow-2xl flex flex-col items-center">
+                <p className="text-slate-400 font-bold mb-6 text-sm text-center leading-relaxed">
+                  అడ్మిన్ కన్సోల్ యాక్సెస్ చేయడానికి లాగిన్ అవ్వండి.
                 </p>
                 <button
-                  aria-label="Verify Identity with Google"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+                  aria-label="Login"
+                  onClick={() => setShowAuthModal(true)}
+                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-blue-600/20 text-sm flex items-center justify-center gap-2 w-full uppercase tracking-wider"
                 >
-                  Google Identity Verification
+                  Login
                 </button>
-                <div className="mt-4 p-3.5 bg-amber-500/15 rounded-xl border border-amber-500/30 text-amber-200 text-[11px] leading-relaxed font-semibold text-left">
-                  {" "}
-                  <span className="font-extrabold text-amber-400">
-                    లాగిన్ ఆలస్యం అవుతుంటే:
-                  </span>{" "}
-                  ఈ యాప్ ఐఫ్రేమ్ (Iframe) లో రన్ అవుతున్నందున బ్రౌజర్ సెక్యూరిటీ
-                  వల్ల Google లాగిన్ ఆలస్యం కావచ్చు. పైన కుడివైపు ఉండే బాణం
-                  గుర్తును (↗ Open in new tab) క్లిక్ చేసి యాప్‌ను కొత్త
-                  ట్యాబ్‌లో రన్ చేయడం ద్వారా కేవలం ఒకే ఒక్క సెకనులో లాగిన్
-                  పూర్తి చేయవచ్చు!
-                </div>
                 <button
                   aria-label="Return to Public Portal"
                   onClick={() => navigate("/")}
-                  className="mt-6 text-slate-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl"
+                  className="mt-6 text-slate-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl w-full text-center"
                 >
                   Return to Public Portal
                 </button>
+                {showAuthModal && (
+                  <AuthModal
+                    onClose={() => setShowAuthModal(false)}
+                    addToast={addToast}
+                    handleGoogleLogin={handleGoogleLogin}
+                    districtsData={DEFAULT_DISTRICTS_DATA}
+                  />
+                )}
               </div>
             ) : (
               <div className="bg-slate-900 border-2 border-red-900/50 p-8 rounded-3xl w-full shadow-2xl">
@@ -8362,39 +8428,14 @@ function AdsenseUnit({
   slot?: string;
   className?: string;
 }) {
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push(
-          {},
-        );
-      }
-    } catch (e) {
-      console.error("AdSense error:", e);
-    }
-  }, []);
-
-  if (!client || !slot) return null;
-
-  return (
-    <div className={`w-full overflow-hidden ${className || ""}`}>
-      <ins
-        className="adsbygoogle"
-        style={{ display: "block" }}
-        data-ad-client={client}
-        data-ad-slot={slot}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      ></ins>
-    </div>
-  );
+  return null;
 }
 
 function HomeAds({ ads }: { ads: Advertisement[] }) {
   const [index, setIndex] = useState(0);
 
   const imageAds = ads.filter((a) => !a.adType || a.adType === "image");
-  const adsenseAds = ads.filter((a) => a.adType === "adsense");
+  const adsenseAds: Advertisement[] = [];
 
   useEffect(() => {
     if (imageAds.length <= 1) return;
@@ -8509,18 +8550,6 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
           )}
         </div>
       )}
-
-      {adsenseAds.map((ad, i) => (
-        <div
-          key={ad.id}
-          className="w-full bg-slate-50 border border-slate-100 rounded-3xl p-4 overflow-hidden"
-        >
-          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center mb-2">
-            Advertisement
-          </div>
-          <AdsenseUnit client={ad.adsenseClient} slot={ad.adsenseSlot} />
-        </div>
-      ))}
     </div>
   );
 }
