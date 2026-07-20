@@ -4,62 +4,59 @@ import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     base: '',
-    plugins: [
-      react(), 
-      tailwindcss(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-        manifest: {
-          name: 'E-Vedhika Portal',
-          short_name: 'E-Vedhika',
-          description: 'E-Vedhika All problems one solution',
-          theme_color: '#0d3b66',
-          background_color: '#0d3b66',
-          display: 'standalone',
-          orientation: 'portrait',
-          icons: [
-            {
-              src: 'ev-logo-v2.svg',
-              sizes: 'any',
-              type: 'image/svg+xml',
-              purpose: 'any maskable'
-            },
-            {
-              src: 'ev-logo-v2.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'ev-logo-v2.png',
-              sizes: '512x512',
-              type: 'image/png'
-            }
-          ]
-        },
-        workbox: {
-          navigateFallbackDenylist: [/^\/api/],
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 // 4MiB
-        }
-      }),
-      {
-        name: 'google-verification',
-        configureServer(server) {
-          server.middlewares.use((req, res, next) => {
-            if (req.url === '/google46d0fa093843f771.html') {
-              res.setHeader('Content-Type', 'text/html');
-              res.end('google-site-verification: google46d0fa093843f771.html');
-              return;
-            }
-            next();
-          });
-        }
+    plugins: [react(), tailwindcss(), VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      manifest: {
+        name: 'E-Vedhika Portal',
+        short_name: 'E-Vedhika',
+        description: 'E-Vedhika All problems one solution',
+        theme_color: '#0d3b66',
+        background_color: '#0d3b66',
+        display: 'standalone',
+        orientation: 'portrait',
+        icons: [
+          {
+            src: 'ev-logo-v2.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          },
+          {
+            src: 'ev-logo-v2.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'ev-logo-v2.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      },
+      workbox: {
+        navigateFallbackDenylist: [/^\/api/],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024 // 4MiB
       }
-    ],
+    }), {
+      name: 'google-verification',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/google46d0fa093843f771.html') {
+            res.setHeader('Content-Type', 'text/html');
+            res.end('google-site-verification: google46d0fa093843f771.html');
+            return;
+          }
+          next();
+        });
+      }
+    }, cloudflare()],
     build: {
       outDir: 'dist',
       emptyOutDir: true,
