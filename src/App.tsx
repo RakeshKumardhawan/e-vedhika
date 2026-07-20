@@ -126,9 +126,6 @@ import {
   LayoutList,
   Smartphone,
   WifiOff,
-  Cpu,
-  Laptop,
-  Code,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -138,7 +135,6 @@ import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
 import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
-import { TechToolsSection } from "./components/TechTools";
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
 import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
@@ -330,35 +326,6 @@ export function getFriendlyError(err: any): string {
   }
 
   return msg;
-}
-
-export function getGuestUser() {
-  if (typeof window === "undefined") {
-    return { uid: "guest_server", name: "E-Vedhika Guest" };
-  }
-  let guestId = localStorage.getItem("ev_guest_id");
-  if (!guestId) {
-    guestId = "guest_" + Math.random().toString(36).substring(2, 11);
-    localStorage.setItem("ev_guest_id", guestId);
-  }
-  let guestName = localStorage.getItem("ev_guest_name");
-  if (!guestName) {
-    guestName = "అతిథి (Guest " + Math.random().toString(36).substring(2, 6).toUpperCase() + ")";
-    localStorage.setItem("ev_guest_name", guestName);
-  }
-  return { uid: guestId, name: guestName };
-}
-
-export function getCurrentUserUid(): string {
-  return auth.currentUser?.uid || getGuestUser().uid;
-}
-
-export function getCurrentUserName(isAdminUser?: boolean): string {
-  if (auth.currentUser) {
-    if (isAdminUser) return "Admin";
-    return auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
-  }
-  return getGuestUser().name;
 }
 
 export async function sendCommentNotifications(
@@ -1344,12 +1311,56 @@ function LandingPage({
   onShowFooter: (type: "privacy" | "about" | "contact") => void;
   landingPageData: any;
 }) {
+  const [isWarping, setIsWarping] = useState(false);
+
   const handleEnterWorld = () => {
-    onEnterSite();
+    setIsWarping(true);
+    setTimeout(() => {
+      setIsWarping(false);
+      onEnterSite();
+    }, 1500);
   };
 
   return (
     <div className="w-full h-full overflow-y-auto overflow-x-hidden bg-slate-50 font-sans text-slate-800">
+      <AnimatePresence>
+        {isWarping && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] bg-[#0d3b66] flex items-center justify-center overflow-hidden"
+          >
+            <motion.div
+              initial={{ scale: 1, opacity: 0.5 }}
+              animate={{ scale: [1, 50, 100], opacity: [0.5, 1, 0] }}
+              transition={{ duration: 1.5, ease: "easeIn" }}
+              className="absolute w-20 h-20 rounded-full border-[20px] border-blue-400/50 shadow-[0_0_100px_50px_rgba(59,130,246,1)]"
+            />
+            <motion.div
+              initial={{ scale: 1, rotate: 0 }}
+              animate={{ scale: [1, 50], rotate: [0, 90] }}
+              transition={{ duration: 1.5, ease: "easeIn", delay: 0.2 }}
+              className="absolute w-10 h-10 rounded-full border-[10px] border-emerald-400 shadow-[0_0_100px_50px_rgba(52,211,153,1)]"
+            />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: 1.2 }}
+              className="absolute inset-0 bg-white"
+            />
+            <motion.h1 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1.2 }}
+              transition={{ duration: 1, delay: 0.2 }}
+              className="relative z-10 text-white font-black text-4xl sm:text-6xl tracking-[0.2em] italic text-center"
+            >
+              ENTERING<br />E-VEDHIKA...
+            </motion.h1>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -1448,119 +1459,6 @@ function LandingPage({
               Enter The E-VEDHIKA website
               <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </button>
-          </div>
-        </section>
-
-        {/* Bilingual Platform & Creator Information (ఈ-വേదిక సమాచారం మరియు నా గురించి) */}
-        <section className="bg-white rounded-[32px] p-8 md:p-12 shadow-md border border-slate-100 space-y-12 text-left">
-          {/* Section Heading */}
-          <div className="text-center space-y-2">
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">
-              ఈ-വേదిక సమాచారం & నా గురించి <span className="text-blue-600">/ About E-Vedhika & Me</span>
-            </h3>
-            <p className="text-slate-500 font-semibold uppercase text-xs tracking-wider">
-              పూర్తి వివరాలు తెలుగు మరియు ఇంగ్లీష్‌లలో • Complete Details in Telugu & English
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Left Card: E-Vedhika Complete Info */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 shrink-0">
-                  <Info size={20} />
-                </div>
-                <h4 className="text-2xl font-bold text-slate-800">
-                  ఈ-వేదిక గురించి <span className="text-blue-600 text-lg font-medium">/ About E-Platform</span>
-                </h4>
-              </div>
-
-              {/* Telugu Content */}
-              <div className="space-y-4">
-                <p className="text-slate-700 font-medium leading-relaxed">
-                  ఈ వేదిక <strong>'పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి'</strong> సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన సౌకర్యాలను సులభంగా పొందవచ్చు.
-                </p>
-                <ul className="space-y-3.5 text-slate-600 font-medium">
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
-                    <span><strong>ప్రభుత్వ జీవోలు (GOs):</strong> ఎప్పటికప్పుడు తాజా ప్రభుత్వ ఉత్తర్వులు మరియు సర్క్యులర్స్.</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
-                    <span><strong>ఫార్మాట్లు మరియు రిపోర్టులు:</strong> రోజువారీ పనులకు అవసరమైన టెంప్లేట్స్ మరియు ఆటోమేటెడ్ రిపోర్ట్స్.</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-blue-600 font-bold mt-0.5">•</span>
-                    <span><strong>నాలెడ్జ్ హబ్:</strong> విధుల్లో సహాయపడే అవసరమైన మార్గదర్శకాలు మరియు విషయ పరిజ్ఞానం.</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Divider for Bilingual */}
-              <div className="border-t border-slate-100/50 pt-4" />
-
-              {/* English Content */}
-              <div className="space-y-4">
-                <p className="text-slate-600 font-medium leading-relaxed italic">
-                  E-Vedhika is custom-designed for the 'Panchayat Raj and Rural Development' department. Here, you can easily access and streamline all administrative tools, formats, and guidelines.
-                </p>
-                <ul className="space-y-3.5 text-slate-500 font-medium text-sm">
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-blue-400 font-bold mt-0.5">•</span>
-                    <span><strong>Government Orders (GOs):</strong> Stay updated with the latest government orders, rules, and circulars instantly.</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-blue-400 font-bold mt-0.5">•</span>
-                    <span><strong>Formats & Automated Reports:</strong> Download ready-to-use templates and generate reports, saving valuable time.</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <span className="text-blue-400 font-bold mt-0.5">•</span>
-                    <span><strong>Knowledge Hub:</strong> Access reference manuals, instructional material, and knowledge bases to simplify your work.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Right Card: About Me (Creator) */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
-                  <User size={20} />
-                </div>
-                <h4 className="text-2xl font-bold text-slate-800">
-                  నా గురించి <span className="text-emerald-600 text-lg font-medium">/ About Me</span>
-                </h4>
-              </div>
-
-              {/* Telugu Content */}
-              <div className="space-y-4">
-                <p className="text-slate-700 font-medium leading-relaxed">
-                  నమస్కారం! నా పేరు <strong>ధావన్ రాకేష్ కుమార్</strong>. నేను ఒక సాధారణ మధ్యతరగతి కుటుంబం నుండి వచ్చాను. చిన్నప్పటి నుంచే నాకు కంప్యూటర్లు మరియు ఇంటర్నెట్ ప్రపంచం అంటే చాలా ఇష్టం, ఆ ఆసక్తే నన్ను ఎప్పుడూ కొత్త విషయాలు నేర్చుకునేలా చేసింది.
-                </p>
-                <p className="text-slate-700 font-medium leading-relaxed">
-                  ప్రస్తుతం నేను ఒక <strong>'ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్'</strong> గా పని చేస్తున్నాను. ఒక ఆపరేటర్గా రోజువారీ అడ్మినిస్ట్రేటివ్ పనులు, మాన్యువల్ డేటా ఎంట్రీలు మరియు గడువులోపు రిపోర్ట్స్ తయారు చేయడంలో ఉండే నిజమైన ఒత్తిడి నాకు బాగా తెలుసు. ఆ సమస్యలను కేవలం భరించడమే కాకుండా, వాటికి ఒక సాంకేతిక పరిష్కారం ఆలోచించాలనుకున్నాను. నా విధుల్లో నేను ఎదుర్కొన్న ఇబ్బందులు, గమనించిన లోపాలే నన్ను ఈ ప్రాజెక్ట్ వైపు నడిపించాయి.
-                </p>
-                <blockquote className="border-l-4 border-blue-500 pl-4 py-1 italic bg-blue-50/50 rounded-r-xl text-slate-800 font-medium text-sm">
-                  "నేను పడిన కష్టం మరెవరూ పడకూడదనే ఉద్దేశ్యంతో, క్షేత్రస్థాయిలో పనిచేసే ప్రతి ఒక్కరికీ ఉపయోగపడాలనే నా సొంత ఆసక్తితో ఈ 'ఈ-వేదిక' ని రూపొందించాను."
-                </blockquote>
-              </div>
-
-              {/* Divider for Bilingual */}
-              <div className="border-t border-slate-100/50 pt-4" />
-
-              {/* English Content */}
-              <div className="space-y-4 text-sm">
-                <p className="text-slate-600 font-medium leading-relaxed italic">
-                  Hello! My name is <strong>Dhawan Rakesh Kumar</strong>. I come from a humble middle-class family. Since childhood, my passion for computers and the internet drove me to learn and build technology solutions.
-                </p>
-                <p className="text-slate-600 font-medium leading-relaxed italic">
-                  Currently, I work as an <strong>'e-Panchayat Computer Operator'</strong>. Having experienced firsthand the stress of daily administrative loads, manual entry tasks, and tight reporting deadlines, I felt compelled to create a technical solution. This portal is the outcome of my journey to resolve real field challenges.
-                </p>
-                <blockquote className="border-l-4 border-emerald-500 pl-4 py-1 italic bg-emerald-50/30 rounded-r-xl text-slate-700 font-medium text-xs">
-                  "Driven by the motto of ensuring no one else faces the same challenges I encountered, I crafted 'E-Vedhika' with a personal commitment to serve field-level staff."
-                </blockquote>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -2630,78 +2528,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // 1. Listen to Chat globally (for both logged-in and guest users)
-    const unsubChat = onSnapshot(
-      collection(db, "chat"),
-      (snap) => {
-        const cArr: ChatMessage[] = [];
-        snap.forEach((d) =>
-          cArr.push({ id: d.id, ...(d.data() as any) } as ChatMessage),
-        );
-        setChatMessages(cArr.sort((a, b) => (a.time || 0) - (b.time || 0)));
-      },
-      (err) => handleFirestoreError(err, OperationType.LIST, "chat"),
-    );
-
-    // 2. Listen to Notifications globally (for both logged-in and guest users)
-    let initialNotificationsLoadedLocal = false;
-    const notificationTargets = user ? [user.uid, "all"] : ["all"];
-    if (user && userRole === "admin") notificationTargets.push("admin_only");
-
-    const unsubNotifications = onSnapshot(
-      query(
-        collection(db, "notifications"),
-        where("uid", "in", notificationTargets),
-      ),
-      (snap) => {
-        const nArr: Notification[] = [];
-        snap.forEach((d) =>
-          nArr.push({ id: d.id, ...(d.data() as any) } as Notification),
-        );
-        setNotifications(nArr.sort((a, b) => b.time - a.time));
-        setUnreadCount(
-          nArr.filter((n) =>
-            n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read,
-          ).length,
-        );
-
-        if (!initialNotificationsLoadedLocal) {
-          initialNotificationsLoadedLocal = true;
-        } else {
-          const addedChanges = snap
-            .docChanges()
-            .filter((change) => change.type === "added");
-          if (addedChanges.length > 0) {
-            const newNotif = addedChanges[0].doc.data() as any;
-            const isRecent = !newNotif.time || (Date.now() - newNotif.time < 60000);
-            if (isRecent) {
-              triggerNotification(
-                newNotif.title || "New Notification",
-                newNotif.message || newNotif.msg || "You have a new notification",
-                notifSoundConfig.general
-              );
-            }
-          }
-        }
-      },
-      (err) => {
-        if (err.message.toLowerCase().includes("permission")) {
-          console.warn(
-            "Notifications permission denied - check firestore.rules",
-          );
-          return;
-        }
-        handleFirestoreError(err, OperationType.LIST, "notifications");
-      },
-    );
-
-    // 3. Authenticated-only listeners
-    if (!user) {
-      return () => {
-        unsubChat();
-        unsubNotifications();
-      };
-    }
+    if (!user) return;
 
     const unsubProfile = onSnapshot(
       doc(db, "users", user.uid),
@@ -2752,6 +2579,18 @@ export default function App() {
         handleFirestoreError(err, OperationType.GET, `admins/${user.uid}`),
     );
 
+    const unsubChat = onSnapshot(
+      collection(db, "chat"),
+      (snap) => {
+        const cArr: ChatMessage[] = [];
+        snap.forEach((d) =>
+          cArr.push({ id: d.id, ...(d.data() as any) } as ChatMessage),
+        );
+        setChatMessages(cArr.sort((a, b) => (a.time || 0) - (b.time || 0)));
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, "chat"),
+    );
+
     const problemsQuery =
       userRole === "admin" || userRole === "editor"
         ? collection(db, "problems")
@@ -2790,13 +2629,64 @@ export default function App() {
       },
     );
 
+    let initialNotificationsLoadedLocal = false;
+    const notificationTargets = [user.uid, "all"];
+    if (userRole === "admin") notificationTargets.push("admin_only");
+
+    const unsub1 = onSnapshot(
+      query(
+        collection(db, "notifications"),
+        where("uid", "in", notificationTargets),
+      ),
+      (snap) => {
+        const nArr: Notification[] = [];
+        snap.forEach((d) =>
+          nArr.push({ id: d.id, ...(d.data() as any) } as Notification),
+        );
+        setNotifications(nArr.sort((a, b) => b.time - a.time));
+        setUnreadCount(
+          nArr.filter((n) =>
+            n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read,
+          ).length,
+        );
+
+        if (!initialNotificationsLoadedLocal) {
+          initialNotificationsLoadedLocal = true;
+        } else {
+          const addedChanges = snap
+            .docChanges()
+            .filter((change) => change.type === "added");
+          if (addedChanges.length > 0) {
+            const newNotif = addedChanges[0].doc.data() as any;
+            const isRecent = !newNotif.time || (Date.now() - newNotif.time < 60000);
+            if (isRecent) {
+              triggerNotification(
+                newNotif.title || "New Notification",
+                newNotif.message || newNotif.msg || "You have a new notification",
+                notifSoundConfig.general
+              );
+            }
+          }
+        }
+      },
+      (err) => {
+        if (err.message.toLowerCase().includes("permission")) {
+          console.warn(
+            "Notifications permission denied - check firestore.rules",
+          );
+          return;
+        }
+        handleFirestoreError(err, OperationType.LIST, "notifications");
+      },
+    );
+
     return () => {
       unsubProfile();
       unsubAdminCheck();
       unsubChat();
       unsubProblems();
       unsubRequests();
-      unsubNotifications();
+      unsub1();
     };
   }, [user, userRole]);
 
@@ -3094,32 +2984,35 @@ export default function App() {
               System Admin
             </h1>
             {!user ? (
-              <div className="bg-slate-900 border-2 border-slate-800 p-8 rounded-3xl w-full shadow-2xl flex flex-col items-center">
-                <p className="text-slate-400 font-bold mb-6 text-sm text-center leading-relaxed">
-                  అడ్మిన్ కన్సోల్ యాక్సెస్ చేయడానికి లాగిన్ అవ్వండి.
+              <div className="bg-slate-900 border-2 border-slate-800 p-8 rounded-3xl w-full shadow-2xl">
+                <p className="text-slate-400 font-bold mb-6 text-sm">
+                  Please identify yourself to access the administration console.
                 </p>
                 <button
-                  aria-label="Login"
-                  onClick={() => setShowAuthModal(true)}
-                  className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-blue-600/20 text-sm flex items-center justify-center gap-2 w-full uppercase tracking-wider"
+                  aria-label="Verify Identity with Google"
+                  onClick={handleGoogleLogin}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl transition-all uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(37,99,235,0.3)]"
                 >
-                  Login
+                  Google Identity Verification
                 </button>
+                <div className="mt-4 p-3.5 bg-amber-500/15 rounded-xl border border-amber-500/30 text-amber-200 text-[11px] leading-relaxed font-semibold text-left">
+                  {" "}
+                  <span className="font-extrabold text-amber-400">
+                    లాగిన్ ఆలస్యం అవుతుంటే:
+                  </span>{" "}
+                  ఈ యాప్ ఐఫ్రేమ్ (Iframe) లో రన్ అవుతున్నందున బ్రౌజర్ సెక్యూరిటీ
+                  వల్ల Google లాగిన్ ఆలస్యం కావచ్చు. పైన కుడివైపు ఉండే బాణం
+                  గుర్తును (↗ Open in new tab) క్లిక్ చేసి యాప్‌ను కొత్త
+                  ట్యాబ్‌లో రన్ చేయడం ద్వారా కేవలం ఒకే ఒక్క సెకనులో లాగిన్
+                  పూర్తి చేయవచ్చు!
+                </div>
                 <button
                   aria-label="Return to Public Portal"
                   onClick={() => navigate("/")}
-                  className="mt-6 text-slate-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl w-full text-center"
+                  className="mt-6 text-slate-500 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest border border-slate-800 px-6 py-2 rounded-xl"
                 >
                   Return to Public Portal
                 </button>
-                {showAuthModal && (
-                  <AuthModal
-                    onClose={() => setShowAuthModal(false)}
-                    addToast={addToast}
-                    handleGoogleLogin={handleGoogleLogin}
-                    districtsData={DEFAULT_DISTRICTS_DATA}
-                  />
-                )}
               </div>
             ) : (
               <div className="bg-slate-900 border-2 border-red-900/50 p-8 rounded-3xl w-full shadow-2xl">
@@ -4202,10 +4095,10 @@ export default function App() {
             ) : (
               <>
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
-                  Navigations (నావిగేషన్స్)
+                  Navigations
                 </h3>
                 <MenuButton
-                  label="టెక్ న్యూస్ & ఫీడ్ (Tech Feed)" icon={Home}
+                  label="Home" icon={Home}
                   tourId="menu-home"
                   active={currentTab === "home" && !postIdFromUrl}
                   onClick={() => {
@@ -4219,20 +4112,96 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="AI టెక్ అసిస్టెంట్ (AI Assistant)" icon={Cpu}
-                  tourId="menu-live-chat"
-                  active={currentTab === "chat"}
-                  onClick={() => {
-                    startTransition(() => { setCurrentTab("chat"); });
-                    setSidebarOpen(false);
-                  }}
-                />
-                <MenuButton
-                  label="టెక్ టూల్స్ హబ్ (Tech Tools Hub)" icon={Code}
+                  label="Mana Panchayath" icon={Building}
                   tourId="menu-mana-panchayath"
                   active={currentTab === "workspace"}
                   onClick={() => {
                     startTransition(() => { setCurrentTab("workspace"); });
+                    setSidebarOpen(false);
+                  }}
+                />
+                <div className="flex flex-col gap-1 mb-2 p-1 bg-blue-50/30 rounded-[20px] border border-blue-100/50 overflow-hidden transition-all duration-300">
+                  <button
+                    aria-label="Toggle Priority Services"
+                    onClick={() => setIsPriorityOpen(!isPriorityOpen)}
+                    className="flex items-center justify-between w-full p-3 hover:bg-blue-100/30 transition-colors rounded-[16px] group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
+                        <Target size={16} className="text-white" />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-[0.1em] text-blue-600">
+                        Priority Services
+                      </span>
+                    </div>
+                    {isPriorityOpen ? (
+                      <ChevronUp
+                        size={16}
+                        className="text-blue-400 group-hover:text-blue-600 transition-colors"
+                      />
+                    ) : (
+                      <ChevronDown
+                        size={16}
+                        className="text-blue-400 group-hover:text-blue-600 transition-colors"
+                      />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {isPriorityOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="flex flex-col gap-1 px-1 pb-1 overflow-hidden"
+                      >
+                        <MenuButton
+                          label="Emergency Contacts" icon={AlertTriangle}
+                          tourId="menu-emergency"
+                          active={currentTab === "emergency"}
+                          onClick={() => {
+                            startTransition(() => { setCurrentTab("emergency"); });
+                    setSidebarOpen(false);
+                          }}
+                        />
+                        <MenuButton
+                          label="My Activity & Reports" icon={Activity}
+                          tourId="menu-my-activity"
+                          active={currentTab === "my_activity"}
+                          onClick={() => {
+                            if (!user) {
+                              requireLoginAlert();
+                            } else {
+                              startTransition(() => { setCurrentTab("my_activity"); });
+                    setSidebarOpen(false);
+                            }
+                          }}
+                        />
+                        <MenuButton
+                          label="Edit Profile" icon={Settings}
+                          tourId="menu-edit-profile"
+                          active={false}
+                          onClick={() => {
+                            if (!user) {
+                              requireLoginAlert();
+                            } else {
+                              setShowProfileModal(true);
+                              setSidebarOpen(false);
+                            }
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <MenuButton
+                  label="Live Chat" icon={MessageCircle}
+                  tourId="menu-live-chat"
+                  active={currentTab === "chat"}
+                  onClick={() => {
+                    startTransition(() => { setCurrentTab("chat"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4249,7 +4218,25 @@ export default function App() {
                 )}
 
                 <MenuButton
-                  label="కమ్యూనిటీ ఫోరం (Community Forum)" icon={MessageSquare}
+                  label="Union Corner & Polls" icon={Vote}
+                  tourId="menu-union-corner"
+                  active={currentTab === "union"}
+                  onClick={() => {
+                    startTransition(() => { setCurrentTab("union"); });
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="What's New!" icon={Megaphone}
+                  tourId="menu-whats-new"
+                  active={currentTab === "changelog"}
+                  onClick={() => {
+                    startTransition(() => { setCurrentTab("changelog"); });
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="Public Suggestions & Feedback" icon={MessageSquare}
                   tourId="menu-suggestions"
                   active={currentTab === "suggestions"}
                   onClick={() => {
@@ -4258,7 +4245,7 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="పరికరాల పోలిక (Gadgets Compare)" icon={Laptop}
+                  label="Applications, Formats & GOs" icon={FileText}
                   tourId="menu-applications"
                   active={currentTab === "gos_formats"}
                   onClick={() => {
@@ -4267,11 +4254,20 @@ export default function App() {
                   }}
                 />
                 <MenuButton
-                  label="పోర్టల్ అప్‌డేట్స్ (Portal Updates)" icon={Megaphone}
-                  tourId="menu-whats-new"
-                  active={currentTab === "changelog"}
+                  label="Useful Information" icon={Info}
+                  tourId="menu-useful-info"
+                  active={currentTab === "useful_links"}
                   onClick={() => {
-                    startTransition(() => { setCurrentTab("changelog"); });
+                    startTransition(() => { setCurrentTab("useful_links"); });
+                    setSidebarOpen(false);
+                  }}
+                />
+                <MenuButton
+                  label="Excel A4 Print" icon={FileSpreadsheet}
+                  tourId="menu-excel-print"
+                  active={currentTab === "excel_print"}
+                  onClick={() => {
+                    startTransition(() => { setCurrentTab("excel_print"); });
                     setSidebarOpen(false);
                   }}
                 />
@@ -4644,7 +4640,7 @@ export default function App() {
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
                                                   <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent italic drop-shadow-sm">
-                                                    E-Vedhika
+                                                    E-Vedhika. ✨
                                                   </span>
                                                 </h1>
                                               </div>
@@ -4656,7 +4652,7 @@ export default function App() {
                                                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white !leading-tight block drop-shadow-md">
                                                   Welcome to{" "}
                                                   <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-sm">
-                                                    E-Vedhika
+                                                    E-Vedhika. ✨
                                                   </span>
                                                 </h1>
                                               </div>
@@ -4670,7 +4666,7 @@ export default function App() {
                                           className="mt-3 text-sm sm:text-base font-medium leading-relaxed text-slate-300/80 max-w-md mx-auto"
                                         >
                                           {el.content ||
-                                            "మీ డిజిటల్ టెక్నాలజీ వేదిక • మొబైల్స్, కోడింగ్ & భవిష్యత్తు టెక్నాలజీలు (Your Tech Hub) 🚀"}
+                                            "All Problems One Solution 💡"}
                                         </motion.p>
                                         <motion.div
                                           initial={{ opacity: 0, y: 15 }}
@@ -8465,14 +8461,39 @@ function AdsenseUnit({
   slot?: string;
   className?: string;
 }) {
-  return null;
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push(
+          {},
+        );
+      }
+    } catch (e) {
+      console.error("AdSense error:", e);
+    }
+  }, []);
+
+  if (!client || !slot) return null;
+
+  return (
+    <div className={`w-full overflow-hidden ${className || ""}`}>
+      <ins
+        className="adsbygoogle"
+        style={{ display: "block" }}
+        data-ad-client={client}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      ></ins>
+    </div>
+  );
 }
 
 function HomeAds({ ads }: { ads: Advertisement[] }) {
   const [index, setIndex] = useState(0);
 
   const imageAds = ads.filter((a) => !a.adType || a.adType === "image");
-  const adsenseAds: Advertisement[] = [];
+  const adsenseAds = ads.filter((a) => a.adType === "adsense");
 
   useEffect(() => {
     if (imageAds.length <= 1) return;
@@ -8587,6 +8608,18 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
           )}
         </div>
       )}
+
+      {adsenseAds.map((ad, i) => (
+        <div
+          key={ad.id}
+          className="w-full bg-slate-50 border border-slate-100 rounded-3xl p-4 overflow-hidden"
+        >
+          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center mb-2">
+            Advertisement
+          </div>
+          <AdsenseUnit client={ad.adsenseClient} slot={ad.adsenseSlot} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -15265,16 +15298,57 @@ function DigitalWorkspaceSection({
   addToast: (s: string) => void;
   user: FirebaseUser | null;
 }) {
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+
+  const tools = [
+    {
+      id: "dsr",
+      title: "DSR Analyzer",
+      icon: BarChart3,
+      desc: "Analyze Daily Status Reports",
+    },
+    {
+      id: "multiday",
+      title: "Multi-Day attendance",
+      icon: Layers,
+      desc: "Multiple Attendance Records",
+    },
+    {
+      id: "training",
+      title: "Digital Training",
+      icon: GraduationCap,
+      desc: "Workflows & Tutorials",
+    },
+    {
+      id: "pract",
+      title: "Knowledge Hub",
+      icon: Book,
+      desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
+    },
+    {
+      id: "monthly-activity",
+      title: "Monthly Activity Data",
+      icon: FileSpreadsheet,
+      desc: "Format Monthly Activity Reports",
+    },
+    {
+      id: "excel-merge",
+      title: "Excel File Merger",
+      icon: FileSpreadsheet,
+      desc: "Merge Multiple Excel Files",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start mb-2">
+    <div className="section-card card-blue relative">
+      <div className="flex justify-between items-start mb-1">
         <div>
           <motion.h2
             initial={{ x: -10, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             style={{
-              fontSize: "24px",
-              fontWeight: 900,
+              fontSize: "20px",
+              fontWeight: 800,
               color: "var(--primary)",
               marginBottom: "5px",
               display: "flex",
@@ -15282,18 +15356,220 @@ function DigitalWorkspaceSection({
               gap: "8px",
             }}
           >
-            <Cpu size={26} className="text-blue-600 animate-pulse" /> టెక్ టూల్స్ హబ్ (Tech Tools Hub)
+            <LayoutDashboard size={24} style={{ color: "#0891b2" }} /> Mana
+            Panchayath
           </motion.h2>
           <p
-            style={{ fontSize: "13px", color: "#64748b" }}
-            className="font-semibold"
+            style={{ fontSize: "12px", color: "#64748b", marginBottom: "20px" }}
           >
-            టెక్నాలజీ సాధనాలు, కోడ్ షేరింగ్ మరియు నెట్‌వర్క్ సహాయకాలు (Smart interactive tools for enthusiasts).
+            Advanced tools for PR & RD Officers.
           </p>
         </div>
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/?tab=workspace`;
+            handleShare(
+              "Mana Panchayath - E-Vedhika",
+              "Access advanced tools for PR & RD Officers on Mana Panchayath - E-Vedhika!",
+              url,
+              () => addToast("Link copied!"),
+            );
+          }}
+          className="flex items-center gap-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider h-fit mt-1"
+          title="Share Mana Panchayath"
+        >
+          <Share2 size={16} /> <span className="hidden sm:inline">Share</span>
+        </button>
       </div>
 
-      <TechToolsSection addToast={addToast} user={user} />
+      <div className="mana-grid">
+        {tools.map((t) => (
+          <div
+            key={t.id}
+            className="mana-card"
+            onClick={() => setActiveTool(t.id)}
+          >
+            <div
+              style={{
+                color: "var(--primary)",
+                marginBottom: "10px",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <t.icon size={32} />
+            </div>
+            <h4>{t.title}</h4>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {activeTool === "dsr" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <DSRAnalyzer addToast={addToast} user={user} />
+          </motion.div>
+        )}
+        {activeTool === "multiday" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <MultiDayAnalyzer addToast={addToast} user={user} />
+          </motion.div>
+        )}
+        {activeTool === "training" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "15px",
+              }}
+            >
+              <h3
+                style={{
+                  color: "var(--primary)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  margin: 0,
+                }}
+              >
+                <GraduationCap /> Digital Workflows
+              </h3>
+            </div>
+
+            <div
+              style={{
+                padding: "10px 0",
+                display: "flex",
+                flexDirection: "column",
+                gap: "15px",
+              }}
+            >
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  style={{ display: "flex", alignItems: "center", gap: "15px" }}
+                >
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      background: "var(--primary)",
+                      color: "white",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "800",
+                    }}
+                  >
+                    {step}
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      background: "#f8fafc",
+                      padding: "15px",
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <span style={{ fontWeight: 700 }}>
+                      Workflow Step {step}
+                    </span>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#64748b",
+                        margin: "4px 0 0 0",
+                      }}
+                    >
+                      Detailed tutorial content for step {step} will appear
+                      here.
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+        {activeTool === "pract" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <PRActHub user={user} />
+          </motion.div>
+        )}
+        {activeTool === "monthly-activity" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <MonthlyActivityFormatter addToast={addToast} />
+          </motion.div>
+        )}
+        {activeTool === "excel-merge" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              overflow: "hidden",
+              marginTop: "20px",
+              borderTop: "2px dashed #e2e8f0",
+              paddingTop: "20px",
+            }}
+          >
+            <ExcelMerger user={user} addToast={addToast} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -18037,17 +18313,20 @@ function PostCard({
   };
 
   const handleAddReply = async (commentId: string) => {
-    if (!replyText.trim() || requireLoginAlert()) return;
+    if (!replyText.trim() || !auth.currentUser) return;
     setSubmittingReply(true);
     try {
-      const authorName = getCurrentUserName(isAdmin);
-      const authorUid = getCurrentUserUid();
+      const authorName = isAdmin
+        ? "Admin"
+        : auth.currentUser!.displayName ||
+          auth.currentUser!.email?.split("@")[0] ||
+          "User";
 
       const newReply = {
         id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
         text: replyText,
         time: Date.now(),
-        uid: authorUid,
+        uid: auth.currentUser!.uid,
         userName: authorName,
         isAdminComment: isAdmin,
       };
@@ -18071,7 +18350,7 @@ function PostCard({
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
-      if (parentComment && parentComment.uid && parentComment.uid !== authorUid) {
+      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
         await addDoc(collection(db, "notifications"), {
           uid: parentComment.uid,
           title: "కొత్త రిప్లై (New Reply)",
@@ -19024,7 +19303,8 @@ function PostCard({
               aria-label="Like Post"
               onClick={async (e) => {
                 e.stopPropagation();
-                const userId = getCurrentUserUid();
+                const userId = auth.currentUser?.uid;
+                if (requireLoginAlert()) return;
                 const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
                 try {
                   if (likedBy.includes(userId)) {
@@ -19037,7 +19317,7 @@ function PostCard({
                       likes: increment(1),
                       likedBy: arrayUnion(userId),
                     });
-                    const likerName = getCurrentUserName();
+                    const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
                     const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
                     const snapLike = await getDocs(qLike);
                     if (!snapLike.empty) {
@@ -19062,12 +19342,12 @@ function PostCard({
                   addToast(getFriendlyError(err));
                 }
               }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(getCurrentUserUid()) : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
+              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
             >
               <Heart
                 size={18}
                 fill={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(getCurrentUserUid()) : false)
+                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
                     ? "currentColor"
                     : "none"
                 }
@@ -19232,25 +19512,27 @@ function PostCard({
               onClick={async () => {
                 if (!newComment.trim() || requireLoginAlert()) return;
                 try {
-                  const authorName = getCurrentUserName(isAdmin);
-                  const authorUid = getCurrentUserUid();
+                  const authorName =
+                    auth.currentUser!.displayName ||
+                    auth.currentUser!.email?.split("@")[0] ||
+                    "User";
                   await addDoc(collection(db, "posts", post.id, "comments"), {
                     text: newComment,
                     time: Date.now(),
-                    uid: authorUid,
+                    uid: auth.currentUser!.uid,
                     userName: authorName,
                   });
                   await updateDoc(doc(db, "posts", post.id), {
                     commentCount: increment(1),
                   });
- 
+
                   sendCommentNotifications(
                     post.id,
                     newComment,
-                    authorUid,
+                    auth.currentUser!.uid,
                     authorName,
                   );
- 
+
                   setNewComment("");
                 } catch (e: any) {
                   addToast("Error: " + e.message);
@@ -19297,33 +19579,39 @@ function PostCard({
                           onClick={async (e) => {
                             e.stopPropagation();
                             const likes = c.likes || [];
-                            const uid = getCurrentUserUid();
+                            const uid = auth.currentUser?.uid;
+                            if (!uid) {
+                              addToast("Please login first to like comments");
+                              return;
+                            }
                             if (likes.includes(uid)) {
-                               await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                                 likes: arrayRemove(uid),
-                               });
+                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                                likes: arrayRemove(uid),
+                              });
                             } else {
-                               await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                                 likes: arrayUnion(uid),
-                               });
-                               const likerName = getCurrentUserName();
-                               sendLikeNotification(
-                                 post.id,
-                                 c.id,
-                                 c.text || "",
-                                 c.uid || "",
-                                 c.userName || "User",
-                                 uid,
-                                 likerName,
-                               );
+                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
+                                likes: arrayUnion(uid),
+                              });
+                              const likerName = auth.currentUser!.displayName ||
+                                auth.currentUser!.email?.split("@")[0] ||
+                                "User";
+                              sendLikeNotification(
+                                post.id,
+                                c.id,
+                                c.text || "",
+                                c.uid || "",
+                                c.userName || "User",
+                                uid,
+                                likerName,
+                              );
                             }
                           }}
-                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${(Array.isArray(c.likes) ? c.likes.includes(getCurrentUserUid()) : false) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
-                          title={(Array.isArray(c.likes) ? c.likes.includes(getCurrentUserUid()) : false) ? "Unlike" : "Like"}
+                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
+                          title={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "Unlike" : "Like"}
                         >
                           <Heart
                             size={14}
-                            fill={(Array.isArray(c.likes) ? c.likes.includes(getCurrentUserUid()) : false) ? "currentColor" : "none"}
+                            fill={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "currentColor" : "none"}
                           />
                         </button>
                         {c.likes?.length > 0 && (
@@ -19339,7 +19627,7 @@ function PostCard({
                           Reply
                         </button>
                       </div>
-                      {(isAdmin || (getCurrentUserUid() === c.uid && Date.now() - (c.time || 0) <= 3600000)) && (
+                      {(auth.currentUser?.uid === c.uid || isAdmin) && (
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
@@ -19394,9 +19682,9 @@ function PostCard({
                                     hour12: true
                                   })}
                                 </span>
-                                {(isAdmin || (getCurrentUserUid() === reply.uid && Date.now() - (reply.time || 0) <= 3600000)) && (
+                                {(auth.currentUser?.uid === reply.uid || isAdmin) && (
                                   <div className="flex items-center gap-2">
-                                    {(getCurrentUserUid() === reply.uid) && (
+                                    {(auth.currentUser?.uid === reply.uid) && (
                                       <button
                                         onClick={() => {
                                           setEditReplyId({ commentId: c.id, replyId: reply.id });
@@ -22403,17 +22691,20 @@ function PostComments({
   };
 
   const handleAddReply = async (commentId: string) => {
-    if (!replyText.trim() || requireLoginAlert()) return;
+    if (!replyText.trim() || !auth.currentUser) return;
     setSubmittingReply(true);
     try {
-      const authorName = getCurrentUserName(isAdmin);
-      const authorUid = getCurrentUserUid();
+      const authorName = isAdmin
+        ? "Admin"
+        : auth.currentUser!.displayName ||
+          auth.currentUser!.email?.split("@")[0] ||
+          "User";
 
       const newReply = {
         id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
         text: replyText,
         time: Date.now(),
-        uid: authorUid,
+        uid: auth.currentUser!.uid,
         userName: authorName,
         isAdminComment: isAdmin,
       };
@@ -22437,7 +22728,7 @@ function PostComments({
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
-      if (parentComment && parentComment.uid && parentComment.uid !== authorUid) {
+      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
         await addDoc(collection(db, "notifications"), {
           uid: parentComment.uid,
           title: "కొత్త రిప్లై (New Reply)",
@@ -22583,16 +22874,12 @@ function PostComments({
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
           
           if (storageConfig === "cloudflare") {
-            const token = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+            const token = await auth.currentUser?.getIdToken();
             const formData = new FormData();
             formData.append('file', fileToUpload);
-            const headers: Record<string, string> = {};
-            if (token) {
-              headers['Authorization'] = `Bearer ${token}`;
-            }
             const response = await fetch('/api/upload', {
               method: 'POST',
-              headers,
+              headers: { 'Authorization': `Bearer ${token}` },
               body: formData
             });
             const data = await response.json();
@@ -22613,13 +22900,16 @@ function PostComments({
         }
       }
 
-      const authorName = getCurrentUserName(isAdmin);
-      const authorUid = getCurrentUserUid();
+      const authorName = isAdmin
+        ? "Admin"
+        : auth.currentUser!.displayName ||
+          auth.currentUser!.email?.split("@")[0] ||
+          "User";
 
       await addDoc(collection(db, "posts", post.id, "comments"), {
         text: newComment,
         time: Date.now(),
-        uid: authorUid,
+        uid: auth.currentUser!.uid,
         userName: authorName,
         isAdminComment: isAdmin,
         likes: [],
@@ -22636,7 +22926,7 @@ function PostComments({
       sendCommentNotifications(
         post.id,
         newComment,
-        authorUid,
+        auth.currentUser!.uid,
         authorName,
       );
       await logUserActivity("Commented on Post: " + post.id);
@@ -22818,9 +23108,9 @@ function PostComments({
                       minute: "2-digit",
                     })}
                   </span>
-                  {(isAdmin || (getCurrentUserUid() === c.uid && Date.now() - (c.time || 0) <= 3600000)) && (
+                  {(auth.currentUser?.uid === c.uid || isAdmin) && (
                     <div className="flex items-center gap-2 ml-2">
-                      {getCurrentUserUid() === c.uid && (
+                      {auth.currentUser?.uid === c.uid && (
                         <button
                           onClick={() => {
                             setEditingCommentId(c.id);
@@ -22985,9 +23275,9 @@ function PostComments({
                                 day: "numeric"
                               })}
                             </span>
-                            {(isAdmin || (getCurrentUserUid() === reply.uid && Date.now() - (reply.time || 0) <= 3600000)) && (
+                            {(auth.currentUser?.uid === reply.uid || isAdmin) && (
                               <div className="flex items-center gap-2">
-                                {(getCurrentUserUid() === reply.uid) && (
+                                {(auth.currentUser?.uid === reply.uid) && (
                                   <button
                                     onClick={() => {
                                       setEditReplyId({ commentId: c.id, replyId: reply.id });

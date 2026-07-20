@@ -465,29 +465,7 @@ input, textarea, select {
 .comment-item { font-size: 13px; margin-bottom: 8px; padding: 10px; background: #f8fafc; border-radius: 10px; border-left: 4px solid var(--accent); }
 
 /* Focus Mode Adjustments */
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(1) > p:nth-of-type(74) > a:nth-of-type(1) {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white !important;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-weight: 800;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  display: inline-block;
-  text-decoration: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  animation: pulse-glow-green 2s infinite;
-}
-
-div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > section:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > div:nth-of-type(1) > p:nth-of-type(74) > a:nth-of-type(1):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
-}
-
-@keyframes pulse-glow-green {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
+/* Adjustments cleared */
 
 /* Dark Theme Adjustments */
 body.dark-theme {

@@ -1,6 +1,6 @@
 {
-  "name": "E-Vedhika Tech Portal",
-  "description": "మీ డిజిటల్ టెక్నాలజీ వేదిక (Your Digital Technology Hub)",
+  "name": "E-Vedhika Portal",
+  "description": "E-Vedhika All problems one solution",
   "requestFramePermissions": [
     "camera",
     "microphone"
