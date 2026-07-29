@@ -1,0 +1,15 @@
+                                  <button
+                                    onClick={() => {
+                                      if (!user) requireLoginAlert();
+                                      else { setShowProfileModal(true); setOpenDropdown(null); }
+                                    }}
+                                    className={`flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left sm:bg-transparent bg-white border-slate-100 sm:border-transparent hover:bg-slate-50 text-slate-700 border sm:border-transparent shadow-sm sm:shadow-none`}
+                                  >
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-500`}>
+                                      <Settings size={16} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-[13px] font-bold">Edit Profile</span>
+                                    </div>
+                                  </button>
+                                </>

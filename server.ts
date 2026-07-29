@@ -8,7 +8,7 @@ import cors from "cors";
 import { Readable } from 'stream';
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import admin from 'firebase-admin';
@@ -567,7 +567,7 @@ async function startServer() {
 
   interface FarmerJob {
     id: string;
-    status: 'queued' | 'processing' | 'completed' | 'failed' | 'paused_captcha';
+    status: 'queued' | 'processing' | 'completed' | 'failed' | 'paused_captcha' | 'captcha_solved';
     progress: number;
     totalRecords: number;
     processedRecords: number;
@@ -584,6 +584,7 @@ async function startServer() {
     captchaRequired?: boolean;
     captchaChallenge?: string;
     captchaSolution?: string;
+    captchaCode?: string;
     userFeedback?: string;
     uid?: string;
   }
@@ -671,11 +672,9 @@ async function startServer() {
     const job = farmerJobs[id];
     if (job) {
       const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
-      if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
-          return res.status(403).json({ error: "Forbidden: You can only delete your own jobs" });
+      if (userRole !== "admin") {
+          return res.status(403).json({ error: "Forbidden: Admins only" });
       }
-
-      console.log(`[ADMIN] Deleting farmer job: ${id}`);
       
       // Cleanup files on disk
       try {
@@ -694,22 +693,6 @@ async function startServer() {
       delete farmerJobs[id];
       saveFarmerJobs();
       res.json({ success: true, message: `Job ${id} deleted.` });
-    } else {
-      res.status(404).json({ success: false, message: "Job not found." });
-    }
-  });
-
-  app.post("/api/farmer-jobs/:id/feedback", verifyToken, (req, res) => {
-    const { id } = req.params;
-    const { feedback } = req.body;
-    if (farmerJobs[id]) {
-        const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
-        if (userRole !== "admin" && farmerJobs[id].uid !== (req as any).user?.uid) {
-            return res.status(403).json({ error: "Forbidden: You can only feedback your own jobs" });
-        }
-      farmerJobs[id].userFeedback = feedback;
-      saveFarmerJobs();
-      res.json({ success: true });
     } else {
       res.status(404).json({ success: false, message: "Job not found." });
     }
@@ -1584,7 +1567,166 @@ async function startServer() {
     if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
         return res.status(403).json({ error: "Forbidden" });
     }
-    return res.json(job);
+    res.json(job);
+  });
+
+  app.delete("/api/farmer-registry/jobs/:id", verifyToken, (req, res) => {
+    const { id } = req.params;
+    const job = farmerJobs[id];
+    if (!job) {
+      return res.status(404).json({ error: "Verification job not found." });
+    }
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+    console.log(`[ADMIN] Deleting farmer job: ${id}`);
+      
+      // Cleanup files on disk
+      try {
+        const file1 = path.join(farmerPrivateDir, id + '-file1.xlsx');
+        const file2 = path.join(farmerPrivateDir, id + '-file2.xlsx');
+        if (fs.existsSync(file1)) fs.unlinkSync(file1);
+        if (fs.existsSync(file2)) fs.unlinkSync(file2);
+        if (job.outputPath) {
+          const outPath = path.join(process.cwd(), job.outputPath);
+          if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+        }
+      } catch (err) {
+        console.error(`[ADMIN] Cleanup failed for job ${id}:`, err);
+      }
+
+      delete farmerJobs[id];
+      saveFarmerJobs();
+      res.json({ success: true, message: `Job ${id} deleted.` });
+  });
+
+  app.post("/api/farmer-jobs/:id/feedback", verifyToken, (req, res) => {
+    const { id } = req.params;
+    const { feedback } = req.body;
+    if (farmerJobs[id]) {
+        const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+        if (userRole !== "admin" && farmerJobs[id].uid !== (req as any).user?.uid) {
+            return res.status(403).json({ error: "Forbidden: You can only feedback your own jobs" });
+        }
+      farmerJobs[id].userFeedback = feedback;
+      saveFarmerJobs();
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, message: "Job not found." });
+    }
+  });
+
+  // Solve Captcha REST endpoint
+  app.post("/api/farmer-registry/jobs/:id/solve-captcha", verifyToken, express.json(), (req, res) => {
+    const job = farmerJobs[req.params.id];
+    if (!job) {
+      return res.status(404).json({ error: "Verification job not found." });
+    }
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin" && job.uid !== (req as any).user?.uid) {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: "దయచేసి క్యాప్చా ఎంటర్ చేయండి" });
+    }
+    job.captchaCode = code;
+    job.status = "captcha_solved";
+    saveFarmerJobs();
+    res.json({ success: true, message: "Captcha submitted" });
+  });
+
+  app.post('/api/ubd/data', verifyToken, express.json({limit: '50mb'}), async (req, res) => {
+    const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
+    if (userRole !== "admin") return res.status(403).json({error: "Admin only"});
+    
+    try {
+        const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+
+        if (accountId && accessKeyId && secretAccessKey && bucketName) {
+            console.log("Saving UBD data to Cloudflare R2...");
+            const r2Client = new S3Client({
+              region: "auto",
+              endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+              credentials: { accessKeyId, secretAccessKey },
+            });
+            await r2Client.send(new PutObjectCommand({
+              Bucket: bucketName,
+              Key: "ubd_data.json",
+              Body: JSON.stringify(req.body || []),
+              ContentType: "application/json"
+            }));
+            res.json({status: "ok"});
+        } else {
+            console.log("Saving UBD data to local file...");
+            const ubdDataPath = path.join(process.cwd(), 'data', 'ubd_data.json');
+            if (!fs.existsSync(path.join(process.cwd(), 'data'))) {
+                fs.mkdirSync(path.join(process.cwd(), 'data'), { recursive: true });
+            }
+            fs.writeFileSync(ubdDataPath, JSON.stringify(req.body || []));
+            res.json({status: "ok"});
+        }
+    } catch(e) {
+        console.error("Failed to save UBD data:", e);
+        res.status(500).json({error: "Failed to save"});
+    }
+  });
+
+  app.get('/api/ubd/data', async (req, res) => {
+    try {
+        const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+
+        if (accountId && accessKeyId && secretAccessKey && bucketName) {
+            const r2Client = new S3Client({
+              region: "auto",
+              endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+              credentials: { accessKeyId, secretAccessKey },
+            });
+            try {
+                const response = await r2Client.send(new GetObjectCommand({
+                  Bucket: bucketName,
+                  Key: "ubd_data.json",
+                }));
+                const str = await response.Body?.transformToString();
+                return res.type('json').send(str || "[]");
+            } catch (err: any) {
+                if (err.name === 'NoSuchKey') {
+                    return res.json([]);
+                }
+                throw err;
+            }
+        } else {
+            const ubdDataPath = path.join(process.cwd(), 'data', 'ubd_data.json');
+            if (fs.existsSync(ubdDataPath)) {
+                return res.sendFile(ubdDataPath);
+            }
+            return res.json([]);
+        }
+    } catch(e) {
+        console.error("Failed to get UBD data:", e);
+        res.status(500).json({error: "Failed to fetch data"});
+    }
+  });
+
+  app.get('/api/proxy/ubd', async (req, res) => {
+    const { url } = req.query;
+    if (!url || typeof url !== 'string') return res.status(400).json({ error: "URL is required" });
+    try {
+      const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
+      const response = await fetchObj(url);
+      const html = await response.text();
+      res.send(html);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch" });
+    }
   });
 
   // File download REST endpoint

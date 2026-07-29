@@ -174,6 +174,10 @@ match /deploymentLogs/{logId} {
   allow create: if true;
 }
 
+match /ubdDataChunks/{chunkId} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
 // Default deny (fallback) - పైన పేర్కొనని కలెక్షన్స్ ఏవైనా ఉంటే వాటిని బ్లాక్ చేస్తుంది
 match /{document=**} {
   allow read, write: if false;

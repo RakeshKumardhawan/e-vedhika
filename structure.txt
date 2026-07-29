@@ -1,0 +1,231 @@
+              })()}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <nav
+        className={`nav-trigger-bar sticky z-[1000] ${sidebarOpen ? "sidebar-active" : ""}`}
+      >
+        {/* Row 1: Search bar + Menu Toggle + Clock */}
+        <div className="h-full w-full flex items-center justify-between gap-3 max-w-7xl mx-auto">
+          <div className="trigger-left pr-2 sm:pr-4 border-r border-slate-200/60 mr-2 sm:mr-4 shrink-0">
+            <button
+              aria-label="Toggle Menu"
+              className="menu-toggle shrink-0"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center h-full w-full min-w-0 px-1 sm:px-2">
+            {currentTab === "home" && (
+              <div className="flex items-center gap-2 sm:gap-3 w-full max-w-xl h-[34px] sm:h-[40px] bg-slate-50 border border-slate-200 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500/30 shadow-sm rounded-xl px-3 sm:px-5 transition-all group">
+                <Search
+                  size={15}
+                  className="text-slate-400 group-focus-within:text-blue-600 shrink-0 transition-colors"
+                />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="bg-transparent border-none focus:ring-0 text-[12px] sm:text-[14px] font-bold text-slate-700 placeholder:text-slate-400 outline-none w-full p-0 m-0 h-full"
+                  style={{
+                    boxShadow: "none",
+                  }}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    aria-label="Clear Search"
+                    onClick={() => setSearchQuery("")}
+                    className="text-slate-300 hover:text-rose-500 transition-colors shrink-0 outline-none p-1"
+                  >
+                    <XCircle size={15} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="hidden min-[400px]:flex items-center gap-2 sm:gap-6 ml-2 sm:ml-4 shrink-0">
+            <SystemLiveClock />
+          </div>
+        </div>
+      </nav>
+
+      {/* Row 2: Horizontal Navigation Menu (placed below search bar, scrollable) */}
+      {(hasEnteredSite || user) && (
+        <div 
+          className="w-full bg-white border-b border-slate-200 overflow-x-auto scrollbar-none sticky z-[990] shadow-sm shrink-0"
+          style={{ top: "calc(var(--header-h) + var(--nav-h) + env(safe-area-inset-top))" }}
+        >
+          <div className="flex items-center gap-2 sm:gap-6 min-w-max px-4 py-2.5 sm:py-3 max-w-7xl mx-auto">
+              {[
+                { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
+                { id: "workspace", label: "Priority Services", icon: Layers, colorTheme: "blue", hasDropdown: true },
+                { id: "emergency", label: "Emergency", icon: AlertTriangle, colorTheme: "red" },
+                { id: "my_activity", label: "My Activity", icon: Activity, requiresAuth: true, colorTheme: "emerald" },
+                { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
+                { id: "union", label: "Union Corner & Polls", icon: Users, colorTheme: "orange" },
+                { id: "changelog", label: "What's New!", icon: Megaphone, colorTheme: "purple" },
+                { id: "suggestions", label: "Suggestions", icon: MessageSquare, colorTheme: "pink" },
+                { id: "gos_formats", label: "Formats & GOs", icon: FileText, colorTheme: "teal" },
+                { id: "useful_links", label: "Useful Info", icon: Info, colorTheme: "cyan" },
+                { id: "excel_print", label: "Excel Print", icon: FileSpreadsheet, colorTheme: "green" },
+                { id: "farmer_registry", label: "Farmer Registry", icon: Wheat, colorTheme: "amber" },
+              ].map((item) => {
+                if (item.requiresAuth && !user) return null;
+                const isActive = currentTab === item.id;
+                const Icon = item.icon;
+                
+                let themeClasses = {
+                  button: "hover:bg-slate-50",
+                  iconBg: "bg-blue-100 text-blue-600",
+                  text: "text-slate-600 font-medium"
+                };
+
+                if (isActive) {
+                  themeClasses = {
+                    button: "bg-blue-600 text-white shadow-md shadow-blue-500/20",
+                    iconBg: "bg-white/20 text-white",
+                    text: "text-white font-semibold"
+                  };
+                } else {
+                  switch(item.colorTheme) {
+                    case "blue": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-blue-100 text-blue-600", text: "text-slate-600 font-medium" }; break;
+                    case "red": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-red-100 text-red-600", text: "text-slate-600 font-medium" }; break;
+                    case "emerald": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-emerald-100 text-emerald-600", text: "text-slate-600 font-medium" }; break;
+                    case "slate": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-slate-100 text-slate-600", text: "text-slate-600 font-medium" }; break;
+                    case "orange": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-orange-100 text-orange-600", text: "text-slate-600 font-medium" }; break;
+                    case "purple": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-purple-100 text-purple-600", text: "text-slate-600 font-medium" }; break;
+                    case "pink": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-pink-100 text-pink-600", text: "text-slate-600 font-medium" }; break;
+                    case "teal": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-teal-100 text-teal-600", text: "text-slate-600 font-medium" }; break;
+                    case "cyan": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-cyan-100 text-cyan-600", text: "text-slate-600 font-medium" }; break;
+                    case "green": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-green-100 text-green-600", text: "text-slate-600 font-medium" }; break;
+                    case "amber": themeClasses = { button: "hover:bg-slate-50", iconBg: "bg-amber-100 text-amber-600", text: "text-slate-600 font-medium" }; break;
+                  }
+                }
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      if (item.id === "farmer_registry") {
+                        window.history.pushState({}, "", "/Farmer_Registry");
+                        startTransition(() => { setCurrentTab("farmer_registry"); });
+                      } else {
+                        startTransition(() => {
+                          setCurrentTab(item.id);
+                          if (item.id === "home") {
+                            setCurrentFilter("All");
+                            if (searchParams.has("postId")) {
+                              searchParams.delete("postId");
+                              setSearchParams(searchParams);
+                            }
+                          }
+                        });
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
+                  >
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 ${themeClasses.iconBg}`}>
+                      <Icon size={14} className="sm:w-4 sm:h-4" />
+                    </div>
+                    <span className={`text-[14px] sm:text-[15px] tracking-wide ${themeClasses.text}`}>
+                      {item.label}
+                    </span>
+                    {item.hasDropdown && (
+                      <ChevronDown size={14} className={`ml-1 opacity-70 ${themeClasses.text}`} />
+                    )}
+                  </button>
+                );
+              })}
+
+              {customMenus.map((menu) => {
+                const isActive = currentTab === `custom_menu_${menu.id}`;
+                return (
+                  <button
+                    key={menu.id}
+                    onClick={() => {
+                      startTransition(() => {
+                        setCurrentTab(`custom_menu_${menu.id}`);
+                      });
+                    }}
+                    className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full whitespace-nowrap transition-all duration-200 shrink-0 ${
+                      isActive
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                        : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-600"
+                    }`}>
+                      <LayoutList size={14} className="sm:w-4 sm:h-4" />
+                    </div>
+                    <span className={`text-[14px] sm:text-[15px] tracking-wide ${
+                      isActive ? "text-white font-semibold" : "text-slate-600 font-medium"
+                    }`}>
+                      {menu.label}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {(isAdmin || isEditor || isDevEmail) && (
+                <button
+                  onClick={() => navigate("/Evdka")}
+                  className={`flex items-center gap-2.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full whitespace-nowrap transition-all duration-200 shrink-0 ${
+                    location.pathname.endsWith("/Evdka")
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                      : "hover:bg-slate-50"
+                  }`}
+                >
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    location.pathname.endsWith("/Evdka") ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                  }`}>
+                    <Shield size={14} className="sm:w-4 sm:h-4" />
+                  </div>
+                  <span className={`text-[14px] sm:text-[15px] tracking-wide ${
+                    location.pathname.endsWith("/Evdka") ? "text-white font-semibold" : "text-slate-600 font-medium"
+                  }`}>
+                    Admin Panel
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+      {/* Sidebar Overlay for Mobile */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 z-[1050]"
+          />
+        )}
+      </AnimatePresence>
+
+      <div className={`main-layout ${sidebarOpen ? "sidebar-open" : ""}`}>
+        <aside
+          ref={sidebarRef}
+          className={`sidebar ${sidebarOpen ? "z-[1100]" : ""}`}
+        >
+          <div
+            className="sidebar-inner relative"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSidebarOpen(false);
+            }}
+          >
+            {sidebarOpen && (
+              <button
+                aria-label="Close sidebar"
+                onClick={() => setSidebarOpen(false)}
+                className="absolute right-2 p-2 text-slate-400 hover:text-primary transition-colors focus:outline-none"

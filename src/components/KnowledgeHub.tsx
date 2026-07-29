@@ -176,7 +176,7 @@ export function KnowledgeHubSection() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-2">
-        {["114", "73", "140", "కార్యదర్శి", "పన్ను"].map((tag) => (
+        {["114", "73", "140", "ఈ-పంచాయత్ ఆపరేటర్", "పన్ను"].map((tag) => (
           <button
             key={tag}
             onClick={() => setSearchTerm(tag)}

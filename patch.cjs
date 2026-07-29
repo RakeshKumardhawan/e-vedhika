@@ -3,7 +3,7 @@ let code = fs.readFileSync('src/App.tsx', 'utf8');
 
 const navCode = `        {/* NEW HORIZONTAL NAVIGATION MENU IN HEADER */}
         {(hasEnteredSite || user) && (
-          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none flex items-center h-full mx-2 border-x border-white/5 px-2">
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none flex items-center h-full mx-2 border-x border-white/10 px-2">
             <div className="flex items-center gap-1 sm:gap-2 min-w-max">
               {[
                 { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
@@ -135,7 +135,7 @@ const headerInsertRegex = /(<div className="flex-1 flex justify-end sm:justify-s
 
 code = code.replace(headerInsertRegex, `$1\n${navCode}`);
 
-// Let's also remove flex-1 from the text zoom block, and maybe hide text zoom on mobile if space is tight, or just let it shrink.
+// Let's also remove flex-1 from the text zoom block, and hide text zoom on smaller screens.
 code = code.replace('<div className="flex-1 flex justify-end sm:justify-start px-2 sm:px-6">', '<div className="hidden lg:flex justify-end sm:justify-start px-2">');
 
 fs.writeFileSync('src/App.tsx', code);
