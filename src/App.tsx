@@ -3745,6 +3745,22 @@ export default function App() {
             </AnimatePresence>
           </div>
 
+          {(isAdmin || isEditor || isDevEmail) && (
+            <button
+              aria-label="Admin Panel"
+              onClick={() => {
+                navigate("/Evdka");
+                startTransition(() => { setCurrentTab("admin"); });
+              }}
+              className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-[12px] font-bold text-[11px] sm:text-xs flex items-center gap-1.5 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] shrink-0"
+              title="అడ్మిన్ ప్యానెల్ లోకి వెళ్లండి"
+            >
+              <Shield size={15} className="text-amber-400" />
+              <span className="hidden sm:inline">అడ్మిన్ ప్యానెల్</span>
+              <span className="sm:hidden">Admin</span>
+            </button>
+          )}
+
           {user && !user.isAnonymous ? (
             <div
               className="relative"
@@ -3801,8 +3817,31 @@ export default function App() {
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[2000] p-2"
+                    className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[2000] p-2"
                   >
+                    {(isAdmin || isEditor || isDevEmail) && (
+                      <>
+                        <button
+                          aria-label="Admin Panel"
+                          onClick={() => {
+                            navigate("/Evdka");
+                            startTransition(() => { setCurrentTab("admin"); });
+                            setShowProfileDropdown(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-50 transition-colors rounded-xl group text-left"
+                        >
+                          <div className="p-2 bg-amber-100 text-amber-600 rounded-lg group-hover:bg-amber-200 transition-colors">
+                            <Shield size={18} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span>Admin Panel</span>
+                            <span className="text-[10px] text-amber-600 font-normal">అడ్మిన్ ప్యానెల్</span>
+                          </div>
+                        </button>
+                        <div className="h-px bg-slate-100 my-1 mx-2" />
+                      </>
+                    )}
+
                     <button
                       aria-label="Edit Profile"
                       onClick={() => {
@@ -3882,11 +3921,14 @@ export default function App() {
       )}
 
       <nav className="nav-trigger-bar relative z-[10]">
-        <div className="h-full w-full max-w-7xl mx-auto flex items-center">
+        <div className="h-full w-full max-w-full px-2 sm:px-6 mx-auto flex items-center">
             <div className="flex-1 w-full flex items-center h-full justify-center">
                 <div className="flex items-center flex-wrap justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 w-full">
                   {[
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
+                    ...(isAdmin || isEditor || isDevEmail
+                      ? [{ id: "admin", label: "Admin Panel (అడ్మిన్)", icon: Shield, colorTheme: "amber" }]
+                      : []),
                     { id: "workspace", label: "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
                     { id: "priority_services", label: "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
                     { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
@@ -3942,7 +3984,10 @@ export default function App() {
                                    return;
                                }
                             }
-                            if (item.id === "priority_services") {
+                            if (item.id === "admin") {
+                              navigate("/Evdka");
+                              startTransition(() => { setCurrentTab("admin"); });
+                            } else if (item.id === "priority_services") {
                               return; // No longer open modal, rely on dropdown
                             } else if (item.id === "farmer_registry") {
                               window.history.pushState({}, "", "/Farmer_Registry");
@@ -4573,11 +4618,11 @@ export default function App() {
                           .map((el: any) => {
                             let sizeClass = "w-full";
                             if (el.size === "small")
-                              sizeClass = "max-w-xl w-full mx-auto";
-                            else if (el.size === "medium")
                               sizeClass = "max-w-3xl w-full mx-auto";
+                            else if (el.size === "medium")
+                              sizeClass = "max-w-6xl w-full mx-auto";
                             else if (el.size === "large")
-                              sizeClass = "max-w-5xl w-full mx-auto";
+                              sizeClass = "w-full mx-auto";
 
                             return (
                               <motion.section

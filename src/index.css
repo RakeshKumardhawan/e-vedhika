@@ -316,7 +316,7 @@ header {
 .main-layout {
   display: flex;
   width: 100%;
-  max-width: 1640px;
+  max-width: 100%;
   margin: auto;
   flex: 1;
   min-width: 0;
