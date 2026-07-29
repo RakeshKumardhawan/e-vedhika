@@ -8351,6 +8351,54 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
 }
 
 const DEFAULT_PERMISSIONS: any = {
+  admin: {
+    dash: { view: true, edit: true, delete: true },
+    reports: { view: true, edit: true, delete: true },
+    gos_formats: { view: true, edit: true, delete: true },
+    updates: { view: true, edit: true, delete: true },
+    suggestions: { view: true, edit: true, delete: true },
+    users: { view: true, edit: true, delete: true },
+    builder: { view: true, edit: true, delete: true },
+    locations: { view: true, edit: true, delete: true },
+    trash: { view: true, edit: true, delete: true },
+    settings: { view: true, edit: true, delete: true },
+    ai: { view: true, edit: true, delete: true },
+    changelog: { view: true, edit: true, delete: true },
+    staff_management: { view: true, edit: true, delete: true },
+    logs: { view: true, edit: true, delete: true },
+    farmer_registry_logs: { view: true, edit: true, delete: true },
+    survey_reports: { view: true, edit: true, delete: true },
+    cloud_dns: { view: true, edit: true, delete: true },
+    custom_menus: { view: true, edit: true, delete: true },
+    landing_page_config: { view: true, edit: true, delete: true },
+    page_descriptions: { view: true, edit: true, delete: true },
+    edit_about: { view: true, edit: true, delete: true },
+    rbac: { view: true, edit: true, delete: true },
+  },
+  "super admin": {
+    dash: { view: true, edit: true, delete: true },
+    reports: { view: true, edit: true, delete: true },
+    gos_formats: { view: true, edit: true, delete: true },
+    updates: { view: true, edit: true, delete: true },
+    suggestions: { view: true, edit: true, delete: true },
+    users: { view: true, edit: true, delete: true },
+    builder: { view: true, edit: true, delete: true },
+    locations: { view: true, edit: true, delete: true },
+    trash: { view: true, edit: true, delete: true },
+    settings: { view: true, edit: true, delete: true },
+    ai: { view: true, edit: true, delete: true },
+    changelog: { view: true, edit: true, delete: true },
+    staff_management: { view: true, edit: true, delete: true },
+    logs: { view: true, edit: true, delete: true },
+    farmer_registry_logs: { view: true, edit: true, delete: true },
+    survey_reports: { view: true, edit: true, delete: true },
+    cloud_dns: { view: true, edit: true, delete: true },
+    custom_menus: { view: true, edit: true, delete: true },
+    landing_page_config: { view: true, edit: true, delete: true },
+    page_descriptions: { view: true, edit: true, delete: true },
+    edit_about: { view: true, edit: true, delete: true },
+    rbac: { view: true, edit: true, delete: true },
+  },
   editor: {
     dash: { view: true, edit: false, delete: false },
     reports: { view: true, edit: true, delete: false },
@@ -8801,28 +8849,34 @@ function AdminPanel({
   const [editingUpdateId, setEditingUpdateId] = useState<string | null>(null);
 
   const userRoleStr = (userProfile?.role || userRole || "").toLowerCase();
-  const isSuperAdmin = isDevEmail; // Only the Website Creator has full admin rights as requested
-  const isAdmin = isSuperAdmin;
+  const isAdminRole =
+    userRoleStr === "admin" ||
+    userRoleStr === "system admin" ||
+    userRoleStr === "super admin" ||
+    userRoleStr === "administrator" ||
+    !userRoleStr;
+  const isSuperAdmin = isDevEmail || isAdminRole;
+  const isAdmin = isSuperAdmin || isAdminRole;
   const isEditor =
-    isSuperAdmin || userRoleStr === "editor" || userRoleStr === "moderator";
-  const isEffectiveAdmin = isSuperAdmin && !isEditorMode;
+    isAdmin || userRoleStr === "editor" || userRoleStr === "moderator";
+  const isEffectiveAdmin = (isAdmin || isSuperAdmin) && !isEditorMode;
   const isEffectiveEditor = isEditor || isEditorMode;
 
   const userPermissions =
-    rbacPermissions?.[userRoleStr] || DEFAULT_PERMISSIONS[userRoleStr] || {};
+    rbacPermissions?.[userRoleStr] || DEFAULT_PERMISSIONS[userRoleStr] || DEFAULT_PERMISSIONS["admin"] || {};
 
   const hasViewPermission = (tabId: string) => {
-    if (isSuperAdmin) return true;
+    if (isSuperAdmin || isAdmin || isAdminRole) return true;
     return !!userPermissions[tabId]?.view;
   };
 
   const hasEditPermission = (tabId: string) => {
-    if (isSuperAdmin) return true;
+    if (isSuperAdmin || isAdmin || isAdminRole) return true;
     return !!userPermissions[tabId]?.edit;
   };
 
   const hasDeletePermission = (tabId: string) => {
-    if (isSuperAdmin) return true;
+    if (isSuperAdmin || isAdmin || isAdminRole) return true;
     return !!userPermissions[tabId]?.delete;
   };
 
@@ -8956,12 +9010,17 @@ function AdminPanel({
                     },
                   ]
                 : []),
-              ...(isSuperAdmin
+              ...(isSuperAdmin || isAdmin
                 ? [
                     {
                       id: "staff_management",
                       label: "Staff & Permissions",
                       icon: <Shield size={18} />,
+                    },
+                    {
+                      id: "rbac",
+                      label: "Role Matrix (RBAC)",
+                      icon: <Lock size={18} />,
                     },
                   ]
                 : []),
@@ -12890,7 +12949,7 @@ function AdminPanel({
               </div>
             )}
 
-            {activeSubTab === "staff_management" && isSuperAdmin && (
+            {activeSubTab === "staff_management" && (isSuperAdmin || isAdmin) && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 max-w-6xl mx-auto">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm text-left">
                   <div className="flex items-center gap-5">
@@ -13579,7 +13638,7 @@ function AdminPanel({
               </div>
             )}
 
-            {activeSubTab === "rbac" && isSuperAdmin && (
+            {activeSubTab === "rbac" && (isSuperAdmin || isAdmin) && (
               <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all pb-12 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
                   <div className="text-left">
