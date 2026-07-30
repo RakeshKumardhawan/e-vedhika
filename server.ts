@@ -212,7 +212,9 @@ async function startServer() {
       console.error("Gemini API error:", error);
       let errorMessage = "క్షమించాలి, ప్రస్తుతం నేను స్పందించలేకపోతున్నాను. దయచేసి మళ్ళీ ప్రయత్నించండి."
       const errorStr = error.message || String(error);
-      if (errorStr.includes("dunning decision") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("billing") || errorStr.includes("403")) {
+      if (errorStr.includes("503") || errorStr.includes("high demand") || errorStr.includes("UNAVAILABLE")) {
+         errorMessage = "⚠️ **Gemini AI సర్వర్ బిజీగా ఉంది (High Demand):**\n\nప్రస్తుతం మోడల్ పై ఒత్తిడి ఎక్కువగా ఉండటం వల్ల ఈ తాత్కాలిక సమస్య ఏర్పడింది. దయచేసి కొద్ది సేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.";
+      } else if (errorStr.includes("dunning decision") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("billing") || errorStr.includes("403")) {
          errorMessage = "⚠️ **Gemini API బిల్లింగ్ అలెర్ట్ (Billing/Account Restricted):**\n\nమీ గూగుల్ క్లౌడ్ ప్రాజెక్ట్ బిల్లింగ్ সমস্যা (Lightning dunning decision / Permission Denied) వల్ల నిలిపివేయబడింది. దీనివల్ల ఫ్రీగా వాడాలన్నా గూగుల్ మీ అభ్యర్థనలను బ్లాక్ చేస్తుంది.\n\n**దీనిని పూర్తిగా ఉచితంగా (100% Free) ఎలా పరిష్కరించాలి?**\n\n1. మొదట **https://aistudio.google.com/** వెబ్‌సైట్‌కు వెళ్ళండి.\n2. మీ పర్సనల్ గూగుల్ అకౌంట్ (Gmail) తో లాగిన్ అవ్వండి.\n3. అక్కడ **'Create API Key'** పై క్లిక్ చేసి, బిల్లింగ్ లింక్ చేయని ఒక కొత్త మరియు ఉచిత ప్రాజెక్ట్‌ను ఎంచుకుని కొత్త కీని సృష్టించండి.\n4. ఆ సృష్టించిన కొత్త API కీని కాపీ చేయండి.\n5. ఈ పోర్టల్ అప్లికేషన్ యొక్క **Settings Menu > Secrets** లో **GEMINI_API_KEY** స్థానంలో పాత కీని తీసివేసి, కొత్తగా కాపీ చేసిన కీని అప్‌డేట్ చేయండి.\n\nఇలా చేయడం వల్ల మీకు ఎలాంటి బిల్లింగ్ అడగదు మరియు చాట్ బాట్ పూర్తిగా లైఫ్‌టైమ్ ఉచితంగా పనిచేస్తుంది! 👍";
       }
       res.status(200).json({ text: errorMessage, isError: true });

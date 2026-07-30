@@ -1,3 +1,4 @@
+import SuperAdminDashboard from "./components/SuperAdminDashboard";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 /**
  * @license
@@ -21,6 +22,10 @@ import { TabInfoBanner } from "./components/TabInfoBanner";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
 import { SecurityLogsSection } from "./components/SecurityLogsSection";
+import { MaintenancePage } from "./components/MaintenancePage";
+import { recordSystemError } from "./components/SystemErrorCenter";
+import { VisitorTracker } from "./components/VisitorTracker";
+import { CodeManager } from "./components/CodeManager";
 import {
   Bell,
   Menu,
@@ -63,6 +68,7 @@ import {
   Trash2,
   Edit3,
   Settings,
+  Code,
   TrendingUp,
   Upload,
   Play,
@@ -492,16 +498,15 @@ export async function sendLikeNotification(
 }
 
 const logUserActivity = async (actionDesc: string, details?: any) => {
-  if (!auth.currentUser) return;
   try {
     const userDisplay =
-      auth.currentUser.email ||
-      auth.currentUser.displayName ||
-      auth.currentUser.uid ||
-      "Registered User";
+      auth.currentUser?.email ||
+      auth.currentUser?.displayName ||
+      auth.currentUser?.uid ||
+      "Anonymous Visitor";
     await addDoc(collection(db, "security_logs"), {
       admin: userDisplay,
-      uid: auth.currentUser.uid,
+      uid: auth.currentUser?.uid || "anonymous",
       action: actionDesc,
       details: details || null,
       time: Date.now(),
@@ -1587,6 +1592,12 @@ export default function App() {
   const isAdmin =
     (userRole || "").toLowerCase() === "admin" ||
     (userProfile?.role || "").toLowerCase() === "admin" ||
+    (userRole || "").toLowerCase() === "super admin" ||
+    (userProfile?.role || "").toLowerCase() === "super admin" ||
+    (userRole || "").toLowerCase() === "system admin" ||
+    (userProfile?.role || "").toLowerCase() === "system admin" ||
+    (userRole || "").toLowerCase() === "administrator" ||
+    (userProfile?.role || "").toLowerCase() === "administrator" ||
     isDevEmail;
   const isEditor =
     (userRole || "").toLowerCase() === "editor" ||
@@ -1734,6 +1745,19 @@ export default function App() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
+    // If the URL is currently on an admin path, but the user selects a main app tab
+    if (location.pathname.endsWith("/Evdka") || location.pathname.endsWith("/Farmer_Registry")) {
+      if (
+        currentTab !== "admin" &&
+        currentTab !== "editor" &&
+        currentTab !== "farmer_registry"
+      ) {
+        navigate(`/?tab=${currentTab}`);
+      }
+    }
+  }, [currentTab, location.pathname, navigate]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.group\\/navitem')) {
@@ -1754,6 +1778,22 @@ export default function App() {
     const unsub = onSnapshot(doc(db, "site_settings", "home_page"), (snap) => {
       if (snap.exists()) {
         setSiteConfig(snap.data());
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "custom_code", "global_css"), (snap) => {
+      if (snap.exists()) {
+        const cssContent = snap.data().content;
+        let styleEl = document.getElementById("e-vedhika-custom-css");
+        if (!styleEl) {
+          styleEl = document.createElement("style");
+          styleEl.id = "e-vedhika-custom-css";
+          document.head.appendChild(styleEl);
+        }
+        styleEl.innerHTML = cssContent;
       }
     });
     return () => unsub();
@@ -1786,14 +1826,13 @@ export default function App() {
     if (isFarmerRegistry) return;
 
     const currentParam = searchParams.get("tab");
-    const resolvedParam = currentParam === "reports" ? "my_activity" : currentParam === "problems" ? "directlinks" : currentParam;
 
     if (currentTab && currentTab !== currentParam) {
       const newParams = new URLSearchParams(searchParams);
       newParams.set("tab", currentTab);
       setSearchParams(newParams, { replace: true });
     }
-  }, [currentTab, setSearchParams]);
+  }, [currentTab, setSearchParams, searchParams]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -2293,6 +2332,14 @@ export default function App() {
   }, [sidebarOpen]);
 
   useEffect(() => {
+    if (location.pathname.endsWith("/Evdka") || currentTab === "admin" || currentTab === "editor") {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      }
+    }
+  }, [location.pathname, currentTab]);
+
+  useEffect(() => {
     if (sidebarOpen && window.innerWidth < 1024) {
       document.body.style.overflow = "hidden";
     } else {
@@ -2323,6 +2370,20 @@ export default function App() {
         hasGreetedRef.current = false;
         setHasEnteredSite(false);
         sessionStorage.removeItem("ev_entered_site");
+        
+        if (!sessionStorage.getItem("ev_anon_access_logged")) {
+          sessionStorage.setItem("ev_anon_access_logged", "true");
+          setTimeout(() => {
+            logUserActivity("Anonymous User Accessed Application").catch(() => {});
+          }, 2000);
+        }
+      } else {
+        if (!sessionStorage.getItem("ev_user_access_logged_" + u.uid)) {
+          sessionStorage.setItem("ev_user_access_logged_" + u.uid, "true");
+          setTimeout(() => {
+            logUserActivity("User Logged In / Accessed Application").catch(() => {});
+          }, 2000);
+        }
       }
       setAuthLoading(false);
     });
@@ -2346,7 +2407,7 @@ export default function App() {
       } else if (user && (currentTab === "admin" || currentTab === "editor")) {
         // Enforce user roles for admin and editor if they managed to set the tab
         if (!canAccessAdmin) {
-          startTransition(() => { setCurrentTab("home"); });
+          setCurrentTab("home");
           setSearchParams(new URLSearchParams());
           addToast(
             "Access Denied: You do not have permissions for this section.",
@@ -2354,7 +2415,7 @@ export default function App() {
         }
       } else if (user && currentTab === "logs") {
         if (!(isAdmin || isDevEmail)) {
-          startTransition(() => { setCurrentTab("home"); });
+          setCurrentTab("home");
           setSearchParams(new URLSearchParams());
           addToast(
             "Access Denied: You do not have permissions for this section.",
@@ -3267,8 +3328,31 @@ export default function App() {
     return <ContactPage />;
   }
 
+  const isMaintActive = siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE";
+  const hasAdminOverride = typeof localStorage !== 'undefined' && localStorage.getItem("evedhika_admin_override") === "true";
+
+  if (isMaintActive && !isAdmin && !isDevEmail && !hasAdminOverride) {
+    return (
+      <MaintenancePage 
+        message={siteConfig?.maintenanceMessage}
+        estimatedTime={siteConfig?.maintenanceEstimatedTime || "దాదాపు 2 గంటలు (Approx. 2 Hours)"}
+        reason={siteConfig?.maintenanceReason || "షెడ్యూల్డ్ సిస్టమ్ అప్‌గ్రేడ్ & గవర్నెన్స్ క్లౌడ్ సెక్యూరిటీ అప్‌డేట్"}
+        contactEmail={siteConfig?.supportEmail || "support@evedhika.gov.in"}
+        contactPhone={siteConfig?.supportPhone || "+91 1800-425-2244"}
+        version={siteConfig?.portalVersion || "V1.4.8 Enterprise"}
+        onRefreshCheck={() => {
+          addToast("Refreshing live system status...");
+        }}
+        onAdminLoginSuccess={() => {
+          addToast("Admin Override Enabled - Accessing Portal");
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
+      <VisitorTracker user={user} />
       {isOffline && (
         <div className="bg-red-500 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 z-[2000]">
           <WifiOff size={16} />
@@ -3468,7 +3552,7 @@ export default function App() {
             const newSearch = new URLSearchParams();
             newSearch.set("tab", "home");
             navigate({ pathname: "/", search: newSearch.toString() });
-            startTransition(() => { setCurrentTab("home"); });
+            setCurrentTab("home");
                     setSidebarOpen(false);
           }}
         >
@@ -3750,7 +3834,7 @@ export default function App() {
               aria-label="Admin Panel"
               onClick={() => {
                 navigate("/Evdka");
-                startTransition(() => { setCurrentTab("admin"); });
+                setCurrentTab("admin");
               }}
               className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-[12px] font-bold text-[11px] sm:text-xs flex items-center gap-1.5 transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98] shrink-0"
               title="అడ్మిన్ ప్యానెల్ లోకి వెళ్లండి"
@@ -3825,7 +3909,7 @@ export default function App() {
                           aria-label="Admin Panel"
                           onClick={() => {
                             navigate("/Evdka");
-                            startTransition(() => { setCurrentTab("admin"); });
+                            setCurrentTab("admin");
                             setShowProfileDropdown(false);
                           }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-amber-800 hover:bg-amber-50 transition-colors rounded-xl group text-left"
@@ -3926,9 +4010,7 @@ export default function App() {
                 <div className="flex items-center flex-wrap justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 w-full">
                   {[
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
-                    ...(isAdmin || isEditor || isDevEmail
-                      ? [{ id: "admin", label: "Admin Panel (అడ్మిన్)", icon: Shield, colorTheme: "amber" }]
-                      : []),
+
                     { id: "workspace", label: "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
                     { id: "priority_services", label: "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
                     { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
@@ -3986,12 +4068,12 @@ export default function App() {
                             }
                             if (item.id === "admin") {
                               navigate("/Evdka");
-                              startTransition(() => { setCurrentTab("admin"); });
+                              setCurrentTab("admin");
                             } else if (item.id === "priority_services") {
                               return; // No longer open modal, rely on dropdown
                             } else if (item.id === "farmer_registry") {
                               window.history.pushState({}, "", "/Farmer_Registry");
-                              startTransition(() => { setCurrentTab("farmer_registry"); });
+                              setCurrentTab("farmer_registry");
                             } else {
                               startTransition(() => {
                                 setCurrentTab(item.id);
@@ -4040,7 +4122,7 @@ export default function App() {
                               {item.id === "priority_services" && (
                                 <>
                                   <button
-                                    onClick={() => { startTransition(() => { setCurrentTab("emergency"); }); setOpenDropdown(null); }}
+                                    onClick={() => { setCurrentTab("emergency"); setOpenDropdown(null); }}
                                     className={`flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left sm:bg-transparent ${currentTab === 'emergency' ? 'bg-red-50 sm:bg-red-50 border-red-100 text-red-700' : 'bg-white border-slate-100 sm:border-transparent hover:bg-slate-50 text-slate-700'} border sm:border-transparent shadow-sm sm:shadow-none`}
                                   >
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'emergency' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
@@ -4053,7 +4135,7 @@ export default function App() {
                                   <button
                                     onClick={() => {
                                       if (!user) requireLoginAlert();
-                                      else { startTransition(() => { setCurrentTab("my_activity"); }); setOpenDropdown(null); }
+                                      else { setCurrentTab("my_activity"); setOpenDropdown(null); }
                                     }}
                                     className={`flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left sm:bg-transparent ${currentTab === 'my_activity' ? 'bg-emerald-50 sm:bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-white border-slate-100 sm:border-transparent hover:bg-slate-50 text-slate-700'} border sm:border-transparent shadow-sm sm:shadow-none`}
                                   >
@@ -4092,7 +4174,7 @@ export default function App() {
                                   ].map(tool => (
                                     <button
                                       key={tool.id}
-                                      onClick={() => { startTransition(() => { setCurrentTab("workspace"); }); setWorkspaceActiveTool(tool.id); setOpenDropdown(null); }}
+                                      onClick={() => { setCurrentTab("workspace"); setWorkspaceActiveTool(tool.id); setOpenDropdown(null); }}
                                       className="flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left bg-white sm:bg-transparent border border-slate-100 sm:border-transparent hover:bg-blue-50 text-slate-700 shadow-sm sm:shadow-none"
                                     >
                                       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-blue-600">
@@ -4114,7 +4196,7 @@ export default function App() {
                                   ].map(tool => (
                                     <button
                                       key={tool.id}
-                                      onClick={() => { startTransition(() => { setCurrentTab("gos_formats"); }); setOpenDropdown(null); }}
+                                      onClick={() => { setCurrentTab("gos_formats"); setOpenDropdown(null); }}
                                       className="flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left bg-white sm:bg-transparent border border-slate-100 sm:border-transparent hover:bg-teal-50 text-slate-700 shadow-sm sm:shadow-none"
                                     >
                                       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-teal-600">
@@ -4233,40 +4315,44 @@ export default function App() {
                 <X size={20} />
               </button>
             )}
-            {location.pathname.endsWith("/Evdka") ? (
+            {location.pathname.endsWith("/Evdka") || currentTab === "admin" || currentTab === "editor" ? (
               <>
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
-                  Admin Panel
+                  Admin Control Center
                 </h3>
                 {[
                   { id: "dash", label: "Analytics Hub", icon: BarChart3 },
                   { id: "reports", label: "Posts & Issues", icon: FileText },
+                  { id: "gos_formats", label: "GOs & Formats", icon: FileText },
                   { id: "updates", label: "Flash News", icon: Zap },
                   { id: "users", label: "User Access", icon: Users },
                   ...(isAdmin || isDevEmail
                     ? [
                         {
                           id: "staff_management",
-                          label: "Staff Management", icon: Shield,
+                          label: "Staff Management",
+                          icon: Shield,
                         },
-                      ]
-                    : []),
-                  ...(isAdmin || isDevEmail
-                    ? [{ id: "logs", label: "Security Logs", icon: ShieldAlert }]
-                    : []),
-                  ...(isAdmin || isDevEmail
-                    ? [
+                        {
+                          id: "rbac",
+                          label: "Role Matrix (RBAC)",
+                          icon: Lock,
+                        },
+                        { id: "logs", label: "Security Logs", icon: ShieldAlert },
                         {
                           id: "farmer_registry_logs",
-                          label: "Farmer Registry Logs", icon: FileText,
+                          label: "Farmer Registry Logs",
+                          icon: FileText,
                         },
                         {
                           id: "survey_reports",
-                          label: "Survey Reports", icon: Database,
+                          label: "Survey Reports",
+                          icon: Database,
                         },
                         {
                           id: "edit_about",
-                          label: "About E-Vedhika", icon: Info,
+                          label: "About E-Vedhika",
+                          icon: Info,
                         },
                       ]
                     : []),
@@ -4278,7 +4364,7 @@ export default function App() {
                     active={activeAdminSubTab === item.id}
                     onClick={() => {
                       setActiveAdminSubTab(item.id);
-                      setSidebarOpen(false);
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
                     }}
                   />
                 ))}
@@ -4286,7 +4372,7 @@ export default function App() {
                 {(isAdmin || isDevEmail) && (
                   <>
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-6 mb-4">
-                      Operations
+                      Operations & Content
                     </h3>
                     {[
                       { id: "builder", label: "Page Builder", icon: Wrench },
@@ -4294,7 +4380,9 @@ export default function App() {
                       { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
                       { id: "page_descriptions", label: "Page Descriptions", icon: FileBadge },
                       { id: "locations", label: "Locations", icon: MapPin },
-                      { id: "suggestions", label: "Public Suggestions and Feedback", icon: MessageSquare },
+                      { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
+                      { id: "changelog", label: "Version History", icon: Sparkles },
+                      { id: "trash", label: "Trash / Bin", icon: Trash2 },
                     ].map((item) => (
                       <MenuButton
                         key={item.id}
@@ -4303,18 +4391,21 @@ export default function App() {
                         active={activeAdminSubTab === item.id}
                         onClick={() => {
                           setActiveAdminSubTab(item.id);
-                          setSidebarOpen(false);
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
                         }}
                       />
                     ))}
                   </>
                 )}
 
-                <div className="h-px bg-slate-100 my-4 mx-2" />
-
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-6 mb-4">
+                  System & AI Control
+                </h3>
                 {[
                   { id: "settings", label: "System Config", icon: Settings },
-                  { id: "ai", label: "Gemini AI", icon: Bot },
+                  { id: "code_manager", label: "Code Manager", icon: Code },
+                  { id: "ai", label: "Gemini AI Node", icon: Bot },
+                  { id: "cloud_dns", label: "Cloud DNS Config", icon: Cloud },
                 ].map((item) => (
                   <MenuButton
                     key={item.id}
@@ -4323,7 +4414,7 @@ export default function App() {
                     active={activeAdminSubTab === item.id}
                     onClick={() => {
                       setActiveAdminSubTab(item.id);
-                      setSidebarOpen(false);
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
                     }}
                   />
                 ))}
@@ -4331,7 +4422,8 @@ export default function App() {
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
                 <MenuButton
-                  label="Return to Portal" icon={ArrowLeft}
+                  label="Return to Portal"
+                  icon={ArrowLeft}
                   active={false}
                   onClick={() => {
                     window.location.href = "/";
@@ -4518,6 +4610,9 @@ export default function App() {
                 landingPageData={landingPageData}
                 setLandingPageData={setLandingPageData}
                 fetchLandingPageData={fetchLandingPageData}
+                onToggleSidebar={() => setSidebarOpen((prev: boolean) => !prev)}
+                setSidebarOpen={setSidebarOpen}
+                siteConfig={siteConfig}
               />
             )}
 
@@ -4565,6 +4660,9 @@ export default function App() {
                   landingPageData={landingPageData}
                   setLandingPageData={setLandingPageData}
                   fetchLandingPageData={fetchLandingPageData}
+                  onToggleSidebar={() => setSidebarOpen((prev: boolean) => !prev)}
+                  setSidebarOpen={setSidebarOpen}
+                  siteConfig={siteConfig}
                 />
               )}
 
@@ -8811,6 +8909,9 @@ function AdminPanel({
   landingPageData,
   setLandingPageData,
   fetchLandingPageData,
+  onToggleSidebar,
+  setSidebarOpen,
+  siteConfig,
 }: any) {
   const posts =
     hasPostsOnly || isEditorMode
@@ -9653,10 +9754,20 @@ function AdminPanel({
         >
           <div className="flex items-center gap-5">
             <button
-              className="lg:hidden p-3.5 bg-white border border-slate-200 rounded-[20px] text-slate-600 shadow-sm active:scale-90 transition-transform"
-              onClick={() => setAdminMenuOpen(true)}
+              className="p-3 bg-white border border-slate-200 rounded-[20px] text-slate-700 hover:text-primary hover:border-primary/40 shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+              onClick={() => {
+                if (onToggleSidebar) {
+                  onToggleSidebar();
+                } else if (setSidebarOpen) {
+                  setSidebarOpen((prev: boolean) => !prev);
+                } else {
+                  setAdminMenuOpen((prev: boolean) => !prev);
+                }
+              }}
+              title="Toggle Navigation Menu"
             >
               <Menu size={22} />
+              <span className="text-xs font-bold text-slate-700 hidden sm:inline">Menu</span>
             </button>
             <div>
               <div className="flex items-center gap-3 mb-1">
@@ -9735,436 +9846,7 @@ function AdminPanel({
         ) : (
           <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
             {activeSubTab === "dash" && (
-              <div className="space-y-12 fade-in slide-in-from-bottom-6 animate-in duration-1000">
-                {/* Bento Analytics Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                  {stats.map((stat, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="group bg-white p-10 rounded-[48px] border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-3xl hover:shadow-indigo-600/10 transition-all duration-700 ease-out overflow-hidden relative cursor-pointer"
-                      onClick={() => {
-                        const lbl = stat.label;
-                        if (lbl === "పౌరుల నమోదు" || lbl === "Enrolled Citizens" || lbl === "My Active Citizens") {
-                          setActiveSubTab("users");
-                        } else if (lbl === "పరిష్కారం కాని సమస్యలు" || lbl === "Pending Issues" || lbl === "My Pending Issues") {
-                          setActiveSubTab("reports");
-                        } else if (lbl === "Total Contents" || lbl === "My Contents") {
-                          setActiveSubTab("reports");
-                        } else if (lbl === "Cloud Storage") {
-                          setActiveSubTab("cloud_dns");
-                        }
-                      }}
-                    >
-                      <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-slate-50 rounded-full group-hover:scale-[1.8] transition-transform duration-1000 ease-out opacity-60"></div>
-                      <div
-                        className={`w-16 h-16 rounded-[28px] bg-gradient-to-br ${stat.color} flex items-center justify-center text-white mb-8 shadow-2xl relative z-10 group-hover:rotate-6 transition-transform`}
-                      >
-                        {stat.icon}
-                      </div>
-                      <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mb-2">
-                          {stat.label}
-                        </p>
-                        <h4 className="text-5xl font-black text-slate-900 tracking-tighter leading-none mb-4">
-                          {stat.value}
-                        </h4>
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-xl border border-emerald-100`}
-                          >
-                            {stat.trend}
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                            Real-time
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Hub Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                  <div className="lg:col-span-2 space-y-10">
-                    {/* Command Center Card */}
-                    <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-12 lg:p-16 rounded-[60px] shadow-3xl relative overflow-hidden text-left border border-white/5">
-                      <div className="absolute top-0 right-0 p-12 opacity-15 pointer-events-none scale-150 rotate-12">
-                        <ShieldCheck
-                          size={350}
-                          className="text-blue-400 blur-[2px]"
-                        />
-                      </div>
-                      <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-blue-600/20 rounded-full blur-[120px]"></div>
-
-                      <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-8">
-                          <span
-                            className={`px-4 py-1.5 ${isEditorMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-blue-500/20 text-blue-300 border-blue-500/30"} text-[10px] font-black uppercase tracking-[0.3em] rounded-full border backdrop-blur-md`}
-                          >
-                            {isEditorMode
-                              ? "Editor Hub Active"
-                              : "Admin Portal"}
-                          </span>
-                          <span
-                            className={`w-2 h-2 rounded-full ${isEditorMode ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.7)]" : "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]"} animate-pulse`}
-                          ></span>
-                        </div>
-                        <h3 className="text-4xl lg:text-6xl font-black text-white tracking-tighter mb-6 leading-none">
-                          {isEditorMode ? "Content Editor" : "E-Vedhika Admin"}{" "}
-                          <br />
-                          <span
-                            className={
-                              isEditorMode
-                                ? "text-emerald-400"
-                                : "text-blue-400"
-                            }
-                          >
-                            {isEditorMode ? "Workspace" : "Control Panel"}
-                          </span>
-                        </h3>
-                        <p className="text-slate-400 font-bold max-w-xl text-balance leading-relaxed mb-12 text-lg">
-                          {isEditorMode
-                            ? "Submit reports, manage your issues, and monitor content flow with simplified editor permissions."
-                            : "Welcome back to the E-Vedhika Admin Portal. All services are fully operational. Monitor citizen reports, inspect agricultural surveys, and manage platform roles from here."}
-                        </p>
-                        <div className="flex flex-wrap gap-5">
-                          <button
-                            onClick={() => setActiveSubTab("reports")}
-                            className="px-10 py-5 bg-white text-slate-900 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.03] transition-all flex items-center gap-4 active:scale-95 shadow-2xl shadow-white/5"
-                          >
-                            {isEditorMode ? "My Feed" : "Audit Feed"}{" "}
-                            <ArrowRight size={18} strokeWidth={3} />
-                          </button>
-                          {!isEditorMode && (
-                            <button
-                              onClick={() => setActiveSubTab("cloud_dns")}
-                              className="px-10 py-5 bg-white/5 text-white border border-white/10 backdrop-blur-2xl rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95"
-                            >
-                              Cloud Settings
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Activity Board */}
-                    <div className="bg-white rounded-[50px] border border-slate-100 shadow-xl p-10">
-                      <div className="flex items-center justify-between mb-10">
-                        <div className="flex items-center gap-4">
-                          <div className="p-4 bg-slate-50 text-slate-900 rounded-3xl">
-                            <Activity size={24} />
-                          </div>
-                          <h4 className="text-2xl font-black text-slate-900 tracking-tight">
-                            Active Analytics
-                          </h4>
-                        </div>
-                        <button className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline">
-                          View Expanded Logs
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-80">
-                        {/* Placeholder for small charts or lists */}
-                        <div className="bg-slate-50 rounded-[36px] border border-slate-100 p-8 flex flex-col items-center justify-center text-center">
-                          <Users size={40} className="text-slate-300 mb-4" />
-                          <p className="text-sm font-bold text-slate-500">
-                            System Activity Logs Safe
-                          </p>
-                        </div>
-                        <div className="bg-slate-50 rounded-[36px] border border-slate-100 p-8 flex flex-col items-center justify-center text-center">
-                          <ShieldCheck
-                            size={40}
-                            className="text-slate-300 mb-4"
-                          />
-                          <p className="text-sm font-bold text-slate-500">
-                            All Database Operations Encrypted
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-8">
-                    {/* Broadcast Node Card */}
-                    <div className="bg-white rounded-[50px] border border-slate-100 shadow-2xl shadow-slate-200/50 p-10 flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-                        <Zap size={150} />
-                      </div>
-                      <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-[36px] flex items-center justify-center shadow-xl shadow-blue-100 animate-bounce-slow relative z-10">
-                        <Zap size={40} fill="currentColor" />
-                      </div>
-                      <div className="relative z-10">
-                        <h4 className="text-3xl font-black text-slate-900 tracking-tight mb-4 leading-none">
-                          Instant <br /> Broadcast
-                        </h4>
-                        <p className="text-slate-500 font-bold leading-relaxed px-4">
-                          Deploy critical flash news and platform-wide alerts
-                          globally in &lt;100ms.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setActiveSubTab("updates")}
-                        className="w-full py-5 bg-blue-600 text-white rounded-[30px] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-2xl shadow-blue-600/30 active:scale-95 relative z-10"
-                      >
-                        Initiate Broadcast
-                      </button>
-                    </div>
-
-                    {/* System Health Card */}
-                    <div className="bg-slate-900 rounded-[50px] p-10 border border-slate-800 text-left">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">
-                        Service Infrastructure
-                      </p>
-                      <div className="space-y-6">
-                        {[
-                          {
-                            label: "Cloudflare R2",
-                            status: "Active",
-                            color: "emerald",
-                          },
-                          {
-                            label: "Firebase Auth",
-                            status: "Active",
-                            color: "emerald",
-                          },
-                          {
-                            label: "Gemini API",
-                            status: "Standby",
-                            color: "blue",
-                          },
-                          {
-                            label: "DDoS Shield",
-                            status: "Enabled",
-                            color: "emerald",
-                          },
-                        ].map((node, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between"
-                          >
-                            <span className="text-sm font-bold text-slate-300">
-                              {node.label}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`w-1.5 h-1.5 bg-${node.color}-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.7)]`}
-                              ></span>
-                              <span
-                                className={`text-[10px] font-black uppercase text-${node.color}-500 tracking-widest`}
-                              >
-                                {node.status}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Analytical Charts Board */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  <div className="bg-white p-10 rounded-[60px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all">
-                    <div className="flex items-center justify-between mb-8">
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight">
-                        Users per District
-                      </h4>
-                      <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                        <Users size={20} />
-                      </span>
-                    </div>
-                    <div className="h-[320px] w-full relative">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart
-                          data={Object.entries(
-                            users
-                              .filter((u: any) => !u.isDeleted)
-                              .reduce((acc: any, curr: any) => {
-                                const d = curr.district || "Unknown";
-                                acc[d] = (acc[d] || 0) + 1;
-                                return acc;
-                              }, {}),
-                          ).map(([name, value]) => ({ name, value }))}
-                        >
-                          <XAxis
-                            dataKey="name"
-                            tick={{
-                              fontSize: 10,
-                              fill: "#94a3b8",
-                              fontWeight: 700,
-                            }}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <YAxis
-                            tick={{
-                              fontSize: 10,
-                              fill: "#94a3b8",
-                              fontWeight: 700,
-                            }}
-                            tickLine={false}
-                            axisLine={false}
-                          />
-                          <Tooltip
-                            cursor={{ fill: "#f1f5f9" }}
-                            contentStyle={{
-                              borderRadius: "24px",
-                              border: "none",
-                              boxShadow: "0 20px 40px rgba(0,0,0,0.05)",
-                              fontWeight: 800,
-                            }}
-                          />
-                          <Bar
-                            dataKey="value"
-                            fill="#3b82f6"
-                            radius={[12, 12, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-10 rounded-[60px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all">
-                    <div className="flex items-center justify-between mb-8">
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight">
-                        Status Overview
-                      </h4>
-                      <span className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-                        <Zap size={20} />
-                      </span>
-                    </div>
-                    <div className="h-[320px] w-full relative">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={Object.entries(
-                              posts
-                                .filter((p: any) => !p.isDeleted)
-                                .reduce((acc: any, curr: any) => {
-                                  const s = curr.status || "pending";
-                                  acc[s] = (acc[s] || 0) + 1;
-                                  return acc;
-                                }, {}),
-                            ).map(([name, value]) => ({
-                              name:
-                                name.charAt(0).toUpperCase() + name.slice(1),
-                              value,
-                            }))}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={90}
-                            paddingAngle={8}
-                          >
-                            {Object.entries(
-                              posts
-                                .filter((p: any) => !p.isDeleted)
-                                .reduce((acc: any, curr: any) => {
-                                  const s = curr.status || "pending";
-                                  acc[s] = (acc[s] || 0) + 1;
-                                  return acc;
-                                }, {}),
-                            ).map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={
-                                  [
-                                    "#3b82f6",
-                                    "#6366f1",
-                                    "#10b981",
-                                    "#f59e0b",
-                                    "#ef4444",
-                                  ][index % 5]
-                                }
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{
-                              borderRadius: "24px",
-                              border: "none",
-                              boxShadow: "0 20px 40px rgba(0,0,0,0.05)",
-                              fontWeight: 800,
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white p-10 rounded-[60px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all col-span-1 lg:col-span-2 mt-8 lg:mt-0 xl:col-span-3">
-                    <div className="flex items-center justify-between mb-8">
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight">
-                        Traffic Sources
-                      </h4>
-                      <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                        <Globe size={20} />
-                      </span>
-                    </div>
-                    <div className="h-[320px] w-full relative">
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart
-                          data={[
-                            { name: "Direct Link", users: posts.reduce((acc: number, p: any) => acc + (p.source_direct || 0), 0) },
-                            { name: "WhatsApp", users: posts.reduce((acc: number, p: any) => acc + (p.source_whatsapp || 0), 0) },
-                            { name: "Facebook", users: posts.reduce((acc: number, p: any) => acc + (p.source_facebook || 0), 0) },
-                            { name: "Twitter", users: posts.reduce((acc: number, p: any) => acc + (p.source_twitter || 0), 0) },
-                            { name: "Other", users: posts.reduce((acc: number, p: any) => acc + (p.source_other || 0), 0) }
-                          ]}
-                          margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: "#64748B", fontSize: 12, fontWeight: 700 }}
-                            dy={10}
-                          />
-                          <YAxis 
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: "#64748B", fontSize: 12, fontWeight: 700 }}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              borderRadius: "24px",
-                              border: "none",
-                              boxShadow: "0 20px 40px rgba(0,0,0,0.05)",
-                              fontWeight: 800,
-                            }}
-                            cursor={{ fill: "#f1f5f9" }}
-                          />
-                          <Bar 
-                            dataKey="users" 
-                            fill="#3b82f6" 
-                            radius={[8, 8, 0, 0]}
-                            barSize={40}
-                          >
-                            {[
-                              { name: "Direct Link" },
-                              { name: "WhatsApp" },
-                              { name: "Facebook" },
-                              { name: "Twitter" },
-                              { name: "Other" }
-                            ].map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={["#94a3b8", "#25D366", "#1877F2", "#1DA1F2", "#8b5cf6"][index]} 
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
+              <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} />
             )}
 
             {(activeSubTab === "reports" || activeSubTab === "suggestions") && (
@@ -11825,7 +11507,7 @@ function AdminPanel({
                                           >
                                             <div className="flex justify-between items-center w-full text-left">
                                               <h4 className="text-[11px] font-bold text-slate-800">
-                                                Dummy question {i}?
+                                                ఎలా దరఖాస్తు చేయాలి {i}?
                                               </h4>
                                               <ChevronDown
                                                 className="text-slate-400 shrink-0"
@@ -13617,20 +13299,19 @@ function AdminPanel({
                         title="E-Vedhika Super-Admin Assistant"
                         placeholder="సమస్యల సత్వర క్లియరెన్స్ ఎలా చేయాలి? (e.g. How to manage suggestions)"
                         icon={Bot}
-                        systemInstruction={`You are the specialized Admin Bot for E-VEDHIKA. 
-                    You have FULL ACCESS to the system and act as a super-admin.
-                    You can manage and configure:
-                    - Community Posts & Citizen Issues (Reports tab)
-                    - Page Builder (Home page customization)
-                    - Suggestions & Feedback from citizens
-                    - Applications, Formats & GOs (Download repository)
-                    - User Access & Directory (Level 0 to Level 4)
-                    - Security Logs (Audit trails)
-                    - System Settings (Global config, PIN, and code-level directives)
-                    
-                    When asked to change settings or code, boldly explain what will happen or provide configuration snippets. Do not say you cannot make changes. Act as if you are directly executing the changes in the system database. Guide the admin step-by-step or tell them "Settings applied" if simulating changes.
-                    
-                    Respond concisely in Telugu or English depending on user input.`}
+                        systemInstruction={`You are the specialized AI Systems Diagnostics & Admin Assistant for the E-VEDHIKA platform.
+You are fully aware that this is a Production Ready Enterprise Application.
+You have FULL KNOWLEDGE and VIRTUAL ACCESS to the entire website structure: Users, Posts, Menus, Pages, Reports, Logs, Permissions, Analytics, Notifications, Database, Storage, Security, Settings, Backups, Themes, and Configurations.
+
+When asked by the admin:
+- Analyze user data, active/inactive users, and duplicate data.
+- Explain errors and suggest fixes.
+- Analyze SEO, broken links, and system performance.
+- Generate announcements, circulars, PDFs, Excel reports templates.
+- Maintain a strict professional tone. Do not provide dummy data in your explanations.
+- If asked to modify settings, explain exactly how to do it from the Admin Panel's System Config, Page Builder, or Logs sections.
+
+Respond dynamically, constructively, and concisely in Telugu or English depending on user input.`}
                       />
                     </div>
                   </div>
@@ -14138,16 +13819,6 @@ function AdminPanel({
                       </select>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Governance Mode
-                      </label>
-                      <select className="w-full !mb-0 bg-white border-slate-200 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500">
-                        <option>LIVE (PUBLIC ACCESS)</option>
-                        <option>MAINTENANCE (ADMIN ONLY)</option>
-                        <option>READ-ONLY (RESTRICTED WRITES)</option>
-                      </select>
-                    </div>
 
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
@@ -14391,6 +14062,10 @@ function AdminPanel({
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeSubTab === "code_manager" && (
+              <CodeManager addToast={addToast} />
             )}
 
             {activeSubTab === "cloud_dns" && (
@@ -16838,7 +16513,7 @@ function ToolCard({
     <motion.div
       whileHover={{ scale: 1.05, translateY: -5 }}
       whileTap={{ scale: 0.95 }}
-      onClick={() => { startTransition(() => { onClick(); }); }}
+      onClick={() => { onClick(); }}
       className="mana-card"
     >
       {emoji ? (
@@ -19363,14 +19038,23 @@ function PostCard({
                             if (!window.confirm("Are you sure you want to delete this comment?")) return;
                             try {
                               const repliesCount = c.replies ? c.replies.length : 0;
-                              await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
-                              await updateDoc(doc(db, "posts", post.id), {
-                                commentCount: increment(-(1 + repliesCount)),
-                              });
-                              addToast("Comment deleted");
-                            } catch (err) {
+                              if (c.isLegacy) {
+                                const currentComments = post.comments || [];
+                                const updatedComments = currentComments.filter((item: any) => item.id !== c.id);
+                                await updateDoc(doc(db, "posts", post.id), {
+                                  comments: updatedComments,
+                                  commentCount: increment(-(1 + repliesCount)),
+                                });
+                              } else {
+                                await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
+                                await updateDoc(doc(db, "posts", post.id), {
+                                  commentCount: increment(-(1 + repliesCount)),
+                                }).catch(() => {});
+                              }
+                              addToast("కామెంట్ తొలగించబడింది (Comment deleted)");
+                            } catch (err: any) {
                               console.error(err);
-                              addToast("Error deleting comment");
+                              addToast("Error deleting comment: " + (err.message || String(err)));
                             }
                           }}
                           className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
@@ -21095,7 +20779,7 @@ function MenuButton({
       id={tourId || `nav-menu-${label.replace(/[^a-zA-Z0-9]/g, "-")}`}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.97 }}
-      onClick={() => { startTransition(() => { onClick(); }); }}
+      onClick={() => { onClick(); }}
       style={{ width: "100%", border: "none" }}
       className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${
         active
@@ -21170,9 +20854,10 @@ function ChatSection({
 
       try {
         const response = await askMana(userText, "User is chatting in Village Real-Time Chat bot mode.");
+        const messageText = typeof response === 'string' ? response : (response?.text || "");
         const botMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          msg: response || "I could not process your request.",
+          msg: messageText || "I could not process your request.",
           time: Date.now() + 1,
           uid: "bot",
           userName: "Mana Bot"
@@ -22648,17 +22333,27 @@ function PostComments({
       setNewComment("");
       setCommentFile(null);
 
-      await updateDoc(doc(db, "posts", post.id), {
-        commentCount: increment(1),
-      });
+      try {
+        await updateDoc(doc(db, "posts", post.id), {
+          commentCount: increment(1),
+        });
+      } catch (err) {
+        console.warn("Could not increment comment count", err);
+      }
 
-      sendCommentNotifications(
-        post.id,
-        newComment,
-        auth.currentUser!.uid,
-        authorName,
-      );
-      await logUserActivity("Commented on Post: " + post.id);
+      try {
+        sendCommentNotifications(
+          post.id,
+          newComment,
+          auth.currentUser!.uid,
+          authorName,
+        );
+      } catch (err) {
+        console.warn("Could not send comment notifications", err);
+      }
+      
+      addToast("కామెంట్ జోడించబడింది (Comment posted successfully)");
+      await logUserActivity("Commented on Post: " + post.id).catch(() => {});
     } catch (e: any) {
       console.error(e);
       addToast("Error: " + (e.message || String(e)));
@@ -22855,14 +22550,25 @@ function PostComments({
                           if (!window.confirm("Are you sure you want to delete this comment?")) return;
                           try {
                             const repliesCount = c.replies ? c.replies.length : 0;
-                            await deleteDoc(
-                              doc(db, "posts", post.id, "comments", c.id),
-                            );
-                            await updateDoc(doc(db, "posts", post.id), {
-                              commentCount: increment(-(1 + repliesCount)),
-                            });
-                          } catch (err) {
+                            if (c.isLegacy) {
+                              const currentComments = post.comments || [];
+                              const updatedComments = currentComments.filter((item: any) => item.id !== c.id);
+                              await updateDoc(doc(db, "posts", post.id), {
+                                comments: updatedComments,
+                                commentCount: increment(-(1 + repliesCount)),
+                              });
+                            } else {
+                              await deleteDoc(
+                                doc(db, "posts", post.id, "comments", c.id),
+                              );
+                              await updateDoc(doc(db, "posts", post.id), {
+                                commentCount: increment(-(1 + repliesCount)),
+                              }).catch(() => {});
+                            }
+                            addToast("కామెంట్ తొలగించబడింది (Comment deleted)");
+                          } catch (err: any) {
                             console.error(err);
+                            addToast("Error deleting comment: " + (err.message || String(err)));
                           }
                         }}
                         className="text-slate-400 hover:text-red-500"

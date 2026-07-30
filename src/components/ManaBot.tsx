@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Send, X, MessageSquare, Loader2, Sparkles, User, ChevronLeft } from 'lucide-react';
+import { 
+  Bot, Send, X, MessageSquare, Loader2, Sparkles, User, ChevronLeft,
+  FileSpreadsheet, FileText, Database, Users, AlertCircle, Lightbulb, Shield
+} from 'lucide-react';
 import { askMana } from '../services/geminiService';
+import { exportExcelReport, exportPdfReport, fetchLiveDatabaseSnapshot, DatabaseSnapshot } from '../services/dbAnalysisService';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
 
@@ -10,6 +14,7 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: number;
+  dbSnapshot?: DatabaseSnapshot;
 }
 
 export function ManaBot({ currentTab, userName }: { currentTab: string, userName?: string }) {
@@ -17,7 +22,11 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
-      text: `నమస్కారం ${userName || ''}! E-VEDHIKA వెబ్సైటుకు స్వాగతం. ఈ వెబ్‌సైట్‌ను ఎలా ఉపయోగించాలో లేదా ఇక్కడ ఉన్న ఫీచర్ల గురించి నేను మీకు వివరిస్తాను. మీకు ఏం సహాయం కావాలి? (Hello! Welcome to E-VEDHIKA. I'm here to guide you on how to use this website and its features. How can I help you today?)`,
+      text: `నమస్కారం ${userName || ''}! నేను E-VEDHIKA AI అసిస్టెంట్‌ని. 
+
+పోర్టల్ డేటాబేస్‌లోని **Users, Reports, Security Logs, Suggestions** గురించి నన్ను అడగవచ్చు లేదా విశ్లేషణ, **Excel/PDF రిపోర్టులు** జనరేట్ చేయమని కోరవచ్చు.
+
+(Hello! I'm E-VEDHIKA AI. Ask me to analyze database users, reports, security logs, community suggestions, or export PDF/Excel reports!)`,
       sender: 'bot',
       timestamp: Date.now()
     }
@@ -34,12 +43,12 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
     if (isOpen) scrollToBottom();
   }, [messages, isOpen]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSendPrompt = async (promptText: string) => {
+    if (!promptText.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
-      text: input,
+      text: promptText,
       sender: 'user',
       timestamp: Date.now()
     };
@@ -49,17 +58,42 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
     setIsLoading(true);
 
     const context = `The user is currently on the "${currentTab}" tab. The user's name is ${userName || 'Anonymous'}.`;
-    const response = await askMana(input, context);
+    const res = await askMana(promptText, context);
 
     const botMsg: Message = {
       id: (Date.now() + 1).toString(),
-      text: response || 'Sorry, I encountered an error.',
+      text: res.text || 'క్షమించాలి, స్పందన నమోదు కాలేదు.',
       sender: 'bot',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      dbSnapshot: res.dbSnapshot
     };
 
     setMessages(prev => [...prev, botMsg]);
     setIsLoading(false);
+  };
+
+  const handleSend = () => {
+    handleSendPrompt(input);
+  };
+
+  const handleDirectExportExcel = async (snapshot?: DatabaseSnapshot) => {
+    let snap = snapshot;
+    if (!snap) {
+      setIsLoading(true);
+      snap = await fetchLiveDatabaseSnapshot();
+      setIsLoading(false);
+    }
+    exportExcelReport(snap, 'E-VEDHIKA_Live_Database_Report');
+  };
+
+  const handleDirectExportPdf = async (snapshot?: DatabaseSnapshot) => {
+    let snap = snapshot;
+    if (!snap) {
+      setIsLoading(true);
+      snap = await fetchLiveDatabaseSnapshot();
+      setIsLoading(false);
+    }
+    exportPdfReport(snap, 'E-VEDHIKA Database Analytics Report');
   };
 
   return (
@@ -70,19 +104,26 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
             initial={{ opacity: 0, y: 20, scale: 0.9, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="mb-4 w-[350px] md:w-[400px] h-[500px] bg-white rounded-[32px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden relative"
+            className="mb-4 w-[360px] md:w-[420px] h-[550px] bg-white rounded-[32px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden relative"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-5 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 p-4 text-white flex items-center justify-between shadow-md">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30">
+                <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
                   <Bot size={22} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black tracking-tight leading-tight">E-VEDHIKA Assistant</h3>
+                  <h3 className="text-sm font-black tracking-tight leading-tight flex items-center gap-1.5">
+                    E-VEDHIKA AI Assistant
+                    <span className="bg-emerald-500/30 text-emerald-200 text-[9px] px-1.5 py-0.5 rounded-full font-mono border border-emerald-400/30">
+                      Live DB
+                    </span>
+                  </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest leading-none">Online & Ready</span>
+                    <span className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest leading-none">
+                      Connected to Database
+                    </span>
                   </div>
                 </div>
               </div>
@@ -94,15 +135,47 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
               </button>
             </div>
 
+            {/* Quick Action Chips Bar */}
+            <div className="bg-slate-100/80 px-3 py-2 border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px] font-bold text-slate-700">
+              <button
+                onClick={() => handleSendPrompt("డేటాబేస్ లోని Users, Reports, Suggestions, Logs గురించి పూర్తి సమాచారం & విశ్లేషణ ఇవ్వండి.")}
+                className="px-2.5 py-1 bg-white hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 rounded-lg flex items-center gap-1 whitespace-nowrap transition-all shadow-xs"
+              >
+                <Database size={12} className="text-indigo-600" />
+                <span>DB విశ్లేషణ</span>
+              </button>
+              <button
+                onClick={() => handleSendPrompt("పోర్టల్ నందు నమోదైన Reports / Complaints వివరాలు చెప్పండి.")}
+                className="px-2.5 py-1 bg-white hover:bg-amber-50 hover:text-amber-700 border border-slate-200 rounded-lg flex items-center gap-1 whitespace-nowrap transition-all shadow-xs"
+              >
+                <AlertCircle size={12} className="text-amber-600" />
+                <span>రిపోర్టులు</span>
+              </button>
+              <button
+                onClick={() => handleSendPrompt("యూజర్లు (Users) మరియు వారి హోదాలు విశ్లేషించండి.")}
+                className="px-2.5 py-1 bg-white hover:bg-blue-50 hover:text-blue-700 border border-slate-200 rounded-lg flex items-center gap-1 whitespace-nowrap transition-all shadow-xs"
+              >
+                <Users size={12} className="text-blue-600" />
+                <span>యూజర్లు</span>
+              </button>
+              <button
+                onClick={() => handleSendPrompt("సూచనలు (Suggestions) విశ్లేషించి వివరాలు ఇవ్వండి.")}
+                className="px-2.5 py-1 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 rounded-lg flex items-center gap-1 whitespace-nowrap transition-all shadow-xs"
+              >
+                <Lightbulb size={12} className="text-emerald-600" />
+                <span>సూచనలు</span>
+              </button>
+            </div>
+
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth bg-slate-50/50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth bg-slate-50/50">
               {messages.map((msg) => (
                 <div 
                   key={msg.id} 
                   className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div 
-                    className={`max-w-[85%] rounded-2xl p-4 text-sm shadow-sm ${
+                    className={`max-w-[88%] rounded-2xl p-4 text-sm shadow-sm ${
                       msg.sender === 'user' 
                         ? 'bg-indigo-600 text-white rounded-tr-none' 
                         : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
@@ -113,6 +186,27 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
                         {msg.text}
                       </ReactMarkdown>
                     </div>
+
+                    {/* Export Action Buttons inside Bot Message */}
+                    {msg.sender === 'bot' && (
+                      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleDirectExportExcel(msg.dbSnapshot)}
+                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                        >
+                          <FileSpreadsheet size={14} className="text-emerald-600" />
+                          <span>Export Excel Report</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDirectExportPdf(msg.dbSnapshot)}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                        >
+                          <FileText size={14} className="text-rose-600" />
+                          <span>Download PDF Report</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -120,7 +214,9 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
                 <div className="flex justify-start">
                   <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-3 shadow-sm rounded-tl-none">
                     <Loader2 size={16} className="animate-spin text-indigo-500" />
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">ఆలోచిస్తున్నాను... కాస్త వేచి ఉండండి</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
+                      డేటాబేస్ విశ్లేషిస్తున్నాను... వేచి ఉండండి
+                    </span>
                   </div>
                 </div>
               )}
@@ -128,14 +224,14 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-slate-100">
+            <div className="p-3 bg-white border-t border-slate-100">
               <div className="flex gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200">
                 <input 
                   type="text" 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask me anything..."
+                  placeholder="Ask about users, reports, logs or request PDF/Excel..."
                   className="flex-1 bg-transparent px-3 py-2 text-sm outline-none font-bold text-slate-700 placeholder:text-slate-400"
                 />
                 <button 
@@ -146,9 +242,8 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
                   <Send size={18} />
                 </button>
               </div>
-              <p className="text-[9px] text-center text-slate-300 font-bold uppercase tracking-widest mt-2 px-4 leading-tight">
-                E-VEDHIKA AI may provide incorrect information. Verify official details.<br/>
-                (ఈ సమాచారాన్ని అధికారికంగా సరిచూసుకోగలరు)
+              <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-widest mt-1.5 px-2 leading-tight">
+                E-VEDHIKA AI &bull; Database Connected Real-Time Analytics
               </p>
             </div>
           </motion.div>
