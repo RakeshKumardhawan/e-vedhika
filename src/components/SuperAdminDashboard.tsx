@@ -16,6 +16,7 @@ import { LiveSystemHealthCenter } from './LiveSystemHealthCenter';
 import { SecurityLogsSection } from './SecurityLogsSection';
 import { SystemErrorCenter } from './SystemErrorCenter';
 import { AdminGlobalSearchModal } from './AdminGlobalSearchModal';
+import { ExeUbdLiveMonitoring } from './ExeUbdLiveMonitoring';
 
 export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: any) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -104,6 +105,7 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: an
     setActiveTab(id);
     if (setActiveSubTab) {
       if (id === "overview") setActiveSubTab("dash");
+      else if (id === "exe_ubd") setActiveSubTab("exe_ubd_live");
       else if (id === "users") setActiveSubTab("users");
       else if (id === "deployments") setActiveSubTab("builder");
       else if (id === "monitoring") setActiveSubTab("logs");
@@ -162,6 +164,7 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: an
         <div className="hidden xl:block w-56 border-r border-slate-200/60 bg-white/50 backdrop-blur-md sticky top-[57px] h-[calc(100vh-57px)] p-3 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
           {[
             { id: "overview", icon: Activity, label: "Live Overview" },
+            { id: "exe_ubd", icon: Radio, label: "EXE & UBD Monitoring" },
             { id: "health", icon: HeartPulse, label: "System Health Center" },
             { id: "errors", icon: AlertTriangle, label: "System Error Center" },
             { id: "timeline", icon: Clock, label: "Activity Timeline" },
@@ -201,7 +204,9 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: an
         <div className="flex-1 p-4 lg:p-6">
           <div className="max-w-[1400px] mx-auto space-y-6">
             
-            {activeTab === "health" ? (
+            {activeTab === "exe_ubd" ? (
+              <ExeUbdLiveMonitoring />
+            ) : activeTab === "health" ? (
               <LiveSystemHealthCenter />
             ) : activeTab === "errors" ? (
               <SystemErrorCenter />
@@ -321,6 +326,7 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: an
                   </h3>
                   <div className="flex flex-col gap-2">
                     {[
+                      { l: "EXE & UBD Live Monitoring", i: "exe_ubd" },
                       { l: "User Directory", i: "users" },
                       { l: "Review Reports", i: "reports" }, 
                       { l: "Page Builder", i: "deployments" },

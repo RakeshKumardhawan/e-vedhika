@@ -98,6 +98,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Loader2,
+  Radio,
   XCircle,
   ChevronLeft,
   ChevronRight,
@@ -148,6 +149,7 @@ import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
 import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
 import { UBDTracker } from "./components/UBDTracker";
+import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
 import { KnowledgeHubSection, PRActHub } from "./components/KnowledgeHub";
 import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
@@ -1725,7 +1727,7 @@ export default function App() {
 
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const [activeAdminSubTab, setActiveAdminSubTab] = useState(
-    searchParams.get("subtab") || "dash",
+    searchParams.get("tab") === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : (searchParams.get("subtab") || "dash"),
   );
   const [siteConfig, setSiteConfig] = useState<any>(null);
   const [customMenus, setCustomMenus] = useState<CustomMenu[]>([]);
@@ -1737,7 +1739,7 @@ export default function App() {
     location.pathname.toLowerCase().endsWith("/farmer_registry") ||
     location.pathname.toLowerCase().endsWith("/farmer-registry");
   const tabFromUrl = searchParams.get("tab");
-  const resolvedTab = tabFromUrl === "reports" ? "my_activity" : tabFromUrl === "problems" ? "directlinks" : tabFromUrl;
+  const resolvedTab = tabFromUrl === "reports" ? "my_activity" : tabFromUrl === "problems" ? "directlinks" : (tabFromUrl === "admin/UBDLiveMonitoring" ? "admin" : tabFromUrl);
   const [currentTab, setCurrentTab] = useState(
     isFarmerRegistryPath ? "farmer_registry" : resolvedTab || "home",
   );
@@ -1826,13 +1828,18 @@ export default function App() {
     if (isFarmerRegistry) return;
 
     const currentParam = searchParams.get("tab");
+    
+    let targetTabParam = currentTab;
+    if (currentTab === "admin" && activeAdminSubTab === "exe_ubd_live") {
+      targetTabParam = "admin/UBDLiveMonitoring";
+    }
 
-    if (currentTab && currentTab !== currentParam) {
+    if (currentTab && targetTabParam !== currentParam) {
       const newParams = new URLSearchParams(searchParams);
-      newParams.set("tab", currentTab);
+      newParams.set("tab", targetTabParam);
       setSearchParams(newParams, { replace: true });
     }
-  }, [currentTab, setSearchParams, searchParams]);
+  }, [currentTab, activeAdminSubTab, setSearchParams, searchParams]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -4322,6 +4329,7 @@ export default function App() {
                 </h3>
                 {[
                   { id: "dash", label: "Analytics Hub", icon: BarChart3 },
+                  { id: "exe_ubd_live", label: "EXE & UBD Live Monitoring", icon: Radio },
                   { id: "reports", label: "Posts & Issues", icon: FileText },
                   { id: "gos_formats", label: "GOs & Formats", icon: FileText },
                   { id: "updates", label: "Flash News", icon: Zap },
@@ -4708,6 +4716,7 @@ export default function App() {
                       </div>
                     ) : (
                       <div className="space-y-8 pb-12">
+                        
                         {(siteConfig?.elements && siteConfig.elements.length > 0
                           ? siteConfig.elements
                           : DEFAULT_HOME_ELEMENTS
@@ -6704,6 +6713,26 @@ export default function App() {
     <UBDTracker user={user} addToast={addToast} />
   </motion.div>
 )}
+
+                {currentTab === "exe_ubd_live" && (
+                  <motion.div
+                    key="exe_ubd_live"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex justify-between items-center mb-4">
+                      <button
+                        aria-label="Back to Home"
+                        onClick={() => startTransition(() => setCurrentTab("home"))}
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
+                      >
+                        <ArrowLeft size={16} /> హోమ్ పేజీకి తిరిగి వెళ్ళు (Back to Home)
+                      </button>
+                    </div>
+                    <ExeUbdLiveMonitoring />
+                  </motion.div>
+                )}
                 {/* Secondary admin block removed */}
               </AnimatePresence>
               </div>
@@ -9052,6 +9081,11 @@ function AdminPanel({
                 id: "dash",
                 label: isEditorMode ? "My Panel" : "Analytics Hub",
                 icon: <LayoutGrid size={18} />,
+              },
+              {
+                id: "exe_ubd_live",
+                label: "EXE & UBD Live Monitoring",
+                icon: <Radio size={18} />,
               },
             ]
           : []),
@@ -13536,6 +13570,10 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
               </div>
             )}
 
+            {(activeSubTab === "exe_ubd_live" || activeSubTab === "exe_ubd") && (
+              <ExeUbdLiveMonitoring />
+            )}
+
             {activeSubTab === "logs" && (
               <SecurityLogsSection />
             )}
@@ -13817,6 +13855,106 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                         <option value="light">Light Mode</option>
                         <option value="dark">Dark Mode</option>
                       </select>
+                    </div>
+
+                    <div className="space-y-3 bg-amber-50/60 p-5 rounded-3xl border border-amber-200/80">
+                      <div>
+                        <label className="text-[10px] font-black text-amber-900 uppercase tracking-widest pl-1 block mb-1">
+                          Website Maintenance Mode (వెబ్‌సైట్ మెయింటెనెన్స్ మోడ్)
+                        </label>
+                        <select
+                          value={siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE" ? "MAINTENANCE" : "LIVE"}
+                          onChange={async (e) => {
+                            const isMaintenance = e.target.value === "MAINTENANCE";
+                            try {
+                              await setDoc(doc(db, "site_settings", "home_page"), {
+                                isMaintenanceMode: isMaintenance,
+                                governanceMode: e.target.value,
+                                updatedAt: Date.now(),
+                                updatedBy: user?.email || auth?.currentUser?.email || "Admin"
+                              }, { merge: true });
+                              
+                              if (!isMaintenance) {
+                                localStorage.removeItem("evedhika_admin_override");
+                              }
+                              addToast(isMaintenance ? "🔴 వెబ్‌సైట్ మెయింటెనెన్స్ మోడ్ ఆన్ చేయబడింది (Admin Only Access)" : "🟢 వెబ్‌సైట్ లైవ్ లో ఉంది (Public Access)");
+                            } catch(err: any) {
+                              addToast("మెయింటెనెన్స్ మోడ్ అప్‌డేట్ విఫలమైంది: " + err.message);
+                            }
+                          }}
+                          className="w-full bg-white border-amber-200 rounded-2xl p-4 font-black text-sm outline-none focus:border-amber-500 shadow-xs text-slate-800"
+                        >
+                          <option value="LIVE">🟢 LIVE (సాధారణ వినియోగం - Public Access)</option>
+                          <option value="MAINTENANCE">🔴 MAINTENANCE MODE (మెయింటెనెన్స్ మోడ్ - Admin Only)</option>
+                        </select>
+                      </div>
+
+                      {(siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE") && (
+                        <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                              మరమ్మతు సందేశం (Maintenance Banner Message)
+                            </label>
+                            <input
+                              type="text"
+                              id="maintenance-msg-field"
+                              defaultValue={siteConfig?.maintenanceMessage || "ఈ-వేదిక డిజిటల్ పరిపాలనా పోర్టల్ మెరుగైన ప్రదర్శన మరియు రక్షణ కొరకు షెడ్యూల్డ్ నిర్వహణలో ఉంది."}
+                              placeholder="We are upgrading the platform..."
+                              className="w-full bg-white border-slate-200 rounded-2xl p-3.5 font-bold text-xs outline-none focus:border-amber-500 mt-1"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                                అంచనా సమయం (Estimated Time)
+                              </label>
+                              <input
+                                type="text"
+                                id="maintenance-time-field"
+                                defaultValue={siteConfig?.maintenanceEstimatedTime || "దాదాపు 2 గంటలు (Approx. 2 Hours)"}
+                                placeholder="e.g. 2 Hours"
+                                className="w-full bg-white border-slate-200 rounded-2xl p-3 font-bold text-xs outline-none focus:border-amber-500 mt-1"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                                కారణం (Reason)
+                              </label>
+                              <input
+                                type="text"
+                                id="maintenance-reason-field"
+                                defaultValue={siteConfig?.maintenanceReason || "షెడ్యూల్డ్ సిస్టమ్ అప్‌గ్రేడ్ & సెక్యూరిటీ అప్‌డేట్"}
+                                placeholder="Upgrade reason"
+                                className="w-full bg-white border-slate-200 rounded-2xl p-3 font-bold text-xs outline-none focus:border-amber-500 mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const msg = (document.getElementById("maintenance-msg-field") as HTMLInputElement)?.value;
+                                const time = (document.getElementById("maintenance-time-field") as HTMLInputElement)?.value;
+                                const reason = (document.getElementById("maintenance-reason-field") as HTMLInputElement)?.value;
+                                await setDoc(doc(db, "site_settings", "home_page"), { 
+                                  maintenanceMessage: msg,
+                                  maintenanceEstimatedTime: time,
+                                  maintenanceReason: reason,
+                                  updatedAt: Date.now()
+                                }, { merge: true });
+                                addToast("మెయింటెనెన్స్ వివరాలు సేవ్ చేయబడ్డాయి!");
+                              } catch(e: any) {
+                                addToast("సేవ్ విఫలమైంది: " + e.message);
+                              }
+                            }}
+                            className="w-full bg-amber-600 text-white py-3 rounded-2xl text-xs font-bold hover:bg-amber-700 transition-colors shadow-sm"
+                          >
+                            వివరాలు సేవ్ చేయి (Save Details)
+                          </button>
+                        </div>
+                      )}
                     </div>
 
 
