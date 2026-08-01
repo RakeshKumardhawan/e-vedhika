@@ -190,13 +190,11 @@ match /custom_code/{document=**} {
 
 
 match /visitor_logs/{logId} {
-  allow read: if isAdmin();
-  allow create: if true;
+  allow read, write: if true;
 }
 
 match /user_tracking/{trackId} {
-  allow read: if isAdmin();
-  allow create: if true;
+  allow read, write: if true;
 }
 
 // Default deny (fallback) - పైన పేర్కొనని కలెక్షన్స్ ఏవైనా ఉంటే వాటిని బ్లాక్ చేస్తుంది

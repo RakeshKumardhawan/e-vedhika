@@ -165,7 +165,76 @@ async function startServer() {
 
   
 // In-Memory Cloud Stores for Telemetry & Remote Queue
-const telemetryLogsStore: any[] = [];
+const telemetryLogsStore: any[] = [
+  {
+    slNo: 1,
+    date: new Date().toISOString().slice(0, 10),
+    time: "10:15:30 AM",
+    pcName: "GP-GHATKESAR-01",
+    userName: "sec_ramesh",
+    panchayat: "Ghatkesar GP",
+    mandal: "Ghatkesar",
+    district: "Medchal-Malkajgiri",
+    osVersion: "Windows 11 Pro",
+    internet: "Online",
+    dotNet: "v3.5 & v4.8 Active",
+    nicDigiSigner: "Port 8080 Active",
+    dscStatus: "USB Token Connected",
+    trustedSites: "Zone 2 Configured",
+    edgeIeMode: "IE5 Quirks Active",
+    sitesXml: "Active",
+    verification: "Passed",
+    version: "v3.5",
+    status: "Success (15/15)",
+    healthScore: 100,
+    remarks: "All 90 deployment parameters verified successfully.",
+    ipAddress: "192.168.1.45",
+    macAddress: "00:1A:2C:3D:4E:5F",
+    systemArchitecture: "x64-based PC",
+    netFramework35: "Installed (Enabled)",
+    nicDigiPort: "8080 Running",
+    capicomDll: "Registered (System32 & SysWOW64)",
+    activeXControls: "Allowed & Enabled",
+    certValidity: "Valid (Expires 2028)",
+    ubdWebsiteReachable: "Reachable (200 OK)",
+    totalChecks: "90/90",
+    passedCount: 90
+  },
+  {
+    slNo: 2,
+    date: new Date().toISOString().slice(0, 10),
+    time: "09:42:10 AM",
+    pcName: "MPDO-SHAMSHABAD-02",
+    userName: "eo_krishna",
+    panchayat: "Shamshabad Mandal",
+    mandal: "Shamshabad",
+    district: "Rangareddy",
+    osVersion: "Windows 10 Enterprise",
+    internet: "Online",
+    dotNet: "v3.5 & v4.8 Active",
+    nicDigiSigner: "Port 8080 Active",
+    dscStatus: "USB Token Connected",
+    trustedSites: "Zone 2 Configured",
+    edgeIeMode: "IE5 Quirks Active",
+    sitesXml: "Active",
+    verification: "Passed",
+    version: "v3.5",
+    status: "Success (15/15)",
+    healthScore: 100,
+    remarks: "Fully compliant with Telangana UBD / ePanchayat Portal.",
+    ipAddress: "10.240.12.88",
+    macAddress: "B4:2E:99:A1:C3:D2",
+    systemArchitecture: "x64-based PC",
+    netFramework35: "Installed (Enabled)",
+    nicDigiPort: "8080 Running",
+    capicomDll: "Registered (System32 & SysWOW64)",
+    activeXControls: "Allowed & Enabled",
+    certValidity: "Valid (Expires 2027)",
+    ubdWebsiteReachable: "Reachable (200 OK)",
+    totalChecks: "90/90",
+    passedCount: 90
+  }
+];
 const remoteQueueStore: any[] = [];
 const remoteScreenFramesStore: Record<string, { image: string; timestamp: number }> = {};
 const pendingRemoteCommandsStore: Record<string, any[]> = {};
@@ -215,6 +284,17 @@ app.post('/api/telemetry', (req, res) => {
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (Get)
 app.get('/api/telemetry', (req, res) => {
   res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
+});
+
+// Telemetry Logs Reset API Route (DELETE / POST)
+app.delete('/api/telemetry', (req, res) => {
+  telemetryLogsStore.length = 0;
+  res.json({ success: true, message: 'Telemetry logs cleared successfully' });
+});
+
+app.post('/api/telemetry/reset', (req, res) => {
+  telemetryLogsStore.length = 0;
+  res.json({ success: true, message: 'Telemetry logs cleared successfully' });
 });
 
 // 3. Remote Assistance Request Queue API Routes

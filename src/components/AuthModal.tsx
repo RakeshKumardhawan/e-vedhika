@@ -177,57 +177,57 @@ export function AuthModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[11000] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[11000] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3">
       <motion.div
-        initial={{ opacity: 0, scale: 0.93, y: 15 }}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-[450px] bg-white rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200/50"
+        className="w-full max-w-[380px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[88vh] border border-slate-200/60"
       >
-        <div className="bg-gradient-to-b from-[#0f2e4a] to-[#0a1f33] p-5 text-white text-center relative flex flex-col items-center border-b border-indigo-950/20 shadow-inner">
+        <div className="bg-gradient-to-b from-[#0f2e4a] to-[#0a1f33] px-4 py-3 text-white text-center relative flex flex-col items-center border-b border-indigo-950/20">
           <button
             aria-label="Close auth modal"
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-90"
+            className="absolute top-2.5 right-2.5 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-90 cursor-pointer"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
 
-          <div className="mb-2 bg-white/5 p-2 rounded-full border border-white/10 shadow-md">
-            <EVAnimatedLogo size={36} />
+          <div className="mb-1 bg-white/5 p-1.5 rounded-full border border-white/10 shadow-xs">
+            <EVAnimatedLogo size={26} />
           </div>
 
           <h2
-            className="text-xl sm:text-2xl font-black uppercase tracking-wider leading-none mb-1 flex items-center gap-1"
+            className="text-base font-bold uppercase tracking-wider leading-none mb-0.5 flex items-center gap-1"
             style={{
               color: "#fbe947",
-              fontFamily: '"Arial Black", Impact, sans-serif',
+              fontFamily: 'sans-serif',
             }}
           >
             E<span style={{ color: "#facc15" }}>-</span>VEDHIKA
           </h2>
-          <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.22em] pl-0.5">
+          <p className="text-[8px] font-medium text-white/70 uppercase tracking-widest">
             Access Your Portal
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 bg-white custom-scrollbar">
-          <div className="mb-5 text-center">
-            <h3 className="text-lg sm:text-xl font-black text-[#0f2e4a] tracking-tight">
+        <div className="flex-1 overflow-y-auto px-5 py-4 bg-white custom-scrollbar">
+          <div className="mb-3 text-center">
+            <h3 className="text-base font-bold text-[#0f2e4a] tracking-tight">
               {isSignup ? "Create Account" : "Welcome Back"}
             </h3>
-            <p className="text-xs font-semibold text-slate-500 mt-1">
+            <p className="text-[11px] font-medium text-slate-500 mt-0.5">
               {isSignup
                 ? "Fill in your details to get started."
                 : "Sign in with your credentials."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-2.5">
             {isSignup && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       Surname <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -235,11 +235,11 @@ export function AuthModal({
                       onChange={(e) => setSurname(e.target.value)}
                       placeholder="Surname"
                       required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                     />
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       Name <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -247,13 +247,13 @@ export function AuthModal({
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Name"
                       required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                     Username / Display Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -261,13 +261,13 @@ export function AuthModal({
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Display name"
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       Gender
                     </label>
                     <select
@@ -276,7 +276,7 @@ export function AuthModal({
                         setGender(e.target.value);
                         if (e.target.value === "Female") setMobile("");
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
                     >
                       <option value="">Select Gender</option>
                       <option>Male</option>
@@ -286,7 +286,7 @@ export function AuthModal({
                   </div>
                   {gender !== "Female" && (
                     <div className="flex flex-col">
-                      <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                      <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                         Mobile No <span className="text-rose-500">*</span>
                       </label>
                       <input
@@ -294,27 +294,27 @@ export function AuthModal({
                         onChange={(e) => setMobile(e.target.value)}
                         placeholder="Phone"
                         required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       State
                     </label>
                     <select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
                     >
                       <option>Telangana</option>
                     </select>
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       District <span className="text-rose-500">*</span>
                     </label>
                     <select
@@ -323,7 +323,7 @@ export function AuthModal({
                         setDistrict(e.target.value);
                         setMandal("");
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
                     >
                       <option value="">Select District</option>
                       {Object.keys(districtsData)
@@ -335,15 +335,15 @@ export function AuthModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       Mandal
                     </label>
                     <select
                       value={mandal}
                       onChange={(e) => setMandal(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer disabled:opacity-50"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                       disabled={!district}
                     >
                       <option value="">Select Mandal</option>
@@ -355,34 +355,34 @@ export function AuthModal({
                     </select>
                   </div>
                   <div className="flex flex-col">
-                    <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                       Village / GP
                     </label>
                     <input
                       value={village}
                       onChange={(e) => setVillage(e.target.value)}
                       placeholder="Enter Village"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                     Designation
                   </label>
                   <input
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
                     placeholder="Type Designation"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                   />
                 </div>
               </>
             )}
 
             <div className="flex flex-col">
-              <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+              <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                 Email Address <span className="text-rose-500">*</span>
               </label>
               <input
@@ -391,13 +391,13 @@ export function AuthModal({
                 type="email"
                 placeholder="email@example.com"
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
               />
             </div>
 
-            <div className={isSignup ? "grid grid-cols-2 gap-3" : "flex flex-col"}>
+            <div className={isSignup ? "grid grid-cols-2 gap-2" : "flex flex-col"}>
               <div className="flex flex-col">
-                <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                   Password <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -406,12 +406,12 @@ export function AuthModal({
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                 />
               </div>
               {isSignup && (
                 <div className="flex flex-col">
-                  <label className="text-xs font-bold text-slate-700 tracking-wide mb-1.5 pl-0.5">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                     Confirm Password
                   </label>
                   <input
@@ -420,7 +420,7 @@ export function AuthModal({
                     type="password"
                     placeholder="••••••••"
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                   />
                 </div>
               )}
@@ -440,10 +440,10 @@ export function AuthModal({
               aria-label={isSignup ? "Register Now" : "Sign In Now"}
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:via-blue-700 hover:to-indigo-800 text-white py-3 px-5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/15 hover:shadow-xl hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-50 disabled:transform-none flex justify-center items-center gap-2 cursor-pointer"
+              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow active:scale-[0.99] transition-all mt-1 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer"
             >
               {loading ? (
-                <Loader2 className="animate-spin text-white" size={15} />
+                <Loader2 className="animate-spin text-white" size={14} />
               ) : isSignup ? (
                 "Register Now"
               ) : (
@@ -454,9 +454,9 @@ export function AuthModal({
 
           {!isSignup && (
             <>
-              <div className="my-4 flex items-center gap-3">
+              <div className="my-3 flex items-center gap-2">
                 <div className="flex-1 h-[1px] bg-slate-200"></div>
-                <span className="text-[10px] font-extrabold text-slate-400 tracking-widest">
+                <span className="text-[9px] font-bold text-slate-400 tracking-widest">
                   OR
                 </span>
                 <div className="flex-1 h-[1px] bg-slate-200"></div>
@@ -466,9 +466,9 @@ export function AuthModal({
                 aria-label="Continue with Google"
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full border-2 border-slate-200 hover:border-slate-300 py-2.5 rounded-xl font-black text-slate-700 hover:text-slate-900 text-xs uppercase flex items-center justify-center gap-2.5 hover:bg-slate-50/50 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
+                className="w-full border border-slate-200 hover:border-slate-300 py-2 rounded-lg font-bold text-slate-700 hover:text-slate-900 text-xs uppercase flex items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-[0.99] shadow-xs cursor-pointer"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24">
+                <svg width="14" height="14" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -489,19 +489,19 @@ export function AuthModal({
                 Continue with Google
               </button>
               <div className="mt-2 text-center">
-                <p className="text-[10px] text-slate-400 font-bold leading-tight">
-                  లాగిన్ ఆలస్యం అయితే పైన ఉన్న బాణం ↗ గుర్తుపై క్లిక్ చేసి <br/> 
-                  కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి. అప్పుడు త్వరగా అవుతుంది.
+                <p className="text-[9px] text-slate-400 font-medium leading-tight">
+                  లాగిన్ ఆలస్యం అయితే పైన ఉన్న ↗ గుర్తుపై క్లిక్ చేసి <br/> 
+                  కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి.
                 </p>
               </div>
             </>
           )}
 
-          <div className="mt-5 text-center pb-2">
+          <div className="mt-3 text-center pb-1">
             <button
               aria-label={isSignup ? "Switch to Sign In" : "Switch to Sign Up"}
               onClick={() => setIsSignup(!isSignup)}
-              className="text-[#0f2e4a] hover:text-indigo-600 font-extrabold text-xs uppercase tracking-wide transition-colors"
+              className="text-[#0f2e4a] hover:text-indigo-600 font-bold text-xs uppercase tracking-wide transition-colors"
             >
               {isSignup
                 ? "Already have an account? Sign In"

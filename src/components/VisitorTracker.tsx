@@ -44,7 +44,7 @@ export function VisitorTracker({ user }: { user: any }) {
           ip
         });
       } catch (err) {
-        console.error("Visitor tracking error:", err);
+        console.warn("Visitor tracking notification:", err);
       }
     };
 

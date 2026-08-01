@@ -1739,7 +1739,7 @@ export default function App() {
     location.pathname.toLowerCase().endsWith("/farmer_registry") ||
     location.pathname.toLowerCase().endsWith("/farmer-registry");
   const tabFromUrl = searchParams.get("tab");
-  const resolvedTab = tabFromUrl === "reports" ? "my_activity" : tabFromUrl === "problems" ? "directlinks" : (tabFromUrl === "admin/UBDLiveMonitoring" ? "admin" : tabFromUrl);
+  const resolvedTab = tabFromUrl === "reports" ? "my_activity" : tabFromUrl === "problems" ? "directlinks" : (tabFromUrl === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : tabFromUrl);
   const [currentTab, setCurrentTab] = useState(
     isFarmerRegistryPath ? "farmer_registry" : resolvedTab || "home",
   );
@@ -1830,7 +1830,7 @@ export default function App() {
     const currentParam = searchParams.get("tab");
     
     let targetTabParam = currentTab;
-    if (currentTab === "admin" && activeAdminSubTab === "exe_ubd_live") {
+    if (currentTab === "exe_ubd_live") {
       targetTabParam = "admin/UBDLiveMonitoring";
     }
 
