@@ -4030,7 +4030,10 @@ export default function App() {
       <nav className="nav-trigger-bar relative z-[10] py-2 bg-white shadow-sm border-b border-slate-200/50">
         <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 flex items-center">
             <div className="flex-1 w-full flex items-center justify-center min-w-0">
-                <div className="flex items-center flex-wrap justify-center gap-2 sm:gap-3 py-1 w-full">
+                <div className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap justify-start lg:justify-center gap-2 sm:gap-3 py-1 w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <style dangerouslySetInnerHTML={{__html: `
+                    .nav-trigger-bar div::-webkit-scrollbar { display: none; }
+                  `}} />
                   {[
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
 
