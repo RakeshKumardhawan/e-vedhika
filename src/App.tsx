@@ -1530,6 +1530,7 @@ export default function App() {
   const [searchParams, setSearchParams] = useSearchParams();
   const postIdFromUrl = searchParams.get("postId");
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const navScrollRef = useRef<HTMLDivElement>(null);
 
   const [hasEnteredSite, setHasEnteredSite] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -4027,13 +4028,32 @@ export default function App() {
           </div></div>
       )}
 
-      <nav className="nav-trigger-bar relative z-[10] py-2 bg-white shadow-sm border-b border-slate-200/50">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 flex items-center">
-            <div className="flex-1 w-full flex items-center justify-center min-w-0">
-                <div className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap justify-start lg:justify-center gap-2 sm:gap-3 py-1 w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  <style dangerouslySetInnerHTML={{__html: `
-                    .nav-trigger-bar div::-webkit-scrollbar { display: none; }
-                  `}} />
+      <nav className="nav-trigger-bar relative z-[10] py-1.5 bg-white shadow-sm border-b border-slate-200/50">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 relative flex items-center gap-1 sm:gap-2">
+          {/* Scroll Left Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (navScrollRef.current) {
+                navScrollRef.current.scrollBy({ left: -240, behavior: "smooth" });
+              }
+            }}
+            className="hidden sm:flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
+            aria-label="Scroll Left"
+            title="Scroll Left"
+          >
+            <ChevronLeft size={18} />
+          </button>
+
+          <div className="flex-1 w-full min-w-0 relative">
+            <div
+              ref={navScrollRef}
+              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap justify-start gap-2 sm:gap-3 py-1.5 w-full scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style dangerouslySetInnerHTML={{__html: `
+                .nav-trigger-bar div::-webkit-scrollbar { display: none; }
+              `}} />
                   {[
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
 
@@ -4301,8 +4321,23 @@ export default function App() {
                       </button>
                     );
                   })}
-                </div>
             </div>
+          </div>
+
+          {/* Scroll Right Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (navScrollRef.current) {
+                navScrollRef.current.scrollBy({ left: 240, behavior: "smooth" });
+              }
+            }}
+            className="hidden sm:flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
+            aria-label="Scroll Right"
+            title="Scroll Right"
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </nav>
 
