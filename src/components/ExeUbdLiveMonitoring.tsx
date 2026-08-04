@@ -3,7 +3,8 @@ import {
   Copy, Cloud, FileText, Laptop, Download, RefreshCw, 
   Monitor, CheckCircle2, Clock, Video, PauseCircle, XCircle,
   Eye, Code, ShieldCheck, Cpu, HardDrive, Network, Globe, Key, 
-  Check, Zap, ExternalLink, ChevronRight, Activity, Terminal, Trash2
+  Check, Zap, ExternalLink, ChevronRight, Activity, Terminal, Trash2,
+  Maximize2, Minimize2, Expand, Shrink, RotateCcw
 } from 'lucide-react';
 
 export const ExeUbdLiveMonitoring: React.FC = () => {
@@ -14,6 +15,8 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
   const [remoteQueue, setRemoteQueue] = useState<any[]>([]);
   const [liveScreenFrame, setLiveScreenFrame] = useState<string | null>(null);
   const [activeRemoteModal, setActiveRemoteModal] = useState<any | null>(null);
+  const [isRemoteMaximized, setIsRemoteMaximized] = useState<boolean>(true);
+  const [zoomFitMode, setZoomFitMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
 
   // Modal for 90 Parameters Full Audit
   const [selectedAuditLog, setSelectedAuditLog] = useState<any | null>(null);
@@ -1116,6 +1119,7 @@ public class TelemetryReporter
                     <button
                       onClick={() => {
                         handleUpdateStatus(item.id, 'connected');
+                        setIsRemoteMaximized(true);
                         setActiveRemoteModal(item);
                       }}
                       className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer"
@@ -1269,47 +1273,166 @@ public class TelemetryReporter
         </div>
       )}
 
-      {/* Direct Remote View Screen Dialog */}
+      {/* Direct Remote View Screen Dialog - Full Screen Mode */}
       {activeRemoteModal && (
-        <div className="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl">
-            <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <Laptop className="w-4 h-4 text-emerald-400" /> Live Remote Screen: {activeRemoteModal.pcName}
-              </h3>
-              <button className="cursor-pointer" onClick={() => setActiveRemoteModal(null)}>
-                <XCircle className="w-5 h-5 text-slate-400 hover:text-white" />
-              </button>
-            </div>
-            <div className="p-6 bg-slate-950 text-center text-white space-y-4">
-              <div className="aspect-video bg-slate-900 rounded-2xl border border-slate-800 flex items-center justify-center flex-col p-0 overflow-hidden relative">
-                {liveScreenFrame ? (
-                  <img src={liveScreenFrame} alt="Live Remote Screen" className="w-full h-full object-contain bg-black" />
-                ) : (
-                  <>
-                    <Video className="w-12 h-12 text-emerald-400 animate-pulse mb-2" />
-                    <p className="font-bold text-sm">{activeRemoteModal.userName} గారి కంప్యూటర్ స్క్రీన్ యాక్టివ్‌గా ఉంది</p>
-                    <p className="text-xs text-slate-400">Desk ID: {activeRemoteModal.anyDeskId}</p>
-                    <p className="text-xs text-emerald-400 mt-2 animate-pulse">Waiting for live video frame from {activeRemoteModal.pcName}...</p>
-                  </>
-                )}
-                
-                <div className="absolute bottom-4 right-4">
-                  <button 
-                    onClick={() => {
-                      fetch('/api/remote-commands', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ pcName: activeRemoteModal.pcName, type: 'fix' })
-                      });
-                      showToast(`Sent remote fix command to ${activeRemoteModal.pcName}: Edge IE Mode & DSC Token restarted`);
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-lg"
-                  >
-                    Fix IE Mode & USB Token Remotely
-                  </button>
+        <div 
+          className={`fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-md flex flex-col transition-all duration-300 animate-in fade-in zoom-in-95 ${
+            isRemoteMaximized ? "p-2 sm:p-3" : "p-4 sm:p-8 justify-center items-center"
+          }`}
+        >
+          <div 
+            className={`bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${
+              isRemoteMaximized 
+                ? "w-full h-full" 
+                : "max-w-5xl w-full h-[85vh]"
+            }`}
+          >
+            {/* Remote Desktop Top Header */}
+            <div className="p-3 sm:p-4 bg-slate-900 border-b border-slate-800 text-white flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping absolute" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 relative" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2 tracking-tight">
+                    <Laptop className="w-4 h-4 text-emerald-400 shrink-0" /> 
+                    లైవ్ రిమోట్ స్క్రీన్ (Live Remote Screen): <span className="text-amber-300 font-mono">{activeRemoteModal.pcName}</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium flex items-center gap-2 mt-0.5">
+                    <span>యూజర్: <strong className="text-slate-200">{activeRemoteModal.userName}</strong></span>
+                    <span>•</span>
+                    <span>Desk ID: <strong className="text-emerald-400 font-mono">{activeRemoteModal.anyDeskId}</strong></span>
+                    {activeRemoteModal.mandalName && (
+                      <>
+                        <span>•</span>
+                        <span className="hidden md:inline text-slate-400">{activeRemoteModal.mandalName}</span>
+                      </>
+                    )}
+                  </p>
                 </div>
               </div>
+
+              {/* Center Aspect Ratio / Fit Controls */}
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setZoomFitMode('contain')}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    zoomFitMode === 'contain'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="స్క్రీన్ ఫిట్ మోడ్ (Fit Screen)"
+                >
+                  <Shrink size={13} /> 100% Fit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomFitMode('cover')}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    zoomFitMode === 'cover'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="స్క్రీన్ ఫుల్ మోడ్ (Fill Screen)"
+                >
+                  <Expand size={13} /> Fill
+                </button>
+              </div>
+
+              {/* Right Action Controls */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    fetch('/api/remote-commands', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ pcName: activeRemoteModal.pcName, type: 'fix' })
+                    });
+                    showToast(`Sent remote fix command to ${activeRemoteModal.pcName}: Edge IE Mode & DSC Token restarted`);
+                  }}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-lg flex items-center gap-1.5 border border-indigo-400/30"
+                  title="USB DSC టోకెన్ & IE మోడ్‌ను రిమోట్‌గా రీస్టార్ట్ చేయండి"
+                >
+                  <Zap size={14} className="text-amber-300" /> 
+                  <span className="hidden sm:inline">Fix IE Mode & USB Token</span>
+                  <span className="sm:hidden">Fix Token</span>
+                </button>
+
+                <button
+                  onClick={() => fetchLiveCloudData()}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                  title="ఫ్రేమ్ రీఫ్రెష్ చేయండి (Refresh Screen)"
+                >
+                  <RefreshCw size={16} className={syncing ? "animate-spin text-emerald-400" : ""} />
+                </button>
+
+                <button
+                  onClick={() => setIsRemoteMaximized(!isRemoteMaximized)}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                  title={isRemoteMaximized ? "సాధారణ సైజు (Windowed View)" : "పూర్తి స్క్రీన్ (Full Screen View)"}
+                >
+                  {isRemoteMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+
+                <button 
+                  className="p-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl cursor-pointer transition-colors"
+                  onClick={() => setActiveRemoteModal(null)}
+                  title="స్క్రీన్ మూసివేయి (Close)"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Remote Screen Display Canvas */}
+            <div className="flex-1 w-full bg-slate-950 overflow-hidden relative flex items-center justify-center p-2">
+              {liveScreenFrame ? (
+                <div className="w-full h-full flex items-center justify-center overflow-hidden rounded-2xl bg-black relative border border-slate-800/80">
+                  <img 
+                    src={liveScreenFrame} 
+                    alt="Live Remote Screen Stream" 
+                    className={`max-w-full max-h-full ${
+                      zoomFitMode === 'contain' 
+                        ? 'object-contain w-full h-full' 
+                        : zoomFitMode === 'cover' 
+                          ? 'object-cover w-full h-full' 
+                          : 'object-fill w-full h-full'
+                    } bg-black transition-all duration-200`} 
+                  />
+
+                  {/* Watermark Live Badge */}
+                  <div className="absolute bottom-3 left-3 bg-slate-900/90 text-white px-3 py-1.5 rounded-xl border border-slate-700 text-[11px] font-bold flex items-center gap-2 shadow-xl backdrop-blur-md">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>LIVE STREAM • 1080p</span>
+                    <span className="text-slate-400">({activeRemoteModal.pcName})</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center text-white space-y-4 max-w-lg mx-auto">
+                  <div className="w-20 h-20 bg-slate-900 rounded-3xl border border-slate-800 flex items-center justify-center shadow-inner">
+                    <Video className="w-10 h-10 text-emerald-400 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-lg font-black text-white">
+                      {activeRemoteModal.userName} గారి కంప్యూటర్ స్క్రీన్ యాక్టివ్‌గా ఉంది
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">
+                      System PC: {activeRemoteModal.pcName} | Desk ID: {activeRemoteModal.anyDeskId}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 px-4 py-2.5 rounded-2xl text-xs font-bold animate-pulse flex items-center gap-2">
+                    <RefreshCw className="animate-spin text-emerald-400 shrink-0" size={14} />
+                    <span>లైవ్ వీడియో ఫ్రేమ్‌ల కోసం ప్రసారం కనెక్ట్ అవుతోంది...</span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                    ఈ పూర్తి స్క్రీన్ వీక్షణ ద్వారా ఏజెంట్‌ కంప్యూటర్ స్క్రీన్‌ను స్పష్టంగా చూడవచ్చు మరియు USB Token, IE Mode సమస్యలను వేగంగా పరిష్కరించవచ్చు.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
