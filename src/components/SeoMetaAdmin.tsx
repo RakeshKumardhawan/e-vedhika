@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export const DEFAULT_SEO_CONFIG = {
-  seoTitle: "E-Vedhika | The Digital Governance Platform",
+  seoTitle: "E-Vedhika | All Problems One Solution - Comprehensive Digital Portal",
   seoDescription:
     "E-Vedhika: All Problems One Solution - Comprehensive Digital Portal for Panchayat Secretaries and Citizens in Telangana and Andhra Pradesh.",
   seoKeywords:
@@ -31,15 +31,27 @@ export const DEFAULT_SEO_CONFIG = {
     "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=1200&auto=format&fit=crop&q=80",
   ogType: "website",
   twitterCard: "summary_large_image",
+  twitterSite: "@EVedhikaOfficial",
   metaRobots: "index, follow",
   canonicalUrl: "https://www.e-vedhika.in/",
   author: "E-Vedhika Digital Team",
+  googleSiteVerification: "",
+  bingSiteVerification: "",
+  yandexVerification: "",
+  facebookAppId: "",
 };
 
 export function updateDOMMetaTags(seoData?: Partial<typeof DEFAULT_SEO_CONFIG> | null) {
   if (typeof document === "undefined") return;
 
-  const data = { ...DEFAULT_SEO_CONFIG, ...(seoData || {}) };
+  // Fallback check from localStorage if no parameter provided
+  let localSaved: any = null;
+  try {
+    const raw = localStorage.getItem("e_vedhika_seo_meta_config");
+    if (raw) localSaved = JSON.parse(raw);
+  } catch {}
+
+  const data = { ...DEFAULT_SEO_CONFIG, ...(localSaved || {}), ...(seoData || {}) };
 
   const title = data.seoTitle || DEFAULT_SEO_CONFIG.seoTitle;
   const description = data.seoDescription || DEFAULT_SEO_CONFIG.seoDescription;
@@ -56,6 +68,7 @@ export function updateDOMMetaTags(seoData?: Partial<typeof DEFAULT_SEO_CONFIG> |
   document.title = title;
 
   const setMeta = (selector: string, attrName: string, attrVal: string, content: string) => {
+    if (!content) return;
     let el = document.querySelector(selector);
     if (!el) {
       el = document.createElement("meta");
@@ -70,19 +83,37 @@ export function updateDOMMetaTags(seoData?: Partial<typeof DEFAULT_SEO_CONFIG> |
   setMeta('meta[name="author"]', 'name', 'author', author);
   setMeta('meta[name="robots"]', 'name', 'robots', robots);
 
-  // OpenGraph
+  // Search Engine Verification Tags
+  if (data.googleSiteVerification) {
+    setMeta('meta[name="google-site-verification"]', 'name', 'google-site-verification', data.googleSiteVerification);
+  }
+  if (data.bingSiteVerification) {
+    setMeta('meta[name="msvalidate.01"]', 'name', 'msvalidate.01', data.bingSiteVerification);
+  }
+  if (data.yandexVerification) {
+    setMeta('meta[name="yandex-verification"]', 'name', 'yandex-verification', data.yandexVerification);
+  }
+  if (data.facebookAppId) {
+    setMeta('meta[property="fb:app_id"]', 'property', 'fb:app_id', data.facebookAppId);
+  }
+
+  // OpenGraph (Facebook, WhatsApp, LinkedIn, Telegram)
   setMeta('meta[property="og:title"]', 'property', 'og:title', ogTitle);
   setMeta('meta[property="og:description"]', 'property', 'og:description', ogDesc);
   setMeta('meta[property="og:image"]', 'property', 'og:image', ogImg);
   setMeta('meta[property="og:image:secure_url"]', 'property', 'og:image:secure_url', ogImg);
   setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
   setMeta('meta[property="og:type"]', 'property', 'og:type', data.ogType || 'website');
+  setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'E-Vedhika');
 
-  // Twitter
+  // Twitter / X
   setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', twitterCard);
   setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', ogTitle);
   setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', ogDesc);
   setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', ogImg);
+  if (data.twitterSite) {
+    setMeta('meta[name="twitter:site"]', 'name', 'twitter:site', data.twitterSite);
+  }
 
   // Canonical
   let canonicalEl = document.querySelector('link[rel="canonical"]');
@@ -117,24 +148,40 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
   const [seo, setSeo] = useState(DEFAULT_SEO_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"seo" | "og" | "preview">("seo");
+  const [activeTab, setActiveTab] = useState<"seo" | "og" | "webmaster" | "preview">("seo");
+  const [enginePreview, setEnginePreview] = useState<"google" | "bing" | "yahoo" | "duckduckgo" | "yandex">("google");
+  const [socialPreview, setSocialPreview] = useState<"whatsapp" | "facebook" | "twitter" | "telegram" | "linkedin">("whatsapp");
 
   useEffect(() => {
     const fetchSeoSettings = async () => {
+      let loadedSeo = { ...DEFAULT_SEO_CONFIG };
+
+      // Try LocalStorage first for instant availability
+      try {
+        const local = localStorage.getItem("e_vedhika_seo_meta_config");
+        if (local) {
+          loadedSeo = { ...loadedSeo, ...JSON.parse(local) };
+        }
+      } catch (e) {
+        console.warn("Local storage read error for SEO:", e);
+      }
+
+      // Try Firestore
       try {
         const snap = await getDoc(doc(db, "site_settings", "home_page"));
         if (snap.exists() && snap.data().seo) {
-          setSeo({ ...DEFAULT_SEO_CONFIG, ...snap.data().seo });
+          loadedSeo = { ...loadedSeo, ...snap.data().seo };
         } else {
-          // Fallback check in settings/seo_meta
           const fallbackSnap = await getDoc(doc(db, "settings", "seo_meta"));
           if (fallbackSnap.exists()) {
-            setSeo({ ...DEFAULT_SEO_CONFIG, ...fallbackSnap.data() });
+            loadedSeo = { ...loadedSeo, ...fallbackSnap.data() };
           }
         }
-      } catch (err) {
-        console.error("Error loading SEO meta settings:", err);
+      } catch (err: any) {
+        console.warn("Firestore fetch error for SEO (using local cache):", err.message);
       } finally {
+        setSeo(loadedSeo);
+        updateDOMMetaTags(loadedSeo);
         setLoading(false);
       }
     };
@@ -148,24 +195,27 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
 
   const handleSave = async () => {
     setSaving(true);
+    const payload = {
+      ...seo,
+      updatedAt: Date.now(),
+    };
+
+    // 1. Always save to LocalStorage immediately and update DOM
     try {
-      const payload = {
-        ...seo,
-        updatedAt: Date.now(),
-      };
+      localStorage.setItem("e_vedhika_seo_meta_config", JSON.stringify(payload));
+    } catch (e) {
+      console.warn("LocalStorage save error:", e);
+    }
+    updateDOMMetaTags(payload);
 
-      // Save to home_page document so all clients load it automatically
+    // 2. Save to Firestore with silent fallback
+    try {
       await setDoc(doc(db, "site_settings", "home_page"), { seo: payload }, { merge: true });
-      // Also write to settings/seo_meta for backup consistency
       await setDoc(doc(db, "settings", "seo_meta"), payload, { merge: true });
-
-      // Dynamically apply to head tags right away
-      updateDOMMetaTags(seo);
-
-      addToast("SEO & Meta Tags updated and applied successfully! (SEO సెట్టింగ్‌లు భద్రపరచబడ్డాయి)");
+      addToast("SEO & Meta Tags క్లౌడ్ మౌలిక వనరుల్లో మరియు లైవ్‌లో విజయవంతంగా భద్రపరచబడ్డాయి! (Saved to Cloud & Applied Live)");
     } catch (err: any) {
-      console.error("Failed to save SEO settings:", err);
-      addToast("Failed to save SEO settings: " + (err.message || "Unknown error"));
+      console.warn("Firestore save bypassed, saved locally:", err.message);
+      addToast("SEO సెట్టింగ్‌లు లోకల్‌గా భద్రపరచబడ్డాయి మరియు లైవ్‌లో వర్తింపజేయబడ్డాయి! (Saved Locally & Applied Live)");
     } finally {
       setSaving(false);
     }
@@ -244,36 +294,47 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto custom-scrollbar">
         <button
           onClick={() => setActiveTab("seo")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all whitespace-nowrap ${
             activeTab === "seo"
               ? "bg-[#103052] text-white shadow-md font-black"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           <Search size={15} />
-          1. సెర్చ్ ఇంజిన్ SEO (Search Meta Tags)
+          1. సెర్చ్ ఇంజిన్లు (Google, Bing, Yahoo, DDG, Yandex)
         </button>
         <button
           onClick={() => setActiveTab("og")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all whitespace-nowrap ${
             activeTab === "og"
               ? "bg-[#103052] text-white shadow-md font-black"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           <Share2 size={15} />
-          2. వాట్సాప్ & సోషల్ షేరింగ్ (OpenGraph & Images)
+          2. సోషల్ & వాట్సాప్ కార్డ్స్ (OpenGraph, X, Telegram)
+        </button>
+        <button
+          onClick={() => setActiveTab("webmaster")}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all whitespace-nowrap ${
+            activeTab === "webmaster"
+              ? "bg-[#103052] text-white shadow-md font-black"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }`}
+        >
+          <ShieldCheck size={15} />
+          3. వెబ్‌మాస్టర్ తనిఖీ కోడ్‌లు (Search Console Tags)
         </button>
         <button
           onClick={() => setActiveTab("preview")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs tracking-wide transition-all whitespace-nowrap ${
             activeTab === "preview"
               ? "bg-[#103052] text-white shadow-md font-black"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
         >
           <Eye size={15} />
-          3. లైవ్ ప్రివ్యూ (Live Snippet Preview)
+          4. ఆల్-ఇన్-వన్ లైవ్ ప్రివ్యూ (Live Snippets)
         </button>
       </div>
 
@@ -624,62 +685,359 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
         </div>
       )}
 
-      {/* Tab 3: Combined Live Preview */}
+      {/* Tab 3: Webmaster Verification Codes */}
+      {activeTab === "webmaster" && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-base font-black text-[#103052] flex items-center gap-2">
+              <ShieldCheck className="text-emerald-600" size={20} />
+              సెర్చ్ ఇంజిన్ వెబ్‌మాస్టర్ తనిఖీ ఐడీలు (Search Console & Verification Meta Tags)
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Google Search Console, Bing Webmaster Tools మరియు Yandex లలో సైట్ యాజమాన్యాన్ని రూఢీ చేసుకోవడానికి మెటా ట్యాగ్ ఐడీలు ఇక్కడ నమోదు చేయండి.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Google Search Console */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                Google Search Console Verification Tag
+              </label>
+              <p className="text-[11px] text-slate-500">
+                గూగుల్ ఇచ్చే <code className="bg-slate-200 px-1 py-0.5 rounded text-[10px]">content="..."</code> విలువను ఇక్కడ పేస్ట్ చేయండి:
+              </p>
+              <input
+                type="text"
+                value={seo.googleSiteVerification || ""}
+                onChange={(e) => handleChange("googleSiteVerification", e.target.value)}
+                placeholder="e.g. google-site-verification=abc123XYZ..."
+                className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 outline-none focus:border-blue-600"
+              />
+            </div>
+
+            {/* Bing & Yahoo Webmaster */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-sky-500 inline-block"></span>
+                Bing & Yahoo Webmaster Verification (msvalidate.01)
+              </label>
+              <p className="text-[11px] text-slate-500">
+                Bing మరియు Yahoo శోధన సాధనాల Verification Code:
+              </p>
+              <input
+                type="text"
+                value={seo.bingSiteVerification || ""}
+                onChange={(e) => handleChange("bingSiteVerification", e.target.value)}
+                placeholder="e.g. 1234567890ABCDEF1234567890ABCDEF"
+                className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 outline-none focus:border-sky-600"
+              />
+            </div>
+
+            {/* Yandex Webmaster */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                Yandex Webmaster Verification
+              </label>
+              <p className="text-[11px] text-slate-500">
+                Yandex Search Engine verification key:
+              </p>
+              <input
+                type="text"
+                value={seo.yandexVerification || ""}
+                onChange={(e) => handleChange("yandexVerification", e.target.value)}
+                placeholder="e.g. yandex-verification=1234567890"
+                className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 outline-none focus:border-red-600"
+              />
+            </div>
+
+            {/* Facebook App ID / Domain Verify */}
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span>
+                Facebook App ID / Meta Domain Verification
+              </label>
+              <p className="text-[11px] text-slate-500">
+                Meta Business Manager domain verification ID:
+              </p>
+              <input
+                type="text"
+                value={seo.facebookAppId || ""}
+                onChange={(e) => handleChange("facebookAppId", e.target.value)}
+                placeholder="e.g. 123456789012345"
+                className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 outline-none focus:border-indigo-600"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 4: All-In-One Multi-Engine & Multi-Platform Live Preview */}
       {activeTab === "preview" && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-8">
           <div>
             <h3 className="text-lg font-black text-[#103052] flex items-center gap-2">
               <Eye className="text-blue-600" size={20} />
-              లైవ్ SEO & సోషల్ మీడియా కార్డ్స్ ప్రివ్యూ (Live Preview Hub)
+              మల్టీ-సెర్చ్ ఇంజిన్ & సోషల్ మీడియా లైవ్ ప్రివ్యూ హబ్ (Multi-Engine Preview)
             </h3>
             <p className="text-xs text-slate-500 font-medium">
-              వివిధ వేదికలలో మీ వెబ్‌సైట్ శీర్షికలు, వివరణలు మరియు ఓపెన్ గ్రాఫ్ ఇమేజ్‌లు ఎలా కనిపిస్తాయో క్రింద సరిచూడండి.
+              Google, Bing, Yahoo, DuckDuckGo, Yandex మరియు సోషల్ వేదికలలో (WhatsApp, Facebook, Twitter, Telegram, LinkedIn) మీ వెబ్‌సైట్ రిజల్ట్ ఎలా కనిపిస్తుందో ఎంచుకుని పరిశీలించండి.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Google Search Card */}
-            <div className="space-y-3">
-              <span className="text-xs font-black text-slate-500 uppercase tracking-widest block flex items-center gap-1.5">
-                <Search size={14} className="text-blue-600" /> Google Search Result
+          {/* Engine & Social Switchers */}
+          <div className="space-y-6">
+            {/* 1. Search Engine Switcher */}
+            <div>
+              <span className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-3 flex items-center gap-1.5">
+                <Search size={14} className="text-blue-600" /> సెర్చ్ ఇంజిన్ ఎంచుకోండి (Select Search Engine):
               </span>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
-                <div className="text-xs text-slate-600 font-mono flex items-center gap-1">
-                  <span>https://www.e-vedhika.in</span>
-                </div>
-                <h4 className="text-lg font-bold text-[#1a0dab] hover:underline cursor-pointer leading-tight">
-                  {seo.seoTitle || DEFAULT_SEO_CONFIG.seoTitle}
-                </h4>
-                <p className="text-xs text-[#4d5156] leading-relaxed">
-                  {seo.seoDescription || DEFAULT_SEO_CONFIG.seoDescription}
-                </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "google", label: "🔍 Google Search", color: "border-blue-500 text-blue-700 bg-blue-50" },
+                  { id: "bing", label: "🟦 Bing Search", color: "border-sky-500 text-sky-700 bg-sky-50" },
+                  { id: "yahoo", label: "🟣 Yahoo Search", color: "border-purple-500 text-purple-700 bg-purple-50" },
+                  { id: "duckduckgo", label: "🦆 DuckDuckGo", color: "border-amber-500 text-amber-700 bg-amber-50" },
+                  { id: "yandex", label: "🔴 Yandex Search", color: "border-red-500 text-red-700 bg-red-50" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setEnginePreview(item.id as any)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      enginePreview === item.id
+                        ? `${item.color} shadow-sm ring-2 ring-blue-300 font-black`
+                        : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Render Selected Search Engine Preview Box */}
+              <div className="mt-4 p-5 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-inner">
+                {enginePreview === "google" && (
+                  <div className="space-y-1 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                    <div className="text-xs text-slate-600 font-mono flex items-center gap-1">
+                      <span>{seo.canonicalUrl || "https://www.e-vedhika.in"}</span>
+                      <span className="text-slate-400">› main</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-[#1a0dab] hover:underline cursor-pointer leading-tight">
+                      {seo.seoTitle || DEFAULT_SEO_CONFIG.seoTitle}
+                    </h4>
+                    <p className="text-xs text-[#4d5156] leading-relaxed">
+                      {seo.seoDescription || DEFAULT_SEO_CONFIG.seoDescription}
+                    </p>
+                  </div>
+                )}
+
+                {enginePreview === "bing" && (
+                  <div className="space-y-1.5 bg-white p-4 rounded-xl border border-sky-100 shadow-xs">
+                    <div className="text-[11px] text-emerald-800 font-sans flex items-center gap-1 font-bold">
+                      <span>https://www.e-vedhika.in</span>
+                      <span className="text-slate-300">• Bing Official</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-[#001ba0] hover:underline cursor-pointer leading-tight">
+                      {seo.seoTitle || DEFAULT_SEO_CONFIG.seoTitle}
+                    </h4>
+                    <p className="text-xs text-[#333] leading-relaxed">
+                      {seo.seoDescription || DEFAULT_SEO_CONFIG.seoDescription}
+                    </p>
+                  </div>
+                )}
+
+                {enginePreview === "yahoo" && (
+                  <div className="space-y-1.5 bg-white p-4 rounded-xl border border-purple-100 shadow-xs">
+                    <div className="text-[11px] text-purple-900 font-mono font-bold">
+                      e-vedhika.in
+                    </div>
+                    <h4 className="text-lg font-bold text-[#2200cc] hover:underline cursor-pointer leading-tight">
+                      {seo.seoTitle || DEFAULT_SEO_CONFIG.seoTitle}
+                    </h4>
+                    <p className="text-xs text-[#555] leading-relaxed">
+                      {seo.seoDescription || DEFAULT_SEO_CONFIG.seoDescription}
+                    </p>
+                  </div>
+                )}
+
+                {enginePreview === "duckduckgo" && (
+                  <div className="space-y-1.5 bg-white p-4 rounded-xl border border-amber-100 shadow-xs">
+                    <div className="text-[11px] text-slate-500 font-sans font-medium flex items-center gap-1">
+                      <span>e-vedhika.in</span>
+                      <span className="text-amber-600 font-bold">🔒 Privacy First</span>
+                    </div>
+                    <h4 className="text-base font-bold text-[#22518f] hover:underline cursor-pointer leading-tight">
+                      {seo.seoTitle || DEFAULT_SEO_CONFIG.seoTitle}
+                    </h4>
+                    <p className="text-xs text-[#666] leading-relaxed">
+                      {seo.seoDescription || DEFAULT_SEO_CONFIG.seoDescription}
+                    </p>
+                  </div>
+                )}
+
+                {enginePreview === "yandex" && (
+                  <div className="space-y-1.5 bg-white p-4 rounded-xl border border-red-100 shadow-xs">
+                    <div className="text-[11px] text-slate-700 font-mono font-semibold">
+                      www.e-vedhika.in
+                    </div>
+                    <h4 className="text-lg font-bold text-[#1000dd] hover:underline cursor-pointer leading-tight">
+                      {seo.seoTitle || DEFAULT_SEO_CONFIG.seoTitle}
+                    </h4>
+                    <p className="text-xs text-[#333] leading-relaxed">
+                      {seo.seoDescription || DEFAULT_SEO_CONFIG.seoDescription}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* WhatsApp / Facebook Share Card */}
-            <div className="space-y-3">
-              <span className="text-xs font-black text-slate-500 uppercase tracking-widest block flex items-center gap-1.5">
-                <Share2 size={14} className="text-indigo-600" /> WhatsApp & Social Media Card
+            {/* 2. Social Media & Messaging Switcher */}
+            <div>
+              <span className="text-xs font-black text-slate-700 uppercase tracking-wider block mb-3 flex items-center gap-1.5">
+                <Share2 size={14} className="text-indigo-600" /> సోషల్ వేదిక ఎంచుకోండి (Select Social Platform):
               </span>
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden max-w-sm">
-                <div className="h-44 bg-slate-100 overflow-hidden">
-                  <img
-                    src={seo.ogImage || DEFAULT_SEO_CONFIG.ogImage}
-                    alt="Social Card Banner"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-4 bg-slate-50 space-y-1">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">
-                    E-VEDHIKA.IN
-                  </span>
-                  <h4 className="text-sm font-bold text-slate-900 leading-snug">
-                    {seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}
-                  </h4>
-                  <p className="text-xs text-slate-600 line-clamp-2">
-                    {seo.ogDescription || DEFAULT_SEO_CONFIG.ogDescription}
-                  </p>
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "whatsapp", label: "💬 WhatsApp", color: "border-emerald-500 text-emerald-700 bg-emerald-50" },
+                  { id: "facebook", label: "📘 Facebook", color: "border-blue-600 text-blue-700 bg-blue-50" },
+                  { id: "twitter", label: "🐦 X (Twitter)", color: "border-slate-800 text-slate-900 bg-slate-100" },
+                  { id: "telegram", label: "✈️ Telegram", color: "border-sky-500 text-sky-700 bg-sky-50" },
+                  { id: "linkedin", label: "💼 LinkedIn", color: "border-indigo-600 text-indigo-700 bg-indigo-50" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSocialPreview(item.id as any)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      socialPreview === item.id
+                        ? `${item.color} shadow-sm ring-2 ring-indigo-300 font-black`
+                        : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Render Selected Social Card Preview Box */}
+              <div className="mt-4 p-5 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-inner flex justify-center">
+                {socialPreview === "whatsapp" && (
+                  <div className="bg-[#e5ddd5] p-3 rounded-2xl border border-slate-300 w-full max-w-md">
+                    <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                      <div className="h-48 w-full bg-slate-100 overflow-hidden">
+                        <img
+                          src={seo.ogImage || DEFAULT_SEO_CONFIG.ogImage}
+                          alt="OG Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3.5 bg-[#f0f2f5] space-y-1">
+                        <p className="text-[10px] uppercase font-bold text-slate-400 font-mono tracking-wider truncate">
+                          E-VEDHIKA.IN
+                        </p>
+                        <h5 className="text-sm font-bold text-slate-900 leading-tight">
+                          {seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}
+                        </h5>
+                        <p className="text-xs text-slate-600 line-clamp-2 leading-snug">
+                          {seo.ogDescription || DEFAULT_SEO_CONFIG.ogDescription}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {socialPreview === "facebook" && (
+                  <div className="bg-white p-3 rounded-2xl border border-slate-300 w-full max-w-md shadow-md space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black flex items-center gap-0.5 justify-center text-xs">
+                        EV
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">E-Vedhika Official</p>
+                        <p className="text-[10px] text-slate-400">Just now • 🌐 Public</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl overflow-hidden border border-slate-200">
+                      <div className="h-48 w-full bg-slate-100">
+                        <img
+                          src={seo.ogImage || DEFAULT_SEO_CONFIG.ogImage}
+                          alt="Facebook Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3 bg-slate-100/80">
+                        <span className="text-[9px] uppercase font-bold text-slate-500 block">E-VEDHIKA.IN</span>
+                        <h5 className="text-sm font-bold text-slate-900 leading-snug">{seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}</h5>
+                        <p className="text-xs text-slate-600 line-clamp-2">{seo.ogDescription || DEFAULT_SEO_CONFIG.ogDescription}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {socialPreview === "twitter" && (
+                  <div className="bg-black text-white p-4 rounded-2xl border border-slate-800 w-full max-w-md shadow-xl space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-amber-400">
+                        𝕏
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">E-Vedhika Portal <span className="text-slate-400 font-normal">@EVedhikaOfficial</span></p>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl overflow-hidden border border-slate-800">
+                      <div className="h-48 w-full bg-slate-900">
+                        <img
+                          src={seo.ogImage || DEFAULT_SEO_CONFIG.ogImage}
+                          alt="Twitter Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3 bg-slate-900/90">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase">e-vedhika.in</span>
+                        <h5 className="text-xs font-bold text-white">{seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}</h5>
+                        <p className="text-[11px] text-slate-400 line-clamp-2">{seo.ogDescription || DEFAULT_SEO_CONFIG.ogDescription}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {socialPreview === "telegram" && (
+                  <div className="bg-[#17212b] text-white p-4 rounded-2xl border border-slate-700 w-full max-w-md shadow-lg space-y-2">
+                    <div className="border-l-2 border-sky-400 pl-3 py-1 space-y-1">
+                      <span className="text-[10px] font-bold text-sky-400 uppercase">E-Vedhika Portal</span>
+                      <h5 className="text-xs font-bold text-white">{seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}</h5>
+                      <p className="text-[11px] text-slate-300 line-clamp-2">{seo.ogDescription || DEFAULT_SEO_CONFIG.ogDescription}</p>
+                      <div className="h-40 w-full rounded-lg overflow-hidden mt-2">
+                        <img
+                          src={seo.ogImage || DEFAULT_SEO_CONFIG.ogImage}
+                          alt="Telegram Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {socialPreview === "linkedin" && (
+                  <div className="bg-white p-4 rounded-2xl border border-slate-300 w-full max-w-md shadow-md space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">LinkedIn Article Card</span>
+                    <div className="rounded-xl overflow-hidden border border-slate-200">
+                      <div className="h-48 w-full bg-slate-100">
+                        <img
+                          src={seo.ogImage || DEFAULT_SEO_CONFIG.ogImage}
+                          alt="LinkedIn Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3 bg-slate-50">
+                        <h5 className="text-xs font-bold text-slate-900">{seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}</h5>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{seo.ogDescription || DEFAULT_SEO_CONFIG.ogDescription}</p>
+                        <span className="text-[9px] text-slate-400 font-mono mt-1 block">e-vedhika.in</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

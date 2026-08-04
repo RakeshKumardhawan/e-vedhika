@@ -404,15 +404,15 @@ app.get('/api/remote-commands', (req, res) => {
         }
       });
 
-      let modelId = "gemini-3.5-flash"; // Default general tasks
+      let modelId = "gemini-2.5-flash"; // Standard supported Gemini model
       let configObj: any = {
         systemInstruction: systemInstruction,
       };
 
       if (modelType === "fast") {
-        modelId = "gemini-3.1-flash-lite";
+        modelId = "gemini-2.5-flash";
       } else if (modelType === "complex") {
-        modelId = "gemini-3.1-pro-preview";
+        modelId = "gemini-2.5-pro";
         configObj.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
       }
 
@@ -456,6 +456,10 @@ app.get('/api/remote-commands', (req, res) => {
     };
     fs.writeFileSync(aboutContentPath, JSON.stringify(defaultAbout, null, 2));
   }
+
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
+  });
 
   app.get("/api/about", (req, res) => {
     try {

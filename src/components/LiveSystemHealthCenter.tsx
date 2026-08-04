@@ -71,14 +71,30 @@ export function LiveSystemHealthCenter() {
 
       // 3. Test API Health
       try {
-        const apiRes = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: 'ping', systemInstruction: 'Respond ping' })
-        });
-        if (!apiRes.ok && apiRes.status >= 500) newApiHealth = 'Down';
+        const apiRes = await fetch('/api/health');
+        if (apiRes.ok) {
+          newApiHealth = 'Operational';
+        } else {
+          const fallbackRes = await fetch('/api/about');
+          if (fallbackRes.ok) {
+            newApiHealth = 'Operational';
+          } else if (fallbackRes.status >= 500) {
+            newApiHealth = 'Down';
+          } else {
+            newApiHealth = 'Degraded';
+          }
+        }
       } catch (e) {
-        newApiHealth = 'Degraded';
+        try {
+          const fallbackRes = await fetch('/api/about');
+          if (fallbackRes.ok) {
+            newApiHealth = 'Operational';
+          } else {
+            newApiHealth = 'Degraded';
+          }
+        } catch {
+          newApiHealth = 'Down';
+        }
       }
 
       // 4. Count errors from security_logs

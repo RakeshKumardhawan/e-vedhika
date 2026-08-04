@@ -1071,13 +1071,25 @@ public class TelemetryReporter
               <h3 className="text-base font-bold text-slate-900">Live Remote Desktop Sharing & Waiting Queue (రిమోట్ యాక్సెస్ కంట్రోలర్)</h3>
               <p className="text-xs text-slate-500">అడ్మిన్‌గా బిజీ ఉన్నప్పుడు యూసర్ రిక్వెస్ట్‌లను వెయిటింగ్ లిస్ట్‌లో ఉంచవచ్చు లేదా 1-క్లిక్‌తో రిమోట్ కంట్రోల్ ద్వారా సమస్యను పరిష్కరించవచ్చు.</p>
             </div>
-            <button
-              onClick={handleAddTestRemoteRequest}
-              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-              <span>⚡ Add Test Remote Request (టెస్ట్ రిక్వెస్ట్ పంపు)</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {remoteQueue.length > 0 && (
+                <button
+                  onClick={handleClearRemoteQueue}
+                  className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  title="అన్ని రిమోట్ రిక్వెస్ట్‌లను డెలీట్ చేయండి"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>🗑️ Clear Queue (అన్నీ డెలీట్ చేయి)</span>
+                </button>
+              )}
+              <button
+                onClick={handleAddTestRemoteRequest}
+                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+                <span>⚡ Add Test Remote Request (టెస్ట్ రిక్వెస్ట్ పంపు)</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1088,19 +1100,30 @@ public class TelemetryReporter
                 <p className="text-xs text-slate-400 mt-1">When Mandal/GP users submit a remote support request via C# app, it will appear here in real-time.</p>
               </div>
             ) : remoteQueue.map((item) => (
-              <div key={item.id} className="p-5 rounded-2xl border bg-slate-50 border-slate-200 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-mono font-bold text-xs bg-white px-2 py-1 rounded border">{item.id}</span>
-                  {item.queueStatus === 'waiting' && (
-                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> వెయిటింగ్ లిస్ట్ #{item.queueNumber}
-                    </span>
-                  )}
-                  {item.queueStatus === 'connected' && (
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold flex items-center gap-1">
-                      <Video className="w-3 h-3" /> లైవ్ కనెక్ట్ అయింది
-                    </span>
-                  )}
+              <div key={item.id} className="p-5 rounded-2xl border bg-slate-50 border-slate-200 space-y-3 relative group">
+                <div className="flex justify-between items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono font-bold text-xs bg-white px-2 py-1 rounded border">{item.id}</span>
+                    {item.queueStatus === 'waiting' && (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> వెయిటింగ్ లిస్ట్ #{item.queueNumber}
+                      </span>
+                    )}
+                    {item.queueStatus === 'connected' && (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold flex items-center gap-1">
+                        <Video className="w-3 h-3" /> లైవ్ కనెక్ట్ అయింది
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteRemoteItem(item.id)}
+                    className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg transition-all border border-rose-200 cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1 text-[11px] font-bold px-2"
+                    title="ఈ రిమోట్ రిక్వెస్ట్‌ను డెలీట్ చేయి"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
                 </div>
 
                 <div>
@@ -1136,6 +1159,15 @@ public class TelemetryReporter
                       <PauseCircle className="w-3.5 h-3.5" /> Move to Waiting
                     </button>
                   )}
+
+                  <button
+                    onClick={() => handleDeleteRemoteItem(item.id)}
+                    className="py-2 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                    title="ఈ రికార్డ్‌ను డెలీట్ చేయి (Delete)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="text-[11px]">డెలీట్</span>
+                  </button>
                 </div>
               </div>
             ))}
