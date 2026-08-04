@@ -7,6 +7,7 @@ import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
  */
 
 import React, { useState, useEffect, useRef, useMemo, startTransition } from "react";
+import { createPortal } from "react-dom";
 import {
   useSearchParams,
   Link,
@@ -1759,6 +1760,49 @@ export default function App() {
   );
   const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const dropdownTimeoutRef = useRef<any>(null);
+
+  const handleOpenDropdown = (itemId: string, el: HTMLElement) => {
+    if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    const rect = el.getBoundingClientRect();
+    const dropdownWidth = 288;
+    let left = rect.left;
+    if (left + dropdownWidth > window.innerWidth - 12) {
+      left = Math.max(12, window.innerWidth - dropdownWidth - 12);
+    }
+    setDropdownPos({
+      top: rect.bottom + 4,
+      left: Math.max(12, left),
+    });
+    setOpenDropdown(itemId);
+  };
+
+  const handleMouseEnterDropdown = (itemId: string, el: HTMLElement) => {
+    if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    handleOpenDropdown(itemId, el);
+  };
+
+  const handleMouseLeaveDropdown = () => {
+    if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setOpenDropdown(null);
+    }, 150);
+  };
+
+  useEffect(() => {
+    if (!openDropdown) return;
+    const handleScroll = () => {
+      setOpenDropdown(null);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    const navEl = navScrollRef.current;
+    if (navEl) navEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (navEl) navEl.removeEventListener("scroll", handleScroll);
+    };
+  }, [openDropdown]);
 
   useEffect(() => {
     // If the URL is currently on an admin path, but the user selects a main app tab
@@ -4100,23 +4144,37 @@ export default function App() {
                     }
                     
                     return (
-                      <div key={item.id} className="relative group/navitem shrink-0" onMouseLeave={() => setOpenDropdown(null)}>
+                      <div
+                        key={item.id}
+                        className="relative group/navitem shrink-0"
+                        onMouseEnter={(e) => {
+                          if (item.hasDropdown) {
+                            handleMouseEnterDropdown(item.id, e.currentTarget);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          if (item.hasDropdown) {
+                            handleMouseLeaveDropdown();
+                          }
+                        }}
+                      >
                         <button
                           onClick={(e) => {
                             if (item.hasDropdown) {
-                               if (openDropdown === item.id) {
-                                   setOpenDropdown(null);
-                               } else {
-                                   e.preventDefault();
-                                   setOpenDropdown(item.id);
-                                   return;
-                               }
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (openDropdown === item.id) {
+                                setOpenDropdown(null);
+                              } else {
+                                handleOpenDropdown(item.id, e.currentTarget);
+                              }
+                              return;
                             }
                             if (item.id === "admin") {
                               navigate("/Evdka");
                               setCurrentTab("admin");
                             } else if (item.id === "priority_services") {
-                              return; // No longer open modal, rely on dropdown
+                              return;
                             } else if (item.id === "farmer_registry") {
                               window.history.pushState({}, "", "/Farmer_Registry");
                               setCurrentTab("farmer_registry");
@@ -4146,150 +4204,168 @@ export default function App() {
                           )}
                         </button>
                         
-                        {item.hasDropdown && (
-                          <div className={`fixed inset-0 sm:absolute sm:inset-auto sm:top-[calc(100%-4px)] sm:left-0 sm:w-72 bg-slate-50 sm:bg-white sm:rounded-2xl sm:shadow-xl sm:border border-slate-100 transition-all duration-200 z-[2000] sm:z-[1050] flex flex-col sm:block ${openDropdown === item.id ? 'opacity-100 visible' : 'opacity-0 invisible sm:mt-0 group-hover/navitem:opacity-100 group-hover/navitem:visible group-hover/navitem:mt-2'} ${openDropdown === item.id ? 'mt-0 sm:mt-2' : ''}`}>
-                            {openDropdown === item.id && (
-                              <div className="sm:hidden flex-none p-4 bg-white border-b border-slate-200 shadow-sm flex flex-col gap-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${themeClasses.iconBg}`}>
-                                      <Icon size={20} />
-                                    </div>
-                                    <h2 className="text-xl font-bold text-slate-800">{item.label}</h2>
+                        {item.hasDropdown && openDropdown === item.id && createPortal(
+                          <div
+                            className="fixed inset-0 z-[9999] flex flex-col justify-end sm:block pointer-events-none"
+                          >
+                            <div
+                              className="sm:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm pointer-events-auto"
+                              onClick={() => setOpenDropdown(null)}
+                            />
+                            <div
+                              style={{
+                                pointerEvents: "auto",
+                                top: typeof window !== "undefined" && window.innerWidth >= 640 ? `${dropdownPos.top}px` : undefined,
+                                left: typeof window !== "undefined" && window.innerWidth >= 640 ? `${dropdownPos.left}px` : undefined,
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseEnter={() => {
+                                if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
+                              }}
+                              onMouseLeave={handleMouseLeaveDropdown}
+                              className="w-full sm:w-72 bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 z-[10000] flex flex-col fixed bottom-0 inset-x-0 sm:bottom-auto sm:inset-x-auto transition-all duration-150 animate-in fade-in zoom-in-95 max-h-[80vh] sm:max-h-[85vh] overflow-hidden"
+                            >
+                              <div className="sm:hidden flex-none p-4 bg-slate-50 border-b border-slate-200 shadow-sm flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${themeClasses.iconBg}`}>
+                                    <Icon size={18} />
                                   </div>
-                                  <button onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }} className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors font-medium text-sm">
-                                    <ArrowLeft size={18} />
-                                    Back
-                                  </button>
+                                  <h2 className="text-lg font-bold text-slate-800">{item.label}</h2>
                                 </div>
+                                <button onClick={() => setOpenDropdown(null)} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 rounded-lg text-slate-700 transition-colors font-medium text-xs">
+                                  <ArrowLeft size={16} />
+                                  Close
+                                </button>
                               </div>
-                            )}
-                            <div className="p-4 sm:p-2 flex flex-col gap-2 sm:gap-1 overflow-y-auto flex-1 h-full">
-                              {item.id === "priority_services" && (
-                                <>
-                                  <button
-                                    onClick={() => { setCurrentTab("emergency"); setOpenDropdown(null); }}
-                                    className={`flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left sm:bg-transparent ${currentTab === 'emergency' ? 'bg-red-50 sm:bg-red-50 border-red-100 text-red-700' : 'bg-white border-slate-100 sm:border-transparent hover:bg-slate-50 text-slate-700'} border sm:border-transparent shadow-sm sm:shadow-none`}
-                                  >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'emergency' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                                      <AlertTriangle size={16} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="text-[13px] font-bold">Emergency Contacts</span>
-                                    </div>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (!user) requireLoginAlert();
-                                      else { setCurrentTab("my_activity"); setOpenDropdown(null); }
-                                    }}
-                                    className={`flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left sm:bg-transparent ${currentTab === 'my_activity' ? 'bg-emerald-50 sm:bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-white border-slate-100 sm:border-transparent hover:bg-slate-50 text-slate-700'} border sm:border-transparent shadow-sm sm:shadow-none`}
-                                  >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'my_activity' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                      <Activity size={16} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="text-[13px] font-bold">My Activity</span>
-                                    </div>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (!user) requireLoginAlert();
-                                      else { setShowProfileModal(true); setOpenDropdown(null); }
-                                    }}
-                                    className={`flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left sm:bg-transparent bg-white border-slate-100 sm:border-transparent hover:bg-slate-50 text-slate-700 border sm:border-transparent shadow-sm sm:shadow-none`}
-                                  >
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-slate-500`}>
-                                      <Settings size={16} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="text-[13px] font-bold">Edit Profile</span>
-                                    </div>
-                                  </button>
-                                </>
-                              )}
-                              {item.id === "workspace" && (
-                                <>
-                                  {[
-                                    { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} /> },
-                                    { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} /> },
-                                    { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} /> },
-                                    { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} /> },
-                                    { id: 'monthly-activity', label: 'Monthly Activity Data', icon: <FileSpreadsheet size={16} /> },
-                                    { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} /> },
-                                  ].map(tool => (
-                                    <button
-                                      key={tool.id}
-                                      onClick={() => { setCurrentTab("workspace"); setWorkspaceActiveTool(tool.id); setOpenDropdown(null); }}
-                                      className="flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left bg-white sm:bg-transparent border border-slate-100 sm:border-transparent hover:bg-blue-50 text-slate-700 shadow-sm sm:shadow-none"
-                                    >
-                                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-blue-600">
-                                        {tool.icon}
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-[13px] font-bold">{tool.label}</span>
-                                      </div>
-                                    </button>
-                                  ))}
-                                </>
-                              )}
-                              
-                              {item.id === "gos_formats" && (
-                                <>
-                                  {[
-                                    { id: 'Application', label: 'Applications & Formats', icon: <FileBadge size={16} /> },
-                                    { id: 'GO', label: 'GOs', icon: <FileText size={16} /> },
-                                  ].map(tool => (
-                                    <button
-                                      key={tool.id}
-                                      onClick={() => { setCurrentTab("gos_formats"); setOpenDropdown(null); }}
-                                      className="flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left bg-white sm:bg-transparent border border-slate-100 sm:border-transparent hover:bg-teal-50 text-slate-700 shadow-sm sm:shadow-none"
-                                    >
-                                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-teal-600">
-                                        {tool.icon}
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="text-[13px] font-bold">{tool.label}</span>
-                                      </div>
-                                    </button>
-                                  ))}
-                                </>
-                              )}
-                              
-                              {item.id === "useful_links" && (
-                                <div className="max-h-[50vh] overflow-y-auto scrollbar-thin">
-                                  {[
-                                    { name: 'ePanchayat Home', url: 'https://epanchayat.telangana.gov.in/' },
-                                    { name: 'House Tax DCB', url: 'https://epanchayat.telangana.gov.in/epmis/epmisPRHTAXDCBLive.jsp' },
-                                    { name: 'UBD Portal', url: 'https://ubd.telangana.gov.in/' },
-                                    { name: 'UBD MIS Status', url: 'https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus.do?rlb_type=3&pstcode=35&style=bluetheme' },
-                                    { name: 'eGramSwaraj', url: 'https://egramswaraj.gov.in/' },
-                                    { name: 'AuditOnline', url: 'https://auditonline.gov.in/' },
-                                    { name: 'Panchayat Nirnay', url: 'https://meetingonline.gov.in/homepage/official-login' },
-                                    { name: 'IFMIS Telangana', url: 'https://ifmis.telangana.gov.in/' },
-                                    { name: 'TG TGov', url: 'https://goir.telangana.gov.in/' },
-                                  ].map((link, idx) => (
-                                    <a
-                                      key={idx}
-                                      href={link.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={() => setOpenDropdown(null)}
-                                      className="flex items-center gap-3 w-full p-4 sm:p-2.5 rounded-2xl sm:rounded-xl transition-colors text-left bg-white sm:bg-transparent border border-slate-100 sm:border-transparent hover:bg-cyan-50 text-slate-700 shadow-sm sm:shadow-none"
-                                    >
-                                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100 text-cyan-600">
-                                        <ExternalLink size={16} />
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-[13px] font-bold truncate">{link.name}</span>
-                                      </div>
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
 
+                              <div className="p-3 sm:p-2 flex flex-col gap-2 sm:gap-1 overflow-y-auto flex-1 max-h-[70vh] sm:max-h-[75vh]">
+                                {item.id === "priority_services" && (
+                                  <>
+                                    <button
+                                      onClick={() => { setCurrentTab("emergency"); setOpenDropdown(null); }}
+                                      className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${currentTab === 'emergency' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-slate-50/50 hover:bg-slate-100 text-slate-700'} border border-slate-100 shadow-sm sm:shadow-none`}
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'emergency' ? 'bg-red-100 text-red-600' : 'bg-slate-200/80 text-slate-600'}`}>
+                                        <AlertTriangle size={16} />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[13px] font-bold">Emergency Contacts</span>
+                                      </div>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (!user) requireLoginAlert();
+                                        else { setCurrentTab("my_activity"); setOpenDropdown(null); }
+                                      }}
+                                      className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${currentTab === 'my_activity' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-slate-50/50 hover:bg-slate-100 text-slate-700'} border border-slate-100 shadow-sm sm:shadow-none`}
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'my_activity' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200/80 text-slate-600'}`}>
+                                        <Activity size={16} />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[13px] font-bold">My Activity</span>
+                                      </div>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (!user) requireLoginAlert();
+                                        else { setShowProfileModal(true); setOpenDropdown(null); }
+                                      }}
+                                      className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left bg-slate-50/50 hover:bg-slate-100 text-slate-700 border border-slate-100 shadow-sm sm:shadow-none`}
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-200/80 text-slate-600`}>
+                                        <Settings size={16} />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[13px] font-bold">Edit Profile</span>
+                                      </div>
+                                    </button>
+                                  </>
+                                )}
+                                {item.id === "workspace" && (
+                                  <>
+                                    {[
+                                      { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} /> },
+                                      { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} /> },
+                                      { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} /> },
+                                      { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} /> },
+                                      { id: 'monthly-activity', label: 'Monthly Activity Data', icon: <FileSpreadsheet size={16} /> },
+                                      { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} /> },
+                                    ].map(tool => (
+                                      <button
+                                        key={tool.id}
+                                        onClick={() => { setCurrentTab("workspace"); setWorkspaceActiveTool(tool.id); setOpenDropdown(null); }}
+                                        className="flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left bg-slate-50/50 hover:bg-blue-50 text-slate-700 border border-slate-100 shadow-sm sm:shadow-none"
+                                      >
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-blue-600">
+                                          {tool.icon}
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <span className="text-[13px] font-bold">{tool.label}</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </>
+                                )}
+                                
+                                {item.id === "gos_formats" && (
+                                  <>
+                                    {[
+                                      { id: 'Application', label: 'Applications & Formats', icon: <FileBadge size={16} /> },
+                                      { id: 'GO', label: 'GOs', icon: <FileText size={16} /> },
+                                    ].map(tool => (
+                                      <button
+                                        key={tool.id}
+                                        onClick={() => { setCurrentTab("gos_formats"); setOpenDropdown(null); }}
+                                        className="flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left bg-slate-50/50 hover:bg-teal-50 text-slate-700 border border-slate-100 shadow-sm sm:shadow-none"
+                                      >
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-teal-100 text-teal-600">
+                                          {tool.icon}
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <span className="text-[13px] font-bold">{tool.label}</span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </>
+                                )}
+                                
+                                {item.id === "useful_links" && (
+                                  <div className="max-h-[50vh] overflow-y-auto scrollbar-thin flex flex-col gap-1">
+                                    {[
+                                      { name: 'ePanchayat Home', url: 'https://epanchayat.telangana.gov.in/' },
+                                      { name: 'House Tax DCB', url: 'https://epanchayat.telangana.gov.in/epmis/epmisPRHTAXDCBLive.jsp' },
+                                      { name: 'UBD Portal', url: 'https://ubd.telangana.gov.in/' },
+                                      { name: 'UBD MIS Status', url: 'https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus.do?rlb_type=3&pstcode=35&style=bluetheme' },
+                                      { name: 'eGramSwaraj', url: 'https://egramswaraj.gov.in/' },
+                                      { name: 'AuditOnline', url: 'https://auditonline.gov.in/' },
+                                      { name: 'Panchayat Nirnay', url: 'https://meetingonline.gov.in/homepage/official-login' },
+                                      { name: 'IFMIS Telangana', url: 'https://ifmis.telangana.gov.in/' },
+                                      { name: 'TG TGov', url: 'https://goir.telangana.gov.in/' },
+                                    ].map((link, idx) => (
+                                      <a
+                                        key={idx}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setOpenDropdown(null)}
+                                        className="flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left bg-slate-50/50 hover:bg-cyan-50 text-slate-700 border border-slate-100 shadow-sm sm:shadow-none"
+                                      >
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-cyan-100 text-cyan-600">
+                                          <ExternalLink size={16} />
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="text-[13px] font-bold truncate">{link.name}</span>
+                                        </div>
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+
+                              </div>
                             </div>
-                          </div>
+                          </div>,
+                          document.body
                         )}
                       </div>
                     );
