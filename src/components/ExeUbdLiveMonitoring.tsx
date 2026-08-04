@@ -20,6 +20,20 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
   const [activeCategoryTab, setActiveCategoryTab] = useState<number>(1);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // Toast Notification & Custom Delete Confirmation Modal States
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // 1. Live Telemetry & Remote Requests Fetch Loop
   const fetchLiveCloudData = async () => {
     setSyncing(true);
@@ -72,24 +86,112 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
   }, [activeRemoteModal]);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText("https://e-vedhika.onrender.com/?tab=admin/UBDLiveMonitoring");
-    alert("Link Copied!");
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText("https://www.e-vedhika.in/?tab=admin/UBDLiveMonitoring");
+      }
+    } catch {}
+    showToast("📋 లింక్ కాపీ చేయబడింది! (Link Copied)");
   };
 
   const handleCopyText = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+    } catch (e) {
+      console.error("Copy error:", e);
+    }
     setCopiedCode(label);
-    setTimeout(() => setCopiedCode(null), 2000);
+    setTimeout(() => setCopiedCode(null), 2500);
   };
 
-  const handleUpdateStatus = (id: string, newStatus: any) => {
+  const handleUpdateStatus = async (id: string, newStatus: any) => {
     setRemoteQueue(prev => prev.map(q => q.id === id ? { ...q, queueStatus: newStatus } : q));
+    try {
+      await fetch('/api/remote-queue/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, queueStatus: newStatus })
+      });
+      showToast(`Status updated to ${newStatus}`);
+    } catch (e) {
+      console.error("Queue status update error:", e);
+    }
+  };
+
+  const handleClearRemoteQueue = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "అన్ని రిమోట్ యాక్సెస్ రిక్వెస్ట్‌లు డెలీట్ చేయి",
+      message: "మీరు ఖచ్చితంగా అన్ని రిమోట్ యాక్సెస్ రిక్వెస్ట్‌లను డెలీట్ చేయాలనుకుంటున్నారా?",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setRemoteQueue([]);
+        try {
+          await fetch('/api/remote-queue/clear', { method: 'POST' });
+          await fetchLiveCloudData();
+          showToast("🗑️ అన్ని రిమోట్ రిక్వెస్ట్‌లు విజయవంతంగా డెలీట్ చేయబడ్డాయి!");
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+  };
+
+  const handleDeleteRemoteItem = async (id: string) => {
+    try {
+      setRemoteQueue(prev => prev.filter(q => q.id !== id));
+      await fetch('/api/remote-queue/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, queueStatus: 'deleted' })
+      });
+      await fetchLiveCloudData();
+      showToast("🗑️ రిమోట్ యాక్సెస్ రిక్వెస్ట్ తొలగించబడింది.");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddTestRemoteRequest = async () => {
+    const pcNum = Math.floor(100 + Math.random() * 900);
+    const newReq = {
+      pcName: `GP-NARSINGI-${pcNum}`,
+      userName: `mpo_officer_${pcNum.toString().slice(-2)}`,
+      office: "Narsingi Grama Panchayat Office",
+      district: "Rangareddy",
+      anyDeskId: `${Math.floor(100 + Math.random() * 899)} ${Math.floor(100 + Math.random() * 899)} ${Math.floor(100 + Math.random() * 899)}`,
+      issueSummary: "IE Mode ActiveX Control verification pending for DSC.",
+      remoteType: "Native_EVedhika_BuiltIn"
+    };
+    try {
+      await fetch('/api/remote-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReq)
+      });
+      setSelectedTab('remote_queue');
+      await fetchLiveCloudData();
+      showToast("⚡ కొత్త రిమోట్ అసిస్టెన్స్ రిక్వెస్ట్ క్యూలోకి విజయవంతంగా చేర్చబడింది!");
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Generate Sample Telemetry test
   const handleTestPing = async () => {
     const pcNum = Math.floor(1000 + Math.random() * 9000);
+    const newId = `TEL-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     const samplePayload = {
+      id: newId,
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toLocaleTimeString(),
       pcName: `GP-TELANGANA-${pcNum}`,
@@ -132,25 +234,70 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(samplePayload)
       });
+      setSelectedTab('telemetry');
       await fetchLiveCloudData();
+      showToast(`⚡ కొత్త టెలిమెట్రీ పింగ్ రికార్డ్ సక్సెస్ ఫుల్ గా జనరేట్ చేయబడింది! (${samplePayload.pcName})`);
     } catch (e) {
       console.error(e);
     }
   };
 
   // Reset/Clear Telemetry Logs
-  const handleResetLogs = async () => {
-    if (window.confirm("మీరు ఖచ్చితంగా అన్ని పాత టెలిమెట్రీ లాగ్స్‌ను రీసెట్ (Delete) చేయాలనుకుంటున్నారా?")) {
-      try {
-        await fetch('/api/telemetry', { method: 'DELETE' });
-        await fetch('/api/telemetry/reset', { method: 'POST' });
+  const handleResetLogs = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "అన్ని పాత టెలిమెట్రీ లాగ్స్ రీసెట్ (Delete All Logs)",
+      message: "మీరు ఖచ్చితంగా అన్ని పాత టెలిమెట్రీ లాగ్స్‌ను రీసెట్ (Delete) చేయాలనుకుంటున్నారా?",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
         setCentralTelemetryLogs([]);
-        await fetchLiveCloudData();
-        alert("అన్ని పాత టెలిమెట్రీ లాగ్స్ విజయవంతంగా డెలీట్ చేయబడ్డాయి! (All telemetry logs deleted successfully)");
-      } catch (e) {
-        console.error("Reset error:", e);
+        try {
+          await fetch('/api/telemetry', { method: 'DELETE' });
+          await fetch('/api/telemetry/reset', { method: 'POST' });
+          await fetch('/api/telemetry/clear-all', { method: 'POST' });
+          await fetchLiveCloudData();
+          showToast("🗑️ అన్ని పాత టెలిమెట్రీ లాగ్స్ విజయవంతంగా డెలీట్ చేయబడ్డాయి!");
+        } catch (e) {
+          console.error("Reset error:", e);
+          showToast("❌ రీసెట్ చేయడంలో లోపం సంభవించింది.");
+        }
       }
-    }
+    });
+  };
+
+  // Delete Individual Log Item
+  const handleDeleteSingleLog = (log: any, index: number) => {
+    const displayName = log.pcName || log.userName || `Log #${index + 1}`;
+    setConfirmModal({
+      isOpen: true,
+      title: "టెలిమెట్రీ లాగ్ డెలీట్ చేయి",
+      message: `మీరు ఖచ్చితంగా "${displayName}" కి సంబంధించిన ఈ టెలిమెట్రీ లాగ్‌ను డెలీట్ చేయాలనుకుంటున్నారా?`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        // Immediate optimistic UI delete
+        setCentralTelemetryLogs(prev => prev.filter((item, i) => {
+          if (log.id && item.id) return item.id !== log.id;
+          return i !== index;
+        }));
+        try {
+          const res = await fetch('/api/telemetry/delete-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: log.id, slNo: log.slNo, pcName: log.pcName, index })
+          });
+          const data = await res.json();
+          if (data.success) {
+            await fetchLiveCloudData();
+            showToast("🗑️ లాగ్ విజయవంతంగా డెలీట్ చేయబడింది!");
+          } else {
+            showToast("⚠️ రికార్డ్ సర్వర్ లో కనుగొనబడలేదు.");
+          }
+        } catch (e) {
+          console.error("Delete log error:", e);
+          showToast("❌ డెలీట్ చేయడంలో లోపం వచ్చింది.");
+        }
+      }
+    });
   };
 
   // C# Code Strings
@@ -206,7 +353,7 @@ public class TelemetryReporter
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Central Server Telemetry Endpoint
-        HttpResponseMessage response = await client.PostAsync("https://e-vedhika.onrender.com/api/telemetry", content);
+        HttpResponseMessage response = await client.PostAsync("https://www.e-vedhika.in/api/telemetry", content);
         if (response.IsSuccessStatusCode)
         {
             Console.WriteLine("90 Parameter Telemetry successfully posted to Central Web Server!");
@@ -230,7 +377,7 @@ public class TelemetryReporter
     string json = JsonSerializer.Serialize(remoteRequest);
     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-    await client.PostAsync("https://e-vedhika.onrender.com/api/remote-queue", content);
+    await client.PostAsync("https://www.e-vedhika.in/api/remote-queue", content);
 }`;
 
   // Helper to render Category content for 90 Parameters Modal
@@ -689,7 +836,7 @@ public class TelemetryReporter
         </div>
         <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-indigo-100 w-full sm:w-auto justify-between">
           <code className="text-xs text-slate-700 font-mono font-bold truncate max-w-[220px] sm:max-w-none">
-            https://e-vedhika.onrender.com/?tab=admin/UBDLiveMonitoring
+            https://www.e-vedhika.in/?tab=admin/UBDLiveMonitoring
           </code>
           <button 
             onClick={handleCopyLink}
@@ -850,19 +997,28 @@ public class TelemetryReporter
                   </tr>
                 ) : (
                   centralTelemetryLogs.map((log, idx) => (
-                  <tr key={log.slNo || idx} className="hover:bg-indigo-50/50 transition-colors">
-                    {/* View 90 Parameters Blue Button */}
+                  <tr key={log.id || `telem-log-${idx}`} className="hover:bg-indigo-50/50 transition-colors">
+                    {/* View 90 Parameters & Delete Buttons */}
                     <td className="p-2.5">
-                      <button
-                        onClick={() => {
-                          setSelectedAuditLog(log);
-                          setActiveCategoryTab(1);
-                        }}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-sans font-bold text-[11px] rounded-lg transition-all flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap active:scale-95"
-                      >
-                        <Eye size={13} />
-                        <span>View 90 Parameters</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => {
+                            setSelectedAuditLog(log);
+                            setActiveCategoryTab(1);
+                          }}
+                          className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-sans font-bold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer whitespace-nowrap active:scale-95"
+                        >
+                          <Eye size={13} />
+                          <span>View 90 Parameters</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSingleLog(log, idx)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg transition-all border border-rose-200 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                          title="ఈ రికార్డ్‌ను డెలీట్ చేయి (Delete Log)"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
 
                     <td className="p-3 font-bold text-slate-900">{log.slNo || idx + 1}</td>
@@ -907,11 +1063,18 @@ public class TelemetryReporter
       {/* SCREEN 2: REMOTE ACCESS & ADMIN WAITING QUEUE */}
       {selectedTab === 'remote_queue' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
-          <div className="flex justify-between items-center border-b pb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900">Live Remote Desktop Sharing & Waiting Queue (రిమోట్ యాక్సెస్ కంట్రోలర్)</h3>
               <p className="text-xs text-slate-500">అడ్మిన్‌గా బిజీ ఉన్నప్పుడు యూసర్ రిక్వెస్ట్‌లను వెయిటింగ్ లిస్ట్‌లో ఉంచవచ్చు లేదా 1-క్లిక్‌తో రిమోట్ కంట్రోల్ ద్వారా సమస్యను పరిష్కరించవచ్చు.</p>
             </div>
+            <button
+              onClick={handleAddTestRemoteRequest}
+              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+              <span>⚡ Add Test Remote Request (టెస్ట్ రిక్వెస్ట్ పంపు)</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1139,13 +1302,67 @@ public class TelemetryReporter
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ pcName: activeRemoteModal.pcName, type: 'fix' })
                       });
-                      alert(`Sent remote fix command to ${activeRemoteModal.pcName}: Edge IE Mode & DSC Token restarted`);
+                      showToast(`Sent remote fix command to ${activeRemoteModal.pcName}: Edge IE Mode & DSC Token restarted`);
                     }}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-lg"
                   >
                     Fix IE Mode & USB Token Remotely
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-[9999] bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3 text-xs sm:text-sm font-semibold animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 bg-slate-900 text-white flex justify-between items-center">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-400" /> {confirmModal.title}
+              </h3>
+              <button 
+                className="cursor-pointer text-slate-400 hover:text-white transition-colors" 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 text-center space-y-4">
+              <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-slate-800 leading-relaxed">
+                {confirmModal.message}
+              </p>
+              <p className="text-xs text-slate-500 font-medium">
+                ఈ చర్యను మళ్ళీ వెనక్కి తీసుకోలేరు. (This action cannot be undone)
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                  className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+                >
+                  రద్దు చేయి (Cancel)
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-md shadow-rose-200"
+                >
+                  డెలీట్ చేయి (Confirm Delete)
+                </button>
               </div>
             </div>
           </div>

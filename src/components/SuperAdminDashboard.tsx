@@ -88,8 +88,16 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: an
         } else {
           setChartData(newChartData);
         }
-      }, (err) => {
-        console.warn("Analytics DB access error (expected if not configured):", err);
+      }, (_err) => {
+        // Silent fallback to server telemetry if analyticsDb permissions fail
+        fetch('/api/telemetry')
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && Array.isArray(data.logs)) {
+              setRecentVisitors(data.logs.slice(0, 10));
+            }
+          })
+          .catch(() => {});
       });
     }
 
@@ -126,7 +134,7 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab }: an
             </div>
             <div>
               <h2 className="text-base font-black text-[#0F172A] leading-tight tracking-tight">E-VEDHIKA</h2>
-              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Enterprise Console</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Admin Control Center</p>
             </div>
           </div>
 

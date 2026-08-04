@@ -11,7 +11,7 @@ export function PrivacyPolicyPage() {
         <div className="prose prose-slate max-w-none space-y-6">
           <p><strong>Effective Date:</strong> January 1, 2024</p>
           
-          <p>At E-Vedhika (e-vedhika.online), accessible from https://e-vedhika.online/, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by E-Vedhika and how we use it.</p>
+          <p>At E-Vedhika (www.e-vedhika.in), accessible from https://www.e-vedhika.in/, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by E-Vedhika and how we use it.</p>
           
           <h2 className="text-2xl font-bold mt-8">Information We Collect</h2>
           <p>The personal information that you are asked to provide, and the reasons why you are asked to provide it, will be made clear to you at the point we ask you to provide your personal information.</p>
@@ -57,7 +57,7 @@ export function TermsPage() {
         
         <div className="prose prose-slate max-w-none space-y-6">
           <p>Welcome to E-Vedhika!</p>
-          <p>These terms and conditions outline the rules and regulations for the use of E-Vedhika's Website, located at https://e-vedhika.online/.</p>
+          <p>These terms and conditions outline the rules and regulations for the use of E-Vedhika's Website, located at https://www.e-vedhika.in/.</p>
           <p>By accessing this website we assume you accept these terms and conditions. Do not continue to use E-Vedhika if you do not agree to take all of the terms and conditions stated on this page.</p>
           
           <h2 className="text-2xl font-bold mt-8">Cookies</h2>

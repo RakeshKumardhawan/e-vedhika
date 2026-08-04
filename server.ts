@@ -165,77 +165,35 @@ async function startServer() {
 
   
 // In-Memory Cloud Stores for Telemetry & Remote Queue
-const telemetryLogsStore: any[] = [
+const telemetryLogsStore: any[] = [];
+const remoteQueueStore: any[] = [
   {
-    slNo: 1,
-    date: new Date().toISOString().slice(0, 10),
-    time: "10:15:30 AM",
+    id: "REM-1042",
     pcName: "GP-GHATKESAR-01",
     userName: "sec_ramesh",
-    panchayat: "Ghatkesar GP",
-    mandal: "Ghatkesar",
+    office: "Ghatkesar Grama Panchayat",
     district: "Medchal-Malkajgiri",
-    osVersion: "Windows 11 Pro",
-    internet: "Online",
-    dotNet: "v3.5 & v4.8 Active",
-    nicDigiSigner: "Port 8080 Active",
-    dscStatus: "USB Token Connected",
-    trustedSites: "Zone 2 Configured",
-    edgeIeMode: "IE5 Quirks Active",
-    sitesXml: "Active",
-    verification: "Passed",
-    version: "v3.5",
-    status: "Success (15/15)",
-    healthScore: 100,
-    remarks: "All 90 deployment parameters verified successfully.",
-    ipAddress: "192.168.1.45",
-    macAddress: "00:1A:2C:3D:4E:5F",
-    systemArchitecture: "x64-based PC",
-    netFramework35: "Installed (Enabled)",
-    nicDigiPort: "8080 Running",
-    capicomDll: "Registered (System32 & SysWOW64)",
-    activeXControls: "Allowed & Enabled",
-    certValidity: "Valid (Expires 2028)",
-    ubdWebsiteReachable: "Reachable (200 OK)",
-    totalChecks: "90/90",
-    passedCount: 90
+    anyDeskId: "982 451 102",
+    issueSummary: "DSC Token not responding in Edge IE Mode.",
+    requestedTime: "10 mins ago",
+    queueStatus: "waiting",
+    queueNumber: 1,
+    remoteType: "Native_EVedhika_BuiltIn"
   },
   {
-    slNo: 2,
-    date: new Date().toISOString().slice(0, 10),
-    time: "09:42:10 AM",
+    id: "REM-1039",
     pcName: "MPDO-SHAMSHABAD-02",
     userName: "eo_krishna",
-    panchayat: "Shamshabad Mandal",
-    mandal: "Shamshabad",
+    office: "Shamshabad Mandal Office",
     district: "Rangareddy",
-    osVersion: "Windows 10 Enterprise",
-    internet: "Online",
-    dotNet: "v3.5 & v4.8 Active",
-    nicDigiSigner: "Port 8080 Active",
-    dscStatus: "USB Token Connected",
-    trustedSites: "Zone 2 Configured",
-    edgeIeMode: "IE5 Quirks Active",
-    sitesXml: "Active",
-    verification: "Passed",
-    version: "v3.5",
-    status: "Success (15/15)",
-    healthScore: 100,
-    remarks: "Fully compliant with Telangana UBD / ePanchayat Portal.",
-    ipAddress: "10.240.12.88",
-    macAddress: "B4:2E:99:A1:C3:D2",
-    systemArchitecture: "x64-based PC",
-    netFramework35: "Installed (Enabled)",
-    nicDigiPort: "8080 Running",
-    capicomDll: "Registered (System32 & SysWOW64)",
-    activeXControls: "Allowed & Enabled",
-    certValidity: "Valid (Expires 2027)",
-    ubdWebsiteReachable: "Reachable (200 OK)",
-    totalChecks: "90/90",
-    passedCount: 90
+    anyDeskId: "412 889 301",
+    issueSummary: "NIC DigiSigner Port 8080 active check failed.",
+    requestedTime: "25 mins ago",
+    queueStatus: "waiting",
+    queueNumber: 2,
+    remoteType: "AnyDesk"
   }
 ];
-const remoteQueueStore: any[] = [];
 const remoteScreenFramesStore: Record<string, { image: string; timestamp: number }> = {};
 const pendingRemoteCommandsStore: Record<string, any[]> = {};
 
@@ -243,24 +201,27 @@ const pendingRemoteCommandsStore: Record<string, any[]> = {};
 app.post('/api/telemetry', (req, res) => {
   try {
     const body = req.body || {};
+    const recordId = body.id || `TEL-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     const newRecord = {
-      slNo: telemetryLogsStore.length + 1,
+      ...body,
+      id: recordId,
+      slNo: body.slNo || (telemetryLogsStore.length + 1),
       date: body.date || new Date().toISOString().slice(0, 10),
       time: body.time || new Date().toLocaleTimeString(),
       pcName: body.pcName || 'Unknown-PC',
       userName: body.userName || 'Gram-Panchayat-User',
       healthScore: body.healthScore ? Number(body.healthScore) : 100,
-      status: body.status || 'SUCCESS',
-      ...body
+      status: body.status || 'SUCCESS'
     };
 
     telemetryLogsStore.unshift(newRecord);
-    console.log(`[CENTRAL TELEMETRY] ${newRecord.pcName} (${newRecord.userName}) -> ${newRecord.status}`);
+    console.log(`[CENTRAL TELEMETRY] Logged: ${newRecord.pcName} (${newRecord.userName}) ID: ${newRecord.id}`);
 
     // Save to firestore as well
     try {
       const db = admin.firestore();
       db.collection("telemetryLogs").add({
+        id: newRecord.id,
         pcName: newRecord.pcName,
         office: `${newRecord.panchayat || ''}, ${newRecord.mandal || ''}`,
         status: newRecord.status,
@@ -274,7 +235,7 @@ app.post('/api/telemetry', (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Telemetry logged successfully to central server',
-      recordId: newRecord.slNo
+      recordId: newRecord.id
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
@@ -283,6 +244,11 @@ app.post('/api/telemetry', (req, res) => {
 
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (Get)
 app.get('/api/telemetry', (req, res) => {
+  telemetryLogsStore.forEach((item, idx) => {
+    if (!item.id) {
+      item.id = `TEL-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
+    }
+  });
   res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
 });
 
@@ -292,10 +258,46 @@ app.delete('/api/telemetry', (req, res) => {
   res.json({ success: true, message: 'Telemetry logs cleared successfully' });
 });
 
+const deleteTelemetryItemHandler = (req: any, res: any) => {
+  const { id, slNo, pcName, index } = req.body || {};
+  let targetIdx = -1;
+
+  if (id) {
+    targetIdx = telemetryLogsStore.findIndex(item => item && item.id === id);
+  }
+  if (targetIdx === -1 && index !== undefined && index !== null && index >= 0 && index < telemetryLogsStore.length) {
+    targetIdx = Number(index);
+  }
+  if (targetIdx === -1 && slNo !== undefined && slNo !== null) {
+    targetIdx = telemetryLogsStore.findIndex(item => item && String(item.slNo) === String(slNo));
+  }
+  if (targetIdx === -1 && pcName) {
+    targetIdx = telemetryLogsStore.findIndex(item => item && item.pcName === pcName);
+  }
+
+  if (targetIdx !== -1) {
+    const deleted = telemetryLogsStore.splice(targetIdx, 1);
+    console.log(`[CENTRAL TELEMETRY DELETE] Deleted log index ${targetIdx}:`, deleted[0]?.pcName || id);
+    return res.json({ success: true, message: 'Log item deleted successfully' });
+  }
+  return res.json({ success: false, message: 'Log item not found' });
+};
+
+app.delete('/api/telemetry/item', deleteTelemetryItemHandler);
+app.post('/api/telemetry/delete-item', deleteTelemetryItemHandler);
+
 app.post('/api/telemetry/reset', (req, res) => {
   telemetryLogsStore.length = 0;
   res.json({ success: true, message: 'Telemetry logs cleared successfully' });
 });
+
+const clearAllTelemetryHandler = (req: any, res: any) => {
+  telemetryLogsStore.length = 0;
+  res.json({ success: true, message: 'All telemetry logs cleared successfully' });
+};
+
+app.delete('/api/telemetry/clear-all', clearAllTelemetryHandler);
+app.post('/api/telemetry/clear-all', clearAllTelemetryHandler);
 
 // 3. Remote Assistance Request Queue API Routes
 app.post('/api/remote-queue', (req, res) => {
@@ -317,7 +319,27 @@ app.post('/api/remote-queue', (req, res) => {
 });
 
 app.get('/api/remote-queue', (req, res) => {
-  res.json({ success: true, queue: remoteQueueStore });
+  res.json({ success: true, queue: remoteQueueStore.filter(q => q.queueStatus !== 'deleted') });
+});
+
+app.post('/api/remote-queue/update', (req, res) => {
+  const { id, queueStatus } = req.body || {};
+  if (queueStatus === 'deleted') {
+    const idx = remoteQueueStore.findIndex(q => q.id === id);
+    if (idx !== -1) remoteQueueStore.splice(idx, 1);
+    return res.json({ success: true, message: 'Item deleted' });
+  }
+  const item = remoteQueueStore.find(q => q.id === id);
+  if (item) {
+    item.queueStatus = queueStatus;
+    return res.json({ success: true, item });
+  }
+  return res.json({ success: false, message: 'Item not found' });
+});
+
+app.post('/api/remote-queue/clear', (req, res) => {
+  remoteQueueStore.length = 0;
+  res.json({ success: true, message: 'Remote queue cleared' });
 });
 
 // 4. Native Remote Desktop Live Screen Stream (POST from C# EXE / GET from Web)
@@ -2004,7 +2026,7 @@ app.get('/api/remote-commands', (req, res) => {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
           const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
           const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
-          const firestoreResp = await fetchObj(firestoreUrl, { headers: { "Referer": "https://e-vedhika.online/" } });
+          const firestoreResp = await fetchObj(firestoreUrl, { headers: { "Referer": "https://www.e-vedhika.in/" } });
           
           if (firestoreResp.ok) {
             const data = await firestoreResp.json();

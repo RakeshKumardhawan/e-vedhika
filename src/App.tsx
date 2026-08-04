@@ -1668,14 +1668,18 @@ export default function App() {
           msg.includes("closed without opened") ||
           msg.includes("connection failed") ||
           msg.includes("@firebase/firestore") ||
-          msg.includes("WebChannelConnection"));
+          msg.includes("WebChannelConnection") ||
+          msg.includes("Visitor tracking notification") ||
+          msg.includes("Analytics DB access error") ||
+          msg.includes("Missing or insufficient permissions"));
 
       const isBenignErrorObject =
         msg instanceof Error &&
         (msg.message.includes("WebSocket") ||
           msg.message.includes("closed without opened") ||
           msg.message.includes("vite") ||
-          msg.message.includes("@firebase/firestore"));
+          msg.message.includes("@firebase/firestore") ||
+          msg.message.includes("Missing or insufficient permissions"));
 
       if (isBenignError || isBenignErrorObject) {
         return;
@@ -1693,7 +1697,10 @@ export default function App() {
           msg.includes("@firebase/firestore") ||
           msg.includes("WebChannelConnection") ||
           msg.includes("The width(-1) and height(-1) of chart") ||
-          msg.includes("Access to all PINs restricted"))
+          msg.includes("Access to all PINs restricted") ||
+          msg.includes("Visitor tracking notification") ||
+          msg.includes("Analytics DB access error") ||
+          msg.includes("Missing or insufficient permissions"))
       ) {
         return;
       }
@@ -1706,10 +1713,12 @@ export default function App() {
         (reason &&
           reason.message &&
           (reason.message.includes("WebSocket") ||
-            reason.message.includes("closed without opened"))) ||
+            reason.message.includes("closed without opened") ||
+            reason.message.includes("Missing or insufficient permissions"))) ||
         (typeof reason === "string" &&
           (reason.includes("WebSocket") ||
-            reason.includes("closed without opened")));
+            reason.includes("closed without opened") ||
+            reason.includes("Missing or insufficient permissions")));
 
       if (isBenign) {
         event.preventDefault();
@@ -14364,7 +14373,7 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                               DNS Propagation & SSL
                             </h4>
                             <p className="text-[11px] uppercase tracking-widest text-slate-400">
-                              Domain: e-vedhika.com
+                              Domain: www.e-vedhika.in
                             </p>
                           </div>
                         </div>

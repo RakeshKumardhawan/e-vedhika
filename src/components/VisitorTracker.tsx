@@ -27,24 +27,28 @@ export function VisitorTracker({ user }: { user: any }) {
         const parser = new UAParser();
         const result = parser.getResult();
 
-        await addDoc(collection(analyticsDb, "visitor_logs"), {
-          uid: user?.uid || "anonymous",
-          email: user?.email || "anonymous",
-          path: location.pathname + location.search,
-          url: window.location.href,
-          userAgent: navigator.userAgent,
-          browser: result.browser.name + " " + result.browser.version,
-          os: result.os.name + " " + result.os.version,
-          device: result.device.type || "desktop",
-          resolution: window.innerWidth + "x" + window.innerHeight,
-          language: navigator.language,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          timestamp: Date.now(),
-          sessionToken: sessionToken.current,
-          ip
-        });
+        try {
+          await addDoc(collection(analyticsDb, "visitor_logs"), {
+            uid: user?.uid || "anonymous",
+            email: user?.email || "anonymous",
+            path: location.pathname + location.search,
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            browser: (result.browser.name || "Browser") + " " + (result.browser.version || ""),
+            os: (result.os.name || "OS") + " " + (result.os.version || ""),
+            device: result.device.type || "desktop",
+            resolution: window.innerWidth + "x" + window.innerHeight,
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timestamp: Date.now(),
+            sessionToken: sessionToken.current,
+            ip
+          });
+        } catch (fsErr) {
+          // Ignore analytics write errors gracefully
+        }
       } catch (err) {
-        console.warn("Visitor tracking notification:", err);
+        // Silent error suppression
       }
     };
 
