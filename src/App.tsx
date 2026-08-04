@@ -1522,6 +1522,8 @@ function LandingPage({
   );
 }
 
+import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -4025,10 +4027,10 @@ export default function App() {
           </div></div>
       )}
 
-      <nav className="nav-trigger-bar relative z-[10]">
-        <div className="h-full w-full max-w-full px-2 sm:px-6 mx-auto flex items-center">
-            <div className="flex-1 w-full flex items-center h-full justify-center min-w-0">
-                <div className="flex items-center overflow-x-auto custom-scrollbar no-scrollbar whitespace-nowrap flex-nowrap justify-start lg:justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 w-full">
+      <nav className="nav-trigger-bar relative z-[10] py-2 bg-white shadow-sm border-b border-slate-200/50">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 flex items-center">
+            <div className="flex-1 w-full flex items-center justify-center min-w-0">
+                <div className="flex items-center flex-wrap justify-center gap-2 sm:gap-3 py-1 w-full">
                   {[
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
 
@@ -4361,6 +4363,7 @@ export default function App() {
                           icon: Lock,
                         },
                         { id: "logs", label: "Security Logs", icon: ShieldAlert },
+                        { id: "visitor_logs", label: "Visitor Logs (పబ్లిక్)", icon: Globe },
                         {
                           id: "farmer_registry_logs",
                           label: "Farmer Registry Logs",
@@ -9182,6 +9185,11 @@ function AdminPanel({
                       icon: <ShieldCheck size={18} />,
                     },
                     {
+                      id: "visitor_logs",
+                      label: "Visitor Logs (పబ్లిక్)",
+                      icon: <Globe size={18} />,
+                    },
+                    {
                       id: "farmer_registry_logs",
                       label: "Farmer Registry Logs",
                       icon: <Database size={18} />,
@@ -13591,6 +13599,10 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
 
             {activeSubTab === "logs" && (
               <SecurityLogsSection />
+            )}
+
+            {activeSubTab === "visitor_logs" && (
+              <PublicVisitorLogs />
             )}
 
             {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
