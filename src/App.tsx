@@ -1,5 +1,6 @@
 import SuperAdminDashboard from "./components/SuperAdminDashboard";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
+import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -782,7 +783,7 @@ body {
 }
 .scheme-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 20px;
   margin-top: 20px;
 }
@@ -833,6 +834,7 @@ body {
   max-width: 80%;
   font-size: 14px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  word-break: break-word;
 }
 .msg-other { background: #fff; border-bottom-left-radius: 2px; align-self: flex-start; color: #334155; }
 .msg-me { background: var(--primary); color: #fff; border-bottom-right-radius: 2px; align-self: flex-end; }
@@ -2301,9 +2303,9 @@ export default function App() {
           ogImage.setAttribute("content", post.mediaUrl);
       }
     } else {
-      document.title = "E-Vedhika | The Digital Governance Platform";
+      updateDOMMetaTags(siteConfig?.seo || siteConfig?.seoSettings);
     }
-  }, [postIdFromUrl, posts, user]);
+  }, [postIdFromUrl, posts, user, siteConfig]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -3665,29 +3667,32 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 flex justify-end sm:justify-start px-2 sm:px-6">
-          <div className="flex items-center gap-1 bg-[#09223e] border border-[#1e40af]/20 rounded-full p-1 shadow-inner overflow-hidden max-sm:scale-95">
+        <div className="flex-1 flex justify-end sm:justify-start px-1 sm:px-6 min-w-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 bg-[#09223e] border border-[#1e40af]/20 rounded-full p-1 shadow-inner overflow-hidden">
             <span className="hidden md:inline text-[8px] font-black text-slate-400 uppercase tracking-wider px-2 select-none">అక్షరాల సైజు</span>
             <button
               onClick={() => setTextZoom("normal")}
-              className={`text-[8px] sm:text-[9px] font-black uppercase px-2 py-1.5 rounded-full transition-all cursor-pointer ${textZoom === "normal" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
+              className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 sm:px-2 py-1 transition-all cursor-pointer rounded-full ${textZoom === "normal" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
               title="సాధారణ సైజు"
             >
-              సాధారణం (A)
+              <span className="hidden sm:inline">సాధారణం (A)</span>
+              <span className="inline sm:hidden">A</span>
             </button>
             <button
               onClick={() => setTextZoom("large")}
-              className={`text-[8px] sm:text-[9px] font-black uppercase px-2 py-1.5 rounded-full transition-all cursor-pointer ${textZoom === "large" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
+              className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 sm:px-2 py-1 transition-all cursor-pointer rounded-full ${textZoom === "large" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
               title="పెద్ద సైజు"
             >
-              పెద్దది (A+)
+              <span className="hidden sm:inline">పెద్దది (A+)</span>
+              <span className="inline sm:hidden">A+</span>
             </button>
             <button
               onClick={() => setTextZoom("xlarge")}
-              className={`text-[8px] sm:text-[9px] font-black uppercase px-2 py-1.5 rounded-full transition-all cursor-pointer ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
+              className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 sm:px-2 py-1 transition-all cursor-pointer rounded-full ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
               title="చాలా పెద్ద సైజు"
             >
-              మహా పెద్దది (A++)
+              <span className="hidden sm:inline">మహా పెద్దది (A++)</span>
+              <span className="inline sm:hidden">A++</span>
             </button>
           </div>
         </div>
@@ -4022,8 +4027,8 @@ export default function App() {
 
       <nav className="nav-trigger-bar relative z-[10]">
         <div className="h-full w-full max-w-full px-2 sm:px-6 mx-auto flex items-center">
-            <div className="flex-1 w-full flex items-center h-full justify-center">
-                <div className="flex items-center flex-wrap justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 w-full">
+            <div className="flex-1 w-full flex items-center h-full justify-center min-w-0">
+                <div className="flex items-center overflow-x-auto custom-scrollbar no-scrollbar whitespace-nowrap flex-nowrap justify-start lg:justify-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 w-full">
                   {[
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
 
@@ -4395,6 +4400,7 @@ export default function App() {
                       { id: "builder", label: "Page Builder", icon: Wrench },
                       { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
                       { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
+                      { id: "seo_meta", label: "SEO & Dynamic Meta Tags", icon: Globe },
                       { id: "page_descriptions", label: "Page Descriptions", icon: FileBadge },
                       { id: "locations", label: "Locations", icon: MapPin },
                       { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
@@ -4752,7 +4758,7 @@ export default function App() {
 
                                 {el.type === "Post Grid" && (
                                   <div className="space-y-8">
-                                    <div className="flex items-end justify-between px-2">
+                                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-2">
                                       <div>
                                         <motion.span
                                           initial={{ opacity: 0 }}
@@ -6989,7 +6995,7 @@ export default function App() {
               <div className="shrink-0 flex items-center justify-center">
                 <div
                   id="poster-card-to-capture"
-                  className="w-[360px] min-h-[500px] p-6 bg-white border border-slate-100 rounded-[24px] shadow-lg flex flex-col justify-between relative overflow-hidden text-left"
+                  className="w-full max-w-[360px] min-h-[500px] p-6 bg-white border border-slate-100 rounded-[24px] shadow-lg flex flex-col justify-between relative overflow-hidden text-left mx-auto"
                 >
                   {/* Styled Header */}
                   <div>
@@ -14565,6 +14571,9 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                 fetchLandingPageData={fetchLandingPageData}
                 addToast={addToast}
               />
+            )}
+            {activeSubTab === "seo_meta" && (
+              <SeoMetaAdmin addToast={addToast} />
             )}
             {activeSubTab === "page_descriptions" && (
               <PageDescriptionsAdmin addToast={addToast} />

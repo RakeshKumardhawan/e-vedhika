@@ -401,8 +401,13 @@ header {
 /* CONTENT AREA */
 .content-area {
   flex: 1;
-  padding: 20px;
+  padding: 12px;
   max-width: 100%;
+}
+@media (min-width: 640px) {
+  .content-area {
+    padding: 20px;
+  }
 }
 
 .section-card { 

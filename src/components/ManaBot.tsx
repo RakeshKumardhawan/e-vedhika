@@ -104,7 +104,7 @@ export function ManaBot({ currentTab, userName }: { currentTab: string, userName
             initial={{ opacity: 0, y: 20, scale: 0.9, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="mb-4 w-[360px] md:w-[420px] h-[550px] bg-white rounded-[32px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden relative"
+            className="mb-4 w-[95vw] max-w-[360px] md:w-[420px] md:max-w-none h-[550px] bg-white rounded-[32px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden relative"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 p-4 text-white flex items-center justify-between shadow-md">
