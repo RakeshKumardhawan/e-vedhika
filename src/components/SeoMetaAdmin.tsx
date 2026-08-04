@@ -122,14 +122,24 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
   useEffect(() => {
     const fetchSeoSettings = async () => {
       try {
+        const localSaved = localStorage.getItem("e_vedhika_seo_config");
+        if (localSaved) {
+          try {
+            setSeo({ ...DEFAULT_SEO_CONFIG, ...JSON.parse(localSaved) });
+          } catch (e) {}
+        }
         const snap = await getDoc(doc(db, "site_settings", "home_page"));
         if (snap.exists() && snap.data().seo) {
-          setSeo({ ...DEFAULT_SEO_CONFIG, ...snap.data().seo });
+          const merged = { ...DEFAULT_SEO_CONFIG, ...snap.data().seo };
+          setSeo(merged);
+          localStorage.setItem("e_vedhika_seo_config", JSON.stringify(merged));
         } else {
           // Fallback check in settings/seo_meta
           const fallbackSnap = await getDoc(doc(db, "settings", "seo_meta"));
           if (fallbackSnap.exists()) {
-            setSeo({ ...DEFAULT_SEO_CONFIG, ...fallbackSnap.data() });
+            const merged = { ...DEFAULT_SEO_CONFIG, ...fallbackSnap.data() };
+            setSeo(merged);
+            localStorage.setItem("e_vedhika_seo_config", JSON.stringify(merged));
           }
         }
       } catch (err) {
@@ -148,24 +158,29 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
 
   const handleSave = async () => {
     setSaving(true);
-    try {
-      const payload = {
-        ...seo,
-        updatedAt: Date.now(),
-      };
+    const payload = {
+      ...seo,
+      updatedAt: Date.now(),
+    };
 
+    // Save to local storage immediately
+    try {
+      localStorage.setItem("e_vedhika_seo_config", JSON.stringify(payload));
+    } catch (e) {}
+
+    // Dynamically apply to head tags right away
+    updateDOMMetaTags(seo);
+
+    try {
       // Save to home_page document so all clients load it automatically
       await setDoc(doc(db, "site_settings", "home_page"), { seo: payload }, { merge: true });
       // Also write to settings/seo_meta for backup consistency
       await setDoc(doc(db, "settings", "seo_meta"), payload, { merge: true });
 
-      // Dynamically apply to head tags right away
-      updateDOMMetaTags(seo);
-
       addToast("SEO & Meta Tags updated and applied successfully! (SEO సెట్టింగ్‌లు భద్రపరచబడ్డాయి)");
     } catch (err: any) {
-      console.error("Failed to save SEO settings:", err);
-      addToast("Failed to save SEO settings: " + (err.message || "Unknown error"));
+      console.warn("Firestore sync error for SEO settings, saved locally:", err);
+      addToast("SEO & Meta Tags applied locally! (SEO సెట్టింగ్‌లు లోకల్‌గా భద్రపరచబడ్డాయి)");
     } finally {
       setSaving(false);
     }

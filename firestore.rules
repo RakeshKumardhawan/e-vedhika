@@ -143,23 +143,23 @@ match /usernames/{username} {
   allow write: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid);
 }
 
-match /settings/{settingId} {
+match /settings/{document=**} {
   allow read, write: if true;
 }
 
-match /site_settings/{docId} {
+match /site_settings/{document=**} {
   allow read, write: if true;
 }
 
-match /system_errors/{docId} {
+match /system_errors/{document=**} {
   allow read, write: if true;
 }
 
-match /app_errors/{docId} {
+match /app_errors/{document=**} {
   allow read, write: if true;
 }
 
-match /security_logs/{logId} {
+match /security_logs/{document=**} {
   allow read, write: if true;
 }
 
@@ -174,7 +174,7 @@ match /home_sections/{sectionId} {
   allow write: if isAdmin();
 }
 
-match /deploymentLogs/{logId} {
+match /deploymentLogs/{document=**} {
   allow read: if true;
   allow create: if true;
 }
@@ -189,11 +189,11 @@ match /custom_code/{document=**} {
 }
 
 
-match /visitor_logs/{logId} {
+match /visitor_logs/{document=**} {
   allow read, write: if true;
 }
 
-match /user_tracking/{trackId} {
+match /user_tracking/{document=**} {
   allow read, write: if true;
 }
 
