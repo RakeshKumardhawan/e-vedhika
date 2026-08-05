@@ -1524,6 +1524,7 @@ function LandingPage({
 }
 
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
+import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
 
 export default function App() {
   const navigate = useNavigate();
@@ -1740,27 +1741,27 @@ export default function App() {
     };
   }, []);
 
-  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
-  const [activeAdminSubTab, setActiveAdminSubTab] = useState(
-    searchParams.get("tab") === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : (searchParams.get("subtab") || "dash"),
-  );
+  const isFarmerRegistryPath =
+    location.pathname.toLowerCase().endsWith("/farmer_registry") ||
+    location.pathname.toLowerCase().endsWith("/farmer-registry");
+
+  const initialUrlData = parseTabFromUrl(searchParams, location.pathname);
+
+  const [activeAdminSubTab, setActiveAdminSubTab] = useState(initialUrlData.adminSubTab);
   const [siteConfig, setSiteConfig] = useState<any>(null);
   const [customMenus, setCustomMenus] = useState<CustomMenu[]>([]);
   const [customMenuCards, setCustomMenuCards] = useState<CustomMenuCard[]>([]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
-  const isFarmerRegistryPath =
-    location.pathname.toLowerCase().endsWith("/farmer_registry") ||
-    location.pathname.toLowerCase().endsWith("/farmer-registry");
-  const tabFromUrl = searchParams.get("tab");
-  const resolvedTab = tabFromUrl === "reports" ? "my_activity" : tabFromUrl === "problems" ? "directlinks" : (tabFromUrl === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : tabFromUrl);
   const [currentTab, setCurrentTab] = useState(
-    isFarmerRegistryPath ? "farmer_registry" : resolvedTab || "home",
+    isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab,
   );
-  const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(null);
-  const [gosActiveSubTab, setGosActiveSubTab] = useState<'Application' | 'GO'>('Application');
-  const [suggestionsActiveSubTab, setSuggestionsActiveSubTab] = useState<'problems' | 'suggestions'>('problems');
+  const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(
+    initialUrlData.mainTab === "workspace" ? initialUrlData.workspaceTool : null
+  );
+  const [gosActiveSubTab, setGosActiveSubTab] = useState<'Application' | 'GO'>(initialUrlData.gosSubTab);
+  const [suggestionsActiveSubTab, setSuggestionsActiveSubTab] = useState<'problems' | 'suggestions'>(initialUrlData.suggestionsSubTab);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const dropdownTimeoutRef = useRef<any>(null);
@@ -1861,161 +1862,19 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  const isInternalUrlUpdateRef = useRef(false);
-
-  // 1. Sync state from URL (handles initial load, direct link, and back/forward browser navigation)
-  useEffect(() => {
-    if (isInternalUrlUpdateRef.current) {
-      isInternalUrlUpdateRef.current = false;
-      return;
-    }
-
-    const path = location.pathname.toLowerCase();
-    const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
-    
-    if (isFarmerRegistry) {
-      if (currentTab !== "farmer_registry") {
-        setCurrentTab("farmer_registry");
-      }
-      return;
-    }
-
-    const rawParam = searchParams.get("tab") || "";
-    const subParam = searchParams.get("sub") || searchParams.get("subtab") || searchParams.get("tool") || "";
-
-    if (!rawParam) return;
-
-    let mainTab = rawParam;
-    let subToolFromUrl = subParam;
-
-    if (rawParam.includes("/")) {
-      const parts = rawParam.split("/");
-      mainTab = parts[0];
-      if (parts[1]) {
-        subToolFromUrl = parts[1];
-      }
-    }
-
-    const resolvedParam = mainTab === "reports" ? "my_activity" : mainTab === "problems" ? "directlinks" : (mainTab === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : mainTab);
-
-    if (resolvedParam && resolvedParam !== currentTab) {
-      setCurrentTab(resolvedParam);
-    }
-
-    if (resolvedParam === "workspace" || mainTab === "workspace") {
-      if (subToolFromUrl) {
-        const norm = subToolFromUrl.toLowerCase().replace(/[-_ ]/g, "");
-        let targetTool: string | null = null;
-        if (norm === "dsr" || norm === "dsranalyzer") {
-          targetTool = "dsr";
-        } else if (
-          norm === "multiday" ||
-          norm === "multidayattendance" ||
-          norm === "multipleattendance" ||
-          norm === "multipleattandance" ||
-          norm === "attendance"
-        ) {
-          targetTool = "multiday";
-        } else if (norm === "training" || norm === "digitaltraining") {
-          targetTool = "training";
-        } else if (
-          norm === "pract" ||
-          norm === "knowledgehub" ||
-          norm === "practguide"
-        ) {
-          targetTool = "pract";
-        } else if (
-          norm === "monthlyactivity" ||
-          norm === "monthlyactivitydata"
-        ) {
-          targetTool = "monthly-activity";
-        } else if (
-          norm === "excelmerge" ||
-          norm === "excelmerger" ||
-          norm === "excelfilemerger" ||
-          norm === "excel"
-        ) {
-          targetTool = "excel-merge";
-        } else {
-          targetTool = subToolFromUrl;
-        }
-
-        if (targetTool && targetTool !== workspaceActiveTool) {
-          setWorkspaceActiveTool(targetTool);
-        }
-      } else if (!subParam && !rawParam.includes("/")) {
-        if (workspaceActiveTool) {
-          setWorkspaceActiveTool(null);
-        }
-      }
-    }
-
-    if (resolvedParam === "gos_formats" || mainTab === "gos_formats") {
-      if (subToolFromUrl) {
-        const norm = subToolFromUrl.toLowerCase();
-        if (norm === "go" || norm === "gos") {
-          setGosActiveSubTab("GO");
-        } else if (norm.includes("app") || norm.includes("format")) {
-          setGosActiveSubTab("Application");
-        }
-      }
-    }
-
-    if (resolvedParam === "suggestions" || mainTab === "suggestions") {
-      if (subToolFromUrl) {
-        const norm = subToolFromUrl.toLowerCase();
-        if (norm === "problems" || norm === "problem" || norm === "issue") {
-          setSuggestionsActiveSubTab("problems");
-        } else if (norm === "suggestions" || norm === "suggestion" || norm === "feedback") {
-          setSuggestionsActiveSubTab("suggestions");
-        }
-      }
-    }
-
-    if (mainTab === "priority_services") {
-      if (subToolFromUrl === "emergency") {
-        if (currentTab !== "emergency") setCurrentTab("emergency");
-      } else if (subToolFromUrl === "my_activity") {
-        if (currentTab !== "my_activity") setCurrentTab("my_activity");
-      }
-    }
-  }, [searchParams, location.pathname]);
-
-  // 2. Sync URL from state (handles programmatic tab changes, ensuring URL updates correctly)
-  useEffect(() => {
-    const path = location.pathname.toLowerCase();
-    const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
-    if (isFarmerRegistry) return;
-
-    const rawParam = searchParams.get("tab") || "";
-    
-    let targetTabParam = currentTab;
-    if (currentTab === "exe_ubd_live") {
-      targetTabParam = "admin/UBDLiveMonitoring";
-    } else if (currentTab === "workspace" && workspaceActiveTool) {
-      targetTabParam = `workspace/${workspaceActiveTool}`;
-    } else if (currentTab === "gos_formats" && gosActiveSubTab) {
-      targetTabParam = `gos_formats/${gosActiveSubTab}`;
-    } else if (currentTab === "suggestions" && suggestionsActiveSubTab) {
-      targetTabParam = `suggestions/${suggestionsActiveSubTab}`;
-    } else if (currentTab === "emergency") {
-      targetTabParam = "priority_services/emergency";
-    } else if (currentTab === "my_activity") {
-      targetTabParam = "priority_services/my_activity";
-    }
-
-    if (currentTab) {
-      if (targetTabParam !== rawParam) {
-        isInternalUrlUpdateRef.current = true;
-        const newParams = new URLSearchParams(searchParams);
-        newParams.set("tab", targetTabParam);
-        if (newParams.has("sub")) newParams.delete("sub");
-        if (newParams.has("subtab")) newParams.delete("subtab");
-        if (newParams.has("tool")) newParams.delete("tool");
-        setSearchParams(newParams, { replace: true });
-      }
-    }
-  }, [currentTab, workspaceActiveTool, gosActiveSubTab, activeAdminSubTab, suggestionsActiveSubTab, setSearchParams, searchParams]);
+  // Synchronize deep links for public users while maintaining clean admin URLs (?tab=admin)
+  const { getDeepLink } = useDeepLink({
+    currentTab,
+    setCurrentTab,
+    workspaceActiveTool,
+    setWorkspaceActiveTool,
+    gosActiveSubTab,
+    setGosActiveSubTab,
+    suggestionsActiveSubTab,
+    setSuggestionsActiveSubTab,
+    activeAdminSubTab,
+    setActiveAdminSubTab,
+  });
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
