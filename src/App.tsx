@@ -1861,8 +1861,15 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  const isInternalUrlUpdateRef = useRef(false);
+
   // 1. Sync state from URL (handles initial load, direct link, and back/forward browser navigation)
   useEffect(() => {
+    if (isInternalUrlUpdateRef.current) {
+      isInternalUrlUpdateRef.current = false;
+      return;
+    }
+
     const path = location.pathname.toLowerCase();
     const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
     
@@ -1875,6 +1882,8 @@ export default function App() {
 
     const rawParam = searchParams.get("tab") || "";
     const subParam = searchParams.get("sub") || searchParams.get("subtab") || searchParams.get("tool") || "";
+
+    if (!rawParam) return;
 
     let mainTab = rawParam;
     let subToolFromUrl = subParam;
@@ -1889,7 +1898,7 @@ export default function App() {
 
     const resolvedParam = mainTab === "reports" ? "my_activity" : mainTab === "problems" ? "directlinks" : (mainTab === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : mainTab);
 
-    if (resolvedParam && resolvedParam !== "" && resolvedParam !== currentTab) {
+    if (resolvedParam && resolvedParam !== currentTab) {
       setCurrentTab(resolvedParam);
     }
 
@@ -1912,8 +1921,7 @@ export default function App() {
         } else if (
           norm === "pract" ||
           norm === "knowledgehub" ||
-          norm === "practguide" ||
-          norm === "pract"
+          norm === "practguide"
         ) {
           targetTool = "pract";
         } else if (
@@ -1998,6 +2006,7 @@ export default function App() {
 
     if (currentTab) {
       if (targetTabParam !== rawParam) {
+        isInternalUrlUpdateRef.current = true;
         const newParams = new URLSearchParams(searchParams);
         newParams.set("tab", targetTabParam);
         if (newParams.has("sub")) newParams.delete("sub");
