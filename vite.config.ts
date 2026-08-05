@@ -13,31 +13,42 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        manifestFilename: 'manifest.json',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'ev-logo-v2.png'],
         manifest: {
-          name: 'E-Vedhika Portal',
+          name: 'E-Vedhika',
           short_name: 'E-Vedhika',
-          description: 'E-Vedhika All problems one solution',
+          description: 'E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries',
           theme_color: '#0d3b66',
           background_color: '#0d3b66',
           display: 'standalone',
           orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
           icons: [
             {
-              src: 'ev-logo-v2.svg',
-              sizes: 'any',
-              type: 'image/svg+xml',
-              purpose: 'any maskable'
-            },
-            {
-              src: 'ev-logo-v2.png',
+              src: '/ev-logo-v2.png',
               sizes: '192x192',
-              type: 'image/png'
+              type: 'image/png',
+              purpose: 'any'
             },
             {
-              src: 'ev-logo-v2.png',
+              src: '/ev-logo-v2.png',
               sizes: '512x512',
-              type: 'image/png'
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/ev-logo-v2.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable'
+            },
+            {
+              src: '/ev-logo-v2.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
             }
           ]
         },

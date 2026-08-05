@@ -1,8 +1,9 @@
 {
-  "name": "E-Vedhika Portal",
+  "name": "E-Vedhika",
   "short_name": "E-Vedhika",
-  "description": "All Problems one Soultion, A comprehensive community portal for reporting problems and getting updates on schemes, elections and daily reports.",
+  "description": "E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0d3b66",
   "theme_color": "#0d3b66",
@@ -10,18 +11,26 @@
     {
       "src": "/ev-logo-v2.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/ev-logo-v2.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/ev-logo-v2.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/ev-logo-v2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/ev-logo-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
