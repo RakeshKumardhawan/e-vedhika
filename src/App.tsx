@@ -1759,6 +1759,8 @@ export default function App() {
     isFarmerRegistryPath ? "farmer_registry" : resolvedTab || "home",
   );
   const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(null);
+  const [gosActiveSubTab, setGosActiveSubTab] = useState<'Application' | 'GO'>('Application');
+  const [suggestionsActiveSubTab, setSuggestionsActiveSubTab] = useState<'problems' | 'suggestions'>('problems');
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const dropdownTimeoutRef = useRef<any>(null);
@@ -1871,11 +1873,103 @@ export default function App() {
       return;
     }
 
-    const currentParam = searchParams.get("tab");
-    const resolvedParam = currentParam === "reports" ? "my_activity" : currentParam === "problems" ? "directlinks" : currentParam;
+    const rawParam = searchParams.get("tab") || "";
+    const subParam = searchParams.get("sub") || searchParams.get("subtab") || searchParams.get("tool") || "";
 
-    if (resolvedParam && resolvedParam !== currentTab && resolvedParam !== "") {
+    let mainTab = rawParam;
+    let subToolFromUrl = subParam;
+
+    if (rawParam.includes("/")) {
+      const parts = rawParam.split("/");
+      mainTab = parts[0];
+      if (parts[1]) {
+        subToolFromUrl = parts[1];
+      }
+    }
+
+    const resolvedParam = mainTab === "reports" ? "my_activity" : mainTab === "problems" ? "directlinks" : (mainTab === "admin/UBDLiveMonitoring" ? "exe_ubd_live" : mainTab);
+
+    if (resolvedParam && resolvedParam !== "" && resolvedParam !== currentTab) {
       setCurrentTab(resolvedParam);
+    }
+
+    if (resolvedParam === "workspace" || mainTab === "workspace") {
+      if (subToolFromUrl) {
+        const norm = subToolFromUrl.toLowerCase().replace(/[-_ ]/g, "");
+        let targetTool: string | null = null;
+        if (norm === "dsr" || norm === "dsranalyzer") {
+          targetTool = "dsr";
+        } else if (
+          norm === "multiday" ||
+          norm === "multidayattendance" ||
+          norm === "multipleattendance" ||
+          norm === "multipleattandance" ||
+          norm === "attendance"
+        ) {
+          targetTool = "multiday";
+        } else if (norm === "training" || norm === "digitaltraining") {
+          targetTool = "training";
+        } else if (
+          norm === "pract" ||
+          norm === "knowledgehub" ||
+          norm === "practguide" ||
+          norm === "pract"
+        ) {
+          targetTool = "pract";
+        } else if (
+          norm === "monthlyactivity" ||
+          norm === "monthlyactivitydata"
+        ) {
+          targetTool = "monthly-activity";
+        } else if (
+          norm === "excelmerge" ||
+          norm === "excelmerger" ||
+          norm === "excelfilemerger" ||
+          norm === "excel"
+        ) {
+          targetTool = "excel-merge";
+        } else {
+          targetTool = subToolFromUrl;
+        }
+
+        if (targetTool && targetTool !== workspaceActiveTool) {
+          setWorkspaceActiveTool(targetTool);
+        }
+      } else if (!subParam && !rawParam.includes("/")) {
+        if (workspaceActiveTool) {
+          setWorkspaceActiveTool(null);
+        }
+      }
+    }
+
+    if (resolvedParam === "gos_formats" || mainTab === "gos_formats") {
+      if (subToolFromUrl) {
+        const norm = subToolFromUrl.toLowerCase();
+        if (norm === "go" || norm === "gos") {
+          setGosActiveSubTab("GO");
+        } else if (norm.includes("app") || norm.includes("format")) {
+          setGosActiveSubTab("Application");
+        }
+      }
+    }
+
+    if (resolvedParam === "suggestions" || mainTab === "suggestions") {
+      if (subToolFromUrl) {
+        const norm = subToolFromUrl.toLowerCase();
+        if (norm === "problems" || norm === "problem" || norm === "issue") {
+          setSuggestionsActiveSubTab("problems");
+        } else if (norm === "suggestions" || norm === "suggestion" || norm === "feedback") {
+          setSuggestionsActiveSubTab("suggestions");
+        }
+      }
+    }
+
+    if (mainTab === "priority_services") {
+      if (subToolFromUrl === "emergency") {
+        if (currentTab !== "emergency") setCurrentTab("emergency");
+      } else if (subToolFromUrl === "my_activity") {
+        if (currentTab !== "my_activity") setCurrentTab("my_activity");
+      }
     }
   }, [searchParams, location.pathname]);
 
@@ -1885,19 +1979,34 @@ export default function App() {
     const isFarmerRegistry = path.endsWith("/farmer_registry") || path.endsWith("/farmer-registry");
     if (isFarmerRegistry) return;
 
-    const currentParam = searchParams.get("tab");
+    const rawParam = searchParams.get("tab") || "";
     
     let targetTabParam = currentTab;
     if (currentTab === "exe_ubd_live") {
       targetTabParam = "admin/UBDLiveMonitoring";
+    } else if (currentTab === "workspace" && workspaceActiveTool) {
+      targetTabParam = `workspace/${workspaceActiveTool}`;
+    } else if (currentTab === "gos_formats" && gosActiveSubTab) {
+      targetTabParam = `gos_formats/${gosActiveSubTab}`;
+    } else if (currentTab === "suggestions" && suggestionsActiveSubTab) {
+      targetTabParam = `suggestions/${suggestionsActiveSubTab}`;
+    } else if (currentTab === "emergency") {
+      targetTabParam = "priority_services/emergency";
+    } else if (currentTab === "my_activity") {
+      targetTabParam = "priority_services/my_activity";
     }
 
-    if (currentTab && targetTabParam !== currentParam) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("tab", targetTabParam);
-      setSearchParams(newParams, { replace: true });
+    if (currentTab) {
+      if (targetTabParam !== rawParam) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("tab", targetTabParam);
+        if (newParams.has("sub")) newParams.delete("sub");
+        if (newParams.has("subtab")) newParams.delete("subtab");
+        if (newParams.has("tool")) newParams.delete("tool");
+        setSearchParams(newParams, { replace: true });
+      }
     }
-  }, [currentTab, activeAdminSubTab, setSearchParams, searchParams]);
+  }, [currentTab, workspaceActiveTool, gosActiveSubTab, activeAdminSubTab, suggestionsActiveSubTab, setSearchParams, searchParams]);
   const [activeInternalUrl, setActiveInternalUrl] = useState<string | null>(
     null,
   );
@@ -4316,7 +4425,11 @@ export default function App() {
                                     ].map(tool => (
                                       <button
                                         key={tool.id}
-                                        onClick={() => { setCurrentTab("gos_formats"); setOpenDropdown(null); }}
+                                        onClick={() => {
+                                          setCurrentTab("gos_formats");
+                                          setGosActiveSubTab(tool.id as 'Application' | 'GO');
+                                          setOpenDropdown(null);
+                                        }}
                                         className="flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left bg-slate-50/50 hover:bg-teal-50 text-slate-700 border border-slate-100 shadow-sm sm:shadow-none"
                                       >
                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-teal-100 text-teal-600">
@@ -6541,6 +6654,8 @@ export default function App() {
                       user={user}
                       addToast={addToast}
                       isAdmin={isAdmin}
+                      initialSubTab={gosActiveSubTab}
+                      onSubTabChange={(t) => setGosActiveSubTab(t)}
                     />
                   </motion.div>
                 )}
@@ -15145,10 +15260,13 @@ function DigitalWorkspaceSection({
         </div>
         <button
           onClick={() => {
-            const url = `${window.location.origin}/?tab=workspace`;
+            const sharePath = activeTool ? `workspace/${activeTool}` : "workspace";
+            const url = `${window.location.origin}/?tab=${sharePath}`;
+            const toolObj = tools.find((t) => t.id === activeTool);
+            const title = toolObj ? `${toolObj.title} - E-Vedhika` : "Mana Panchayath - E-Vedhika";
             handleShare(
-              "Mana Panchayath - E-Vedhika",
-              "Access advanced tools for PR & RD Officers on Mana Panchayath - E-Vedhika!",
+              title,
+              "Access tools on Mana Panchayath - E-Vedhika!",
               url,
               () => addToast("Link copied!"),
             );
@@ -15197,13 +15315,32 @@ function DigitalWorkspaceSection({
                     {tools.find((t) => t.id === activeTool)?.title}
                   </h2>
                 </div>
-                <button
-                  onClick={() => setActiveTool(null)}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors font-medium text-sm"
-                >
-                  <ArrowLeft size={18} />
-                  Back
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const currentToolObj = tools.find((t) => t.id === activeTool);
+                      const url = `${window.location.origin}/?tab=workspace/${activeTool}`;
+                      handleShare(
+                        `${currentToolObj?.title || 'Tool'} - E-Vedhika`,
+                        `Access ${currentToolObj?.title || 'tool'} on Mana Panchayath - E-Vedhika!`,
+                        url,
+                        () => addToast("Direct link copied!"),
+                      );
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors font-semibold text-xs sm:text-sm"
+                    title="Share direct link to this tool"
+                  >
+                    <Share2 size={16} />
+                    <span>Share Link</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTool(null)}
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors font-medium text-xs sm:text-sm"
+                  >
+                    <ArrowLeft size={18} />
+                    Back
+                  </button>
+                </div>
               </div>
               <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} />
             </div>

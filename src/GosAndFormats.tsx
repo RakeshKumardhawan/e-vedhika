@@ -3,13 +3,37 @@ import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, getDoc 
 import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, storage } from '../firebase';
-import { Download, Upload, Trash2, FileBadge } from 'lucide-react';
+import { Download, Upload, Trash2, FileBadge, Share2 } from 'lucide-react';
 import { requireLoginAlert, getFriendlyError, handleForceDownload } from './App';
 
-export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, addToast: (s: string) => void, isAdmin?: boolean }) {
+export function GosAndFormatsPublic({
+  user,
+  addToast,
+  isAdmin,
+  initialSubTab,
+  onSubTabChange,
+}: {
+  user: any;
+  addToast: (s: string) => void;
+  isAdmin?: boolean;
+  initialSubTab?: 'Application' | 'GO';
+  onSubTabChange?: (tab: 'Application' | 'GO') => void;
+}) {
   const [items, setItems] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'Application' | 'GO'>('Application');
+  const [activeTab, setActiveTab] = useState<'Application' | 'GO'>(initialSubTab || 'Application');
   const [showUpload, setShowUpload] = useState(false);
+
+  useEffect(() => {
+    if (initialSubTab && initialSubTab !== activeTab) {
+      setActiveTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleTabChange = (t: 'Application' | 'GO') => {
+    setActiveTab(t);
+    setShowUpload(false);
+    if (onSubTabChange) onSubTabChange(t);
+  };
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -173,12 +197,12 @@ export function GosAndFormatsPublic({ user, addToast, isAdmin }: { user: any, ad
 
       <div className="flex gap-2 mb-6 bg-slate-50 p-1.5 rounded-2xl w-full max-w-sm">
         <button 
-           onClick={() => {setActiveTab('Application'); setShowUpload(false);}}
+           onClick={() => handleTabChange('Application')}
            className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'Application' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}>
            1. Applications & Formats
         </button>
         <button 
-           onClick={() => {setActiveTab('GO'); setShowUpload(false);}}
+           onClick={() => handleTabChange('GO')}
            className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'GO' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-800'}`}>
            2. GOs
         </button>
