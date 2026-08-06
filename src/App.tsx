@@ -1527,21 +1527,6 @@ function LandingPage({
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
 
-let tabClickCount = 0;
-const triggerTabAd = () => {
-  tabClickCount++;
-  if (tabClickCount % 3 === 0) {
-    const existing = document.getElementById("monetag-dynamic");
-    if (existing) existing.remove();
-    const script = document.createElement("script");
-    script.id = "monetag-dynamic";
-    script.src = "https://quge5.com/88/tag.min.js";
-    script.dataset.zone = "266882";
-    script.async = true;
-    script.dataset.cfasync = "false";
-    document.head.appendChild(script);
-  }
-};
 
 export default function App() {
   const navigate = useNavigate();
@@ -1774,13 +1759,6 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
   );
 
-  useEffect(() => {
-    if (tabClickCount === 0) {
-      tabClickCount++;
-      return;
-    }
-    triggerTabAd();
-  }, [currentTab]);
 
   const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(
     initialUrlData.mainTab === "workspace" ? initialUrlData.workspaceTool : null
