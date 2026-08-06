@@ -281,7 +281,7 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
       const h = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setHistory(h);
     } catch (e) {
-      console.error("Error fetching history", e);
+      if(e.message && e.message.includes("permission")){console.warn("History permission denied (expected for non-admins)");}else{console.error("Error fetching history", e);}
     }
   };
 
