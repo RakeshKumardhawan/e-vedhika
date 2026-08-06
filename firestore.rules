@@ -183,9 +183,13 @@ match /ubdDataChunks/{chunkId} {
   allow read: if true;
   allow write: if isAdmin();
 }
-match /custom_code/{document=**} {
+match /custom_code/{codeId} {
   allow read: if true;
   allow write: if isAdmin();
+  match /history/{historyId} {
+    allow read: if true;
+    allow write: if isAdmin();
+  }
 }
 
 

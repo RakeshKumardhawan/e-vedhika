@@ -28,6 +28,7 @@ import { MaintenancePage } from "./components/MaintenancePage";
 import { recordSystemError } from "./components/SystemErrorCenter";
 import { VisitorTracker } from "./components/VisitorTracker";
 import { CodeManager } from "./components/CodeManager";
+import { DynamicSection } from "./components/DynamicSection";
 import {
   Bell,
   Menu,
@@ -4816,6 +4817,7 @@ export default function App() {
                     exit={{ opacity: 0, x: -20 }}
                     className="space-y-4 sm:space-y-6"
                   >
+                    <DynamicSection id="home_tab_html" />
                     {dataLoading ? (
                       <div className="space-y-8 animate-in fade-in duration-500">
                         <HeroSkeleton />
@@ -5685,6 +5687,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
+                    <DynamicSection id="mana_panchayath_html" />
                     <AdBanner />
                     <DigitalWorkspaceSection addToast={addToast} user={user} activeTool={workspaceActiveTool} setActiveTool={setWorkspaceActiveTool} pageDescriptions={pageDescriptions} />
                   </motion.div>
@@ -6798,6 +6801,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                   >
+                    <DynamicSection id="reports_tab_html" />
                     <MyActivity
                       user={user}
                       userProfile={userProfile}
@@ -9999,6 +10003,7 @@ function AdminPanel({
           </div>
         ) : (
           <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
+            <DynamicSection id="admin_dashboard_html" />
             {activeSubTab === "dash" && (
               <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} />
             )}

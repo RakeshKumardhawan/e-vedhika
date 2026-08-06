@@ -109,7 +109,71 @@ const CODE_FILES: CodeFileMeta[] = [
     usedIn: 'Global State & API Services', 
     status: 'Live', 
     dependencies: 'JSON Parser', 
-    affectedPages: 'Admin Settings & Feature Flags' 
+    affectedPages: 'Admin Settings & Feature Flags'
+  },
+  {
+    id: 'home_tab_html',
+    name: 'Home Tab Content (HTML)',
+    type: 'html',
+    icon: FileType,
+    defaultContent: `<div class="custom-banner text-center mb-6">
+  <h2 class="text-xl font-bold">Welcome to E-Vedhika</h2>
+  <p>Your ultimate digital portal for Gram Panchayats.</p>
+</div>`,
+    path: '/src/App.tsx (Home Tab)',
+    module: 'Content Injection',
+    usedIn: 'Home Tab UI',
+    status: 'Live',
+    dependencies: 'React dangerouslySetInnerHTML',
+    affectedPages: 'Home Tab (Public)'
+  },
+  {
+    id: 'mana_panchayath_html',
+    name: 'Mana Panchayath Content (HTML)',
+    type: 'html',
+    icon: FileType,
+    defaultContent: `<div class="custom-banner text-center mb-6">
+  <h2 class="text-xl font-bold">Mana Panchayath Updates</h2>
+  <p>Latest circulars and tools for Panchayat Secretaries.</p>
+</div>`,
+    path: '/src/App.tsx (Mana Panchayath Tab)',
+    module: 'Content Injection',
+    usedIn: 'Workspace Tab UI',
+    status: 'Live',
+    dependencies: 'React dangerouslySetInnerHTML',
+    affectedPages: 'Mana Panchayath Tab'
+  },
+  {
+    id: 'reports_tab_html',
+    name: 'Reports/My Activity Content (HTML)',
+    type: 'html',
+    icon: FileType,
+    defaultContent: `<!-- Add custom banners or info for the Reports tab -->
+<div class="p-4 bg-blue-50 text-blue-800 rounded-xl mb-4">
+  <strong>Notice:</strong> Please submit your daily reports before 5 PM.
+</div>`,
+    path: '/src/App.tsx (My Activity Tab)',
+    module: 'Content Injection',
+    usedIn: 'My Activity Tab UI',
+    status: 'Live',
+    dependencies: 'React dangerouslySetInnerHTML',
+    affectedPages: 'My Activity Tab'
+  },
+  {
+    id: 'admin_dashboard_html',
+    name: 'Admin Dashboard Message (HTML)',
+    type: 'html',
+    icon: FileType,
+    defaultContent: `<!-- Add announcements for Admins -->
+<div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl mb-4">
+  <strong>Admin Notice:</strong> System maintenance scheduled for this weekend.
+</div>`,
+    path: '/src/App.tsx (Admin Dashboard)',
+    module: 'Content Injection',
+    usedIn: 'Admin Dashboard UI',
+    status: 'Live',
+    dependencies: 'React dangerouslySetInnerHTML',
+    affectedPages: 'Admin Panel (Protected)'
   }
 ];
 
@@ -405,7 +469,13 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
               <p className="text-slate-500 font-bold mb-2">// Parsed JSON Object Structure</p>
               {!syntaxError ? (
                 <pre className="text-emerald-400 whitespace-pre-wrap">
-                  {JSON.stringify(JSON.parse(code || '{}'), null, 2)}
+                  {(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(code || '{}'), null, 2);
+                    } catch (e) {
+                      return "Invalid JSON";
+                    }
+                  })()}
                 </pre>
               ) : (
                 <div className="text-rose-400 flex items-center gap-2">
@@ -639,7 +709,17 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
             </div>
           </div>
 
-          {/* Crash Protection Banner */}
+          {/* Crash & Data Protection Banner */}
+          <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 text-emerald-900 space-y-2">
+            <h4 className="font-bold text-xs flex items-center gap-2 text-emerald-800">
+              <CheckCircle size={16} className="text-emerald-600" />
+              డేటా పరిరక్షణ మరియు రక్షణ హామీ (Data Preservation Active)
+            </h4>
+            <p className="text-[11px] leading-relaxed font-medium text-emerald-800">
+              కోడ్ లేదా కాన్ఫిగరేషన్ అప్‌డేట్ చేసినప్పుడు పాత పోస్ట్‌లు, డేటా మరియు ఫైళ్లు ఎట్టి పరిస్థితుల్లోనూ తొలగించబడవు. నాన్-డిస్ట్రక్టివ్ మెర్జ్ (Merge Mode) మరియు ఆటోమేటిక్ బ్యాకప్ స్నాప్‌షాట్ ద్వారా పూర్తి డేటా సేఫ్‌గా ఉంటుంది.
+            </p>
+          </div>
+
           <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900">
             <h4 className="font-bold text-xs flex items-center gap-2 mb-1">
               <AlertTriangle size={14} className="text-amber-600" />
