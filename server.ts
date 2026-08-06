@@ -102,6 +102,20 @@ async function startServer() {
   app.use('/proxy/ubd', createProxyMiddleware(proxyOptions('https://ubd.telangana.gov.in')));
   app.use('/proxy/meetingonline', createProxyMiddleware(proxyOptions('https://meetingonline.gov.in')));
 
+  // Google AdSense ads.txt explicit route
+  app.get('/ads.txt', (req, res) => {
+    res.type('text/plain');
+    const adsTxtPath = path.join(process.cwd(), 'public', 'ads.txt');
+    if (fs.existsSync(adsTxtPath)) {
+      return res.sendFile(adsTxtPath);
+    }
+    const distAdsTxtPath = path.join(process.cwd(), 'dist', 'ads.txt');
+    if (fs.existsSync(distAdsTxtPath)) {
+      return res.sendFile(distAdsTxtPath);
+    }
+    return res.send("google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n");
+  });
+
   app.get('/api/iframe-proxy', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl || typeof targetUrl !== 'string') {
@@ -379,21 +393,21 @@ app.get('/api/remote-commands', (req, res) => {
   return res.json({ success: true, commands: [] });
 });
 
-  // Gemini Proxy
+  // Gemini Proxy for E-Vedhika AI Assistant (Free Tier Only)
   app.post("/api/chat", async (req, res) => {
     try {
-      const { prompt, systemInstruction, modelType } = req.body;
+      const { prompt, systemInstruction } = req.body;
       const apiKey = process.env.GEMINI_API_KEY || 
                      process.env.VITE_GEMINI_API_KEY || 
                      process.env.GOOGLE_API_KEY || 
                      process.env.VITE_GOOGLE_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ 
-          error: "Gemini API కీ కనిపించలేదు (Gemini API key is not configured). దయచేసి AI Studio సెట్టింగ్స్ > Secrets లో GEMINI_API_KEY ని కాన్ఫిగర్ చేయండి." 
+          error: "Gemini API కీ లభించలేదు. దయచేసి AI Studio సెట్టింగ్స్ > Secrets లో GEMINI_API_KEY ని కాన్ఫిగర్ చేయండి." 
         });
       }
 
-      const { GoogleGenAI, ThinkingLevel } = await import("@google/genai");
+      const { GoogleGenAI } = await import("@google/genai");
 
       const ai = new GoogleGenAI({
         apiKey: apiKey,
@@ -404,23 +418,23 @@ app.get('/api/remote-commands', (req, res) => {
         }
       });
 
-      let modelId = "gemini-2.5-flash"; // Standard supported Gemini model
-      let configObj: any = {
-        systemInstruction: systemInstruction,
-      };
-
-      if (modelType === "fast") {
-        modelId = "gemini-2.5-flash";
-      } else if (modelType === "complex") {
-        modelId = "gemini-2.5-pro";
-        configObj.thinkingConfig = { thinkingLevel: ThinkingLevel.HIGH };
+      // Strict Free Tier Model
+      let modelId = "gemini-3.6-flash"; 
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: modelId,
+          contents: prompt,
+          config: { systemInstruction }
+        });
+      } catch (err: any) {
+        console.warn("gemini-3.6-flash failed, falling back to gemini-flash-latest:", err?.message);
+        response = await ai.models.generateContent({
+          model: "gemini-flash-latest",
+          contents: prompt,
+          config: { systemInstruction }
+        });
       }
-
-      const response = await ai.models.generateContent({
-        model: modelId,
-        contents: prompt,
-        config: configObj
-      });
 
       const text = response.text || "No response generated.";
       res.json({ text });
@@ -430,8 +444,8 @@ app.get('/api/remote-commands', (req, res) => {
       const errorStr = error.message || String(error);
       if (errorStr.includes("503") || errorStr.includes("high demand") || errorStr.includes("UNAVAILABLE")) {
          errorMessage = "⚠️ **Gemini AI సర్వర్ బిజీగా ఉంది (High Demand):**\n\nప్రస్తుతం మోడల్ పై ఒత్తిడి ఎక్కువగా ఉండటం వల్ల ఈ తాత్కాలిక సమస్య ఏర్పడింది. దయచేసి కొద్ది సేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.";
-      } else if (errorStr.includes("dunning decision") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("billing") || errorStr.includes("403")) {
-         errorMessage = "⚠️ **Gemini API బిల్లింగ్ అలెర్ట్ (Billing/Account Restricted):**\n\nమీ గూగుల్ క్లౌడ్ ప్రాజెక్ట్ బిల్లింగ్ সমস্যা (Lightning dunning decision / Permission Denied) వల్ల నిలిపివేయబడింది. దీనివల్ల ఫ్రీగా వాడాలన్నా గూగుల్ మీ అభ్యర్థనలను బ్లాక్ చేస్తుంది.\n\n**దీనిని పూర్తిగా ఉచితంగా (100% Free) ఎలా పరిష్కరించాలి?**\n\n1. మొదట **https://aistudio.google.com/** వెబ్‌సైట్‌కు వెళ్ళండి.\n2. మీ పర్సనల్ గూగుల్ అకౌంట్ (Gmail) తో లాగిన్ అవ్వండి.\n3. అక్కడ **'Create API Key'** పై క్లిక్ చేసి, బిల్లింగ్ లింక్ చేయని ఒక కొత్త మరియు ఉచిత ప్రాజెక్ట్‌ను ఎంచుకుని కొత్త కీని సృష్టించండి.\n4. ఆ సృష్టించిన కొత్త API కీని కాపీ చేయండి.\n5. ఈ పోర్టల్ అప్లికేషన్ యొక్క **Settings Menu > Secrets** లో **GEMINI_API_KEY** స్థానంలో పాత కీని తీసివేసి, కొత్తగా కాపీ చేసిన కీని అప్‌డేట్ చేయండి.\n\nఇలా చేయడం వల్ల మీకు ఎలాంటి బిల్లింగ్ అడగదు మరియు చాట్ బాట్ పూర్తిగా లైఫ్‌టైమ్ ఉచితంగా పనిచేస్తుంది! 👍";
+      } else if (errorStr.includes("dunning decision") || errorStr.includes("PERMISSION_DENIED") || errorStr.includes("billing") || errorStr.includes("403") || errorStr.includes("API key")) {
+         errorMessage = "⚠️ **Gemini API కీ వివరాలు:**\n\nఉచితంగా Gemini API కీ ని క్రియేట్ చేసే విధానం:\n\n1. **https://aistudio.google.com/** కు వెళ్ళండి.\n2. మీ Google ఖాతాతో లాగిన్ అయి **'Create API Key'** క్లిక్ చేయండి.\n3. ఉచితంగా పొందిన కీ ని కాపీ చేసి **Settings > Secrets** లో **GEMINI_API_KEY** గా ఆ కీ ని సేవ్ చేయండి.";
       }
       res.status(200).json({ text: errorMessage, isError: true });
     }
