@@ -10,6 +10,16 @@ import { registerSW } from 'virtual:pwa-register';
 if ('serviceWorker' in navigator) {
   let refreshing = false;
   
+  // Clean up any stale/broken legacy service workers registered on root
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    const currentSWUrl = window.location.origin + '/sw.js';
+    for (let registration of registrations) {
+      if (registration.active && !registration.active.scriptURL.includes('sw.js')) {
+        registration.unregister();
+      }
+    }
+  }).catch(() => {});
+
   // When the service worker updates and takes control, reload the page instantly
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!refreshing) {
@@ -22,26 +32,27 @@ if ('serviceWorker' in navigator) {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       navigator.serviceWorker.ready.then((registration) => {
-        registration.update();
+        registration.update().catch(() => {});
       });
     }
   });
 
-  // Also check for updates every 5 minutes automatically in the background
+  // Also check for updates every 2 minutes automatically in the background
   setInterval(() => {
     navigator.serviceWorker.ready.then((registration) => {
       if (registration) {
-        registration.update();
+        registration.update().catch(() => {});
       }
     });
-  }, 5 * 60 * 1000); // 5 minutes
+  }, 2 * 60 * 1000);
 
-  registerSW({
+  const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
-      // Auto skip waiting and refresh - no confirmation needed
-      // With registerType: 'autoUpdate', this is usually handled automatically, 
-      // but if it ever triggers, we force a silent reload to ensure they get the update.
+      updateSW(true);
+    },
+    onOfflineReady() {
+      console.log('E-Vedhika PWA ready for offline use');
     }
   });
 }

@@ -29,6 +29,7 @@ import { recordSystemError } from "./components/SystemErrorCenter";
 import { VisitorTracker } from "./components/VisitorTracker";
 import { CodeManager } from "./components/CodeManager";
 import { DynamicSection } from "./components/DynamicSection";
+import { AIVideoHomeSection } from "./components/AIVideoHomeSection";
 import {
   Bell,
   Menu,
@@ -18513,7 +18514,7 @@ function PostCard({
             {post.mediaUrl && (
               <div className="mb-4">
                 {post.mediaType?.startsWith("video") ? (
-                  <video src={post.mediaUrl} controls className="post-media" />
+                  <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
                 ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
                   <img
                     src={post.mediaUrl}
@@ -18956,7 +18957,7 @@ function PostCard({
           {post.mediaUrl && (
             <div className="mb-4">
               {post.mediaType?.startsWith("video") ? (
-                <video src={post.mediaUrl} controls className="post-media" />
+                <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
               ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
                 <img
                   src={post.mediaUrl}
@@ -20569,7 +20570,7 @@ function PostForm({
               {media?.url && (
                 <div className="mb-4">
                   {media.type?.startsWith("video") ? (
-                    <video src={media.url} controls className="post-media" />
+                    <video src={media.url} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
                   ) : media.type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(media.url || "") || (media.url || "").includes("image") ? (
                     <img
                       src={media.url}
@@ -21576,6 +21577,7 @@ function PostDetail({
                 src={post.mediaUrl}
                 controls
                 className="w-full max-h-[500px]"
+                onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }}
               />
             ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
               <img

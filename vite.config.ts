@@ -53,9 +53,11 @@ export default defineConfig(({mode}) => {
           ]
         },
         workbox: {
-          importScripts: ['/ads-sw.js'],
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
           navigateFallbackDenylist: [/^\/api/],
-          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024 // 10MiB
+          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024 // 15MiB
         }
       }),
       {
