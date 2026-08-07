@@ -1771,37 +1771,49 @@ export default function App() {
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const dropdownTimeoutRef = useRef<any>(null);
 
-  const handleOpenDropdown = (itemId: string, el: HTMLElement) => {
+  const handleOpenDropdown = (itemId: string, el?: HTMLElement | null) => {
     if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
-    const rect = el.getBoundingClientRect();
-    const dropdownWidth = 288;
-    let left = rect.left;
-    if (left + dropdownWidth > window.innerWidth - 12) {
-      left = Math.max(12, window.innerWidth - dropdownWidth - 12);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const dropdownWidth = 288;
+      let left = rect.left;
+      if (left + dropdownWidth > window.innerWidth - 12) {
+        left = Math.max(12, window.innerWidth - dropdownWidth - 12);
+      }
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: Math.max(12, left),
+      });
     }
-    setDropdownPos({
-      top: rect.bottom + 4,
-      left: Math.max(12, left),
-    });
     setOpenDropdown(itemId);
   };
 
   const handleMouseEnterDropdown = (itemId: string, el: HTMLElement) => {
+    // Ignore mouseenter on touch devices to prevent tap flicker
+    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches) {
+      return;
+    }
     if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
     handleOpenDropdown(itemId, el);
   };
 
   const handleMouseLeaveDropdown = () => {
+    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches) {
+      return;
+    }
     if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
     dropdownTimeoutRef.current = setTimeout(() => {
       setOpenDropdown(null);
-    }, 150);
+    }, 200);
   };
 
   useEffect(() => {
     if (!openDropdown) return;
     const handleScroll = () => {
-      setOpenDropdown(null);
+      // Only auto-close on scroll for desktop popovers (window width >= 640px)
+      if (typeof window !== "undefined" && window.innerWidth >= 640) {
+        setOpenDropdown(null);
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     const navEl = navScrollRef.current;
@@ -4150,6 +4162,15 @@ export default function App() {
                               } else {
                                 handleOpenDropdown(item.id, e.currentTarget);
                               }
+                              if (item.id === "workspace") {
+                                startTransition(() => {
+                                  setCurrentTab("workspace");
+                                });
+                              } else if (item.id === "gos_formats") {
+                                startTransition(() => {
+                                  setCurrentTab("gos_formats");
+                                });
+                              }
                               return;
                             }
                             if (item.id === "admin") {
@@ -4205,7 +4226,7 @@ export default function App() {
                                 if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
                               }}
                               onMouseLeave={handleMouseLeaveDropdown}
-                              className="w-full sm:w-72 bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 z-[10000] flex flex-col fixed bottom-0 inset-x-0 sm:bottom-auto sm:inset-x-auto transition-all duration-150 animate-in fade-in zoom-in-95 max-h-[80vh] sm:max-h-[85vh] overflow-hidden"
+                              className="w-full sm:w-80 bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 z-[10000] flex flex-col fixed bottom-0 inset-x-0 sm:bottom-auto sm:inset-x-auto transition-all duration-150 animate-in fade-in zoom-in-95 max-h-[80vh] sm:max-h-[85vh] overflow-hidden"
                             >
                               <div className="sm:hidden flex-none p-4 bg-slate-50 border-b border-slate-200 shadow-sm flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -4266,6 +4287,27 @@ export default function App() {
                                 )}
                                 {item.id === "workspace" && (
                                   <>
+                                    <button
+                                      onClick={() => {
+                                        setCurrentTab("workspace");
+                                        setWorkspaceActiveTool(null);
+                                        setOpenDropdown(null);
+                                      }}
+                                      className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${
+                                        currentTab === 'workspace' && !workspaceActiveTool ? 'bg-blue-100 border-blue-200 text-blue-900' : 'bg-slate-50/50 hover:bg-blue-50 text-slate-700'
+                                      } border border-slate-100 shadow-sm sm:shadow-none`}
+                                    >
+                                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-600 text-white font-bold">
+                                        <LayoutDashboard size={16} />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[13px] font-bold">Mana Panchayath Dashboard</span>
+                                        <span className="text-[10px] text-slate-500 font-bold">పంచాయతీ ప్రధాన పేజీ (అన్ని సాధనాలు)</span>
+                                      </div>
+                                    </button>
+
+                                    <div className="h-px bg-slate-200/70 my-1" />
+
                                     {[
                                       { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} /> },
                                       { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} /> },
@@ -4277,7 +4319,9 @@ export default function App() {
                                       <button
                                         key={tool.id}
                                         onClick={() => { setCurrentTab("workspace"); setWorkspaceActiveTool(tool.id); setOpenDropdown(null); }}
-                                        className="flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left bg-slate-50/50 hover:bg-blue-50 text-slate-700 border border-slate-100 shadow-sm sm:shadow-none"
+                                        className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${
+                                          currentTab === 'workspace' && workspaceActiveTool === tool.id ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50/50 hover:bg-blue-50 text-slate-700'
+                                        } border border-slate-100 shadow-sm sm:shadow-none`}
                                       >
                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-blue-600">
                                           {tool.icon}
@@ -4579,8 +4623,20 @@ export default function App() {
                     icon={item.icon}
                     active={currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity"))}
                     onClick={() => {
-                      if (item.id === "priority_services") {
-                        setOpenDropdown("priority_services");
+                      if (item.id === "workspace") {
+                        setCurrentTab("workspace");
+                        setWorkspaceActiveTool(null);
+                        handleOpenDropdown("workspace");
+                        setSidebarOpen(false);
+                      } else if (item.id === "priority_services") {
+                        handleOpenDropdown("priority_services");
+                        setSidebarOpen(false);
+                      } else if (item.id === "gos_formats") {
+                        setCurrentTab("gos_formats");
+                        handleOpenDropdown("gos_formats");
+                        setSidebarOpen(false);
+                      } else if (item.id === "useful_links") {
+                        handleOpenDropdown("useful_links");
                         setSidebarOpen(false);
                       } else if (item.id === "farmer_registry") {
                         window.history.pushState({}, "", "/Farmer_Registry");
@@ -4692,7 +4748,7 @@ export default function App() {
         </aside>
 
         <main
-          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-3 sm:p-6 lg:p-8"
+          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-2 sm:p-4 lg:p-5"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
         >
           {location.pathname.endsWith("/Evdka") &&
@@ -4819,13 +4875,13 @@ export default function App() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="space-y-4 sm:space-y-6"
+                    className="space-y-3 sm:space-y-4"
                   >
                     <DynamicSection id="home_tab_html" />
                     {dataLoading ? (
-                      <div className="space-y-8 animate-in fade-in duration-500">
+                      <div className="space-y-4 animate-in fade-in duration-500">
                         <HeroSkeleton />
-                        <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="max-w-4xl mx-auto space-y-4">
                           <div className="flex justify-between items-center px-4">
                             <div className="h-4 bg-slate-200 rounded-full w-32" />
                             <div className="h-4 bg-slate-100 rounded-full w-24" />
@@ -4834,7 +4890,7 @@ export default function App() {
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-8 pb-12">
+                      <div className="space-y-4 pb-6">
                         
                         {(siteConfig?.elements && siteConfig.elements.length > 0
                           ? siteConfig.elements
@@ -4861,7 +4917,7 @@ export default function App() {
                                 
 
                                 {el.type === "Post Grid" && (
-                                  <div className="space-y-8">
+                                  <div className="space-y-4">
                                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-2">
                                       <div>
                                         <motion.span
@@ -4886,7 +4942,7 @@ export default function App() {
                                         />
                                       </Link>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                       {filteredPosts
                                         .slice(0, 4)
                                         .map((post: any, idx: number) => (
@@ -18194,7 +18250,7 @@ function PostCard({
 
   return (
     <motion.div layout className="post-card">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-3 mb-3 sm:mb-4">
         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-black overflow-hidden border shadow-sm">
           {post.userPhoto ? (
             <img

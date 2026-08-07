@@ -412,10 +412,10 @@ header {
 
 .section-card { 
   background: #fff; border-radius: 16px; padding: 15px; 
-  box-shadow: var(--card-shadow); margin-bottom: 20px; 
+  box-shadow: var(--card-shadow); margin-bottom: 12px; 
 }
 @media (min-width: 640px) {
-  .section-card { padding: 20px; margin-bottom: 25px; }
+  .section-card { padding: 16px; margin-bottom: 16px; }
 }
 .card-blue { border-top: 4px solid var(--primary); }
 .card-gold { border-top: 4px solid var(--accent); }
@@ -423,10 +423,10 @@ header {
 /* FEED POSTS */
 .post-card {
   background: #ffffff; 
-  border-radius: 24px; 
-  padding: 20px;
+  border-radius: 20px; 
+  padding: 16px;
   border: 1px solid #f1f5f9; 
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   transition: all 0.3s ease;
   height: 100%;
@@ -435,7 +435,7 @@ header {
   flex-direction: column;
 }
 @media (min-width: 640px) {
-  .post-card { padding: 32px; margin-bottom: 24px; }
+  .post-card { padding: 20px; margin-bottom: 16px; }
 }
 .post-card:hover {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
