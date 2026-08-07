@@ -1088,6 +1088,46 @@ export const playNotificationSound = (soundId?: string) => {
   }
 };
 
+export const generatePostShareText = (post: any, postUrl: string) => {
+  if (!post) return `E-Vedhika: ${postUrl}`;
+  
+  const rawContent = post.content || "";
+  const plainContent = String(rawContent)
+    .replace(/<[^>]*>?/gm, "")
+    .replace(/[#*`]/g, "")
+    .trim();
+  const summary = plainContent ? (plainContent.length > 200 ? plainContent.substring(0, 200) + "..." : plainContent) : "";
+
+  const title = (post.title || "E-Vedhika డిజిటల్ పోస్ట్").trim();
+  const category = (post.category || "General").trim();
+  
+  let formattedDate = "";
+  if (post.createdAt) {
+    try {
+      const d = new Date(post.createdAt?.seconds ? post.createdAt.seconds * 1000 : post.createdAt);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toLocaleDateString("te-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        });
+      }
+    } catch (e) {}
+  }
+
+  return (
+    `🌟 *E-VEDHIKA (ఈ-వేదిక) ముఖ్యమైన సమాచారం* 🌟\n\n` +
+    `📌 *${title}*\n\n` +
+    `📂 *విభాగం / Category:* ${category}\n` +
+    (formattedDate ? `📅 *తేదీ / Date:* ${formattedDate}\n` : "") +
+    (summary ? `\n📝 *వివరాలు / Summary:*\n_"${summary}"_\n` : "") +
+    `\n👇 *పూర్తి వివరాలు & జిఓల కోసం క్రింది లింక్ క్లిక్ చేయండి:*` +
+    `\n🔗 ${postUrl}\n\n` +
+    `________________________\n` +
+    `✨ *E-Vedhika - పంచాయతీ ముఖ్యాంశాలు & డిజిటల్ సేవల పోర్టల్*`
+  );
+};
+
 export const handleShare = async (
   title: string,
   text: string,
@@ -1114,27 +1154,40 @@ export const handleShare = async (
     }
   }
 
+  const fullShareText = text
+    ? (text.includes(url) ? text : `${text}\n\n🔗 ${url}`)
+    : url;
+
   if (navigator.share) {
     try {
-      const shareData: any = { title, url };
+      const shareData: any = {
+        title: title || "E-Vedhika",
+        text: fullShareText,
+        url: url,
+      };
 
       if (filesToShare && filesToShare.length > 0) {
         shareData.files = filesToShare;
-        // Only include text if we are sharing a file, because passing text 
-        // with a URL breaks native link previews in WhatsApp Android.
-        shareData.text = text;
       }
 
       await navigator.share(shareData);
       if (onSuccess) onSuccess();
     } catch (error: any) {
       if (error && error.name !== "AbortError") {
-        navigator.clipboard.writeText(url);
+        try {
+          await navigator.clipboard.writeText(fullShareText);
+        } catch (e) {}
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullShareText)}`;
+        window.open(waUrl, "_blank");
         if (onSuccess) onSuccess();
       }
     }
   } else {
-    navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(fullShareText);
+    } catch (e) {}
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(fullShareText)}`;
+    window.open(waUrl, "_blank");
     if (onSuccess) onSuccess();
   }
 };
@@ -2322,26 +2375,26 @@ export default function App() {
     if (postIdFromUrl && posts.length > 0) {
       const post = posts.find((p) => p.id === postIdFromUrl);
       if (post) {
-        document.title = `${post.title || "Post"} | E-Vedhika`;
-        // Update meta tags for client-side aware crawlers
-        let description = post.content
-          ? String(post.content || "").replace(/<[^>]*>?/gm, "").substring(0, 160)
-          : "";
-        let metaDesc = document.querySelector('meta[name="description"]');
-        if (metaDesc) {
-          metaDesc.setAttribute("content", description);
-        }
+        const title = post.title || "E-Vedhika పోస్ట్";
+        const rawContent = post.content || "";
+        const description = String(rawContent)
+          .replace(/<[^>]*>?/gm, "")
+          .replace(/[#*`]/g, "")
+          .trim()
+          .substring(0, 160) || "ఈ-వేదిక పోర్టల్ ద్వారా పంచాయతీ ముఖ్యాంశాలు మరియు డిజిటల్ సేవలను పొందండి.";
+        const postUrl = `${window.location.origin}/?postId=${post.id}`;
+        const imageUrl = post.mediaUrl || "https://www.e-vedhika.in/banner.jpg";
 
-        let ogTitle = document.querySelector('meta[property="og:title"]');
-        if (ogTitle)
-          ogTitle.setAttribute("content", post.title || "E-Vedhika Post");
-
-        let ogDesc = document.querySelector('meta[property="og:description"]');
-        if (ogDesc) ogDesc.setAttribute("content", description);
-
-        let ogImage = document.querySelector('meta[property="og:image"]');
-        if (ogImage && post.mediaUrl)
-          ogImage.setAttribute("content", post.mediaUrl);
+        updateDOMMetaTags({
+          seoTitle: `${title} | E-Vedhika`,
+          seoDescription: description,
+          ogTitle: `📢 ${title}`,
+          ogDescription: description,
+          ogImage: imageUrl,
+          canonicalUrl: postUrl,
+          ogType: "article",
+          twitterCard: "summary_large_image"
+        });
       }
     } else {
       updateDOMMetaTags(siteConfig?.seo || siteConfig?.seoSettings);
@@ -7056,7 +7109,7 @@ export default function App() {
               .substring(0, 150)
           : "";
         
-        const shareText = `*📢 E-VEDHIKA ముఖ్యమైన సమాచారం*\n\n*${post.title}*\n\n${plainContent ? `_"${plainContent}..."_\n\n` : ""}పూర్తి వివరాల కోసం క్రింది లింక్ క్లిక్ చేయండి:\n👉 ${postUrl}\n\n_E-Vedhika - మీ పంచాయతీ మీ చేతుల్లో_`;
+        const shareText = generatePostShareText(post, postUrl);
 
         const handleDownloadPoster = async () => {
           const element = document.getElementById(`poster-card-to-capture`);
@@ -19213,13 +19266,7 @@ function PostCard({
             onClick={(e) => {
               e.stopPropagation();
               const url = `${window.location.origin}/?postId=${post.id}`;
-              const plainContent = post.content
-                ? post.content
-                    .replace(/<[^>]*>?/gm, "")
-                    .replace(/[#*`]/g, "")
-                    .substring(0, 150)
-                : "";
-              const shareText = ` *${post.title || "E-Vedhika Post"}*\n\n${plainContent ? `${plainContent}...\n\n` : ""}Read more details on E-Vedhika link below:\n`;
+              const shareText = generatePostShareText(post, url);
               handleShare(
                 post.title || "E-Vedhika Post",
                 shareText,
@@ -22564,15 +22611,7 @@ function PostDetail({
               aria-label="Share Post"
               onClick={() => {
                 const url = `${window.location.origin}/?postId=${post.id}`;
-                const plainContent = post.content
-                  ? post.content
-                      .replace(/<[^>]*>?/gm, "")
-                      .replace(/[#*`]/g, "")
-                      .substring(0, 100) + "..."
-                  : "";
-                const shareText = plainContent
-                  ? `${plainContent}\n\nRead more on E-Vedhika:`
-                  : "Check out this post on E-Vedhika:";
+                const shareText = generatePostShareText(post, url);
                 handleShare(
                   post.title || "E-Vedhika Post",
                   shareText,
