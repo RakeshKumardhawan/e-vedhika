@@ -58,6 +58,7 @@ import {
   Share2,
   PlusCircle,
   Camera,
+  Image as ImageIcon,
   User,
   Edit2,
   Save,
@@ -19802,6 +19803,128 @@ function PostForm({
       : null,
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const primaryImageInputRef = useRef<HTMLInputElement>(null);
+  const contentImageInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handlePrimaryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    let file = files[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    addToast("చిత్రాన్ని ప్రాసెస్ చేస్తోంది... (Processing image...)");
+
+    try {
+      if (file.type.startsWith("image/")) {
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          initialQuality: 0.8,
+        };
+        const compressedBlob = await imageCompression(file, options);
+        file = new File([compressedBlob], file.name || "post_image.jpg", {
+          type: file.type || "image/jpeg",
+          lastModified: Date.now(),
+        });
+      }
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+      let downloadURL = "";
+
+      if (storageConfig === "cloudflare") {
+        const token = await auth.currentUser?.getIdToken();
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
+        downloadURL = data.url;
+      } else {
+        const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
+        await uploadBytes(storageRef, file);
+        downloadURL = await getDownloadURL(storageRef);
+      }
+
+      setMedia({
+        url: downloadURL,
+        type: file.type || "image/jpeg",
+        name: file.name,
+      });
+      addToast("ఫోటో విజయవంతంగా జోడించబడింది! (Image added successfully!)");
+    } catch (err: any) {
+      console.error("Primary image upload error:", err);
+      addToast(`ఫోటో అప్‌లోడ్ విఫలమైంది: ${err.message || "Error"}`);
+    } finally {
+      setIsUploadingImage(false);
+      if (primaryImageInputRef.current) primaryImageInputRef.current.value = "";
+    }
+  };
+
+  const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    let file = files[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    addToast("కంటెంట్ ఇమేజ్‌ని ప్రాసెస్ చేస్తోంది... (Processing content image...)");
+
+    try {
+      if (file.type.startsWith("image/")) {
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+          initialQuality: 0.8,
+        };
+        const compressedBlob = await imageCompression(file, options);
+        file = new File([compressedBlob], file.name || "image.jpg", {
+          type: file.type || "image/jpeg",
+          lastModified: Date.now(),
+        });
+      }
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+      let downloadURL = "";
+
+      if (storageConfig === "cloudflare") {
+        const token = await auth.currentUser?.getIdToken();
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
+        downloadURL = data.url;
+      } else {
+        const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
+        await uploadBytes(storageRef, file);
+        downloadURL = await getDownloadURL(storageRef);
+      }
+
+      const imageMarkdown = `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`;
+      setContent((prev) => prev + imageMarkdown);
+      addToast("కంటెంట్‌లో ఫోటో విజయవంతంగా జోడించబడింది! (Image added into content!)");
+    } catch (err: any) {
+      console.error("Content image upload error:", err);
+      addToast(`ఇమేజ్ అప్‌లోడ్ విఫలమైంది: ${err.message || "Error"}`);
+    } finally {
+      setIsUploadingImage(false);
+      if (contentImageInputRef.current) contentImageInputRef.current.value = "";
+    }
+  };
 
   const wrapText = (prefix: string, suffix: string = "") => {
     const textarea = textareaRef.current;
@@ -20095,6 +20218,106 @@ function PostForm({
           />
         </div>
 
+        {/* POST IMAGE UPLOAD SECTION */}
+        <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+              <ImageIcon size={16} className="text-primary" />
+              పోస్ట్ ఫోటో / ఇమేజ్ (POST FEATURED PHOTO)
+            </label>
+            {media?.url && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                ✓ ఫోటో ఉంది (Selected)
+              </span>
+            )}
+          </div>
+
+          <input
+            type="file"
+            ref={primaryImageInputRef}
+            onChange={handlePrimaryImageUpload}
+            accept="image/*"
+            className="hidden"
+          />
+          <input
+            type="file"
+            ref={contentImageInputRef}
+            onChange={handleContentImageUpload}
+            accept="image/*"
+            className="hidden"
+          />
+
+          {!media?.url ? (
+            <div className="flex flex-wrap sm:flex-nowrap gap-2">
+              <button
+                type="button"
+                disabled={isUploadingImage}
+                onClick={() => primaryImageInputRef.current?.click()}
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-primary text-white rounded-xl text-xs font-black hover:bg-primary/90 transition-all uppercase tracking-wider shadow-md shadow-primary/20 active:scale-95 disabled:opacity-50"
+              >
+                {isUploadingImage ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Camera size={16} />
+                )}
+                <span>ఫోటో ఎంచుకోండి (CHOOSE IMAGE)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  Swal.fire({
+                    title: "పోస్ట్ ఇమేజ్ URL",
+                    input: "url",
+                    inputLabel: "ఇమేజ్ వెబ్ లింక్ (Image Direct URL)",
+                    inputPlaceholder: "https://example.com/image.jpg",
+                    showCancelButton: true,
+                    confirmButtonText: "జోడించండి (Set Image)",
+                    confirmButtonColor: "#2563eb",
+                  }).then((res) => {
+                    if (res.isConfirmed && res.value) {
+                      setMedia({
+                        url: res.value,
+                        type: "image/jpeg",
+                        name: "Image URL",
+                      });
+                      addToast("ఇమేజ్ లింక్ జోడించబడింది!");
+                    }
+                  });
+                }}
+                className="px-4 py-3 bg-white border-2 border-slate-200 hover:border-primary/40 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <Link2 size={16} className="text-blue-600" />
+                <span>URL లింక్</span>
+              </button>
+            </div>
+          ) : (
+            <div className="relative rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-900 group">
+              <img
+                src={media.url}
+                alt="Post featured preview"
+                className="w-full h-44 object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-3 flex flex-col justify-end">
+                <div className="flex items-center justify-between text-white">
+                  <span className="text-xs font-bold truncate max-w-[220px]">
+                    {media.name || "Post Image Attachment"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMedia(null)}
+                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-black flex items-center gap-1 transition-all shadow-md active:scale-95"
+                  >
+                    <Trash2 size={14} />
+                    <span>తీసివేయి (Remove)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div>
           <div className="flex items-center justify-between ml-1 mb-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
@@ -20221,6 +20444,15 @@ function PostForm({
                   title="Attach File Link"
                 >
                   <FileText size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => contentImageInputRef.current?.click()}
+                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-emerald-600 border border-emerald-200 flex items-center gap-1 text-[10px] font-black"
+                  title="ఇమేజ్ అప్‌లోడ్ చేయండి (Upload Image)"
+                >
+                  <ImageIcon size={15} />
+                  <span>చిత్రం</span>
                 </button>
                 <div className="h-6 w-px bg-slate-200 mx-1"></div>
                 <button
