@@ -548,6 +548,7 @@ function formatDistanceToNow(timestamp: number): string {
 
 interface Post {
   id: string;
+  slug?: string;
   title: string;
   content: string;
   category: string;
@@ -9489,6 +9490,7 @@ function AdminPanel({
       icon: <Users size={22} />,
       color: "from-blue-600 to-indigo-600",
       trend: "+12%",
+      onClick: () => setActiveSubTab("users"),
     },
     {
       label: isEditorMode ? "My Pending Issues" : "Pending Issues",
@@ -9501,6 +9503,10 @@ function AdminPanel({
       icon: <AlertTriangle size={22} />,
       color: "from-rose-600 to-orange-600",
       trend: "Critical",
+      onClick: () => {
+        setActiveSubTab("reports");
+        setReportsType("issues");
+      },
     },
     {
       label: isEditorMode ? "My Contents" : "Total Contents",
@@ -9508,6 +9514,10 @@ function AdminPanel({
       icon: <Layout size={22} />,
       color: "from-emerald-600 to-teal-600",
       trend: "+5%",
+      onClick: () => {
+        setActiveSubTab("reports");
+        setReportsType("posts");
+      },
     },
     {
       label: "Cloud Storage",
@@ -9515,6 +9525,7 @@ function AdminPanel({
       icon: <Database size={22} />,
       color: "from-purple-600 to-pink-600",
       trend: "Global",
+      onClick: () => setActiveSubTab("settings"),
     },
   ];
 
@@ -10333,7 +10344,7 @@ function AdminPanel({
           <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
             <DynamicSection id="admin_dashboard_html" />
             {activeSubTab === "dash" && (
-              <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} />
+              <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} />
             )}
 
             {(activeSubTab === "reports" || activeSubTab === "suggestions") && (
