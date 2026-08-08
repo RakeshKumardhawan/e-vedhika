@@ -37,6 +37,46 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Helper to format time into 12-hour AM/PM format
+  const formatTo12HourTime = (timeStr?: string) => {
+    if (!timeStr) return "09:00:00 AM";
+    const trimmed = timeStr.trim();
+    if (/am|pm/i.test(trimmed)) {
+      return trimmed;
+    }
+    const parts = trimmed.split(":");
+    if (parts.length >= 2) {
+      let hours = parseInt(parts[0], 10);
+      const minutes = parts[1];
+      const seconds = parts[2] ? parts[2].split(" ")[0] : "00";
+      if (isNaN(hours)) return timeStr;
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const strHours = hours < 10 ? `0${hours}` : `${hours}`;
+      return `${strHours}:${minutes}:${seconds} ${ampm}`;
+    }
+    return timeStr;
+  };
+
+  // Helper to display full specific office location
+  const getDisplayOfficeLocation = (log: any) => {
+    if (log.officeLocation && log.officeLocation !== 'GP Office' && log.officeLocation !== 'Grama Panchayat Office') {
+      return log.officeLocation;
+    }
+    if (log.office && log.office !== 'GP Office' && log.office !== 'Grama Panchayat Office') {
+      return log.office;
+    }
+    if (log.panchayat || log.mandal || log.district) {
+      const p = log.panchayat ? (log.panchayat.toLowerCase().includes('office') || log.panchayat.toLowerCase().includes('gp') || log.panchayat.toLowerCase().includes('mpdo') ? log.panchayat : `${log.panchayat} GP Office`) : '';
+      const m = log.mandal ? (log.mandal.toLowerCase().includes('mandal') ? log.mandal : `${log.mandal} Mandal`) : '';
+      const d = log.district || '';
+      const combined = [p, m, d].filter(Boolean).join(', ');
+      if (combined) return combined;
+    }
+    return 'Narsingi Grama Panchayat Office, Rangareddy';
+  };
+
   // 1. Live Telemetry & Remote Requests Fetch Loop
   const fetchLiveCloudData = async () => {
     setSyncing(true);
@@ -191,18 +231,31 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
 
   // Generate Sample Telemetry test
   const handleTestPing = async () => {
+    const sampleLocations = [
+      { office: "Narsingi Grama Panchayat Office, Rangareddy", panchayat: "Narsingi GP", mandal: "Gandipet", district: "Rangareddy" },
+      { office: "Shamshabad Mandal Praja Parishad Office, Rangareddy", panchayat: "Shamshabad MPDO", mandal: "Shamshabad", district: "Rangareddy" },
+      { office: "Ghatkesar Grama Panchayat Office, Medchal", panchayat: "Ghatkesar GP", mandal: "Ghatkesar", district: "Medchal-Malkajgiri" },
+      { office: "Amaravati Grama Panchayat Secretariat, Guntur", panchayat: "Amaravati GP", mandal: "Amaravati", district: "Guntur" },
+      { office: "Suryapet Mandal Praja Parishad Office, Suryapet", panchayat: "Suryapet MPDO", mandal: "Suryapet", district: "Suryapet" },
+      { office: "Karimnagar Rural Grama Panchayat, Karimnagar", panchayat: "Karimnagar GP", mandal: "Karimnagar Rural", district: "Karimnagar" },
+      { office: "Vijayawada Rural Grama Panchayat Secretariat, Krishna", panchayat: "Vijayawada GP", mandal: "Vijayawada Rural", district: "Krishna" },
+      { office: "Khammam Urban Mandal Office, Khammam", panchayat: "Khammam MPDO", mandal: "Khammam Urban", district: "Khammam" }
+    ];
+    const loc = sampleLocations[Math.floor(Math.random() * sampleLocations.length)];
     const pcNum = Math.floor(1000 + Math.random() * 9000);
     const newId = `TEL-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const time12hr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
     const samplePayload = {
       id: newId,
       date: new Date().toISOString().slice(0, 10),
-      time: new Date().toLocaleTimeString(),
-      pcName: `GP-TELANGANA-${pcNum}`,
+      time: time12hr,
+      pcName: `GP-${loc.mandal.replace(/\s+/g, '').toUpperCase()}-${pcNum}`,
       userName: `panchayat_sec_${pcNum.toString().slice(-2)}`,
-      officeLocation: "Grama Panchayat Office",
-      panchayat: "Rangareddy GP",
-      mandal: "Ghatkesar",
-      district: "Medchal-Malkajgiri",
+      officeLocation: loc.office,
+      panchayat: loc.panchayat,
+      mandal: loc.mandal,
+      district: loc.district,
       osVersion: "Windows 11 Pro 64-bit (Build 22631)",
       internet: "Online (Fiber 100Mbps)",
       dotNet: "v3.5 & v4.8 Active",
@@ -796,11 +849,11 @@ public class TelemetryReporter
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-[10px] text-slate-500 font-semibold block uppercase">85. Audit Timestamp</span>
-                <span className="font-bold text-slate-800">{log.date} {log.time}</span>
+                <span className="font-bold text-slate-800">{log.date} {formatTo12HourTime(log.time)}</span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-[10px] text-slate-500 font-semibold block uppercase">86. Office Location</span>
-                <span className="font-bold text-slate-800">{log.panchayat || log.officeLocation || 'GP Office'}</span>
+                <span className="font-bold text-slate-800">{getDisplayOfficeLocation(log)}</span>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-[10px] text-slate-500 font-semibold block uppercase">87. Mandal & District</span>
@@ -1026,14 +1079,14 @@ public class TelemetryReporter
 
                     <td className="p-3 font-bold text-slate-900">{log.slNo || idx + 1}</td>
                     <td className="p-3 text-slate-600">{log.date}</td>
-                    <td className="p-3 text-slate-600">{log.time}</td>
+                    <td className="p-3 text-slate-600 font-semibold">{formatTo12HourTime(log.time)}</td>
                     <td className="p-3 font-bold text-indigo-900 flex items-center gap-1">
                       <Monitor className="w-3.5 h-3.5 text-indigo-600" />
                       <span>{log.pcName}</span>
                     </td>
                     <td className="p-3 text-slate-700">{log.userName}</td>
-                    <td className="p-3 text-slate-700 font-sans">
-                      {log.panchayat ? `${log.panchayat}, ${log.mandal || ''}` : (log.officeLocation || 'GP Office')}
+                    <td className="p-3 text-slate-800 font-sans font-medium">
+                      {getDisplayOfficeLocation(log)}
                     </td>
                     <td className="p-3 text-slate-600">{log.osVersion}</td>
                     <td className="p-3">

@@ -30,7 +30,7 @@ import { VisitorTracker } from "./components/VisitorTracker";
 import { CodeManager } from "./components/CodeManager";
 import { DynamicSection } from "./components/DynamicSection";
 import { AIVideoHomeSection } from "./components/AIVideoHomeSection";
-import {
+import {  DollarSign,
   Bell,
   Menu,
   X,
@@ -145,7 +145,7 @@ import {
   UserCheck,
   Smile,
   ThumbsUp, ImageOff,
-} from "lucide-react";
+ } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
@@ -1064,85 +1064,74 @@ export const playNotificationSound = (soundId: string = "default_ding") => {
       if (!globalAudioContext) return;
       const osc = globalAudioContext.createOscillator();
       const gain = globalAudioContext.createGain();
-
       osc.type = type;
       const now = globalAudioContext.currentTime + startTime;
-
+      
       osc.frequency.setValueAtTime(freq, now);
       if (endFreq !== undefined) {
-        osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration * 0.8);
       }
-
+      
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(startGain, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
+      gain.gain.linearRampToValueAtTime(startGain, now + 0.02);
+      gain.gain.setTargetAtTime(0, now + 0.02, duration / 3);
+      
       osc.connect(gain);
       gain.connect(globalAudioContext.destination);
-
       osc.start(now);
-      osc.stop(now + duration + 0.05);
+      osc.stop(now + duration + 1.0);
     };
 
     switch (soundId) {
       case "soft_chime":
-        playTone(523.25, 0, 0.25, "sine", 0.3); // C5
-        playTone(659.25, 0.1, 0.4, "sine", 0.35); // E5
+        playTone(523.25, 0, 0.6, "sine", 0.4); 
+        playTone(659.25, 0.15, 0.8, "sine", 0.45); 
         break;
-
       case "success_ping":
-        playTone(523.25, 0, 0.08, "sine", 0.3);  // C5
-        playTone(659.25, 0.07, 0.08, "sine", 0.3); // E5
-        playTone(783.99, 0.14, 0.08, "sine", 0.3); // G5
-        playTone(1046.5, 0.21, 0.35, "sine", 0.4); // C6
+        playTone(523.25, 0, 0.2, "sine", 0.3);  
+        playTone(659.25, 0.1, 0.2, "sine", 0.3); 
+        playTone(783.99, 0.2, 0.2, "sine", 0.3); 
+        playTone(1046.5, 0.3, 0.8, "sine", 0.4); 
         break;
-
       case "alert_buzz":
-        playTone(440, 0, 0.1, "sawtooth", 0.25);
-        playTone(880, 0.12, 0.2, "sawtooth", 0.3);
+        playTone(440, 0, 0.4, "sawtooth", 0.2);
+        playTone(440, 0.2, 0.4, "sawtooth", 0.2);
+        playTone(440, 0.4, 0.6, "square", 0.25);
         break;
-
       case "gentle_pop":
-        playTone(700, 0, 0.08, "sine", 0.4, 150); // pitch drop
+        playTone(600, 0, 0.3, "sine", 0.5, 100); 
         break;
-
       case "echo_bell":
-        playTone(1567.98, 0, 0.35, "sine", 0.4);   // G6
-        playTone(1567.98, 0.18, 0.25, "sine", 0.2); // Echo 1
-        playTone(1567.98, 0.32, 0.2, "sine", 0.08); // Echo 2
+        playTone(1567.98, 0, 0.8, "sine", 0.5);   
+        playTone(1567.98, 0.25, 0.6, "sine", 0.25); 
+        playTone(1567.98, 0.5, 0.4, "sine", 0.1); 
         break;
-
       case "digital_blip":
-        playTone(1200, 0, 0.04, "triangle", 0.3);
-        playTone(1800, 0.05, 0.06, "triangle", 0.35);
+        playTone(1200, 0, 0.15, "square", 0.15);
+        playTone(1800, 0.1, 0.2, "square", 0.2);
         break;
-
       case "happy_trill":
-        playTone(740, 0, 0.06, "sine", 0.3);     // F#5
-        playTone(880, 0.05, 0.06, "sine", 0.3);   // A5
-        playTone(1108.73, 0.1, 0.06, "sine", 0.35); // C#6
-        playTone(1318.51, 0.15, 0.25, "sine", 0.4); // E6
+        playTone(740, 0, 0.15, "triangle", 0.3);     
+        playTone(880, 0.1, 0.15, "triangle", 0.3);   
+        playTone(1108.73, 0.2, 0.15, "triangle", 0.35); 
+        playTone(1318.51, 0.3, 0.7, "triangle", 0.4); 
         break;
-
       case "sharp_click":
-        playTone(2400, 0, 0.03, "square", 0.2, 300);
+        playTone(2000, 0, 0.1, "square", 0.2, 200);
         break;
-
       case "synth_wave":
-        playTone(440, 0, 0.3, "triangle", 0.3, 880);
-        playTone(554.37, 0.08, 0.35, "triangle", 0.3, 1108.73);
+        playTone(330, 0, 0.6, "sawtooth", 0.2, 660);
+        playTone(440, 0.2, 0.8, "sawtooth", 0.2, 880);
         break;
-
       case "marimba_tap":
-        playTone(392, 0, 0.12, "sine", 0.5, 200); // G4 wood tap
-        playTone(523.25, 0.1, 0.18, "sine", 0.5, 250); // C5 wood tap
+        playTone(392, 0, 0.4, "sine", 0.6, 150); 
+        playTone(523.25, 0.15, 0.5, "sine", 0.6, 200); 
         break;
-
       case "default_ding":
       default:
-        playTone(880, 0, 0.1, "sine", 0.4);
-        playTone(1108.73, 0.1, 0.1, "sine", 0.4);
-        playTone(1318.51, 0.2, 0.3, "sine", 0.5);
+        playTone(880, 0, 0.3, "sine", 0.4);
+        playTone(1108.73, 0.15, 0.3, "sine", 0.4);
+        playTone(1318.51, 0.3, 0.8, "sine", 0.5);
         break;
     }
   } catch (error) {
@@ -2204,8 +2193,16 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
-  const [currentTab, setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
+  const [currentTab, _setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
   );
+
+  const setCurrentTab = (newTab: any) => {
+    _setCurrentTab(newTab);
+    if (searchParams.has("postId")) {
+       searchParams.delete("postId");
+       setSearchParams(searchParams);
+    }
+  };
 
 
   const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(
@@ -4641,10 +4638,10 @@ export default function App() {
                                 setCurrentTab(item.id);
                                 if (item.id === "home") {
                                   setCurrentFilter("All");
-                                  if (searchParams.has("postId")) {
-                                    searchParams.delete("postId");
-                                    setSearchParams(searchParams);
-                                  }
+                                }
+                                if (searchParams.has("postId")) {
+                                  searchParams.delete("postId");
+                                  setSearchParams(searchParams);
                                 }
                               });
                             }
@@ -5028,6 +5025,7 @@ export default function App() {
                 </h3>
                 {[
                   { id: "settings", label: "System Config", icon: Settings },
+                  { id: "ads", label: "Ad Management", icon: Megaphone },
                   { id: "code_manager", label: "Code Manager", icon: Code },
                   { id: "ai", label: "Gemini AI Node", icon: Bot },
                   { id: "cloud_dns", label: "Cloud DNS Config", icon: Cloud },
@@ -5101,10 +5099,10 @@ export default function App() {
                         setCurrentTab(item.id);
                         if (item.id === "home") {
                           setCurrentFilter("All");
-                          if (searchParams.has("postId")) {
-                            searchParams.delete("postId");
-                            setSearchParams(searchParams);
-                          }
+                        }
+                        if (searchParams.has("postId")) {
+                          searchParams.delete("postId");
+                          setSearchParams(searchParams);
                         }
                         setSidebarOpen(false);
                       }
@@ -5317,6 +5315,7 @@ export default function App() {
                 userProfile={userProfile}
                 allUsers={allUsers}
                 storageConfig={storageConfig}
+                siteConfig={siteConfig}
                 onEdit={(p) => {
                   setEditingPost(p);
                   setShowPostForm(true);
@@ -8854,9 +8853,7 @@ function HomeAds({ ads }: { ads: Advertisement[] }) {
           key={ad.id}
           className="w-full bg-slate-50 border border-slate-100 rounded-3xl p-4 overflow-hidden"
         >
-          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center mb-2">
-            Advertisement
-          </div>
+          
           <AdsenseUnit client={ad.adsenseClient} slot={ad.adsenseSlot} />
         </div>
       ))}
@@ -9791,6 +9788,11 @@ function AdminPanel({
                       id: "settings",
                       label: "System Config",
                       icon: <Settings size={18} />,
+                    },
+                    {
+                      id: "ads",
+                      label: "Ad Management",
+                      icon: <Megaphone size={18} />,
                     },
                   ]
                 : []),
@@ -14733,6 +14735,145 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                     >
                       Wipe Interaction Cache
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSubTab === "ads" && (
+              <div className="max-w-4xl space-y-8">
+                <div>
+                  <h4 className="text-xl font-black text-primary mb-2">Ad Management (Monetag & AdSense)</h4>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Configure ad slots to show across the website.</p>
+                </div>
+
+                {/* Monetag Config */}
+                <div className="bg-white border-2 border-amber-200 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Megaphone className="text-amber-500" size={24} />
+                    <h5 className="font-black text-slate-800 text-lg">Monetag Ads</h5>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500" 
+                        checked={siteConfig?.ads?.monetagEnabled || false}
+                        onChange={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagEnabled: e.target.checked } };
+                          setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          addToast(e.target.checked ? "Monetag Enabled" : "Monetag Disabled");
+                        }}
+                      />
+                      <span className="font-bold text-slate-700">Enable Monetag Ads</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Zone ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
+                          placeholder="e.g. 8945672"
+                          value={siteConfig?.ads?.monetagZoneIdSidebar || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved Monetag Sidebar Zone ID");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Zone ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
+                          placeholder="e.g. 8945673"
+                          value={siteConfig?.ads?.monetagZoneIdInArticle || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved Monetag In-Article Zone ID");
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AdSense Config */}
+                <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <DollarSign className="text-blue-500" size={24} />
+                    <h5 className="font-black text-slate-800 text-lg">Google AdSense</h5>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-blue-500 focus:ring-blue-500" 
+                        checked={siteConfig?.ads?.adsenseEnabled || false}
+                        onChange={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseEnabled: e.target.checked } };
+                          setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          addToast(e.target.checked ? "AdSense Enabled" : "AdSense Disabled");
+                        }}
+                      />
+                      <span className="font-bold text-slate-700">Enable Google AdSense</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                       <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">AdSense Client ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
+                          placeholder="e.g. ca-pub-1234567890"
+                          value={siteConfig?.ads?.adsenseClient || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved AdSense Client ID");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Slot ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
+                          placeholder="e.g. 1234567890"
+                          value={siteConfig?.ads?.adsenseSlotSidebar || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved AdSense Sidebar Slot ID");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Slot ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
+                          placeholder="e.g. 0987654321"
+                          value={siteConfig?.ads?.adsenseSlotInArticle || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved AdSense In-Article Slot ID");
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -21387,6 +21528,7 @@ function PostDetail({
   allUsers,
   onEdit,
   storageConfig,
+  siteConfig,
   allPosts = [],
 }: {
   postId: string;
@@ -21397,6 +21539,7 @@ function PostDetail({
   allUsers: UserProfile[];
   onEdit: (p: Post) => void;
   storageConfig: "cloudflare" | "firebase";
+  siteConfig?: any;
   allPosts?: Post[];
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21585,11 +21728,12 @@ function PostDetail({
   const mainCategory = post.categories?.[0] || post.category || "తాజా వార్తలు";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl shadow-xs border border-slate-200 max-w-4xl mx-auto space-y-2.5"
-    >
+    <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative items-start">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl shadow-xs border border-slate-200 w-full space-y-2.5 min-w-0"
+      >
       {/* Top Bar: Back & Edit */}
       <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100">
         <button
@@ -21766,44 +21910,13 @@ function PostDetail({
           </button>
         </div>
 
-        {/* Sponsored Advertisement Banner Section */}
-        <div className="my-2 bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-xs relative overflow-hidden group">
-          <div className="absolute top-0 right-0 bg-amber-400 text-amber-950 text-[9px] font-black px-2 py-0.5 rounded-bl uppercase tracking-wider flex items-center gap-1 border-b border-l border-amber-500/80">
-            <Megaphone size={10} className="text-amber-900" />
-            <span>ప్రకటన (Advertisement)</span>
-          </div>
-
-          <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-            <div className="flex items-start gap-2.5 flex-1">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-400 flex items-center justify-center shrink-0 text-amber-900 font-bold shadow-xs">
-                <Sparkles size={18} className="text-amber-700 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="bg-amber-600 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
-                    Sponsored
-                  </span>
-                  <h4 className="font-black text-slate-900 text-xs sm:text-sm leading-tight">
-                    ఈ-వేదిక డిజిటల్ సిటిజెన్ సేవలు & ఆన్‌లైన్ అప్‌డేట్స్
-                  </h4>
-                </div>
-                <p className="text-slate-700 text-[11px] sm:text-xs mt-0.5 font-medium leading-normal">
-                  అన్ని ప్రభుత్వ జీఓలు, అప్లికేషన్ ఫార్మాట్‌లు, వ్యవసాయ పథకాలు మరియు ఉపాధి అవకాశాలు ఒకే చోట పొందుపరచండి.
-                </p>
-              </div>
-            </div>
-
-            <a
-              href="/?tab=gos"
-              target="_blank"
-              rel="noreferrer"
-              className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs px-3.5 py-1.5 rounded-lg shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-            >
-              <span>మరిన్ని వివరాలు</span>
-              <ArrowUpRight size={13} />
-            </a>
-          </div>
-        </div>
+        {/* In-article Ad Slot (Monetag / AdSense) */}
+        {siteConfig?.ads?.monetagEnabled && (
+          <div id="in-article-ad-slot" className="w-full my-4 empty:hidden flex justify-center items-center" data-zone={siteConfig.ads.monetagZoneIdInArticle}></div>
+        )}
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && (
+          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
+        )}
 
         {/* Article Body Matter */}
         <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed font-normal whitespace-pre-wrap my-3">
@@ -21998,7 +22111,7 @@ function PostDetail({
 
       {/* Recent Posts Section */}
       {recentPostsList.length > 0 && (
-        <div className="mt-12 pt-8 border-t border-slate-200">
+        <div className="mt-12 pt-8 border-t border-slate-200 lg:hidden">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span>
@@ -22076,7 +22189,95 @@ function PostDetail({
           anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
         />
       )}
-    </motion.div>
+      </motion.div>
+
+      {/* Right Column - Sidebar */}
+      <div className="hidden lg:flex flex-col gap-6 w-full">
+        {/* Monetag Ad Placeholder */}
+        {siteConfig?.ads?.monetagEnabled && (
+          <div id="monetag-ad-sidebar" className="w-full empty:hidden flex items-center justify-center" data-zone={siteConfig.ads.monetagZoneIdSidebar}></div>
+        )}
+
+        {recentPostsList.length > 0 && (
+          <div className="bg-white border border-slate-200 shadow-sm flex flex-col">
+            <div className="bg-[#0ea5e9] text-white px-4 py-2 font-black text-[15px] uppercase tracking-wide">
+              RECENT POST
+            </div>
+            <div className="p-4 flex flex-col gap-4">
+              {recentPostsList.slice(0, 4).map((rp) => {
+                const rpImage = rp.mediaUrl || (rp.attachments && rp.attachments.find((a) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(a.url) || (a.url || "").includes("image"))?.url);
+                return (
+                  <div
+                    key={rp.id}
+                    onClick={() => {
+                      setSearchParams({ postId: rp.id });
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="flex gap-3 cursor-pointer group"
+                  >
+                    {rpImage && (
+                      <div className="w-[85px] h-[60px] flex-shrink-0 bg-slate-100 overflow-hidden relative">
+                        <img src={rpImage} alt={rp.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                      </div>
+                    )}
+                    <div className="flex flex-col justify-start">
+                      <h4 className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-3 group-hover:text-red-600 transition-colors">
+                        {rp.title}
+                      </h4>
+                      <span className="text-[10px] text-slate-500 mt-1 font-medium">
+                        {new Date(rp.time || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* AdSense Placeholder */}
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && (
+          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
+        )}
+
+        {recentPostsList.length > 4 && (
+          <div className="bg-white border border-slate-200 shadow-sm flex flex-col">
+            <div className="bg-[#0ea5e9] text-white px-4 py-2 font-black text-[15px] uppercase tracking-wide">
+              TRENDING POST
+            </div>
+            <div className="p-4 flex flex-col gap-4">
+              {recentPostsList.slice(4, 8).map((rp) => {
+                const rpImage = rp.mediaUrl || (rp.attachments && rp.attachments.find((a) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(a.url) || (a.url || "").includes("image"))?.url);
+                return (
+                  <div
+                    key={rp.id}
+                    onClick={() => {
+                      setSearchParams({ postId: rp.id });
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="flex gap-3 cursor-pointer group"
+                  >
+                     {rpImage && (
+                      <div className="w-[85px] h-[60px] flex-shrink-0 bg-slate-100 overflow-hidden relative">
+                        <img src={rpImage} alt={rp.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                      </div>
+                    )}
+                    <div className="flex flex-col justify-start">
+                      <h4 className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-3 group-hover:text-red-600 transition-colors">
+                        {rp.title}
+                      </h4>
+                      <span className="text-[10px] text-slate-500 mt-1 font-medium">
+                        {new Date(rp.time || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

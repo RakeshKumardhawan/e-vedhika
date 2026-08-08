@@ -472,7 +472,28 @@ input, textarea, select {
 .comment-item { font-size: 13px; margin-bottom: 8px; padding: 10px; background: #f8fafc; border-radius: 10px; border-left: 4px solid var(--accent); }
 
 /* Focus Mode Adjustments */
-/* Adjustments cleared */
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(4) {
+  min-height: auto !important;
+  border: none !important;
+  background-color: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(4):empty::after {
+  content: none !important;
+}
+
+div#root:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(2) > main:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(4) {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  float: right !important;
+  align-self: flex-end !important;
+  justify-self: flex-end !important;
+  text-align: right !important;
+}
 
 /* Dark Theme Adjustments */
 body.dark-theme {
