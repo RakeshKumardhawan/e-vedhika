@@ -1161,6 +1161,308 @@ export const generatePostShareText = (post: any, postUrl?: string) => {
   );
 };
 
+export function PosterShareModal({
+  post,
+  onClose,
+  addToast,
+}: {
+  post: Post;
+  onClose: () => void;
+  addToast: (msg: string) => void;
+}) {
+  const [posterImgSrc, setPosterImgSrc] = useState<string | null>(post.mediaUrl || null);
+  const [imgLoadError, setImgLoadError] = useState<boolean>(false);
+
+  useEffect(() => {
+    let active = true;
+    setImgLoadError(false);
+    if (post.mediaUrl && (post.mediaType?.startsWith("image") || !post.mediaType)) {
+      setPosterImgSrc(post.mediaUrl);
+      fetch(post.mediaUrl)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (active && reader.result) {
+              setPosterImgSrc(reader.result as string);
+            }
+          };
+          reader.readAsDataURL(blob);
+        })
+        .catch(() => {
+          if (active) {
+            setPosterImgSrc(post.mediaUrl || null);
+          }
+        });
+    } else {
+      setPosterImgSrc(null);
+    }
+    return () => {
+      active = false;
+    };
+  }, [post.mediaUrl, post.mediaType]);
+
+  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
+  const plainContent = post.content
+    ? post.content
+        .replace(/<[^>]*>?/gm, "")
+        .replace(/[#*`]/g, "")
+        .substring(0, 150)
+    : "";
+
+  const shareText = generatePostShareText(post, postUrl);
+
+  const handleDownloadPoster = async () => {
+    const element = document.getElementById(`poster-card-to-capture`);
+    if (!element) return;
+    try {
+      addToast("పోస్టర్ సిద్ధం చేయబడుతోంది... (Preparing poster...)");
+      const canvas = await html2canvas(element, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        scale: 2,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `EVedhika_Poster_${post.id}.png`;
+      link.href = imgData;
+      link.click();
+      addToast("పోస్టర్ విజయవంతంగా డౌన్‌లోడ్ చేయబడింది! (Poster downloaded successfully!)");
+    } catch (err) {
+      console.error("html2canvas error:", err);
+      addToast("పోస్టర్ డౌన్‌లోడ్‌లో సమస్య ఏర్పడింది. (Error generating poster.)");
+    }
+  };
+
+  const handleWhatsAppShare = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+    } catch (err) {
+      console.warn("Clipboard copy failed", err);
+    }
+
+    const element = document.getElementById(`poster-card-to-capture`);
+    let sharedNatively = false;
+
+    if (element && navigator.share && navigator.canShare) {
+      try {
+        const canvas = await html2canvas(element, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          scale: 1.5,
+        });
+
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            const file = new File([blob], `EVedhika_Poster_${post.id}.png`, { type: "image/png" });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: post.title,
+                text: shareText,
+                files: [file],
+              });
+              sharedNatively = true;
+              addToast("పోస్టర్ విజయవంతంగా షేర్ చేయబడింది! (Poster shared successfully!)");
+            }
+          }
+        }, "image/png");
+      } catch (e) {
+        console.warn("Native share failed", e);
+      }
+    }
+
+    if (!sharedNatively) {
+      if (element) {
+        try {
+          const canvas = await html2canvas(element, {
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: "#ffffff",
+            scale: 1.5,
+          });
+          const imgData = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.download = `EVedhika_Poster_${post.id}.png`;
+          link.href = imgData;
+          link.click();
+        } catch (err) {
+          console.warn("Fallback download failed", err);
+        }
+      }
+
+      addToast("వాట్సాప్ సందేశం కాపీ చేయబడింది మరియు పోస్టర్ డౌన్‌లోడ్ చేయబడింది!");
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+      window.open(whatsappUrl, "_blank");
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] bg-slate-950/80 flex flex-col items-center justify-center p-4 backdrop-blur-md overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-4xl bg-slate-50 p-6 sm:p-8 rounded-[32px] border border-slate-200 shadow-2xl flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-stretch overflow-y-auto max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Left Side: The Poster Render */}
+        <div className="shrink-0 flex items-center justify-center">
+          <div
+            id="poster-card-to-capture"
+            className="w-full max-w-[360px] min-h-[500px] p-6 bg-white border border-slate-100 rounded-[24px] shadow-lg flex flex-col justify-between relative overflow-hidden text-left mx-auto"
+          >
+            {/* Styled Header */}
+            <div>
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-amber-500 to-blue-500" />
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 mt-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xs">
+                    EV
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 tracking-tight">E-VEDHIKA</h4>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block leading-none">
+                      డిజిటల్ సమాచార వేదిక
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-full">
+                  {(post.category || "General").trim()}
+                </span>
+              </div>
+
+              {/* Poster Title */}
+              <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug mb-3">
+                {post.title}
+              </h3>
+
+              {/* Optional Post Image */}
+              {!imgLoadError && posterImgSrc && (
+                <div className="w-full h-[140px] rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-50 shrink-0">
+                  <img
+                    src={posterImgSrc}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={() => setImgLoadError(true)}
+                  />
+                </div>
+              )}
+
+              {/* Excerpt */}
+              <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-6 whitespace-pre-line mb-4">
+                {plainContent || "వివరాలు పోర్టల్ లో అందుబాటులో ఉన్నాయి."}
+              </p>
+            </div>
+
+            {/* Footer Branding & QR Code */}
+            <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-4 mt-auto">
+              <div className="flex-1 min-w-0">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  E-VEDHIKA PORTAL
+                </span>
+                <p className="text-[8px] text-slate-500 font-bold leading-normal">
+                  పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
+                </p>
+                <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
+                  {getSiteDisplayHost()}/?postId={post.id}
+                </div>
+              </div>
+              {/* QR Code */}
+              <div className="w-[70px] h-[70px] bg-slate-50 border border-slate-100 rounded-lg p-1 shrink-0 flex items-center justify-center">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
+                    postUrl,
+                  )}`}
+                  alt=""
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Control Panels & Guidance */}
+        <div className="flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md">
+                  వాట్సాప్ షేర్ అసిస్టెంట్ (WhatsApp Share Assistant)
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-800 mt-2">
+                  ఇమేజ్ కార్డ్ షేరింగ్ 📱
+                </h3>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors font-black text-slate-500 cursor-pointer text-lg"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs font-bold text-slate-500 leading-relaxed mb-6">
+              ఈ ముఖ్యమైన పోస్ట్‌ను కేవలం ఒక లింక్‌గా కాకుండా, ఒక ఆకర్షణీయమైన పోస్టర్ చిత్రం రూపంలో వాట్సాప్‌లో పంపవచ్చు.
+            </p>
+
+            {/* Steps Guidance */}
+            <div className="space-y-4 mb-8 text-left bg-white p-5 rounded-2xl border border-slate-200">
+              <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-2 mb-2">
+                ఈజీ షేరింగ్ విధానం (How to Share):
+              </h4>
+              <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
+                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">
+                  1
+                </div>
+                <p>
+                  క్రింది <strong className="text-slate-800">వాట్సాప్‌లో షేర్</strong> బటన్ నొక్కండి. ఇది పోస్టర్ ఇమేజ్‌ను డౌన్‌లోడ్ చేసి, వాట్సాప్ సందేశాన్ని ఆటోమేటిక్‌గా కాపీ చేస్తుంది.
+                </p>
+              </div>
+              <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
+                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">
+                  2
+                </div>
+                <p>
+                  వాట్సాప్ ఓపెన్ అయిన తర్వాత, మీరు షేర్ చేయాలనుకుంటున్న చాట్ లేదా గ్రూప్ ఎంచుకోండి.
+                </p>
+              </div>
+              <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
+                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">
+                  3
+                </div>
+                <p>
+                  మీ ఫోన్ గ్యాలరీ నుండి డౌన్‌లోడ్ చేసిన <strong className="text-slate-800">పోస్టర్ చిత్రాన్ని సెలెక్ట్ చేసి</strong>, క్యాప్షన్ స్థలంలో <strong className="text-slate-800">లింక్ సందేశాన్ని పేస్ట్ చేసి</strong> పంపండి!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions Button Panel */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleWhatsAppShare}
+              className="flex-1 px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/10 active:scale-95 transition-all cursor-pointer"
+            >
+              <Smartphone size={18} />
+              వాట్సాప్‌లో షేర్ (Share on WhatsApp)
+            </button>
+            <button
+              onClick={handleDownloadPoster}
+              className="px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+            >
+              <Download size={18} />
+              పోస్టర్ డౌన్‌లోడ్ (Download)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const handleShare = async (
   title: string,
   text: string,
@@ -7132,260 +7434,13 @@ export default function App() {
       )}
 
       {/* WHATSAPP POST CARD SHARING MODAL */}
-      {sharingPostForPoster && (() => {
-        const post = sharingPostForPoster;
-        const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
-        const plainContent = post.content
-          ? post.content
-              .replace(/<[^>]*>?/gm, "")
-              .replace(/[#*`]/g, "")
-              .substring(0, 150)
-          : "";
-        
-        const shareText = generatePostShareText(post, postUrl);
-
-        const handleDownloadPoster = async () => {
-          const element = document.getElementById(`poster-card-to-capture`);
-          if (!element) return;
-          try {
-            addToast("పోస్టర్ సిద్ధం చేయబడుతోంది... (Preparing poster...)");
-            const canvas = await html2canvas(element, {
-              useCORS: true,
-              allowTaint: false,
-              backgroundColor: "#ffffff",
-              scale: 2, // Ultra-sharp high resolution!
-            });
-            const imgData = canvas.toDataURL("image/png");
-            const link = document.createElement("a");
-            link.download = `EVedhika_Poster_${post.id}.png`;
-            link.href = imgData;
-            link.click();
-            addToast("పోస్టర్ విజయవంతంగా డౌన్‌లోడ్ చేయబడింది! (Poster downloaded successfully!)");
-          } catch (err) {
-            console.error("html2canvas error:", err);
-            addToast("పోస్టర్ డౌన్‌లోడ్‌లో సమస్య ఏర్పడింది. (Error generating poster.)");
-          }
-        };
-
-        const handleWhatsAppShare = async () => {
-          // Copy text
-          try {
-            await navigator.clipboard.writeText(shareText);
-          } catch (err) {
-            console.warn("Clipboard copy failed", err);
-          }
-
-          const element = document.getElementById(`poster-card-to-capture`);
-          let sharedNatively = false;
-
-          if (element && navigator.share && navigator.canShare) {
-            try {
-              const canvas = await html2canvas(element, {
-                useCORS: true,
-                allowTaint: false,
-                backgroundColor: "#ffffff",
-                scale: 1.5,
-              });
-              
-              canvas.toBlob(async (blob) => {
-                if (blob) {
-                  const file = new File([blob], `EVedhika_Poster_${post.id}.png`, { type: "image/png" });
-                  if (navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                      title: post.title,
-                      text: shareText,
-                      files: [file],
-                    });
-                    sharedNatively = true;
-                    addToast("పోస్టర్ విజయవంతంగా షేర్ చేయబడింది! (Poster shared successfully!)");
-                  }
-                }
-              }, "image/png");
-            } catch (e) {
-              console.warn("Native share failed", e);
-            }
-          }
-
-          if (!sharedNatively) {
-            // Fallback download if element exists
-            if (element) {
-              try {
-                const canvas = await html2canvas(element, {
-                  useCORS: true,
-                  allowTaint: false,
-                  backgroundColor: "#ffffff",
-                  scale: 1.5,
-                });
-                const imgData = canvas.toDataURL("image/png");
-                const link = document.createElement("a");
-                link.download = `EVedhika_Poster_${post.id}.png`;
-                link.href = imgData;
-                link.click();
-              } catch (err) {
-                console.warn("Fallback download failed", err);
-              }
-            }
-
-            addToast("వాట్సాప్ సందేశం కాపీ చేయబడింది మరియు పోస్టర్ డౌన్‌లోడ్ చేయబడింది!");
-            const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-            window.open(whatsappUrl, "_blank");
-          }
-        };
-
-        return (
-          <div
-            className="fixed inset-0 z-[9999] bg-slate-950/80 flex flex-col items-center justify-center p-4 backdrop-blur-md overflow-y-auto"
-            onClick={() => setSharingPostForPoster(null)}
-          >
-            <div
-              className="w-full max-w-4xl bg-slate-50 p-6 sm:p-8 rounded-[32px] border border-slate-200 shadow-2xl flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-stretch overflow-y-auto max-h-[90vh]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Left Side: The Poster Render */}
-              <div className="shrink-0 flex items-center justify-center">
-                <div
-                  id="poster-card-to-capture"
-                  className="w-full max-w-[360px] min-h-[500px] p-6 bg-white border border-slate-100 rounded-[24px] shadow-lg flex flex-col justify-between relative overflow-hidden text-left mx-auto"
-                >
-                  {/* Styled Header */}
-                  <div>
-                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-amber-500 to-blue-500" />
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 mt-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xs">
-                          EV
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black text-slate-800 tracking-tight">E-VEDHIKA</h4>
-                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block leading-none">డిజిటల్ సమాచార వేదిక</span>
-                        </div>
-                      </div>
-                      <span className="text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded-full">
-                        {(post.category || "General").trim()}
-                      </span>
-                    </div>
-
-                    {/* Poster Title */}
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug mb-3">
-                      {post.title}
-                    </h3>
-
-                    {/* Optional Post Image */}
-                    {post.mediaUrl && (post.mediaType?.startsWith("image") || !post.mediaType) && (
-                      <div className="w-full h-[140px] rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-50 shrink-0">
-                        <img
-                          src={post.mediaUrl}
-                          alt="Post attachment"
-                          className="w-full h-full object-cover"
-                          crossOrigin="anonymous"
-                          referrerPolicy="no-referrer"
-                        />
-                      </div>
-                    )}
-
-                    {/* Excerpt */}
-                    <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-6 whitespace-pre-line mb-4">
-                      {plainContent || "వివరాలు పోర్టల్ లో అందుబాటులో ఉన్నాయి."}
-                    </p>
-                  </div>
-
-                  {/* Footer Branding & QR Code */}
-                  <div className="border-t border-slate-100 pt-4 flex items-center justify-between gap-4 mt-auto">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">E-VEDHIKA PORTAL</span>
-                      <p className="text-[8px] text-slate-500 font-bold leading-normal">
-                        పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
-                      </p>
-                      <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
-                        {getSiteDisplayHost()}/?postId={post.id}
-                      </div>
-                    </div>
-                    {/* QR Code */}
-                    <div className="w-[70px] h-[70px] bg-slate-50 border border-slate-100 rounded-lg p-1 shrink-0 flex items-center justify-center">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(postUrl)}`}
-                        alt="QR Code"
-                        className="w-full h-full"
-                        crossOrigin="anonymous"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Side: Control Panels & Guidance */}
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md">
-                        వాట్సాప్ షేర్ అసిస్టెంట్ (WhatsApp Share Assistant)
-                      </span>
-                      <h3 className="text-xl sm:text-2xl font-black text-slate-800 mt-2">
-                        ఇమేజ్ కార్డ్ షేరింగ్ 📱
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => setSharingPostForPoster(null)}
-                      className="p-2 hover:bg-slate-200 rounded-full transition-colors font-black text-slate-500 cursor-pointer text-lg"
-                      title="Close"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <p className="text-xs font-bold text-slate-500 leading-relaxed mb-6">
-                    ఈ ముఖ్యమైన పోస్ట్‌ను కేవలం ఒక లింక్‌గా కాకుండా, ఒక ఆకర్షణీయమైన పోస్టర్ చిత్రం రూపంలో వాట్సాప్‌లో పంపవచ్చు.
-                  </p>
-
-                  {/* Steps Guidance */}
-                  <div className="space-y-4 mb-8 text-left bg-white p-5 rounded-2xl border border-slate-200">
-                    <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-2 mb-2">
-                      ఈజీ షేరింగ్ విధానం (How to Share):
-                    </h4>
-                    <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
-                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">1</div>
-                      <p>
-                        క్రింది <strong className="text-slate-800">వాట్సాప్‌లో షేర్</strong> బటన్ నొక్కండి. ఇది పోస్టర్ ఇమేజ్‌ను డౌన్‌లోడ్ చేసి, వాట్సాప్ సందేశాన్ని ఆటోమేటిక్‌గా కాపీ చేస్తుంది.
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
-                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">2</div>
-                      <p>
-                        వాట్సాప్ ఓపెన్ అయిన తర్వాత, మీరు షేర్ చేయాలనుకుంటున్న చాట్ లేదా గ్రూప్ ఎంచుకోండి.
-                      </p>
-                    </div>
-                    <div className="flex gap-3 items-start text-xs font-bold text-slate-600">
-                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 font-black">3</div>
-                      <p>
-                        మీ ఫోన్ గ్యాలరీ నుండి డౌన్‌లోడ్ చేసిన <strong className="text-slate-800">పోస్టర్ చిత్రాన్ని సెలెక్ట్ చేసి</strong>, క్యాప్షన్ స్థలంలో <strong className="text-slate-800">లింక్ సందేశాన్ని పేస్ట్ చేసి</strong> పంపండి!
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions Button Panel */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleWhatsAppShare}
-                    className="flex-1 px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/10 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Smartphone size={18} />
-                    వాట్సాప్‌లో షేర్ (Share on WhatsApp)
-                  </button>
-                  <button
-                    onClick={handleDownloadPoster}
-                    className="px-6 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Download size={18} />
-                    పోస్టర్ డౌన్‌లోడ్ (Download)
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {sharingPostForPoster && (
+        <PosterShareModal
+          post={sharingPostForPoster}
+          onClose={() => setSharingPostForPoster(null)}
+          addToast={addToast}
+        />
+      )}
 
       <button
         onClick={() => {
