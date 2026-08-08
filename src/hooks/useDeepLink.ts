@@ -218,8 +218,12 @@ export function useDeepLink({
 
     if (currentCleanPath !== targetCleanPath || hasTabQuery) {
       isInternalUrlUpdateRef.current = true;
-      // Navigate to clean path without ?tab= query param
-      navigate(targetPath, { replace: true });
+      // Navigate to clean path while preserving active search params (e.g. postId) without ?tab= query param
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("tab");
+      const searchStr = newParams.toString();
+      const finalUrl = targetPath + (searchStr ? `?${searchStr}` : "");
+      navigate(finalUrl, { replace: true });
     }
   }, [
     currentTab,
