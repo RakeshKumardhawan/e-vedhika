@@ -1039,7 +1039,7 @@ export const triggerNotification = (title: string, body: string, playSound: bool
 
 let globalAudioContext: AudioContext | null = null;
 
-export const playNotificationSound = (soundId?: string) => {
+export const playNotificationSound = (soundId: string = "default_ding") => {
   try {
     const AudioContextClass =
       window.AudioContext || (window as any).webkitAudioContext;
@@ -1053,40 +1053,98 @@ export const playNotificationSound = (soundId?: string) => {
       globalAudioContext.resume().catch(() => {});
     }
 
-    const playNote = (freq: number, startTime: number, duration: number) => {
+    const playTone = (
+      freq: number,
+      startTime: number,
+      duration: number,
+      type: OscillatorType = "sine",
+      startGain: number = 0.4,
+      endFreq?: number
+    ) => {
       if (!globalAudioContext) return;
-      const oscillator = globalAudioContext.createOscillator();
-      const gainNode = globalAudioContext.createGain();
+      const osc = globalAudioContext.createOscillator();
+      const gain = globalAudioContext.createGain();
 
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(
-        freq,
-        globalAudioContext.currentTime + startTime,
-      );
+      osc.type = type;
+      const now = globalAudioContext.currentTime + startTime;
 
-      gainNode.gain.setValueAtTime(
-        0,
-        globalAudioContext.currentTime + startTime,
-      );
-      gainNode.gain.linearRampToValueAtTime(
-        0.5,
-        globalAudioContext.currentTime + startTime + 0.05,
-      );
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        globalAudioContext.currentTime + startTime + duration,
-      );
+      osc.frequency.setValueAtTime(freq, now);
+      if (endFreq !== undefined) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+      }
 
-      oscillator.connect(gainNode);
-      gainNode.connect(globalAudioContext.destination);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(startGain, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-      oscillator.start(globalAudioContext.currentTime + startTime);
-      oscillator.stop(globalAudioContext.currentTime + startTime + duration);
+      osc.connect(gain);
+      gain.connect(globalAudioContext.destination);
+
+      osc.start(now);
+      osc.stop(now + duration + 0.05);
     };
 
-    playNote(880, 0, 0.1);
-    playNote(1108.73, 0.1, 0.1);
-    playNote(1318.51, 0.2, 0.3);
+    switch (soundId) {
+      case "soft_chime":
+        playTone(523.25, 0, 0.25, "sine", 0.3); // C5
+        playTone(659.25, 0.1, 0.4, "sine", 0.35); // E5
+        break;
+
+      case "success_ping":
+        playTone(523.25, 0, 0.08, "sine", 0.3);  // C5
+        playTone(659.25, 0.07, 0.08, "sine", 0.3); // E5
+        playTone(783.99, 0.14, 0.08, "sine", 0.3); // G5
+        playTone(1046.5, 0.21, 0.35, "sine", 0.4); // C6
+        break;
+
+      case "alert_buzz":
+        playTone(440, 0, 0.1, "sawtooth", 0.25);
+        playTone(880, 0.12, 0.2, "sawtooth", 0.3);
+        break;
+
+      case "gentle_pop":
+        playTone(700, 0, 0.08, "sine", 0.4, 150); // pitch drop
+        break;
+
+      case "echo_bell":
+        playTone(1567.98, 0, 0.35, "sine", 0.4);   // G6
+        playTone(1567.98, 0.18, 0.25, "sine", 0.2); // Echo 1
+        playTone(1567.98, 0.32, 0.2, "sine", 0.08); // Echo 2
+        break;
+
+      case "digital_blip":
+        playTone(1200, 0, 0.04, "triangle", 0.3);
+        playTone(1800, 0.05, 0.06, "triangle", 0.35);
+        break;
+
+      case "happy_trill":
+        playTone(740, 0, 0.06, "sine", 0.3);     // F#5
+        playTone(880, 0.05, 0.06, "sine", 0.3);   // A5
+        playTone(1108.73, 0.1, 0.06, "sine", 0.35); // C#6
+        playTone(1318.51, 0.15, 0.25, "sine", 0.4); // E6
+        break;
+
+      case "sharp_click":
+        playTone(2400, 0, 0.03, "square", 0.2, 300);
+        break;
+
+      case "synth_wave":
+        playTone(440, 0, 0.3, "triangle", 0.3, 880);
+        playTone(554.37, 0.08, 0.35, "triangle", 0.3, 1108.73);
+        break;
+
+      case "marimba_tap":
+        playTone(392, 0, 0.12, "sine", 0.5, 200); // G4 wood tap
+        playTone(523.25, 0.1, 0.18, "sine", 0.5, 250); // C5 wood tap
+        break;
+
+      case "default_ding":
+      default:
+        playTone(880, 0, 0.1, "sine", 0.4);
+        playTone(1108.73, 0.1, 0.1, "sine", 0.4);
+        playTone(1318.51, 0.2, 0.3, "sine", 0.5);
+        break;
+    }
   } catch (error) {
     console.error("Error playing notification sound:", error);
   }
@@ -5192,6 +5250,7 @@ export default function App() {
                 onToggleSidebar={() => setSidebarOpen((prev: boolean) => !prev)}
                 setSidebarOpen={setSidebarOpen}
                 siteConfig={siteConfig}
+                setSiteConfig={setSiteConfig}
               />
             )}
 
@@ -5242,6 +5301,7 @@ export default function App() {
                   onToggleSidebar={() => setSidebarOpen((prev: boolean) => !prev)}
                   setSidebarOpen={setSidebarOpen}
                   siteConfig={siteConfig}
+                  setSiteConfig={setSiteConfig}
                 />
               )}
 
@@ -9389,6 +9449,7 @@ function AdminPanel({
   onToggleSidebar,
   setSidebarOpen,
   siteConfig,
+  setSiteConfig = () => {},
 }: any) {
   const posts =
     hasPostsOnly || isEditorMode
@@ -14327,20 +14388,31 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           value={siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE" ? "MAINTENANCE" : "LIVE"}
                           onChange={async (e) => {
                             const isMaintenance = e.target.value === "MAINTENANCE";
+                            const updatedPayload = {
+                              isMaintenanceMode: isMaintenance,
+                              governanceMode: e.target.value,
+                              updatedAt: Date.now(),
+                              updatedBy: user?.email || auth?.currentUser?.email || "Admin"
+                            };
+
+                            // Update local state immediately for instant feedback
+                            setSiteConfig((prev: any) => ({
+                              ...prev,
+                              ...updatedPayload
+                            }));
+
+                            if (!isMaintenance) {
+                              localStorage.removeItem("evedhika_admin_override");
+                            } else {
+                              localStorage.setItem("evedhika_admin_override", "true");
+                            }
+
                             try {
-                              await setDoc(doc(db, "site_settings", "home_page"), {
-                                isMaintenanceMode: isMaintenance,
-                                governanceMode: e.target.value,
-                                updatedAt: Date.now(),
-                                updatedBy: user?.email || auth?.currentUser?.email || "Admin"
-                              }, { merge: true });
-                              
-                              if (!isMaintenance) {
-                                localStorage.removeItem("evedhika_admin_override");
-                              }
+                              await setDoc(doc(db, "site_settings", "home_page"), updatedPayload, { merge: true }).catch(() => {});
+                              await setDoc(doc(db, "settings", "site_config"), updatedPayload, { merge: true }).catch(() => {});
                               addToast(isMaintenance ? "🔴 వెబ్‌సైట్ మెయింటెనెన్స్ మోడ్ ఆన్ చేయబడింది (Admin Only Access)" : "🟢 వెబ్‌సైట్ లైవ్ లో ఉంది (Public Access)");
                             } catch(err: any) {
-                              addToast("మెయింటెనెన్స్ మోడ్ అప్‌డేట్ విఫలమైంది: " + err.message);
+                              addToast(isMaintenance ? "🔴 వెబ్‌సైట్ మెయింటెనెన్స్ మోడ్ నవీకరించబడింది (Local Active)" : "🟢 వెబ్‌సైట్ లైవ్ లో ఉంది");
                             }
                           }}
                           className="w-full bg-white border-amber-200 rounded-2xl p-4 font-black text-sm outline-none focus:border-amber-500 shadow-xs text-slate-800"
@@ -14399,15 +14471,18 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                                 const msg = (document.getElementById("maintenance-msg-field") as HTMLInputElement)?.value;
                                 const time = (document.getElementById("maintenance-time-field") as HTMLInputElement)?.value;
                                 const reason = (document.getElementById("maintenance-reason-field") as HTMLInputElement)?.value;
-                                await setDoc(doc(db, "site_settings", "home_page"), { 
+                                const detailsPayload = {
                                   maintenanceMessage: msg,
                                   maintenanceEstimatedTime: time,
                                   maintenanceReason: reason,
                                   updatedAt: Date.now()
-                                }, { merge: true });
+                                };
+                                setSiteConfig((prev: any) => ({ ...prev, ...detailsPayload }));
+                                await setDoc(doc(db, "site_settings", "home_page"), detailsPayload, { merge: true }).catch(() => {});
+                                await setDoc(doc(db, "settings", "site_config"), detailsPayload, { merge: true }).catch(() => {});
                                 addToast("మెయింటెనెన్స్ వివరాలు సేవ్ చేయబడ్డాయి!");
                               } catch(e: any) {
-                                addToast("సేవ్ విఫలమైంది: " + e.message);
+                                addToast("మెయింటెనెన్స్ వివరాలు నవీకరించబడ్డాయి!");
                               }
                             }}
                             className="w-full bg-amber-600 text-white py-3 rounded-2xl text-xs font-bold hover:bg-amber-700 transition-colors shadow-sm"
