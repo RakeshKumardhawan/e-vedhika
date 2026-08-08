@@ -2193,16 +2193,8 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
-  const [currentTab, _setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
+  const [currentTab, setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
   );
-
-  const setCurrentTab = (newTab: any) => {
-    _setCurrentTab(newTab);
-    if (searchParams.has("postId")) {
-       searchParams.delete("postId");
-       setSearchParams(searchParams);
-    }
-  };
 
 
   const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(
@@ -3842,9 +3834,9 @@ export default function App() {
   const isMaintActive = siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE";
   const hasAdminOverride = typeof localStorage !== 'undefined' && localStorage.getItem("evedhika_admin_override") === "true";
 
-  if (isMaintActive && !isAdmin && !isDevEmail && !hasAdminOverride) {
+  if (isMaintActive && !hasAdminOverride) {
     return (
-      <MaintenancePage 
+      <MaintenancePage isAdmin={isAdmin} 
         message={siteConfig?.maintenanceMessage}
         estimatedTime={siteConfig?.maintenanceEstimatedTime || "దాదాపు 2 గంటలు (Approx. 2 Hours)"}
         reason={siteConfig?.maintenanceReason || "షెడ్యూల్డ్ సిస్టమ్ అప్‌గ్రేడ్ & గవర్నెన్స్ క్లౌడ్ సెక్యూరిటీ అప్‌డేట్"}
@@ -4615,13 +4607,9 @@ export default function App() {
                                 handleOpenDropdown(item.id, e.currentTarget);
                               }
                               if (item.id === "workspace") {
-                                startTransition(() => {
-                                  setCurrentTab("workspace");
-                                });
+                                setCurrentTab("workspace");
                               } else if (item.id === "gos_formats") {
-                                startTransition(() => {
-                                  setCurrentTab("gos_formats");
-                                });
+                                setCurrentTab("gos_formats");
                               }
                               return;
                             }
@@ -4634,16 +4622,18 @@ export default function App() {
                               window.history.pushState({}, "", "/Farmer_Registry");
                               setCurrentTab("farmer_registry");
                             } else {
-                              startTransition(() => {
-                                setCurrentTab(item.id);
-                                if (item.id === "home") {
-                                  setCurrentFilter("All");
-                                }
-                                if (searchParams.has("postId")) {
-                                  searchParams.delete("postId");
-                                  setSearchParams(searchParams);
-                                }
-                              });
+                              setCurrentTab(item.id);
+                              if (item.id === "home") {
+                                setCurrentFilter("All");
+                              }
+                              if (searchParams.has("postId")) {
+                                setSearchParams(prev => {
+                                  const next = new URLSearchParams(prev);
+                                  next.delete("postId");
+                                  return next;
+                                });
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }
                             }
                           }}
                           className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-[14px] whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
@@ -4858,9 +4848,7 @@ export default function App() {
                       <button
                         key={menu.id}
                         onClick={() => {
-                          startTransition(() => {
-                            setCurrentTab(`custom_menu_${menu.id}`);
-                          });
+                          setCurrentTab(`custom_menu_${menu.id}`);
                         }}
                         className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl whitespace-nowrap transition-all duration-200 shrink-0 border ${
                           isActive
@@ -5101,8 +5089,12 @@ export default function App() {
                           setCurrentFilter("All");
                         }
                         if (searchParams.has("postId")) {
-                          searchParams.delete("postId");
-                          setSearchParams(searchParams);
+                          setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.delete("postId");
+    return next;
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
                         }
                         setSidebarOpen(false);
                       }
@@ -5307,8 +5299,12 @@ export default function App() {
               <PostDetail
                 postId={postIdFromUrl}
                 onBack={() => {
-                  searchParams.delete("postId");
-                  setSearchParams(searchParams);
+                  setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.delete("postId");
+    return next;
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 isAdmin={isAdmin}
                 addToast={addToast}
@@ -6252,7 +6248,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-4">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => startTransition(() => setCurrentTab("home"))}
+                        onClick={() => setCurrentTab("home")}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -7216,7 +7212,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-6">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => startTransition(() => setCurrentTab("home"))}
+                        onClick={() => setCurrentTab("home")}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -7240,7 +7236,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-6">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => startTransition(() => setCurrentTab("home"))}
+                        onClick={() => setCurrentTab("home")}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> Back to Home
@@ -7337,7 +7333,7 @@ export default function App() {
     <div className="flex justify-between items-center mb-4">
       <button
         aria-label="Back to Home"
-        onClick={() => startTransition(() => setCurrentTab("home"))}
+        onClick={() => setCurrentTab("home")}
         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
       >
         <ArrowLeft size={16} /> Back to Home
@@ -7357,7 +7353,7 @@ export default function App() {
                     <div className="flex justify-between items-center mb-4">
                       <button
                         aria-label="Back to Home"
-                        onClick={() => startTransition(() => setCurrentTab("home"))}
+                        onClick={() => setCurrentTab("home")}
                         className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
                       >
                         <ArrowLeft size={16} /> హోమ్ పేజీకి తిరిగి వెళ్ళు (Back to Home)
@@ -14405,8 +14401,6 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
 
                             if (!isMaintenance) {
                               localStorage.removeItem("evedhika_admin_override");
-                            } else {
-                              localStorage.setItem("evedhika_admin_override", "true");
                             }
 
                             try {
