@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { auth, db } from "../../firebase";
 import {
   signInWithEmailAndPassword,
@@ -28,6 +28,7 @@ export function AuthModal({
 }: AuthModalProps) {
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [surname, setSurname] = useState("");
   const [name, setName] = useState("");
@@ -218,198 +219,207 @@ export function AuthModal({
             <p className="text-[11px] font-medium text-slate-500 mt-0.5">
               {isSignup
                 ? "Fill in your details to get started."
-                : "Sign in with your credentials."}
+                : "Sign in with Google to access your account."}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-2.5">
-            {isSignup && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      Surname <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      value={surname}
-                      onChange={(e) => setSurname(e.target.value)}
-                      placeholder="Surname"
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      Name <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Name"
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
-                    />
-                  </div>
-                </div>
-
+          {isSignup ? (
+            <form onSubmit={handleSubmit} className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col">
                   <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                    Username / Display Name <span className="text-rose-500">*</span>
+                    Surname <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Display name"
+                    value={surname}
+                    onChange={(e) => setSurname(e.target.value)}
+                    placeholder="Surname"
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      Gender
-                    </label>
-                    <select
-                      value={gender}
-                      onChange={(e) => {
-                        setGender(e.target.value);
-                        if (e.target.value === "Female") setMobile("");
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
-                    >
-                      <option value="">Select Gender</option>
-                      <option>Male</option>
-                      <option>Female</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  {gender !== "Female" && (
-                    <div className="flex flex-col">
-                      <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                        Mobile No <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        value={mobile}
-                        onChange={(e) => setMobile(e.target.value)}
-                        placeholder="Phone"
-                        required
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      State
-                    </label>
-                    <select
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
-                    >
-                      <option>Telangana</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      District <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={district}
-                      onChange={(e) => {
-                        setDistrict(e.target.value);
-                        setMandal("");
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
-                    >
-                      <option value="">Select District</option>
-                      {Object.keys(districtsData)
-                        .sort()
-                        .map((d) => (
-                          <option key={d}>{d}</option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      Mandal
-                    </label>
-                    <select
-                      value={mandal}
-                      onChange={(e) => setMandal(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                      disabled={!district}
-                    >
-                      <option value="">Select Mandal</option>
-                      {mandals.map((m, idx) => (
-                        <option key={`${m}_${idx}`} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col">
-                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                      Village / GP
-                    </label>
-                    <input
-                      value={village}
-                      onChange={(e) => setVillage(e.target.value)}
-                      placeholder="Enter Village"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
-                    />
-                  </div>
-                </div>
-
                 <div className="flex flex-col">
                   <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                    Designation
+                    Name <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
-                    placeholder="Type Designation"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Name"
+                    required
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                   />
                 </div>
-              </>
-            )}
+              </div>
 
-            <div className="flex flex-col">
-              <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                Email Address <span className="text-rose-500">*</span>
-              </label>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="email@example.com"
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
-              />
-            </div>
-
-            <div className={isSignup ? "grid grid-cols-2 gap-2" : "flex flex-col"}>
               <div className="flex flex-col">
                 <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
-                  Password <span className="text-rose-500">*</span>
+                  Username / Display Name <span className="text-rose-500">*</span>
                 </label>
                 <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  placeholder="••••••••"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Display name"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
                 />
               </div>
-              {isSignup && (
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                    Gender
+                  </label>
+                  <select
+                    value={gender}
+                    onChange={(e) => {
+                      setGender(e.target.value);
+                      if (e.target.value === "Female") setMobile("");
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
+                  >
+                    <option value="">Select Gender</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                {gender !== "Female" && (
+                  <div className="flex flex-col">
+                    <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                      Mobile No <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                      placeholder="Phone"
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                    State
+                  </label>
+                  <select
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
+                  >
+                    <option>Telangana</option>
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                    District <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={district}
+                    onChange={(e) => {
+                      setDistrict(e.target.value);
+                      setMandal("");
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer"
+                  >
+                    <option value="">Select District</option>
+                    {Object.keys(districtsData)
+                      .sort()
+                      .map((d) => (
+                        <option key={d}>{d}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                    Mandal
+                  </label>
+                  <select
+                    value={mandal}
+                    onChange={(e) => setMandal(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                    disabled={!district}
+                  >
+                    <option value="">Select Mandal</option>
+                    {mandals.map((m, idx) => (
+                      <option key={`${m}_${idx}`} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                    Village / GP
+                  </label>
+                  <input
+                    value={village}
+                    onChange={(e) => setVillage(e.target.value)}
+                    placeholder="Enter Village"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                  Designation
+                </label>
+                <input
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  placeholder="Type Designation"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                  Email Address <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative flex items-center">
+                  <Mail size={15} className="absolute left-3 text-slate-400 pointer-events-none" />
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="email@example.com"
+                    required
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all shadow-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <Lock size={15} className="absolute left-3 text-slate-400 pointer-events-none" />
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      required
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all shadow-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 transition-colors cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
                 <div className="flex flex-col">
                   <label className="text-[11px] font-bold text-slate-700 tracking-wide mb-1 pl-0.5">
                     Confirm Password
@@ -417,58 +427,36 @@ export function AuthModal({
                   <input
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-xs"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none hover:bg-slate-100/50 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all shadow-xs"
                   />
                 </div>
-              )}
-            </div>
-
-            {!isSignup && (
-              <button
-                type="button"
-                onClick={handlePasswordReset}
-                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors w-full text-right"
-              >
-                Forgot Password?
-              </button>
-            )}
-
-            <button
-              aria-label={isSignup ? "Register Now" : "Sign In Now"}
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white py-2 px-4 rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm hover:shadow active:scale-[0.99] transition-all mt-1 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin text-white" size={14} />
-              ) : isSignup ? (
-                "Register Now"
-              ) : (
-                "Sign In Now"
-              )}
-            </button>
-          </form>
-
-          {!isSignup && (
-            <>
-              <div className="my-3 flex items-center gap-2">
-                <div className="flex-1 h-[1px] bg-slate-200"></div>
-                <span className="text-[9px] font-bold text-slate-400 tracking-widest">
-                  OR
-                </span>
-                <div className="flex-1 h-[1px] bg-slate-200"></div>
               </div>
 
+              <button
+                aria-label="Register Now"
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-[#0f2e4a] via-indigo-700 to-blue-700 hover:from-[#0a2339] hover:to-indigo-800 text-white py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider shadow-md hover:shadow-lg active:scale-[0.98] transition-all mt-2 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin text-white" size={16} />
+                ) : (
+                  "Register Now"
+                )}
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-4 py-2">
               <button
                 aria-label="Continue with Google"
                 type="button"
                 onClick={handleGoogleLogin}
-                className="w-full border border-slate-200 hover:border-slate-300 py-2 rounded-lg font-bold text-slate-700 hover:text-slate-900 text-xs uppercase flex items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-[0.99] shadow-xs cursor-pointer"
+                className="w-full bg-white border-2 border-slate-200 hover:border-indigo-600 py-3 px-4 rounded-xl font-bold text-slate-700 hover:text-indigo-900 text-xs sm:text-sm uppercase flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-[0.98] shadow-sm hover:shadow cursor-pointer group"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24">
+                <svg width="20" height="20" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -486,15 +474,16 @@ export function AuthModal({
                     fill="#EA4335"
                   />
                 </svg>
-                Continue with Google
+                <span>Continue with Google</span>
               </button>
-              <div className="mt-2 text-center">
-                <p className="text-[9px] text-slate-400 font-medium leading-tight">
+
+              <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 text-center">
+                <p className="text-[10px] text-slate-600 font-medium leading-relaxed">
                   లాగిన్ ఆలస్యం అయితే పైన ఉన్న ↗ గుర్తుపై క్లిక్ చేసి <br/> 
                   కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి.
                 </p>
               </div>
-            </>
+            </div>
           )}
 
           <div className="mt-3 text-center pb-1">

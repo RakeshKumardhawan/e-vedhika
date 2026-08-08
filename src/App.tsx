@@ -144,7 +144,7 @@ import {
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp,
+  ThumbsUp, ImageOff,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -291,24 +291,15 @@ function handleFirestoreError(
 
   const lowerErr = errInfo.error.toLowerCase();
 
-  const isIgnorableReadError =
-    (operationType === OperationType.GET ||
-      operationType === OperationType.LIST) &&
-    (lowerErr.includes("permission") || lowerErr.includes("insufficient"));
+  const isPermissionError =
+    lowerErr.includes("permission") || lowerErr.includes("insufficient");
 
-  if (!isIgnorableReadError) {
-    console.error("Firestore Error: ", JSON.stringify(errInfo));
-  }
-
-  if (isIgnorableReadError) {
-    if (path !== "notifications") {
-      console.warn(
-        `PERMISSION ERROR ON PATH: ${path}. Operation: ${operationType}. User: ${auth.currentUser?.uid}.`,
-      );
-    }
+  if (isPermissionError) {
+    console.warn(`Firestore Permission (${operationType} on ${path}): ${errInfo.error}`);
     return;
   }
 
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -2070,48 +2061,44 @@ export default function App() {
     const originalWarn = console.warn;
 
     console.error = (...args) => {
-      const msg = args[0];
+      const fullMsg = args
+        .map((a) => (typeof a === "object" ? (a?.message || JSON.stringify(a)) : String(a)))
+        .join(" ");
       const isBenignError =
-        typeof msg === "string" &&
-        (msg.includes("WebSocket") ||
-          msg.includes("vite") ||
-          msg.includes("web-socket") ||
-          msg.includes("closed without opened") ||
-          msg.includes("connection failed") ||
-          msg.includes("@firebase/firestore") ||
-          msg.includes("WebChannelConnection") ||
-          msg.includes("Visitor tracking notification") ||
-          msg.includes("Analytics DB access error") ||
-          msg.includes("Missing or insufficient permissions"));
+        fullMsg.includes("WebSocket") ||
+        fullMsg.includes("vite") ||
+        fullMsg.includes("web-socket") ||
+        fullMsg.includes("closed without opened") ||
+        fullMsg.includes("connection failed") ||
+        fullMsg.includes("@firebase/firestore") ||
+        fullMsg.includes("WebChannelConnection") ||
+        fullMsg.includes("Visitor tracking notification") ||
+        fullMsg.includes("Analytics DB access error") ||
+        fullMsg.includes("Missing or insufficient permissions") ||
+        fullMsg.includes("permission");
 
-      const isBenignErrorObject =
-        msg instanceof Error &&
-        (msg.message.includes("WebSocket") ||
-          msg.message.includes("closed without opened") ||
-          msg.message.includes("vite") ||
-          msg.message.includes("@firebase/firestore") ||
-          msg.message.includes("Missing or insufficient permissions"));
-
-      if (isBenignError || isBenignErrorObject) {
+      if (isBenignError) {
         return;
       }
       originalError.apply(console, args);
     };
 
     console.warn = (...args) => {
-      const msg = args[0];
+      const fullMsg = args
+        .map((a) => (typeof a === "object" ? (a?.message || JSON.stringify(a)) : String(a)))
+        .join(" ");
       if (
-        typeof msg === "string" &&
-        (msg.includes("WebSocket") ||
-          msg.includes("vite") ||
-          msg.includes("closed without opened") ||
-          msg.includes("@firebase/firestore") ||
-          msg.includes("WebChannelConnection") ||
-          msg.includes("The width(-1) and height(-1) of chart") ||
-          msg.includes("Access to all PINs restricted") ||
-          msg.includes("Visitor tracking notification") ||
-          msg.includes("Analytics DB access error") ||
-          msg.includes("Missing or insufficient permissions"))
+        fullMsg.includes("WebSocket") ||
+        fullMsg.includes("vite") ||
+        fullMsg.includes("closed without opened") ||
+        fullMsg.includes("@firebase/firestore") ||
+        fullMsg.includes("WebChannelConnection") ||
+        fullMsg.includes("The width(-1) and height(-1) of chart") ||
+        fullMsg.includes("Access to all PINs restricted") ||
+        fullMsg.includes("Visitor tracking notification") ||
+        fullMsg.includes("Analytics DB access error") ||
+        fullMsg.includes("Missing or insufficient permissions") ||
+        fullMsg.includes("permission")
       ) {
         return;
       }
@@ -2720,7 +2707,16 @@ export default function App() {
 
   useEffect(() => {
     if (postIdFromUrl && posts.length > 0) {
-      const post = posts.find((p) => p.id === postIdFromUrl);
+      const rawParam = decodeURIComponent(postIdFromUrl).trim().toLowerCase();
+      const post = posts.find((p) => {
+        if (p.id === postIdFromUrl || p.id === rawParam) return true;
+        if (p.slug && p.slug.toLowerCase() === rawParam) return true;
+        const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
+        if (slugFromTitle && slugFromTitle === rawParam) return true;
+        const cleanTitle = (p.title || "").trim().toLowerCase();
+        if (cleanTitle === rawParam) return true;
+        return false;
+      });
       if (post) {
         const title = post.title || "E-Vedhika పోస్ట్";
         const rawContent = post.content || "";
@@ -5148,8 +5144,8 @@ export default function App() {
         </aside>
 
         <main
-          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-2 sm:p-4 lg:p-5"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-1.5 sm:p-2.5 lg:p-3"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
         >
           {location.pathname.endsWith("/Evdka") &&
             (isAdmin || isEditor || isDevEmail) && (
@@ -5264,6 +5260,7 @@ export default function App() {
                   setEditingPost(p);
                   setShowPostForm(true);
                 }}
+                allPosts={posts}
               />
             ) : (
               <div className="flex flex-col w-full h-full">
@@ -5906,7 +5903,7 @@ export default function App() {
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="space-y-10">
+                                    <div className="space-y-4 sm:space-y-5">
                                       <AnimatePresence mode="popLayout">
                                         {filteredPosts
                                           .slice(0, visiblePostsCount)
@@ -6352,14 +6349,7 @@ export default function App() {
                                             rehypePlugins={[rehypeRaw]}
                                             components={{
                                               img: (props) => (
-                                                <span className="block my-6">
-                                                  <img 
-                                                    {...props} 
-                                                    referrerPolicy="no-referrer"
-                                                    className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" 
-                                                    loading="lazy" 
-                                                  />
-                                                </span>
+                                                <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" /></span>
                                               ),
                                               h3: ({
                                                 node,
@@ -7435,7 +7425,7 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={lightboxImage.url}
+              src={getDirectImageUrl(lightboxImage.url)}
               alt={lightboxImage.name}
               className="max-w-full max-h-full object-contain select-none md:scale-100 transition-transform duration-300"
               referrerPolicy="no-referrer"
@@ -8891,6 +8881,127 @@ const DEFAULT_PERMISSIONS: any = {
     changelog: { view: true, edit: false, delete: false },
   },
 };
+
+
+export function getDirectImageUrl(rawUrl: string): string {
+  if (!rawUrl || typeof rawUrl !== "string") return "";
+  let url = rawUrl.trim();
+
+  // Google Drive conversion
+  if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
+    const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileDMatch && fileDMatch[1]) {
+      return `https://lh3.googleusercontent.com/d/${fileDMatch[1]}`;
+    }
+    const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch && idMatch[1]) {
+      return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+    }
+  }
+
+  // Dropbox conversion
+  if (url.includes("dropbox.com")) {
+    return url.replace("dl=0", "raw=1").replace("www.dropbox.com", "dl.dropboxusercontent.com");
+  }
+
+  if (url.startsWith("//")) return `https:${url}`;
+  if (url.startsWith("www.")) return `https://${url}`;
+
+  return url;
+}
+
+export function SmartImage({
+  src = "",
+  alt = "Image",
+  className = "",
+  style,
+  allowLightbox = true,
+  onClick,
+}: {
+  src?: string;
+  alt?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  allowLightbox?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  const directUrl = useMemo(() => getDirectImageUrl(src), [src]);
+  const [currentSrc, setCurrentSrc] = useState(directUrl);
+  const [attempt, setAttempt] = useState(0);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const updated = getDirectImageUrl(src);
+    setCurrentSrc(updated);
+    setAttempt(0);
+    setHasError(false);
+  }, [src]);
+
+  const handleError = () => {
+    if (attempt === 0) {
+      if (src && src.includes("drive.google.com")) {
+        const match = src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          setCurrentSrc(`https://drive.google.com/uc?export=view&id=${match[1]}`);
+          setAttempt(1);
+          return;
+        }
+      }
+      if (src && src.startsWith("http") && !src.includes("weserv.nl")) {
+        setCurrentSrc(`https://images.weserv.nl/?url=${encodeURIComponent(src)}`);
+        setAttempt(1);
+        return;
+      }
+      setHasError(true);
+    } else {
+      setHasError(true);
+    }
+  };
+
+  if (hasError || !currentSrc) {
+    return (
+      <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-center flex flex-col items-center justify-center gap-2 my-2 shadow-sm">
+        <div className="flex items-center gap-2 text-slate-600 font-bold text-xs">
+          <ImageOff size={16} className="text-amber-500 shrink-0" />
+          <span>చిత్రం అందుబాటులో లేదు (Photo Not Displaying)</span>
+        </div>
+        {src && (
+          <a
+            href={src}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[11px] text-primary font-bold hover:underline flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-all"
+          >
+            <ExternalLink size={12} /> ఫోటో నేరుగా చూడండి (View Original Photo)
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      className={`${className} ${allowLightbox ? "cursor-pointer" : ""}`}
+      style={style}
+      onError={handleError}
+      onClick={(e) => {
+        if (onClick) {
+          onClick(e);
+        } else if (allowLightbox && (window as any).setLightboxImage) {
+          (window as any).setLightboxImage({
+            url: currentSrc,
+            name: alt || "Photo Preview",
+          });
+        }
+      }}
+    />
+  );
+}
 
 function AdminUserTooltip({ uid, userName, allUsers, isAdmin }: { uid?: string, userName: string, allUsers?: any[], isAdmin?: boolean }) {
   if (!uid || !isAdmin || !allUsers) return <>{userName}</>;
@@ -12832,14 +12943,7 @@ function AdminPanel({
                                         rehypePlugins={[rehypeRaw]}
                                         components={{
                                           img: (props) => (
-                                            <span className="block my-6">
-                                              <img 
-                                                {...props} 
-                                                referrerPolicy="no-referrer"
-                                                className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" 
-                                                loading="lazy" 
-                                              />
-                                            </span>
+                                            <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" /></span>
                                           ),
                                           h3: ({
                                             node,
@@ -18380,8 +18484,16 @@ function PostCard({
         </div>
       </div>
 
-      <h4 className="post-title !mt-0 flex flex-wrap items-center gap-2">
-        {formatPostTitle(post.title) || "Platform Update"}
+      <h4
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setSearchParams({ postId: post.id });
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        className="post-title !mt-0 flex flex-wrap items-center gap-2 cursor-pointer hover:text-red-600 transition-colors group"
+      >
+        <span className="group-hover:underline">{formatPostTitle(post.title) || "Platform Update"}</span>
         {post.version && (
           <span className="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase">
             {post.version}
@@ -18422,14 +18534,7 @@ function PostCard({
                 rehypePlugins={[rehypeRaw]}
                 components={{
                   img: (props) => (
-                    <span className="block my-8">
-                      <img 
-                        {...props} 
-                        referrerPolicy="no-referrer"
-                        className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
-                        loading="lazy" 
-                      />
-                    </span>
+                    <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" /></span>
                   ),
                   h3: ({ node, children, ...props }) => {
                     const text = String(children);
@@ -18497,18 +18602,15 @@ function PostCard({
 
             {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
               <button
-                onClick={handleToggleExpansion}
-                className="text-primary hover:text-blue-700 font-black text-[12px] uppercase tracking-wider flex items-center gap-1 mt-1 mb-4 cursor-pointer hover:underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSearchParams({ postId: post.id });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
               >
-                {isActualExpanded ? (
-                  <>
-                    <ChevronUp size={14} strokeWidth={3} /> తక్కువ చూపించండి (Show Less)
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown size={14} strokeWidth={3} /> మొత్తం చదవండి (Read More)
-                  </>
-                )}
+                <ChevronRight size={14} strokeWidth={2.5} /> మొత్తం చదవండి (Read More)
               </button>
             )}
 
@@ -18588,13 +18690,7 @@ function PostCard({
                 {post.mediaType?.startsWith("video") ? (
                   <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
                 ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-                  <img
-                    src={post.mediaUrl}
-                    alt={post.title}
-                    className="post-media"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
+                  <SmartImage src={post.mediaUrl} alt={post.title} className="post-media" />
                 ) : post.mediaType?.startsWith("audio") ? (
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
@@ -18822,14 +18918,7 @@ function PostCard({
           rehypePlugins={[rehypeRaw]}
           components={{
             img: (props) => (
-              <span className="block my-8">
-                <img 
-                  {...props} 
-                  referrerPolicy="no-referrer"
-                  className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
-                  loading="lazy" 
-                />
-              </span>
+              <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" /></span>
             ),
             h3: ({ node, children, ...props }) => {
               const text = String(children);
@@ -18914,13 +19003,7 @@ function PostCard({
         {post.mediaType?.startsWith("video") ? (
           <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = "none"; }} />
         ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-          <img
-            src={post.mediaUrl}
-            alt={post.title}
-            className="post-media"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
+          <SmartImage src={post.mediaUrl} alt={post.title} className="post-media" />
         ) : post.mediaType?.startsWith("audio") ? (
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
             <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
@@ -20350,14 +20433,7 @@ function PostForm({
                     rehypePlugins={[rehypeRaw]}
                     components={{
                       img: (props) => (
-                        <span className="block my-8">
-                          <img 
-                            {...props} 
-                            referrerPolicy="no-referrer"
-                            className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
-                            loading="lazy" 
-                          />
-                        </span>
+                        <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" /></span>
                       ),
                       h3: ({ node, children, ...props }) => {
                         const text = String(children);
@@ -20685,7 +20761,7 @@ function PostForm({
 
                         <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc] relative overflow-hidden">
                           {/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || (att.url || "").includes("image") ? (
-                            <img src={att.url} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="Thumb" loading="lazy" />
+                            <SmartImage src={att.url} alt="Thumb" className="w-full h-full object-cover" allowLightbox={false} />
                           ) : (
                             <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
                               <ArrowDown
@@ -21225,6 +21301,7 @@ function PostDetail({
   allUsers,
   onEdit,
   storageConfig,
+  allPosts = [],
 }: {
   postId: string;
   onBack: () => void;
@@ -21234,47 +21311,126 @@ function PostDetail({
   allUsers: UserProfile[];
   onEdit: (p: Post) => void;
   storageConfig: "cloudflare" | "firebase";
+  allPosts?: Post[];
 }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLikesModal, setShowLikesModal] = useState(false);
   const [showViewsModal, setShowViewsModal] = useState(false);
+  const [fetchedRecent, setFetchedRecent] = useState<Post[]>([]);
+
   const isOwner = Boolean(
     (auth.currentUser && post?.uid && auth.currentUser.uid === post.uid) ||
-    isAdmin,
+    isAdmin
   );
 
   useEffect(() => {
     let isInitial = true;
-    const docRef = doc(db, "posts", postId);
-    const unsub = onSnapshot(
-      docRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          setPost({ id: snapshot.id, ...snapshot.data() } as Post);
+    let unsub: () => void = () => {};
+
+    const rawParam = decodeURIComponent(postId).trim();
+
+    async function fetchPostBySlugOrTitle(target: string) {
+      try {
+        const normTarget = target.toLowerCase();
+
+        // 1. Check if post exists in allPosts prop
+        if (allPosts && allPosts.length > 0) {
+          const matchedFromProp = allPosts.find((p) => {
+            if (p.id === target) return true;
+            if (p.slug && p.slug.toLowerCase() === normTarget) return true;
+            const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
+            if (slugFromTitle && slugFromTitle === normTarget) return true;
+            const cleanTitle = (p.title || "").trim().toLowerCase();
+            if (cleanTitle === normTarget) return true;
+            return false;
+          });
+          if (matchedFromProp) {
+            setPost(matchedFromProp);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // 2. Query Firestore by slug field
+        const qSlug = query(collection(db, "posts"), where("slug", "==", target), limit(1));
+        const snapSlug = await getDocs(qSlug);
+        if (!snapSlug.empty) {
+          const found = snapSlug.docs[0];
+          setPost({ id: found.id, ...found.data() } as Post);
           setLoading(false);
-          isInitial = false;
+          return;
+        }
+
+        // 3. Fallback: fetch recent posts from Firestore and search
+        const qRecent = query(collection(db, "posts"), limit(100));
+        const snapRecent = await getDocs(qRecent);
+        const docs = snapRecent.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
+
+        const matched = docs.find((p) => {
+          if (p.id === target) return true;
+          if (p.slug && p.slug.toLowerCase() === normTarget) return true;
+          const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
+          if (slugFromTitle && slugFromTitle === normTarget) return true;
+          const cleanTitle = (p.title || "").trim().toLowerCase();
+          if (cleanTitle === normTarget) return true;
+          return false;
+        });
+
+        if (matched) {
+          setPost(matched);
+          setLoading(false);
         } else {
-          if (isInitial) addToast("Post not found");
+          if (isInitial) addToast("పోస్ట్ లభించలేదు (Post Not Found)");
           setLoading(false);
         }
-      },
-      (err) => {
-        handleFirestoreError(err, OperationType.GET, `posts/${postId}`);
-        if (isInitial) {
-          addToast("Error loading post");
-          setLoading(false);
+      } catch (err) {
+        console.error("Error fetching post by slug or title:", err);
+        if (isInitial) addToast("Error loading post");
+        setLoading(false);
+      }
+    }
+
+    try {
+      const docRef = doc(db, "posts", rawParam);
+      unsub = onSnapshot(
+        docRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            setPost({ id: snapshot.id, ...snapshot.data() } as Post);
+            setLoading(false);
+            isInitial = false;
+          } else {
+            fetchPostBySlugOrTitle(rawParam);
+          }
+        },
+        () => {
+          fetchPostBySlugOrTitle(rawParam);
         }
-      },
-    );
+      );
+    } catch (e) {
+      fetchPostBySlugOrTitle(rawParam);
+    }
+
     return () => unsub();
-  }, [postId]);
+  }, [postId, allPosts]);
+
+  useEffect(() => {
+    if (!allPosts || allPosts.length === 0) {
+      const q = query(collection(db, "posts"), limit(12));
+      getDocs(q).then((snap) => {
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
+        setFetchedRecent(docs);
+      }).catch((e) => console.error("Error loading recent posts:", e));
+    }
+  }, [allPosts]);
 
   useEffect(() => {
     if (!post) return;
     const uid = auth.currentUser?.uid;
-    const docRef = doc(db, "posts", postId);
-    const viewedSessionKey = `session_post_detail_viewed_${postId}`;
+    const docRef = doc(db, "posts", post.id);
+    const viewedSessionKey = `session_post_detail_viewed_${post.id}`;
     const hasViewedInSession = sessionStorage.getItem(viewedSessionKey);
 
     if (!hasViewedInSession) {
@@ -21301,13 +21457,13 @@ function PostDetail({
     } else if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
       updateDoc(docRef, { viewedBy: arrayUnion(uid) }).catch((e) => console.error(e));
     }
-  }, [postId, post, auth.currentUser?.uid]);
+  }, [post?.id, auth.currentUser?.uid]);
 
   if (loading) {
     return (
       <div className="flex justify-center flex-col items-center py-32 space-y-4">
-        <Loader2 className="animate-spin text-primary" size={40} />
-        <span className="font-bold text-slate-400">Loading update...</span>
+        <Loader2 className="animate-spin text-red-600" size={40} />
+        <span className="font-bold text-slate-400">వార్తలు లోడ్ అవుతున్నాయి...</span>
       </div>
     );
   }
@@ -21319,761 +21475,363 @@ function PostDetail({
           <AlertTriangle size={32} />
         </div>
         <div>
-          <h2 className="text-xl font-black text-primary">Post Not Found</h2>
-          <p className="text-slate-500 font-medium">
-            Sorry, we couldn't find that update. It may have been removed.
+          <h2 className="text-xl font-black text-red-600">పోస్ట్ లభించలేదు (Post Not Found)</h2>
+          <p className="text-slate-500 font-medium mt-1">
+            క్షమించండి, ఈ పోస్ట్ లభించలేదు లేదా తీసివేయబడింది.
           </p>
         </div>
         <button
           aria-label="Return to Feed"
           onClick={onBack}
-          className="bg-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-opacity-90 inline-flex items-center gap-2"
+          className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 inline-flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
         >
-          <ArrowLeft size={16} /> Return to Feed
+          <ArrowLeft size={16} /> హోమ్ ఫీడ్‌కు తిరిగి వెళ్లండి
         </button>
       </div>
     );
   }
 
+  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
+  const shareText = generatePostShareText(post, postUrl);
+  const availablePosts = (allPosts && allPosts.length > 0 ? allPosts : fetchedRecent);
+  const recentPostsList = availablePosts.filter((p) => p.id !== post.id).slice(0, 6);
+
+  const mainCategory = post.categories?.[0] || post.category || "తాజా వార్తలు";
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white p-6 md:p-10 rounded-[32px] shadow-sm border space-y-8"
+      className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl shadow-xs border border-slate-200 max-w-4xl mx-auto space-y-2.5"
     >
-      <div className="flex items-center justify-between gap-4">
+      {/* Top Bar: Back & Edit */}
+      <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100">
         <button
           aria-label="Back to Feed"
           onClick={onBack}
-          className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl text-slate-500 hover:text-primary transition-colors font-bold text-sm w-fit group"
+          className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg text-slate-700 hover:text-red-600 hover:bg-slate-200 transition-colors font-bold text-xs sm:text-sm w-fit group cursor-pointer"
         >
           <ArrowLeft
-            size={16}
-            className="group-hover:-translate-x-1 transition-transform"
-          />{" "}
-          Back to Feed
+            size={14}
+            className="group-hover:-translate-x-1 transition-transform text-slate-500 group-hover:text-red-600"
+          />
+          బ్యాక్ (Back)
         </button>
 
         {isOwner && (
           <button
             aria-label="Edit Post"
             onClick={() => onEdit(post)}
-            className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl text-blue-600 hover:bg-blue-100 transition-colors font-bold text-sm group"
+            className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors font-bold text-xs sm:text-sm group cursor-pointer"
           >
             <Edit3
-              size={16}
+              size={14}
               className="group-hover:scale-110 transition-transform"
             />
-            Edit Update
+            పోస్ట్ సవరించు (Edit)
           </button>
         )}
       </div>
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between border-b pb-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {post.categories && post.categories.length > 0 ? (
-              post.categories.map((cat, idx) => (
-                <span
-                  key={idx}
-                  className="cat-tag bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
-                >
-                  {cat}
-                </span>
-              ))
-            ) : (
-              <span className="cat-tag bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
-                {post.category || "Update"}
-              </span>
-            )}
-            {post.subCategory && (
-              <span className="cat-tag sub-cat-tag bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
-                {post.subCategory}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center text-xs font-black text-slate-400 uppercase tracking-wider">
-            <Clock size={14} className="mr-1.5" />
-            {new Date(getValidTime(post)).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </div>
-        </div>
-
-        <h1 className="text-3xl md:text-5xl font-black text-primary leading-tight tracking-tight whitespace-pre-wrap flex items-center gap-3">
+      {/* Article Header */}
+      <div className="space-y-2">
+        {/* Title in Red / Bold News Display Style */}
+        <h1 className="text-lg sm:text-xl md:text-2xl font-black text-red-600 dark:text-red-500 leading-snug tracking-tight whitespace-pre-wrap">
           {formatPostTitle(post.title)}
           {post.version && (
-            <span className="bg-slate-800 text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-widest uppercase">
+            <span className="ml-1.5 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase align-middle">
               {post.version}
             </span>
           )}
           {post.versionStatus && (
             <span
-              className={`${post.versionStatus === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[11px] px-3 py-1 rounded-lg font-black tracking-widest uppercase`}
+              className={`ml-1.5 ${post.versionStatus === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase align-middle`}
             >
               {post.versionStatus}
             </span>
           )}
         </h1>
 
+        {/* Sub-Header Metadata Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-slate-500 py-1 border-y border-slate-100 font-medium">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>By <strong className="text-slate-800 font-bold">{post.userName || "Naandi Newsteam"}</strong></span>
+            <span className="text-slate-300">•</span>
+            <span>Last updated <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</strong></span>
+            <span className="text-slate-300">•</span>
+            <span className="flex items-center gap-1"><Eye size={12} className="text-slate-400" /> <strong>{getPostDisplayViews(post, isAdmin)}</strong></span>
+          </div>
+
+          <span className="bg-red-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-xs uppercase tracking-wider shadow-xs">
+            {mainCategory}
+          </span>
+        </div>
+
+        {/* Tags if present */}
         {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1 pt-0.5">
             {post.tags.map((tag, i) => (
               <span
                 key={i}
-                className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-100 flex items-center gap-1.5"
+                className="px-1.5 py-0.5 bg-slate-50 text-slate-600 rounded text-[9px] font-bold uppercase tracking-wider border border-slate-200/60 flex items-center gap-0.5"
               >
-                <Hash size={12} className="text-primary/50" /> {tag}
+                <Hash size={9} className="text-red-500" /> {tag}
               </span>
             ))}
           </div>
         )}
 
-        <div className="flex items-center gap-3 text-sm font-bold text-slate-600">
-          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white border-2 border-white shadow-sm ring-2 ring-slate-50 overflow-hidden">
-            {post.userPhoto ? (
-              <img
-                src={post.userPhoto}
-                alt="Author"
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <User size={18} />
-            )}
-          </div>
-          <div className="flex flex-col">
-            <span>{post.userName || "Admin"}</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase">
-              Author
-            </span>
-          </div>
-        </div>
-
+        {/* Featured Image */}
         {post.mediaUrl && (
-          <div className="mt-8 rounded-[24px] overflow-hidden border-4 border-slate-50 shadow-md">
+          <div className="my-2 rounded-lg overflow-hidden border border-slate-200 shadow-xs bg-slate-900">
             {post.mediaType?.startsWith("video") ? (
               <video
                 src={post.mediaUrl}
                 controls
-                className="w-full max-h-[500px]"
+                className="w-full max-h-[400px] object-contain"
                 onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }}
               />
             ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-              <img
-                src={post.mediaUrl}
-                alt="Post media"
-                referrerPolicy="no-referrer"
-                className="w-full object-cover max-h-[500px]"
-              />
+              <SmartImage src={post.mediaUrl} alt={post.title} className="w-full object-cover max-h-[420px]" />
             ) : post.mediaType?.startsWith("audio") ? (
-              <div className="bg-white p-6">
-                <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 truncate">
+              <div className="bg-white p-3">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 truncate">
                   {post.mediaName || "Audio Attachment"}
                 </p>
                 <audio src={post.mediaUrl} controls className="w-full" />
               </div>
-            ) : post.mediaType === "link" ? (
-              <a
-                href={
-                  post.mediaUrl.startsWith("http")
-                    ? post.mediaUrl
-                    : `https://${post.mediaUrl}`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center p-6 bg-blue-50/50 hover:bg-blue-50 transition-colors w-full group"
-              >
-                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex flex-shrink-0 items-center justify-center mr-6 group-hover:scale-110 transition-transform">
-                  <Link2 size={32} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h5 className="font-black text-slate-800 text-lg truncate">
-                    {post.mediaName || "External Link"}
-                  </h5>
-                  <p
-                    className="text-sm text-slate-500 truncate mt-1 break-all"
-                    dir="ltr"
-                  >
-                    {post.mediaUrl}
-                  </p>
-                </div>
-              </a>
-            ) : (
-              !(
-                post.downloadStyle === "techspot" ||
-                (!post.downloadStyle &&
-                  post.attachments &&
-                  post.attachments.length >= 2)
-              ) && (
-                <a
-                  href={post.mediaUrl}
-                  download={post.mediaName || "Document"}
-                  onClick={(e) =>
-                    handleForceDownload(
-                      e,
-                      post.mediaUrl || "",
-                      post.mediaName || "Document",
-                    )
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center p-6 bg-slate-50 hover:bg-slate-100 transition-colors w-full group"
-                >
-                  <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex flex-shrink-0 items-center justify-center mr-6 group-hover:scale-110 transition-transform">
-                    <FileText size={32} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h5 className="font-black text-slate-800 text-lg truncate">
-                      {post.mediaName || "Attached Document"}
-                    </h5>
-                    <p className="text-xs uppercase font-bold tracking-widest text-slate-400 mt-2">
-                      Download File
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-400 group-hover:text-primary group-hover:shadow-md transition-all">
-                    <Download size={24} />
-                  </div>
-                </a>
-              )
-            )}
+            ) : null}
           </div>
         )}
 
-        {post.attachments &&
-        (post.downloadStyle === "techspot" ||
-          (!post.downloadStyle && post.attachments.length >= 2)) ? (
-          <div className="flex flex-col gap-6 mt-4">
-            <div className="flex-1 min-w-0">
-              <div className="prose prose-slate prose-lg max-w-none text-slate-700 leading-relaxed font-serif whitespace-pre-wrap">
-                <ReactMarkdown
-                  remarkPlugins={[remarkBreaks]}
-                  rehypePlugins={[rehypeRaw]}
-                  components={{
-                    img: (props) => (
-                      <span className="block my-8">
-                        <img 
-                          {...props} 
-                          referrerPolicy="no-referrer"
-                          className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
-                          loading="lazy" 
-                        />
-                      </span>
-                    ),
-                    h3: ({ node, children, ...props }) => {
-                      const text = String(children);
-                      if (text.includes("✨ What's New")) {
-                        return (
-                          <h3
-                            className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-blue-100 shadow-sm"
-                            {...props}
-                          >
-                            {children}
-                          </h3>
-                        );
-                      }
-                      if (text.includes("🐛 Bug Fixes")) {
-                        return (
-                          <h3
-                            className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-rose-100 shadow-sm"
-                            {...props}
-                          >
-                            {children}
-                          </h3>
-                        );
-                      }
-                      if (text.includes("⚡ Improvements")) {
-                        return (
-                          <h3
-                            className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-amber-100 shadow-sm"
-                            {...props}
-                          >
-                            {children}
-                          </h3>
-                        );
-                      }
-                      return (
-                        <h3
-                          className="text-xl font-black text-primary mt-6 mb-3"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    },
-                    ul: ({ node, children, ...props }) => (
-                      <ul className="space-y-2 ml-4 mb-6" {...props}>
-                        {children}
-                      </ul>
-                    ),
-                    li: ({ node, children, ...props }) => (
-                      <li
-                        className="flex items-start gap-3 text-slate-700 font-medium text-base leading-relaxed"
-                        {...props}
-                      >
-                        <span className="text-primary mt-2 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                        <span>{children}</span>
-                      </li>
-                    ),
-                  }}
-                >
-                  {post.content}
-                </ReactMarkdown>
-              </div>
+        {/* Colorful Social Share Buttons Bar */}
+        <div className="my-2 flex flex-wrap items-center gap-1">
+          {/* Facebook Share */}
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#1877f2] hover:bg-[#166fe5] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
+          >
+            <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            Share
+          </a>
 
-              {post.attachments.filter(
-                (att) =>
-                  /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                  (att.url || "").includes("image"),
-              ).length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                  {post.attachments
-                    .filter(
-                      (att) =>
-                        /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                        (att.url || "").includes("image"),
-                    )
-                    .map((att, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() =>
-                          (window as any).setLightboxImage?.({
-                            url: att.url,
-                            name: att.name || "Attachment",
-                          })
-                        }
-                        className="relative group overflow-hidden rounded-2xl border-2 border-slate-50 shadow-sm transition-all hover:border-blue-100 hover:shadow-md cursor-pointer"
-                      >
-                        <div className="absolute top-2 right-2 p-1.5 bg-black/50 backdrop-blur-md rounded-full text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                          <Maximize2 size={14} strokeWidth={3} />
-                        </div>
-                        <img
-                          src={att.url}
-                          alt={att.name}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-48 object-cover transition-transform group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                          <a
-                            href={att.url}
-                            onClick={(e) =>
-                              handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-3 bg-white rounded-full text-blue-600 hover:scale-110 transition-transform shadow-lg"
-                          >
-                            <ExternalLink size={20} />
-                          </a>
-                          <a
-                            href={att.url}
-                            onClick={(e) =>
-                              handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                            }
-                            download={att.name}
-                            className="p-3 bg-white rounded-full text-green-600 hover:scale-110 transition-transform shadow-lg"
-                          >
-                            <Download size={20} />
-                          </a>
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                          <p className="text-white text-[12px] font-bold truncate px-1">
-                            {att.name}
-                          </p>
-                          {att.status && (
-                            <div className="absolute top-3 right-3">
-                              <span
-                                className={`${att.status === "New" ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]"} text-white text-[9px] px-2.5 py-1 rounded-md font-black tracking-widest uppercase`}
-                              >
-                                {att.status}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
+          {/* WhatsApp Share */}
+          <a
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#25d366] hover:bg-[#22bf5b] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
+          >
+            <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+            Share
+          </a>
 
-            <div className="w-full shrink-0 border-t border-gray-100 pt-6 flex flex-col">
-              <div className="mb-5">
-                <a
-                  href={(() => {
-                    const att = getLatestAttachment(post.attachments);
-                    return att ? att.url : post.attachments[0]?.url;
-                  })()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
-                    handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect);
-                  }}
-                  className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
-                  style={{
-                    background:
-                      "linear-gradient(to bottom, #2b88d8 0%, #1565c0 100%)",
-                    padding: "10px",
-                  }}
-                >
-                  <div className="bg-black/15 p-2.5 flex items-center justify-center border-r border-black/10">
-                    <ArrowDown
-                      size={28}
-                      color="white"
-                      strokeWidth={3}
-                      className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform"
-                    />
-                  </div>
-                  <span
-                    className="text-[20px] font-semibold pr-6 tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] flex-1 truncate"
-                    title={(() => {
-                      const att = getLatestAttachment(post.attachments);
-                      return att
-                        ? `Download Now (${att.name})`
-                        : "Download Now";
-                    })()}
-                  >
-                    {getLatestAttachment(post.attachments)
-                      ? "Download Latest Version"
-                      : "Download Now"}
-                  </span>
-                </a>
-              </div>
+          {/* Telegram Share */}
+          <a
+            href={`https://t.me/share/url?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#0088cc] hover:bg-[#0077b3] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
+          >
+            <Send size={11} />
+            Share
+          </a>
 
-              <div className="text-[13px] text-gray-800 mb-2 font-sans font-black uppercase tracking-wider">
-                Download
-              </div>
-              <div className="flex flex-col gap-2 w-full">
-                {post.mediaUrl &&
-                  !post.mediaType?.startsWith("video") &&
-                  !(post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image")) &&
-                  !post.mediaType?.startsWith("audio") &&
-                  post.mediaType !== "link" && (
-                    <a
-                      href={post.mediaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        if (requireLoginAlert()) { e.preventDefault(); return; }
-                        handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document");
-                      }}
-                      className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
-                    >
-                      <div className="flex items-center h-full min-w-0">
-                        <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                          <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                            <ArrowDown
-                              size={12}
-                              className="text-[#666666]"
-                              strokeWidth={4}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex flex-col px-3 min-w-0">
-                          <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                            {post.mediaName || "Attached Document"}
-                          </span>
-                        </div>
-                      </div>
-                    </a>
-                  )}
-                {post.attachments?.map((att, idx) => (
-                  <a
-                    key={idx}
-                    href={att.url}
-                    onClick={(e) =>
-                      handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
-                      att.isDirect
-                        ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
-                        : "bg-white border border-[#cccccc] hover:border-blue-500"
-                    }`}
-                  >
-                    <div className="flex items-center h-full min-w-0">
-                      <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                          <ArrowDown
-                            size={12}
-                            className="text-[#666666]"
-                            strokeWidth={4}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex flex-col px-3 min-w-0">
-                        <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
-                          {att.name}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pr-3 shrink-0">
-                      {att.isDirect && (
-                        <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
-                          <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
-                        </span>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
-                          title="Version Number"
-                        >
-                          <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                            {att.badgePrefix || "v"}
-                          </span>
-                          <span className="text-[9px] font-bold text-blue-600 leading-none">
-                            {att.version || "1.0"}
-                          </span>
-                        </div>
-                        {att.status && (
-                          <span
-                            className={`${att.status === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}
-                          >
-                            {att.status}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
+          {/* Pinterest Pin */}
+          <a
+            href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(postUrl)}&media=${encodeURIComponent(post.mediaUrl || "")}&description=${encodeURIComponent(post.title)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#e60023] hover:bg-[#cc001f] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
+          >
+            <Pin size={11} />
+            Pin
+          </a>
+
+          {/* X / Twitter Post */}
+          <a
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-black hover:bg-slate-800 text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
+          >
+            <span className="font-serif font-black text-[11px]">𝕏</span>
+            Post
+          </a>
+
+          {/* General Share */}
+          <button
+            onClick={() => {
+              handleShare(
+                post.title || "E-Vedhika Post",
+                shareText,
+                postUrl,
+                () => addToast("Link Copied!"),
+                post.mediaUrl,
+                post.mediaType,
+              );
+            }}
+            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs cursor-pointer"
+          >
+            <Share2 size={11} />
+            Share
+          </button>
+        </div>
+
+        {/* Sponsored Advertisement Banner Section */}
+        <div className="my-2 bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 border border-amber-300 rounded-xl p-2.5 sm:p-3 shadow-xs relative overflow-hidden group">
+          <div className="absolute top-0 right-0 bg-amber-400 text-amber-950 text-[9px] font-black px-2 py-0.5 rounded-bl uppercase tracking-wider flex items-center gap-1 border-b border-l border-amber-500/80">
+            <Megaphone size={10} className="text-amber-900" />
+            <span>ప్రకటన (Advertisement)</span>
           </div>
-        ) : (
-          <>
-            <div className="prose prose-slate prose-lg md:prose-xl max-w-none pt-4 text-slate-700 leading-relaxed font-serif whitespace-pre-wrap">
-              <ReactMarkdown
-                remarkPlugins={[remarkBreaks]}
-                rehypePlugins={[rehypeRaw]}
-                components={{
-                  img: (props) => (
-                    <span className="block my-8">
-                      <img 
-                        {...props} 
-                        referrerPolicy="no-referrer"
-                        className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
-                        loading="lazy" 
-                      />
-                    </span>
-                  ),
-                  h3: ({ node, children, ...props }) => {
-                    const text = String(children);
-                    if (text.includes("✨ What's New")) {
-                      return (
-                        <h3
-                          className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-blue-100 shadow-sm"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("🐛 Bug Fixes")) {
-                      return (
-                        <h3
-                          className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-rose-100 shadow-sm"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("⚡ Improvements")) {
-                      return (
-                        <h3
-                          className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-amber-100 shadow-sm"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    }
-                    return (
-                      <h3
-                        className="text-xl font-black text-primary mt-6 mb-3"
-                        {...props}
-                      >
-                        {children}
-                      </h3>
-                    );
-                  },
-                  ul: ({ node, children, ...props }) => (
-                    <ul className="space-y-2 ml-4 mb-6" {...props}>
-                      {children}
-                    </ul>
-                  ),
-                  li: ({ node, children, ...props }) => (
-                    <li
-                      className="flex items-start gap-3 text-slate-700 font-medium text-base leading-relaxed"
+
+          <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <div className="flex items-start gap-2.5 flex-1">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-400 flex items-center justify-center shrink-0 text-amber-900 font-bold shadow-xs">
+                <Sparkles size={18} className="text-amber-700 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="bg-amber-600 text-white text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                    Sponsored
+                  </span>
+                  <h4 className="font-black text-slate-900 text-xs sm:text-sm leading-tight">
+                    ఈ-వేదిక డిజిటల్ సిటిజెన్ సేవలు & ఆన్‌లైన్ అప్‌డేట్స్
+                  </h4>
+                </div>
+                <p className="text-slate-700 text-[11px] sm:text-xs mt-0.5 font-medium leading-normal">
+                  అన్ని ప్రభుత్వ జీఓలు, అప్లికేషన్ ఫార్మాట్‌లు, వ్యవసాయ పథకాలు మరియు ఉపాధి అవకాశాలు ఒకే చోట పొందుపరచండి.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="/?tab=gos"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs px-3.5 py-1.5 rounded-lg shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            >
+              <span>మరిన్ని వివరాలు</span>
+              <ArrowUpRight size={13} />
+            </a>
+          </div>
+        </div>
+
+        {/* Article Body Matter */}
+        <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed font-normal whitespace-pre-wrap my-3">
+          <ReactMarkdown
+            remarkPlugins={[remarkBreaks]}
+            rehypePlugins={[rehypeRaw]}
+            components={{
+              img: (props) => (
+                <span className="block my-4">
+                  <SmartImage
+                    src={props.src || ""}
+                    alt={props.alt || "Photo"}
+                    className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50"
+                  />
+                </span>
+              ),
+              h3: ({ node, children, ...props }) => {
+                const text = String(children);
+                if (text.includes("✨ What's New")) {
+                  return (
+                    <h3
+                      className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-blue-100 shadow-sm"
                       {...props}
                     >
-                      <span className="text-primary mt-2 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span>{children}</span>
-                    </li>
-                  ),
-                }}
-              >
-                {post.content}
-              </ReactMarkdown>
-            </div>
+                      {children}
+                    </h3>
+                  );
+                }
+                if (text.includes("🐛 Bug Fixes")) {
+                  return (
+                    <h3
+                      className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-rose-100 shadow-sm"
+                      {...props}
+                    >
+                      {children}
+                    </h3>
+                  );
+                }
+                if (text.includes("⚡ Improvements")) {
+                  return (
+                    <h3
+                      className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-amber-100 shadow-sm"
+                      {...props}
+                    >
+                      {children}
+                    </h3>
+                  );
+                }
+                return (
+                  <h3
+                    className="text-xl font-black text-slate-900 mt-6 mb-3"
+                    {...props}
+                  >
+                    {children}
+                  </h3>
+                );
+              },
+              ul: ({ node, children, ...props }) => (
+                <ul className="space-y-2 ml-4 mb-6" {...props}>
+                  {children}
+                </ul>
+              ),
+              li: ({ node, children, ...props }) => (
+                <li
+                  className="flex items-start gap-3 text-slate-700 font-medium text-base leading-relaxed"
+                  {...props}
+                >
+                  <span className="text-red-600 mt-2 w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />
+                  <span>{children}</span>
+                </li>
+              ),
+            }}
+          >
+            {post.content}
+          </ReactMarkdown>
+        </div>
 
-            {post.attachments && post.attachments.length > 0 && (
-              <div className="mt-8 pt-8 space-y-4">
-                <div className="flex items-center gap-2 mb-4 px-1">
-                  <Paperclip size={16} className="text-slate-400" />
-                  <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
-                    Release Documents & File Attachments
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {post.attachments.map((att, idx) => {
-                    const isImage =
-                      /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                      (att.url || "").includes("image");
-                    return (
-                      <div key={idx}>
-                        {isImage ? (
-                          <div
-                            onClick={() =>
-                              (window as any).setLightboxImage?.({
-                                url: att.url,
-                                name: att.name || "Attachment",
-                              })
-                            }
-                            className="relative group overflow-hidden rounded-2xl border-2 border-slate-50 shadow-sm transition-all hover:border-blue-100 hover:shadow-md cursor-pointer"
-                          >
-                            <img
-                              src={att.url}
-                              alt={att.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-48 object-cover transition-transform group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                              <a
-                                href={att.url}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect);
-                                }}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-3 bg-white rounded-full text-blue-600 hover:scale-110 transition-transform shadow-lg"
-                                title="View Full Image"
-                              >
-                                <ExternalLink size={20} />
-                              </a>
-                              <a
-                                href={att.url}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect);
-                                }}
-                                download={att.name}
-                                className="p-3 bg-white rounded-full text-green-600 hover:scale-110 transition-transform shadow-lg"
-                                title="Download Image"
-                              >
-                                <Download size={20} />
-                              </a>
-                            </div>
-                            <div className="absolute top-3 right-3 p-1.5 bg-black/50 backdrop-blur-md rounded-full text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                              <Maximize2 size={14} strokeWidth={3} />
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                              <p className="text-white text-xs font-black truncate">
-                                {att.name}
-                              </p>
-                              {att.status && (
-                                <div className="absolute top-3 right-3 scale-110">
-                                  <span
-                                    className={`${att.status === "New" ? "bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]"} text-white text-[9px] px-2 py-1 rounded font-black tracking-widest uppercase`}
-                                  >
-                                    {att.status}
-                                  </span>
-                                </div>
-                              )}
-                              <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest">
-                                Image File
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <a
-                            href={att.url}
-                            onClick={(e) =>
-                              handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`flex items-center gap-4 p-4 border-2 rounded-2xl transition-all group h-full ${
-                              att.isDirect
-                                ? "bg-blue-50/70 border-blue-300 hover:border-blue-400 hover:bg-blue-100/50"
-                                : "bg-slate-50 hover:bg-blue-50 border-slate-100 hover:border-blue-200"
-                            }`}
-                          >
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 shrink-0 shadow-sm transition-transform group-hover:scale-105 ${
-                              att.isDirect
-                                ? "bg-blue-100 border-blue-200 text-blue-600"
-                                : "bg-white border-slate-100 group-hover:border-blue-100 text-blue-500"
-                            }`}>
-                              <FileText size={20} />
-                            </div>
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-sm font-black truncate ${att.isDirect ? "text-blue-800" : "text-slate-800 group-hover:text-blue-800"}`}>
-                                  {att.name}
-                                </span>
-                                {att.version && (
-                                  <span className="bg-blue-50 text-blue-600 text-[8px] px-1.5 py-0.5 rounded font-bold border border-blue-100">
-                                    v{att.version}
-                                  </span>
-                                )}
-                                {att.status && (
-                                  <span
-                                    className={`${att.status === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}
-                                  >
-                                    {att.status}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
-                                  Download File •{" "}
-                                  {(att.url || "").split(".")
-                                    .pop()
-                                    ?.split("?")[0]
-                                    .toUpperCase() || "FILE"}
-                                </span>
-                                {att.isDirect && (
-                                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-sm flex items-center gap-0.5 shrink-0">
-                                    <Download size={9} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
+        {/* Additional Attachments/Files if present */}
+        {post.attachments && post.attachments.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-slate-100">
+            <h5 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">అటాచ్‌మెంట్‌లు (Attachments)</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {post.attachments.map((att: any, idx: number) => (
+                <a
+                  key={idx}
+                  href={att.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={att.name || "Attachment"}
+                  onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
+                  className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors group cursor-pointer"
+                >
+                  <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center shrink-0">
+                    <FileText size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">{att.name || "File Attachment"}</p>
+                    <span className="text-[10px] text-slate-400 font-medium">డౌన్‌లోడ్ చేయండి</span>
+                  </div>
+                  <Download size={16} className="text-slate-400 group-hover:text-red-600 transition-colors" />
+                </a>
+              ))}
+            </div>
+          </div>
         )}
 
-        <div className="flex justify-between items-center sm:mt-12 mt-8 pt-8 border-t-2 border-dashed border-slate-100">
-          <div className="flex gap-6">
+        {/* Likes, Views, Actions Bar */}
+        <div className="flex justify-between items-center sm:mt-10 mt-6 pt-6 border-t border-slate-200">
+          <div className="flex gap-4">
             <button
-              onClick={async (e) => {
+              onClick={async () => {
                 const userId = auth.currentUser?.uid;
                 if (!userId) {
-                  addToast("Please login first");
+                  addToast("దయచేసి మొదట లాగిన్ అవ్వండి");
                   return;
                 }
                 const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
@@ -22087,37 +21845,16 @@ function PostDetail({
                     likes: increment(1),
                     likedBy: arrayUnion(userId),
                   });
-                  // Send global notification
-                  const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
-                  const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
-                  const snapLike = await getDocs(qLike);
-                  if (!snapLike.empty) {
-                    await updateDoc(snapLike.docs[0].ref, {
-                      message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
-                      time: Date.now(),
-                      read: false
-                    }).catch(()=>console.error("Failed to update like notif"));
-                  } else {
-                    await addDoc(collection(db, "notifications"), {
-                      uid: "all",
-                      title: "కొత్త లైక్ (New Like)",
-                      message: `${likerName} వారు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
-                      type: "like",
-                      read: false,
-                      time: Date.now(),
-                      postId: post.id
-                    }).catch(()=>console.error("Failed to add like notif"));
-                  }
                 }
               }}
-              className="flex items-center gap-2 text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2 rounded-xl transition-colors active:scale-95 cursor-pointer group"
+              className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-colors cursor-pointer group"
             >
               <Heart
-                size={20}
+                size={18}
                 className={
                   (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
-                    ? "fill-primary text-primary"
-                    : "text-primary group-hover:scale-110 transition-transform"
+                    ? "fill-red-600 text-red-600"
+                    : "text-red-600 group-hover:scale-110 transition-transform"
                 }
               />
               <span
@@ -22127,101 +21864,42 @@ function PostDetail({
                     setShowLikesModal(true);
                   }
                 }}
-                className={`font-black text-base ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
+                className={`font-black text-sm ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
               >
                 {post.likes || 0}
-              </span>{" "}
-              <span className="text-xs uppercase tracking-wider hidden sm:inline">
-                Likes
               </span>
+              <span className="text-xs uppercase font-bold hidden sm:inline">Likes</span>
             </button>
-            {/* Views - Visible to all, clickable only by admin */}
+
             <button
               onClick={() => {
                 const displayViews = getPostDisplayViews(post, isAdmin);
                 if (isAdmin && displayViews > 0) setShowViewsModal(true);
               }}
-              className={`flex items-center gap-2 text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 transition-colors ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:bg-slate-100 cursor-pointer" : "cursor-default"}`}
+              className={`flex items-center gap-2 text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 transition-colors ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:bg-slate-200 cursor-pointer" : "cursor-default"}`}
             >
-              <Eye size={20} />
-              <span
-                className={`font-black text-base ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:underline" : ""}`}
-              >
-                {getPostDisplayViews(post, isAdmin)}
-              </span>{" "}
-              <span className="text-xs uppercase tracking-wider hidden sm:inline">
-                Views
-              </span>
+              <Eye size={18} />
+              <span className="font-black text-sm">{getPostDisplayViews(post, isAdmin)}</span>
+              <span className="text-xs uppercase font-bold hidden sm:inline">Views</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Share Post"
-              onClick={() => {
-                const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
-                const shareText = generatePostShareText(post, url);
-                handleShare(
-                  post.title || "E-Vedhika Post",
-                  shareText,
-                  url,
-                  async () => {
-                    addToast("Link Copied!");
-                    if (auth.currentUser) {
-                      const sharerName = auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
-                      // Only send notification if logged in to prevent anonymous spam
-                      const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
-                      const snapShare = await getDocs(qShare);
-                      if (!snapShare.empty) {
-                        await updateDoc(snapShare.docs[0].ref, {
-                          message: `${sharerName} మరియు ఇతరులు ఒక పోస్ట్‌ను షేర్ చేశారు.`,
-                          time: Date.now(),
-                          read: false
-                        }).catch(()=>console.error("Failed to update share notif"));
-                      } else {
-                        await addDoc(collection(db, "notifications"), {
-                          uid: "all",
-                          title: "పోస్ట్ షేర్ చేయబడింది (Post Shared)",
-                          message: `${sharerName} వారు ఒక పోస్ట్‌ను ఇతరులతో షేర్ చేశారు.`,
-                          type: "share",
-                          read: false,
-                          time: Date.now(),
-                          postId: post.id
-                        }).catch(()=>console.error("Failed to add share notif"));
-                      }
-                    }
-                  },
-                  post.mediaUrl,
-                  post.mediaType,
-                );
-              }}
-              className="flex items-center gap-2 text-slate-500 hover:text-primary hover:bg-slate-50 px-4 py-2 rounded-xl transition-all cursor-pointer"
-            >
-              <Share2 size={18} />
-              <span className="text-xs font-black uppercase tracking-wider hidden sm:inline">
-                Share
-              </span>
-            </button>
-
-            <button
-              aria-label="Share WhatsApp Poster Card"
-              onClick={() => {
-                if ((window as any).setSharingPostForPoster) {
-                  (window as any).setSharingPostForPoster(post);
-                }
-              }}
-              className="flex items-center gap-2 text-emerald-600 hover:text-white hover:bg-emerald-600 bg-emerald-50/50 border border-emerald-100/50 px-4 py-2 rounded-xl transition-all cursor-pointer"
-            >
-              <Smartphone size={18} />
-              <span className="text-xs font-black uppercase tracking-wider hidden sm:inline">
-                వాట్సాప్ కార్డ్
-              </span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              if ((window as any).setSharingPostForPoster) {
+                (window as any).setSharingPostForPoster(post);
+              }
+            }}
+            className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl transition-all cursor-pointer font-bold text-xs"
+          >
+            <Smartphone size={18} />
+            <span className="hidden sm:inline">వాట్సాప్ కార్డ్</span>
+          </button>
         </div>
       </div>
 
-      <div className="pt-10 border-t mt-12 border-slate-100">
+      {/* Post Comments */}
+      <div className="pt-8 border-t border-slate-200">
         <PostComments
           post={post}
           addToast={addToast}
@@ -22231,6 +21909,70 @@ function PostDetail({
           storageConfig={storageConfig}
         />
       </div>
+
+      {/* Recent Posts Section */}
+      {recentPostsList.length > 0 && (
+        <div className="mt-12 pt-8 border-t border-slate-200">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span>
+              రీసెంట్ పోస్ట్స్ (Recent Posts)
+            </h3>
+            <button
+              onClick={onBack}
+              className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full border border-red-100 transition-colors cursor-pointer"
+            >
+              అన్ని పోస్ట్‌లు చూడండి →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {recentPostsList.map((rp) => {
+              const rpImage = rp.mediaUrl || (rp.attachments && rp.attachments.find((a: any) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(a.url) || (a.url || "").includes("image"))?.url);
+              return (
+                <div
+                  key={rp.id}
+                  onClick={() => {
+                    setSearchParams({ postId: rp.id });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="group bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all overflow-hidden cursor-pointer flex flex-col h-full hover:border-red-300"
+                >
+                  <div className="relative aspect-[16/10] w-full bg-slate-100 overflow-hidden">
+                    {rpImage ? (
+                      <SmartImage
+                        src={rpImage}
+                        alt={rp.title}
+                        allowLightbox={false}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs p-4 text-center">
+                        {rp.title || "E-Vedhika Post"}
+                      </div>
+                    )}
+                    <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-xs">
+                      {rp.categories?.[0] || rp.category || "తాజా వార్తలు"}
+                    </span>
+                  </div>
+                  <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
+                    <h4 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
+                      {rp.title}
+                    </h4>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-2 border-t border-slate-100">
+                      <span>{new Date(getValidTime(rp)).toLocaleDateString("te-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      <span className="flex items-center gap-1">
+                        <Eye size={12} /> {getPostDisplayViews(rp, isAdmin)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {showLikesModal && (
         <UsersListModal
           title="Liked By"
@@ -23098,9 +22840,7 @@ function PostComments({
                   </p>
                   {c.mediaUrl && (
                     <div className="rounded-xl overflow-hidden border border-slate-200">
-                      <a href={c.mediaUrl} target="_blank" rel="noopener noreferrer">
-                        <img src={c.mediaUrl} alt="Attached screenshot" referrerPolicy="no-referrer" className="max-w-full max-h-[300px] object-contain hover:opacity-90 transition-opacity bg-slate-50" loading="lazy" />
-                      </a>
+                      <SmartImage src={c.mediaUrl} alt="Attached screenshot" className="max-w-full max-h-[300px] object-contain bg-slate-50 rounded-xl" />
                     </div>
                   )}
                 </div>
