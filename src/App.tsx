@@ -1088,8 +1088,41 @@ export const playNotificationSound = (soundId?: string) => {
   }
 };
 
-export const generatePostShareText = (post: any, postUrl: string) => {
-  if (!post) return `E-Vedhika: ${postUrl}`;
+export const getSiteBaseUrl = () => {
+  const origin = window.location.origin;
+  if (
+    !origin ||
+    origin.includes("run.app") ||
+    origin.includes("onrender.com") ||
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    origin.includes("netlify.app") ||
+    origin.includes("vercel.app")
+  ) {
+    return "https://www.e-vedhika.in";
+  }
+  return origin;
+};
+
+export const getSiteDisplayHost = () => {
+  const host = window.location.host;
+  if (
+    !host ||
+    host.includes("run.app") ||
+    host.includes("onrender.com") ||
+    host.includes("localhost") ||
+    host.includes("127.0.0.1") ||
+    host.includes("netlify.app") ||
+    host.includes("vercel.app")
+  ) {
+    return "www.e-vedhika.in";
+  }
+  return host;
+};
+
+export const generatePostShareText = (post: any, postUrl?: string) => {
+  const finalUrl = postUrl || (post?.id ? `${getSiteBaseUrl()}/?postId=${post.id}` : getSiteBaseUrl());
+  if (!post) return `E-Vedhika: ${finalUrl}`;
   
   const rawContent = post.content || "";
   const plainContent = String(rawContent)
@@ -1122,7 +1155,7 @@ export const generatePostShareText = (post: any, postUrl: string) => {
     (formattedDate ? `📅 *తేదీ / Date:* ${formattedDate}\n` : "") +
     (summary ? `\n📝 *వివరాలు / Summary:*\n_"${summary}"_\n` : "") +
     `\n👇 *పూర్తి వివరాలు & జిఓల కోసం క్రింది లింక్ క్లిక్ చేయండి:*` +
-    `\n🔗 ${postUrl}\n\n` +
+    `\n🔗 ${finalUrl}\n\n` +
     `________________________\n` +
     `✨ *E-Vedhika - పంచాయతీ ముఖ్యాంశాలు & డిజిటల్ సేవల పోర్టల్*`
   );
@@ -2382,7 +2415,7 @@ export default function App() {
           .replace(/[#*`]/g, "")
           .trim()
           .substring(0, 160) || "ఈ-వేదిక పోర్టల్ ద్వారా పంచాయతీ ముఖ్యాంశాలు మరియు డిజిటల్ సేవలను పొందండి.";
-        const postUrl = `${window.location.origin}/?postId=${post.id}`;
+        const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
         const imageUrl = post.mediaUrl || "https://www.e-vedhika.in/banner.jpg";
 
         updateDOMMetaTags({
@@ -5961,7 +5994,7 @@ export default function App() {
                                       typeof textToShare === "string"
                                         ? textToShare
                                         : "Check out this update on E-Vedhika",
-                                      window.location.origin,
+                                      getSiteBaseUrl(),
                                       () => addToast("Link copied!"),
                                     );
                                   }}
@@ -7101,7 +7134,7 @@ export default function App() {
       {/* WHATSAPP POST CARD SHARING MODAL */}
       {sharingPostForPoster && (() => {
         const post = sharingPostForPoster;
-        const postUrl = `${window.location.origin}/?postId=${post.id}`;
+        const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
         const plainContent = post.content
           ? post.content
               .replace(/<[^>]*>?/gm, "")
@@ -7264,7 +7297,7 @@ export default function App() {
                         పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
                       </p>
                       <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
-                        {window.location.host}/?postId={post.id}
+                        {getSiteDisplayHost()}/?postId={post.id}
                       </div>
                     </div>
                     {/* QR Code */}
@@ -15247,7 +15280,7 @@ function DigitalWorkspaceSection({
         <button
           onClick={() => {
             const sharePath = activeTool ? `workspace/${activeTool}` : "workspace";
-            const url = `${window.location.origin}/?tab=${sharePath}`;
+            const url = `${getSiteBaseUrl()}/?tab=${sharePath}`;
             const toolObj = tools.find((t) => t.id === activeTool);
             const title = toolObj ? `${toolObj.title} - E-Vedhika` : "Mana Panchayath - E-Vedhika";
             handleShare(
@@ -15305,7 +15338,7 @@ function DigitalWorkspaceSection({
                   <button
                     onClick={() => {
                       const currentToolObj = tools.find((t) => t.id === activeTool);
-                      const url = `${window.location.origin}/?tab=workspace/${activeTool}`;
+                      const url = `${getSiteBaseUrl()}/?tab=workspace/${activeTool}`;
                       handleShare(
                         `${currentToolObj?.title || 'Tool'} - E-Vedhika`,
                         `Access ${currentToolObj?.title || 'tool'} on Mana Panchayath - E-Vedhika!`,
@@ -19265,7 +19298,7 @@ function PostCard({
             aria-label="Share Post"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${window.location.origin}/?postId=${post.id}`;
+              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
               const shareText = generatePostShareText(post, url);
               handleShare(
                 post.title || "E-Vedhika Post",
@@ -22610,7 +22643,7 @@ function PostDetail({
             <button
               aria-label="Share Post"
               onClick={() => {
-                const url = `${window.location.origin}/?postId=${post.id}`;
+                const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
                 const shareText = generatePostShareText(post, url);
                 handleShare(
                   post.title || "E-Vedhika Post",
