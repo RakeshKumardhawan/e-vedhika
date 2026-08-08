@@ -2091,7 +2091,7 @@ app.get('/api/remote-commands', (req, res) => {
       }
     }));
     app.get('*', async (req, res) => {
-      const postId = req.query.postId as string;
+      const postId = (req.query.postId as string) || (req.path.startsWith('/post/') ? req.path.split('/post/')[1] : null);
       const indexPath = path.join(distPath, 'index.html');
       
       if (!fs.existsSync(indexPath)) {
@@ -2107,6 +2107,7 @@ app.get('/api/remote-commands', (req, res) => {
       html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
       html = html.replace(/property="og:url" content="\/"/g, `property="og:url" content="${fullBaseUrl}/"`);
       html = html.replace(/content="https:\/\/e-vedhika\.online\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
+      html = html.replace(/content="https:\/\/www\.e-vedhika\.in\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
 
       if (postId) {
         try {
@@ -2126,7 +2127,7 @@ app.get('/api/remote-commands', (req, res) => {
             // Remove markdown or html tags from description for OG tags
             const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`]/g, "").trim();
             const postDesc = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
-            const mediaUrl = fields.mediaUrl?.stringValue || "";
+            const mediaUrl = fields.mediaUrl?.stringValue || fields.imageUrl?.stringValue || fields.poster?.stringValue || fields.videoThumbnailUrl?.stringValue || "";
 
             html = html.replace(/<title>.*?<\/title>/, `<title>${postTitle} - E-Vedhika</title>`);
             html = html.replace(/<meta\s+(?:property|name)="og:title"\s+content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${postTitle}" />`);

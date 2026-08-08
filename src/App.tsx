@@ -141,6 +141,10 @@ import {
   LayoutList,
   Smartphone,
   WifiOff, FileBadge,
+  ArrowUpDown,
+  UserCheck,
+  Smile,
+  ThumbsUp,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -974,9 +978,17 @@ function getValidTime(obj: any): number {
   return Date.now();
 }
 
-function getPostDisplayViews(post: any, isUserAdmin: boolean) {
+function getPostDisplayViews(post: any, isUserAdmin?: boolean) {
   if (!post) return 0;
-  return post.views || 0;
+  let rawViews = 0;
+  if (typeof post.views === "number" && !isNaN(post.views)) {
+    rawViews = post.views;
+  } else if (typeof post.views === "string") {
+    const parsed = parseInt(post.views, 10);
+    if (!isNaN(parsed)) rawViews = parsed;
+  }
+  const viewedByCount = Array.isArray(post.viewedBy) ? post.viewedBy.length : 0;
+  return Math.max(rawViews, viewedByCount);
 }
 
 export const NOTIFICATION_SOUNDS = [
@@ -5357,6 +5369,8 @@ export default function App() {
                                                 setShowPostForm(true);
                                               }}
                                               allUsers={allUsers}
+                                              userProfile={userProfile}
+                                              storageConfig={storageConfig}
                                             />
                                           </motion.div>
                                         ))}
@@ -5929,6 +5943,8 @@ export default function App() {
                                                     setShowPostForm(true);
                                                   }}
                                                   allUsers={allUsers}
+                                                  userProfile={userProfile}
+                                                  storageConfig={storageConfig}
                                                 />
                                               </motion.div>,
                                             ];
@@ -18181,6 +18197,8 @@ function PostCard({
   isAdmin,
   onEdit,
   allUsers,
+  userProfile,
+  storageConfig,
 }: {
   post: Post;
   isExpanded: boolean;
@@ -18189,6 +18207,8 @@ function PostCard({
   isAdmin: boolean;
   onEdit: (p: Post) => void;
   allUsers: UserProfile[];
+  userProfile?: UserProfile | null;
+  storageConfig?: "cloudflare" | "firebase";
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
@@ -18209,185 +18229,39 @@ function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [showViewsModal, setShowViewsModal] = useState(false);
   const [showLikesModal, setShowLikesModal] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
-  const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [submittingReply, setSubmittingReply] = useState(false);
-  const [editReplyId, setEditReplyId] = useState<{ commentId: string; replyId: string } | null>(null);
-  const [editReplyText, setEditReplyText] = useState("");
-  const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; target: "reply" | "comment" } | null>(null);
 
-  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setReplyText(val);
-    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
-    const match = val.match(lastWordRegex);
-    if (match) {
-      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "reply" });
-    } else {
-      setMentionQuery(null);
-    }
-  };
-
-  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setNewComment(val);
-    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
-    const match = val.match(lastWordRegex);
-    if (match) {
-      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "comment" });
-    } else {
-      setMentionQuery(null);
-    }
-  };
-
-  const handleMentionSelect = (username: string) => {
-    if (!mentionQuery) return;
-    if (mentionQuery.target === "reply") {
-      const newText = replyText.substring(0, mentionQuery.index) + `@${username} ` + replyText.substring(mentionQuery.index + mentionQuery.query.length + 1);
-      setReplyText(newText);
-    } else {
-      const newText = newComment.substring(0, mentionQuery.index) + `@${username} ` + newComment.substring(mentionQuery.index + mentionQuery.query.length + 1);
-      setNewComment(newText);
-    }
-    setMentionQuery(null);
-  };
-
-  const handleAddReply = async (commentId: string) => {
-    if (!replyText.trim() || !auth.currentUser) return;
-    setSubmittingReply(true);
-    try {
-      const authorName = isAdmin
-        ? "Admin"
-        : auth.currentUser!.displayName ||
-          auth.currentUser!.email?.split("@")[0] ||
-          "User";
-
-      const newReply = {
-        id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
-        text: replyText,
-        time: Date.now(),
-        uid: auth.currentUser!.uid,
-        userName: authorName,
-        isAdminComment: isAdmin,
-      };
-
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        replies: arrayUnion(newReply),
-      });
-      await updateDoc(doc(db, "posts", post.id), {
-        commentCount: increment(1)
-      });
-
-      // Global notification for reply
-      await addDoc(collection(db, "notifications"), {
-        uid: "all",
-        title: "కొత్త రిప్లై (New Reply)",
-        message: `${authorName} వారు ఒక కామెంట్ పై రిప్లై ఇచ్చారు.`,
-        type: "comment_reply",
-        read: false,
-        time: Date.now(),
-        postId: post.id,
-      });
-
-      const parentComment = comments.find((c) => c.id === commentId);
-      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
-        await addDoc(collection(db, "notifications"), {
-          uid: parentComment.uid,
-          title: "కొత్త రిప్లై (New Reply)",
-          message: `${authorName} మీ కామెంట్ పై ఒక రిప్లై ఇచ్చారు.`,
-          type: "comment_reply",
-          read: false,
-          time: Date.now(),
-          postId: post.id,
-        }).catch(() => console.error("Failed to fetch notification"));
-      }
-      await logUserActivity("Replied to a Comment on Post: " + post.id);
-
-      setReplyingToId(null);
-      setReplyText("");
-    } catch (e: any) {
-      addToast("Failed to add reply");
-    } finally {
-      setSubmittingReply(false);
-    }
-  };
-
-  const handleDeleteReply = async (commentId: string, reply: any) => {
-    if (!window.confirm("Are you sure you want to delete this reply?")) return;
-    try {
-      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
-      if (commentDoc.exists()) {
-        const data = commentDoc.data();
-        const currentReplies = data.replies || [];
-        const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
-        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-          replies: newReplies,
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          commentCount: increment(-1)
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to delete reply");
-    }
-  };
-
-  const handleEditReplySubmit = async (commentId: string) => {
-    if (!editReplyText.trim() || !editReplyId) return;
-    setSubmittingReplyEdit(true);
-    try {
-      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
-      if (!commentDoc.exists()) return;
-      const data = commentDoc.data();
-      const currentReplies = data.replies || [];
-      const newReplies = currentReplies.map((r: any) =>
-        r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
-      );
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        replies: newReplies,
-      });
-      setEditReplyId(null);
-      setEditReplyText("");
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to edit reply");
-    } finally {
-      setSubmittingReplyEdit(false);
-    }
-  };
-
+  // Automatic view count tracking for registered and unregistered (anonymous) visitors
   useEffect(() => {
-    if (showComments) {
-      const q = query(
-        collection(db, "posts", post.id, "comments"),
-        orderBy("time", "desc"),
-      );
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          const fetchedComments = snap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }));
-          setComments(fetchedComments);
-          setCommentsLoaded(true);
-        },
-        (err) =>
-          handleFirestoreError(
-            err,
-            OperationType.LIST,
-            `posts/${post.id}/comments`,
-          ),
-      );
-      return () => unsub();
+    if (!post?.id) return;
+    const sessionViewedKey = `session_post_viewed_${post.id}`;
+    const hasViewedInSession = sessionStorage.getItem(sessionViewedKey);
+    const userId = auth.currentUser?.uid;
+
+    if (!hasViewedInSession) {
+      sessionStorage.setItem(sessionViewedKey, "true");
+
+      let sourceKey = "source_direct";
+      const referrer = document.referrer.toLowerCase();
+      if (referrer.includes("whatsapp")) sourceKey = "source_whatsapp";
+      else if (referrer.includes("facebook") || referrer.includes("fb")) sourceKey = "source_facebook";
+      else if (referrer.includes("t.co") || referrer.includes("twitter")) sourceKey = "source_twitter";
+      else if (referrer) sourceKey = "source_other";
+
+      const updateData: any = { 
+        views: increment(1),
+        [sourceKey]: increment(1)
+      };
+      if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
+        updateData.viewedBy = arrayUnion(userId);
+      }
+      updateDoc(doc(db, "posts", post.id), updateData).catch((err) => {
+        console.error("View count increment error in PostCard:", err);
+        sessionStorage.removeItem(sessionViewedKey);
+      });
+    } else if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
+      updateDoc(doc(db, "posts", post.id), { viewedBy: arrayUnion(userId) }).catch(() => {});
     }
-  }, [showComments, post.id]);
+  }, [post?.id, auth.currentUser?.uid]);
 
   return (
     <motion.div layout className="post-card">
@@ -18933,10 +18807,10 @@ function PostCard({
                         </span>
                       )}
                     </div>
-                  </div>
-                </a>
-              ))}
-            </div>
+                    </div>
+                  </a>
+                ))}
+          </div>
           </div>
         </div>
       ) : (
@@ -18944,349 +18818,232 @@ function PostCard({
           <div
             className={`post-body mb-4 relative ${isActualExpanded ? "" : "max-h-[220px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
           >
-            <ReactMarkdown
-              remarkPlugins={[remarkBreaks]}
-              rehypePlugins={[rehypeRaw]}
-              components={{
-                img: (props) => (
-                  <span className="block my-8">
-                    <img 
-                      {...props} 
-                      referrerPolicy="no-referrer"
-                      className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
-                      loading="lazy" 
-                    />
-                  </span>
-                ),
-                h3: ({ children }) => {
-                  const text = String(children);
-                  if (text.includes("✨ What's New")) {
-                    return (
-                      <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm">
-                        {children}
-                      </h3>
-                    );
-                  }
-                  return (
-                    <h3 className="text-lg font-black text-primary mt-4 mb-2">
-                      {children}
-                    </h3>
-                  );
-                },
-                ul: ({ children }) => (
-                  <ul className="space-y-1.5 ml-4 mb-4">{children}</ul>
-                ),
-                li: ({ children }) => (
-                  <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed">
-                    <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                    <span>{children}</span>
-                  </li>
-                ),
-              }}
-            >
-              {post.content || ""}
-            </ReactMarkdown>
-            {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
-              <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-            )}
-          </div>
-
-          {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
-            <button
-              onClick={handleToggleExpansion}
-              className="text-primary hover:text-blue-700 font-black text-[12px] uppercase tracking-wider flex items-center gap-1 mt-1 mb-4 cursor-pointer hover:underline"
-            >
-              {isActualExpanded ? (
-                <>
-                  <ChevronUp size={14} strokeWidth={3} /> తక్కువ చూపించండి (Show Less)
-                </>
-              ) : (
-                <>
-                  <ChevronDown size={14} strokeWidth={3} /> మొత్తం చదవండి (Read More)
-                </>
-              )}
-            </button>
-          )}
-
-          {post.attachments && post.attachments.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <div className="text-[14px] text-gray-800 mb-3 font-sans font-black uppercase tracking-wider">
-                Download
-              </div>
-              <div className="flex flex-col gap-2 w-full">
-                {post.attachments.map((att, idx) => {
-                  const isImage =
-                    /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                    (att.url || "").includes("image");
-                  return (
-                    <div key={idx} className="w-full">
-                      {isImage ? (
-                        <div
-                          onClick={() =>
-                            (window as any).setLightboxImage?.({
-                              url: att.url,
-                              name: att.name || "Attachment",
-                            })
-                          }
-                          className="relative group overflow-hidden rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20 cursor-pointer"
-                        >
-                          <img
-                            src={att.url}
-                            alt={att.name}
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            className="w-full h-40 object-cover transition-transform group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <a
-                              href={att.url}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect);
-                              }}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-white rounded-full text-primary hover:scale-110 transition-transform"
-                            >
-                              <ExternalLink size={16} />
-                            </a>
-                          </div>
-                          <div className="absolute top-2 right-2 p-1.5 bg-black/50 backdrop-blur-md rounded-full text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                            <Maximize2 size={12} strokeWidth={3} />
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                            <p className="text-white text-[10px] font-bold truncate px-1">
-                              {att.name}
-                            </p>
-                            {att.status && (
-                              <div className="absolute top-2 right-2">
-                                <span
-                                  className={`${att.status === "New" ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase`}
-                                >
-                                  {att.status}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <a
-                          href={att.url}
-                          onClick={(e) =>
-                            handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
-                            att.isDirect
-                              ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
-                              : "bg-white border border-[#cccccc] hover:border-blue-500"
-                          }`}
-                        >
-                          <div className="flex items-center h-full min-w-0">
-                            <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                                <ArrowDown
-                                  size={12}
-                                  className="text-[#666666]"
-                                  strokeWidth={4}
-                                />
-                              </div>
-                            </div>
-                            <div className="flex flex-col px-3 min-w-0">
-                              <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
-                                {att.name}
-                              </span>
-                              <span className="text-[9px] font-medium text-slate-400 truncate max-w-[200px]">
-                                {att.url}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 pr-3 shrink-0">
-                            {att.isDirect && (
-                              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
-                                <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
-                              </span>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
-                                title="Version Number"
-                              >
-                                <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                                  {att.badgePrefix || "v"}
-                                </span>
-                                <span className="text-[9px] font-bold text-blue-600 leading-none">
-                                  {att.version || "1.0"}
-                                </span>
-                              </div>
-                              {att.status && (
-                                <span
-                                  className={`${att.status === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}
-                                >
-                                  {att.status}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </a>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {post.websiteName && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-              <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-                <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-                  <ExternalLink size={12} strokeWidth={3} />
-                </div>
-                {post.websiteName} Issue / Problem
-              </div>
-              <Target
-                size={14}
-                className="text-primary/40 group-hover:text-primary transition-colors"
-              />
-            </div>
-          )}
-
-          {post.mediaUrl && (
-            <div className="mb-4">
-              {post.mediaType?.startsWith("video") ? (
-                <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
-              ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-                <img
-                  src={post.mediaUrl}
-                  alt={post.title}
-                  className="post-media"
-                  loading="lazy"
+          <ReactMarkdown remarkPlugins={[remarkBreaks]}
+          rehypePlugins={[rehypeRaw]}
+          components={{
+            img: (props) => (
+              <span className="block my-8">
+                <img 
+                  {...props} 
                   referrerPolicy="no-referrer"
+                  className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" 
+                  loading="lazy" 
                 />
-              ) : post.mediaType?.startsWith("audio") ? (
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
-                    {post.mediaName || "Audio Attachment"}
-                  </p>
-                  <audio src={post.mediaUrl} controls className="w-full" />
-                </div>
-              ) : post.mediaType === "link" ? (
-                <a
-                  href={
-                    post.mediaUrl.startsWith("http")
-                      ? post.mediaUrl
-                      : `https://${post.mediaUrl}`
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl hover:bg-blue-50 transition-colors w-full group"
-                >
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                    <Link2 size={24} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h5 className="font-bold text-slate-800 text-sm truncate">
-                      {post.mediaName || "External Link"}
-                    </h5>
-                    <p
-                      className="text-xs text-slate-500 truncate mt-0.5"
-                      dir="ltr"
-                    >
-                      {post.mediaUrl}
-                    </p>
-                  </div>
-                </a>
-              ) : (
-                !(
-                  post.downloadStyle === "techspot" ||
-                  (!post.downloadStyle &&
-                    post.attachments &&
-                    post.attachments.length >= 2)
-                ) && (
-                  <a
-                    href={post.mediaUrl}
-                    download={post.mediaName || "Document"}
-                    onClick={(e) =>
-                      handleForceDownload(
-                        e,
-                        post.mediaUrl || "",
-                        post.mediaName || "Document",
-                      )
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 hover:border-primary/30 transition-colors w-full group"
+              </span>
+            ),
+            h3: ({ node, children, ...props }) => {
+              const text = String(children);
+              if (text.includes("✨ What's New")) {
+                return (
+                  <h3
+                    className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm"
+                    {...props}
                   >
-                    <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                      <FileText size={24} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-bold text-slate-800 text-sm truncate">
-                        {post.mediaName || "Attached Document"}
-                      </h5>
-                      <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">
-                        Download File
-                      </p>
-                    </div>
-                    <Download
-                      size={20}
-                      className="text-slate-400 group-hover:text-primary transition-colors ml-4"
-                    />
-                  </a>
-                )
-              )}
-            </div>
-          )}
-        </>
-      )}
+                    {children}
+                  </h3>
+                );
+              }
+              if (text.includes("🐛 Bug Fixes")) {
+                return (
+                  <h3
+                    className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm"
+                    {...props}
+                  >
+                    {children}
+                  </h3>
+                );
+              }
+              if (text.includes("⚡ Improvements")) {
+                return (
+                  <h3
+                    className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm"
+                    {...props}
+                  >
+                    {children}
+                  </h3>
+                );
+              }
+              return (
+                <h3
+                  className="text-lg font-black text-primary mt-4 mb-2"
+                  {...props}
+                >
+                  {children}
+                </h3>
+              );
+            },
+            ul: ({ node, children, ...props }) => (
+              <ul className="space-y-1.5 ml-4 mb-4" {...props}>
+                {children}
+              </ul>
+            ),
+            li: ({ node, children, ...props }) => (
+              <li
+                className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed"
+                {...props}
+              >
+                <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
+                <span>{children}</span>
+              </li>
+            ),
+          }}
+        >
+          {post.content || ""}
+        </ReactMarkdown>
+        {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
+          <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+        )}
+      </div>
+      {post.websiteName && (
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
+        <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
+          <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
+            <ExternalLink size={12} strokeWidth={3} />
+          </div>
+          {post.websiteName} Issue / Problem
+        </div>
+        <Target
+          size={14}
+          className="text-primary/40 group-hover:text-primary transition-colors"
+        />
+      </div>
+    )}
 
-      <div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-auto">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Like Post"
-              onClick={async (e) => {
-                e.stopPropagation();
-                const userId = auth.currentUser?.uid;
-                if (requireLoginAlert()) return;
-                const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
-                try {
-                  if (likedBy.includes(userId)) {
-                    await updateDoc(doc(db, "posts", post.id), {
-                      likes: increment(-1),
-                      likedBy: arrayRemove(userId),
-                    });
-                  } else {
-                    await updateDoc(doc(db, "posts", post.id), {
-                      likes: increment(1),
-                      likedBy: arrayUnion(userId),
-                    });
-                    const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
-                    const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
-                    const snapLike = await getDocs(qLike);
-                    if (!snapLike.empty) {
-                      await updateDoc(snapLike.docs[0].ref, {
-                        message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
-                        time: Date.now(),
-                        read: false
-                      }).catch(()=>console.error("Failed to update like notif"));
-                    } else {
-                      await addDoc(collection(db, "notifications"), {
-                        uid: "all",
-                        title: "కొత్త లైక్ (New Like)",
-                        message: `${likerName} వారు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
-                        type: "like",
-                        read: false,
-                        time: Date.now(),
-                        postId: post.id
-                      }).catch(()=>console.error("Failed to add like notif"));
-                    }
-                  }
-                } catch (err: any) {
-                  addToast(getFriendlyError(err));
-                }
-              }}
+    {post.mediaUrl && (
+      <div className="mb-4">
+        {post.mediaType?.startsWith("video") ? (
+          <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = "none"; }} />
+        ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
+          <img
+            src={post.mediaUrl}
+            alt={post.title}
+            className="post-media"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : post.mediaType?.startsWith("audio") ? (
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
+              {post.mediaName || "Audio Attachment"}
+            </p>
+            <audio src={post.mediaUrl} controls className="w-full" />
+          </div>
+        ) : post.mediaType === "link" ? (
+          <a
+            href={
+              post.mediaUrl.startsWith("http")
+                ? post.mediaUrl
+                : `https://${post.mediaUrl}`
+            }
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl hover:bg-blue-50 transition-colors w-full group"
+          >
+            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+              <Link2 size={24} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="font-bold text-slate-800 text-sm truncate">
+                {post.mediaName || "External Link"}
+              </h5>
+              <p
+                className="text-xs text-slate-500 truncate mt-0.5"
+                dir="ltr"
+              >
+                {post.mediaUrl}
+              </p>
+            </div>
+          </a>
+        ) : (
+          !(
+            post.downloadStyle === "techspot" ||
+            (!post.downloadStyle &&
+              post.attachments &&
+              post.attachments.length >= 2)
+          ) && (
+            <a
+              href={post.mediaUrl}
+              download={post.mediaName || "Document"}
+              onClick={(e) =>
+                handleForceDownload(
+                  e,
+                  post.mediaUrl || "",
+                  post.mediaName || "Document",
+                )
+              }
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 hover:border-primary/30 transition-colors w-full group"
+            >
+              <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                <FileText size={24} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h5 className="font-bold text-slate-800 text-sm truncate">
+                  {post.mediaName || "Attached Document"}
+                </h5>
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">
+                  Download File
+                </p>
+              </div>
+              <Download
+                size={20}
+                className="text-slate-400 group-hover:text-primary transition-colors ml-4"
+              />
+            </a>
+          )
+        )}
+      </div>
+    )}
+  </>
+)}
+
+<div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-auto">
+  <div className="flex items-center gap-6">
+    <div className="flex items-center gap-2">
+      <button
+        aria-label="Like Post"
+        onClick={async (e) => {
+          e.stopPropagation();
+          const userId = auth.currentUser?.uid;
+          if (requireLoginAlert()) return;
+          const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+          try {
+            if (likedBy.includes(userId)) {
+              await updateDoc(doc(db, "posts", post.id), {
+                likes: increment(-1),
+                likedBy: arrayRemove(userId),
+              });
+            } else {
+              await updateDoc(doc(db, "posts", post.id), {
+                likes: increment(1),
+                likedBy: arrayUnion(userId),
+              });
+              const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+              const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
+              const snapLike = await getDocs(qLike);
+              if (!snapLike.empty) {
+                await updateDoc(snapLike.docs[0].ref, {
+                  message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
+                  time: Date.now(),
+                  read: false
+                }).catch(()=>console.error("Failed to update like notif"));
+              } else {
+                await addDoc(collection(db, "notifications"), {
+                  uid: "all",
+                  title: "కొత్త లైక్ (New Like)",
+                  message: `${likerName} వారు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
+                  type: "like",
+                  read: false,
+                  time: Date.now(),
+                  postId: post.id
+                }).catch(()=>console.error("Failed to add like notif"));
+              }
+            }
+          } catch (err: any) {
+            addToast(getFriendlyError(err));
+          }
+        }}
               className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
             >
               <Heart
@@ -19424,313 +19181,14 @@ function PostCard({
 
       {showComments && (
         <div className="mt-6 pt-6 border-t border-slate-100">
-          <div className="flex gap-2 relative mb-4">
-            {mentionQuery?.target === "comment" && (
-              <div className="absolute bottom-full mb-1 left-0 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                      {(u.username || u.name || "U")[0].toUpperCase()}
-                    </div>
-                    <span className="truncate">{u.username || u.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <input
-              value={newComment}
-              onChange={handleCommentChange}
-              placeholder="Add a comment..."
-              className="flex-1 bg-slate-50 px-4 py-2 rounded-xl text-sm border-2 border-transparent focus:border-primary/20 outline-none"
-            />
-            <button
-              onClick={async () => {
-                if (!newComment.trim() || requireLoginAlert()) return;
-                try {
-                  const authorName =
-                    auth.currentUser!.displayName ||
-                    auth.currentUser!.email?.split("@")[0] ||
-                    "User";
-                  await addDoc(collection(db, "posts", post.id, "comments"), {
-                    text: newComment,
-                    time: Date.now(),
-                    uid: auth.currentUser!.uid,
-                    userName: authorName,
-                  });
-                  await updateDoc(doc(db, "posts", post.id), {
-                    commentCount: increment(1),
-                  });
-
-                  sendCommentNotifications(
-                    post.id,
-                    newComment,
-                    auth.currentUser!.uid,
-                    authorName,
-                  );
-
-                  setNewComment("");
-                } catch (e: any) {
-                  addToast("Error: " + e.message);
-                }
-              }}
-              className="bg-primary text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"
-            >
-              SEND
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <AnimatePresence initial={false}>
-              {comments.map((c) => (
-                <motion.div
-                  key={c.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -15 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full flex flex-col gap-2 relative group"
-                >
-                  <div className="text-sm bg-slate-50 p-3 rounded-2xl flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-black text-primary uppercase text-[10px]">
-                          <AdminUserTooltip uid={c.uid} userName={c.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                          {new Date(c.time || Date.now()).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "numeric",
-                            hour12: true
-                          })}
-                        </span>
-                      </div>
-                      <span className="text-slate-600 break-words">{c.text}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const likes = c.likes || [];
-                            const uid = auth.currentUser?.uid;
-                            if (!uid) {
-                              addToast("Please login first to like comments");
-                              return;
-                            }
-                            if (likes.includes(uid)) {
-                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                                likes: arrayRemove(uid),
-                              });
-                            } else {
-                              await updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                                likes: arrayUnion(uid),
-                              });
-                              const likerName = auth.currentUser!.displayName ||
-                                auth.currentUser!.email?.split("@")[0] ||
-                                "User";
-                              sendLikeNotification(
-                                post.id,
-                                c.id,
-                                c.text || "",
-                                c.uid || "",
-                                c.userName || "User",
-                                uid,
-                                likerName,
-                              );
-                            }
-                          }}
-                          className={`p-1.5 rounded-lg transition-all active:scale-95 ${(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "text-red-500" : "text-slate-400 hover:text-red-500 hover:bg-slate-100"}`}
-                          title={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "Unlike" : "Like"}
-                        >
-                          <Heart
-                            size={14}
-                            fill={(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "currentColor" : "none"}
-                          />
-                        </button>
-                        {c.likes?.length > 0 && (
-                          <span className="text-[10px] font-bold text-slate-400">
-                            {c.likes.length}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => setReplyingToId(replyingToId === c.id ? null : c.id)}
-                          className="text-[10px] font-bold text-slate-400 hover:text-primary transition-colors ml-2 flex items-center gap-1"
-                        >
-                          <MessageCircle size={10} />
-                          Reply
-                        </button>
-                      </div>
-                      {(auth.currentUser?.uid === c.uid || isAdmin) && (
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!window.confirm("Are you sure you want to delete this comment?")) return;
-                            try {
-                              const repliesCount = c.replies ? c.replies.length : 0;
-                              if (c.isLegacy) {
-                                const currentComments = post.comments || [];
-                                const updatedComments = currentComments.filter((item: any) => item.id !== c.id);
-                                await updateDoc(doc(db, "posts", post.id), {
-                                  comments: updatedComments,
-                                  commentCount: increment(-(1 + repliesCount)),
-                                });
-                              } else {
-                                await deleteDoc(doc(db, "posts", post.id, "comments", c.id));
-                                await updateDoc(doc(db, "posts", post.id), {
-                                  commentCount: increment(-(1 + repliesCount)),
-                                }).catch(() => {});
-                              }
-                              addToast("కామెంట్ తొలగించబడింది (Comment deleted)");
-                            } catch (err: any) {
-                              console.error(err);
-                              addToast("Error deleting comment: " + (err.message || String(err)));
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                          title="Delete Comment"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Replies List */}
-                  {c.replies && c.replies.length > 0 && (
-                    <div className="mt-3 space-y-3 pl-5 border-l-2 border-indigo-100 relative">
-                      {c.replies.map((reply: any) => (
-                        <div key={reply.id} className="flex gap-3 items-start relative pb-1">
-                          <CornerDownRight size={14} className="absolute -left-6 top-1 text-indigo-300" />
-                          <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-[10px] text-indigo-500 font-black shrink-0 shadow-sm">
-                            {(reply.userName || "U")[0].toUpperCase()}
-                          </div>
-                          <div className="flex-1 bg-slate-50 p-3 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-slate-100 shadow-sm">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[12px] font-black text-slate-800">
-                                <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
-                                {reply.isAdminComment && (
-                                  <span className="ml-2 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm">
-                                    Official
-                                  </span>
-                                )}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                                  {new Date(reply.time || Date.now()).toLocaleString(undefined, {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "numeric",
-                                    minute: "numeric",
-                                    hour12: true
-                                  })}
-                                </span>
-                                {(auth.currentUser?.uid === reply.uid || isAdmin) && (
-                                  <div className="flex items-center gap-2">
-                                    {(auth.currentUser?.uid === reply.uid) && (
-                                      <button
-                                        onClick={() => {
-                                          setEditReplyId({ commentId: c.id, replyId: reply.id });
-                                          setEditReplyText(reply.text);
-                                        }}
-                                        className="text-slate-300 hover:text-blue-500 transition-colors"
-                                      >
-                                        <Edit2 size={10} />
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={() => handleDeleteReply(c.id, reply)}
-                                      className="text-slate-300 hover:text-red-500 transition-colors"
-                                    >
-                                      <Trash2 size={10} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            {editReplyId?.replyId === reply.id ? (
-                              <div className="mt-2 flex gap-2 w-full">
-                                <input
-                                  value={editReplyText}
-                                  onChange={(e) => setEditReplyText(e.target.value)}
-                                  className="flex-1 text-sm bg-white p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
-                                  onKeyDown={(e) => e.key === "Enter" && handleEditReplySubmit(c.id)}
-                                />
-                                <button
-                                  onClick={() => handleEditReplySubmit(c.id)}
-                                  disabled={submittingReplyEdit || !editReplyText.trim()}
-                                  className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-                                >
-                                  {submittingReplyEdit ? "..." : "Save"}
-                                </button>
-                                <button
-                                  onClick={() => setEditReplyId(null)}
-                                  className="text-xs font-bold text-slate-400 px-2"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <p className="text-[13px] text-slate-700 leading-relaxed">
-                                {reply.text}
-                                {reply.edited && <span className="text-[9px] text-slate-400 ml-1.5 italic font-medium">(edited)</span>}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Reply Input Box */}
-                  {replyingToId === c.id && auth.currentUser && (
-                    <div className="mt-1 flex gap-2 pl-4 border-l-2 border-primary/20 relative">
-                      {mentionQuery?.target === "reply" && (
-                        <div className="absolute bottom-full mb-1 left-4 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                          {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                            <button
-                              key={u.id}
-                              onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
-                            >
-                              <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                                {(u.username || u.name || "U")[0].toUpperCase()}
-                              </div>
-                              <span className="truncate">{u.username || u.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <input
-                        value={replyText}
-                        onChange={handleReplyChange}
-                        placeholder="Write a reply..."
-                        className="flex-1 text-xs bg-slate-50 p-2 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
-                        onKeyDown={(e) => e.key === "Enter" && handleAddReply(c.id)}
-                      />
-                      <button
-                        disabled={submittingReply || !replyText.trim()}
-                        onClick={() => handleAddReply(c.id)}
-                        className="bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 hover:bg-opacity-90 flex items-center gap-1"
-                      >
-                        {submittingReply ? <Loader2 size={12} className="animate-spin" /> : "Send"}
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-            ))}
-            </AnimatePresence>
-            {comments.length === 0 && (
-              <p className="text-xs text-slate-400 italic text-center py-2">
-                No comments yet
-              </p>
-            )}
-          </div>
+          <PostComments
+            post={post}
+            addToast={addToast}
+            userProfile={userProfile || null}
+            isAdmin={isAdmin}
+            allUsers={allUsers}
+            storageConfig={storageConfig || "firebase"}
+          />
         </div>
       )}
 
@@ -21836,7 +21294,10 @@ function PostDetail({
       if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
         updateData.viewedBy = arrayUnion(uid);
       }
-      updateDoc(docRef, updateData).catch((e) => console.error(e));
+      updateDoc(docRef, updateData).catch((e) => {
+        console.error("View count increment error in SinglePostView:", e);
+        sessionStorage.removeItem(viewedSessionKey);
+      });
     } else if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
       updateDoc(docRef, { viewedBy: arrayUnion(uid) }).catch((e) => console.error(e));
     }
@@ -22791,6 +22252,44 @@ function PostDetail({
   );
 }
 
+function CommentRoleBadge({
+  commentUid,
+  isAdminComment,
+  postUid,
+  allUsers,
+}: {
+  commentUid?: string;
+  isAdminComment?: boolean;
+  postUid?: string;
+  allUsers?: any[];
+}) {
+  const userDoc = allUsers?.find((u) => u.id === commentUid);
+  const isOfficialAdmin =
+    isAdminComment || commentUid === "KGT2roF9bPTNhWIceHgWsJEnEnH3" || userDoc?.role === "admin";
+  const isPostAuthor = commentUid && postUid && commentUid === postUid;
+  const isModerator = userDoc?.role === "moderator";
+
+  return (
+    <div className="inline-flex items-center gap-1.5 flex-wrap">
+      {isOfficialAdmin && (
+        <span className="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+          <ShieldCheck size={9} /> అడ్మిన్ (Admin)
+        </span>
+      )}
+      {isPostAuthor && (
+        <span className="bg-emerald-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+          <UserCheck size={9} /> రచయిత (Author)
+        </span>
+      )}
+      {isModerator && !isOfficialAdmin && (
+        <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+          <Shield size={9} /> మోడరేటర్ (Moderator)
+        </span>
+      )}
+    </div>
+  );
+}
+
 function PostComments({
   post,
   addToast,
@@ -22807,7 +22306,10 @@ function PostComments({
   storageConfig: "cloudflare" | "firebase";
 }) {
   const [comments, setComments] = useState<any[]>([]);
+  const [dbComments, setDbComments] = useState<any[]>([]);
+  const [optimisticComments, setOptimisticComments] = useState<any[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "popular">("newest");
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -22863,6 +22365,11 @@ function PostComments({
     setMentionQuery(null);
   };
 
+  const postRef = useRef(post);
+  useEffect(() => {
+    postRef.current = post;
+  }, [post]);
+
   const handleAddReply = async (commentId: string) => {
     if (!replyText.trim() || !auth.currentUser) return;
     setSubmittingReply(true);
@@ -22882,12 +22389,29 @@ function PostComments({
         isAdminComment: isAdmin,
       };
 
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        replies: arrayUnion(newReply),
-      });
-      await updateDoc(doc(db, "posts", post.id), {
-        commentCount: increment(1)
-      });
+      const targetComment = comments.find((c) => c.id === commentId);
+      if (targetComment?.isLegacy) {
+        const currentComments = postRef.current?.comments || [];
+        const updatedComments = currentComments.map((item: any) => {
+          const itemCid = item.id || item.time?.toString();
+          if (itemCid === commentId) {
+            const currentReplies = Array.isArray(item.replies) ? item.replies : [];
+            return { ...item, replies: [...currentReplies, newReply] };
+          }
+          return item;
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          comments: updatedComments,
+          commentCount: increment(1),
+        });
+      } else {
+        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+          replies: arrayUnion(newReply),
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          commentCount: increment(1),
+        });
+      }
 
       // Global notification for reply
       await addDoc(collection(db, "notifications"), {
@@ -22910,7 +22434,7 @@ function PostComments({
           read: false,
           time: Date.now(),
           postId: post.id,
-        }).catch(() => console.error("Failed to fetch notification"));
+        }).catch(() => console.error("Failed to send notification"));
       }
       await logUserActivity("Replied to a Comment on Post: " + post.id);
 
@@ -22926,17 +22450,35 @@ function PostComments({
   const handleDeleteReply = async (commentId: string, reply: any) => {
     if (!window.confirm("Are you sure you want to delete this reply?")) return;
     try {
-      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
-      if (commentDoc.exists()) {
-        const data = commentDoc.data();
-        const currentReplies = data.replies || [];
-        const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
-        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-          replies: newReplies,
+      const targetComment = comments.find((c) => c.id === commentId);
+      if (targetComment?.isLegacy) {
+        const currentComments = postRef.current?.comments || [];
+        const updatedComments = currentComments.map((item: any) => {
+          const itemCid = item.id || item.time?.toString();
+          if (itemCid === commentId) {
+            const currentReplies = Array.isArray(item.replies) ? item.replies : [];
+            const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
+            return { ...item, replies: newReplies };
+          }
+          return item;
         });
         await updateDoc(doc(db, "posts", post.id), {
-          commentCount: increment(-1)
+          comments: updatedComments,
+          commentCount: increment(-1),
         });
+      } else {
+        const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+        if (commentDoc.exists()) {
+          const data = commentDoc.data();
+          const currentReplies = data.replies || [];
+          const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
+          await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+            replies: newReplies,
+          });
+          await updateDoc(doc(db, "posts", post.id), {
+            commentCount: increment(-1),
+          });
+        }
       }
     } catch (err) {
       console.error(err);
@@ -22948,16 +22490,35 @@ function PostComments({
     if (!editReplyText.trim() || !editReplyId) return;
     setSubmittingReplyEdit(true);
     try {
-      const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
-      if (!commentDoc.exists()) return;
-      const data = commentDoc.data();
-      const currentReplies = data.replies || [];
-      const newReplies = currentReplies.map((r: any) =>
-        r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
-      );
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        replies: newReplies,
-      });
+      const targetComment = comments.find((c) => c.id === commentId);
+      if (targetComment?.isLegacy) {
+        const currentComments = postRef.current?.comments || [];
+        const updatedComments = currentComments.map((item: any) => {
+          const itemCid = item.id || item.time?.toString();
+          if (itemCid === commentId) {
+            const currentReplies = Array.isArray(item.replies) ? item.replies : [];
+            const newReplies = currentReplies.map((r: any) =>
+              r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
+            );
+            return { ...item, replies: newReplies };
+          }
+          return item;
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          comments: updatedComments,
+        });
+      } else {
+        const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
+        if (!commentDoc.exists()) return;
+        const data = commentDoc.data();
+        const currentReplies = data.replies || [];
+        const newReplies = currentReplies.map((r: any) =>
+          r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
+        );
+        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+          replies: newReplies,
+        });
+      }
       setEditReplyId(null);
       setEditReplyText("");
     } catch (err) {
@@ -22969,87 +22530,224 @@ function PostComments({
   };
 
   useEffect(() => {
-    const q = query(
-      collection(db, "posts", post.id, "comments"),
-      orderBy("time", "desc"),
-    );
+    if (!post?.id) return;
+
+    const commentsCol = collection(db, "posts", post.id, "comments");
+
     const unsub = onSnapshot(
-      q,
+      commentsCol,
       (snap) => {
-        const dbComments = snap.docs.map((d) => ({
+        const docs = snap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
-        
-        const legacyComments = post.comments || [];
-        const combinedMap = new Map();
-        
-        legacyComments.forEach((c: any) => {
-            const cid = c.id || c.time?.toString() || Math.random().toString();
-            combinedMap.set(cid, { ...c, id: cid, isLegacy: true });
-        });
-        
-        dbComments.forEach((c: any) => {
-            combinedMap.set(c.id, c);
-        });
-        
-        const combinedComments = Array.from(combinedMap.values());
-        combinedComments.sort((a: any, b: any) => {
-          const aLikes = a.likes?.length || 0;
-          const bLikes = b.likes?.length || 0;
-          if (aLikes !== bLikes) return bLikes - aLikes;
-          return (b.time || 0) - (a.time || 0);
-        });
-        
-        setComments(combinedComments);
+        setDbComments(docs);
         setCommentsLoaded(true);
-        
-        const trueCombinedCount = combinedComments.reduce((acc: number, c: any) => {
-          const repliesCount = c.replies && Array.isArray(c.replies) ? c.replies.length : 0;
-          return acc + 1 + repliesCount;
-        }, 0);
-        const currentCount = post.commentCount ?? legacyComments.length;
-        if (currentCount !== trueCombinedCount) {
-          updateDoc(doc(db, "posts", post.id), {
-            commentCount: trueCombinedCount,
-          }).catch(() => {});
-        }
       },
-      (err) =>
-        handleFirestoreError(
-          err,
-          OperationType.LIST,
-          `posts/${post.id}/comments`,
-        ),
+      (err) => {
+        console.error("Error fetching comments snapshot:", err);
+        setCommentsLoaded(true);
+      },
     );
     return () => unsub();
-  }, [post.id, post.commentCount]);
+  }, [post.id]);
+
+  useEffect(() => {
+    const currentPost = postRef.current || post;
+    const legacyComments = currentPost.comments || [];
+    const combinedMap = new Map();
+
+    legacyComments.forEach((c: any) => {
+      const cid = c.id || c.time?.toString() || Math.random().toString();
+      combinedMap.set(cid, { ...c, id: cid, isLegacy: true });
+    });
+
+    dbComments.forEach((c: any) => {
+      combinedMap.set(c.id, c);
+    });
+
+    optimisticComments.forEach((opt: any) => {
+      const matchesReal = dbComments.some(
+        (dbc: any) =>
+          dbc.uid === opt.uid &&
+          dbc.text === opt.text &&
+          Math.abs((getValidTime(dbc) || 0) - opt.time) < 30000,
+      );
+      if (!matchesReal) {
+        combinedMap.set(opt.id, opt);
+      }
+    });
+
+    const combinedComments = Array.from(combinedMap.values());
+    combinedComments.sort((a: any, b: any) => {
+      const aTime = getValidTime(a) || 0;
+      const bTime = getValidTime(b) || 0;
+      if (sortOrder === "oldest") {
+        return aTime - bTime;
+      } else if (sortOrder === "popular") {
+        const aReactionsCount = Object.values(a.reactions || {}).reduce(
+          (sum: number, uids: any) => sum + (Array.isArray(uids) ? uids.length : 0),
+          0
+        );
+        const bReactionsCount = Object.values(b.reactions || {}).reduce(
+          (sum: number, uids: any) => sum + (Array.isArray(uids) ? uids.length : 0),
+          0
+        );
+        const aLikes = (Array.isArray(a.likes) ? a.likes.length : 0) + aReactionsCount;
+        const bLikes = (Array.isArray(b.likes) ? b.likes.length : 0) + bReactionsCount;
+        if (aLikes !== bLikes) return bLikes - aLikes;
+        return bTime - aTime;
+      } else {
+        return bTime - aTime;
+      }
+    });
+
+    setComments(combinedComments);
+
+    const trueCombinedCount = combinedComments.reduce((acc: number, c: any) => {
+      const repliesCount = c.replies && Array.isArray(c.replies) ? c.replies.length : 0;
+      return acc + 1 + repliesCount;
+    }, 0);
+
+    const currentCount = currentPost.commentCount ?? legacyComments.length;
+    if (currentCount !== trueCombinedCount && post?.id) {
+      updateDoc(doc(db, "posts", post.id), {
+        commentCount: trueCombinedCount,
+      }).catch(() => {});
+    }
+  }, [dbComments, optimisticComments, post.id, post.comments, sortOrder]);
+
+  const handleToggleReaction = async (commentId: string, emoji: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      addToast("దయచేసి లాగిన్ అవ్వండి (Please login first)");
+      return;
+    }
+    const targetComment = comments.find((c) => c.id === commentId);
+    if (!targetComment) return;
+
+    const currentReactions: Record<string, string[]> = targetComment.reactions || {};
+    const existingUids: string[] = currentReactions[emoji] || [];
+    const hasReacted = existingUids.includes(uid);
+    const newUids = hasReacted
+      ? existingUids.filter((id) => id !== uid)
+      : [...existingUids, uid];
+
+    const updatedReactions = {
+      ...currentReactions,
+      [emoji]: newUids,
+    };
+
+    let updatedLikes = Array.isArray(targetComment.likes) ? [...targetComment.likes] : [];
+    if (emoji === "❤️") {
+      updatedLikes = hasReacted
+        ? updatedLikes.filter((id) => id !== uid)
+        : [...new Set([...updatedLikes, uid])];
+    }
+
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? { ...c, reactions: updatedReactions, likes: updatedLikes }
+          : c
+      )
+    );
+
+    try {
+      if (targetComment.isLegacy) {
+        const currentComments = postRef.current?.comments || [];
+        const updatedComments = currentComments.map((item: any) => {
+          const itemCid = item.id || item.time?.toString();
+          if (itemCid === commentId) {
+            return { ...item, reactions: updatedReactions, likes: updatedLikes };
+          }
+          return item;
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          comments: updatedComments,
+        });
+      } else {
+        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+          reactions: updatedReactions,
+          ...(emoji === "❤️" ? { likes: updatedLikes } : {}),
+        });
+
+        if (!hasReacted) {
+          const likerName =
+            auth.currentUser!.displayName ||
+            auth.currentUser!.email?.split("@")[0] ||
+            "User";
+          sendLikeNotification(
+            post.id,
+            commentId,
+            targetComment.text || "",
+            targetComment.uid || "",
+            targetComment.userName || "User",
+            uid,
+            likerName,
+          );
+        }
+      }
+    } catch (err: any) {
+      console.error("Error toggling reaction", err);
+      addToast("Failed to update reaction");
+    }
+  };
 
   const handleAddComment = async () => {
     if (!newComment.trim() && !commentFile) return;
     if (requireLoginAlert()) return;
     if (submittingComment) return;
 
+    const commentText = newComment;
+    const fileToUploadLocal = commentFile;
+    const authorName = isAdmin
+      ? "Admin"
+      : auth.currentUser!.displayName ||
+        auth.currentUser!.email?.split("@")[0] ||
+        "User";
+
+    const tempId = "temp_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+    const localPreviewUrl = fileToUploadLocal ? URL.createObjectURL(fileToUploadLocal) : null;
+
+    const optimisticComment = {
+      id: tempId,
+      text: commentText,
+      time: Date.now(),
+      uid: auth.currentUser!.uid,
+      userName: authorName,
+      isAdminComment: isAdmin,
+      likes: [],
+      replies: [],
+      edited: false,
+      mediaUrl: localPreviewUrl,
+      isOptimistic: true,
+    };
+
+    setOptimisticComments((prev) => [optimisticComment, ...prev]);
+    setNewComment("");
+    setCommentFile(null);
+
     setSubmittingComment(true);
     try {
       let uploadedImageUrl = null;
-      if (commentFile) {
+      if (fileToUploadLocal) {
         addToast("Uploading screenshot...");
         try {
-          let fileToUpload = commentFile;
-          if (commentFile.type.startsWith("image/")) {
+          let processedFile = fileToUploadLocal;
+          if (fileToUploadLocal.type.startsWith("image/")) {
             const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, initialQuality: 0.8 };
-            const compressedBlob = await imageCompression(commentFile, options);
-            fileToUpload = new File([compressedBlob], commentFile.name || "image.png", { type: commentFile.type, lastModified: Date.now() });
+            const compressedBlob = await imageCompression(fileToUploadLocal, options);
+            processedFile = new File([compressedBlob], fileToUploadLocal.name || "image.png", { type: fileToUploadLocal.type, lastModified: Date.now() });
           }
 
-          const safeName = (commentFile.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          const safeName = (fileToUploadLocal.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
           
           if (storageConfig === "cloudflare") {
             const token = await auth.currentUser?.getIdToken();
             const formData = new FormData();
-            formData.append('file', fileToUpload);
+            formData.append('file', processedFile);
             const response = await fetch('/api/upload', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${token}` },
@@ -23060,7 +22758,7 @@ function PostComments({
             uploadedImageUrl = data.url;
           } else {
             const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
-            await uploadBytes(storageRef, fileToUpload);
+            await uploadBytes(storageRef, processedFile);
             uploadedImageUrl = await getDownloadURL(storageRef);
           }
           
@@ -23068,29 +22766,23 @@ function PostComments({
         } catch (e: any) {
           addToast(`Failed to upload screenshot: ${e.message || "Unknown error"}`);
           console.error("Screenshot upload error", e);
+          setOptimisticComments((prev) => prev.filter((o) => o.id !== tempId));
           setSubmittingComment(false);
           return;
         }
       }
 
-      const authorName = isAdmin
-        ? "Admin"
-        : auth.currentUser!.displayName ||
-          auth.currentUser!.email?.split("@")[0] ||
-          "User";
-
       await addDoc(collection(db, "posts", post.id, "comments"), {
-        text: newComment,
+        text: commentText,
         time: Date.now(),
         uid: auth.currentUser!.uid,
         userName: authorName,
         isAdminComment: isAdmin,
         likes: [],
+        replies: [],
         edited: false,
         mediaUrl: uploadedImageUrl
       });
-      setNewComment("");
-      setCommentFile(null);
 
       try {
         await updateDoc(doc(db, "posts", post.id), {
@@ -23103,7 +22795,7 @@ function PostComments({
       try {
         sendCommentNotifications(
           post.id,
-          newComment,
+          commentText,
           auth.currentUser!.uid,
           authorName,
         );
@@ -23116,7 +22808,9 @@ function PostComments({
     } catch (e: any) {
       console.error(e);
       addToast("Error: " + (e.message || String(e)));
+      setOptimisticComments((prev) => prev.filter((o) => o.id !== tempId));
     } finally {
+      setOptimisticComments((prev) => prev.filter((o) => o.id !== tempId));
       setSubmittingComment(false);
     }
   };
@@ -23125,10 +22819,24 @@ function PostComments({
     if (!editCommentText.trim()) return;
     setSubmittingEdit(true);
     try {
-      await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-        text: editCommentText,
-        edited: true,
-      });
+      const targetComment = comments.find((c) => c.id === commentId);
+      if (targetComment?.isLegacy) {
+        const currentComments = postRef.current?.comments || [];
+        const updatedComments = currentComments.map((item: any) => {
+          const itemCid = item.id || item.time?.toString();
+          return itemCid === commentId
+            ? { ...item, text: editCommentText, edited: true }
+            : item;
+        });
+        await updateDoc(doc(db, "posts", post.id), {
+          comments: updatedComments,
+        });
+      } else {
+        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
+          text: editCommentText,
+          edited: true,
+        });
+      }
       setEditingCommentId(null);
       setEditCommentText("");
     } catch (e: any) {
@@ -23140,17 +22848,32 @@ function PostComments({
 
   return (
     <div className="space-y-8">
-      <h3 className="text-2xl font-black text-primary mb-6 flex items-center gap-3">
-        <MessageCircle
-          size={24}
-          className="text-accent"
-          style={{ color: "#fbbf24" }}
-        />
-        Community Comments{" "}
-        <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full">
-          {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
-        </span>
-      </h3>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h3 className="text-2xl font-black text-primary flex items-center gap-3">
+          <MessageCircle
+            size={24}
+            className="text-accent"
+            style={{ color: "#fbbf24" }}
+          />
+          Community Comments{" "}
+          <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full">
+            {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
+          </span>
+        </h3>
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
+          <ArrowUpDown size={14} className="text-slate-500" />
+          <span className="text-xs font-bold text-slate-500">వరసక్రమం:</span>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as any)}
+            className="bg-transparent text-xs font-black text-primary border-none outline-none cursor-pointer"
+          >
+            <option value="newest">కొత్తవి మొదట (Newest First)</option>
+            <option value="oldest">పాతవి మొదట (Oldest First)</option>
+            <option value="popular">అత్యంత ప్రజాదరణ పొందినవి (Most Popular)</option>
+          </select>
+        </div>
+      </div>
       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
         <label className="block text-sm font-black text-primary mb-3">
           Add your perspective
@@ -23260,25 +22983,26 @@ function PostComments({
         {comments.map((c) => (
           <motion.div
             key={c.id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex gap-4 items-start"
+            layout
+            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className={`bg-white p-5 rounded-2xl border ${c.isOptimistic ? "border-blue-300 bg-blue-50/20" : "border-slate-100"} shadow-sm flex gap-4 items-start relative`}
           >
             <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex-shrink-0 flex items-center justify-center text-slate-400 font-black border border-white shadow-sm mt-1">
               {(c.userName || "U")[0].toUpperCase()}
             </div>
             <div className="flex-1">
               <div className="flex flex-row justify-between items-center sm:items-baseline mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[15px] font-black text-primary">
                     <AdminUserTooltip uid={c.uid} userName={c.userName && !String(c.userName).includes("@") ? c.userName : "User"} allUsers={allUsers} isAdmin={isAdmin} />
                   </span>
-                  {(c.isAdminComment ||
-                    c.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3") && (
-                    <span className="bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest flex items-center gap-0.5 shadow-sm">
-                      <ShieldCheck size={8} /> Official
+                  <CommentRoleBadge commentUid={c.uid} isAdminComment={c.isAdminComment} postUid={post.uid} allUsers={allUsers} />
+                  {c.isOptimistic && (
+                    <span className="bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                      Posting...
                     </span>
                   )}
                 </div>
@@ -23381,65 +23105,74 @@ function PostComments({
                   )}
                 </div>
               )}
-              <div className="flex items-center gap-2 mt-2">
-                <button
-                  onClick={() => {
-                    const likes = c.likes || [];
-                    const uid = auth.currentUser!.uid;
-                    if (!uid) {
-                      addToast("Please login first");
-                      return;
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {["👍", "❤️", "😂", "😮", "🙏"].map((emoji) => {
+                    const reactionUids: string[] = c.reactions?.[emoji] || (emoji === "❤️" && Array.isArray(c.likes) ? c.likes : []);
+                    const count = reactionUids.length;
+                    const userHasReacted = auth.currentUser?.uid ? reactionUids.includes(auth.currentUser.uid) : false;
+                    
+                    if (count === 0 && !userHasReacted) return null;
+
+                    return (
+                      <button
+                        key={emoji}
+                        onClick={() => handleToggleReaction(c.id, emoji)}
+                        className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${
+                          userHasReacted
+                            ? "bg-amber-50 border-amber-300 text-amber-800 font-bold scale-105 shadow-sm"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                        title={`${count} user(s) reacted`}
+                      >
+                        <span>{emoji}</span>
+                        <span className="font-black text-[10px]">{count}</span>
+                      </button>
+                    );
+                  })}
+
+                  <div className="relative group">
+                    <button
+                      className="text-xs text-slate-500 hover:text-primary bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors font-bold"
+                      title="Add Reaction"
+                    >
+                      <Smile size={13} className="text-amber-500" />
+                      <span className="text-[11px]">స్పందించు (React)</span>
+                    </button>
+                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover:flex items-center gap-1 bg-white p-1.5 rounded-full border border-slate-200 shadow-xl z-20">
+                      {["👍", "❤️", "😂", "😮", "🙏"].map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleToggleReaction(c.id, emoji)}
+                          className="hover:scale-125 transition-transform p-1 text-base hover:bg-amber-50 rounded-full"
+                          title={emoji}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {c.likes && c.likes.length > 0 && (
+                  <button
+                    onClick={() =>
+                      setShowLikesModalFor({ id: c.id, uids: c.likes || [] })
                     }
-                    if (likes.includes(uid)) {
-                      updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                        likes: arrayRemove(uid),
-                      });
-                    } else {
-                      updateDoc(doc(db, "posts", post.id, "comments", c.id), {
-                        likes: arrayUnion(uid),
-                      });
-                      const likerName = auth.currentUser!.displayName ||
-                        auth.currentUser!.email?.split("@")[0] ||
-                        "User";
-                      sendLikeNotification(
-                        post.id,
-                        c.id,
-                        c.text || "",
-                        c.uid || "",
-                        c.userName || "User",
-                        uid,
-                        likerName,
-                      );
-                    }
-                  }}
-                  className={`text-xs flex items-center gap-1 ${(Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false) ? "text-red-500 hover:text-slate-400" : "text-slate-400 hover:text-red-500"} active:scale-95 group transition-colors p-1 -ml-1 rounded-md`}
-                >
-                  <Heart
-                    size={12}
-                    fill={
-                      (Array.isArray(c.likes) ? c.likes.includes(auth.currentUser?.uid || "") : false)
-                        ? "currentColor"
-                        : "none"
-                    }
-                    className="group-hover:scale-125 transition-transform"
-                  />
-                </button>
-                <button
-                  onClick={() =>
-                    setShowLikesModalFor({ id: c.id, uids: c.likes || [] })
-                  }
-                  className="text-xs font-black text-slate-400 hover:text-primary transition-colors"
-                >
-                  {c.likes?.length || 0}
-                </button>
+                    className="text-[11px] font-bold text-slate-400 hover:text-primary transition-colors ml-1"
+                  >
+                    ({c.likes.length} లైక్స్)
+                  </button>
+                )}
+
                 <button
                   onClick={() =>
                     setReplyingToId(replyingToId === c.id ? null : c.id)
                   }
-                  className="text-xs font-bold text-slate-400 hover:text-primary transition-colors ml-4 flex gap-1 items-center"
+                  className="text-xs font-bold text-slate-500 hover:text-primary transition-colors ml-auto flex gap-1 items-center bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100"
                 >
                   <MessageCircle size={12} />
-                  Reply
+                  రిప్లై (Reply)
                 </button>
               </div>
 
@@ -23454,13 +23187,9 @@ function PostComments({
                       </div>
                       <div className="flex-1 bg-slate-50 p-3 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-slate-100 shadow-sm">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-[12px] font-black text-slate-800">
+                          <span className="text-[12px] font-black text-slate-800 flex items-center gap-1.5 flex-wrap">
                             <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
-                            {reply.isAdminComment && (
-                              <span className="ml-2 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest shadow-sm">
-                                Official
-                              </span>
-                            )}
+                            <CommentRoleBadge commentUid={reply.uid} isAdminComment={reply.isAdminComment} postUid={post.uid} allUsers={allUsers} />
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
