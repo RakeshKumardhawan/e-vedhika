@@ -1,0 +1,301 @@
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-amber-50 text-amber-500 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-all">
+                          <Upload size={24} />
+                        </div>
+                        <div className="text-left">
+                          <h5 className="font-black text-primary text-sm uppercase">
+                            Point-in-time Restore
+                          </h5>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">
+                            Load from existing snapshot
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className="text-slate-300" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 bg-red-50 rounded-3xl border border-red-100 flex flex-col gap-3">
+                    <div>
+                      <h5 className="text-[11px] font-black text-red-600 uppercase flex items-center gap-2 mb-2">
+                        <ShieldAlert size={14} /> Danger Zone
+                      </h5>
+                      <p className="text-[10px] text-red-700/60 font-bold uppercase mb-2 leading-relaxed">
+                        Permanent system resets and partition wipes can only be
+                        executed via the Secure Root Shell.
+                      </p>
+                    </div>
+                    <button
+                      aria-label="Restart Server"
+                      onClick={() => {
+                        Swal.fire({
+                          title: "Restarting Server...",
+                          text: "Please wait while system connections are re-initialized.",
+                          icon: "info",
+                          allowOutsideClick: false,
+                          showConfirmButton: false,
+                          didOpen: () => {
+                            Swal.showLoading();
+                            setTimeout(() => {
+                              window.location.reload();
+                            }, 2000);
+                          },
+                        });
+                      }}
+                      className="w-full p-4 bg-red-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+                    >
+                      <RefreshCw size={16} /> Restart Application Server
+                    </button>
+                    <button
+                      aria-label="Wipe Interaction Cache"
+                      className="w-full py-2.5 bg-red-600/10 text-red-700 hover:bg-red-600 hover:text-white transition-colors font-black text-[10px] rounded-xl uppercase tracking-widest"
+                    >
+                      Wipe Interaction Cache
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSubTab === "ads" && (
+              <div className="max-w-4xl space-y-8">
+                <div>
+                  <h4 className="text-xl font-black text-primary mb-2">Ad Management (Monetag & AdSense)</h4>
+                  <p className="text-xs text-slate-500 font-medium tracking-tight">Configure ad slots to show across the website.</p>
+                </div>
+
+                {/* Monetag Config */}
+                <div className="bg-white border-2 border-amber-200 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Megaphone className="text-amber-500" size={24} />
+                    <h5 className="font-black text-slate-800 text-lg">Monetag Ads</h5>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500" 
+                        checked={siteConfig?.ads?.monetagEnabled || false}
+                        onChange={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagEnabled: e.target.checked } };
+                          setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          addToast(e.target.checked ? "Monetag Enabled" : "Monetag Disabled");
+                        }}
+                      />
+                      <span className="font-bold text-slate-700">Enable Monetag Ads</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="md:col-span-2 pt-2 border-t border-slate-100 mt-2">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Global Ad Frequency Limit (Per User Session)</label>
+                        <p className="text-[10px] text-slate-400 mb-2">Limit how many ads a single user sees (1 to 5). Leave empty for unlimited.</p>
+                        <input type="number" min="1" max="5" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none max-w-[200px]" 
+                          placeholder="e.g. 3"
+                          value={siteConfig?.ads?.adLimitPerUser || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved Ad Limit");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Zone ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
+                          placeholder="e.g. 8945672"
+                          value={siteConfig?.ads?.monetagZoneIdSidebar || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved Monetag Sidebar Zone ID");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Zone ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
+                          placeholder="e.g. 8945673"
+                          value={siteConfig?.ads?.monetagZoneIdInArticle || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved Monetag In-Article Zone ID");
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AdSense Config */}
+                <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <DollarSign className="text-blue-500" size={24} />
+                    <h5 className="font-black text-slate-800 text-lg">Google AdSense</h5>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-blue-500 focus:ring-blue-500" 
+                        checked={siteConfig?.ads?.adsenseEnabled || false}
+                        onChange={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseEnabled: e.target.checked } };
+                          setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          addToast(e.target.checked ? "AdSense Enabled" : "AdSense Disabled");
+                        }}
+                      />
+                      <span className="font-bold text-slate-700">Enable Google AdSense</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                       <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">AdSense Client ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
+                          placeholder="e.g. ca-pub-1234567890"
+                          value={siteConfig?.ads?.adsenseClient || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved AdSense Client ID");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Slot ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
+                          placeholder="e.g. 1234567890"
+                          value={siteConfig?.ads?.adsenseSlotSidebar || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved AdSense Sidebar Slot ID");
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Slot ID</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
+                          placeholder="e.g. 0987654321"
+                          value={siteConfig?.ads?.adsenseSlotInArticle || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved AdSense In-Article Slot ID");
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSubTab === "code_manager" && (
+              <CodeManager addToast={addToast} />
+            )}
+
+            {activeSubTab === "cloud_dns" && (
+              <div className="space-y-12 pb-20 fade-in slide-in-from-bottom-4 duration-700 animate-in">
+                {/* Massive Header with Glassmorphism */}
+                <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-10 lg:p-14 rounded-[48px] shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border border-white/5">
+                  <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none scale-150">
+                    <Cloud size={300} className="text-blue-400 blur-sm" />
+                  </div>
+                  <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px]"></div>
+
+                  <div className="relative z-10 text-left">
+                    <div className="flex items-center gap-3 mb-6">
+                      <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30">
+                        Infrastructure v2
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse"></span>
+                    </div>
+                    <h3 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-none">
+                      Cloud, DNS & SEO <br />
+                      <span className="text-blue-400">Control Panel</span>
+                    </h3>
+                    <p className="text-slate-400 font-medium max-w-xl text-balance leading-relaxed">
+                      Real-time infrastructure and website configuration. Manage
+                      primary cloud storage providers, monitor domain DNS
+                      propagation, and adjust search indexing presets from a
+                      single workspace.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-4 relative z-10 w-full md:w-auto">
+                    <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 flex items-center gap-6 min-w-[280px]">
+                      <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center">
+                        <Database size={24} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                          Active Pipeline
+                        </p>
+                        <p className="text-sm font-black text-white uppercase">
+                          {storageConfig === "cloudflare"
+                            ? "Cloudflare R2 (Global)"
+                            : "Firebase Hot Storage"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
+                  {/* Intelligent Storage Switch Card */}
+                  <div className="lg:col-span-1 bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 flex flex-col justify-between relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                      <HardDrive size={100} />
+                    </div>
+
+                    <div className="relative z-10">
+                      <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[28px] flex items-center justify-center mb-8 shadow-sm">
+                        <Cloud size={32} />
+                      </div>
+                      <h4 className="text-2xl font-black text-slate-800 tracking-tight mb-3">
+                        Storage Engine
+                      </h4>
+                      <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
+                        Switch between Cold (R2) and Hot (Firebase) storage. All
+                        file mapping and backend translations occur
+                        automatically.
+                      </p>
+
+                      <div className="space-y-4">
+                        {[
+                          {
+                            id: "cloudflare",
+                            name: "Cloudflare R2",
+                            desc: "Infinite scaling, low cost edge storage",
+                            icon: "",
+                          },
+                          {
+                            id: "firebase",
+                            name: "Firebase Storage",
+                            desc: "Real-time, persistent hot bucket",
+                            icon: "",
+                          },
+                        ].map((node) => (

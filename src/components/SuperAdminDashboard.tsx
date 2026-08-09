@@ -42,28 +42,15 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
   }, []);
 
   const setFallbackLogs = () => {
-    setRecentLogs([
-      { id: "1", action: "System Health Check Passed", details: "All DB clusters operational", time: Date.now() - 60000, level: "info" },
-      { id: "2", action: "Admin Portal Session Active", details: user?.email || "rakeshkumardhawan123@gmail.com", time: Date.now() - 300000, level: "info" },
-      { id: "3", action: "E-VEDHIKA Sync Pulse", details: "Cloud real-time database active", time: Date.now() - 900000, level: "info" },
-      { id: "4", action: "Security PIN Verification", details: "Privileged Access Granted", time: Date.now() - 1800000, level: "info" }
-    ]);
+    setRecentLogs([]);
   };
 
   const setFallbackVisitors = () => {
-    const sampleVisitors = [
-      { id: "v1", path: "/Home (ముఖ్య వార్తలు)", ip: "182.72.112.4", browser: "Mobile Android", timestamp: Date.now() - 120000 },
-      { id: "v2", path: "/Mana_Panchayath (మన పంచాయతీ)", ip: "183.82.101.12", browser: "Chrome Desktop", timestamp: Date.now() - 300000 },
-      { id: "v3", path: "/Priority_Services (రైతు సేవలు)", ip: "49.205.142.88", browser: "Safari iOS", timestamp: Date.now() - 600000 },
-      { id: "v4", path: "/GOs_and_Formats (జీఓలు)", ip: "106.208.33.15", browser: "Mobile Android", timestamp: Date.now() - 900000 },
-      { id: "v5", path: "/Public_Suggestions (ప్రజా సూచనలు)", ip: "157.48.22.91", browser: "Chrome Desktop", timestamp: Date.now() - 1500000 }
-    ];
-    setRecentVisitors(sampleVisitors);
-    generateChartData(sampleVisitors);
+    setRecentVisitors([]);
+    generateChartData([]);
   };
 
   const generateChartData = (visitorsArr: any[]) => {
-    const currentH = new Date().getHours();
     const hoursMap: Record<number, number> = {};
     visitorsArr.forEach(v => {
       const t = v.timestamp || v.time;
@@ -75,11 +62,11 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
     const data = [];
     for (let i = 0; i < 24; i += 3) {
       const hLabel = (i < 10 ? "0" + i : i) + ":00";
-      const baseVal = (hoursMap[i] || 0) + Math.abs(Math.sin(i + 1) * 6) + (i <= currentH ? 5 : 2);
+      const baseVal = hoursMap[i] || 0;
       data.push({
         time: hLabel,
-        users: Math.round(baseVal),
-        requests: Math.round(baseVal * 4 + 8)
+        users: baseVal,
+        requests: baseVal
       });
     }
     setChartData(data);
