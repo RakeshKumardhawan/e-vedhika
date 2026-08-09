@@ -145,7 +145,8 @@ import {  DollarSign,
   UserCheck,
   Smile,
   ThumbsUp, ImageOff,
- } from "lucide-react";
+   Sliders,
+} from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
@@ -8687,28 +8688,58 @@ export interface CustomMenuCard {
   createdAt: number;
 }
 
+
+export function isAdAllowed(siteConfig: any): boolean {
+  if (!siteConfig?.ads) return true;
+  if (siteConfig?.ads?.globalAdsEnabled === false) return false;
+  
+  const rawLimit = siteConfig?.ads?.maxAdsPerUser;
+  const maxLimit = typeof rawLimit === "number" ? rawLimit : (rawLimit !== undefined ? parseInt(rawLimit, 10) : 3);
+  if (isNaN(maxLimit) || maxLimit <= 0) return false;
+
+  try {
+    const current = parseInt(sessionStorage.getItem("evedhika_user_ad_impressions") || "0", 10);
+    if (current >= maxLimit) {
+      return false;
+    }
+  } catch (e) {}
+
+  return true;
+}
+
+export function recordAdImpression() {
+  try {
+    const current = parseInt(sessionStorage.getItem("evedhika_user_ad_impressions") || "0", 10);
+    sessionStorage.setItem("evedhika_user_ad_impressions", (current + 1).toString());
+  } catch (e) {}
+}
+
 function AdsenseUnit({
   client,
   slot,
   className,
+  siteConfig,
 }: {
   client?: string;
   slot?: string;
   className?: string;
+  siteConfig?: any;
 }) {
+  const allowed = isAdAllowed(siteConfig);
+
   useEffect(() => {
+    if (!allowed) return;
+    recordAdImpression();
     try {
       if (typeof window !== "undefined") {
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push(
-          {},
-        );
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
       }
     } catch (e) {
       console.error("AdSense error:", e);
     }
-  }, []);
+  }, [allowed]);
 
-  if (!client || !slot) return null;
+  if (!allowed || !client || !slot) return null;
 
   return (
     <div className={`w-full overflow-hidden ${className || ""}`}>
@@ -8724,7 +8755,13 @@ function AdsenseUnit({
   );
 }
 
-function HomeAds({ ads }: { ads: Advertisement[] }) {
+function HomeAds({ ads, siteConfig }: { ads: Advertisement[]; siteConfig?: any }) {
+  if (!isAdAllowed(siteConfig)) return null;
+
+  useEffect(() => {
+    recordAdImpression();
+  }, []);
+
   const [index, setIndex] = useState(0);
 
   const imageAds = ads.filter((a) => !a.adType || a.adType === "image");
@@ -14735,2630 +14772,322 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
             )}
 
             {activeSubTab === "ads" && (
-              <div className="max-w-4xl space-y-8">
-                <div>
-                  <h4 className="text-xl font-black text-primary mb-2">Ad Management (Monetag & AdSense)</h4>
-                  <p className="text-xs text-slate-500 font-medium tracking-tight">Configure ad slots to show across the website.</p>
+              <div className="max-w-4xl space-y-8 fade-in animate-in duration-300">
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-slate-800">
+                  <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-[10px] font-black uppercase tracking-widest">
+                          Ad Control Center
+                        </span>
+                        <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-widest">
+                          User Friendly
+                        </span>
+                      </div>
+                      <h4 className="text-2xl font-black text-white tracking-tight">
+                        యాడ్స్ నిర్వహణ & సెట్టింగ్స్ (Ad Settings & Frequency Control)
+                      </h4>
+                      <p className="text-xs text-slate-300 font-medium mt-1">
+                        పోర్టల్ లో యాడ్స్ ప్రదర్శనను నియంత్రించండి మరియు ప్రతి యూజర్‌కి 1 నుండి 5 వరకు గరిష్ట యాడ్స్ పరిమితి సెట్ చేయండి.
+                      </p>
+                    </div>
+                    <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shrink-0">
+                      <Megaphone className="text-amber-400" size={32} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Master Toggle: Global Ads Visibility */}
+                <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-sm hover:border-indigo-300 transition-all">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="text-indigo-600" size={22} />
+                        <h5 className="font-black text-slate-900 text-lg">
+                          యాడ్స్ ప్రధాన ప్రదర్శన (Global Ads Visibility)
+                        </h5>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-xl">
+                        పోర్టల్‌లో అన్ని రకాల యాడ్స్ (Monetag, Google AdSense, బానర్లు) ఆన్ లేదా ఆఫ్ చేయవచ్చు. ఆఫ్ చేస్తే యూజర్లకు 100% యాడ్స్-ఫ్రీ అనుభవం లభిస్తుంది.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={siteConfig?.ads?.globalAdsEnabled !== false}
+                        onChange={async (e) => {
+                          const isChecked = e.target.checked;
+                          const updated = { ads: { ...(siteConfig?.ads || {}), globalAdsEnabled: isChecked } };
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                          addToast(isChecked ? "యాడ్స్ ప్రదర్శన ఆన్ చేయబడింది (Global Ads Enabled)" : "అన్ని యాడ్స్ ఆఫ్ చేయబడ్డాయి (Global Ads Disabled)");
+                        }}
+                      />
+                      <div className="w-14 h-8 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-500">యాడ్స్ ప్రస్తుత హోదా (Current Status):</span>
+                    <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${
+                      siteConfig?.ads?.globalAdsEnabled !== false
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : "bg-rose-100 text-rose-800 border border-rose-200"
+                    }`}>
+                      {siteConfig?.ads?.globalAdsEnabled !== false ? "✓ యాడ్స్ ఆన్ లో ఉన్నాయి (ACTIVE)" : "✗ అన్ని యాడ్స్ ఆపు చేయబడ్డాయి (OFF)"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Frequency Limit: 1 to 5 Ads Per User */}
+                <div className="bg-white border-2 border-indigo-200 rounded-3xl p-6 shadow-sm hover:border-indigo-400 transition-all">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Sliders className="text-indigo-600" size={24} />
+                    <div>
+                      <h5 className="font-black text-slate-900 text-lg">
+                        యూజర్‌కు గరిష్ట యాడ్స్ పరిమితి (Per-User Ad Limit: 1 to 5)
+                      </h5>
+                      <p className="text-xs text-slate-500 font-medium">
+                        ఒక యూజర్ సెషన్‌లో గరిష్టంగా ఎన్ని యాడ్స్ చూపించాలో ఎంచుకోండి (1 నుండి 5 వరకు). పరిమితి దాటితే మరిన్ని యాడ్స్ రావు.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      {[1, 2, 3, 4, 5].map((num) => {
+                        const currentLimit = Number(siteConfig?.ads?.maxAdsPerUser) || 3;
+                        const isSelected = currentLimit === num;
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={async () => {
+                              const updated = { ads: { ...(siteConfig?.ads || {}), maxAdsPerUser: num } };
+                              setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                              await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                              await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                              addToast(`యూజర్‌కు యాడ్స్ లిమిట్ ${num} గా సెట్ చేయబడింది! (Ad Limit Set to ${num})`);
+                            }}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20 scale-105"
+                                : "bg-slate-50 hover:bg-indigo-50 border-slate-200 text-slate-700 hover:border-indigo-300"
+                            }`}
+                          >
+                            <span className="text-2xl font-black">{num}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-90 mt-0.5">
+                              {num === 1 ? "1 Ad (Ultra Clean)" : num === 3 ? "3 Ads (Ideal)" : `${num} Ads`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-center gap-3 text-xs text-indigo-900 font-medium">
+                      <Sparkles className="text-indigo-600 shrink-0" size={18} />
+                      <div>
+                        <strong>ప్రస్తుత నియమం (Active Rule):</strong> ప్రతి యూజర్‌కు ఒక సెషన్‌లో గరిష్టంగా{" "}
+                        <span className="font-black text-indigo-700 underline underline-offset-2">
+                          {siteConfig?.ads?.maxAdsPerUser || 3} యాడ్స్
+                        </span>{" "}
+                        మాత్రమే ప్రదర్శించబడతాయి. దీనితో వెబ్‌సైట్ స్పీడ్ మరియు యూజర్ ఎక్స్‌పీరియన్స్ మెరుగ్గా ఉంటుంది.
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Monetag Config */}
                 <div className="bg-white border-2 border-amber-200 rounded-3xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Megaphone className="text-amber-500" size={24} />
-                    <h5 className="font-black text-slate-800 text-lg">Monetag Ads</h5>
-                  </div>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500" 
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Megaphone className="text-amber-500" size={24} />
+                      <div>
+                        <h5 className="font-black text-slate-800 text-lg">Monetag Ads Network</h5>
+                        <p className="text-xs text-slate-500">Zone IDs and network visibility toggle</p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
                         checked={siteConfig?.ads?.monetagEnabled || false}
                         onChange={async (e) => {
                           const updated = { ads: { ...(siteConfig?.ads || {}), monetagEnabled: e.target.checked } };
-                          setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
                           await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
                           addToast(e.target.checked ? "Monetag Enabled" : "Monetag Disabled");
                         }}
                       />
-                      <span className="font-bold text-slate-700">Enable Monetag Ads</span>
+                      <span className="font-bold text-xs text-amber-900">Enable Monetag</span>
                     </label>
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Zone ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
-                          placeholder="e.g. 8945672"
-                          value={siteConfig?.ads?.monetagZoneIdSidebar || ""}
-                          onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          }}
-                          onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved Monetag Sidebar Zone ID");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Zone ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
-                          placeholder="e.g. 8945673"
-                          value={siteConfig?.ads?.monetagZoneIdInArticle || ""}
-                          onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          }}
-                          onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved Monetag In-Article Zone ID");
-                          }}
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Zone ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-sm focus:border-amber-500 outline-none"
+                        placeholder="e.g. 8945672"
+                        value={siteConfig?.ads?.monetagZoneIdSidebar || ""}
+                        onChange={(e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                        }}
+                        onBlur={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                          addToast("Monetag Sidebar Zone ID Saved");
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Zone ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-sm focus:border-amber-500 outline-none"
+                        placeholder="e.g. 8945673"
+                        value={siteConfig?.ads?.monetagZoneIdInArticle || ""}
+                        onChange={(e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                        }}
+                        onBlur={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                          addToast("Monetag In-Article Zone ID Saved");
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
 
                 {/* AdSense Config */}
                 <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <DollarSign className="text-blue-500" size={24} />
-                    <h5 className="font-black text-slate-800 text-lg">Google AdSense</h5>
-                  </div>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-blue-500 focus:ring-blue-500" 
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="text-blue-500" size={24} />
+                      <div>
+                        <h5 className="font-black text-slate-800 text-lg">Google AdSense</h5>
+                        <p className="text-xs text-slate-500">Publisher client ID and slot units</p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
                         checked={siteConfig?.ads?.adsenseEnabled || false}
                         onChange={async (e) => {
                           const updated = { ads: { ...(siteConfig?.ads || {}), adsenseEnabled: e.target.checked } };
-                          setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
                           await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
                           addToast(e.target.checked ? "AdSense Enabled" : "AdSense Disabled");
                         }}
                       />
-                      <span className="font-bold text-slate-700">Enable Google AdSense</span>
+                      <span className="font-bold text-xs text-blue-900">Enable Google AdSense</span>
                     </label>
+                  </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                       <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">AdSense Client ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
-                          placeholder="e.g. ca-pub-1234567890"
-                          value={siteConfig?.ads?.adsenseClient || ""}
-                          onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          }}
-                          onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved AdSense Client ID");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Slot ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
-                          placeholder="e.g. 1234567890"
-                          value={siteConfig?.ads?.adsenseSlotSidebar || ""}
-                          onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          }}
-                          onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved AdSense Sidebar Slot ID");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Slot ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
-                          placeholder="e.g. 0987654321"
-                          value={siteConfig?.ads?.adsenseSlotInArticle || ""}
-                          onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          }}
-                          onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved AdSense In-Article Slot ID");
-                          }}
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">AdSense Client ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-sm focus:border-blue-500 outline-none"
+                        placeholder="e.g. ca-pub-1234567890"
+                        value={siteConfig?.ads?.adsenseClient || ""}
+                        onChange={(e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                        }}
+                        onBlur={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                          addToast("AdSense Client ID Saved");
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Slot ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-sm focus:border-blue-500 outline-none"
+                        placeholder="e.g. 1234567890"
+                        value={siteConfig?.ads?.adsenseSlotSidebar || ""}
+                        onChange={(e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                        }}
+                        onBlur={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                          addToast("AdSense Sidebar Slot Saved");
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Slot ID</label>
+                      <input
+                        type="text"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-sm focus:border-blue-500 outline-none"
+                        placeholder="e.g. 0987654321"
+                        value={siteConfig?.ads?.adsenseSlotInArticle || ""}
+                        onChange={(e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
+                          setSiteConfig((prev: any) => ({ ...prev, ...updated }));
+                        }}
+                        onBlur={async (e) => {
+                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
+                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), updated, { merge: true }).catch(() => {});
+                          addToast("AdSense In-Article Slot Saved");
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
+
+                {/* Save All Confirmation Button */}
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const adsPayload = siteConfig?.ads || {
+                        globalAdsEnabled: true,
+                        maxAdsPerUser: 3,
+                        monetagEnabled: false,
+                        adsenseEnabled: false,
+                      };
+                      await setDoc(doc(db, "site_settings", "home_page"), { ads: adsPayload }, { merge: true }).catch(() => {});
+                      await setDoc(doc(db, "settings", "site_config"), { ads: adsPayload }, { merge: true }).catch(() => {});
+                      addToast("యాడ్స్ సెట్టింగ్స్ విజయవంతంగా సేవ్ చేయబడ్డాయి! (Ad Preferences Saved)");
+                    }}
+                    className="px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Sparkles size={18} />
+                    <span>యాడ్స్ వివరాలు సేవ్ చేయి (Save Ad Settings)</span>
+                  </button>
+                </div>
               </div>
             )}
-
             {activeSubTab === "code_manager" && (
               <CodeManager addToast={addToast} />
-            )}
-
-            {activeSubTab === "cloud_dns" && (
-              <div className="space-y-12 pb-20 fade-in slide-in-from-bottom-4 duration-700 animate-in">
-                {/* Massive Header with Glassmorphism */}
-                <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-10 lg:p-14 rounded-[48px] shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border border-white/5">
-                  <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none scale-150">
-                    <Cloud size={300} className="text-blue-400 blur-sm" />
-                  </div>
-                  <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px]"></div>
-
-                  <div className="relative z-10 text-left">
-                    <div className="flex items-center gap-3 mb-6">
-                      <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30">
-                        Infrastructure v2
-                      </span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse"></span>
-                    </div>
-                    <h3 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-none">
-                      Cloud, DNS & SEO <br />
-                      <span className="text-blue-400">Control Panel</span>
-                    </h3>
-                    <p className="text-slate-400 font-medium max-w-xl text-balance leading-relaxed">
-                      Real-time infrastructure and website configuration. Manage
-                      primary cloud storage providers, monitor domain DNS
-                      propagation, and adjust search indexing presets from a
-                      single workspace.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-4 relative z-10 w-full md:w-auto">
-                    <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 flex items-center gap-6 min-w-[280px]">
-                      <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center">
-                        <Database size={24} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                          Active Pipeline
-                        </p>
-                        <p className="text-sm font-black text-white uppercase">
-                          {storageConfig === "cloudflare"
-                            ? "Cloudflare R2 (Global)"
-                            : "Firebase Hot Storage"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                  {/* Intelligent Storage Switch Card */}
-                  <div className="lg:col-span-1 bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 flex flex-col justify-between relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <HardDrive size={100} />
-                    </div>
-
-                    <div className="relative z-10">
-                      <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[28px] flex items-center justify-center mb-8 shadow-sm">
-                        <Cloud size={32} />
-                      </div>
-                      <h4 className="text-2xl font-black text-slate-800 tracking-tight mb-3">
-                        Storage Engine
-                      </h4>
-                      <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-                        Switch between Cold (R2) and Hot (Firebase) storage. All
-                        file mapping and backend translations occur
-                        automatically.
-                      </p>
-
-                      <div className="space-y-4">
-                        {[
-                          {
-                            id: "cloudflare",
-                            name: "Cloudflare R2",
-                            desc: "Infinite scaling, low cost edge storage",
-                            icon: "",
-                          },
-                          {
-                            id: "firebase",
-                            name: "Firebase Storage",
-                            desc: "Real-time, persistent hot bucket",
-                            icon: "",
-                          },
-                        ].map((node) => (
-                          <button
-                            key={node.id}
-                            onClick={async () => {
-                              if (storageConfig === node.id) return;
-                              addToast(
-                                `Migrating upload pipeline to ${node.name}...`,
-                              );
-                              try {
-                                await setDoc(
-                                  doc(db, "settings", "admin_config"),
-                                  { storageType: node.id },
-                                  { merge: true },
-                                );
-                                addToast(
-                                  `System updated: Now utilizing ${node.name}`,
-                                );
-                              } catch (err: any) {
-                                addToast(err.message);
-                              }
-                            }}
-                            className={`w-full p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden ${
-                              storageConfig === node.id
-                                ? "border-blue-600 bg-blue-50/50"
-                                : "border-slate-100 hover:border-slate-200 bg-slate-50/30"
-                            }`}
-                          >
-                            {storageConfig === node.id && (
-                              <div className="absolute top-4 right-4 text-blue-600">
-                                <ShieldCheck size={20} />
-                              </div>
-                            )}
-                            <div className="flex items-center gap-4">
-                              <span className="text-2xl">{node.icon}</span>
-                              <div>
-                                <p
-                                  className={`text-sm font-black ${storageConfig === node.id ? "text-blue-900" : "text-slate-700"}`}
-                                >
-                                  {node.name}
-                                </p>
-                                <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                                  {node.desc}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-10 p-5 bg-slate-900 rounded-3xl text-white">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,1)]"></div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Auto-Scaling Live
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-300 leading-normal">
-                        Files are served via custom edge workers for
-                        zero-latency globally.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* DNS Health Board */}
-                  <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 relative overflow-hidden">
-                      <div className="flex items-center justify-between mb-10">
-                        <div className="flex items-center gap-5 font-black">
-                          <div className="p-4 bg-indigo-50 text-indigo-600 rounded-3xl">
-                            <Globe size={28} />
-                          </div>
-                          <div>
-                            <h4 className="text-2xl text-slate-800 tracking-tight">
-                              DNS Propagation & SSL
-                            </h4>
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400">
-                              Domain: www.e-vedhika.in
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => addToast("Re-scanning DNS nodes...")}
-                          className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all"
-                        >
-                          Refresh Scan
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {[
-                          {
-                            label: "A Records",
-                            status: "Healthy",
-                            val: "76.76.21.21",
-                            color: "emerald",
-                          },
-                          {
-                            label: "CNAME",
-                            status: "Active",
-                            val: "cname.render.com",
-                            color: "indigo",
-                          },
-                          {
-                            label: "SSL Vert",
-                            status: "Encrypted",
-                            val: "DigiCert TLS v1.3",
-                            color: "blue",
-                          },
-                        ].map((item, i) => (
-                          <div
-                            key={i}
-                            className="p-6 bg-slate-50 rounded-3xl border border-slate-100"
-                          >
-                            <div className="flex justify-between items-center mb-4">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                {item.label}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 bg-${item.color}-100 text-${item.color}-700 text-[9px] font-black rounded-lg uppercase`}
-                              >
-                                {item.status}
-                              </span>
-                            </div>
-                            <p className="text-xs font-mono font-bold text-slate-700 truncate">
-                              {item.val}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-8 p-6 bg-indigo-600 rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-5">
-                          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <ShieldCheck size={28} />
-                          </div>
-                          <div className="text-left">
-                            <h5 className="text-lg font-black leading-none mb-1">
-                              Advanced DNS Proxy
-                            </h5>
-                            <p className="text-xs font-bold text-indigo-100">
-                              Active protection against L7 DDoS attacks via Edge
-                              Gateway.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                          Secured
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SEO Radar Board */}
-                    <div className="bg-slate-900 rounded-[40px] shadow-2xl p-8 relative overflow-hidden border border-slate-800">
-                      <div className="absolute right-0 top-0 p-8 opacity-10 pointer-events-none rotate-12">
-                        <Search size={250} className="text-emerald-500" />
-                      </div>
-
-                      <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-                        <div className="flex items-center gap-6">
-                          <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-[32px] flex items-center justify-center shrink-0">
-                            <Target size={36} />
-                          </div>
-                          <div className="text-left">
-                            <h4 className="text-3xl font-black text-white tracking-tighter mb-1">
-                              SEO Health Index
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
-                                Live Search Optimization Grader
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <div className="text-center">
-                            <p className="text-[42px] font-black text-white leading-none tracking-tighter">
-                              98
-                              <span className="text-emerald-500 text-2xl">
-                                %
-                              </span>
-                            </p>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">
-                              Overall Score
-                            </p>
-                          </div>
-                          <div className="w-px h-12 bg-slate-800"></div>
-                          <div className="text-center">
-                            <p className="text-[42px] font-black text-white leading-none tracking-tighter">
-                              0.8
-                              <span className="text-blue-400 text-2xl">s</span>
-                            </p>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">
-                              LCP Speed
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
-                        {[
-                          {
-                            label: "Meta Tags",
-                            val: "Optimized",
-                            color: "emerald",
-                          },
-                          {
-                            label: "Open Graph",
-                            val: "Configured",
-                            color: "blue",
-                          },
-                          {
-                            label: "Keywords",
-                            val: "Trending",
-                            color: "indigo",
-                          },
-                          { label: "Sitemap", val: "Indexed", color: "amber" },
-                        ].map((m, i) => (
-                          <div
-                            key={i}
-                            className="p-4 bg-white/5 border border-white/10 rounded-2xl"
-                          >
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                              {m.label}
-                            </p>
-                            <p className="text-sm font-black text-white tracking-tight">
-                              {m.val}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() =>
-                          addToast("Forcing search engine indexing ping...")
-                        }
-                        className="mt-8 relative z-10 w-full py-5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black rounded-3xl text-[12px] uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all"
-                      >
-                        Resubmit Sitemaps to Global Crawlers
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "locations" && (
-              <LocationManager
-                districtsData={districtsData}
-                addToast={addToast}
-              />
-            )}
-
-            {activeSubTab === "custom_menus" && (
-              <CustomMenuAdmin 
-                customMenus={customMenus}
-                customMenuCards={customMenuCards}
-                addToast={addToast}
-              />
-            )}
-
-            {activeSubTab === "landing_page_config" && (
-              <LandingPageConfigAdmin
-                landingPageData={landingPageData}
-                fetchLandingPageData={fetchLandingPageData}
-                addToast={addToast}
-              />
-            )}
-            {activeSubTab === "seo_meta" && (
-              <SeoMetaAdmin addToast={addToast} />
-            )}
-            {activeSubTab === "page_descriptions" && (
-              <PageDescriptionsAdmin addToast={addToast} />
             )}
           </div>
         )}
       </main>
-      
     </div>
   );
 }
 
-function EditorPanel(props: any) {
-  return <AdminPanel {...props} isEditorMode={true} hasPostsOnly={true} />;
-}
-
-function StatCard({
-  label,
-  val,
-  color,
-  subText,
-}: {
-  label: string;
-  val: number;
-  color: string;
-  subText?: string;
-}) {
-  const themes: any = {
-    indigo: { bg: "#eef2ff", border: "#e0e7ff", text: "#3730a3", icon: Clock },
-    rose: {
-      bg: "#fff1f2",
-      border: "#ffe4e6",
-      text: "#9f1239",
-      icon: AlertTriangle,
-    },
-    blue: { bg: "#eff6ff", border: "#bfdbfe", text: "#1e40af", icon: Users },
-    red: {
-      bg: "#fef2f2",
-      border: "#fecaca",
-      text: "#991b1b",
-      icon: AlertOctagon,
-    },
-    green: {
-      bg: "#f0fdf4",
-      border: "#bbf7d0",
-      text: "#166534",
-      icon: CheckCircle2,
-    },
-    emerald: {
-      bg: "#ecfdf5",
-      border: "#a7f3d0",
-      text: "#065f46",
-      icon: CheckCircle2,
-    },
-    cyan: { bg: "#ecfeff", border: "#a5f3fc", text: "#0e7490", icon: Info },
-    amber: {
-      bg: "#fffbeb",
-      border: "#fde68a",
-      text: "#92400e",
-      icon: ClipboardList,
-    },
-    purple: { bg: "#faf5ff", border: "#e9d5ff", text: "#6b21a8", icon: Zap },
-    slate: { bg: "#f8fafc", border: "#e2e8f0", text: "#334155", icon: Hash },
-  };
-  const theme = themes[color] || themes.blue;
-  const Icon = theme.icon;
-
-  return (
-    <motion.div
-      whileHover={{ scale: 1.02, translateY: -4 }}
-      className="p-4 rounded-[24px] border border-transparent shadow-sm transition-all hover:shadow-lg group cursor-default h-full flex flex-col justify-between"
-      style={{ background: theme.bg, borderColor: theme.border }}
-    >
-      <div>
-        <div className="flex justify-between items-start mb-2">
-          <div
-            className="text-[10px] font-black uppercase tracking-widest opacity-60"
-            style={{ color: theme.text }}
-          >
-            {label}
-          </div>
-          <div className="p-1.5 rounded-lg bg-white/50 shadow-inner group-hover:bg-white transition-colors">
-            <Icon size={14} style={{ color: theme.text }} strokeWidth={2.5} />
-          </div>
-        </div>
-        <div
-          className="text-3xl font-black tracking-tight"
-          style={{ color: theme.text }}
-        >
-          {val}
-        </div>
-      </div>
-
-      {subText ? (
-        <div className="mt-2 pt-2 border-t border-current/10 flex items-center gap-1.5 overflow-hidden">
-          <Clock size={10} style={{ color: theme.text }} className="shrink-0" />
-          <span
-            className="text-[9px] font-black uppercase text-current whitespace-nowrap opacity-60"
-            style={{ color: theme.text }}
-          >
-            {subText}
-          </span>
-        </div>
-      ) : (
-        <div
-          className="h-1 w-8 rounded-full mt-3 bg-current opacity-20"
-          style={{ color: theme.text }}
-        ></div>
-      )}
-    </motion.div>
-  );
-}
-
-function safeStringify(obj: any): string {
-  try {
-    return JSON.stringify(
-      obj,
-      (key, value) => (typeof value === "bigint" ? value.toString() : value),
-      2,
-    );
-  } catch (e) {
-    return String(obj);
-  }
-}
-
-function SmartAssistant({
-  title,
-  placeholder,
-  systemInstruction,
-  icon: Icon,
-}: {
-  title: string;
-  placeholder: string;
-  systemInstruction: string;
-  icon: any;
-}) {
-  const [input, setInput] = useState("");
-  const [response, setResponse] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [deepThinking, setDeepThinking] = useState(false);
-  const [aiEngine, setAiEngine] = useState<"gemini" | "chatgpt">("chatgpt");
-
-  const generateFallbackAdminResponse = (query: string): string => {
-    const q = query.toLowerCase();
-    if (q.includes("seo") || q.includes("meta") || q.includes("మ్యాపింగ్") || q.includes("టేగ్")) {
-      return `### 🌐 **E-Vedhika SEO & Dynamic Meta Tag Manager:**\n\n- **లొకేషన్:** Admin Control Panel > Sidebar > **Operations & Content** > **"SEO & Dynamic Meta Tags"**\n- **విభాగం:** ఇక్కడ మీరు ఓపెన్ గ్రాఫ్ (OG) ఇమేజ్, SEO టైటిల్, వివరణ (Description), మరియు Keyword Tag లను నేరుగా డైనమిక్‌గా మార్చవచ్చు.`;
-    }
-    if (q.includes("error") || q.includes("ide") || q.includes("code") || q.includes("ఎర్రర్")) {
-      return `### 💻 **Enterprise Code Manager & IDE గైడ్:**\n\n- **పరిష్కారం:** Code Manager లో CSS, JS లేదా HTML కోడ్‌ని సవరించినప్పుడు లోకల్ బ్రౌజర్ స్టోరేజ్ & క్లౌడ్‌లో ఆటోమేటిక్‌గా సేవ్ అయి లైవ్‌లో అప్లై అవుతుంది.\n- ప్రమేయం లేకుండా సరికొత్త కోడ్‌ని 'Save & Deploy Live' బటన్‌పై క్లిక్ చేసి క్షణాల్లో అప్‌డేట్ చేయవచ్చు.`;
-    }
-    return `### 🤖 **E-Vedhika Admin Assistant (${aiEngine === "chatgpt" ? "ChatGPT Engine" : "Gemini 2.5 Pro"}):**\n\nమీరు అడిగిన **"${query}"** ప్రశ్నకు సంబంధించిన వివరాలు:\n\n1. **సిస్టమ్ స్థితి (System Status):** E-Vedhika సర్వర్లు మరియు డేటాబేస్ లైవ్ మోడ్‌లో సక్రమంగా పనిచేస్తున్నాయి.\n2. **పరిపాలన సెట్టింగ్‌లు (Admin Controls):** Control Panel ద్వారా Page Builder, Dynamic Menus, SEO Meta Tags, మరియు Security Logs లను సులభంగా నిర్వహించవచ్చు.\n3. **సహాయం (Support):** మరింత సాంకేతిక సహాయం కోసం Live System Health Center లో రోగనిర్ధారణ రన్ చేయండి.`;
-  };
-
-  const handleAsk = async () => {
-    if (!input.trim()) return;
-    setLoading(true);
-    setResponse("");
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          prompt: input, 
-          systemInstruction: systemInstruction + `\nAI Engine selected by user: ${aiEngine}`,
-          modelType: deepThinking ? "complex" : "general"
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (data && data.text && !data.isError) {
-        setResponse(data.text);
-      } else if (data && data.text) {
-        setResponse(data.text + "\n\n---\n\n" + generateFallbackAdminResponse(input));
-      } else {
-        setResponse(generateFallbackAdminResponse(input));
-      }
-    } catch (error) {
-      console.error("AI Error:", error);
-      setResponse(generateFallbackAdminResponse(input));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 border-b border-slate-200/60 pb-2">
-        <div className="flex items-center gap-2">
-          <Icon size={18} className="text-primary" />
-          <h4 className="font-bold text-sm text-slate-800">{title}</h4>
-        </div>
-
-        {/* AI Engine Selection */}
-        <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setAiEngine("chatgpt")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              aiEngine === "chatgpt" 
-                ? "bg-emerald-600 text-white shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            🤖 ChatGPT Engine
-          </button>
-          <button
-            type="button"
-            onClick={() => setAiEngine("gemini")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              aiEngine === "gemini" 
-                ? "bg-indigo-600 text-white shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            ✨ Gemini 2.5 Pro
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-white border border-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder={placeholder}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-          />
-          <button
-            aria-label="Ask assistant"
-            onClick={handleAsk}
-            disabled={loading}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl disabled:opacity-50 cursor-pointer transition-colors font-bold text-xs flex items-center justify-center gap-1 shrink-0"
-          >
-            {loading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <>
-                <span>అడుగు</span>
-                <Send size={16} />
-              </>
-            )}
-          </button>
-        </div>
-        <div className="flex items-center gap-2 px-1">
-          <input
-            type="checkbox"
-            id="deep-thinking-toggle"
-            checked={deepThinking}
-            onChange={(e) => setDeepThinking(e.target.checked)}
-            className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
-          />
-          <label htmlFor="deep-thinking-toggle" className="text-xs font-bold text-slate-600 cursor-pointer">
-            ✨ Deep Thinking / Detailed System Audit Mode
-          </label>
-        </div>
-      </div>
-
-      {response && (
-        <div className="mt-3 p-4 bg-white rounded-xl text-xs text-slate-700 border border-slate-200/80 shadow-xs markdown-body leading-relaxed">
-          <ReactMarkdown rehypePlugins={[rehypeRaw]}>{response}</ReactMarkdown>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function UsersListModal({
-  title,
-  uids,
-  allUsers,
-  onClose,
-  anonymousCount = 0,
-}: {
-  title: string;
-  uids: string[];
-  allUsers: UserProfile[];
-  onClose: () => void;
-  anonymousCount?: number;
-}) {
-  const usersList = uids.map(
-    (uid) =>
-      allUsers.find((u) => u.id === uid) || {
-        id: uid,
-        username: "Unknown User",
-        name: "",
-        surname: "",
-        designation: "",
-        email: "",
-      },
-  );
-
-  return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-sm max-h-[80vh] overflow-y-auto bg-white rounded-3xl shadow-2xl custom-scrollbar p-6 relative">
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
-        >
-          <X size={16} />
-        </button>
-        <h3 className="font-black text-primary text-xl mb-4 uppercase tracking-widest">
-          {title}{" "}
-          <span className="text-slate-400 text-sm">
-            ({uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Anon` : ""})
-          </span>
-        </h3>
-        <div className="space-y-3">
-          {usersList.length === 0 && anonymousCount === 0 && (
-            <p className="text-slate-400 text-xs font-bold text-center py-4 uppercase">
-              No users found
-            </p>
-          )}
-          {anonymousCount > 0 && (
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase overflow-hidden text-xs">
-                   <User size={14} />
-                 </div>
-                 <div>
-                   <h4 className="text-xs font-black text-slate-800 leading-tight">
-                     Anonymous Visitors
-                   </h4>
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                     Session Views
-                   </p>
-                 </div>
-               </div>
-               <span className="text-xs font-black bg-slate-200 text-slate-600 px-2 py-1 rounded-lg">
-                 +{anonymousCount}
-               </span>
-            </div>
-          )}
-          {usersList.map((u, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs">
-                  {(u as any).photoURL ? (
-                    <img src={(u as any).photoURL} alt="" />
-                  ) : (
-                    u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
-                  )}
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-800 leading-tight">
-                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
-                  </h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                    {u.designation || "User"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DigitalWorkspaceSection({
-  addToast,
-  user,
-  activeTool,
-  setActiveTool,
-  pageDescriptions,
-}: {
-  addToast: (s: string) => void;
-  user: FirebaseUser | null;
-  activeTool: string | null;
-  setActiveTool: (tool: string | null) => void;
-  pageDescriptions: Record<string, { title: string; description: string }>;
-}) {
-  const tools = [
-    {
-      id: "dsr",
-      title: "DSR Analyzer",
-      icon: BarChart3,
-      desc: "Analyze Daily Status Reports",
-    },
-    {
-      id: "multiday",
-      title: "Multi-Day attendance",
-      icon: Layers,
-      desc: "Multiple Attendance Records",
-    },
-    {
-      id: "training",
-      title: "Digital Training",
-      icon: GraduationCap,
-      desc: "Workflows & Tutorials",
-    },
-    {
-      id: "pract",
-      title: "Knowledge Hub",
-      icon: Book,
-      desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
-    },
-    {
-      id: "monthly-activity",
-      title: "Monthly Activity Data",
-      icon: FileSpreadsheet,
-      desc: "Format Monthly Activity Reports",
-    },
-    {
-      id: "excel-merge",
-      title: "Excel File Merger",
-      icon: FileSpreadsheet,
-      desc: "Merge Multiple Excel Files",
-    },
-  ];
-
-  return (
-    <div className="section-card card-blue relative">
-      <div className="flex justify-between items-start mb-1">
-        <div>
-          <motion.h2
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            style={{
-              fontSize: "20px",
-              fontWeight: 800,
-              color: "var(--primary)",
-              marginBottom: "5px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <LayoutDashboard size={24} style={{ color: "#0891b2" }} /> Mana
-            Panchayath
-          </motion.h2>
-          <p
-            style={{ fontSize: "12px", color: "#64748b", marginBottom: "20px" }}
-          >
-            Advanced tools for PR & RD Officers.
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            const sharePath = activeTool ? `workspace/${activeTool}` : "workspace";
-            const url = `${getSiteBaseUrl()}/?tab=${sharePath}`;
-            const toolObj = tools.find((t) => t.id === activeTool);
-            const title = toolObj ? `${toolObj.title} - E-Vedhika` : "Mana Panchayath - E-Vedhika";
-            handleShare(
-              title,
-              "Access tools on Mana Panchayath - E-Vedhika!",
-              url,
-              () => addToast("Link copied!"),
-            );
-          }}
-          className="flex items-center gap-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider h-fit mt-1"
-          title="Share Mana Panchayath"
-        >
-          <Share2 size={16} /> <span className="hidden sm:inline">Share</span>
-        </button>
-      </div>
-
-      <div className="mana-grid">
-        {tools.map((t) => (
-          <div
-            key={t.id}
-            className="mana-card"
-            onClick={() => setActiveTool(t.id)}
-          >
-            <div
-              style={{
-                color: "var(--primary)",
-                marginBottom: "10px",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <t.icon size={32} />
-            </div>
-            <h4>{t.title}</h4>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {activeTool && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-0 z-[2000] bg-slate-50 flex flex-col h-[100dvh] overflow-hidden"
-          >
-            <div className="flex-none p-4 bg-white border-b border-slate-200 shadow-sm flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold text-slate-800">
-                    {tools.find((t) => t.id === activeTool)?.title}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const currentToolObj = tools.find((t) => t.id === activeTool);
-                      const url = `${getSiteBaseUrl()}/?tab=workspace/${activeTool}`;
-                      handleShare(
-                        `${currentToolObj?.title || 'Tool'} - E-Vedhika`,
-                        `Access ${currentToolObj?.title || 'tool'} on Mana Panchayath - E-Vedhika!`,
-                        url,
-                        () => addToast("Direct link copied!"),
-                      );
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors font-semibold text-xs sm:text-sm"
-                    title="Share direct link to this tool"
-                  >
-                    <Share2 size={16} />
-                    <span>Share Link</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTool(null)}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors font-medium text-xs sm:text-sm"
-                  >
-                    <ArrowLeft size={18} />
-                    Back
-                  </button>
-                </div>
-              </div>
-              <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} />
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative">
-              {activeTool === "dsr" && (
-                <DSRAnalyzer addToast={addToast} user={user} />
-              )}
-              {activeTool === "multiday" && (
-                <MultiDayAnalyzer addToast={addToast} user={user} />
-              )}
-              {activeTool === "training" && (
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "15px",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        color: "var(--primary)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        margin: 0,
-                      }}
-                    >
-                      <GraduationCap /> Digital Workflows
-                    </h3>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "10px 0",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "15px",
-                    }}
-                  >
-                    {[1, 2, 3].map((step) => (
-                      <div
-                        key={step}
-                        style={{ display: "flex", alignItems: "center", gap: "15px" }}
-                      >
-                        <div
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            background: "var(--primary)",
-                            color: "white",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: "800",
-                          }}
-                        >
-                          {step}
-                        </div>
-                        <div
-                          style={{
-                            flex: 1,
-                            background: "#f8fafc",
-                            padding: "15px",
-                            borderRadius: "12px",
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <span style={{ fontWeight: 700 }}>
-                            Workflow Step {step}
-                          </span>
-                          <p
-                            style={{
-                              fontSize: "12px",
-                              color: "#64748b",
-                              margin: "4px 0 0 0",
-                            }}
-                          >
-                            Detailed tutorial content for step {step} will appear
-                            here.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {activeTool === "pract" && <PRActHub user={user} />}
-              {activeTool === "monthly-activity" && (
-                <MonthlyActivityFormatter addToast={addToast} />
-              )}
-              {activeTool === "excel-merge" && (
-                <ExcelMerger user={user} addToast={addToast} />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function FormsHub({
-  addToast,
-  user,
-}: {
-  addToast: (s: string) => void;
-  user: FirebaseUser | null;
-}) {
-  const [forms, setForms] = useState<any[]>([]);
-  const [showUpload, setShowUpload] = useState(false);
-  const [formName, setFormName] = useState("");
-  const [formPurpose, setFormPurpose] = useState("");
-  const [formUsage, setFormUsage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, "forms"), orderBy("time", "desc")),
-      (snap) => {
-        const fArr: any[] = [];
-        snap.forEach((d) => fArr.push({ id: d.id, ...d.data() }));
-        setForms(fArr);
-      },
-      (e) => console.error("Forms Error:", e),
-    );
-    return () => unsub();
-  }, []);
-
-  const handleUpload = async () => {
-    if (requireLoginAlert(user)) return;
-    if (!formName.trim() || !formPurpose.trim() || !formUsage.trim())
-      return addToast("Please fill all details to upload.");
-    setSubmitting(true);
-    try {
-      await addDoc(collection(db, "forms"), {
-        name: formName,
-        purpose: formPurpose,
-        usage: formUsage,
-        uid: user.uid,
-        userName: user.displayName || user.email || "User",
-        time: Date.now(),
-      });
-      addToast("Form uploaded successfully!");
-      setShowUpload(false);
-      setFormName("");
-      setFormPurpose("");
-      setFormUsage("");
-    } catch (e: any) {
-      addToast("Error uploading: " + e.message);
-    }
-    setSubmitting(false);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-        <div>
-          <h3 className="font-bold">Forms Hub</h3>
-          <p className="text-sm text-slate-500">
-            Download essential technical forms or contribute new ones.
-          </p>
-        </div>
-        <button
-          aria-label="Share Form"
-          onClick={() => {
-            if (requireLoginAlert(user)) return;
-            setShowUpload(!showUpload);
-          }}
-          className="bg-primary text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 text-sm hover:bg-primary-light transition-all"
-        >
-          <Upload size={16} /> Share Form
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {showUpload && user && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm mb-4 space-y-3">
-              <h4 className="font-black text-sm uppercase text-slate-600 mb-2">
-                Upload New Form
-              </h4>
-              <input
-                type="text"
-                placeholder="Form Name (e.g. DSR Leave Template)"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="w-full bg-slate-50 p-3 rounded-xl outline-none focus:border-primary/50 border border-slate-200 text-sm font-medium"
-              />
-              <textarea
-                placeholder="What is this form for?"
-                value={formPurpose}
-                onChange={(e) => setFormPurpose(e.target.value)}
-                className="w-full bg-slate-50 p-3 rounded-xl outline-none focus:border-primary/50 border border-slate-200 text-sm h-24 custom-scrollbar"
-              />
-              <textarea
-                placeholder="Who uses it and how is it used?"
-                value={formUsage}
-                onChange={(e) => setFormUsage(e.target.value)}
-                className="w-full bg-slate-50 p-3 rounded-xl outline-none focus:border-primary/50 border border-slate-200 text-sm h-24 custom-scrollbar"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] text-slate-400 font-bold uppercase w-2/3">
-                  Note: All uploaded forms are publicly visible and verified by
-                  Admin.
-                </p>
-                <button
-                  aria-label="Publish Form"
-                  disabled={submitting}
-                  onClick={handleUpload}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl disabled:opacity-50 text-sm transition-colors"
-                >
-                  {submitting ? "Sharing..." : "Publish Form"}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="grid gap-4">
-        {forms.length === 0 ? (
-          <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-            <p className="text-slate-400 font-bold">No forms uploaded yet.</p>
-          </div>
-        ) : (
-          forms.map((f) => (
-            <div
-              key={f.id}
-              className="p-4 bg-white border border-slate-200 rounded-2xl hover:shadow-md transition-shadow group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center font-black">
-                    
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 leading-tight">
-                      {f.name}
-                    </h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      By {f.userName}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  aria-label="Download form"
-                  onClick={() => addToast("Starting download...")}
-                  className="p-2 bg-slate-50 hover:bg-primary hover:text-white text-slate-600 rounded-xl transition-all"
-                >
-                  <Download size={18} />
-                </button>
-              </div>
-              <div className="space-y-2 pt-3 border-t border-slate-100">
-                <div>
-                  <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-                    Purpose
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {f.purpose}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                    Usage Guide
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {f.usage}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DirectorySection({ allUsers }: { allUsers: UserProfile[] }) {
-  const [q, setQ] = useState("");
-  const [distFilter, setDistFilter] = useState("");
-  const [mandalFilter, setMandalFilter] = useState("");
-
-  const districts = [
-    ...new Set(allUsers.map((u) => u.district).filter(Boolean)),
-  ].sort() as string[];
-  const mandals = distFilter
-    ? ([
-        ...new Set(
-          allUsers
-            .filter((u) => u.district === distFilter)
-            .map((u) => u.mandal)
-            .filter(Boolean),
-        ),
-      ].sort() as string[])
-    : [];
-
-  const filtered = allUsers.filter((u) => {
-    const term = q.toLowerCase();
-    const matchesSearch =
-      (u.name || "").toLowerCase().includes(term) ||
-      (u.surname || "").toLowerCase().includes(term) ||
-      (u.designation || "").toLowerCase().includes(term);
-
-    const matchesDist = !distFilter || u.district === distFilter;
-    const matchesMandal = !mandalFilter || u.mandal === mandalFilter;
-
-    return matchesSearch && matchesDist && matchesMandal;
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="section-card card-blue !p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <Users size={100} />
-        </div>
-        <h2 className="text-3xl font-black text-primary mb-2 flex items-center gap-3">
-           సభ్యుల డైరెక్టరీ{" "}
-          <span className="text-slate-400 text-sm font-bold">
-            (Member Directory)
-          </span>
-        </h2>
-        <p className="text-sm font-bold text-slate-500">
-          పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి అధికారుల వివరాలు.
-        </p>
-
-        <div className="mt-8 flex flex-col md:flex-row items-center gap-4">
-          <div className="flex-1 flex items-center gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-3xl border border-white/20 shadow-inner w-full">
-            <Search size={20} className="text-slate-400" />
-            <input
-              type="text"
-              placeholder="పేరు లేదా పోస్ట్ ద్వారా వెతకండి (Search by name or post...)"
-              className="!bg-transparent !border-none !p-0 !m-0 focus:!ring-0 text-sm w-full font-bold text-primary placeholder:text-slate-400"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-
-          <div className="flex gap-3 w-full md:w-auto">
-            <select
-              value={distFilter}
-              onChange={(e) => {
-                setDistFilter(e.target.value);
-                setMandalFilter("");
-              }}
-              className="bg-white px-4 py-3 rounded-2xl border border-slate-200 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[140px]"
-            >
-              <option value="">అన్ని జిల్లాలు (All Districts)</option>
-              {districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <select
-              value={mandalFilter}
-              onChange={(e) => setMandalFilter(e.target.value)}
-              disabled={!distFilter}
-              className="bg-white px-4 py-3 rounded-2xl border border-slate-200 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[140px] disabled:opacity-50"
-            >
-              <option value="">మండలం వారీగా (Mandal Wise)</option>
-              {mandals.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.length > 0 ? (
-          filtered.map((u) => (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              key={u.id}
-              className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/20 group hover:border-primary/20 transition-all flex flex-col h-full"
-            >
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-md overflow-hidden shrink-0">
-                  {u.photoURL ? (
-                    <img
-                      src={u.photoURL}
-                      alt={u.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <User size={30} className="m-auto mt-3 text-slate-200" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-black text-primary text-base truncate leading-tight">
-                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || "Active Member"}
-                  </h4>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 truncate">
-                    {u.designation || "PR Officer"}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-                      Active Verified
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 flex-1">
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                  <Building size={16} className="text-slate-400" />
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                      Workplace
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700 leading-tight">
-                      {u.office ||
-                        u.village ||
-                        (u.mandal ? `${u.mandal} Office` : "General Office")}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                  <Flag size={16} className="text-slate-400" />
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                      Jurisdiction
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700 leading-tight">
-                      {u.mandal
-                        ? `${u.mandal}, ${u.district}`
-                        : u.district || "Undefined Area"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">
-                    Contact
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {u.mobile
-                      ? `+91 ${u.mobile.substring(0, 5)}...`
-                      : "Not Public"}
-                  </span>
-                </div>
-                <button
-                  aria-label="View Card"
-                  onClick={() => {
-                    Swal.fire({
-                      title: `<div class="font-black text-primary p-2">${u.name || ""} ${u.surname || ""}</div>`,
-                      html: `
-                      <div class="text-left space-y-4 p-4">
-                        <div class="grid grid-cols-2 gap-4 mt-6">
-                          <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                             <span class="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Mandal</span>
-                             <span class="text-xs font-bold text-primary">${u.mandal || "N/A"}</span>
-                          </div>
-                          <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                             <span class="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Village</span>
-                             <span class="text-xs font-bold text-primary">${u.village || "N/A"}</span>
-                          </div>
-                        </div>
-                      </div>
-                    `,
-                      confirmButtonText: "Great!",
-                      confirmButtonColor: "#0d3b66",
-                      customClass: {
-                        popup: "rounded-[32px] border-none",
-                        confirmButton:
-                          "rounded-2xl px-10 py-3 font-black uppercase text-xs",
-                      },
-                    });
-                  }}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg active:scale-95"
-                >
-                  View Card
-                </button>
-              </div>
-            </motion.div>
-          ))
-        ) : (
-          <div className="col-span-full py-20 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-100">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search size={24} className="text-slate-300" />
-            </div>
-            <h3 className="font-black text-slate-400 uppercase tracking-widest">
-              No Members Found
-            </h3>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-function StatusCell({ status }: { status: string }) {
-  if (status === "P-I")
-    return (
-      <span
-        className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black border border-emerald-200"
-        title="Present (Intime: <= 9:00 AM)"
-      >
-        ✅ Attendance in time
-      </span>
-    );
-  if (status === "P-L")
-    return (
-      <span
-        className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-black border border-orange-200"
-        title="Present (Late: > 9:00 AM)"
-      >
-        ⚠️ Late Attendance
-      </span>
-    );
-  if (status === "P")
-    return (
-      <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black border border-emerald-200">
-        ✅ PRESENT
-      </span>
-    );
-  if (status === "A")
-    return (
-      <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[10px] font-black border border-rose-200">
-        ❌ ABSENT
-      </span>
-    );
-  if (status === "M")
-    return (
-      <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-[10px] font-black border border-cyan-200">
-         MEETING
-      </span>
-    );
-  if (status === "T")
-    return (
-      <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black border border-amber-200">
-         TRAINING
-      </span>
-    );
-  if (status === "L")
-    return (
-      <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[10px] font-black border border-slate-200">
-         LEAVE
-      </span>
-    );
-  return <span className="text-slate-300 font-bold">-</span>;
-}
-
-function MultiDayAnalyzer({
-  addToast,
-  user,
-}: {
-  addToast: (s: string) => void;
-  user: any;
-}) {
-  const [aggregatedData, setAggregatedData] = useState<
-    Map<
-      string,
-      {
-        gp: string;
-        mandal: string;
-        district: string;
-        division: string;
-        mandalLgd: string;
-        panchayatLgd: string;
-        attendance: Record<string, string>;
-        times: Record<string, string>;
-        dsr: Record<string, boolean>;
-      }
-    >
-  >(new Map());
-  const [allDates, setAllDates] = useState<string[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [mandalFilter, setMandalFilter] = useState("All");
-  const [rawRows, setRawRows] = useState<any[][]>([]);
-  const [parserDebug, setParserDebug] = useState<
-    {
-      file: string;
-      sheet: string;
-      date: string;
-      gpColIdx: number;
-      gpColName: string;
-      statusColIdx: number;
-      statusColName: string;
-      rowsFound: number;
-      datesFound: number;
-    }[]
-  >([]);
-  const [showDebug, setShowDebug] = useState(false);
-  const [expandedMandals, setExpandedMandals] = useState<Set<string>>(
-    new Set(),
-  );
-  const [showStats, setShowStats] = useState(true);
-
-  const toggleMandal = (m: string) => {
-    const next = new Set(expandedMandals);
-    if (next.has(m)) next.delete(m);
-    else next.add(m);
-    setExpandedMandals(next);
-  };
-
-  const toggleAllMandals = (expand: boolean) => {
-    if (expand) {
-      const mandals = Array.from(
-        new Set(Array.from(aggregatedData.values()).map((v) => v.mandal)),
-      );
-      setExpandedMandals(new Set(mandals));
-    } else {
-      setExpandedMandals(new Set());
-    }
-  };
-
-  const onUpload = async (e: any) => {
-    const files = Array.from(e.target.files) as File[];
-    if (files.length === 0) return;
-
-    if (requireLoginAlert(user)) return;
-
-    setIsAnalyzing(true);
-    await loadHeavyModules();
-    const newAggregated = new Map(aggregatedData);
-    const datesFound = new Set(allDates);
-    const updatedRawRows: any[][] = [...rawRows];
-    const debugLogs: any[] = [...parserDebug];
-
-    try {
-      for (const file of files) {
-        const dataBuffer = await file.arrayBuffer();
-        let sheetsToProcess: { sheetName: string; rows: any[][] }[] = [];
-
-        try {
-          let text = new window.TextDecoder("utf-8").decode(dataBuffer);
-          let isHtml = false;
-
-          if (
-            !text.toLowerCase().includes("<tr") &&
-            !text.toLowerCase().includes("<table")
-          ) {
-            const utf16Text = new window.TextDecoder("utf-16le").decode(
-              dataBuffer,
-            );
-            if (
-              utf16Text.toLowerCase().includes("<tr") ||
-              utf16Text.toLowerCase().includes("<table")
-            ) {
-              text = utf16Text;
-              isHtml = true;
-            }
-          } else {
-            isHtml = true;
-          }
-
-          if (isHtml) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, "text/html");
-            const trs = doc.querySelectorAll("tr");
-            const rows = Array.from(trs).map((tr) =>
-              Array.from(tr.querySelectorAll("th, td")).map((td) => {
-                let val = td.textContent?.trim().replace(/\s+/g, " ") || "";
-                if (
-                  val.includes("</th>") ||
-                  val.includes("</td>") ||
-                  val.includes("<th") ||
-                  val.includes("<td")
-                ) {
-                  val = val.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                }
-                return val;
-              }),
-            );
-            if (rows.length > 0) {
-              const firstRow = rows[0];
-              if (
-                firstRow.length === 1 &&
-                (firstRow[0].includes("<tr") || firstRow[0].includes("<td"))
-              ) {
-                const betterRows = text
-                  .split(/<\/tr>/i)
-                  .map((trStr) => {
-                    return trStr
-                      .split(/<\/td>|<\/th>/i)
-                      .map((tdStr) => {
-                        return tdStr.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                      })
-                      .filter((c) => c !== "");
-                  })
-                  .filter((r) => r.length > 0);
-                if (betterRows.length > 0) {
-                  sheetsToProcess.push({
-                    sheetName: "HTML_REGEX_" + file.name,
-                    rows: betterRows,
-                  });
-                } else {
-                  sheetsToProcess.push({
-                    sheetName: "HTML_" + file.name,
-                    rows,
-                  });
-                }
-              } else {
-                sheetsToProcess.push({ sheetName: "HTML_" + file.name, rows });
-              }
-            }
-          } else {
-            const workbook = XLSX.read(dataBuffer, { type: "array" });
-            for (const sheetName of workbook.SheetNames) {
-              const rows: any[][] = XLSX.utils.sheet_to_json(
-                workbook.Sheets[sheetName],
-                { header: 1, defval: "", raw: false },
-              ) as any[][];
-              if (rows.length > 0) sheetsToProcess.push({ sheetName, rows });
-            }
-          }
-        } catch (e) {
-          console.error("File parsing failed for", file.name, e);
-
-          if (sheetsToProcess.length === 0) {
-            try {
-              const workbook = XLSX.read(dataBuffer, { type: "array" });
-              for (const sheetName of workbook.SheetNames) {
-                const rows: any[][] = XLSX.utils.sheet_to_json(
-                  workbook.Sheets[sheetName],
-                  { header: 1, defval: "", raw: false },
-                ) as any[][];
-                if (rows.length > 0) sheetsToProcess.push({ sheetName, rows });
-              }
-            } catch (e2) {
-              console.error("Fallback XLSX failed", e2);
-            }
-          }
-        }
-
-        if (sheetsToProcess.length === 0) {
-          addToast(`No data found in ${file.name}`);
-          continue;
-        }
-
-        for (const { sheetName, rows } of sheetsToProcess) {
-          if (rows.length < 1) continue;
-
-          let headerRowIdx = -1;
-          let gpCol = -1,
-            mandalCol = -1,
-            districtCol = -1,
-            divisionCol = -1,
-            mLgdCol = -1,
-            pLgdCol = -1;
-          let dataStartCol = -1;
-
-          for (let r = 0; r < Math.min(rows.length, 50); r++) {
-            const row = rows[r];
-            if (!row || !Array.isArray(row)) continue;
-            const rStr = row.map((c) =>
-              String(c || "")
-                .toLowerCase()
-                .replace(/\s+/g, " "),
-            );
-
-            if (
-              rStr.some(
-                (c) =>
-                  c.includes("panchayat") ||
-                  c.includes("gp ") ||
-                  c.includes("gram"),
-              )
-            ) {
-              headerRowIdx = r;
-              gpCol = rStr.findIndex(
-                (c) =>
-                  (c.includes("panchayat") ||
-                    c.includes("gp ") ||
-                    c.includes("gram")) &&
-                  !c.includes("lgd"),
-              );
-              mandalCol = rStr.findIndex(
-                (c) =>
-                  (c.includes("mandal") || c.includes("block")) &&
-                  !c.includes("lgd"),
-              );
-              districtCol = rStr.findIndex((c) => c.includes("district"));
-              divisionCol = rStr.findIndex((c) => c.includes("division"));
-              mLgdCol = rStr.findIndex((c) => c.includes("mandal lgd"));
-              pLgdCol = rStr.findIndex((c) => c.includes("panchayat lgd"));
-
-              if (gpCol === -1)
-                gpCol = rStr.findIndex((c) => c.includes("name"));
-              if (gpCol === -1) gpCol = 0; // Fallback to first column
-
-              dataStartCol =
-                Math.max(
-                  gpCol,
-                  pLgdCol,
-                  mLgdCol,
-                  mandalCol,
-                  districtCol,
-                  divisionCol,
-                ) + 1;
-              break;
-            }
-          }
-
-          const dbgIdx = debugLogs.length;
-          debugLogs.push({
-            file: file.name,
-            sheet: sheetName,
-            date: "N/A",
-            gpColIdx: gpCol,
-            gpColName:
-              headerRowIdx >= 0
-                ? String(rows[headerRowIdx]?.[gpCol] || "N/A")
-                : "No Header",
-            statusColIdx: -1,
-            statusColName: "N/A",
-            rowsFound: 0,
-            datesFound: 0,
-          });
-
-          if (headerRowIdx === -1) {
-            continue;
-          }
-
-          console.log(
-            `[${file.name}] Header Row at ${headerRowIdx}:`,
-            rows[headerRowIdx],
-          );
-
-          let curDistrict = "Unknown",
-            curDivision = "Unknown",
-            curMandal = "Unknown",
-            curMLgd = "-";
-          let rowsAdded = 0;
-
-          for (let r = headerRowIdx + 1; r < rows.length; r++) {
-            const row = rows[r];
-            if (!row || !Array.isArray(row)) continue;
-
-            const gpNameRaw = String(row[gpCol] || "").trim();
-
-            if (
-              !gpNameRaw ||
-              gpNameRaw.toLowerCase().includes("total") ||
-              gpNameRaw.toLowerCase().includes("attendance")
-            )
-              continue;
-
-            updatedRawRows.push([file.name, sheetName, ...row]);
-
-            if (districtCol !== -1 && String(row[districtCol] || "").trim())
-              curDistrict = String(row[districtCol]).trim();
-            if (divisionCol !== -1 && String(row[divisionCol] || "").trim())
-              curDivision = String(row[divisionCol]).trim();
-            if (mandalCol !== -1 && String(row[mandalCol] || "").trim())
-              curMandal = String(row[mandalCol]).trim();
-            if (mLgdCol !== -1 && String(row[mLgdCol] || "").trim())
-              curMLgd = String(row[mLgdCol]).trim();
-
-            const pLgd =
-              pLgdCol !== -1 ? String(row[pLgdCol] || "").trim() : "-";
-            const key = `${curMandal.toUpperCase()}_${gpNameRaw.toUpperCase()}`;
-
-            if (!newAggregated.has(key)) {
-              newAggregated.set(key, {
-                gp: gpNameRaw,
-                mandal: curMandal,
-                district: curDistrict,
-                division: curDivision,
-                mandalLgd: curMLgd,
-                panchayatLgd: pLgd,
-                attendance: {},
-                times: {},
-                dsr: {},
-              });
-            }
-            const entry = newAggregated.get(key)!;
-
-            const headers = rows[headerRowIdx] || [];
-            for (let c = 0; c < row.length; c++) {
-              if (
-                c === gpCol ||
-                c === mandalCol ||
-                c === districtCol ||
-                c === mLgdCol ||
-                c === pLgdCol
-              )
-                continue;
-
-              const val = String(row[c] || "").trim();
-              const headerVal = String(headers[c] || "").trim();
-
-              const dateRegex =
-                /(\d{1,4}[-./ ]+\d{1,4}[-./ ]+\d{2,4}|\d{1,4}[-./ ]+[A-Za-z]{3,10}[-./ ]+\d{2,4})/i;
-
-              const dateMatch = val.match(dateRegex);
-              if (dateMatch && val.includes(":")) {
-                const dateKey = dateMatch[0]
-                  .replace(/\//g, "-")
-                  .replace(/\./g, "-");
-                datesFound.add(dateKey);
-
-                if (!entry.times[dateKey]) {
-                  entry.times[dateKey] = val;
-                }
-
-                if (c > 0 && !entry.attendance[dateKey]) {
-                  const statusVal = String(row[c - 1] || "").trim();
-                  if (
-                    statusVal &&
-                    statusVal.length < 50 &&
-                    !statusVal.includes(":") &&
-                    !statusVal.includes("202")
-                  ) {
-                    entry.attendance[dateKey] = statusVal;
-                  }
-                }
-              } else if (val && !val.includes(":") && !val.includes("202")) {
-                const hMatch = headerVal.match(dateRegex);
-                if (hMatch) {
-                  const dKey = hMatch[0]
-                    .replace(/\//g, "-")
-                    .replace(/\./g, "-");
-                  datesFound.add(dKey);
-                  entry.attendance[dKey] = val;
-                }
-                if (c > 0) {
-                  const prevHMatch = String(headers[c - 1] || "").match(
-                    dateRegex,
-                  );
-                  if (prevHMatch) {
-                    const dKey = prevHMatch[0]
-                      .replace(/\//g, "-")
-                      .replace(/\./g, "-");
-                    datesFound.add(dKey);
-                    if (!entry.attendance[dKey]) {
-                      entry.attendance[dKey] = val;
-                    }
-                  }
-                }
-              }
-            }
-            rowsAdded++;
-          }
-
-          if (debugLogs[dbgIdx]) {
-            debugLogs[dbgIdx].rowsFound = rowsAdded;
-            debugLogs[dbgIdx].datesFound = datesFound.size;
-          }
-        }
-      }
-
-      setAllDates(Array.from(datesFound).sort());
-      setAggregatedData(newAggregated);
-      setRawRows(updatedRawRows);
-      setParserDebug(debugLogs);
-      addToast(`Analyzed ${files.length} reports successfully!`);
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to analyze files");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const downloadRawExcel = async () => {
-    await loadHeavyModules();
-    if (rawRows.length === 0) return;
-    const ws = XLSX.utils.aoa_to_sheet(rawRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Combined Raw Data");
-    XLSX.writeFile(
-      wb,
-      `MultiDay_Combined_Raw_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("మొత్తం కలిపిన Raw డేటా డౌన్లోడ్ అవుతోంది...");
-  };
-
-  const downloadRawPdf = async () => {
-    await loadHeavyModules();
-    if (rawRows.length === 0) return;
-    const doc = new jsPDF("l", "mm", "a4");
-    autoTable(doc, {
-      body: rawRows.slice(0, 500), // Limit for PDF safety
-      styles: { fontSize: 5 },
-      margin: { top: 10 },
-    });
-    doc.save(`MultiDay_Combined_Raw_${new Date().toLocaleDateString()}.pdf`);
-  };
-
-  const downloadMandalSummary = async () => {
-    await loadHeavyModules();
-    if (aggregatedData.size === 0) return;
-    const mandalSummary = new Map<string, { total: number; present: number }>();
-    filteredData.forEach((info) => {
-      const m = info.mandal;
-      if (!mandalSummary.has(m)) mandalSummary.set(m, { total: 0, present: 0 });
-      const s = mandalSummary.get(m)!;
-      allDates.forEach((d) => {
-        s.total++;
-        const attStr = String(info.attendance[d] || "").toLowerCase();
-        if (
-          attStr.startsWith("p") ||
-          attStr.includes("ప్రెసెంట్") ||
-          attStr.includes("హాజరు")
-        )
-          s.present++;
-      });
-    });
-    const exportData = Array.from(mandalSummary.entries()).map(([m, s]) => ({
-      Mandal: m,
-      "Total Checks": s.total,
-      "Present Count": s.present,
-      "Avg Attendance %":
-        s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
-    }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mandal Summary");
-    XLSX.writeFile(
-      wb,
-      `MultiDay_Mandal_Summary_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("మండల్ అటెండెన్స్ సమ్మరీ డౌన్లోడ్ అవుతోంది...");
-  };
-
-  const downloadGPSummary = async () => {
-    await loadHeavyModules();
-    if (aggregatedData.size === 0) return;
-    const aoa: any[][] = [];
-
-    const row1 = ["Telangana State"];
-    for (let i = 0; i < allDates.length * 2 + 3; i++) row1.push("");
-    aoa.push(row1);
-
-    const reportDate = allDates[0]
-      ? new Date(allDates[0].split("-").reverse().join("-")).toLocaleDateString(
-          "en-GB",
-          { day: "2-digit", month: "short", year: "numeric" },
-        )
-      : "";
-    const row2 = [`Report On Attendance Status & DSR Raw Data ${reportDate}`];
-    for (let i = 0; i < allDates.length * 2 + 3; i++) row2.push("");
-    aoa.push(row2);
-
-    const row3 = ["", "", "", ""];
-    row3.push("Attendace Status");
-    for (let i = 0; i < allDates.length * 2 - 1; i++) row3.push("");
-    aoa.push(row3);
-
-    const row4 = ["S.No", "District Name", "Mandal Name", "Panchayat Name"];
-    allDates.forEach((d) => {
-      row4.push(`First Attendance Status (${d})`);
-    });
-    aoa.push(row4);
-
-    filteredData.forEach((info, idx) => {
-      const row = [idx + 1, info.district, info.mandal, info.gp];
-      allDates.forEach((d) => {
-        const s = info.attendance[d] || "-";
-        row.push(s);
-      });
-      aoa.push(row);
-    });
-
-    const statuses = [
-      {
-        label: "Total Present",
-        matches: (s: string) =>
-          s.startsWith("p") ||
-          s.includes("ప్రెసెంట్") ||
-          s.includes("హాజరు") ||
-          s.includes("✅"),
-      },
-      {
-        label: "Total Absent",
-        matches: (s: string) =>
-          s.startsWith("a") || s.includes("గైర్హాజరు") || s.includes("absent"),
-      },
-      {
-        label: "Total Leave",
-        matches: (s: string) =>
-          s.startsWith("l") || s.includes("సెలవు") || s.includes("leave"),
-      },
-      {
-        label: "Total Meeting",
-        matches: (s: string) =>
-          s.startsWith("m") || s.includes("సమావేశం") || s.includes("meeting"),
-      },
-      {
-        label: "Total Training",
-        matches: (s: string) =>
-          s.startsWith("t") || s.includes("శిక్షణ") || s.includes("training"),
-      },
-    ];
-
-    statuses.forEach((st) => {
-      const row: (string | number)[] = ["", "", "", st.label];
-      allDates.forEach((d) => {
-        let count = 0;
-        filteredData.forEach((info) => {
-          const s = String(info.attendance[d] || "").toLowerCase();
-          if (st.matches(s)) count++;
-        });
-        row.push(count);
-      });
-      aoa.push(row);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-    const totalCols = allDates.length + 4;
-    ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Telangana State
-      { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Report Title
-      { s: { r: 2, c: 4 }, e: { r: 2, c: totalCols - 1 } }, // Attendace Status
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "GP Comparative");
-    XLSX.writeFile(
-      wb,
-      `MultiDay_GP_Comparative_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("GP వైజ్ కంపారిటివ్ రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
-  };
-
-  const downloadMultiPdf = async () => {
-    await loadHeavyModules();
-    if (aggregatedData.size === 0) return;
-    const doc = new jsPDF("l", "mm", "a4");
-    const head = [
-      [
-        "S.No",
-        "District",
-        "Mandal",
-        "Panchayat Name",
-        ...allDates.map((d) => `Attendance\n${d}`),
-      ],
-    ];
-    const body = filteredData.map((info, idx) => [
-      idx + 1,
-      info.district,
-      info.mandal,
-      info.gp,
-      ...allDates.map((d) => info.attendance[d] || "-"),
-    ]);
-    autoTable(doc, {
-      head: head,
-      body: body,
-      styles: { fontSize: 5 },
-      theme: "grid",
-    });
-    doc.save(`MultiDay_Comparative_${new Date().toLocaleDateString()}.pdf`);
-  };
-
-  const mandals = Array.from(
-    new Set(Array.from(aggregatedData.values()).map((info) => info.mandal)),
-  ).sort();
-  const filteredData = Array.from(aggregatedData.values())
-    .filter((info) => {
-      const target =
-        `${info.gp} ${info.mandal} ${info.district} ${info.division}`.toUpperCase();
-      const matchesSearch = target.includes(searchTerm.toUpperCase());
-      const matchesMandal =
-        mandalFilter === "All" || info.mandal === mandalFilter;
-      return matchesSearch && matchesMandal;
-    })
-    .sort((a, b) => {
-      const mIdA = (a.mandal || "").toUpperCase();
-      const mIdB = (b.mandal || "").toUpperCase();
-      if (mIdA !== mIdB) return mIdA.localeCompare(mIdB);
-      return (a.gp || "")
-        .toUpperCase()
-        .localeCompare((b.gp || "").toUpperCase());
-    });
-
-  const totalGPCount = filteredData.length;
-  const groupedByMandal: Record<string, typeof filteredData> = {};
-  filteredData.forEach((item) => {
-    const mKey = (item.mandal || "UNKNOWN").toUpperCase();
-    if (!groupedByMandal[mKey]) groupedByMandal[mKey] = [];
-    groupedByMandal[mKey].push(item);
-  });
-  const mandalList = Object.keys(groupedByMandal).sort();
-
-  const gpIndexMap = new Map<string, number>();
-  filteredData.forEach((item, idx) => {
-    gpIndexMap.set(
-      `${(item.mandal || "").toUpperCase()}_${(item.gp || "").toUpperCase()}`,
-      idx + 1,
-    );
-  });
-
-  const sortedDates = [...allDates].sort((a, b) => {
-    const parse = (s: string) => {
-      const parts = s.split("-");
-      if (parts.length === 3)
-        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
-      return 0;
-    };
-    return parse(a) - parse(b);
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-slate-50 p-8 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
-        <h3 className="font-black text-primary uppercase text-sm tracking-widest mb-4">
-          Multi-Day Comparative Hub
-        </h3>
-        <input
-          type="file"
-          multiple
-          onChange={onUpload}
-          className="hidden"
-          id="multi-up"
-        />
-        <label
-          htmlFor="multi-up"
-          className="bg-primary text-white px-8 py-3 rounded-2xl font-black text-xs uppercase cursor-pointer hover:scale-105 transition-transform inline-flex items-center gap-2"
-        >
-          {isAnalyzing ? (
-            <RefreshCw className="animate-spin" size={14} />
-          ) : (
-            <Upload size={14} />
-          )}{" "}
-          {aggregatedData.size > 0
-            ? "Upload More Reports"
-            : "Upload Multiple Daily Reports"}
-        </label>
-        {aggregatedData.size > 0 && (
-          <div className="flex justify-center mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest gap-4">
-            <span>Reports Synced: {parserDebug.length} files</span>
-            <span>•</span>
-            <span>Real-time Comparative Engine Active</span>
-          </div>
-        )}
-      </div>
-
-      {showDebug && parserDebug.length > 0 && (
-        <div className="p-4 bg-slate-900 rounded-2xl text-[10px] font-mono text-emerald-400 space-y-2 overflow-auto max-h-64 border border-white/10 text-left">
-          <div className="text-white font-bold mb-2 uppercase tracking-widest text-xs">
-            Parser Analysis History
-          </div>
-          {parserDebug.map((d, i) => (
-            <div key={i} className="border-b border-white/5 pb-2">
-              <span className="text-blue-400 font-bold">
-                [{d.file} / {d.sheet}]
-              </span>
-              <br />
-              Header Row: {d.gpColName !== "No Header" ? "Found" : "Missing"} |
-              GP Col Name: {d.gpColName} | GPs Parsed: {d.rowsFound}
-              <br />
-              <span
-                className={
-                  d.datesFound > 0 ? "text-emerald-400" : "text-rose-400"
-                }
-              >
-                Report Dates Found: {d.datesFound}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {aggregatedData.size > 0 && allDates.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-6 rounded-2xl flex flex-col items-center justify-center text-center">
-          <h4 className="font-black text-xl mb-2">No Dates Detected</h4>
-          <p className="text-sm">
-            We successfully found the Gram Panchayats in your report, but we
-            could not find any attendance dates. Please ensure the columns
-            contain dates in standard format (e.g., DD/MM/YYYY, DD-MMM-YYYY).
-            Check the debug panel for more info.
-          </p>
-        </div>
-      )}
-
-      {aggregatedData.size > 0 &&
-        allDates.length > 0 &&
-        (!user || user.isAnonymous) && (
-          <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl flex flex-col items-center justify-center text-center">
-            <Lock className="w-16 h-16 text-slate-400 mb-4" />
-            <h4 className="font-black text-2xl text-slate-800 mb-2">
-              Full Access Required
-            </h4>
-            <p className="text-slate-500 max-w-md">
-              The file has been uploaded and processed successfully. Please log
-              in to view the detailed table, analysis, and download the
-              PDF/Excel reports.
-            </p>
-          </div>
-        )}
-
-      {aggregatedData.size > 0 &&
-        allDates.length > 0 &&
-        user &&
-        !user.isAnonymous && (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 items-end px-2">
-              <div className="flex-1 w-full">
-                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block ml-1 tracking-widest">
-                  Global Search
-                </label>
-                <div className="relative">
-                  <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={16}
-                  />
-                  <input
-                    className="w-full bg-white border pl-10 p-3 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all border-slate-300"
-                    placeholder="Search District, Mandal, GP..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="w-full md:w-64">
-                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block ml-1 tracking-widest">
-                  Filter by Mandal
-                </label>
-                <select
-                  className="w-full bg-white border p-3 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all border-slate-300"
-                  value={mandalFilter}
-                  onChange={(e) => setMandalFilter(e.target.value)}
-                >
-                  <option value="All">All Mandals</option>
-                  {mandals.map((m, idx) => (
-                    <option key={`${m}_${idx}`} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  aria-label="Expand All Mandals"
-                  onClick={() => toggleAllMandals(true)}
-                  className="bg-primary/10 text-primary px-4 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-primary/20 transition-colors border border-primary/20"
-                >
-                  Expand All
-                </button>
-                <button
-                  aria-label="Collapse All Mandals"
-                  onClick={() => toggleAllMandals(false)}
-                  className="bg-slate-100 text-slate-600 px-4 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-slate-200 transition-colors border border-slate-200"
-                >
-                  Collapse All
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-[24px] border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold">
-                  <Users size={20} />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-black text-slate-400 leading-none mb-1">
-                    Gram Panchayats
-                  </div>
-                  <div className="text-2xl font-black text-slate-800">
-                    {totalGPCount}
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[24px] border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-bold">
-                  <Calendar size={20} />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-black text-slate-400 leading-none mb-1">
-                    Report Dates
-                  </div>
-                  <div className="text-2xl font-black text-slate-800">
-                    {sortedDates.length}
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-2 flex gap-3">
-                <button
-                  aria-label="Download Mandal Summary"
-                  onClick={downloadMandalSummary}
-                  className="flex-1 bg-white border border-slate-100 p-5 rounded-[24px] text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-1">
-                    <BarChart3 size={18} />
-                  </div>
-                  Mandal Summary (XL)
-                </button>
-                <button
-                  aria-label="Download GP Comparative"
-                  onClick={downloadGPSummary}
-                  className="flex-1 bg-white border border-slate-100 p-5 rounded-[24px] text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                >
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-1">
-                    <Database size={18} />
-                  </div>
-                  GP Comparative (XL)
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-[24px] shadow-2xl overflow-hidden border-slate-100 ring-1 ring-slate-900/5">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-xs border-collapse min-w-[1400px]">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-indigo-600 text-white font-bold text-xs text-left">
-                      <th className="p-3 border border-indigo-700 w-12 text-sm text-center">
-                        S.No
-                      </th>
-                      <th className="p-3 border border-indigo-700 text-sm min-w-[120px]">
-                        District Name
-                      </th>
-                      <th className="p-3 border border-indigo-700 min-w-[120px] text-sm">
-                        Mandal Name
-                      </th>
-                      <th className="p-3 border border-indigo-700 min-w-[150px] text-sm">
-                        Panchayat Name
-                      </th>
-                      {sortedDates.map((d) => (
-                        <th
-                          key={d}
-                          className="p-3 border border-indigo-700 min-w-[120px] text-center text-sm"
-                        >
-                          Attendance ({d})
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {mandalList.map((mName) => {
-                      const isEx = expandedMandals.has(mName);
-                      const items = groupedByMandal[mName];
-                      return (
-                        <React.Fragment key={mName}>
-                          <tr
-                            className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-b border-slate-200 group transition-colors"
-                            onClick={() => toggleMandal(mName)}
-                          >
-                            <td className="p-3 border border-slate-200 text-center font-bold text-indigo-600">
-                              {isEx ? (
-                                <ChevronDown size={16} className="mx-auto" />
-                              ) : (
-                                <ChevronRight size={16} className="mx-auto" />
-                              )}
-                            </td>
-                            <td
-                              colSpan={sortedDates.length + 3}
-                              className="p-3 border border-slate-200 font-black text-slate-700 uppercase text-xs flex items-center gap-3"
-                            >
-                              <span>{mName}</span>
-                              <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 shadow-sm">
-                                {items.length} GPs
-                              </span>
-                            </td>
-                          </tr>
-                          {isEx &&
-                            items.map((info) => (
-                              <tr
-                                key={`${(info.mandal || "").toUpperCase()}_${(info.gp || "").toUpperCase()}`}
-                                className="hover:bg-indigo-50/50 text-slate-700 border-b border-slate-100 group transition-colors"
-                              >
-                                <td className="p-3 border border-slate-200 text-center font-medium bg-slate-50 text-slate-400 group-hover:text-indigo-600 text-xs">
-                                  {gpIndexMap.get(
-                                    `${(info.mandal || "").toUpperCase()}_${(info.gp || "").toUpperCase()}`,
-                                  )}
-                                </td>
-                                <td className="p-3 border border-slate-200 uppercase text-xs font-bold text-slate-500">
-                                  {info.district}
-                                </td>
-                                <td className="p-3 border border-slate-200 uppercase bg-slate-50/50 text-xs font-black text-slate-600">
-                                  {info.mandal}
-                                </td>
-                                <td className="p-3 border border-slate-200 font-black text-slate-800 bg-white text-sm">
-                                  {info.gp}
-                                </td>
-                                {sortedDates.map((d) => {
-                                  const status = info.attendance[d] || "-";
-                                  const time = info.times[d] || "-";
-                                  const statusLower = status.toLowerCase();
-                                  let color = "text-slate-400";
-                                  if (
-                                    statusLower.includes("present") ||
-                                    statusLower === "p"
-                                  )
-                                    color = "text-emerald-700 font-bold";
-                                  else if (
-                                    statusLower.includes("absent") ||
-                                    statusLower === "a"
-                                  )
-                                    color = "text-rose-700 font-bold";
-                                  else if (statusLower.includes("leave"))
-                                    color = "text-amber-700 font-bold";
-                                  else if (statusLower !== "-")
-                                    color = "text-blue-700 font-bold";
-
-                                  return (
-                                    <td
-                                      key={d}
-                                      className={`p-3 border border-slate-200 text-center whitespace-nowrap text-xs font-black ${color}`}
-                                    >
-                                      {status === "-"
-                                        ? "-"
-                                        : status.length > 15
-                                          ? status.substring(0, 15) + "..."
-                                          : status}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-slate-100 font-bold text-sm">
-                    {[
-                      {
-                        label: "Total Present",
-                        color: "text-emerald-700",
-                        matches: (s: string) =>
-                          s.startsWith("p") ||
-                          s.includes("ప్రెసెంట్") ||
-                          s.includes("హాజరు") ||
-                          s.includes("✅"),
-                      },
-                      {
-                        label: "Total Absent",
-                        color: "text-rose-700",
-                        matches: (s: string) =>
-                          s.startsWith("a") ||
-                          s.includes("గైర్హాజరు") ||
-                          s.includes("absent"),
-                      },
-                      {
-                        label: "Total Leave",
-                        color: "text-amber-700",
-                        matches: (s: string) =>
-                          s.startsWith("l") ||
-                          s.includes("సెలవు") ||
-                          s.includes("leave"),
-                      },
-                      {
-                        label: "Total Meeting",
-                        color: "text-cyan-700",
-                        matches: (s: string) =>
-                          s.startsWith("m") ||
-                          s.includes("సమావేశం") ||
-                          s.includes("meeting"),
-                      },
-                      {
-                        label: "Total Training",
-                        color: "text-amber-700",
-                        matches: (s: string) =>
-                          s.startsWith("t") ||
-                          s.includes("శిక్షణ") ||
-                          s.includes("training"),
-                      },
-                    ].map((st, idx) => (
-                      <tr key={idx}>
-                        <td
-                          colSpan={4}
-                          className="p-3 border border-black text-right uppercase text-[#004085]"
-                        >
-                          {st.label}
-                        </td>
-                        {sortedDates.map((d) => {
-                          let count = 0;
-                          filteredData.forEach((info) => {
-                            const s = String(
-                              info.attendance[d] || "",
-                            ).toLowerCase();
-                            if (st.matches(s)) count++;
-                          });
-                          return (
-                            <td
-                              key={d}
-                              className={`p-3 border border-black text-center ${st.color} w-[10px] h-[31.33px] text-base font-black`}
-                            >
-                              {count}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-    </div>
-  );
-}
 
 function TrainingCenter() {
   return (
@@ -21905,11 +19634,11 @@ function PostDetail({
         </div>
 
         {/* In-article Ad Slot (Monetag / AdSense) */}
-        {siteConfig?.ads?.monetagEnabled && (
+        {siteConfig?.ads?.globalAdsEnabled !== false && siteConfig?.ads?.monetagEnabled && isAdAllowed(siteConfig) && (
           <div id="in-article-ad-slot" className="w-full my-4 empty:hidden flex justify-center items-center" data-zone={siteConfig.ads.monetagZoneIdInArticle}></div>
         )}
         {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && (
-          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
+          <AdsenseUnit siteConfig={siteConfig} client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
         )}
 
         {/* Article Body Matter */}
@@ -22231,7 +19960,7 @@ function PostDetail({
 
         {/* AdSense Placeholder */}
         {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && (
-          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
+          <AdsenseUnit siteConfig={siteConfig} client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
         )}
 
         {recentPostsList.length > 4 && (
