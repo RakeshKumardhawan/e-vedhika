@@ -867,7 +867,7 @@ app.get('/api/remote-commands', (req, res) => {
   
   app.get('/api/download', async (req, res) => {
     try {
-      const url = req.query.url as string;
+      let url = req.query.url as string;
       const filename = (typeof req.query.filename === "string" ? req.query.filename : null) || "download";
 
       if (!url || typeof url !== 'string') {
@@ -889,7 +889,15 @@ app.get('/api/remote-commands', (req, res) => {
           }
           return res.download(localPath, downloadName);
         }
-        return res.status(404).send("Local file not found");
+        
+        // Fallback to Cloudflare R2 if not found locally
+        const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+        if (publicUrl) {
+           const baseUrl = publicUrl.endsWith('/') ? publicUrl.slice(0, -1) : publicUrl;
+           url = `${baseUrl}${url}`;
+        } else {
+           return res.status(404).send("Local file not found and no remote fallback configured");
+        }
       }
 
       const fetchUrl = url;
