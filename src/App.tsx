@@ -21820,8 +21820,8 @@ function PostDetail({
 
       {/* Article Header */}
       <div className="space-y-2">
-        {/* Title in Red / Bold News Display Style */}
-        <h1 className="text-lg sm:text-xl md:text-2xl font-black text-red-600 dark:text-red-500 leading-snug tracking-tight whitespace-pre-wrap">
+        {/* Title in Blue / Bold News Display Style */}
+        <h1 className="text-lg sm:text-xl md:text-2xl font-black text-blue-600 dark:text-blue-500 leading-snug tracking-tight whitespace-pre-wrap">
           {formatPostTitle(post.title)}
           {post.version && (
             <span className="ml-1.5 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase align-middle">
