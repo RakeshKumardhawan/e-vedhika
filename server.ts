@@ -682,6 +682,18 @@ app.get('/api/remote-commands', (req, res) => {
     fs.writeFileSync(aboutContentPath, JSON.stringify(defaultAbout, null, 2));
   }
 
+  app.get("/api/version", (req, res) => {
+    res.json({
+      status: "ok",
+      name: "E-VEDHIKA Digital Governance Portal",
+      version: "V1.6.2 Enterprise",
+      portal: "e-vedhika.in",
+      environment: process.env.NODE_ENV || "production",
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString()
+    });
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
   });
