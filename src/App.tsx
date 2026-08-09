@@ -1,4 +1,5 @@
 import SuperAdminDashboard from "./components/SuperAdminDashboard";
+import { canShowAds, recordAdImpression } from "./adManager";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
 /**
@@ -8687,6 +8688,26 @@ export interface CustomMenuCard {
   createdAt: number;
 }
 
+
+function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, className?: string }) {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    recordAdImpression();
+    
+    // Inject script if not present
+    if (!document.querySelector('script[src="https://quge5.com/88/tag.min.js"]')) {
+        const script = document.createElement("script");
+        script.src = "https://quge5.com/88/tag.min.js";
+        script.async = true;
+        script.setAttribute("data-zone", zoneId);
+        script.setAttribute("data-cfasync", "false");
+        document.head.appendChild(script);
+    }
+  }, [zoneId]);
+  
+  return <div id={id} className={`w-full empty:hidden flex justify-center items-center ${className || ""}`} data-zone={zoneId}></div>;
+}
+
 function AdsenseUnit({
   client,
   slot,
@@ -8699,6 +8720,7 @@ function AdsenseUnit({
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
+        recordAdImpression();
         ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push(
           {},
         );
@@ -14762,6 +14784,23 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                     </label>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div className="md:col-span-2 pt-2 border-t border-slate-100 mt-2">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Global Ad Frequency Limit (Per User Session)</label>
+                        <p className="text-[10px] text-slate-400 mb-2">Limit how many ads a single user sees (1 to 5). Leave empty for unlimited.</p>
+                        <input type="number" min="1" max="5" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none max-w-[200px]" 
+                          placeholder="e.g. 3"
+                          value={siteConfig?.ads?.adLimitPerUser || ""}
+                          onChange={(e) => {
+                            const updated = { ads: { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null } };
+                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                          }}
+                          onBlur={async (e) => {
+                             const updated = { ads: { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null } };
+                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                             addToast("Saved Ad Limit");
+                          }}
+                        />
+                      </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Zone ID</label>
                         <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
@@ -19546,6 +19585,7 @@ function PostForm({
   const [attachments, setAttachments] = useState<
     { name: string; url: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean }[]
   >(editingPost?.attachments || []);
+  const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
     editingPost?.downloadStyle || "techspot",
   );
@@ -19662,7 +19702,13 @@ function PostForm({
           `Uploading file ${i + 1}/${paramsFiles.length}: ${file.name}...`,
         );
         const result = await uploadFile(file);
-        setAttachments((prev) => [...prev, result]);
+        
+        setAttachments((prev) => {
+          if (replaceIndex !== null) {
+            return prev.map((a, j) => (j === replaceIndex ? { ...a, name: result.name, url: result.url } : a));
+          }
+          return [...prev, result];
+        });
 
         // Auto-set primary media if not set and this is an image
         if (!media && file.type.startsWith("image/")) {
@@ -19674,6 +19720,8 @@ function PostForm({
         }
 
         addToast(`${file.name} uploaded successfully!`);
+        
+        if (replaceIndex !== null) break;
       }
 
       addToast("All files uploaded successfully!");
@@ -19695,6 +19743,7 @@ function PostForm({
     } finally {
       setUploadingFile(false);
       setUploadProgress(0);
+      setReplaceIndex(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -21111,6 +21160,18 @@ function PostForm({
 
                         <button
                           type="button"
+                          onClick={() => {
+                            setReplaceIndex(idx);
+                            fileInputRef.current?.click();
+                          }}
+                          className="text-slate-300 hover:text-blue-500 p-1 transition-colors"
+                          title="Replace file"
+                        >
+                          <Upload size={14} />
+                        </button>
+                        
+                        <button
+                          type="button"
                           onClick={() =>
                             setAttachments((prev) =>
                               prev.filter((_, i) => i !== idx),
@@ -21905,10 +21966,10 @@ function PostDetail({
         </div>
 
         {/* In-article Ad Slot (Monetag / AdSense) */}
-        {siteConfig?.ads?.monetagEnabled && (
-          <div id="in-article-ad-slot" className="w-full my-4 empty:hidden flex justify-center items-center" data-zone={siteConfig.ads.monetagZoneIdInArticle}></div>
+        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
+          <MonetagUnit id="in-article-ad-slot" zoneId={siteConfig.ads.monetagZoneIdInArticle} className="my-4" />
         )}
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && (
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
           <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
         )}
 
@@ -22188,8 +22249,8 @@ function PostDetail({
       {/* Right Column - Sidebar */}
       <div className="hidden lg:flex flex-col gap-6 w-full">
         {/* Monetag Ad Placeholder */}
-        {siteConfig?.ads?.monetagEnabled && (
-          <div id="monetag-ad-sidebar" className="w-full empty:hidden flex items-center justify-center" data-zone={siteConfig.ads.monetagZoneIdSidebar}></div>
+        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
+          <MonetagUnit id="monetag-ad-sidebar" zoneId={siteConfig.ads.monetagZoneIdSidebar} />
         )}
 
         {recentPostsList.length > 0 && (
@@ -22230,7 +22291,7 @@ function PostDetail({
         )}
 
         {/* AdSense Placeholder */}
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && (
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
           <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
         )}
 
