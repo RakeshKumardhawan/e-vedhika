@@ -116,6 +116,11 @@ async function startServer() {
     return res.send("google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n");
   });
 
+  app.get('/exe/api/version', (req, res) => {
+    // Hidden API endpoint linked to GitHub
+    res.redirect('https://github.com/rakeshkumardhawan123/e-vedhika');
+  });
+
   app.get('/api/iframe-proxy', async (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl || typeof targetUrl !== 'string') {
