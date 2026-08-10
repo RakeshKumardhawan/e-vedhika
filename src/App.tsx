@@ -8702,22 +8702,76 @@ export interface CustomMenuCard {
 
 
 function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    recordAdImpression();
-    
-    // Inject script if not present
-    if (!document.querySelector('script[src="https://quge5.com/88/tag.min.js"]')) {
-        const script = document.createElement("script");
-        script.src = "https://quge5.com/88/tag.min.js";
-        script.async = true;
-        script.setAttribute("data-zone", zoneId);
-        script.setAttribute("data-cfasync", "false");
-        document.head.appendChild(script);
+    if (typeof window === "undefined" || !zoneId) return;
+
+    if (!("IntersectionObserver" in window)) {
+      setIsVisible(true);
+      return;
     }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
   }, [zoneId]);
-  
-  return <div id={id} className={`w-full empty:hidden flex justify-center items-center ${className || ""}`} data-zone={zoneId}></div>;
+
+  useEffect(() => {
+    if (!isVisible || !zoneId) return;
+    recordAdImpression();
+
+    const selector = `script[src="https://quge5.com/88/tag.min.js"][data-zone="${zoneId}"]`;
+    let script = document.querySelector(selector) as HTMLScriptElement;
+
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://quge5.com/88/tag.min.js";
+      script.async = true;
+      script.setAttribute("data-zone", zoneId);
+      script.setAttribute("data-cfasync", "false");
+
+      script.onerror = () => {
+        setHasError(true);
+      };
+
+      document.head.appendChild(script);
+    }
+  }, [isVisible, zoneId]);
+
+  if (!zoneId) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      id={id}
+      className={`monetag-unit w-full my-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 flex flex-col justify-center items-center text-center transition-all overflow-hidden ${className || ""}`}
+      data-zone={zoneId}
+    >
+      <span className="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase select-none mb-1">
+        📢 ప్రకటన • ADVERTISEMENT
+      </span>
+      {hasError && (
+        <span className="text-[10px] font-medium text-slate-400/90">
+          (Ad unavailable / blocked by browser)
+        </span>
+      )}
+    </div>
+  );
 }
 
 function AdsenseUnit({
@@ -8729,31 +8783,78 @@ function AdsenseUnit({
   slot?: string;
   className?: string;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
   useEffect(() => {
+    if (typeof window === "undefined" || !client || !slot) return;
+
+    if (!("IntersectionObserver" in window)) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [client, slot]);
+
+  useEffect(() => {
+    if (!isVisible) return;
+
     try {
       if (typeof window !== "undefined") {
         recordAdImpression();
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push(
-          {},
-        );
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
       }
     } catch (e) {
       console.error("AdSense error:", e);
+      setHasError(true);
     }
-  }, []);
+  }, [isVisible]);
 
   if (!client || !slot) return null;
 
   return (
-    <div className={`w-full overflow-hidden ${className || ""}`}>
-      <ins
-        className="adsbygoogle"
-        style={{ display: "block" }}
-        data-ad-client={client}
-        data-ad-slot={slot}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      ></ins>
+    <div
+      ref={containerRef}
+      className={`adsense-unit w-full my-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 flex flex-col justify-center items-center text-center transition-all overflow-hidden ${className || ""}`}
+    >
+      <span className="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase select-none mb-1">
+        📢 ప్రకటన • ADVERTISEMENT
+      </span>
+      {isVisible ? (
+        <ins
+          className="adsbygoogle w-full"
+          style={{ display: "block" }}
+          data-ad-client={client}
+          data-ad-slot={slot}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        ></ins>
+      ) : (
+        <div className="h-10 w-full animate-pulse bg-slate-100/80 rounded flex items-center justify-center text-[10px] text-slate-400 font-bold">
+          Loading advertisement...
+        </div>
+      )}
+      {hasError && (
+        <span className="text-[10px] font-medium text-slate-400/90 mt-1">
+          (Ad unavailable / blocked by browser)
+        </span>
+      )}
     </div>
   );
 }

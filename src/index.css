@@ -565,3 +565,32 @@ html, body, #root {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
 }
+
+/* --- AD UNITS STYLING & CONSISTENT SPACING --- */
+#in-article-ad-slot,
+#monetag-ad-sidebar,
+.monetag-unit,
+.adsense-unit {
+  width: 100%;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 85px;
+  border-radius: 0.875rem;
+  background-color: rgba(248, 250, 252, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease-in-out;
+}
+
+#in-article-ad-slot iframe,
+.monetag-unit iframe,
+.adsense-unit ins {
+  max-width: 100% !important;
+  border-radius: 0.5rem;
+}
+
