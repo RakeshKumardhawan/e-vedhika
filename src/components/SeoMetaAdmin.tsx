@@ -75,8 +75,13 @@ export function updateDOMMetaTags(seoData?: Partial<typeof DEFAULT_SEO_CONFIG> |
   setMeta('meta[property="og:description"]', 'property', 'og:description', ogDesc);
   setMeta('meta[property="og:image"]', 'property', 'og:image', ogImg);
   setMeta('meta[property="og:image:secure_url"]', 'property', 'og:image:secure_url', ogImg);
+  setMeta('meta[property="og:image:type"]', 'property', 'og:image:type', 'image/jpeg');
+  setMeta('meta[property="og:image:width"]', 'property', 'og:image:width', '1200');
+  setMeta('meta[property="og:image:height"]', 'property', 'og:image:height', '630');
   setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
   setMeta('meta[property="og:type"]', 'property', 'og:type', data.ogType || 'website');
+  setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'E-Vedhika');
+  setMeta('meta[itemprop="image"]', 'itemprop', 'image', ogImg);
 
   // Twitter
   setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', twitterCard);
@@ -620,7 +625,13 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
                   </div>
                   <div className="p-3 bg-[#f0f2f5] space-y-1">
                     <p className="text-[10px] uppercase font-bold text-slate-400 font-mono tracking-wider truncate">
-                      {seo.canonicalUrl ? new URL(seo.canonicalUrl).hostname : "e-vedhika.in"}
+                      {(() => {
+                        try {
+                          return seo.canonicalUrl ? new URL(seo.canonicalUrl).hostname : "e-vedhika.in";
+                        } catch (e) {
+                          return "e-vedhika.in";
+                        }
+                      })()}
                     </p>
                     <h5 className="text-sm font-bold text-slate-900 leading-tight line-clamp-2">
                       {seo.ogTitle || DEFAULT_SEO_CONFIG.ogTitle}

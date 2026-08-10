@@ -35,6 +35,17 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
   if (mainTab === "reports") mainTab = "my_activity";
   if (mainTab === "problems") mainTab = "directlinks";
 
+  const normMain = (mainTab || "").toLowerCase().replace(/[-_ ]/g, "");
+  if (
+    normMain === "evedhika" ||
+    normMain === "evdka" ||
+    normMain === "adminpanel" ||
+    normMain === "sysadmin" ||
+    normMain === "admin"
+  ) {
+    mainTab = "admin";
+  }
+
   let workspaceTool: string | null = null;
   if (mainTab === "workspace") {
     if (subToolFromUrl) {

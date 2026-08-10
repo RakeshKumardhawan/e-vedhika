@@ -2259,7 +2259,7 @@ export default function App() {
 
   useEffect(() => {
     // If the URL is currently on an admin path, but the user selects a main app tab
-    if (location.pathname.endsWith("/Evdka") || location.pathname.endsWith("/Farmer_Registry")) {
+    if (isEvdkaPath || location.pathname.endsWith("/Farmer_Registry")) {
       if (
         currentTab !== "admin" &&
         currentTab !== "editor" &&
@@ -2847,7 +2847,7 @@ export default function App() {
   }, [sidebarOpen]);
 
   useEffect(() => {
-    if (location.pathname.endsWith("/Evdka") || currentTab === "admin" || currentTab === "editor") {
+    if (isEvdkaPath || currentTab === "admin" || currentTab === "editor") {
       if (window.innerWidth >= 1024) {
         setSidebarOpen(true);
       }
@@ -3497,7 +3497,13 @@ export default function App() {
     recognition.start();
   };
 
-  if (location.pathname.endsWith("/Evdka")) {
+  const isEvdkaPath =
+    location.pathname.toLowerCase().endsWith("/evdka") ||
+    location.pathname.toLowerCase().endsWith("/evedhika");
+  const isTargetingAdminRoute =
+    isEvdkaPath || currentTab === "admin" || currentTab === "editor";
+
+  if (isTargetingAdminRoute) {
     if (authLoading || (user && profileLoading)) {
       return (
         <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans antialiased flex flex-col justify-center items-center p-4">
@@ -3628,8 +3634,9 @@ export default function App() {
               animate={{ scale: 1, opacity: 1 }}
               className="text-center relative z-10 w-full max-w-sm p-8 bg-slate-900/60 rounded-[40px] border border-slate-800 backdrop-blur-md"
             >
-              <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-                <Lock size={40} className="text-blue-400" />
+              <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative">
+                <img src="/ev-logo-v2.svg" alt="EV Logo" className="w-16 h-16 object-contain relative z-10" />
+                <div className="absolute inset-0 bg-blue-500/10 animate-ping rounded-full" style={{ animationDuration: '3s' }}></div>
               </div>
 
               <h2 className="text-3xl font-black mb-1 uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
@@ -4929,7 +4936,7 @@ export default function App() {
                 <X size={20} />
               </button>
             )}
-            {location.pathname.endsWith("/Evdka") || currentTab === "admin" || currentTab === "editor" ? (
+            {isEvdkaPath || currentTab === "admin" || currentTab === "editor" ? (
               <>
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
                   Admin Control Center
@@ -5153,7 +5160,7 @@ export default function App() {
                   <MenuButton
                     label="Admin Panel" icon={Shield}
                     tourId="menu-admin-new-tab"
-                    active={location.pathname.endsWith("/Evdka")}
+                    active={isEvdkaPath || currentTab === "admin"}
                     onClick={() => {
                       navigate("/Evdka");
                       setSidebarOpen(false);
@@ -5203,7 +5210,7 @@ export default function App() {
           className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-1.5 sm:p-2.5 lg:p-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
         >
-          {location.pathname.endsWith("/Evdka") &&
+          {(isEvdkaPath || currentTab === "admin" || currentTab === "editor") &&
             (isAdmin || isEditor || isDevEmail) && (
               <AdminPanel
                 addToast={addToast}
@@ -5220,7 +5227,11 @@ export default function App() {
                 updates={allUpdates}
                 userRole={userProfile?.role || (isAdmin ? "Admin" : "Editor")}
                 onExit={() => {
-                  window.location.href = "/";
+                  if (isEvdkaPath) {
+                    navigate("/");
+                  } else {
+                    setCurrentTab("home");
+                  }
                 }}
                 onNewPost={() => {}}
                 onEditPost={setEditingPost}
@@ -5253,54 +5264,11 @@ export default function App() {
 
           <div
             className={
-              location.pathname.endsWith("/Evdka") ? "hidden" : "contents"
+              isEvdkaPath || currentTab === "admin" || currentTab === "editor"
+                ? "hidden"
+                : "contents"
             }
           >
-            {(currentTab === "admin" || currentTab === "editor") &&
-              (isAdmin || isEditor || isDevEmail) && (
-                <AdminPanel
-                  addToast={addToast}
-                  posts={posts}
-                  problems={problemsGlobal}
-                  suggestions={suggestions}
-                  suggestionCategories={suggestionCategories}
-                  users={allUsers}
-                  user={user}
-                  setAdminLocked={setAdminLocked}
-                  adminLocked={adminLocked}
-                  notifications={notifications}
-                  requests={requests}
-                  updates={allUpdates}
-                  userRole={userProfile?.role || (isAdmin ? "Admin" : "Editor")}
-                  onExit={() => setCurrentTab("home")}
-                  onNewPost={() => {}}
-                  onEditPost={setEditingPost}
-                  isDevEmail={isDevEmail}
-                  currentAdminPin={currentAdminPin}
-                  setCurrentAdminPin={setCurrentAdminPin}
-                  districtsData={districtsData}
-                  currentTab={currentTab}
-                  userProfile={userProfile}
-                  storageConfig={storageConfig}
-                  aboutContent={aboutContent}
-                  setAboutContent={setAboutContent}
-                  fetchAboutContent={fetchAboutContent}
-                  isEditorMode={!isAdmin && isEditor}
-                  rbacPermissions={rbacPermissions}
-                  setRbacPermissions={setRbacPermissions}
-                  activeSubTab={activeAdminSubTab}
-                  setActiveSubTab={setActiveAdminSubTab}
-                  customMenus={customMenus}
-                  customMenuCards={customMenuCards}
-                  landingPageData={landingPageData}
-                  setLandingPageData={setLandingPageData}
-                  fetchLandingPageData={fetchLandingPageData}
-                  onToggleSidebar={() => setSidebarOpen((prev: boolean) => !prev)}
-                  setSidebarOpen={setSidebarOpen}
-                  siteConfig={siteConfig}
-                  setSiteConfig={setSiteConfig}
-                />
-              )}
 
             {postIdFromUrl ? (
               <PostDetail
@@ -8768,6 +8736,84 @@ function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, cl
   );
 }
 
+
+function CustomAdUnit({ code, id, className }: { code?: string, id: string, className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const isRendered = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !code) return;
+
+    if (!("IntersectionObserver" in window)) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [code]);
+
+  useEffect(() => {
+    if (!isVisible || !code || isRendered.current) return;
+    
+    // Check if limit reached before rendering this one ad
+    if (typeof window !== "undefined") {
+       recordAdImpression();
+    }
+    isRendered.current = true;
+    
+    if (containerRef.current) {
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = code;
+      
+      const scripts = Array.from(wrapper.querySelectorAll("script"));
+      
+      // Append non-script elements
+      while(wrapper.firstChild) {
+         if (wrapper.firstChild.nodeName !== 'SCRIPT') {
+            containerRef.current.appendChild(wrapper.firstChild);
+         } else {
+            wrapper.removeChild(wrapper.firstChild);
+         }
+      }
+
+      // Re-create and append script elements to force execution
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement("script");
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+        containerRef.current?.appendChild(newScript);
+      });
+    }
+  }, [isVisible, code]);
+
+  if (!code) return null;
+
+  return (
+    <div
+      id={id}
+      className={`custom-ad-unit w-full my-4 flex flex-col justify-center items-center overflow-hidden ${className || ""}`}
+    >
+      <div className="w-full relative min-h-[50px] flex justify-center items-center" ref={containerRef}>
+        {/* Ad will be injected here */}
+      </div>
+    </div>
+  );
+}
+
 function AdsenseUnit({
   client,
   slot,
@@ -10396,8 +10442,9 @@ function AdminPanel({
           animate={{ scale: 1, opacity: 1 }}
           className="text-center relative z-10"
         >
-          <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-            <Lock size={40} className="text-blue-400" />
+          <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative">
+            <img src="/ev-logo-v2.svg" alt="EV Logo" className="w-16 h-16 object-contain relative z-10" />
+            <div className="absolute inset-0 bg-blue-500/10 animate-ping rounded-full" style={{ animationDuration: '3s' }}></div>
           </div>
           <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter">
             Admin Session Locked
@@ -14870,6 +14917,75 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                   <p className="text-xs text-slate-500 font-medium tracking-tight">Configure ad slots to show across the website.</p>
                 </div>
 
+                {/* Global Ad Control */}
+                <div className="bg-white border-2 border-indigo-200 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Shield className="text-indigo-500" size={24} />
+                    <h5 className="font-black text-slate-800 text-lg">Global Ad Settings</h5>
+                  </div>
+                  <div className="space-y-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500" 
+                        checked={siteConfig?.ads?.globalAdsEnabled ?? true}
+                        onChange={async (e) => {
+                          const updatedAds = { ...(siteConfig?.ads || {}), globalAdsEnabled: e.target.checked };
+                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                          addToast(e.target.checked ? "Global Ads Enabled" : "Global Ads Disabled");
+                        }}
+                      />
+                      <span className="font-bold text-slate-700">Enable All Ads on Website</span>
+                    </label>
+
+                    <div className="pt-4 border-t border-slate-100">
+                      <label className="block text-xs font-bold text-slate-500 mb-2">Mute Ads Temporarily (Hide Ads for a duration)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: '5 Minutes', ms: 5 * 60 * 1000 },
+                          { label: 'Half Day (12h)', ms: 12 * 60 * 60 * 1000 },
+                          { label: '1 Day (24h)', ms: 24 * 60 * 60 * 1000 },
+                        ].map(duration => (
+                          <button
+                            key={duration.label}
+                            onClick={async () => {
+                              const mutedUntil = Date.now() + duration.ms;
+                              const updatedAds = { ...(siteConfig?.ads || {}), globalAdsMutedUntil: mutedUntil };
+                              setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                              try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                              await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                              await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                              addToast(`Ads muted for ${duration.label}`);
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors"
+                          >
+                            Mute {duration.label}
+                          </button>
+                        ))}
+                        <button
+                          onClick={async () => {
+                            const updatedAds = { ...(siteConfig?.ads || {}), globalAdsMutedUntil: null };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Mute cancelled");
+                          }}
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-colors"
+                        >
+                          Cancel Mute
+                        </button>
+                      </div>
+                      {siteConfig?.ads?.globalAdsMutedUntil && siteConfig.ads.globalAdsMutedUntil > Date.now() && (
+                        <p className="mt-2 text-xs font-bold text-amber-600">
+                          Ads are muted until: {new Date(siteConfig.ads.globalAdsMutedUntil).toLocaleString('en-IN')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Monetag Config */}
                 <div className="bg-white border-2 border-amber-200 rounded-3xl p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
@@ -15031,10 +15147,72 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                       </div>
                     </div>
                   </div>
+
+                {/* Custom Script / HTML Ads */}
+                <div className="bg-white border-2 border-green-200 rounded-3xl p-6 shadow-sm mt-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Code className="text-green-500" size={24} />
+                    <h5 className="font-black text-slate-800 text-lg">Custom HTML/JS Ads</h5>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-green-500 focus:ring-green-500" 
+                        checked={siteConfig?.ads?.customAdsEnabled || false}
+                        onChange={async (e) => {
+                          const updatedAds = { ...(siteConfig?.ads || {}), customAdsEnabled: e.target.checked };
+                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                          addToast(e.target.checked ? "Custom Ads Enabled" : "Custom Ads Disabled");
+                        }}
+                      />
+                      <span className="font-bold text-slate-700">Enable Custom Ads (HTML/JS)</span>
+                    </label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                       <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Custom Ad Code (HTML/Script)</label>
+                        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-mono focus:border-green-500 outline-none h-32" 
+                          placeholder="<script src='...'></script>"
+                          value={siteConfig?.ads?.customAdCodeSidebar || ""}
+                          onChange={(e) => {
+                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeSidebar: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                          }}
+                          onBlur={async (e) => {
+                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeSidebar: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved Sidebar Custom Ad");
+                          }}
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Custom Ad Code (HTML/Script)</label>
+                        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-mono focus:border-green-500 outline-none h-32" 
+                          placeholder="<script src='...'></script>"
+                          value={siteConfig?.ads?.customAdCodeInArticle || ""}
+                          onChange={(e) => {
+                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeInArticle: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                          }}
+                          onBlur={async (e) => {
+                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeInArticle: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved In-Article Custom Ad");
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
             )}
-
             {activeSubTab === "code_manager" && (
               <CodeManager addToast={addToast} />
             )}
@@ -22317,11 +22495,14 @@ function PostDetail({
         </div>
 
         {/* In-article Ad Slot (Monetag / AdSense) */}
-        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
+        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig) && (
           <MonetagUnit id="in-article-ad-slot" zoneId={siteConfig.ads.monetagZoneIdInArticle} className="my-4" />
         )}
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig) && (
           <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
+        )}
+        {siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeInArticle && canShowAds(siteConfig) && (
+          <CustomAdUnit id="in-article-custom-ad" code={siteConfig.ads.customAdCodeInArticle} className="my-4" />
         )}
 
         {/* Article Body Matter */}
@@ -22600,7 +22781,7 @@ function PostDetail({
       {/* Right Column - Sidebar */}
       <div className="hidden lg:flex flex-col gap-6 w-full">
         {/* Monetag Ad Placeholder */}
-        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
+        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig) && (
           <MonetagUnit id="monetag-ad-sidebar" zoneId={siteConfig.ads.monetagZoneIdSidebar} />
         )}
 
@@ -22642,8 +22823,12 @@ function PostDetail({
         )}
 
         {/* AdSense Placeholder */}
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && canShowAds(siteConfig?.ads?.adLimitPerUser) && (
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && canShowAds(siteConfig) && (
           <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
+        )}
+        {/* Custom Ad Placeholder */}
+        {siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeSidebar && canShowAds(siteConfig) && (
+          <CustomAdUnit id="sidebar-custom-ad" code={siteConfig.ads.customAdCodeSidebar} className="w-full flex items-center justify-center" />
         )}
 
         {recentPostsList.length > 4 && (

@@ -1,5 +1,10 @@
-export const canShowAds = (limit?: number | null): boolean => {
+export const canShowAds = (siteConfig?: any): boolean => {
+    if (siteConfig?.ads?.globalAdsEnabled === false) return false;
+    if (siteConfig?.ads?.globalAdsMutedUntil && siteConfig.ads.globalAdsMutedUntil > Date.now()) return false;
+    
+    const limit = siteConfig?.ads?.adLimitPerUser;
     if (!limit) return true;
+    
     const today = new Date().toDateString();
     let data;
     try {

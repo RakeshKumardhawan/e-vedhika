@@ -2079,6 +2079,46 @@ app.get('/api/remote-commands', (req, res) => {
       html = html.replace(/content="https:\/\/e-vedhika\.online\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
       html = html.replace(/content="https:\/\/www\.e-vedhika\.in\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
 
+      try {
+        const homePageDoc = await admin.firestore().collection("site_settings").doc("home_page").get();
+        if (homePageDoc.exists) {
+          const homePageData = homePageDoc.data();
+          if (homePageData && homePageData.seo) {
+            const seo = homePageData.seo;
+            const seoTitle = (seo.seoTitle || seo.ogTitle || "E-Vedhika").replace(/"/g, '&quot;');
+            const seoDesc = (seo.seoDescription || seo.ogDescription || "All Problems One Solution").replace(/"/g, '&quot;');
+            const mediaUrl = seo.ogImage || "";
+            const keywords = seo.seoKeywords || "";
+            
+            html = html.replace(/<title>.*?<\/title>/, `<title>${seoTitle}</title>`);
+            html = html.replace(/<meta\s+(?:property|name)="og:title"\s+content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${seoTitle}" />`);
+            html = html.replace(/<meta\s+name="twitter:title"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:title" content="${seoTitle}" />`);
+            html = html.replace(/<meta\s+property="og:description"\s+content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${seoDesc}" />`);
+            html = html.replace(/<meta\s+name="twitter:description"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:description" content="${seoDesc}" />`);
+            html = html.replace(/<meta\s+name="description"\s+content=".*?"\s*\/?>/gi, `<meta name="description" content="${seoDesc}" />`);
+            
+            if (keywords) {
+              html = html.replace(/<meta\s+name="keywords"\s+content=".*?"\s*\/?>/gi, `<meta name="keywords" content="${keywords.replace(/"/g, '&quot;')}" />`);
+            }
+            if (seo.metaRobots) {
+              html = html.replace(/<meta\s+name="robots"\s+content=".*?"\s*\/?>/gi, `<meta name="robots" content="${seo.metaRobots}" />`);
+            }
+            if (mediaUrl) {
+              const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${fullBaseUrl}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
+              html = html.replace(/<meta\s+property="og:image"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+itemprop="image"\s+content=".*?"\s*\/?>/gi, `<meta itemprop="image" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
+              html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
+            }
+            if (seo.ogType) {
+              html = html.replace(/<meta\s+property="og:type"\s+content=".*?"\s*\/?>/gi, `<meta property="og:type" content="${seo.ogType}" />`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to inject global SEO tags:", err);
+      }
+
       if (postId) {
         try {
           const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
@@ -2112,6 +2152,14 @@ app.get('/api/remote-commands', (req, res) => {
               html = html.replace(/<meta\s+itemprop="image"\s+content=".*?"\s*\/?>/gi, `<meta itemprop="image" content="${absMediaUrl}" />`);
               html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
               html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
+            }
+            const postKeywords = fields.seoKeywords?.stringValue || "";
+            if (postKeywords) {
+              html = html.replace(/<meta\s+name="keywords"\s+content=".*?"\s*\/?>/gi, `<meta name="keywords" content="${postKeywords.replace(/"/g, '&quot;')}" />`);
+            }
+            const postRobots = fields.metaRobots?.stringValue || "";
+            if (postRobots) {
+              html = html.replace(/<meta\s+name="robots"\s+content=".*?"\s*\/?>/gi, `<meta name="robots" content="${postRobots}" />`);
             }
             html = html.replace(/<meta\s+property="og:url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:url" content="${fullBaseUrl}${req.originalUrl}" />`);
             html = html.replace(/<meta\s+name="twitter:url"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:url" content="${fullBaseUrl}${req.originalUrl}" />`);
