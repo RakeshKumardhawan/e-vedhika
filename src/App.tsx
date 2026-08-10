@@ -21107,12 +21107,12 @@ function PostForm({
                     accept="*/*"
                     className="hidden"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       disabled={uploadingFile}
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1D61FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all uppercase tracking-wider shadow-md shadow-blue-200 active:scale-95 disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1D61FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all uppercase tracking-wider shadow-md shadow-blue-200 active:scale-95 disabled:opacity-50 min-w-[140px]"
                     >
                       {uploadingFile ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -21123,16 +21123,22 @@ function PostForm({
                         ? `Uploading ${Math.round(uploadProgress)}%`
                         : "Upload File"}
                     </button>
+
                     <button
                       type="button"
                       onClick={() => {
                         Swal.fire({
                           title: "Add External Link / Drive / R2 File",
                           html: `
+                              <div class="mb-3 text-left">
+                                <a href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files?prefix=uploads%2F" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors">
+                                  <span>⚡ Open Cloudflare R2 Bucket (అప్‌లోడ్ చేయండి)</span>
+                                </a>
+                              </div>
                               <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">File Label / Title</div>
                               <input id="swal-file-name" class="swal2-input mt-0 mb-4" placeholder="e.g. UBD_Site_Setup.bat, Govt Order PDF">
                               <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">External File Link (Cloudflare R2 / Drive / CDN / URL)</div>
-                              <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://drive.google.com/... or https://r2.cloudflare.com/file.zip">
+                              <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://drive.google.com/... or https://pub-xxx.r2.dev/file.zip">
                               <div class="flex items-center gap-2 mt-4 text-left px-1">
                                 <input type="checkbox" id="swal-file-direct" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" checked>
                                 <label for="swal-file-direct" class="text-xs font-bold text-slate-700 uppercase">Background Proxy Download (Seamless on Website)</label>
@@ -21171,12 +21177,23 @@ function PostForm({
                           }
                         });
                       }}
-                      className="px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center gap-2 text-xs uppercase tracking-wide"
+                      className="px-3.5 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide"
                       title="Add by Link / Drive / Cloudflare R2"
                     >
                       <Link2 size={16} />
-                      <span> Add Link (లింక్ ద్వారా చేర్చండి)</span>
+                      <span>Add Link</span>
                     </button>
+
+                    <a
+                      href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files?prefix=uploads%2F"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-3 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition-all shadow-sm flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide"
+                      title="Open Cloudflare R2 Storage Bucket"
+                    >
+                      <ExternalLink size={15} />
+                      <span>Cloudflare R2 Bucket</span>
+                    </a>
                   </div>
                 </div>
               </div>
