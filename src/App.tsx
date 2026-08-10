@@ -21098,7 +21098,7 @@ function PostForm({
                 </div>
 
                 {/* File Upload Section */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 pt-[21px] max-w-[609px] w-full">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -21127,19 +21127,19 @@ function PostForm({
                       type="button"
                       onClick={() => {
                         Swal.fire({
-                          title: "Add New File Attachment",
+                          title: "Add External Link / Drive / R2 File",
                           html: `
-                              <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">Label Name</div>
-                              <input id="swal-file-name" class="swal2-input mt-0 mb-4" placeholder="e.g. Detailed Report, Govt Order">
-                              <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">Download URL</div>
-                              <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://example.com/file.pdf">
+                              <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">File Label / Title</div>
+                              <input id="swal-file-name" class="swal2-input mt-0 mb-4" placeholder="e.g. UBD_Site_Setup.bat, Govt Order PDF">
+                              <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">External File Link (Cloudflare R2 / Drive / CDN / URL)</div>
+                              <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://drive.google.com/... or https://r2.cloudflare.com/file.zip">
                               <div class="flex items-center gap-2 mt-4 text-left px-1">
                                 <input type="checkbox" id="swal-file-direct" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" checked>
-                                <label for="swal-file-direct" class="text-xs font-bold text-slate-700 uppercase">Direct Download (Don't Proxy)</label>
+                                <label for="swal-file-direct" class="text-xs font-bold text-slate-700 uppercase">Background Proxy Download (Seamless on Website)</label>
                               </div>
                             `,
                           showCancelButton: true,
-                          confirmButtonText: "Confirm & Add",
+                          confirmButtonText: "Confirm & Add Link",
                           confirmButtonColor: "#2563eb",
                           preConfirm: () => {
                             const name = (
@@ -21163,7 +21163,7 @@ function PostForm({
                               );
                               return null;
                             }
-                            return { name: name || " File Attachment", url, isDirect };
+                            return { name: name || "File Attachment", url, isDirect };
                           },
                         }).then((result) => {
                           if (result.isConfirmed && result.value) {
@@ -21171,10 +21171,11 @@ function PostForm({
                           }
                         });
                       }}
-                      className="p-2.5 bg-white border-2 border-slate-100 rounded-xl text-blue-600 hover:bg-blue-50 transition-all shadow-sm"
-                      title="Add by Link"
+                      className="px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center gap-2 text-xs uppercase tracking-wide"
+                      title="Add by Link / Drive / Cloudflare R2"
                     >
-                      <Plus size={18} />
+                      <Link2 size={16} />
+                      <span> Add Link (లింక్ ద్వారా చేర్చండి)</span>
                     </button>
                   </div>
                 </div>
@@ -21194,183 +21195,213 @@ function PostForm({
 
             {/* Attachment List Preview (The "Box" below) */}
             {attachments.length > 0 && (
-              <div className="bg-slate-50/50 border-2 border-slate-100 rounded-3xl p-6 space-y-4 shadow-sm">
+              <div className="bg-slate-50/70 border-2 border-slate-200/80 rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-sm max-w-[609px] w-full">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[12px] font-black text-gray-800 uppercase tracking-widest font-sans">
+                  <span className="text-[12px] font-black text-gray-800 uppercase tracking-widest font-sans flex items-center gap-2">
+                    <FileText size={15} className="text-blue-600" />
                     Download Options (Total - {attachments.length})
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    Drag to reorder
                   </span>
                 </div>
                 <Reorder.Group
                   axis="y"
                   values={attachments}
                   onReorder={setAttachments}
-                  className="flex flex-col gap-2"
+                  className="flex flex-col gap-3"
                 >
                   {attachments.map((att, idx) => (
                     <Reorder.Item
-                      key={att.url}
+                      key={att.url + idx}
                       value={att}
-                      className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] cursor-grab active:cursor-grabbing"
+                      className="flex flex-col bg-white border border-slate-200 hover:border-blue-400 rounded-xl shadow-xs transition-all overflow-hidden p-2.5 gap-2 cursor-grab active:cursor-grabbing"
                     >
-                      <div className="flex items-center h-full min-w-0">
-                        {/* Drag Handle */}
-                        <div className="px-1 text-slate-300 group-hover:text-slate-400">
-                          <GripVertical size={14} />
-                        </div>
+                      {/* Top Bar: Icon, Name, Status, Version Badge & Controls */}
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {/* Drag Handle */}
+                          <div className="text-slate-300 hover:text-slate-500 shrink-0 cursor-grab">
+                            <GripVertical size={15} />
+                          </div>
 
-                        <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc] relative overflow-hidden">
-                          {/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || (att.url || "").includes("image") ? (
-                            <SmartImage src={att.url} alt="Thumb" className="w-full h-full object-cover" allowLightbox={false} />
-                          ) : (
-                            <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
+                          {/* File Icon / Thumb */}
+                          <div className="w-7 h-7 bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200 rounded-md relative overflow-hidden">
+                            {/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || (att.url || "").includes("image") ? (
+                              <SmartImage src={att.url} alt="Thumb" className="w-full h-full object-cover" allowLightbox={false} />
+                            ) : (
                               <ArrowDown
-                                size={12}
-                                className="text-[#666666]"
-                                strokeWidth={4}
+                                size={13}
+                                className="text-slate-600"
+                                strokeWidth={3}
                               />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col px-3 min-w-0">
-                          <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                            {att.name}
-                          </span>
-                          <span className="text-[9px] font-medium text-slate-400 truncate max-w-[200px]">
-                            {att.url}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 pr-3">
-                        {/* Status Toggle (New/Old) */}
-                        <div className="flex bg-slate-100 p-0.5 rounded border border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAttachments((prev) =>
-                                prev.map((a, i) =>
-                                  i === idx
-                                    ? {
-                                        ...a,
-                                        status:
-                                          a.status === "New"
-                                            ? undefined
-                                            : "New",
-                                      }
-                                    : a,
-                                ),
-                              )
-                            }
-                            className={`px-1.5 py-0.5 rounded text-[8px] font-black transition-all ${att.status === "New" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-emerald-500"}`}
-                          >
-                            NEW
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAttachments((prev) =>
-                                prev.map((a, i) =>
-                                  i === idx
-                                    ? {
-                                        ...a,
-                                        status:
-                                          a.status === "Old"
-                                            ? undefined
-                                            : "Old",
-                                      }
-                                    : a,
-                                ),
-                              )
-                            }
-                            className={`px-1.5 py-0.5 rounded text-[8px] font-black transition-all ${att.status === "Old" ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-rose-500"}`}
-                          >
-                            OLD
-                          </button>
-                        </div>
+                            )}
+                          </div>
 
-                        {/* Version Label / Dropdown */}
-                        <div
-                          className="flex items-center gap-0.5 bg-blue-50/50 px-1 py-0.5 rounded border border-blue-100/50"
-                          title="Change Version & Type"
-                        >
-                          <select
-                            value={att.badgePrefix || "v"}
+                          {/* File Name Input */}
+                          <input
+                            type="text"
+                            value={att.name || ""}
                             onChange={(e) => {
-                              const newPrefix = e.target.value;
+                              const newName = e.target.value;
                               setAttachments((prev) =>
-                                prev.map((a, i) =>
-                                  i === idx ? { ...a, badgePrefix: newPrefix } : a,
-                                ),
+                                prev.map((a, i) => (i === idx ? { ...a, name: newName } : a))
                               );
                             }}
-                            className="text-[9px] font-black text-blue-500 uppercase leading-none bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[12px] text-center pl-1"
-                          >
-                            <option value="v">v</option>
-                            <option value="Alapa">Alapa</option>
-                            <option value="EXE">EXE</option>
-                            <option value="Doc">Doc</option>
-                            <option value="PDF">PDF</option>
-                            <option value="Tool">Tool</option>
-                          </select>
-                          <select
-                            value={att.version || "1.0"}
-                            onChange={(e) => {
-                              const newVer = e.target.value;
-                              setAttachments((prev) =>
-                                prev.map((a, i) =>
-                                  i === idx ? { ...a, version: newVer } : a,
-                                ),
-                              );
-                            }}
-                            className="text-[9px] font-bold text-blue-600 leading-none bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[18px] text-center"
-                          >
-                            {[
-                              "1.0",
-                              "2.0",
-                              "3.0",
-                              "4.0",
-                              "5.0",
-                              "6.0",
-                              "7.0",
-                              "8.0",
-                              "9.0",
-                              "10.0",
-                            ].map((v) => (
-                              <option key={v} value={v}>
-                                {v}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown
-                            size={8}
-                            className="text-blue-400 mr-1"
-                            strokeWidth={4}
+                            placeholder="File Name (e.g. UBD_Site_Setup.bat)"
+                            className="text-xs font-bold text-blue-900 bg-slate-50 border border-slate-200 hover:border-blue-300 focus:border-blue-500 focus:bg-white outline-none truncate py-1 px-2 rounded-md transition-all flex-1 min-w-0"
                           />
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReplaceIndex(idx);
-                            fileInputRef.current?.click();
-                          }}
-                          className="text-slate-300 hover:text-blue-500 p-1 transition-colors"
-                          title="Replace file"
-                        >
-                          <Upload size={14} />
-                        </button>
-                        
-                        <button
-                          type="button"
-                          onClick={() =>
+                        {/* Badges & Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Status Toggle (NEW / OLD) */}
+                          <div className="flex bg-slate-100 p-0.5 rounded-md border border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAttachments((prev) =>
+                                  prev.map((a, i) =>
+                                    i === idx
+                                      ? {
+                                          ...a,
+                                          status:
+                                            a.status === "New"
+                                              ? undefined
+                                              : "New",
+                                        }
+                                      : a,
+                                  ),
+                                )
+                              }
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-black transition-all ${att.status === "New" ? "bg-emerald-500 text-white shadow-xs" : "text-slate-400 hover:text-emerald-600"}`}
+                            >
+                              NEW
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAttachments((prev) =>
+                                  prev.map((a, i) =>
+                                    i === idx
+                                      ? {
+                                          ...a,
+                                          status:
+                                            a.status === "Old"
+                                              ? undefined
+                                              : "Old",
+                                        }
+                                      : a,
+                                  ),
+                                )
+                              }
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-black transition-all ${att.status === "Old" ? "bg-rose-500 text-white shadow-xs" : "text-slate-400 hover:text-rose-600"}`}
+                            >
+                              OLD
+                            </button>
+                          </div>
+
+                          {/* Version Badge Selectors */}
+                          <div
+                            className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md"
+                            title="Change Prefix & Version"
+                          >
+                            <select
+                              value={att.badgePrefix || "v"}
+                              onChange={(e) => {
+                                const newPrefix = e.target.value;
+                                setAttachments((prev) =>
+                                  prev.map((a, i) =>
+                                    i === idx ? { ...a, badgePrefix: newPrefix } : a,
+                                  ),
+                                );
+                              }}
+                              className="text-[9px] font-black text-blue-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer outline-none"
+                            >
+                              <option value="v">v</option>
+                              <option value="TOOL">TOOL</option>
+                              <option value="EXE">EXE</option>
+                              <option value="Doc">Doc</option>
+                              <option value="PDF">PDF</option>
+                              <option value="Alapa">Alapa</option>
+                            </select>
+                            <select
+                              value={att.version || "1.0"}
+                              onChange={(e) => {
+                                const newVer = e.target.value;
+                                setAttachments((prev) =>
+                                  prev.map((a, i) =>
+                                    i === idx ? { ...a, version: newVer } : a,
+                                  ),
+                                );
+                              }}
+                              className="text-[9px] font-black text-blue-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer outline-none"
+                            >
+                              {[
+                                "1.0",
+                                "2.0",
+                                "3.0",
+                                "4.0",
+                                "5.0",
+                                "6.0",
+                                "7.0",
+                                "8.0",
+                                "9.0",
+                                "10.0",
+                              ].map((v) => (
+                                <option key={v} value={v}>
+                                  {v}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplaceIndex(idx);
+                              fileInputRef.current?.click();
+                            }}
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Replace file"
+                          >
+                            <Upload size={13} />
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAttachments((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              )
+                            }
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Remove attachment"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Bottom Bar: External Link Input */}
+                      <div className="flex items-center gap-1.5 bg-amber-50/70 border border-amber-200/80 rounded-lg px-2 py-1 w-full">
+                        <Link2 size={12} className="text-amber-600 shrink-0" />
+                        <span className="text-[9px] font-bold uppercase text-amber-800 shrink-0">
+                          Link:
+                        </span>
+                        <input
+                          type="text"
+                          value={att.url || ""}
+                          onChange={(e) => {
+                            const newUrl = e.target.value;
                             setAttachments((prev) =>
-                              prev.filter((_, i) => i !== idx),
-                            )
-                          }
-                          className="text-slate-300 hover:text-red-500 p-1 transition-colors"
-                          title="Remove file"
-                        >
-                          <X size={14} />
-                        </button>
+                              prev.map((a, i) => (i === idx ? { ...a, url: newUrl } : a))
+                            );
+                          }}
+                          placeholder="Paste Cloudflare R2 / Google Drive / Direct URL..."
+                          className="text-[10px] font-medium text-slate-700 bg-transparent outline-none border-none w-full placeholder:text-amber-400/80"
+                        />
                       </div>
                     </Reorder.Item>
                   ))}
