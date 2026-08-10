@@ -4066,141 +4066,135 @@ export default function App() {
       </AnimatePresence>
 
       <>
-      <header className="sticky top-0 z-[1001] shadow-xl bg-[#103052] border-b-[3px] border-[#fbe947] flex items-center justify-between px-3 sm:px-6 py-2 min-h-[60px] gap-2">
-        <div
-          className="brand-wrapper cursor-pointer flex items-center gap-2 sm:gap-3.5 min-w-0 shrink-0"
-          onClick={() => {
-            const newSearch = new URLSearchParams();
-            newSearch.set("tab", "home");
-            navigate({ pathname: "/", search: newSearch.toString() });
-            setCurrentTab("home");
-                    setSidebarOpen(false);
-          }}
-        >
-          {/* లోగో HTML స్ట్రక్చర్ */}
-          <div className="logo-pro cursor-pointer transition-transform hover:scale-105 active:scale-95 duration-200 shrink-0">
-            {/* యానిమేటెడ్ పార్టికల్స్ */}
-            <div className="logo-particles">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
+      <header className="sticky top-0 z-[1001] shadow-lg bg-[#0d2a4a] border-b border-[#fbe947]/40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
+          {/* Left Brand Area */}
+          <div
+            className="brand-wrapper cursor-pointer flex items-center gap-2 sm:gap-3 shrink-0"
+            onClick={() => {
+              const newSearch = new URLSearchParams();
+              newSearch.set("tab", "home");
+              navigate({ pathname: "/", search: newSearch.toString() });
+              setCurrentTab("home");
+              setSidebarOpen(false);
+            }}
+          >
+            {/* లోగో HTML స్ట్రక్చర్ */}
+            <div className="logo-pro cursor-pointer transition-transform hover:scale-105 active:scale-95 duration-200 shrink-0">
+              {/* యానిమేటెడ్ పార్టికల్స్ */}
+              <div className="logo-particles">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
 
-            {/* SVG లోగో */}
-            <svg
-              viewBox="0 0 64 64"
-              className="w-9 h-9 sm:w-11 sm:h-11 shrink-0"
-            >
-              <defs>
-                {/* కలర్ గ్రేడియంట్స్ */}
-                <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#22c55e" />
-                  <stop offset="100%" stopColor="#0ea5e9" />
-                </linearGradient>
-                <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#22c55e" />
-                  <stop offset="50%" stopColor="#facc15" />
-                  <stop offset="100%" stopColor="#0ea5e9" />
-                </linearGradient>
-              </defs>
-
-              {/* బయటి రింగ్ */}
-              <circle
-                className="logo-ring"
-                cx="32"
-                cy="32"
-                r="29"
-                fill="none"
-                stroke="url(#ringG)"
-                strokeWidth="2.5"
-                strokeDasharray="10 5"
-              />
-
-              {/* లోపలి సర్కిల్స్ */}
-              <circle cx="32" cy="32" r="25" fill="url(#g)" />
-              <circle cx="32" cy="32" r="21" fill="#0d3b66" />
-
-              {/* EV టెక్స్ట్ */}
-              <text
-                x="50%"
-                y="54%"
-                dominantBaseline="middle"
-                textAnchor="middle"
-                fill="#fff"
-                fontSize="18"
-                fontWeight="900"
-                fontFamily="Segoe UI"
+              {/* SVG లోగో */}
+              <svg
+                viewBox="0 0 64 64"
+                className="w-9 h-9 sm:w-10 sm:h-10 shrink-0"
               >
-                EV
-              </text>
-            </svg>
-          </div>
-          {/* Website Name Section */}
-          <div className="flex flex-col justify-center translate-y-[-1px] shrink min-w-0">
-            <h2
-              className="brand-title text-[15px] sm:text-[18px] md:text-[20px] lg:text-[22px] whitespace-nowrap overflow-hidden text-ellipsis"
-              style={{
-                color: "#fbe947",
-                background: "none",
-                WebkitTextFillColor: "initial",
-                WebkitBackgroundClip: "initial",
-                filter: "none",
-                animation: "none",
-                fontWeight: "900",
-                letterSpacing: "1px",
-                fontFamily: '"Arial Black", Impact, sans-serif',
-                lineHeight: "1.2",
-              }}
-            >
-              E<span style={{ color: "#facc15" }}>-</span>VEDHIKA
-            </h2>
-            <div className="flex items-center">
-              <span
-                className="whitespace-nowrap overflow-hidden text-ellipsis text-[7px] sm:text-[9px] md:text-[10px]"
+                <defs>
+                  {/* కలర్ గ్రేడియంట్స్ */}
+                  <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" />
+                    <stop offset="100%" stopColor="#0ea5e9" />
+                  </linearGradient>
+                  <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#22c55e" />
+                    <stop offset="50%" stopColor="#facc15" />
+                    <stop offset="100%" stopColor="#0ea5e9" />
+                  </linearGradient>
+                </defs>
+
+                {/* బయటి రింగ్ */}
+                <circle
+                  className="logo-ring"
+                  cx="32"
+                  cy="32"
+                  r="29"
+                  fill="none"
+                  stroke="url(#ringG)"
+                  strokeWidth="2.5"
+                  strokeDasharray="10 5"
+                />
+
+                {/* లోపలి సర్కిల్స్ */}
+                <circle cx="32" cy="32" r="25" fill="url(#g)" />
+                <circle cx="32" cy="32" r="21" fill="#0d3b66" />
+
+                {/* EV టెక్స్ట్ */}
+                <text
+                  x="50%"
+                  y="54%"
+                  dominantBaseline="middle"
+                  textAnchor="middle"
+                  fill="#fff"
+                  fontSize="18"
+                  fontWeight="900"
+                  fontFamily="Segoe UI"
+                >
+                  EV
+                </text>
+              </svg>
+            </div>
+            {/* Website Name Section */}
+            <div className="flex flex-col justify-center translate-y-[-1px] shrink min-w-0">
+              <h2
+                className="brand-title text-[15px] sm:text-[18px] md:text-[20px] leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
                 style={{
-                  fontWeight: "800",
-                  letterSpacing: "0.5px",
-                  color: "#94a3b8",
-                  textTransform: "uppercase",
+                  color: "#fbe947",
+                  background: "none",
+                  WebkitTextFillColor: "initial",
+                  WebkitBackgroundClip: "initial",
+                  filter: "none",
+                  animation: "none",
+                  fontWeight: "900",
+                  letterSpacing: "0.8px",
+                  fontFamily: '"Arial Black", Impact, sans-serif',
                 }}
               >
-                all problems one solution
-              </span>
+                E<span style={{ color: "#facc15" }}>-</span>VEDHIKA
+              </h2>
+              <div className="flex items-center">
+                <span
+                  className="whitespace-nowrap overflow-hidden text-ellipsis text-[8px] sm:text-[9px] font-extrabold tracking-wider text-slate-300 uppercase"
+                >
+                  all problems one solution
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex-1 flex justify-center sm:justify-center px-1 sm:px-4 min-w-0">
-          <div className="flex items-center gap-1 bg-[#0a213a] border border-white/15 rounded-full p-1 shadow-inner">
-            <span className="hidden lg:inline text-[10px] font-extrabold text-slate-300 uppercase tracking-wider px-2 select-none">అక్షరాల సైజు</span>
-            <button
-              onClick={() => setTextZoom("normal")}
-              className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "normal" ? "bg-[#fbe947] text-[#103052] shadow-sm font-black" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
-              title="సాధారణ సైజు"
-            >
-              <span className="hidden sm:inline">సాధారణం (A)</span>
-              <span className="inline sm:hidden">A</span>
-            </button>
-            <button
-              onClick={() => setTextZoom("large")}
-              className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "large" ? "bg-[#fbe947] text-[#103052] shadow-sm font-black" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
-              title="పెద్ద సైజు"
-            >
-              <span className="hidden sm:inline">పెద్దది (A+)</span>
-              <span className="inline sm:hidden">A+</span>
-            </button>
-            <button
-              onClick={() => setTextZoom("xlarge")}
-              className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#103052] shadow-sm font-black" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
-              title="చాలా పెద్ద సైజు"
-            >
-              <span className="hidden sm:inline">మహా పెద్దది (A++)</span>
-              <span className="inline sm:hidden">A++</span>
-            </button>
+          {/* Center Font Size Switcher (only on XL screens to prevent overlap) */}
+          <div className="hidden xl:flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-1 bg-[#071a30] border border-white/15 rounded-full p-1 shadow-inner">
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-wider px-2 select-none">అక్షరాల సైజు</span>
+              <button
+                onClick={() => setTextZoom("normal")}
+                className={`text-[9.5px] font-black uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "normal" ? "bg-[#fbe947] text-[#0d2a4a] shadow-xs" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
+                title="సాధారణ సైజు"
+              >
+                సాధారణం (A)
+              </button>
+              <button
+                onClick={() => setTextZoom("large")}
+                className={`text-[9.5px] font-black uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "large" ? "bg-[#fbe947] text-[#0d2a4a] shadow-xs" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
+                title="పెద్ద సైజు"
+              >
+                పెద్దది (A+)
+              </button>
+              <button
+                onClick={() => setTextZoom("xlarge")}
+                className={`text-[9.5px] font-black uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#0d2a4a] shadow-xs" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
+                title="చాలా పెద్ద సైజు"
+              >
+                మహా పెద్దది (A++)
+              </button>
+            </div>
           </div>
-        </div>
         
-        <div className="flex items-center gap-1 sm:gap-5">
+          {/* Right Action Icons & User Profile */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <div className="relative">
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0 sm:mr-3 rounded-full hover:bg-white/10"
@@ -4493,6 +4487,7 @@ export default function App() {
               </span>
             </button>
           )}
+          </div>
         </div>
       </header>
 
@@ -18703,13 +18698,14 @@ function PostCard({
                 year: "numeric",
                 hour: "2-digit",
                 minute: "2-digit",
+                hour12: true,
               })}
             </span>
             {(post.lastEditedAt || post.updatedAt) && (
               <>
                 <span>•</span>
-                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200/60 lowercase flex items-center gap-1">
-                  అప్డేట్: {new Date(typeof (post.lastEditedAt || post.updatedAt) === 'number' ? (post.lastEditedAt || post.updatedAt) : ((post.lastEditedAt || post.updatedAt).seconds ? (post.lastEditedAt || post.updatedAt).seconds * 1000 : (post.lastEditedAt || post.updatedAt))).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200/60 flex items-center gap-1">
+                  Last Update: {new Date(typeof (post.lastEditedAt || post.updatedAt) === 'number' ? (post.lastEditedAt || post.updatedAt) : ((post.lastEditedAt || post.updatedAt).seconds ? (post.lastEditedAt || post.updatedAt).seconds * 1000 : (post.lastEditedAt || post.updatedAt))).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
                 </span>
               </>
             )}
@@ -19597,6 +19593,15 @@ function PostCard({
   );
 }
 
+function toDatetimeLocalString(val: any): string {
+  if (!val) return "";
+  let ms = typeof val === 'number' ? val : (val.seconds ? val.seconds * 1000 : Date.now());
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function PostForm({
   addToast,
   onCancel,
@@ -19630,6 +19635,22 @@ function PostForm({
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
     editingPost?.downloadStyle || "techspot",
   );
+  const [updateTimeOption, setUpdateTimeOption] = useState<"now" | "custom" | "keep">(
+    editingPost ? "now" : "now"
+  );
+  const [customUpdateTime, setCustomUpdateTime] = useState<string>(() => {
+    if (editingPost?.lastEditedAt) {
+      return toDatetimeLocalString(editingPost.lastEditedAt);
+    }
+    return toDatetimeLocalString(Date.now());
+  });
+  const [overrideCreatedTime, setOverrideCreatedTime] = useState<boolean>(false);
+  const [customCreatedTime, setCustomCreatedTime] = useState<string>(() => {
+    if (editingPost) {
+      return toDatetimeLocalString(editingPost.createdAt || editingPost.time);
+    }
+    return toDatetimeLocalString(Date.now());
+  });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20071,10 +20092,36 @@ function PostForm({
       }
 
       if (editingPost) {
-        await updateDoc(doc(db, "posts", editingPost.id), {
+        const updatePayload: any = {
           ...postData,
-          lastEditedAt: Date.now(),
-        });
+        };
+
+        if (updateTimeOption === "now") {
+          updatePayload.lastEditedAt = Date.now();
+        } else if (updateTimeOption === "custom") {
+          if (customUpdateTime) {
+            const parsedMs = new Date(customUpdateTime).getTime();
+            updatePayload.lastEditedAt = !isNaN(parsedMs) ? parsedMs : Date.now();
+          } else {
+            updatePayload.lastEditedAt = Date.now();
+          }
+        } else if (updateTimeOption === "keep") {
+          if (editingPost.lastEditedAt) {
+            updatePayload.lastEditedAt = editingPost.lastEditedAt;
+          } else {
+            updatePayload.lastEditedAt = deleteField();
+          }
+        }
+
+        if (overrideCreatedTime && customCreatedTime) {
+          const parsedCreatedMs = new Date(customCreatedTime).getTime();
+          if (!isNaN(parsedCreatedMs)) {
+            updatePayload.createdAt = parsedCreatedMs;
+            updatePayload.time = parsedCreatedMs;
+          }
+        }
+
+        await updateDoc(doc(db, "posts", editingPost.id), updatePayload);
         addToast("Update Saved!");
         
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
@@ -20088,6 +20135,12 @@ function PostForm({
           postId: editingPost.id
         }).catch(()=>console.error("Failed to add post update notif"));
       } else {
+        let postTime = Date.now();
+        if (overrideCreatedTime && customCreatedTime) {
+          const parsedCreatedMs = new Date(customCreatedTime).getTime();
+          if (!isNaN(parsedCreatedMs)) postTime = parsedCreatedMs;
+        }
+
         const docRef = await addDoc(collection(db, "posts"), {
           ...postData,
           subCategory: "",
@@ -20096,8 +20149,8 @@ function PostForm({
           views: 0,
           commentCount: 0,
           comments: [],
-          time: Date.now(),
-          createdAt: Date.now(),
+          time: postTime,
+          createdAt: postTime,
           uid: auth.currentUser.uid,
           userEmail: auth.currentUser.email || "",
           userName:
@@ -21288,6 +21341,120 @@ function PostForm({
                 </div>
               </div>
             )}
+
+            {/* Post Date & Time Settings */}
+            <div className="p-5 border-2 border-amber-200 bg-amber-50/60 rounded-3xl space-y-4 shadow-sm my-6 text-left">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <label className="text-[11px] font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
+                  <Clock size={16} className="text-amber-600" />
+                  <span>📅 పోస్ట్ ప్రచురణ & అప్డేట్ సమయం (POST DATE & TIME OPTIONS)</span>
+                </label>
+                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                  {editingPost ? "పోస్ట్ ఎడిట్ మోడ్" : "కొత్త పోస్ట్ మోడ్"}
+                </span>
+              </div>
+
+              {editingPost && (
+                <div className="space-y-3 bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
+                  <span className="text-xs font-black text-slate-800 block uppercase tracking-wide">
+                    1. అప్డేట్ టైమ్ అండ్ డేట్ ఆప్షన్ (LAST EDITED TIMESTAMP):
+                  </span>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    పోస్ట్ సవరించినప్పుడు అప్డేట్ డేట్ చూపించాలా లేదా పాత పోస్ట్ టైమ్‌నే ఉంచాలా ఎంచుకోండి:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "now" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
+                      <input
+                        type="radio"
+                        name="updateTimeOption"
+                        value="now"
+                        checked={updateTimeOption === "now"}
+                        onChange={() => setUpdateTimeOption("now")}
+                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div className="text-xs">
+                        <span className="font-black text-slate-800 block">⚡ ఇప్పటి సమయం (Now)</span>
+                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">నేటి ప్రస్తుత డేట్ & టైమ్ సేవ్‌అవుతుంది</span>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "custom" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
+                      <input
+                        type="radio"
+                        name="updateTimeOption"
+                        value="custom"
+                        checked={updateTimeOption === "custom"}
+                        onChange={() => setUpdateTimeOption("custom")}
+                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div className="text-xs">
+                        <span className="font-black text-slate-800 block">📅 కస్టమ్ డేట్ & టైమ్</span>
+                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">మీకు నచ్చిన డేట్ & టైమ్‌ను ఎంచుకోండి</span>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "keep" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
+                      <input
+                        type="radio"
+                        name="updateTimeOption"
+                        value="keep"
+                        checked={updateTimeOption === "keep"}
+                        onChange={() => setUpdateTimeOption("keep")}
+                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div className="text-xs">
+                        <span className="font-black text-slate-800 block">⏳ పాత డేట్‌నే ఉంచండి</span>
+                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">అసలు క్రియేషన్ డేట్‌నే మార్చకుండా ఉంచుతుంది</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {updateTimeOption === "custom" && (
+                    <div className="mt-3 p-3 bg-amber-100/60 border border-amber-300 rounded-xl space-y-1">
+                      <label className="text-[10px] font-black text-amber-900 uppercase tracking-widest block">
+                        అప్డేట్ తేదీ & సమయం ఎంచుకోండి (Custom Last Edited Date):
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={customUpdateTime}
+                        onChange={(e) => setCustomUpdateTime(e.target.value)}
+                        className="w-full text-xs font-bold p-2.5 bg-white rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Original Creation Date Option */}
+              <div className="bg-white p-4 rounded-2xl border border-amber-200 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={overrideCreatedTime}
+                    onChange={(e) => setOverrideCreatedTime(e.target.checked)}
+                    className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                    {editingPost ? "2. అసలు పోస్ట్ క్రియేట్ చేసిన తేదీ / సమయం మార్చండి (Override Creation Date)" : "కొత్త పోస్ట్‌కు ప్రత్యేక ప్రచురణ తేదీ/సమయాన్ని కేటాయించండి (Set Custom Created Date)"}
+                  </span>
+                </label>
+
+                {overrideCreatedTime && (
+                  <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">
+                      ప్రచురణ తేదీ & సమయం (Created Date & Time):
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={customCreatedTime}
+                      onChange={(e) => setCustomCreatedTime(e.target.value)}
+                      className="w-full text-xs font-bold p-2.5 bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
 
