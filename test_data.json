@@ -1,0 +1,274 @@
+{
+  "name": "projects/e-vedhika-258f2/databases/(default)/documents/posts/qkQ9PDCxO0myy5l2seda",
+  "fields": {
+    "subCategory": {
+      "stringValue": ""
+    },
+    "commentCount": {
+      "integerValue": "33"
+    },
+    "tags": {
+      "arrayValue": {
+        "values": [
+          {
+            "stringValue": "UBD"
+          },
+          {
+            "stringValue": "UBD SETTINGS"
+          },
+          {
+            "stringValue": "UBD NOT WORKING"
+          }
+        ]
+      }
+    },
+    "pinned": {
+      "booleanValue": true
+    },
+    "lastEditedBy": {
+      "stringValue": "KGT2roF9bPTNhWIceHgWsJEnEnH3"
+    },
+    "downloadStyle": {
+      "stringValue": "techspot"
+    },
+    "likedBy": {
+      "arrayValue": {
+        "values": [
+          {
+            "stringValue": "KFBcQ6H7FPewaEdKyALPkA59Awh2"
+          }
+        ]
+      }
+    },
+    "userPhoto": {
+      "stringValue": ""
+    },
+    "time": {
+      "integerValue": "1777925231176"
+    },
+    "comments": {
+      "arrayValue": {}
+    },
+    "content": {
+      "stringValue": "🚀 **E-VEDHIKA UBD DEPLOYMENT TOOL (v1.0.0-RC) RELEASED** 🚀\n🌟 **UBD Portal Settings, DSC & Browser Issues కి ఒకే ఒక్క ఫుల్ అండ్ ఫైనల్ సొల్యూషన్!**\n\nUBD Portal Setup కోసం Registry Settings, Trusted Sites, Edge IE Mode, DigiSigner, DSC Drivers, Token Support వంటి అనేక సెట్టింగ్స్\u200cను ఇకపై మాన్యువల్ గా (Manual) కన్ఫిగర్ చేయాల్సిన రోజులు ముగిశాయి!\n\n🐛 **Major Bug Fix - శాశ్వత పరిష్కారం:**\n\u003e `TypeError: Unable to set property 'value' of undefined or null reference`\n\u003e ఉదయం నుండి చాలా మంది UBD పోర్టల్\u200cలో ఫేస్ చేస్తున్న ఈ ఇష్యూకి 100% పరిష్కారం. Cross-domain Data Access & Mixed Content సెక్యూరిటీ బ్లాక్ అవ్వకుండా ఈ టూల్ ఆటోమేటిక్ గా రిజిస్ట్రీలో (Registry) ఫిక్స్ చేస్తుంది.\n\n---\n\n🔥 **REAL HIGHLIGHTS OF v1.0.0-RC (V9.0) - కొత్త ఫీచర్స్**\n\n* **1. సింగిల్ Standalone EXE ఫైల్:** ఇదొక సింగిల్ `.exe` అప్లికేషన్. డైరెక్ట్ గా 'Run as Administrator' మీద క్లిక్ చేస్తే చాలు.\n*(గమనిక: బ్రౌజర్\u200cలో ఫేక్ వైరస్ వార్నింగ్స్ రాకుండా ఉండటం కోసం దీనిని డౌన్\u200cలోడ్ లింక్\u200cలో ఒక .zip ఫైల్\u200cగా ప్యాక్ చేసి ఇవ్వడం జరిగింది).*\n* **2. పాత సెట్టింగ్స్ ఆటో-క్లీనప్:** పాత `.bat` ఫైల్స్ లేదా మాన్యువల్ గా చేసిన సెట్టింగ్స్ వల్ల వచ్చే కాన్ఫ్లిక్ట్స్\u200cను నివారించడానికి, పాత IE/Edge పాలసీలను మరియు Trusted Sites ని ఆటోమేటిక్ గా క్లీన్ చేసి ఫ్రెష్ గా సెటప్ చేస్తుంది.\n* **3. Edge IE Mode & sites.xml ఆటో క్రియేషన్:** Edge బ్రౌజర్\u200cలో UBD పోర్టల్ సరిగ్గా రన్ అవ్వడానికి కావాల్సిన `sites.xml` ఫైల్\u200cను సిస్టమ్\u200cలో క్రియేట్ చేసి, ఆ పాలసీలను అప్లై చేస్తుంది.\n* **4. పర్ఫెక్ట్ Trusted Sites & ActiveX సెటప్:** `ubd.telangana.gov.in` కోసం మాత్రమే కచ్చితమైన పర్మిషన్స్ రిజిస్ట్రీలో సెట్ చేస్తుంది. Mixed Content ఎర్రర్స్ రాకుండా రిజిస్ట్రీ కీ `1609` ని సెట్ చేస్తుంది.\n* **5. DigiSigner & DSC టోకెన్ సపోర్ట్:** NIC DigiSigner లేకపోతే ఆటోమేటిక్ గా ఇన్\u200cస్టాల్ చేస్తుంది. ProxKey మరియు HYP లాంటి DSC డ్రైవర్స్ ఉన్నాయో లేదో చెక్ చేస్తుంది.\n* **6. సెంట్రల్ టెలిమెట్రీ (Central Live Dashboard):** టూల్ రన్ అయిన తర్వాత, ఏ సిస్టమ్ (PC Name) లో రన్ అయింది, సెటప్ సక్సెస్ అయిందా లేదా అనేది డైరెక్ట్ గా E-Vedhika సర్వర్ కి పంపిస్తుంది. ఏ ఆఫీస్ సిస్టమ్ సెట్ అయిందో లైవ్ లో ట్రాక్ చేయవచ్చు.\n* **7. .NET Framework 3.5 చెకింగ్:** టోకెన్స్ కోసం అవసరమైన `.NET 3.5` సిస్టమ్\u200cలో లేకపోతే దాన్ని ఆటోమేటిక్ గా ఎనేబుల్ చేస్తుంది.\n\n---\n📜 **VERSION HISTORY - మన ప్రయాణం (V1.0 To V9.0)**\n\n🔹 **V1.0 (UBD_Site_Setup.bat): ప్రాథమిక అడుగు**\nE-Vedhika ప్రాజెక్ట్\u200cలో మొదటి వెర్షన్. ఇది కేవలం బేసిక్ UBD Site Settings మరియు Trusted Sites ని మాత్రమే కాన్ఫిగర్ చేసేది.\n\n🔹 **V6.0 (E-Vedhika_Deployment.zip): వేగవంతమైన సెటప్**\nడెవలప్\u200cమెంట్ ప్రాసెస్\u200cని ఒక అడుగు ముందుకు తీసుకెళ్లి, DigiSigner Support, Edge IE Mode మరియు బేసిక్ DSC Driver సపోర్ట్\u200cను తీసుకువచ్చిన వెర్షన్.\n\n🔹 **V7.0 (E-Vedhika-V7.0.zip): మాస్టర్ టూల్**\nSmart Diagnostics, ఆటోమేటిక్ టోకెన్ సపోర్ట్ మరియు Windows సిస్టమ్స్\u200cతో మరింత మెరుగైన కంపాటిబిలిటీని అందించిన వెర్షన్.\n\n🔹 **V8.0 (E-Vedhika_UBD_Deployment_Tool_V8.0.zip): అడ్వాన్స్\u200cడ్ వెర్షన్**\nDeployment Reports, స్మార్ట్ ఫైల్ వెరిఫికేషన్, మరియు సిస్టమ్ రిపేర్ కోసం మొట్టమొదటిసారిగా డెస్క్\u200cటాప్\u200cపై `E-Vedhika Repair` షార్ట్\u200cకట్\u200cను పరిచయం చేసిన వెర్షన్.\n\n🚀 **V9.0 (e-Vedhika_UBD_Deployment_v1.0.0-RC): ది అల్టిమేట్ రిలీజ్**\nఇప్పటి వరకు వచ్చిన అత్యంత పవర్\u200cఫుల్ వెర్షన్! సెంట్రల్ డ్యాష్\u200cబోర్డ్ రిపోర్టింగ్, రిజిస్ట్రీ క్లీనప్ మరియు 100% ఆటోమేషన్ ఫీచర్స్\u200cతో వచ్చిన ఫైనల్ సొల్యూషన్.\n\n---\n\n🛠 **BUILT-IN AUTO REPAIR SYSTEM**\n\nWindows Updates వల్ల గానీ, బ్రౌజర్ అప్\u200cడేట్ వల్ల గానీ భవిష్యత్తులో సెట్టింగ్స్ పోతే టెన్షన్ అవసరం లేదు.\nDesktop లో ఆటోమేటిక్ గా క్రియేట్ అయ్యే:\n📌 **\"E-Vedhika Repair\"**\nషార్ట్\u200cకట్\u200c ద్వారా కేవలం కొన్ని సెకన్లలో సెట్టింగ్స్ అన్నీ మళ్ళీ Restore చేసుకోవచ్చు!\n\n---\n\n📥 **EASY INSTALLATION STEPS**\n\n1️⃣ **Download:** `e-Vedhika_UBD_Deployment_v1.0.0-RC.zip` డౌన్\u200cలోడ్ చేసుకోండి.\n2️⃣ **Extract & Run:** డౌన్\u200cలోడ్ అయిన ZIP ఫైల్\u200cను Extract చేసి, అందులోని `.exe` ఫైల్ పై Right Click చేసి → **Run As Administrator** గా ఓపెన్ చేయండి.\n3️⃣ **Wait:** సెటప్ మరియు డిప్లాయ్\u200cమెంట్ పూర్తయ్యే వరకు వేచి ఉండండి.\n4️⃣ **Plug Token:** మీ DSC Token ని సిస్టమ్\u200cకి కనెక్ట్ చేయండి.\n5️⃣ **Start Using:** ఎలాంటి ఎర్రర్స్ లేకుండా UBD Portal ని వాడుకోండి!\n---\n💡 **WD ProxKey యూజర్లకు ఒక ముఖ్యమైన సూచన:**\nఒకవేళ మీరు WD ProxKey టోకెన్ వాడుతున్నట్లయితే, దాన్ని సిస్టమ్\u200cకి కనెక్ట్ చేసిన తర్వాత దానికదే ఒక డ్రైవ్\u200cలా చూపిస్తుంది. మీరు టోకెన్ ఫైల్స్ ఓపెన్ చేసి, `image_a90093.png` ఫైల్\u200cలో చూపిన విధంగా ఉండే బటన్/ఆప్షన్ ద్వారా డైరెక్ట్\u200cగా మీ టోకెన్ డ్రైవర్స్\u200cను మీరే సులభంగా ఇన్\u200cస్టాల్ చేసుకోగలరు.\n---\n**[Direct Download Link](https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev/uploads/e-Vedhika_UBD_Deployment_Setup_v1.0.0-RC.zip)**\n---\n🌐 **Visit E-Vedhika:**\n🔗 [https://e-vedhika.in/?postId=qkQ9PDCxO0myy5l2seda](https://e-vedhika.in/?postId=qkQ9PDCxO0myy5l2seda)\n\n💻 **Developed By:** Rakesh Dhawan | E-Vedhika\n✨ *From V1.0 To V9.0 — Continuous Innovation For UBD Users*\n✨ *All Problems, One Solution*\n\n---\n\n📢 **ముఖ్య గమనిక (ZIP ఫైల్ ఎందుకు ఇచ్చాము?):**\nక్రోమ్ లేదా ఎడ్జ్ బ్రౌజర్లలో డైరెక్ట్ `.exe` ఫైల్స్ డౌన్\u200cలోడ్ చేసేటప్పుడు పొరపాటున \"Virus / Malware\" అని సెక్యూరిటీ వార్నింగ్స్ (False Positives) వస్తున్నాయి. యూజర్లకు ఈ ఇబ్బంది రాకూడదనే ఉద్దేశ్యంతో, ఫైల్\u200cను సురక్షితంగా **.zip** ఫార్మాట్\u200cలో ప్యాక్ చేసి ఇవ్వడం జరిగింది. ఇది 100% సేఫ్ టూల్!\n\n🙏 **మీ ఫీడ్\u200cబ్యాక్ ముఖ్యం (We Need Your Feedback!):**\nE-Vedhika Tool ని ఉపయోగిస్తున్న ప్రతి ఒక్కరికీ హృదయపూర్వక ధన్యవాదాలు. మీ Support మరియు Suggestions వల్లే ఈ Tool V1.0 నుండి V9.0 వరకు మరింత మెరుగుపడుతూ వచ్చింది.\nఈ కొత్త టూల్\u200cను మీ సిస్టమ్\u200cలో రన్ చేసినప్పుడు ఏదైనా లోపం (Bug) కనిపించినా, లేదా ఏదైనా సమస్య ఎదురైనా దయచేసి కింద కామెంట్స్ లో తెలియజేయగలరు. మీ రిపోర్ట్స్ ద్వారా తదుపరి అప్\u200cడేట్స్\u200cలో వాటిని వెంటనే పరిష్కరిస్తాము!\n\n🚀**Deploy Once, Work Smarter.| E-Vedhika All Problems, One Solution**"
+    },
+    "views": {
+      "integerValue": "147"
+    },
+    "lastEditedRole": {
+      "stringValue": "admin"
+    },
+    "isAdminPost": {
+      "booleanValue": true
+    },
+    "userName": {
+      "stringValue": "Admin"
+    },
+    "source_other": {
+      "integerValue": "22"
+    },
+    "categories": {
+      "arrayValue": {
+        "values": [
+          {
+            "stringValue": "Updates"
+          },
+          {
+            "stringValue": "📂 UBD Portal Issue"
+          },
+          {
+            "stringValue": "📢 Updates"
+          }
+        ]
+      }
+    },
+    "uid": {
+      "stringValue": "KGT2roF9bPTNhWIceHgWsJEnEnH3"
+    },
+    "viewedBy": {
+      "arrayValue": {
+        "values": [
+          {
+            "stringValue": "jayinErFYAaS12jAeV8O27aNPWo2"
+          },
+          {
+            "stringValue": "7zbRkw9QG6dCHA1SmEp1zYhmveD3"
+          },
+          {
+            "stringValue": "wCd154YgnBdfkrOwKtjDiymTGTJ2"
+          },
+          {
+            "stringValue": "b5JRQYE69pQgEKyZGPS4iHRfttH3"
+          },
+          {
+            "stringValue": "u1gtTlfpGuQ1sVN7kCiABqvB4qA3"
+          },
+          {
+            "stringValue": "IqAUkQoXL2QD7nCvwCCnBisgQHO2"
+          },
+          {
+            "stringValue": "GB3jhEXRa6PGv4P7WMZdmJcdBZA3"
+          },
+          {
+            "stringValue": "dxwNkPMY8JaA70QsffgrUDhFLwr1"
+          },
+          {
+            "stringValue": "KGT2roF9bPTNhWIceHgWsJEnEnH3"
+          }
+        ]
+      }
+    },
+    "attachments": {
+      "arrayValue": {
+        "values": [
+          {
+            "mapValue": {
+              "fields": {
+                "status": {
+                  "stringValue": "Old"
+                },
+                "version": {
+                  "stringValue": "1.0"
+                },
+                "name": {
+                  "stringValue": "UBD_Site_Setup.bat"
+                },
+                "badgePrefix": {
+                  "stringValue": "Tool"
+                },
+                "url": {
+                  "stringValue": "/uploads/1781497244182-591233002-UBD_Site_Setup.bat"
+                }
+              }
+            }
+          },
+          {
+            "mapValue": {
+              "fields": {
+                "status": {
+                  "stringValue": "Old"
+                },
+                "version": {
+                  "stringValue": "6.0"
+                },
+                "name": {
+                  "stringValue": "E-Vedhika_Deployment..zip"
+                },
+                "badgePrefix": {
+                  "stringValue": "Tool"
+                },
+                "url": {
+                  "stringValue": "/uploads/1786300995391-602349356-E-Vedhika_Deployment..zip"
+                }
+              }
+            }
+          },
+          {
+            "mapValue": {
+              "fields": {
+                "status": {
+                  "stringValue": "Old"
+                },
+                "version": {
+                  "stringValue": "7.0"
+                },
+                "name": {
+                  "stringValue": "E-Vedhika_Deployment..zip"
+                },
+                "badgePrefix": {
+                  "stringValue": "Tool"
+                },
+                "url": {
+                  "stringValue": "/uploads/1786294933970-985606921-E-Vedhika_Deployment..zip"
+                }
+              }
+            }
+          },
+          {
+            "mapValue": {
+              "fields": {
+                "status": {
+                  "stringValue": "Old"
+                },
+                "name": {
+                  "stringValue": "E-Vedhika_UBD_Deployment_Tool_V8.0.zip"
+                },
+                "version": {
+                  "stringValue": "8.0"
+                },
+                "url": {
+                  "stringValue": "/uploads/1786301020893-381340588-E-Vedhika_UBD_Deployment_Tool_V8.0.zip"
+                },
+                "badgePrefix": {
+                  "stringValue": "Tool"
+                }
+              }
+            }
+          },
+          {
+            "mapValue": {
+              "fields": {
+                "status": {
+                  "stringValue": "New"
+                },
+                "version": {
+                  "stringValue": "9.0"
+                },
+                "name": {
+                  "stringValue": "e-Vedhika_UBD_Deployment_Setup_v1.0.0-RC.zip"
+                },
+                "url": {
+                  "stringValue": "/uploads/1786301566709-400494367-e-Vedhika_UBD_Deployment_Setup_v1.0.0-RC.zip"
+                },
+                "badgePrefix": {
+                  "stringValue": "EXE"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "versionStatus": {
+      "stringValue": "New"
+    },
+    "source_direct": {
+      "integerValue": "30"
+    },
+    "mediaUrl": {
+      "stringValue": ""
+    },
+    "category": {
+      "stringValue": "Updates"
+    },
+    "title": {
+      "stringValue": "🌟 UBD సెట్టింగ్స్ ISSUES కి ఫుల్ స్టాప్! 🛑🚀 వన్ క్లిక్ ఆల్ సెటప్ (ONE-CLICK ALL SETUP)"
+    },
+    "lastEditedName": {
+      "stringValue": "Admin"
+    },
+    "mediaType": {
+      "stringValue": ""
+    },
+    "status": {
+      "stringValue": "Approved"
+    },
+    "likes": {
+      "integerValue": "5"
+    },
+    "mediaName": {
+      "stringValue": ""
+    },
+    "version": {
+      "stringValue": ""
+    },
+    "websiteName": {
+      "stringValue": "UBD"
+    },
+    "lastEditedAt": {
+      "integerValue": "1786302080189"
+    }
+  },
+  "createTime": "2026-05-04T20:06:55.356382Z",
+  "updateTime": "2026-08-09T19:07:29.092934Z"
+}

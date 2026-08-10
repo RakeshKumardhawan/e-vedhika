@@ -2298,10 +2298,10 @@ app.get('/api/remote-commands', (req, res) => {
 
             console.log(`[OG Debug] Dynamic preview triggered for ${postId}`);
 
-            const postTitle = (fields.title?.stringValue || "E-Vedhika Post").replace(/"/g, '&quot;');
+            const postTitle = (fields.title?.stringValue || "E-Vedhika Post").replace(/"/g, '&quot;').replace(/\s+/g, ' ').trim();
             const rawContent = (fields.content?.stringValue || "").replace(/"/g, '&quot;');
             // Remove markdown or html tags from description for OG tags
-            const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`]/g, "").trim();
+            const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`\r\n]/g, " ").replace(/\s+/g, ' ').trim();
             const postDesc = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
             const mediaUrl = fields.mediaUrl?.stringValue || fields.imageUrl?.stringValue || fields.poster?.stringValue || fields.videoThumbnailUrl?.stringValue || "";
 
