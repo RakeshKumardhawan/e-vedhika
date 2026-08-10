@@ -1595,11 +1595,6 @@ export const handleForceDownload = async (
 
   if (!url) return;
 
-  if (isDirect || url.includes("drive.google.com") || url.includes("dropbox.com") || url.startsWith("blob:") || url.includes("1drv.ms")) {
-    window.open(url, '_blank');
-    return;
-  }
-
   try {
     let extractedFilename = fileName || "download";
 
@@ -1658,30 +1653,30 @@ export const handleForceDownload = async (
       extractedFilename = extractedFilename.replace(/^\d{5,15}-/, "");
     }
 
+    let targetUrl = url;
+    if (targetUrl.includes("drive.google.com") || targetUrl.includes("docs.google.com")) {
+      const driveMatch = targetUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || targetUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (driveMatch && driveMatch[1]) {
+        targetUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+      }
+    }
+
     const link = document.createElement("a");
 
-    const isFirebaseOrGoogleUrl =
-      url.includes("firebasestorage.googleapis.com") ||
-      url.includes("storage.googleapis.com") ||
-      url.includes("googleusercontent.com") ||
-      url.includes("firebasestorage");
-
-    if (url.startsWith("data:")) {
+    if (url.startsWith("data:") || url.startsWith("blob:")) {
       link.href = url;
       link.download = extractedFilename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      const isRemoteHttp = url.startsWith('http://') || url.startsWith('https://');
-      if (isRemoteHttp) {
-        // Direct download using our reliable server-side backend proxy
-        link.href = `/api/download?url=${encodeURIComponent(url)}&name=${encodeURIComponent(extractedFilename)}`;
-        // No need for target=_blank since it will prompt file download
-      } else {
-        link.href = url;
-        link.target = "_blank";
-      }
+      // Stream seamlessly through our /api/download backend proxy
+      // This works for Cloudflare R2, Google Drive, Firebase Storage, and external links without opening a new tab
+      const downloadApiUrl = targetUrl.startsWith("/") && !targetUrl.startsWith("/uploads/")
+        ? targetUrl
+        : `/api/download?url=${encodeURIComponent(targetUrl)}&name=${encodeURIComponent(extractedFilename)}&filename=${encodeURIComponent(extractedFilename)}`;
+
+      link.href = downloadApiUrl;
       link.download = extractedFilename;
       document.body.appendChild(link);
       link.click();
@@ -1692,8 +1687,7 @@ export const handleForceDownload = async (
     console.error("Download failed:", error);
     const link = document.createElement("a");
     link.href = url;
-    link.target = "_blank";
-    link.download = fileName;
+    link.download = fileName || "download";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -534,42 +534,6 @@ app.get('/api/remote-commands', (req, res) => {
     }
   });
 
-  app.get("/api/download", (req, res) => {
-    const fileUrl = req.query.url as string;
-    const fileName = req.query.name as string || 'download';
-    
-    if (!fileUrl) {
-      return res.status(400).send("Missing URL parameter");
-    }
-
-    try {
-      const httpModule = fileUrl.startsWith('https') ? require('https') : require('http');
-      
-      httpModule.get(fileUrl, (proxyRes: any) => {
-        if (proxyRes.statusCode !== 200) {
-          return res.status(proxyRes.statusCode || 500).send("Failed to fetch upstream file");
-        }
-        res.setHeader("Content-Type", proxyRes.headers["content-type"] || "application/octet-stream");
-        
-        // Force download behavior using proper UTF-8 encoded filename
-        const encodedName = encodeURIComponent(fileName.replace(/"/g, ''));
-        res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodedName}`);
-        
-        if (proxyRes.headers["content-length"]) {
-          res.setHeader("Content-Length", proxyRes.headers["content-length"]);
-        }
-
-        proxyRes.pipe(res);
-      }).on('error', (err: any) => {
-        console.error("Proxy download failed:", err);
-        res.status(500).send("Internal Server Error");
-      });
-    } catch (error) {
-      console.error("Proxy download outer error:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  });
-
   app.post("/api/about", verifyToken, (req, res) => {
     try {
       const { title, content } = req.body;
@@ -695,10 +659,18 @@ app.get('/api/remote-commands', (req, res) => {
   app.get('/api/download', async (req, res) => {
     try {
       let url = req.query.url as string;
-      const filename = (typeof req.query.filename === "string" ? req.query.filename : null) || "download";
+      const filename = (typeof req.query.name === "string" ? req.query.name : null) || (typeof req.query.filename === "string" ? req.query.filename : null) || "download";
 
       if (!url || typeof url !== 'string') {
         return res.status(400).send("No URL provided");
+      }
+
+      // Automatically convert Google Drive view URLs to direct stream/export URLs
+      if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+        const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (driveMatch && driveMatch[1]) {
+          url = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}&confirm=t`;
+        }
       }
 
       if (url.startsWith('/uploads/')) {
