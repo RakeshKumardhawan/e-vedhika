@@ -109,12 +109,7 @@ export function SystemErrorCenter() {
         });
       });
 
-      // If DB has 0 errors, seed 3 initial mock errors so the page is populated and useful immediately
-      if (errList.length === 0) {
-        await seedDefaultErrors();
-      } else {
-        setErrors(errList);
-      }
+      setErrors(errList);
       setLoading(false);
     }, (err) => {
       console.warn('Error fetching system errors:', err);

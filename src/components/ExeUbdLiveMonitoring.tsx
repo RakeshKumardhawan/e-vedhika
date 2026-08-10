@@ -74,7 +74,7 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
       const combined = [p, m, d].filter(Boolean).join(', ');
       if (combined) return combined;
     }
-    return 'Narsingi Grama Panchayat Office, Rangareddy';
+    return log.pcName ? `${log.pcName} (Gram Panchayat)` : 'Gram Panchayat Office';
   };
 
   // 1. Live Telemetry & Remote Requests Fetch Loop

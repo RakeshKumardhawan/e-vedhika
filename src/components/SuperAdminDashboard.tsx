@@ -128,8 +128,9 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
     // Visitors logs
     let unsubVisitors: any = () => {};
     const fetchVisitors = () => {
-      if (analyticsDb) {
-        unsubVisitors = onSnapshot(query(collection(analyticsDb, 'visitor_logs'), orderBy('timestamp', 'desc'), limit(50)), (snap) => {
+      const targetDb = analyticsDb || db;
+      try {
+        unsubVisitors = onSnapshot(query(collection(targetDb, 'visitor_logs'), orderBy('timestamp', 'desc'), limit(50)), (snap) => {
           const visitors: any[] = [];
           snap.forEach(doc => visitors.push({ id: doc.id, ...doc.data() }));
           if (visitors.length > 0) {
@@ -139,19 +140,20 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
             setFallbackVisitors();
           }
         }, () => {
-          fetch('/api/telemetry')
-            .then(res => res.json())
-            .then(data => {
-              if (data.success && Array.isArray(data.logs) && data.logs.length > 0) {
-                setRecentVisitors(data.logs.slice(0, 10));
-                generateChartData(data.logs);
-              } else {
-                setFallbackVisitors();
-              }
-            })
-            .catch(() => setFallbackVisitors());
+          // Fallback query without orderBy
+          onSnapshot(collection(targetDb, 'visitor_logs'), (snap) => {
+            const visitors: any[] = [];
+            snap.forEach(doc => visitors.push({ id: doc.id, ...doc.data() }));
+            visitors.sort((a, b) => (b.timestamp || b.time || 0) - (a.timestamp || a.time || 0));
+            if (visitors.length > 0) {
+              setRecentVisitors(visitors.slice(0, 10));
+              generateChartData(visitors);
+            } else {
+              setFallbackVisitors();
+            }
+          }, () => setFallbackVisitors());
         });
-      } else {
+      } catch (e) {
         setFallbackVisitors();
       }
     };

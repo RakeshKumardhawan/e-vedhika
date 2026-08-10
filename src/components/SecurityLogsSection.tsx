@@ -139,13 +139,14 @@ export function SecurityLogsSection() {
       const usersSnap = await getDocs(query(collection(db, "users"), limit(20)));
       usersSnap.docs.forEach((d) => {
         const u = d.data();
+        const t = typeof u.createdAt === 'number' ? u.createdAt : (u.createdAt?.seconds ? u.createdAt.seconds * 1000 : (u.timestamp || Date.now()));
         extraEvents.push({
           id: `synth_u_${d.id}`,
           category: "NEW_USER",
           title: `కొత్త యూజర్ నమోదు (New Account Created)`,
           description: `User ${u.displayName || u.name || u.email} created account as ${u.role || "Citizen"}`,
           actor: u.email || "System Auth",
-          timestamp: u.createdAt || Date.now() - Math.floor(Math.random() * 86400000 * 3),
+          timestamp: t,
           status: "success",
           details: { uid: d.id, district: u.district }
         });
@@ -155,13 +156,14 @@ export function SecurityLogsSection() {
       const postsSnap = await getDocs(query(collection(db, "posts"), limit(20)));
       postsSnap.docs.forEach((d) => {
         const p = d.data();
+        const t = typeof p.createdAt === 'number' ? p.createdAt : (p.createdAt?.seconds ? p.createdAt.seconds * 1000 : (p.timestamp || Date.now()));
         extraEvents.push({
           id: `synth_p_${d.id}`,
           category: "POST_CREATED",
           title: `పోస్ట్ సృష్టించబడింది (Community Post Created)`,
           description: p.title ? `Title: "${p.title}"` : p.content ? p.content.substring(0, 80) : "Post created",
           actor: p.author || "Community Member",
-          timestamp: p.createdAt || Date.now() - Math.floor(Math.random() * 86400000 * 2),
+          timestamp: t,
           status: "success",
           details: { category: p.category, likes: p.likes }
         });
@@ -171,13 +173,14 @@ export function SecurityLogsSection() {
       const suggsSnap = await getDocs(query(collection(db, "suggestions"), limit(20)));
       suggsSnap.docs.forEach((d) => {
         const s = d.data();
+        const t = typeof s.createdAt === 'number' ? s.createdAt : (s.createdAt?.seconds ? s.createdAt.seconds * 1000 : (s.timestamp || Date.now()));
         extraEvents.push({
           id: `synth_s_${d.id}`,
           category: "SUGGESTION",
           title: `సలహా నమోదు (New Suggestion Recorded)`,
           description: s.text || s.title || "Public citizen feedback submitted",
           actor: s.author || "Citizen",
-          timestamp: s.createdAt || Date.now() - Math.floor(Math.random() * 86400000 * 4),
+          timestamp: t,
           status: "info",
           details: { upvotes: s.upvotes || 0 }
         });

@@ -569,6 +569,9 @@ interface Post {
   userName?: string;
   userPhoto?: string;
   time: number;
+  createdAt?: any;
+  lastEditedAt?: any;
+  updatedAt?: any;
   uid: string;
   status?: string;
   pinned?: boolean;
@@ -2291,9 +2294,23 @@ export default function App() {
   }, [currentTab]);
 
   useEffect(() => {
+    let localAdConfig: any = null;
+    try {
+      const saved = localStorage.getItem("e_vedhika_ad_config");
+      if (saved) localAdConfig = JSON.parse(saved);
+    } catch (e) {}
+
     const unsub = onSnapshot(doc(db, "site_settings", "home_page"), (snap) => {
       if (snap.exists()) {
-        setSiteConfig(snap.data());
+        const data = snap.data();
+        if (localAdConfig && (!data.ads || Object.keys(data.ads).length === 0)) {
+          data.ads = localAdConfig;
+        } else if (data.ads) {
+          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(data.ads)); } catch (e) {}
+        }
+        setSiteConfig(data);
+      } else if (localAdConfig) {
+        setSiteConfig({ ads: localAdConfig });
       }
     });
     return () => unsub();
@@ -4049,9 +4066,9 @@ export default function App() {
       </AnimatePresence>
 
       <>
-      <header className="sticky top-0 z-[1001] shadow-2xl bg-[#103052] border-b-[3px] border-accent flex items-center">
+      <header className="sticky top-0 z-[1001] shadow-xl bg-[#103052] border-b-[3px] border-[#fbe947] flex items-center justify-between px-3 sm:px-6 py-2 min-h-[60px] gap-2">
         <div
-          className="brand-wrapper cursor-pointer flex items-center gap-1.5 sm:gap-4 min-w-0"
+          className="brand-wrapper cursor-pointer flex items-center gap-2 sm:gap-3.5 min-w-0 shrink-0"
           onClick={() => {
             const newSearch = new URLSearchParams();
             newSearch.set("tab", "home");
@@ -4072,7 +4089,7 @@ export default function App() {
             {/* SVG లోగో */}
             <svg
               viewBox="0 0 64 64"
-              className="w-[36px] h-[36px] sm:w-12 sm:h-12 shrink-0"
+              className="w-9 h-9 sm:w-11 sm:h-11 shrink-0"
             >
               <defs>
                 {/* కలర్ గ్రేడియంట్స్ */}
@@ -4121,7 +4138,7 @@ export default function App() {
           {/* Website Name Section */}
           <div className="flex flex-col justify-center translate-y-[-1px] shrink min-w-0">
             <h2
-              className="brand-title text-[15px] sm:text-[18px] md:text-[20px] lg:text-[24px] whitespace-nowrap overflow-hidden text-ellipsis"
+              className="brand-title text-[15px] sm:text-[18px] md:text-[20px] lg:text-[22px] whitespace-nowrap overflow-hidden text-ellipsis"
               style={{
                 color: "#fbe947",
                 background: "none",
@@ -4139,7 +4156,7 @@ export default function App() {
             </h2>
             <div className="flex items-center">
               <span
-                className="whitespace-nowrap overflow-hidden text-ellipsis text-[7px] sm:text-[9px] md:text-[11px]"
+                className="whitespace-nowrap overflow-hidden text-ellipsis text-[7px] sm:text-[9px] md:text-[10px]"
                 style={{
                   fontWeight: "800",
                   letterSpacing: "0.5px",
@@ -4153,12 +4170,12 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 flex justify-end sm:justify-start px-1 sm:px-6 min-w-0">
-          <div className="flex items-center gap-0.5 sm:gap-1 bg-[#09223e] border border-[#1e40af]/20 rounded-full p-1 shadow-inner overflow-hidden">
-            <span className="hidden md:inline text-[8px] font-black text-slate-400 uppercase tracking-wider px-2 select-none">అక్షరాల సైజు</span>
+        <div className="flex-1 flex justify-center sm:justify-center px-1 sm:px-4 min-w-0">
+          <div className="flex items-center gap-1 bg-[#0a213a] border border-white/15 rounded-full p-1 shadow-inner">
+            <span className="hidden lg:inline text-[10px] font-extrabold text-slate-300 uppercase tracking-wider px-2 select-none">అక్షరాల సైజు</span>
             <button
               onClick={() => setTextZoom("normal")}
-              className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 sm:px-2 py-1 transition-all cursor-pointer rounded-full ${textZoom === "normal" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
+              className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "normal" ? "bg-[#fbe947] text-[#103052] shadow-sm font-black" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
               title="సాధారణ సైజు"
             >
               <span className="hidden sm:inline">సాధారణం (A)</span>
@@ -4166,7 +4183,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setTextZoom("large")}
-              className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 sm:px-2 py-1 transition-all cursor-pointer rounded-full ${textZoom === "large" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
+              className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "large" ? "bg-[#fbe947] text-[#103052] shadow-sm font-black" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
               title="పెద్ద సైజు"
             >
               <span className="hidden sm:inline">పెద్దది (A+)</span>
@@ -4174,7 +4191,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setTextZoom("xlarge")}
-              className={`text-[8px] sm:text-[9px] font-black uppercase px-1.5 sm:px-2 py-1 transition-all cursor-pointer rounded-full ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#103052] shadow-md font-bold" : "text-slate-400 hover:text-white"}`}
+              className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#103052] shadow-sm font-black" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
               title="చాలా పెద్ద సైజు"
             >
               <span className="hidden sm:inline">మహా పెద్దది (A++)</span>
@@ -14774,9 +14791,11 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                       <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500" 
                         checked={siteConfig?.ads?.monetagEnabled || false}
                         onChange={async (e) => {
-                          const updated = { ads: { ...(siteConfig?.ads || {}), monetagEnabled: e.target.checked } };
-                          setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          const updatedAds = { ...(siteConfig?.ads || {}), monetagEnabled: e.target.checked };
+                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
                           addToast(e.target.checked ? "Monetag Enabled" : "Monetag Disabled");
                         }}
                       />
@@ -14791,13 +14810,15 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           placeholder="e.g. 3"
                           value={siteConfig?.ads?.adLimitPerUser || ""}
                           onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                            const updatedAds = { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                           }}
                           onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved Ad Limit");
+                            const updatedAds = { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved Ad Limit");
                           }}
                         />
                       </div>
@@ -14807,13 +14828,15 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           placeholder="e.g. 8945672"
                           value={siteConfig?.ads?.monetagZoneIdSidebar || ""}
                           onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                           }}
                           onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved Monetag Sidebar Zone ID");
+                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved Monetag Sidebar Zone ID");
                           }}
                         />
                       </div>
@@ -14823,13 +14846,15 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           placeholder="e.g. 8945673"
                           value={siteConfig?.ads?.monetagZoneIdInArticle || ""}
                           onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                           }}
                           onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved Monetag In-Article Zone ID");
+                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved Monetag In-Article Zone ID");
                           }}
                         />
                       </div>
@@ -14848,9 +14873,11 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                       <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-blue-500 focus:ring-blue-500" 
                         checked={siteConfig?.ads?.adsenseEnabled || false}
                         onChange={async (e) => {
-                          const updated = { ads: { ...(siteConfig?.ads || {}), adsenseEnabled: e.target.checked } };
-                          setSiteConfig((prev) => ({ ...prev, ...updated }));
-                          await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
+                          const updatedAds = { ...(siteConfig?.ads || {}), adsenseEnabled: e.target.checked };
+                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
                           addToast(e.target.checked ? "AdSense Enabled" : "AdSense Disabled");
                         }}
                       />
@@ -14864,13 +14891,15 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           placeholder="e.g. ca-pub-1234567890"
                           value={siteConfig?.ads?.adsenseClient || ""}
                           onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseClient: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                           }}
                           onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseClient: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved AdSense Client ID");
+                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseClient: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved AdSense Client ID");
                           }}
                         />
                       </div>
@@ -14880,13 +14909,15 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           placeholder="e.g. 1234567890"
                           value={siteConfig?.ads?.adsenseSlotSidebar || ""}
                           onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                           }}
                           onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved AdSense Sidebar Slot ID");
+                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved AdSense Sidebar Slot ID");
                           }}
                         />
                       </div>
@@ -14896,13 +14927,15 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                           placeholder="e.g. 0987654321"
                           value={siteConfig?.ads?.adsenseSlotInArticle || ""}
                           onChange={(e) => {
-                            const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
-                            setSiteConfig((prev) => ({ ...prev, ...updated }));
+                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                           }}
                           onBlur={async (e) => {
-                             const updated = { ads: { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value } };
-                             await setDoc(doc(db, "site_settings", "home_page"), updated, { merge: true }).catch(() => {});
-                             addToast("Saved AdSense In-Article Slot ID");
+                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value };
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast("Saved AdSense In-Article Slot ID");
                           }}
                         />
                       </div>
@@ -18661,7 +18694,7 @@ function PostCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase mt-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-bold uppercase mt-1">
             <Clock size={12} />
             <span>
               {new Date(postTime).toLocaleDateString("en-IN", {
@@ -18672,6 +18705,14 @@ function PostCard({
                 minute: "2-digit",
               })}
             </span>
+            {(post.lastEditedAt || post.updatedAt) && (
+              <>
+                <span>•</span>
+                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200/60 lowercase flex items-center gap-1">
+                  అప్డేట్: {new Date(typeof (post.lastEditedAt || post.updatedAt) === 'number' ? (post.lastEditedAt || post.updatedAt) : ((post.lastEditedAt || post.updatedAt).seconds ? (post.lastEditedAt || post.updatedAt).seconds * 1000 : (post.lastEditedAt || post.updatedAt))).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </>
+            )}
             <span>•</span>
             <span className="text-primary/70">
               {post.categories && post.categories.length > 0
