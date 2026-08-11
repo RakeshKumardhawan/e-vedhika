@@ -594,3 +594,29 @@ html, body, #root {
   border-radius: 0.5rem;
 }
 
+
+/* Force text wrapping for Quill Editor content on mobile */
+.ql-editor * {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* Force all elements inside Quill editor to be responsive */
+.ql-editor {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ql-editor * {
+  max-width: 100% !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ql-editor img {
+  height: auto !important;
+}

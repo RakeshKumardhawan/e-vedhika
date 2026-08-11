@@ -6044,7 +6044,8 @@ export default function App() {
                               {landingPageData.heroTitle} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{landingPageData.heroHighlight}</span>
                             </h2>
                             <div 
-                              className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium ql-editor px-0 sm:px-4 max-w-5xl"
+                              className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium ql-editor px-0 sm:px-4 w-full max-w-full sm:max-w-5xl break-words overflow-x-hidden"
+                              style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                               dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
                             />
                           </div>
