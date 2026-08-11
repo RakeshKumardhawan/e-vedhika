@@ -3634,9 +3634,15 @@ export default function App() {
               animate={{ scale: 1, opacity: 1 }}
               className="text-center relative z-10 w-full max-w-sm p-8 bg-slate-900/60 rounded-[40px] border border-slate-800 backdrop-blur-md"
             >
-              <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative">
-                <img src="/ev-logo-v2.svg" alt="EV Logo" className="w-16 h-16 object-contain relative z-10" />
-                <div className="absolute inset-0 bg-blue-500/10 animate-ping rounded-full" style={{ animationDuration: '3s' }}></div>
+              <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative overflow-hidden group">
+                <motion.img 
+                  src="/ev-logo-v2.svg" 
+                  alt="EV Logo" 
+                  className="w-14 h-14 object-contain relative z-10"
+                  animate={{ scale: [1, 1.05, 1], rotate: [0, 2, -2, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
               </div>
 
               <h2 className="text-3xl font-black mb-1 uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
@@ -6035,11 +6041,11 @@ export default function App() {
                         {/* Entry Page / Landing Page Content integrated at the bottom of Main Home Tab */}
                         <div className="mt-16 border-t border-slate-200/60 pt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
                           <div className="text-center space-y-5 w-full mx-auto flex flex-col items-center">
-                            <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full text-blue-700 text-sm font-black uppercase tracking-widest shadow-sm">
+                            <div className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 border border-blue-100 rounded-full text-blue-700 text-[10px] sm:text-sm font-black uppercase tracking-wider sm:tracking-widest shadow-sm text-center max-w-full whitespace-normal">
                               E-VEDHIKA OVERVIEW
                             </div>
                             <h2 
-                              className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-snug max-w-4xl"
+                              className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-snug max-w-4xl break-words w-full"
                             >
                               {landingPageData.heroTitle} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{landingPageData.heroHighlight}</span>
                             </h2>
@@ -8667,11 +8673,9 @@ export interface CustomMenuCard {
 function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !zoneId) return;
-
     if (!("IntersectionObserver" in window)) {
       setIsVisible(true);
       return;
@@ -8681,6 +8685,7 @@ function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, cl
       (entries) => {
         if (entries[0].isIntersecting) {
           setIsVisible(true);
+          recordAdImpression();
           observer.disconnect();
         }
       },
@@ -8690,33 +8695,25 @@ function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, cl
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
-
     return () => observer.disconnect();
   }, [zoneId]);
 
-  useEffect(() => {
-    if (!isVisible || !zoneId) return;
-    recordAdImpression();
-
-    const selector = `script[src="https://quge5.com/88/tag.min.js"][data-zone="${zoneId}"]`;
-    let script = document.querySelector(selector) as HTMLScriptElement;
-
-    if (!script) {
-      script = document.createElement("script");
-      script.src = "https://quge5.com/88/tag.min.js";
-      script.async = true;
-      script.setAttribute("data-zone", zoneId);
-      script.setAttribute("data-cfasync", "false");
-
-      script.onerror = () => {
-        setHasError(true);
-      };
-
-      document.head.appendChild(script);
-    }
-  }, [isVisible, zoneId]);
-
   if (!zoneId) return null;
+
+  const iframeSrcDoc = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; background: transparent; }
+        </style>
+      </head>
+      <body>
+        <script src="https://quge5.com/88/tag.min.js" data-zone="${zoneId}" async data-cfasync="false"></script>
+      </body>
+    </html>
+  `;
 
   return (
     <div
@@ -8728,89 +8725,21 @@ function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, cl
       <span className="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase select-none mb-1">
         📢 ప్రకటన • ADVERTISEMENT
       </span>
-      {hasError && (
-        <span className="text-[10px] font-medium text-slate-400/90">
-          (Ad unavailable / blocked by browser)
-        </span>
+      {isVisible ? (
+        <iframe
+          srcDoc={iframeSrcDoc}
+          title="Advertisement"
+          width="100%"
+          height="250"
+          frameBorder="0"
+          scrolling="no"
+          className="w-full max-w-full overflow-hidden rounded-lg bg-transparent"
+        />
+      ) : (
+        <div className="h-[250px] w-full animate-pulse bg-slate-100/80 rounded flex items-center justify-center text-[10px] text-slate-400 font-bold">
+          Loading advertisement...
+        </div>
       )}
-    </div>
-  );
-}
-
-
-function CustomAdUnit({ code, id, className }: { code?: string, id: string, className?: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const isRendered = useRef(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !code) return;
-
-    if (!("IntersectionObserver" in window)) {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-    return () => observer.disconnect();
-  }, [code]);
-
-  useEffect(() => {
-    if (!isVisible || !code || isRendered.current) return;
-    
-    // Check if limit reached before rendering this one ad
-    if (typeof window !== "undefined") {
-       recordAdImpression();
-    }
-    isRendered.current = true;
-    
-    if (containerRef.current) {
-      const wrapper = document.createElement("div");
-      wrapper.innerHTML = code;
-      
-      const scripts = Array.from(wrapper.querySelectorAll("script"));
-      
-      // Append non-script elements
-      while(wrapper.firstChild) {
-         if (wrapper.firstChild.nodeName !== 'SCRIPT') {
-            containerRef.current.appendChild(wrapper.firstChild);
-         } else {
-            wrapper.removeChild(wrapper.firstChild);
-         }
-      }
-
-      // Re-create and append script elements to force execution
-      scripts.forEach(oldScript => {
-        const newScript = document.createElement("script");
-        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-        containerRef.current?.appendChild(newScript);
-      });
-    }
-  }, [isVisible, code]);
-
-  if (!code) return null;
-
-  return (
-    <div
-      id={id}
-      className={`custom-ad-unit w-full my-4 flex flex-col justify-center items-center overflow-hidden ${className || ""}`}
-    >
-      <div className="w-full relative min-h-[50px] flex justify-center items-center" ref={containerRef}>
-        {/* Ad will be injected here */}
-      </div>
     </div>
   );
 }
@@ -8827,10 +8756,10 @@ function AdsenseUnit({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const isPushed = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !client || !slot) return;
-
     if (!("IntersectionObserver" in window)) {
       setIsVisible(true);
       return;
@@ -8849,22 +8778,25 @@ function AdsenseUnit({
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
-
     return () => observer.disconnect();
   }, [client, slot]);
 
   useEffect(() => {
     if (!isVisible) return;
-
-    try {
-      if (typeof window !== "undefined") {
-        recordAdImpression();
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+    if (isPushed.current) return;
+    const timer = setTimeout(() => {
+      try {
+        if (typeof window !== "undefined") {
+          recordAdImpression();
+          ((window as any).adsbygoogle = ((window as any).adsbygoogle || [])).push({});
+          isPushed.current = true;
+        }
+      } catch (e) {
+        console.error("AdSense error:", e);
+        setHasError(true);
       }
-    } catch (e) {
-      console.error("AdSense error:", e);
-      setHasError(true);
-    }
+    }, 100);
+    return () => clearTimeout(timer);
   }, [isVisible]);
 
   if (!client || !slot) return null;
