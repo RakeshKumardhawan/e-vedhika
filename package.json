@@ -37,6 +37,7 @@
     "multer": "^2.1.1",
     "papaparse": "^5.5.3",
     "react": "^19.0.0",
+    "react-diff-viewer-continued": "^4.4.0",
     "react-dom": "^19.0.0",
     "react-joyride": "^3.1.0",
     "react-live": "^4.1.8",

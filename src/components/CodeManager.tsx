@@ -1,3 +1,4 @@
+import ReactDiffViewer from "react-diff-viewer-continued";
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebase';
 import { collection, doc, getDoc, setDoc, getDocs, addDoc, query, orderBy, limit } from 'firebase/firestore';
@@ -6,12 +7,12 @@ import {
   Eye, RefreshCw, Search, ArrowLeftRight, Laptop, Tablet, Smartphone, Copy, Check,
   RotateCcw, Sparkles, Layers, Info, CheckCircle, XCircle, FileText
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface CodeFileMeta {
   id: string;
   name: string;
-  type: 'css' | 'html' | 'javascript' | 'json';
+  type: 'css' | 'html' | 'javascript' | 'json' | 'react_component';
   icon: any;
   defaultContent: string;
   path: string;
@@ -22,7 +23,19 @@ export interface CodeFileMeta {
   affectedPages: string;
 }
 
-const CODE_FILES: CodeFileMeta[] = [
+const CODE_FILES: CodeFileMeta[] = [  {
+    id: 'custom_react_widget',
+    name: 'Custom React Widget',
+    type: 'react_component',
+    icon: FileCode2,
+    defaultContent: `// Write custom React Component using Tailwind\n<div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-200">\n  <h3 className="text-lg font-bold text-slate-800">Custom Dynamic Widget</h3>\n  <p className="text-slate-500">Rendered via React Live Shield</p>\n</div>`,
+    path: '/src/App.tsx (Rendered)',
+    module: 'Dynamic React Runtime',
+    usedIn: 'Configurable Slots',
+    status: 'Live',
+    dependencies: 'React, Lucide, Framer Motion',
+    affectedPages: 'Anywhere'
+  },
   { 
     id: 'global_css', 
     name: 'Global Styles', 
@@ -180,6 +193,9 @@ const CODE_FILES: CodeFileMeta[] = [
 export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
   const [activeFile, setActiveFile] = useState(CODE_FILES[0].id);
   const [code, setCode] = useState('');
+  const [liveCode, setLiveCode] = useState('');
+  const [isDraft, setIsDraft] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -246,7 +262,15 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
         const snap = await getDoc(doc(db, 'custom_code', activeFile));
         if (snap.exists()) {
           const fileContent = snap.data().content || currentFileMeta.defaultContent;
-          setCode(fileContent);
+          const draftContent = snap.data().draftContent;
+          setLiveCode(fileContent);
+          if (draftContent && draftContent !== fileContent) {
+            setCode(draftContent);
+            setIsDraft(true);
+          } else {
+            setCode(fileContent);
+            setIsDraft(false);
+          }
           if (snap.data().updatedAt) {
             setLastSaved(new Date(snap.data().updatedAt).toLocaleString());
           }
@@ -297,6 +321,16 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
     }
   };
 
+  const saveDraft = async () => {
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, 'custom_code', activeFile), { draftContent: code, status: 'Draft' }, { merge: true });
+      setIsDraft(true);
+      addToast('Draft saved securely. Use "Deploy to Live" to apply changes.');
+    } catch (e) { addToast('Error saving draft'); }
+    setIsSaving(false);
+  };
+
   const saveCode = async () => {
     if (syntaxError) {
       addToast(`Cannot deploy with syntax error: ${syntaxError}`);
@@ -329,6 +363,8 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
       // 2. Save new code in Firestore main document
       await setDoc(doc(db, 'custom_code', activeFile), {
         content: code,
+        draftContent: code,
+        status: 'Live',
         updatedAt: now,
         type: currentFileMeta.type
       }, { merge: true });
@@ -537,12 +573,27 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
           </button>
 
           <button
+            onClick={() => setShowDiff(!showDiff)}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-slate-200"
+          >
+            <Layers size={16} />
+            {showDiff ? 'Hide Diff' : 'View Code Diff'}
+          </button>
+          <button
+            onClick={saveDraft}
+            disabled={isSaving || !!syntaxError}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save size={16} />
+            Save Draft
+          </button>
+          <button
             onClick={saveCode}
             disabled={isSaving || !!syntaxError}
             className="px-5 py-2 bg-[#0B3D91] hover:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save size={16} />
-            {isSaving ? 'Deploying...' : 'Save & Deploy Live'}
+            <CheckCircle2 size={16} />
+            Deploy to Live
           </button>
         </div>
       </div>
@@ -744,6 +795,7 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
                 </div>
                 <span className="text-slate-300 font-bold">{currentFileMeta.name}</span>
+                {isDraft && <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border border-amber-500/30">Draft Mode</span>}
                 <span className="text-slate-500 hidden sm:inline">({currentFileMeta.path})</span>
               </div>
 
@@ -779,6 +831,21 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
             <div className="flex-1 flex overflow-hidden">
               
               {/* Text Area Code Editor */}
+              
+              {showDiff ? (
+                <div className="flex-1 w-full bg-white overflow-auto custom-scrollbar">
+                  <ReactDiffViewer
+                    oldValue={liveCode}
+                    newValue={code}
+                    splitView={viewMode === 'split'}
+                    useDarkTheme={false}
+                    leftTitle="Live in Production"
+                    rightTitle="Proposed Update (Draft)"
+                  />
+                </div>
+              ) : (
+                <>
+
               {(viewMode === 'editor' || viewMode === 'split') && (
                 <div className={`flex-1 flex flex-col bg-[#1e1e1e] relative ${viewMode === 'split' ? 'w-1/2' : 'w-full'}`}>
                   <textarea
@@ -802,14 +869,12 @@ export function CodeManager({ addToast }: { addToast: (msg: string) => void }) {
                   {renderLivePreview()}
                 </div>
               )}
-
+                </>
+              )}
             </div>
-
           </div>
         </div>
-
       </div>
-
     </div>
   );
 }

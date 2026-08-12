@@ -1,8 +1,21 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/App.tsx', 'utf8');
+let code = fs.readFileSync('src/components/CodeManager.tsx', 'utf8');
 
-code = code.replace(/\{\nsetCurrentTab\("workspace"\);\n\s*\}\);/g, 'setCurrentTab("workspace");');
-code = code.replace(/\{\nsetCurrentTab\("gos_formats"\);\n\s*\}\);/g, 'setCurrentTab("gos_formats");');
+// The problematic area is around line 860
+code = code.replace(
+  `              )}
+              </>
+              )}            </div>          </div>        </div>      </div>    </div>  );}`,
+  `              )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}`
+);
 
-fs.writeFileSync('src/App.tsx', code);
-console.log("Fixed syntax");
+fs.writeFileSync('src/components/CodeManager.tsx', code);
