@@ -359,6 +359,7 @@ export async function sendCommentNotifications(
       read: false,
       time: time,
       postId: postId,
+      senderUid: authorUid,
     });
 
     const mentionRegex = /@([a-zA-Z0-9_]+)/g;
@@ -452,6 +453,7 @@ export async function sendLikeNotification(
       read: false,
       time: time,
       postId: postId,
+      senderUid: likerUid,
     });
 
     // 1st Person: Notify the comment author if the liker is not the comment author themself
@@ -3198,7 +3200,7 @@ export default function App() {
         setNotifications(nArr.sort((a, b) => b.time - a.time));
         setUnreadCount(
           nArr.filter((n) =>
-            n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read,
+            n.senderUid !== user?.uid && (n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read)
           ).length,
         );
 
@@ -4241,9 +4243,9 @@ export default function App() {
                     </button>
                   </div>
                   <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
-                    {notifications.length > 0 ? (
+                    {notifications.filter((n) => n.senderUid !== user?.uid).length > 0 ? (
                       <div className="divide-y divide-slate-50">
-                        {notifications.map((n) => {
+                        {notifications.filter((n) => n.senderUid !== user?.uid).map((n) => {
                           const isUnread =
                             n.uid === "all"
                               ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
@@ -4311,10 +4313,10 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  {notifications.length > 0 && (
+                  {notifications.filter((n) => n.senderUid !== user?.uid).length > 0 && (
                     <button
                       onClick={async () => {
-                        const unread = notifications.filter((n) =>
+                        const unread = notifications.filter(n => n.senderUid !== user?.uid).filter((n) =>
                           n.uid === "all"
                             ? !n.readBy?.includes(user?.uid || "")
                             : !n.read,
@@ -18810,6 +18812,19 @@ function PostCard({
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
+  
+  const [commentPulse, setCommentPulse] = useState(false);
+  const prevCommentCount = useRef(post?.commentCount || 0);
+  
+  useEffect(() => {
+    if (post?.commentCount > (prevCommentCount.current || 0)) {
+      setCommentPulse(true);
+      const timer = setTimeout(() => setCommentPulse(false), 2000);
+      prevCommentCount.current = post.commentCount;
+      return () => clearTimeout(timer);
+    }
+    prevCommentCount.current = post?.commentCount || 0;
+  }, [post?.commentCount]);
   const isActualExpanded = isExpanded || localExpanded;
   const handleToggleExpansion = () => {
     if (toggleExpansion && toggleExpansion.toString().replace(/\s/g, "") !== "()=>{}") {
@@ -18862,7 +18877,13 @@ function PostCard({
   }, [post?.id, auth.currentUser?.uid]);
 
   return (
-    <motion.div layout className="post-card">
+    <motion.div 
+      layout 
+      className={`post-card ${commentPulse ? 'ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20' : ''}`}
+      whileHover={{ scale: 1.005, y: -2 }}
+      animate={commentPulse ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex items-center gap-3 mb-3 sm:mb-4">
         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-black overflow-hidden border shadow-sm">
           {post.userPhoto ? (
@@ -19761,6 +19782,20 @@ function PostCard({
           >
             <Eye size={16} strokeWidth={2.5} />
             <span>Read post</span>
+          </button>
+          
+          <button
+            aria-label="Copy Post Link"
+            onClick={(e) => {
+              e.stopPropagation();
+              const url = `${window.location.origin}${window.location.pathname}?postId=${post.id}`;
+              navigator.clipboard.writeText(url);
+              addToast("పోస్ట్ లింక్ కాపీ చేయబడింది! (URL Copied!)");
+            }}
+            className="flex items-center gap-2 p-2 px-4 rounded-xl text-slate-500 font-black text-xs uppercase bg-slate-50 hover:bg-slate-200 hover:text-slate-800 transition-all cursor-pointer"
+          >
+            <Link2 size={16} strokeWidth={2.5} />
+            <span>Copy Link</span>
           </button>
         </div>
       </div>
@@ -22863,6 +22898,7 @@ function PostComments({
   const [optimisticComments, setOptimisticComments] = useState<any[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "popular">("newest");
+  const [showAdminOnly, setShowAdminOnly] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -22975,6 +23011,7 @@ function PostComments({
         read: false,
         time: Date.now(),
         postId: post.id,
+        senderUid: auth.currentUser!.uid,
       });
 
       const parentComment = comments.find((c) => c.id === commentId);
@@ -23131,7 +23168,15 @@ function PostComments({
       }
     });
 
-    const combinedComments = Array.from(combinedMap.values());
+    let combinedComments = Array.from(combinedMap.values());
+    
+    if (showAdminOnly) {
+      combinedComments = combinedComments.filter((c: any) => {
+        const u = allUsers.find(user => user.id === c.uid);
+        return c.isAdminComment || c.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3" || u?.role === "admin" || u?.role === "super admin" || u?.role === "moderator";
+      });
+    }
+
     combinedComments.sort((a: any, b: any) => {
       const aTime = getValidTime(a) || 0;
       const bTime = getValidTime(b) || 0;
@@ -23168,7 +23213,7 @@ function PostComments({
         commentCount: trueCombinedCount,
       }).catch(() => {});
     }
-  }, [dbComments, optimisticComments, post.id, post.comments, sortOrder]);
+  }, [dbComments, optimisticComments, post.id, post.comments, sortOrder, showAdminOnly, allUsers]);
 
   const handleToggleReaction = async (commentId: string, emoji: string) => {
     const uid = auth.currentUser?.uid;
@@ -23346,7 +23391,7 @@ function PostComments({
       }
 
       try {
-        sendCommentNotifications(
+        await sendCommentNotifications(
           post.id,
           commentText,
           auth.currentUser!.uid,
@@ -23413,7 +23458,15 @@ function PostComments({
             {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
           </span>
         </h3>
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button 
+            onClick={() => setShowAdminOnly(!showAdminOnly)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm border ${showAdminOnly ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-200'}`}
+          >
+            <Filter size={14} />
+            అడ్మిన్ రిప్లైస్
+          </button>
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
           <ArrowUpDown size={14} className="text-slate-500" />
           <span className="text-xs font-bold text-slate-500">వరసక్రమం:</span>
           <select
