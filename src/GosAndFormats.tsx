@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { db, storage } from '../firebase';
 import { Download, Upload, Trash2, FileBadge, Share2 } from 'lucide-react';
 import { requireLoginAlert, getFriendlyError, handleForceDownload } from './App';

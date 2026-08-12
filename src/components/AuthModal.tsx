@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { X, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { auth, db } from "../../firebase";
 import {

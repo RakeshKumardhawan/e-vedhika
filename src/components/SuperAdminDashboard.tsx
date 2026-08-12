@@ -6,7 +6,7 @@ import {
   MapPin, UserCheck, ShieldAlert, Wifi, Cpu, ActivitySquare,
   HeartPulse
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer
 } from 'recharts';

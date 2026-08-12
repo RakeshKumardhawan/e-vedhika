@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, Clock, RefreshCw, Zap, Server, Lock, 
   Radio, AlertOctagon, HeartPulse, Layers, BarChart3, Bell, Play
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
 import { db, auth, analyticsDb } from '../../firebase';
 

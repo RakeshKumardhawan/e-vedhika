@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bot, Send, X, MessageSquare, Loader2, Key, BookOpen, ShieldCheck,
   FileSpreadsheet, FileText, Database, Users, AlertCircle, Lightbulb, HelpCircle, ExternalLink

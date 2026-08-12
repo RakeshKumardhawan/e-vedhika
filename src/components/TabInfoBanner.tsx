@@ -1,6 +1,6 @@
 import React from 'react';
 import { Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_PAGE_DESCRIPTIONS } from '../data/pageDescriptions';
 
 export function TabInfoBanner({ 

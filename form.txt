@@ -1,0 +1,181 @@
+
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                const target = e.target as any;
+                                const name = target.name.value.trim();
+                                const village = target.village.value.trim();
+                                const mobile = target.mobile
+                                  ? target.mobile.value.trim()
+                                  : "";
+                                const category = target.category.value;
+                                const suggestion =
+                                  target.suggestion.value.trim();
+
+                                if (
+                                  !name ||
+                                  !village ||
+                                  !category ||
+                                  !suggestion ||
+                                  (userProfile?.gender !== "Female" && !mobile)
+                                ) {
+                                  return addToast(
+                                    "దయచేసి అన్ని వివరాలు నింపండి (Please fill all fields)",
+                                  );
+                                }
+
+                                if (mobile && !/^[0-9]{10}$/.test(mobile)) {
+                                  return addToast(
+                                    "దయచేసి 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి",
+                                  );
+                                }
+
+                                try {
+                                  await addDoc(collection(db, "suggestions"), {
+                                    name,
+                                    village,
+                                    mobile,
+                                    category,
+                                    suggestion,
+                                    time: Date.now(),
+                                    status: "pending",
+                                    uid: user?.uid || "anonymous",
+                                  });
+                                  await addDoc(collection(db, "notifications"), {
+                                    uid: "admin_only",
+                                    title: "కొత్త సూచన (Suggestion Alert)",
+                                    message: `${name} వారు ఒక కొత్త సూచన/సమస్యను సమర్పించారు: ${suggestion.substring(0, 50)}`,
+                                    type: "admin_alert",
+                                    read: false,
+                                    time: Date.now()
+                                  }).catch(()=>console.error("Failed to notify admin"));
+                                  await logUserActivity(
+                                    `Submitted Suggestion: ${category}`,
+                                  );
+                                  target.name.value = userProfile
+                                    ? `${userProfile.name || ""} ${userProfile.surname || ""}`.trim()
+                                    : "";
+                                  target.village.value = userProfile
+                                    ? `${userProfile.mandal || ""} / ${userProfile.district || ""}`
+                                        .trim()
+                                        .replace(/^ \/ | \/ $/g, "")
+                                    : "";
+                                  if (target.mobile)
+                                    target.mobile.value =
+                                      userProfile?.mobile || "";
+                                  target.category.value = "";
+                                  target.suggestion.value = "";
+
+                                  Swal.fire({
+                                    title: "✅ సక్సెస్!",
+                                    text: "మీ సూచన విజయవంతంగా నమోదు చేయబడింది.",
+                                    icon: "success",
+                                    confirmButtonColor: "#0d3b66",
+                                  });
+                                } catch (error) {
+                                  handleFirestoreError(
+                                    error,
+                                    OperationType.CREATE,
+                                    "suggestions",
+                                  );
+                                  addToast("సబ్మిట్ చేయడంలో లోపం కలిగింది.");
+                                }
+                              }}
+                              className="space-y-4"
+                            >
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5 flex flex-col">
+                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                    మీ పేరు (Name){" "}
+                                    <span className="text-rose-500">*</span>
+                                  </label>
+                                  <input
+                                    name="name"
+                                    type="text"
+                                    defaultValue={
+                                      userProfile
+                                        ? `${userProfile.name || ""} ${userProfile.surname || ""}`.trim()
+                                        : ""
+                                    }
+                                    placeholder="Enter your name"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1.5 flex flex-col">
+                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                    జిల్లా / మండలం (Area){" "}
+                                    <span className="text-rose-500">*</span>
+                                  </label>
+                                  <input
+                                    name="village"
+                                    type="text"
+                                    defaultValue={
+                                      userProfile
+                                        ? `${userProfile.mandal || ""} / ${userProfile.district || ""}`
+                                            .trim()
+                                            .replace(/^ \/ | \/ $/g, "")
+                                        : ""
+                                    }
+                                    placeholder="District / Mandal"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {userProfile?.gender !== "Female" && (
+                                  <div className="space-y-1.5 flex flex-col">
+                                    <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                      మొబైల్ నంబర్ (Mobile){" "}
+                                      <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                      name="mobile"
+                                      type="tel"
+                                      defaultValue={userProfile?.mobile || ""}
+                                      maxLength={10}
+                                      placeholder="10 Digit Number"
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
+                                      required
+                                    />
+                                  </div>
+                                )}
+                                <div className="space-y-1.5 flex flex-col">
+                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                    విభాగం (Category){" "}
+                                    <span className="text-rose-500">*</span>
+                                  </label>
+                                  <select
+                                    name="category"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
+                                    required
+                                  >
+                                    <option value="">విభాగం ఎంచుకోండి</option>
+                                    {suggestionCategories.map((cat, idx) => (
+                                      <option key={idx} value={cat}>{cat}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              <div className="space-y-1.5 pt-2 flex flex-col">
+                                <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
+                                  మీ సూచన (Suggestion){" "}
+                                  <span className="text-rose-500">*</span>
+                                </label>
+                                <textarea
+                                  name="suggestion"
+                                  placeholder="మీ సూచన ఇక్కడ టైప్ చేయండి..."
+                                  rows={4}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm resize-none"
+                                  required
+                                ></textarea>
+                              </div>
+
+                              <button
+                                aria-label="Submit Entry"
+                                type="submit"
+                                className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:via-blue-700 hover:to-indigo-800 text-white py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 hover:scale-[1.01] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                              >
+                                <Send className="w-4 h-4" />

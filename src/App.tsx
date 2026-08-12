@@ -149,7 +149,7 @@ import {  DollarSign,
  } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { motion, AnimatePresence, Reorder } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
@@ -683,6 +683,7 @@ interface Notification {
   time: number;
   link?: string;
   readBy?: string[];
+  senderUid?: string;
 }
 
 const APP_STYLES = `
@@ -6977,7 +6978,6 @@ export default function App() {
                                   </select>
                                 </div>
                               </div>
-
                               <div className="space-y-1.5 pt-2 flex flex-col">
                                 <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
                                   మీ సూచన (Suggestion){" "}
@@ -18789,6 +18789,13 @@ function AdBanner({ slotId = "5641797386" }: { slotId?: string }) {
   return null;
 }
 
+function CustomAdUnit({ id, code, className }: { id: string; code?: string; className?: string }) {
+  if (!code) return null;
+  return (
+    <div id={id} className={className} dangerouslySetInnerHTML={{ __html: code }} />
+  );
+}
+
 function PostCard({
   post,
   isExpanded,
@@ -23478,6 +23485,7 @@ function PostComments({
             <option value="oldest">పాతవి మొదట (Oldest First)</option>
             <option value="popular">అత్యంత ప్రజాదరణ పొందినవి (Most Popular)</option>
           </select>
+        </div>
         </div>
       </div>
       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">

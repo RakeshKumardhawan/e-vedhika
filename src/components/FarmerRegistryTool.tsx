@@ -18,7 +18,7 @@ import {
   Lock,
   Share2
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { auth } from "../../firebase";
 import { AuthModal } from "./AuthModal";
 import { requireLoginAlert } from "../App";

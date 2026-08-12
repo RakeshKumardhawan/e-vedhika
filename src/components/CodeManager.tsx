@@ -6,7 +6,7 @@ import {
   Eye, RefreshCw, Search, ArrowLeftRight, Laptop, Tablet, Smartphone, Copy, Check,
   RotateCcw, Sparkles, Layers, Info, CheckCircle, XCircle, FileText
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 export interface CodeFileMeta {
   id: string;
