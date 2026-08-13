@@ -145,7 +145,7 @@ import {  DollarSign,
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp, ImageOff,
+  ThumbsUp, ImageOff, CheckCheck,
  } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
@@ -3648,6 +3648,62 @@ export default function App() {
     return searchOk && matchesSmartFilter(p, currentFilter);
   });
 
+  const dmUsersList = useMemo(() => {
+    if (!user) return [];
+    
+    // Find all conversations
+    const conversations = new Map<string, { lastMessageAt: number, unread: number, lastMessageText: string, lastMessageSender: string, lastMessageRead: boolean }>();
+    
+    allDmMessages.forEach(m => {
+      if (m.senderId === user.uid || m.receiverId === user.uid) {
+        const otherId = m.senderId === user.uid ? m.receiverId : m.senderId;
+        const current = conversations.get(otherId) || { lastMessageAt: 0, unread: 0, lastMessageText: "", lastMessageSender: "", lastMessageRead: false };
+        
+        if (m.createdAt > current.lastMessageAt) {
+          current.lastMessageAt = m.createdAt;
+          current.lastMessageText = m.text;
+          current.lastMessageSender = m.senderId;
+          current.lastMessageRead = !!m.read;
+        }
+        
+        if (m.receiverId === user.uid && !m.read) {
+          current.unread += 1;
+        }
+        
+        conversations.set(otherId, current);
+      }
+    });
+
+    const filteredUsers = allUsers
+      .filter(u => u.id !== user.uid)
+      .map(u => {
+        const conv = conversations.get(u.id);
+        return {
+          ...u,
+          lastMessageAt: conv ? conv.lastMessageAt : 0,
+          lastMessageText: conv ? conv.lastMessageText : "",
+          lastMessageSender: conv ? conv.lastMessageSender : "",
+          lastMessageRead: conv ? conv.lastMessageRead : false,
+          unreadCount: conv ? conv.unread : 0
+        };
+      });
+
+    const q = dmSearchQuery.toLowerCase();
+    if (q) {
+      return filteredUsers.filter(u => 
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.username || "").toLowerCase().includes(q) ||
+        (u.district || "").toLowerCase().includes(q) ||
+        (u.designation || "").toLowerCase().includes(q)
+      ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+    }
+    
+    // If no search query, only show "Friends" (Following) OR users with active history
+    return filteredUsers.filter(u => 
+      (userProfile?.following || []).includes(u.id) || u.lastMessageAt > 0
+    ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+  }, [allUsers, allDmMessages, user, dmSearchQuery, userProfile]);
+
   const handleRecordProblem = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
@@ -4082,61 +4138,6 @@ export default function App() {
     );
   }
 
-  const dmUsersList = useMemo(() => {
-    if (!user) return [];
-    
-    // Find all conversations
-    const conversations = new Map<string, { lastMessageAt: number, unread: number, lastMessageText: string, lastMessageSender: string, lastMessageRead: boolean }>();
-    
-    allDmMessages.forEach(m => {
-      if (m.senderId === user.uid || m.receiverId === user.uid) {
-        const otherId = m.senderId === user.uid ? m.receiverId : m.senderId;
-        const current = conversations.get(otherId) || { lastMessageAt: 0, unread: 0, lastMessageText: "", lastMessageSender: "", lastMessageRead: false };
-        
-        if (m.createdAt > current.lastMessageAt) {
-          current.lastMessageAt = m.createdAt;
-          current.lastMessageText = m.text;
-          current.lastMessageSender = m.senderId;
-          current.lastMessageRead = !!m.read;
-        }
-        
-        if (m.receiverId === user.uid && !m.read) {
-          current.unread += 1;
-        }
-        
-        conversations.set(otherId, current);
-      }
-    });
-
-    const filteredUsers = allUsers
-      .filter(u => u.id !== user.uid)
-      .map(u => {
-        const conv = conversations.get(u.id);
-        return {
-          ...u,
-          lastMessageAt: conv ? conv.lastMessageAt : 0,
-          lastMessageText: conv ? conv.lastMessageText : "",
-          lastMessageSender: conv ? conv.lastMessageSender : "",
-          lastMessageRead: conv ? conv.lastMessageRead : false,
-          unreadCount: conv ? conv.unread : 0
-        };
-      });
-
-    const q = dmSearchQuery.toLowerCase();
-    if (q) {
-      return filteredUsers.filter(u => 
-        (u.name || "").toLowerCase().includes(q) ||
-        (u.username || "").toLowerCase().includes(q) ||
-        (u.district || "").toLowerCase().includes(q) ||
-        (u.designation || "").toLowerCase().includes(q)
-      ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
-    }
-    
-    // If no search query, only show "Friends" (Following) OR users with active history
-    return filteredUsers.filter(u => 
-      (userProfile?.following || []).includes(u.id) || u.lastMessageAt > 0
-    ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
-  }, [allUsers, allDmMessages, user, dmSearchQuery, userProfile]);
 
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
@@ -16662,43 +16663,45 @@ function UsersListModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-sm max-h-[80vh] overflow-y-auto bg-white rounded-3xl shadow-2xl custom-scrollbar p-6 relative">
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
-        >
-          <X size={16} />
-        </button>
-        <h3 className="font-black text-primary text-xl mb-4 uppercase tracking-widest">
-          {title}{" "}
-          <span className="text-slate-400 text-sm">
-            ({uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Anon` : ""})
-          </span>
-        </h3>
-        <div className="space-y-3">
+    <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-slate-100">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-white sticky top-0 z-10">
+          <h3 className="font-black text-primary text-lg uppercase tracking-widest flex items-center gap-2">
+            {title}{" "}
+            <span className="text-slate-400 text-xs bg-slate-100 px-2 py-1 rounded-lg">
+              {uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Anon` : ""}
+            </span>
+          </h3>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-all"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1">
           {usersList.length === 0 && anonymousCount === 0 && (
-            <p className="text-slate-400 text-xs font-bold text-center py-4 uppercase">
+            <p className="text-slate-400 text-xs font-bold text-center py-8 uppercase">
               No users found
             </p>
           )}
           {anonymousCount > 0 && (
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-dashed border-slate-200">
                <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase overflow-hidden text-xs">
-                   <User size={14} />
+                 <div className="w-10 h-10 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase overflow-hidden text-sm">
+                   <User size={16} />
                  </div>
                  <div>
-                   <h4 className="text-xs font-black text-slate-800 leading-tight">
+                   <h4 className="text-sm font-black text-slate-800 leading-tight">
                      Anonymous Visitors
                    </h4>
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                      Session Views
                    </p>
                  </div>
                </div>
-               <span className="text-xs font-black bg-slate-200 text-slate-600 px-2 py-1 rounded-lg">
+               <span className="text-xs font-black bg-slate-200 text-slate-600 px-3 py-1 rounded-xl">
                  +{anonymousCount}
                </span>
             </div>
@@ -16706,21 +16709,21 @@ function UsersListModal({
           {usersList.map((u, i) => (
             <div
               key={i}
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100"
+              className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-100/50"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-10 h-10 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-sm border border-blue-200">
                   {(u as any).photoURL ? (
-                    <img src={(u as any).photoURL} alt="" />
+                    <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
                   ) : (
                     u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
                   )}
                 </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-800 leading-tight">
+                <div className="min-w-0">
+                  <h4 className="text-sm font-black text-slate-800 leading-tight truncate">
                     {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
                   </h4>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">
                     {u.designation || "User"}
                   </p>
                 </div>

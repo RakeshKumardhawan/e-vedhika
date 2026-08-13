@@ -1,0 +1,55 @@
+  const dmUsersList = useMemo(() => {
+    if (!user) return [];
+    
+    // Find all conversations
+    const conversations = new Map<string, { lastMessageAt: number, unread: number, lastMessageText: string, lastMessageSender: string, lastMessageRead: boolean }>();
+    
+    allDmMessages.forEach(m => {
+      if (m.senderId === user.uid || m.receiverId === user.uid) {
+        const otherId = m.senderId === user.uid ? m.receiverId : m.senderId;
+        const current = conversations.get(otherId) || { lastMessageAt: 0, unread: 0, lastMessageText: "", lastMessageSender: "", lastMessageRead: false };
+        
+        if (m.createdAt > current.lastMessageAt) {
+          current.lastMessageAt = m.createdAt;
+          current.lastMessageText = m.text;
+          current.lastMessageSender = m.senderId;
+          current.lastMessageRead = !!m.read;
+        }
+        
+        if (m.receiverId === user.uid && !m.read) {
+          current.unread += 1;
+        }
+        
+        conversations.set(otherId, current);
+      }
+    });
+
+    const filteredUsers = allUsers
+      .filter(u => u.id !== user.uid)
+      .map(u => {
+        const conv = conversations.get(u.id);
+        return {
+          ...u,
+          lastMessageAt: conv ? conv.lastMessageAt : 0,
+          lastMessageText: conv ? conv.lastMessageText : "",
+          lastMessageSender: conv ? conv.lastMessageSender : "",
+          lastMessageRead: conv ? conv.lastMessageRead : false,
+          unreadCount: conv ? conv.unread : 0
+        };
+      });
+
+    const q = dmSearchQuery.toLowerCase();
+    if (q) {
+      return filteredUsers.filter(u => 
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.username || "").toLowerCase().includes(q) ||
+        (u.district || "").toLowerCase().includes(q) ||
+        (u.designation || "").toLowerCase().includes(q)
+      ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+    }
+    
+    // If no search query, only show "Friends" (Following) OR users with active history
+    return filteredUsers.filter(u => 
+      (userProfile?.following || []).includes(u.id) || u.lastMessageAt > 0
+    ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+  }, [allUsers, allDmMessages, user, dmSearchQuery, userProfile]);
