@@ -141,6 +141,9 @@ import {  DollarSign,
   CornerDownRight,
   LayoutList,
   Smartphone,
+  Laptop,
+  Monitor,
+  Tablet,
   WifiOff, FileBadge,
   ArrowUpDown,
   UserCheck,
@@ -2512,7 +2515,7 @@ export default function App() {
   >(null);
 
   const [showPWABanner, setShowPWABanner] = useState(false);
-  const [showPWAGuide, setShowPWAGuide] = useState<"ios" | "android_manual" | null>(null);
+  const [showPWAGuide, setShowPWAGuide] = useState<"ios" | "android_manual" | "desktop_manual" | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -2529,9 +2532,8 @@ export default function App() {
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
     const isDismissed = localStorage.getItem("e_vedhika_pwa_dismissed") === "true";
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    if (isMobileDevice && !isStandalone && !isDismissed) {
+    if (!isStandalone && !isDismissed) {
       const timer = setTimeout(() => {
         setShowPWABanner(true);
       }, 4000);
@@ -2583,12 +2585,15 @@ export default function App() {
 
   const handlePWAInstall = () => {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isIOS) {
-      setShowPWAGuide("ios");
-    } else if (deferredPrompt) {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    if (deferredPrompt) {
       handleInstallClick();
-    } else {
+    } else if (isIOS) {
+      setShowPWAGuide("ios");
+    } else if (isAndroid) {
       setShowPWAGuide("android_manual");
+    } else {
+      setShowPWAGuide("desktop_manual");
     }
   };
   const suggestionsScrollRef = useRef<HTMLDivElement>(null);
@@ -8192,11 +8197,22 @@ export default function App() {
               <div className="flex justify-between items-start mb-5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                    <Smartphone size={20} />
+                    {showPWAGuide === "desktop_manual" ? (
+                      <Laptop size={20} />
+                    ) : showPWAGuide === "ios" ? (
+                      <Tablet size={20} />
+                    ) : (
+                      <Smartphone size={20} />
+                    )}
                   </div>
-                  <h3 className="text-[16px] font-black text-slate-800 tracking-tight text-left">
-                    యాప్ ఇన్‌స్టాల్ గైడ్ (Install App)
-                  </h3>
+                  <div>
+                    <h3 className="text-[16px] font-black text-slate-800 tracking-tight text-left">
+                      యాప్ ఇన్‌స్టాల్ గైడ్ (Install App)
+                    </h3>
+                    <p className="text-[11px] font-bold text-slate-400 text-left">
+                      {showPWAGuide === "desktop_manual" ? "Desktop & Laptop PWA" : showPWAGuide === "ios" ? "iPhone & iPad PWA" : "Android & Mobile PWA"}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowPWAGuide(null)}
@@ -8247,10 +8263,51 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+              ) : showPWAGuide === "desktop_manual" ? (
+                <div className="space-y-4">
+                  <p className="text-[13px] font-medium text-slate-600 leading-relaxed text-left">
+                    మీ <span className="font-bold text-slate-800">Desktop / Laptop (Windows, Mac, ChromeOS)</span> లో యాప్ లాగా ఇన్‌స్టాల్ చేయడానికి:
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        బ్రౌజర్ URL అడ్రస్ బార్ పైన కుడి వైపున ఉండే <span className="text-blue-600 font-extrabold">Install ఐకాన్ (మరియు కంప్యూటర్ సింబల్)</span> పై క్లిక్ చేయండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Click the 'Install app' icon in the browser address bar).</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        లేదా బ్రౌజర్ మెను (⋮) ఓపెన్ చేసి <span className="text-indigo-600 font-extrabold">'Save and share' ➔ 'Install E-Vedhika'</span> ఎంచుకోండి.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Or go to Menu ➔ 'Save and share' / 'Apps' ➔ 'Install E-Vedhika').</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <p className="text-xs font-bold text-slate-700 leading-normal text-left">
+                        పాప్-అప్‌లో <span className="text-green-600 font-extrabold">'Install'</span> క్లిక్ చేస్తే యాప్ విడిగా ఓపెన్ అవుతుంది.
+                        <br/>
+                        <span className="text-[10px] text-slate-400 font-medium">(Click 'Install' to launch as a standalone desktop app).</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-[13px] font-medium text-slate-600 leading-relaxed text-left">
-                    మీ <span className="font-bold text-slate-800">Android ఫోన్</span> లో ఈ యాప్‌ను ఇన్‌స్టాల్ చేయడానికి క్రింది స్టెప్స్ ఫాలో అవ్వండి:
+                    మీ <span className="font-bold text-slate-800">Android మొబైల్ లేదా టాబ్లెట్</span> లో ఈ యాప్‌ను ఇన్‌స్టాల్ చేయడానికి క్రింది స్టెప్స్ ఫాలో అవ్వండి:
                   </p>
 
                   <div className="space-y-3">

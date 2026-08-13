@@ -1,2 +1,0 @@
-#!/bin/bash
-sed -i 's/<div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-\[700px\]">/<div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl shadow-slate-200\/40 overflow-hidden flex flex-col h-\[750px\] relative z-10 w-full max-w-[100%] mx-auto block" style={{width: "100%", display: "block"}}>/g' src/components/CloudStorageManager.tsx

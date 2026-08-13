@@ -18,13 +18,17 @@ export default defineConfig(({mode}) => {
         manifest: {
           name: 'E-Vedhika',
           short_name: 'E-Vedhika',
-          description: 'E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries',
+          description: 'E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries - All Problems One Solution',
           theme_color: '#0d3b66',
           background_color: '#0d3b66',
           display: 'standalone',
-          orientation: 'portrait',
+          display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
+          orientation: 'any',
           start_url: '/',
           scope: '/',
+          lang: 'te',
+          dir: 'ltr',
+          categories: ['productivity', 'government', 'utilities', 'business'],
           icons: [
             {
               src: '/ev-logo-v2.png',
@@ -49,6 +53,36 @@ export default defineConfig(({mode}) => {
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable'
+            }
+          ],
+          shortcuts: [
+            {
+              name: 'Dashboard / హోమ్‌పేజీ',
+              short_name: 'Home',
+              description: 'Go to E-Vedhika Main Dashboard',
+              url: '/',
+              icons: [{ src: '/ev-logo-v2.png', sizes: '192x192' }]
+            },
+            {
+              name: 'Posts / తాజా సమాచారం',
+              short_name: 'Posts',
+              description: 'View Latest Village & Panchayat Updates',
+              url: '/?tab=posts',
+              icons: [{ src: '/ev-logo-v2.png', sizes: '192x192' }]
+            },
+            {
+              name: 'GOs & Formats / జీవోలు & ఫార్మాట్‌లు',
+              short_name: 'GOs',
+              description: 'Access Government Orders and Registers',
+              url: '/?tab=gos_formats',
+              icons: [{ src: '/ev-logo-v2.png', sizes: '192x192' }]
+            },
+            {
+              name: 'Media Vault / మీడియా వాల్ట్',
+              short_name: 'Vault',
+              description: 'Access Media Vault & Resources',
+              url: '/?tab=vault',
+              icons: [{ src: '/ev-logo-v2.png', sizes: '192x192' }]
             }
           ]
         },
@@ -88,7 +122,7 @@ export default defineConfig(({mode}) => {
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // Do not modify - file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true' ? { overlay: false } : false,
     },
   };
