@@ -150,7 +150,7 @@ import {  DollarSign,
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
-import ReactMarkdown from "react-markdown";
+import { SafeMarkdown as ReactMarkdown } from "./components/SafeMarkdown";
 import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 
@@ -231,6 +231,7 @@ import {
   arrayRemove,
   setDoc,
   deleteField,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   ref,
@@ -239,6 +240,25 @@ import {
   getDownloadURL,
   deleteObject,
 } from "firebase/storage";
+
+async function saveToMediaVault(url, file, user) {
+  try {
+    if (!url) return;
+    await addDoc(collection(db, "media_vault"), {
+      url,
+      name: file?.name || "unknown",
+      type: file?.type || "unknown",
+      size: file?.size || 0,
+      uploadedBy: user?.uid || "unknown",
+      uploaderName: user?.displayName || user?.email || "Unknown User",
+      uploadedAt: serverTimestamp(),
+      isActive: true
+    });
+  } catch (err) {
+    console.error("Failed to backup media to vault", err);
+  }
+}
+
 import { auth, db, storage } from "../firebase";
 
 enum OperationType {
@@ -612,6 +632,8 @@ interface UserProfile {
   mobile?: string;
   email?: string;
   photoURL?: string;
+  coverPhotoURL?: string;
+  following?: string[];
   office?: string;
   role?: string;
   hidden?: boolean;
@@ -987,7 +1009,7 @@ function getPostDisplayViews(post: any, isUserAdmin?: boolean) {
     if (!isNaN(parsed)) rawViews = parsed;
   }
   const viewedByCount = Array.isArray(post.viewedBy) ? post.viewedBy.length : 0;
-  return Math.max(rawViews, viewedByCount);
+  return rawViews + viewedByCount;
 }
 
 export const NOTIFICATION_SOUNDS = [
@@ -1863,7 +1885,7 @@ function LandingPage({
 
                 {/* లోపలి సర్కిల్స్ */}
                 <circle cx="32" cy="32" r="25" fill="url(#gLanding)" />
-                <circle cx="32" cy="32" r="21" fill="#0d3b66" />
+                <circle cx="32" cy="32" r="21" fill="#0f172a" />
 
                 {/* EV టెక్స్ట్ */}
                 <text
@@ -1945,7 +1967,7 @@ function LandingPage({
                   </defs>
                   <circle className="logo-ring" cx="32" cy="32" r="29" fill="none" stroke="url(#ringGLandingFooter)" strokeWidth="2.5" strokeDasharray="10 5" />
                   <circle cx="32" cy="32" r="25" fill="url(#gLandingFooter)" />
-                  <circle cx="32" cy="32" r="21" fill="#0d3b66" />
+                  <circle cx="32" cy="32" r="21" fill="#0f172a" />
                   <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="900" fontFamily="Segoe UI">EV</text>
                 </svg>
               </div>
@@ -1967,7 +1989,9 @@ function LandingPage({
 }
 
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
+import { CloudStorageManager } from "./components/CloudStorageManager";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
+import { MediaVaultAdmin } from "./components/MediaVaultAdmin";
 
 
 export default function App() {
@@ -2362,6 +2386,22 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowPostForm(false);
+        setShowSuggestionForm(false);
+        setShowProfileModal(false);
+        setShowAuthModal(false);
+        setShowFooterModal(null);
+        setLightboxImage(null);
+        setSharingPostForPoster(null);
+      }
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, []);
+
   const headerHeight = "72px";
   const tickerHeight = "44px";
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -2666,6 +2706,130 @@ export default function App() {
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifTab, setNotifTab] = useState<"all" | "system" | "likes" | "comments" | "messages">("all");
+  const [showDirectMessages, setShowDirectMessages] = useState(false);
+  const [activeDmUser, setActiveDmUser] = useState<UserProfile | null>(null);
+  const [dmMessages, setDmMessages] = useState<any[]>([]);
+  const [allDmMessages, setAllDmMessages] = useState<any[]>([]);
+  const [dmInput, setDmInput] = useState("");
+  const [dmSearchQuery, setDmSearchQuery] = useState("");
+  const [typingUsers, setTypingUsers] = useState<{ [uid: string]: boolean }>({});
+
+  // Global listener for all direct messages to compute unread badge
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(collection(db, "chat"), (snapshot) => {
+      const msgs = snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter((m: any) => m.receiverId); // Only get DMs
+      setAllDmMessages(msgs);
+    });
+    return () => unsub();
+  }, [user]);
+
+  // Load draft when activeDmUser changes
+  useEffect(() => {
+    if (!user || !activeDmUser) {
+      setDmInput("");
+      return;
+    }
+    const draftKey = `evedhika_dm_draft_${user.uid}_${activeDmUser.id}`;
+    const saved = localStorage.getItem(draftKey) || "";
+    setDmInput(saved);
+  }, [user, activeDmUser]);
+
+  // Typing status updater & draft saver
+  const handleTypingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setDmInput(val);
+    if (user && activeDmUser) {
+      const draftKey = `evedhika_dm_draft_${user.uid}_${activeDmUser.id}`;
+      if (val) {
+        localStorage.setItem(draftKey, val);
+      } else {
+        localStorage.removeItem(draftKey);
+      }
+    }
+    if (!user || !activeDmUser) return;
+    const typingRef = doc(db, "typing_status", `${user.uid}_${activeDmUser.id}`);
+    setDoc(typingRef, { isTyping: val.length > 0, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!user || !showDirectMessages) return;
+    const unsub = onSnapshot(collection(db, "chat"), async (snapshot) => {
+      const msgs = snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
+        .filter((m: any) => m.receiverId) // Ensure it's a DM
+        .filter((m: any) => 
+          activeDmUser 
+            ? (m.senderId === user.uid && m.receiverId === activeDmUser.id) || (m.senderId === activeDmUser.id && m.receiverId === user.uid)
+            : m.senderId === user.uid || m.receiverId === user.uid
+        )
+        .sort((a: any, b: any) => (a.createdAt || 0) - (b.createdAt || 0));
+      
+      setDmMessages(msgs);
+
+      // Mark incoming messages as read (Note: Will fail if rules don't permit it, but we catch it)
+      if (activeDmUser) {
+        for (const m of msgs) {
+          if ((m as any).receiverId === user.uid && !(m as any).read) {
+            try {
+              await updateDoc(doc(db, "chat", (m as any).id), { read: true });
+            } catch (err) {}
+          }
+        }
+      }
+    });
+    return () => unsub();
+  }, [user, activeDmUser, showDirectMessages]);
+
+  const handleSendDMText = async (textToSend: string) => {
+    if (!user || !activeDmUser || !textToSend.trim()) return;
+    const text = textToSend.trim();
+    const draftKey = `evedhika_dm_draft_${user.uid}_${activeDmUser.id}`;
+    localStorage.removeItem(draftKey);
+    try {
+      await addDoc(collection(db, "chat"), {
+        uid: user.uid, // Required by chat rules
+        senderId: user.uid,
+        receiverId: activeDmUser.id,
+        text,
+        createdAt: Date.now(),
+        read: false
+      });
+      
+      // Non-blocking auxiliary updates
+      try {
+        const typingRef = doc(db, "typing_status", `${user.uid}_${activeDmUser.id}`);
+        setDoc(typingRef, { isTyping: false, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+
+        addDoc(collection(db, "notifications"), {
+          uid: activeDmUser.id,
+          senderUid: user.uid,
+          type: "message",
+          title: `New Message from ${userProfile?.name || user.displayName || "User"}`,
+          message: text,
+          time: Date.now(),
+          read: false
+        }).catch(() => {});
+      } catch (auxErr) {
+        console.error("Auxiliary DM update error:", auxErr);
+      }
+    } catch (err: any) {
+      console.error("Failed to send message:", err);
+      const errMsg = err?.message || String(err);
+      addToast(`DM Error: ${errMsg}`);
+    }
+  };
+
+  const handleSendDM = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = dmInput;
+    setDmInput("");
+    await handleSendDMText(text);
+  };
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedIframeUrl, setSelectedIframeUrl] = useState<string | null>(
     null,
@@ -3138,9 +3302,12 @@ export default function App() {
       collection(db, "chat"),
       (snap) => {
         const cArr: ChatMessage[] = [];
-        snap.forEach((d) =>
-          cArr.push({ id: d.id, ...(d.data() as any) } as ChatMessage),
-        );
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (!data.receiverId) {
+            cArr.push({ id: d.id, ...data } as ChatMessage);
+          }
+        });
         setChatMessages(cArr.sort((a, b) => (a.time || 0) - (b.time || 0)));
       },
       (err) => handleFirestoreError(err, OperationType.LIST, "chat"),
@@ -3422,6 +3589,10 @@ export default function App() {
     const cMatch = (p.content || "").toLowerCase().includes(q);
     const searchOk = !q || tMatch || cMatch;
     if (currentFilter === "All") return searchOk;
+    if (currentFilter === "Following") {
+      const followingIds = userProfile?.following || [];
+      return searchOk && followingIds.includes(p.uid);
+    }
     
     // Smart Filter matching logic
     const matchesSmartFilter = (post: Post, filter: string) => {
@@ -3637,14 +3808,29 @@ export default function App() {
               animate={{ scale: 1, opacity: 1 }}
               className="text-center relative z-10 w-full max-w-sm p-8 bg-slate-900/60 rounded-[40px] border border-slate-800 backdrop-blur-md"
             >
-              <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative overflow-hidden group">
-                <motion.img 
-                  src="/ev-logo-v2.svg" 
-                  alt="EV Logo" 
-                  className="w-14 h-14 object-contain relative z-10"
+              <div className="w-24 h-24 bg-transparent rounded-full flex items-center justify-center mx-auto mb-6 relative overflow-hidden group">
+                <motion.svg 
+                  viewBox="0 0 64 64" 
+                  className="w-14 h-14 shrink-0 relative z-10"
                   animate={{ scale: [1, 1.05, 1], rotate: [0, 2, -2, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                />
+                >
+                  <defs>
+                    <linearGradient id="gAdmin" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" />
+                      <stop offset="100%" stopColor="#0ea5e9" />
+                    </linearGradient>
+                    <linearGradient id="ringGAdmin" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" />
+                      <stop offset="50%" stopColor="#facc15" />
+                      <stop offset="100%" stopColor="#0ea5e9" />
+                    </linearGradient>
+                  </defs>
+                  <circle className="logo-ring" cx="32" cy="32" r="29" fill="none" stroke="url(#ringGAdmin)" strokeWidth="2.5" strokeDasharray="10 5" />
+                  <circle cx="32" cy="32" r="25" fill="url(#gAdmin)" />
+                  <circle cx="32" cy="32" r="21" fill="#0f172a" />
+                  <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="900" fontFamily="Segoe UI">EV</text>
+                </motion.svg>
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
               </div>
 
@@ -4130,7 +4316,7 @@ export default function App() {
 
                 {/* లోపలి సర్కిల్స్ */}
                 <circle cx="32" cy="32" r="25" fill="url(#g)" />
-                <circle cx="32" cy="32" r="21" fill="#0d3b66" />
+                <circle cx="32" cy="32" r="21" fill="#0f172a" />
 
                 {/* EV టెక్స్ట్ */}
                 <text
@@ -4205,6 +4391,26 @@ export default function App() {
         
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Direct Messages Button */}
+            <div
+              className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
+              onClick={() => {
+                if (!user) {
+                  requireLoginAlert();
+                  return;
+                }
+                setShowDirectMessages(true);
+              }}
+              title="Direct Messages"
+            >
+              <MessageCircle size={20} className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" />
+              {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length > 0 && (
+                <span className="notif-badge" style={{ display: "flex", top: 0, right: 0 }}>
+                  {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length}
+                </span>
+              )}
+            </div>
+
           <div className="relative">
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0 sm:mr-3 rounded-full hover:bg-white/10"
@@ -4230,89 +4436,130 @@ export default function App() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-12 right-0 w-[280px] sm:w-[320px] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[2000] overflow-hidden"
+                  className="absolute top-12 right-0 w-[300px] sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[2000] overflow-hidden"
                 >
                   <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="text-xs font-black text-primary uppercase tracking-widest">
-                      Signal Inbox
+                    <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
+                      <Bell size={14} /> Notification Center
                     </h3>
                     <button
                       onClick={() => setShowNotifications(false)}
-                      className="text-slate-400 hover:text-danger"
+                      className="text-slate-400 hover:text-danger cursor-pointer"
                     >
                       <X size={14} />
                     </button>
                   </div>
+
+                  {/* Category Filter Tabs */}
+                  <div className="flex gap-1 p-2 bg-slate-100/80 overflow-x-auto scrollbar-none border-b border-slate-200/60">
+                    {[
+                      { id: "all", label: "All" },
+                      { id: "system", label: "System" },
+                      { id: "likes", label: "Likes" },
+                      { id: "comments", label: "Comments" },
+                      { id: "messages", label: "Messages" },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setNotifTab(tab.id as any)}
+                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                          notifTab === tab.id
+                            ? "bg-primary text-white shadow-sm"
+                            : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
-                    {notifications.filter((n) => n.senderUid !== user?.uid).length > 0 ? (
-                      <div className="divide-y divide-slate-50">
-                        {notifications.filter((n) => n.senderUid !== user?.uid).map((n) => {
-                          const isUnread =
-                            n.uid === "all"
-                              ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
-                              : !n.read;
-                          return (
-                            <div
-                              key={n.id}
-                              onClick={async () => {
-                                if (isUnread) {
-                                  try {
-                                    if (n.uid === "all") {
-                                      await updateDoc(
-                                        doc(db, "notifications", n.id),
-                                        { readBy: arrayUnion(user?.uid) },
-                                      );
-                                    } else {
-                                      await updateDoc(
-                                        doc(db, "notifications", n.id),
-                                        { read: true },
-                                      );
+                    {(() => {
+                      const filteredNotifs = notifications
+                        .filter((n) => n.senderUid !== user?.uid)
+                        .filter((n) => {
+                          const type = (n.type || "").toLowerCase();
+                          if (notifTab === "system") return type.includes("system") || type.includes("update") || type.includes("flash");
+                          if (notifTab === "likes") return type.includes("like");
+                          if (notifTab === "comments") return type.includes("comment");
+                          if (notifTab === "messages") return type.includes("message");
+                          return true;
+                        });
+
+                      if (filteredNotifs.length > 0) {
+                        return (
+                          <div className="divide-y divide-slate-50">
+                            {filteredNotifs.map((n) => {
+                              const isUnread =
+                                n.uid === "all"
+                                  ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
+                                  : !n.read;
+                              return (
+                                <div
+                                  key={n.id}
+                                  onClick={async () => {
+                                    if (isUnread) {
+                                      try {
+                                        if (n.uid === "all") {
+                                          await updateDoc(
+                                            doc(db, "notifications", n.id),
+                                            { readBy: arrayUnion(user?.uid) },
+                                          );
+                                        } else {
+                                          await updateDoc(
+                                            doc(db, "notifications", n.id),
+                                            { read: true },
+                                          );
+                                        }
+                                      } catch (e) {}
                                     }
-                                  } catch (e) {}
-                                }
-                                if ((n as any).postId) {
-                                  setSearchParams({
-                                    postId: (n as any).postId,
-                                  });
-                                }
-                                setShowNotifications(false);
-                              }}
-                              className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${isUnread ? "bg-blue-50/30" : ""}`}
-                            >
-                              <div className="flex justify-between items-start mb-1">
-                                <span
-                                  className={`text-[9px] font-black uppercase tracking-wider ${n.type === "flash_update" ? "text-amber-500" : "text-primary"}`}
+                                    if ((n as any).postId) {
+                                      setSearchParams({
+                                        postId: (n as any).postId,
+                                      });
+                                    }
+                                    setShowNotifications(false);
+                                  }}
+                                  className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${isUnread ? "bg-blue-50/40" : ""}`}
                                 >
-                                  {n.type?.replace("_", " ")}
-                                </span>
-                                <span className="text-[8px] font-bold text-slate-400">
-                                  {new Date(n.time).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                              </div>
-                              <h4 className="text-xs font-black text-slate-800 leading-tight mb-1">
-                                {n.title}
-                              </h4>
-                              <p className="text-[10px] font-medium text-slate-500 line-clamp-2">
-                                {n.message}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="p-10 text-center">
-                        <Zap
-                          size={24}
-                          className="mx-auto text-slate-200 mb-2"
-                        />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          No active signals
-                        </p>
-                      </div>
-                    )}
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span
+                                      className={`text-[9px] font-black uppercase tracking-wider ${n.type === "flash_update" ? "text-amber-500" : "text-primary"}`}
+                                    >
+                                      {n.type?.replace("_", " ")}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-slate-400">
+                                      {new Date(n.time).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </span>
+                                  </div>
+                                  <h4 className="text-xs font-black text-slate-800 leading-tight mb-1">
+                                    {n.title}
+                                  </h4>
+                                  <p className="text-[10px] font-medium text-slate-500 line-clamp-2">
+                                    {n.message}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="p-10 text-center">
+                            <Zap
+                              size={24}
+                              className="mx-auto text-slate-200 mb-2"
+                            />
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              No notifications in this category
+                            </p>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                   {notifications.filter((n) => n.senderUid !== user?.uid).length > 0 && (
                     <button
@@ -4347,7 +4594,7 @@ export default function App() {
                           console.error("Failed marking all notifications as read:", e);
                         }
                       }}
-                      className="w-full p-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-primary bg-slate-50 border-t border-slate-100 transition-colors"
+                      className="w-full p-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-primary bg-slate-50 border-t border-slate-100 transition-colors cursor-pointer"
                     >
                       Mark all as read
                     </button>
@@ -4956,6 +5203,7 @@ export default function App() {
                   { id: "reports", label: "Posts & Issues", icon: FileText },
                   { id: "gos_formats", label: "GOs & Formats", icon: FileText },
                   { id: "updates", label: "Flash News", icon: Zap },
+                  { id: "media_vault", label: "Media Vault", icon: HardDrive },
                   { id: "users", label: "User Access", icon: Users },
                   ...(isAdmin || isDevEmail
                     ? [
@@ -5009,9 +5257,28 @@ export default function App() {
                     {[
                       { id: "builder", label: "Page Builder", icon: Wrench },
                       { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
-                      { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
-                      { id: "seo_meta", label: "SEO & Dynamic Meta Tags (ఎస్ఈఓ & మెటా ట్యాగ్స్)", icon: Globe },
-                      { id: "page_descriptions", label: "Page Descriptions", icon: FileBadge },
+                    ].map((item) => (
+                      <MenuButton
+                        key={item.id}
+                        label={item.label}
+                        icon={item.icon}
+                        active={activeAdminSubTab === item.id}
+                        onClick={() => {
+                          setActiveAdminSubTab(item.id);
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
+                      />
+                    ))}
+                    <MenuButton
+                      label="Landing Page Config"
+                      icon={Globe}
+                      active={["landing_page_config", "seo_meta", "page_descriptions"].includes(activeAdminSubTab)}
+                      onClick={() => {
+                        setActiveAdminSubTab("landing_page_config");
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                    />
+                    {[
                       { id: "locations", label: "Locations", icon: MapPin },
                       { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
                       { id: "changelog", label: "Version History", icon: Sparkles },
@@ -5034,24 +5301,15 @@ export default function App() {
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-6 mb-4">
                   System & AI Control
                 </h3>
-                {[
-                  { id: "settings", label: "System Config", icon: Settings },
-                  { id: "ads", label: "Ad Management", icon: Megaphone },
-                  { id: "code_manager", label: "Code Manager", icon: Code },
-                  { id: "ai", label: "Gemini AI Node", icon: Bot },
-                  { id: "cloud_dns", label: "Cloud DNS Config", icon: Cloud },
-                ].map((item) => (
-                  <MenuButton
-                    key={item.id}
-                    label={item.label}
-                    icon={item.icon}
-                    active={activeAdminSubTab === item.id}
-                    onClick={() => {
-                      setActiveAdminSubTab(item.id);
-                      if (window.innerWidth < 1024) setSidebarOpen(false);
-                    }}
-                  />
-                ))}
+                <MenuButton
+                  label="System Config"
+                  icon={Settings}
+                  active={["settings", "ads", "code_manager", "ai", "cloud_dns"].includes(activeAdminSubTab)}
+                  onClick={() => {
+                    setActiveAdminSubTab("settings");
+                    if (window.innerWidth < 1024) setSidebarOpen(false);
+                  }}
+                />
 
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
@@ -5916,6 +6174,7 @@ export default function App() {
                                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
                                           {[
                                             { id: "All", te: "అన్నీ", en: "All", icon: LayoutList, filter: "All" },
+                                            { id: "Following", te: "ఫాలోయింగ్", en: "Following", icon: UserCheck, filter: "Following" },
                                             { id: "GOs", te: "సర్క్యులర్లు (GOs)", en: "GOs & Circulars", icon: FileText, filter: " GOs & Circulars" },
                                             { id: "Updates", te: "అప్డేట్స్", en: "Updates", icon: Bell, filter: " Updates" },
                                             { id: "General", te: "జనరల్ డిస్కషన్", en: "General Discussion", icon: MessageSquare, filter: " General" }
@@ -7488,6 +7747,227 @@ export default function App() {
         />
       )}
 
+      {/* DIRECT MESSAGES MODAL */}
+      {showDirectMessages && (
+        <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col h-[600px] max-h-[90vh]"
+          >
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {activeDmUser ? (
+                  <button
+                    onClick={() => setActiveDmUser(null)}
+                    className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                    <MessageCircle size={20} />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider">
+                    {activeDmUser ? `${activeDmUser.name || activeDmUser.username || "User"}` : "Direct Messages"}
+                  </h3>
+                  <p className="text-[10px] text-slate-300 font-medium">
+                    {activeDmUser ? activeDmUser.designation || "Portal Member" : "Select a member to chat privately"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDirectMessages(false);
+                  setActiveDmUser(null);
+                }}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+              {!activeDmUser ? (
+                <div className="w-full flex flex-col h-full bg-slate-50/50">
+                  <div className="p-3 border-b border-slate-200 bg-white">
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        value={dmSearchQuery}
+                        onChange={(e) => setDmSearchQuery(e.target.value)}
+                        placeholder="Search conversations by name, username or district..."
+                        className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2">
+                    {allUsers
+                      .filter(u => u.id !== user?.uid)
+                      .filter(u => {
+                        const q = dmSearchQuery.toLowerCase();
+                        if (!q) return true;
+                        return (
+                          (u.name || "").toLowerCase().includes(q) ||
+                          (u.username || "").toLowerCase().includes(q) ||
+                          (u.district || "").toLowerCase().includes(q) ||
+                          (u.designation || "").toLowerCase().includes(q)
+                        );
+                      }).length > 0 ? (
+                      allUsers
+                        .filter(u => u.id !== user?.uid)
+                        .filter(u => {
+                          const q = dmSearchQuery.toLowerCase();
+                          if (!q) return true;
+                          return (
+                            (u.name || "").toLowerCase().includes(q) ||
+                            (u.username || "").toLowerCase().includes(q) ||
+                            (u.district || "").toLowerCase().includes(q) ||
+                            (u.designation || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map(u => (
+                          <div
+                            key={u.id}
+                            onClick={() => setActiveDmUser(u)}
+                            className="p-3 hover:bg-slate-100/80 rounded-2xl cursor-pointer flex items-center gap-3 transition-colors"
+                          >
+                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 relative">
+                              {u.photoURL ? (
+                                <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">
+                                  {(u.name || u.username || "U")[0]}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-xs font-black text-slate-900 truncate">
+                                {u.surname} {u.name} ({u.username})
+                              </h4>
+                              <p className="text-[10px] font-bold text-slate-400 truncate">
+                                {u.designation || "Member"} • {u.district || "Telangana"}
+                              </p>
+                            </div>
+                            <span className="text-xs text-primary font-black bg-blue-50 px-3 py-1.5 rounded-xl">
+                              Chat
+                            </span>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="p-10 text-center text-slate-400 text-xs font-bold">
+                        No members matching search criteria.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col h-full bg-slate-50/50">
+                  <div className="flex-1 p-4 overflow-y-auto space-y-2">
+                    {dmMessages.length > 0 ? (
+                      dmMessages.map((m: any, idx: number) => {
+                        const isMe = m.senderId === user?.uid;
+                        const prevMsg = idx > 0 ? dmMessages[idx - 1] : null;
+                        const timeDiff = prevMsg ? (m.createdAt || 0) - (prevMsg.createdAt || 0) : 999999;
+                        const showTimeHeader = timeDiff > 300000; // 5 minutes threshold
+                        const sameSenderAsPrev = prevMsg && prevMsg.senderId === m.senderId && !showTimeHeader;
+
+                        return (
+                          <div key={m.id}>
+                            {showTimeHeader && (
+                              <div className="text-center my-2">
+                                <span className="text-[9px] font-bold bg-slate-200/60 text-slate-500 px-3 py-1 rounded-full uppercase tracking-wider">
+                                  {new Date(m.createdAt || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            )}
+                            <div className={`flex ${isMe ? "justify-end" : "justify-start"} ${sameSenderAsPrev ? "mt-0.5" : "mt-2"}`}>
+                              <div
+                                className={`max-w-[75%] p-3.5 rounded-2xl text-xs font-medium shadow-sm relative group ${
+                                  isMe
+                                    ? "bg-primary text-white rounded-tr-none"
+                                    : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-none"
+                                }`}
+                              >
+                                <p className="leading-relaxed break-words">{m.text}</p>
+                                <div className={`flex items-center justify-end gap-1 mt-1 text-[8px] ${isMe ? "text-white/70" : "text-slate-400"}`}>
+                                  <span>
+                                    {new Date(m.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                  {isMe && (
+                                    <span className={m.read ? "text-blue-200 font-bold" : "text-white/60"}>
+                                      {m.read ? "✓✓ Read" : "✓"}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold">
+                        No messages yet. Send a message to start conversation!
+                      </div>
+                    )}
+
+                    {typingUsers[activeDmUser.id] && (
+                      <div className="flex justify-start items-center gap-2 mt-2">
+                        <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5 text-slate-400 text-[10px] font-bold italic animate-pulse">
+                          <span>{activeDmUser.name || "User"} is typing</span>
+                          <span className="flex gap-0.5">
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick-Reply Buttons */}
+                  <div className="px-3 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto scrollbar-none">
+                    {[
+                      "Okay (సరే)",
+                      "Understood (అర్థమైంది)",
+                      "Please wait (దయచేసి వేచి ఉండండి)",
+                      "Thank you (ధన్యవాదాలు)",
+                      "Call me (కాల్ చేయండి)"
+                    ].map((qr) => (
+                      <button
+                        key={qr}
+                        type="button"
+                        onClick={() => handleSendDMText(qr)}
+                        className="px-3 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-primary rounded-xl text-[10px] font-bold whitespace-nowrap transition-colors border border-slate-200/60 cursor-pointer shadow-2xs"
+                      >
+                        {qr}
+                      </button>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleSendDM} className="p-3 bg-white border-t border-slate-200 flex gap-2">
+                    <input
+                      value={dmInput}
+                      onChange={handleTypingChange}
+                      placeholder="Type a private message..."
+                      className="flex-1 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs font-bold outline-none focus:border-primary"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-primary text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md hover:bg-primary/90 transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Send size={14} /> Send
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <button
         onClick={() => {
           if (!user) {
@@ -7744,6 +8224,45 @@ function EditProfileModal({
   const [photoURL, setPhotoURL] = useState(
     userProfile?.photoURL || user?.photoURL || "",
   );
+  const [coverPhotoURL, setCoverPhotoURL] = useState(
+    userProfile?.coverPhotoURL || "",
+  );
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const storageRef = ref(storage, `uploads/avatars/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setPhotoURL(url);
+      addToast("Profile photo uploaded!");
+    } catch (err) {
+      addToast("Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const storageRef = ref(storage, `uploads/covers/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setCoverPhotoURL(url);
+      addToast("Cover photo uploaded successfully!");
+    } catch (err) {
+      addToast("Failed to upload cover photo");
+    } finally {
+      setUploadingCover(false);
+    }
+  };
   const [designation, setDesignation] = useState(
     userProfile?.designation || "",
   );
@@ -7801,6 +8320,7 @@ function EditProfileModal({
           mobile,
           email,
           photoURL,
+          coverPhotoURL,
           theme,
           notifications,
           time: userProfile?.time || Date.now(),
@@ -7943,6 +8463,37 @@ function EditProfileModal({
             </div>
           )}
 
+          {/* Cover Photo Section */}
+          <div className="mb-4">
+            <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
+              Cover Photo (కవర్ ఫోటో)
+            </label>
+            <div className="w-full h-28 rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-100 relative group flex items-center justify-center">
+              {coverPhotoURL ? (
+                <img
+                  src={coverPhotoURL}
+                  alt="Cover Preview"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="text-slate-400 text-[10px] font-bold flex items-center gap-1">
+                  <ImageIcon size={16} /> Add Header Cover Photo
+                </div>
+              )}
+              <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white text-xs font-bold gap-2">
+                <Camera size={16} /> {uploadingCover ? "Uploading..." : "Upload Cover"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-[20px] overflow-hidden border-2 border-slate-100 shadow-inner bg-slate-50 flex items-center justify-center relative group">
               {photoURL ? (
@@ -7956,9 +8507,15 @@ function EditProfileModal({
               ) : (
                 <User size={30} className="text-slate-300" />
               )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
-                <Camera size={16} className="text-white" />
-              </div>
+              <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white">
+                <Camera size={16} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 
@@ -9190,6 +9747,7 @@ export function SmartImage({
   const [currentSrc, setCurrentSrc] = useState(directUrl);
   const [attempt, setAttempt] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const updated = getDirectImageUrl(src);
@@ -9242,25 +9800,33 @@ export function SmartImage({
   }
 
   return (
-    <img
-      src={currentSrc}
-      alt={alt}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      className={`${className} ${allowLightbox ? "cursor-pointer" : ""}`}
-      style={style}
-      onError={handleError}
-      onClick={(e) => {
-        if (onClick) {
-          onClick(e);
-        } else if (allowLightbox && (window as any).setLightboxImage) {
-          (window as any).setLightboxImage({
-            url: currentSrc,
-            name: alt || "Photo Preview",
-          });
-        }
-      }}
-    />
+    <div className="relative overflow-hidden inline-block w-full">
+      {isLoading && (
+        <div className="absolute inset-0 bg-slate-200/80 animate-pulse rounded-2xl flex items-center justify-center z-10 min-h-[160px]">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+        </div>
+      )}
+      <img
+        src={currentSrc}
+        alt={alt}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        className={`${className} transition-all duration-700 ${isLoading ? "blur-sm opacity-40 scale-[1.02]" : "blur-0 opacity-100 scale-100"} ${allowLightbox ? "cursor-pointer" : ""}`}
+        style={style}
+        onLoad={() => setIsLoading(false)}
+        onError={handleError}
+        onClick={(e) => {
+          if (onClick) {
+            onClick(e);
+          } else if (allowLightbox && (window as any).setLightboxImage) {
+            (window as any).setLightboxImage({
+              url: currentSrc,
+              name: alt || "Photo Preview",
+            });
+          }
+        }}
+      />
+    </div>
   );
 }
 
@@ -9837,6 +10403,7 @@ function AdminPanel({
                     },
                   ]
                 : []),
+              ...(isSuperAdmin || isAdmin ? [{ id: "media_vault", label: "Media Vault (శాశ్వత గ్యాలరీ)", icon: <HardDrive size={18} /> }] : []),
               ...(isEditor
                 ? [
                     {
@@ -10474,10 +11041,29 @@ function AdminPanel({
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-center relative z-10"
+          className="text-center relative z-10 w-full max-w-sm p-8 bg-slate-900/60 rounded-[40px] border border-slate-800 backdrop-blur-md"
         >
-          <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.3)] relative">
-            <img src="/ev-logo-v2.svg" alt="EV Logo" className="w-16 h-16 object-contain relative z-10" />
+          <div className="w-24 h-24 bg-transparent rounded-full flex items-center justify-center mx-auto mb-6 relative">
+            <svg 
+              viewBox="0 0 64 64" 
+              className="w-16 h-16 shrink-0 relative z-10"
+            >
+              <defs>
+                <linearGradient id="gAdmin2" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" />
+                  <stop offset="100%" stopColor="#0ea5e9" />
+                </linearGradient>
+                <linearGradient id="ringGAdmin2" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" />
+                  <stop offset="50%" stopColor="#facc15" />
+                  <stop offset="100%" stopColor="#0ea5e9" />
+                </linearGradient>
+              </defs>
+              <circle className="logo-ring" cx="32" cy="32" r="29" fill="none" stroke="url(#ringGAdmin2)" strokeWidth="2.5" strokeDasharray="10 5" />
+              <circle cx="32" cy="32" r="25" fill="url(#gAdmin2)" />
+              <circle cx="32" cy="32" r="21" fill="#0f172a" />
+              <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fill="#fff" fontSize="18" fontWeight="900" fontFamily="Segoe UI">EV</text>
+            </svg>
             <div className="absolute inset-0 bg-blue-500/10 animate-ping rounded-full" style={{ animationDuration: '3s' }}></div>
           </div>
           <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter">
@@ -10612,6 +11198,32 @@ function AdminPanel({
         ) : (
           <div className="p-6 lg:p-12 max-w-[1600px] mx-auto w-full">
             <DynamicSection id="admin_dashboard_html" />
+            {["settings", "ads", "code_manager", "ai", "cloud_dns"].includes(activeSubTab) && (
+              <div className="mb-10 overflow-x-auto custom-scrollbar pb-2">
+                <div className="flex gap-3">
+                  {[
+                    { id: "settings", label: "System Config", icon: Settings },
+                    { id: "ai", label: "Gemini AI Node", icon: Bot },
+                    { id: "cloud_dns", label: "Cloud & DNS", icon: Cloud },
+                    { id: "code_manager", label: "Code Manager", icon: Code },
+                    { id: "ads", label: "Ad Management", icon: Megaphone },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveSubTab(tab.id)}
+                      className={`flex items-center gap-2.5 px-6 py-4 rounded-[20px] font-black text-[11px] uppercase tracking-widest whitespace-nowrap transition-all ${
+                        activeSubTab === tab.id
+                          ? "bg-primary text-white shadow-xl shadow-primary/20"
+                          : "bg-white text-slate-500 border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <tab.icon size={18} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {activeSubTab === "dash" && (
               <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} />
             )}
@@ -12564,6 +13176,11 @@ function AdminPanel({
               </div>
             )}
 
+            {activeSubTab === "media_vault" && (
+              <div className="space-y-8 pb-20 fade-in slide-in-from-bottom-4 animate-in duration-500">
+                <MediaVaultAdmin addToast={addToast} />
+              </div>
+            )}
             {activeSubTab === "trash" && (
               <div className="space-y-8 pb-20">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
@@ -15576,6 +16193,9 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                       </button>
                     </div>
                   </div>
+                <div className="lg:col-span-3 w-full mt-12 mb-8">
+                  <CloudStorageManager storageConfig={storageConfig} />
+                </div>
                 </div>
               </div>
             )}
@@ -15595,6 +16215,30 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
               />
             )}
 
+            {["landing_page_config", "seo_meta", "page_descriptions"].includes(activeSubTab) && (
+              <div className="mb-10 overflow-x-auto custom-scrollbar pb-2">
+                <div className="flex gap-3">
+                  {[
+                    { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
+                    { id: "seo_meta", label: "SEO & Meta Tags", icon: Globe },
+                    { id: "page_descriptions", label: "Page Descriptions", icon: FileBadge },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveSubTab(tab.id)}
+                      className={`flex items-center gap-2.5 px-6 py-4 rounded-[20px] font-black text-[11px] uppercase tracking-widest whitespace-nowrap transition-all ${
+                        activeSubTab === tab.id
+                          ? "bg-primary text-white shadow-xl shadow-primary/20"
+                          : "bg-white text-slate-500 border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <tab.icon size={18} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {activeSubTab === "landing_page_config" && (
               <LandingPageConfigAdmin
                 landingPageData={landingPageData}
@@ -16276,7 +16920,6 @@ function FormsHub({
         time: Date.now(),
       });
       addToast("Form uploaded successfully!");
-      setShowUpload(false);
       setFormName("");
       setFormPurpose("");
       setFormUsage("");
@@ -18626,7 +19269,7 @@ function DSRAnalyzer({
             </div>
           </div>
 
-          <div className="mt-8">
+          <div className="lg:col-span-3 w-full mt-12 mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <Database size={14} /> Mandal-wise Summary Hub
@@ -18983,7 +19626,10 @@ function PostCard({
   }, [post?.id, auth.currentUser?.uid]);
 
   return (
-    <motion.div 
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
       layout 
       className={`post-card ${commentPulse ? 'ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20' : ''}`}
       whileHover={{ scale: 1.005, y: -2 }}
@@ -19714,7 +20360,7 @@ function PostCard({
 <div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-auto">
   <div className="flex items-center gap-6">
     <div className="flex items-center gap-2">
-      <button
+      <motion.button whileTap={{ scale: 0.85 }}
         aria-label="Like Post"
         onClick={async (e) => {
           e.stopPropagation();
@@ -19757,7 +20403,7 @@ function PostCard({
             addToast(getFriendlyError(err));
           }
         }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all active:scale-95 ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
+              className={`flex items-center gap-2 p-2 rounded-xl transition-all ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
             >
               <Heart
                 size={18}
@@ -19778,11 +20424,12 @@ function PostCard({
               >
                 {post.likes || 0}
               </span>
-            </button>
+            </motion.button>
           </div>
 
           <div className="flex items-center gap-2">
-            <div
+            <motion.div
+              whileTap={{ scale: 0.85 }}
               className="flex items-center gap-2 p-2 text-slate-400 cursor-pointer hover:bg-slate-50 rounded-xl transition-all"
               onClick={(e) => {
                 e.stopPropagation();
@@ -19793,7 +20440,7 @@ function PostCard({
               <span className="text-sm font-black">
                 {post.commentCount ?? post.comments?.length ?? 0}
               </span>
-            </div>
+            </motion.div>
           </div>
 
           {/* Views - Visible to all, clickable only by admin */}
@@ -20057,7 +20704,7 @@ function PostForm({
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-                
+                await saveToMediaVault(data.url, file, auth.currentUser);
                 setUploadProgress(100);
                 resolve({
                   name: file.name,
@@ -20085,6 +20732,7 @@ function PostForm({
                 async () => {
                   try {
                     const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    await saveToMediaVault(downloadURL, file, auth.currentUser);
                     setUploadProgress(100);
                     resolve({
                       name: file.name,
@@ -20258,10 +20906,12 @@ function PostForm({
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
         downloadURL = data.url;
+        await saveToMediaVault(downloadURL, file, auth.currentUser);
       } else {
         const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
         await uploadBytes(storageRef, file);
         downloadURL = await getDownloadURL(storageRef);
+        await saveToMediaVault(downloadURL, file, auth.currentUser);
       }
 
       setMedia({
@@ -20319,10 +20969,12 @@ function PostForm({
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
         downloadURL = data.url;
+        await saveToMediaVault(downloadURL, file, auth.currentUser);
       } else {
         const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
         await uploadBytes(storageRef, file);
         downloadURL = await getDownloadURL(storageRef);
+        await saveToMediaVault(downloadURL, file, auth.currentUser);
       }
 
       const imageMarkdown = `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`;
@@ -21044,10 +21696,12 @@ function PostForm({
                            const data = await response.json();
                            if (!response.ok) throw new Error(data.error || 'R2 upload failed');
                            downloadURL = data.url;
+        await saveToMediaVault(downloadURL, file, auth.currentUser);
                          } else {
                            const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
                            await uploadBytes(storageRef, file);
                            downloadURL = await getDownloadURL(storageRef);
+        await saveToMediaVault(downloadURL, file, auth.currentUser);
                          }
                          
                          newContent += `\n\n![Pasted Image](${downloadURL})`;
@@ -23234,10 +23888,8 @@ function PostComments({
 
   useEffect(() => {
     if (!post?.id) return;
-
     const commentsCol = collection(db, "posts", post.id, "comments");
-
-    const unsub = onSnapshot(
+    const unsubComments = onSnapshot(
       commentsCol,
       (snap) => {
         const docs = snap.docs.map((d) => ({
@@ -23252,7 +23904,22 @@ function PostComments({
         setCommentsLoaded(true);
       },
     );
-    return () => unsub();
+    const unsubPost = onSnapshot(
+      doc(db, "posts", post.id),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const updatedPostData = docSnap.data();
+          if (updatedPostData.comments) {
+            postRef.current = { ...postRef.current, comments: updatedPostData.comments, commentCount: updatedPostData.commentCount };
+          }
+        }
+      },
+      (err) => console.error("Error fetching post doc snapshot for comments:", err)
+    );
+    return () => {
+      unsubComments();
+      unsubPost();
+    };
   }, [post.id]);
 
   useEffect(() => {
@@ -23467,10 +24134,12 @@ function PostComments({
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'R2 upload failed');
             uploadedImageUrl = data.url;
+            await saveToMediaVault(uploadedImageUrl, processedFile, auth.currentUser);
           } else {
             const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
             await uploadBytes(storageRef, processedFile);
             uploadedImageUrl = await getDownloadURL(storageRef);
+            await saveToMediaVault(uploadedImageUrl, processedFile, auth.currentUser);
           }
           
           addToast("Screenshot uploaded successfully!");
@@ -23630,7 +24299,7 @@ function PostComments({
                 <input
                   value={newComment}
                   onChange={handleCommentChange}
-                  onKeyDown={(e) => e.key === "Enter" && !submittingComment && handleAddComment()}
+                  onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && !submittingComment && handleAddComment()}
                   onPaste={(e) => {
                     const items = e.clipboardData?.items;
                     if (!items) return;
@@ -23952,7 +24621,7 @@ function PostComments({
                               value={editReplyText}
                               onChange={(e) => setEditReplyText(e.target.value)}
                               className="flex-1 text-sm bg-white p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
-                              onKeyDown={(e) => e.key === "Enter" && handleEditReplySubmit(c.id)}
+                              onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && handleEditReplySubmit(c.id)}
                             />
                             <button
                               onClick={() => handleEditReplySubmit(c.id)}
@@ -24004,7 +24673,7 @@ function PostComments({
                     onChange={handleReplyChange}
                     placeholder="Write a reply..."
                     className="flex-1 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
-                    onKeyDown={(e) => e.key === "Enter" && handleAddReply(c.id)}
+                    onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && handleAddReply(c.id)}
                   />
                   <button
                     disabled={submittingReply || !replyText.trim()}
@@ -24115,7 +24784,7 @@ function SuggestionCategoriesManager({
                  value={editingCat.new}
                  onChange={e => setEditingCat({...editingCat, new: e.target.value})}
                  className="bg-white px-2 py-1 border border-slate-200 rounded outline-none text-sm font-bold text-slate-800"
-                 onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                 onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === 'Enter' && handleSaveEdit()}
                  autoFocus
                />
                <button onClick={handleSaveEdit} className="text-blue-500 hover:text-blue-700 p-1">

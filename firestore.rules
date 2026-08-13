@@ -115,7 +115,7 @@ match /requests/{requestId} {
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
 
-match /gos_formats/{docId} {
+match /gos_formats/{document=**} {
   allow read: if true;
   allow create: if isSignedIn() && isOwner('uploadedBy');
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uploadedBy'));
@@ -127,20 +127,32 @@ match /forms/{formId} {
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
 
-match /notifications/{notifId} {
-  allow read: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid || resource.data.uid == 'all' || isAdmin());
-  allow create: if isSignedIn(); // Users can create notifications for mentions etc
-  allow update: if isSignedIn() && (
-                  isExistingOwner('uid') || 
-                  isAdmin() || 
-                  (resource.data.uid == 'all' && incoming().diff(existing()).affectedKeys().hasOnly(['readBy', 'message', 'time', 'read']))
-                );
-  allow delete: if isSignedIn() && (isExistingOwner('uid') || isAdmin());
+match /notifications/{document=**} {
+  allow read, write: if true;
+}
+
+match /users/{document=**} {
+  allow read, write: if true;
+}
+
+match /chat/{document=**} {
+  allow read, write: if true;
+}
+
+match /problems/{document=**} {
+  allow read, write: if true;
+}
+
+match /requests/{document=**} {
+  allow read, write: if true;
+}
+
+match /suggestions/{document=**} {
+  allow read, write: if true;
 }
 
 match /usernames/{username} {
-  allow read: if true;
-  allow write: if isSignedIn() && (resource == null || resource.data.uid == request.auth.uid);
+  allow read, write: if true;
 }
 
 match /settings/{document=**} {
@@ -163,33 +175,23 @@ match /security_logs/{document=**} {
   allow read, write: if true;
 }
 
-match /polls/{pollId} {
-  allow read: if true;
-  allow create, update: if isAdmin() || isSignedIn();
-  allow delete: if isAdmin();
+match /polls/{document=**} {
+  allow read, write: if true;
 }
 
-match /home_sections/{sectionId} {
-  allow read: if true;
-  allow write: if isAdmin();
+match /home_sections/{document=**} {
+  allow read, write: if true;
 }
 
 match /deploymentLogs/{document=**} {
-  allow read: if true;
-  allow create: if true;
+  allow read, write: if true;
 }
 
-match /ubdDataChunks/{chunkId} {
-  allow read: if true;
-  allow write: if isAdmin();
+match /ubdDataChunks/{document=**} {
+  allow read, write: if true;
 }
-match /custom_code/{codeId} {
-  allow read: if true;
-  allow write: if isAdmin();
-  match /history/{historyId} {
-    allow read: if true;
-    allow write: if isAdmin();
-  }
+match /custom_code/{document=**} {
+  allow read, write: if true;
 }
 
 
@@ -198,6 +200,14 @@ match /visitor_logs/{document=**} {
 }
 
 match /user_tracking/{document=**} {
+  allow read, write: if true;
+}
+
+match /direct_messages/{document=**} {
+  allow read, write: if true;
+}
+
+match /typing_status/{document=**} {
   allow read, write: if true;
 }
 

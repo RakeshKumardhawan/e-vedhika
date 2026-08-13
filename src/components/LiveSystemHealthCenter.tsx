@@ -312,7 +312,7 @@ export function LiveSystemHealthCenter() {
             </div>
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900">{metrics.storageUsageMB} MB <span className="text-xs text-slate-400 font-bold">/ {metrics.storageLimitMB} MB</span></h3>
+            <h3 className="text-lg font-black text-slate-900">{metrics.storageUsageMB.toFixed(2)} MB <span className="text-xs text-slate-400 font-bold">/ {metrics.storageLimitMB} MB</span></h3>
             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
               <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${(metrics.storageUsageMB / metrics.storageLimitMB) * 100}%` }}></div>
             </div>

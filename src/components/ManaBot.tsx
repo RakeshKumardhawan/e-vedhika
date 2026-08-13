@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { askMana } from '../services/geminiService';
 import { exportExcelReport, exportPdfReport, fetchLiveDatabaseSnapshot, DatabaseSnapshot } from '../services/dbAnalysisService';
-import ReactMarkdown from 'react-markdown';
+import { SafeMarkdown as ReactMarkdown } from './SafeMarkdown';
 import remarkBreaks from 'remark-breaks';
 
 interface Message {

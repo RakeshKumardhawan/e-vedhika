@@ -1,0 +1,3 @@
+#!/bin/bash
+sed -i 's/className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500\/30 shadow-\[0_0_30px_rgba(59,130,246,0.3)\] relative overflow-hidden group"/className="w-24 h-24 bg-transparent rounded-full flex items-center justify-center mx-auto mb-6 relative overflow-hidden group"/g' src/App.tsx
+sed -i 's/className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-blue-500\/30 shadow-\[0_0_30px_rgba(59,130,246,0.3)\] relative"/className="w-24 h-24 bg-transparent rounded-full flex items-center justify-center mx-auto mb-6 relative"/g' src/App.tsx
