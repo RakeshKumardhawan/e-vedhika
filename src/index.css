@@ -554,6 +554,7 @@ html, body, #root {
 /* Custom Scrollbar for Nav */
 .custom-scrollbar::-webkit-scrollbar {
   height: 4px;
+  width: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;

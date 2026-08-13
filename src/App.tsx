@@ -2727,6 +2727,21 @@ export default function App() {
     return () => unsub();
   }, [user]);
 
+  // Listen for typing status
+  useEffect(() => {
+    if (!user || !activeDmUser) return;
+    const unsub = onSnapshot(doc(db, "typing_status", `${activeDmUser.id}_${user.uid}`), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const isCurrentlyTyping = data.isTyping && (Date.now() - data.updatedAt < 10000); // 10s timeout
+        setTypingUsers(prev => ({ ...prev, [activeDmUser.id]: isCurrentlyTyping }));
+      } else {
+        setTypingUsers(prev => ({ ...prev, [activeDmUser.id]: false }));
+      }
+    });
+    return () => unsub();
+  }, [user, activeDmUser]);
+
   // Load draft when activeDmUser changes
   useEffect(() => {
     if (!user || !activeDmUser) {
@@ -4066,6 +4081,62 @@ export default function App() {
       />
     );
   }
+
+  const dmUsersList = useMemo(() => {
+    if (!user) return [];
+    
+    // Find all conversations
+    const conversations = new Map<string, { lastMessageAt: number, unread: number, lastMessageText: string, lastMessageSender: string, lastMessageRead: boolean }>();
+    
+    allDmMessages.forEach(m => {
+      if (m.senderId === user.uid || m.receiverId === user.uid) {
+        const otherId = m.senderId === user.uid ? m.receiverId : m.senderId;
+        const current = conversations.get(otherId) || { lastMessageAt: 0, unread: 0, lastMessageText: "", lastMessageSender: "", lastMessageRead: false };
+        
+        if (m.createdAt > current.lastMessageAt) {
+          current.lastMessageAt = m.createdAt;
+          current.lastMessageText = m.text;
+          current.lastMessageSender = m.senderId;
+          current.lastMessageRead = !!m.read;
+        }
+        
+        if (m.receiverId === user.uid && !m.read) {
+          current.unread += 1;
+        }
+        
+        conversations.set(otherId, current);
+      }
+    });
+
+    const filteredUsers = allUsers
+      .filter(u => u.id !== user.uid)
+      .map(u => {
+        const conv = conversations.get(u.id);
+        return {
+          ...u,
+          lastMessageAt: conv ? conv.lastMessageAt : 0,
+          lastMessageText: conv ? conv.lastMessageText : "",
+          lastMessageSender: conv ? conv.lastMessageSender : "",
+          lastMessageRead: conv ? conv.lastMessageRead : false,
+          unreadCount: conv ? conv.unread : 0
+        };
+      });
+
+    const q = dmSearchQuery.toLowerCase();
+    if (q) {
+      return filteredUsers.filter(u => 
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.username || "").toLowerCase().includes(q) ||
+        (u.district || "").toLowerCase().includes(q) ||
+        (u.designation || "").toLowerCase().includes(q)
+      ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+    }
+    
+    // If no search query, only show "Friends" (Following) OR users with active history
+    return filteredUsers.filter(u => 
+      (userProfile?.following || []).includes(u.id) || u.lastMessageAt > 0
+    ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+  }, [allUsers, allDmMessages, user, dmSearchQuery, userProfile]);
 
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
@@ -7749,156 +7820,204 @@ export default function App() {
 
       {/* DIRECT MESSAGES MODAL */}
       {showDirectMessages && (
-        <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col h-[600px] max-h-[90vh]"
+            className="w-full max-w-6xl w-[calc(100vw-32px)] bg-white sm:rounded-[24px] rounded-2xl shadow-2xl overflow-hidden flex flex-row h-[85vh] max-h-[900px]"
           >
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {activeDmUser ? (
-                  <button
-                    onClick={() => setActiveDmUser(null)}
-                    className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                ) : (
-                  <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-                    <MessageCircle size={20} />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-sm font-black uppercase tracking-wider">
-                    {activeDmUser ? `${activeDmUser.name || activeDmUser.username || "User"}` : "Direct Messages"}
-                  </h3>
-                  <p className="text-[10px] text-slate-300 font-medium">
-                    {activeDmUser ? activeDmUser.designation || "Portal Member" : "Select a member to chat privately"}
-                  </p>
+            {/* Left Pane - User List */}
+            <div className={`w-full sm:w-[350px] md:w-[400px] shrink-0 border-r border-slate-200 bg-white flex-col h-full ${activeDmUser ? 'hidden sm:flex' : 'flex'}`}>
+              <div className="p-3 sm:p-4 bg-slate-50 flex items-center justify-between border-b border-slate-200">
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                  <MessageCircle size={18} className="text-primary" />
+                  Messages
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowDirectMessages(false);
+                    setActiveDmUser(null);
+                  }}
+                  className="p-2 rounded-full bg-slate-200/60 hover:bg-slate-300 transition-colors cursor-pointer text-slate-600 sm:hidden"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              
+              <div className="p-3 border-b border-slate-200 bg-white">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={dmSearchQuery}
+                    onChange={(e) => setDmSearchQuery(e.target.value)}
+                    placeholder="Search any user to start new chat..."
+                    className="w-full bg-slate-100 border-none pl-10 pr-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                  />
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setShowDirectMessages(false);
-                  setActiveDmUser(null);
-                }}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
+
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 scrollbar-thin">
+                {dmUsersList.length > 0 ? (
+                  dmUsersList.map(u => {
+                    const isOnline = (u as any).lastActive && (Date.now() - (u as any).lastActive < 120000);
+                    const isSelected = activeDmUser?.id === u.id;
+                    const unreadCount = (u as any).unreadCount || 0;
+                    
+                    return (
+                      <div
+                        key={u.id}
+                        onClick={() => setActiveDmUser(u)}
+                        className={`p-3 hover:bg-slate-100/80 rounded-2xl cursor-pointer flex items-center gap-3 transition-colors relative ${isSelected ? 'bg-slate-100' : ''}`}
+                      >
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-200 shrink-0 border border-slate-300 relative">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-500 font-black text-lg">
+                              {(u.name || u.username || "U")[0]}
+                            </div>
+                          )}
+                          {isOnline && (
+                             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-0.5">
+                            <h4 className="text-[13px] font-black text-slate-900 truncate">
+                              {u.surname} {u.name}
+                            </h4>
+                            {(u as any).lastMessageAt > 0 && (
+                              <span className={`text-[10px] font-bold shrink-0 ml-2 ${unreadCount > 0 ? 'text-green-600' : 'text-slate-400'}`}>
+                                {new Date((u as any).lastMessageAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <p className="text-[11px] font-medium text-slate-500 truncate flex-1 flex items-center gap-1">
+                              {(u as any).lastMessageText ? (
+                                <>
+                                  {(u as any).lastMessageSender === user.uid && ( (u as any).lastMessageRead ? <CheckCheck size={12} className="text-blue-500" /> : <Check size={12} className="text-slate-400" /> )}
+                                  <span className="truncate">{(u as any).lastMessageText}</span>
+                                </>
+                              ) : (
+                                <span className="italic text-slate-400">Click to start chatting</span>
+                              )}
+                            </p>
+                            {unreadCount > 0 && (
+                              <span className="text-[10px] bg-green-500 text-white font-black w-5 h-5 flex items-center justify-center rounded-full shadow-sm ml-2 shrink-0">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-10 text-center text-slate-400 text-xs font-bold flex flex-col items-center gap-3">
+                    <MessageCircle size={36} className="text-slate-300 mx-auto" />
+                    <p>No conversations found</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            {/* Right Pane - Active Chat */}
+            <div className={`flex-1 min-w-0 w-full sm:w-auto bg-[#efeae2] flex flex-col h-full overflow-hidden relative max-w-full ${!activeDmUser ? 'hidden sm:flex' : 'flex'}`}>
               {!activeDmUser ? (
-                <div className="w-full flex flex-col h-full bg-slate-50/50">
-                  <div className="p-3 border-b border-slate-200 bg-white">
-                    <div className="relative">
-                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        value={dmSearchQuery}
-                        onChange={(e) => setDmSearchQuery(e.target.value)}
-                        placeholder="Search conversations by name, username or district..."
-                        className="w-full bg-slate-50 border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-primary"
-                      />
-                    </div>
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-4 bg-[#f0f2f5] relative">
+                  <button
+                    onClick={() => setShowDirectMessages(false)}
+                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-200 transition-colors cursor-pointer text-slate-500 hidden sm:block"
+                  >
+                    <X size={20} />
+                  </button>
+                  <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm text-slate-300">
+                    <MessageCircle size={64} />
                   </div>
-                  <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2">
-                    {allUsers
-                      .filter(u => u.id !== user?.uid)
-                      .filter(u => {
-                        const q = dmSearchQuery.toLowerCase();
-                        if (!q) return true;
-                        return (
-                          (u.name || "").toLowerCase().includes(q) ||
-                          (u.username || "").toLowerCase().includes(q) ||
-                          (u.district || "").toLowerCase().includes(q) ||
-                          (u.designation || "").toLowerCase().includes(q)
-                        );
-                      }).length > 0 ? (
-                      allUsers
-                        .filter(u => u.id !== user?.uid)
-                        .filter(u => {
-                          const q = dmSearchQuery.toLowerCase();
-                          if (!q) return true;
-                          return (
-                            (u.name || "").toLowerCase().includes(q) ||
-                            (u.username || "").toLowerCase().includes(q) ||
-                            (u.district || "").toLowerCase().includes(q) ||
-                            (u.designation || "").toLowerCase().includes(q)
-                          );
-                        })
-                        .map(u => (
-                          <div
-                            key={u.id}
-                            onClick={() => setActiveDmUser(u)}
-                            className="p-3 hover:bg-slate-100/80 rounded-2xl cursor-pointer flex items-center gap-3 transition-colors"
-                          >
-                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 relative">
-                              {u.photoURL ? (
-                                <img src={u.photoURL} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">
-                                  {(u.name || u.username || "U")[0]}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-xs font-black text-slate-900 truncate">
-                                {u.surname} {u.name} ({u.username})
-                              </h4>
-                              <p className="text-[10px] font-bold text-slate-400 truncate">
-                                {u.designation || "Member"} • {u.district || "Telangana"}
-                              </p>
-                            </div>
-                            <span className="text-xs text-primary font-black bg-blue-50 px-3 py-1.5 rounded-xl">
-                              Chat
-                            </span>
-                          </div>
-                        ))
-                    ) : (
-                      <div className="p-10 text-center text-slate-400 text-xs font-bold">
-                        No members matching search criteria.
-                      </div>
-                    )}
-                  </div>
+                  <h2 className="text-2xl font-light text-slate-700 mb-2">E-VEDHIKA Web</h2>
+                  <p className="text-sm text-slate-500 max-w-md font-medium">Select a conversation from the left to start messaging. All messages are securely synced.</p>
                 </div>
               ) : (
-                <div className="w-full flex flex-col h-full bg-slate-50/50">
-                  <div className="flex-1 p-4 overflow-y-auto space-y-2">
+                <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
+                  {/* Chat Header */}
+                  <div className="px-4 py-3 bg-slate-50 flex items-center gap-3 border-b border-slate-200 sticky top-0 z-10 shrink-0 w-full min-w-0">
+                    <button 
+                      className="sm:hidden p-2 -ml-2 rounded-full hover:bg-slate-200 transition-colors" 
+                      onClick={() => setActiveDmUser(null)}
+                    >
+                      <ArrowLeft size={18} className="text-slate-600" />
+                    </button>
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 shrink-0 border border-slate-300 relative">
+                      {activeDmUser.photoURL ? (
+                        <img src={activeDmUser.photoURL} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-500 font-black">
+                          {(activeDmUser.name || activeDmUser.username || "U")[0]}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-[13px] font-black text-slate-900 truncate">
+                        {activeDmUser.surname} {activeDmUser.name}
+                      </h4>
+                      <p className="text-[10px] font-bold text-slate-500 truncate">
+                        {typingUsers[activeDmUser.id] ? (
+                          <span className="text-green-600 italic">typing...</span>
+                        ) : (
+                          (activeDmUser as any).lastActive && (Date.now() - (activeDmUser as any).lastActive < 120000) 
+                            ? "Online" 
+                            : `Last seen ${(activeDmUser as any).lastActive ? new Date((activeDmUser as any).lastActive).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'recently'}`
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowDirectMessages(false);
+                        setActiveDmUser(null);
+                      }}
+                      className="p-2 rounded-full hover:bg-slate-200 transition-colors cursor-pointer text-slate-500 hidden sm:block"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  {/* Messages Area */}
+                  <div id="direct-chat-messages" className="flex-1 overflow-y-auto p-4 space-y-2 bg-[#efeae2] w-full min-w-0 custom-scrollbar">
                     {dmMessages.length > 0 ? (
                       dmMessages.map((m: any, idx: number) => {
                         const isMe = m.senderId === user?.uid;
                         const prevMsg = idx > 0 ? dmMessages[idx - 1] : null;
                         const timeDiff = prevMsg ? (m.createdAt || 0) - (prevMsg.createdAt || 0) : 999999;
-                        const showTimeHeader = timeDiff > 300000; // 5 minutes threshold
+                        const showTimeHeader = timeDiff > 300000;
                         const sameSenderAsPrev = prevMsg && prevMsg.senderId === m.senderId && !showTimeHeader;
 
                         return (
                           <div key={m.id}>
                             {showTimeHeader && (
-                              <div className="text-center my-2">
-                                <span className="text-[9px] font-bold bg-slate-200/60 text-slate-500 px-3 py-1 rounded-full uppercase tracking-wider">
-                                  {new Date(m.createdAt || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              <div className="text-center my-3">
+                                <span className="text-[10px] font-bold bg-white/80 backdrop-blur-sm text-slate-600 px-3 py-1.5 rounded-lg shadow-sm">
+                                  {new Date(m.createdAt || Date.now()).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
                                 </span>
                               </div>
                             )}
                             <div className={`flex ${isMe ? "justify-end" : "justify-start"} ${sameSenderAsPrev ? "mt-0.5" : "mt-2"}`}>
                               <div
-                                className={`max-w-[75%] p-3.5 rounded-2xl text-xs font-medium shadow-sm relative group ${
+                                className={`max-w-[80%] px-3 py-2 rounded-lg text-[13px] shadow-sm relative group break-all sm:break-words ${
                                   isMe
-                                    ? "bg-primary text-white rounded-tr-none"
-                                    : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-none"
+                                    ? "bg-[#d9fdd3] text-slate-800 rounded-tr-none"
+                                    : "bg-white text-slate-800 rounded-tl-none"
                                 }`}
                               >
-                                <p className="leading-relaxed break-words">{m.text}</p>
-                                <div className={`flex items-center justify-end gap-1 mt-1 text-[8px] ${isMe ? "text-white/70" : "text-slate-400"}`}>
+                                <p className="leading-relaxed break-words whitespace-pre-wrap max-w-full">{m.text}</p>
+                                <div className={`flex items-center justify-end gap-1 mt-0.5 text-[9px] font-bold ${isMe ? "text-slate-500" : "text-slate-400"}`}>
                                   <span>
                                     {new Date(m.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                   </span>
                                   {isMe && (
-                                    <span className={m.read ? "text-blue-200 font-bold" : "text-white/60"}>
-                                      {m.read ? "✓✓ Read" : "✓"}
+                                    <span className="ml-1 inline-flex items-center">
+                                      {m.read ? <CheckCheck size={14} className="text-blue-500" /> : <Check size={14} className="text-slate-400" />}
                                     </span>
                                   )}
                                 </div>
@@ -7908,27 +8027,14 @@ export default function App() {
                         );
                       })
                     ) : (
-                      <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold">
-                        No messages yet. Send a message to start conversation!
-                      </div>
-                    )}
-
-                    {typingUsers[activeDmUser.id] && (
-                      <div className="flex justify-start items-center gap-2 mt-2">
-                        <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1.5 text-slate-400 text-[10px] font-bold italic animate-pulse">
-                          <span>{activeDmUser.name || "User"} is typing</span>
-                          <span className="flex gap-0.5">
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                          </span>
-                        </div>
+                      <div className="h-full flex items-center justify-center text-slate-500 text-xs font-bold bg-white/50 rounded-2xl mx-10 p-4 text-center backdrop-blur-sm shadow-sm">
+                        No messages yet. Send a message to start the conversation!
                       </div>
                     )}
                   </div>
 
                   {/* Quick-Reply Buttons */}
-                  <div className="px-3 py-2 bg-white border-t border-slate-100 flex gap-1.5 overflow-x-auto scrollbar-none">
+                  <div className="px-4 py-2 bg-[#f0f2f5] flex gap-1.5 overflow-x-auto scrollbar-none shrink-0 border-t border-slate-200 w-full min-w-0 max-w-full">
                     {[
                       "Okay (సరే)",
                       "Understood (అర్థమైంది)",
@@ -7940,25 +8046,39 @@ export default function App() {
                         key={qr}
                         type="button"
                         onClick={() => handleSendDMText(qr)}
-                        className="px-3 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-primary rounded-xl text-[10px] font-bold whitespace-nowrap transition-colors border border-slate-200/60 cursor-pointer shadow-2xs"
+                        className="px-3 py-1.5 bg-white hover:bg-green-50 text-slate-700 hover:text-green-700 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors border border-slate-200 shadow-sm shrink-0 cursor-pointer"
                       >
                         {qr}
                       </button>
                     ))}
                   </div>
 
-                  <form onSubmit={handleSendDM} className="p-3 bg-white border-t border-slate-200 flex gap-2">
-                    <input
+                  {/* Input Form */}
+                  <form onSubmit={handleSendDM} className="p-3 bg-[#f0f2f5] flex gap-2 items-end shrink-0 w-full min-w-0 max-w-full">
+                    <textarea
                       value={dmInput}
-                      onChange={handleTypingChange}
-                      placeholder="Type a private message..."
-                      className="flex-1 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl text-xs font-bold outline-none focus:border-primary"
+                      onChange={(e) => {
+                         handleTypingChange(e as any);
+                         e.target.style.height = 'auto';
+                         e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendDM(e);
+                        }
+                      }}
+                      placeholder="Type a message"
+                      rows={1}
+                      className="flex-1 min-w-0 w-full bg-white border-none px-4 py-3 rounded-2xl text-[13px] font-medium outline-none focus:ring-1 focus:ring-green-500 resize-none overflow-y-auto max-h-[120px]"
+                      style={{ minHeight: '44px' }}
                     />
                     <button
                       type="submit"
-                      className="bg-primary text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md hover:bg-primary/90 transition-all active:scale-95 cursor-pointer"
+                      disabled={!dmInput.trim()}
+                      className={`p-3 rounded-full flex items-center justify-center shrink-0 transition-colors ${dmInput.trim() ? 'bg-[#00a884] text-white cursor-pointer hover:bg-[#008f6f]' : 'bg-slate-200 text-slate-400'}`}
                     >
-                      <Send size={14} /> Send
+                      <Send size={18} className={`${dmInput.trim() ? 'ml-0.5' : ''}`} />
                     </button>
                   </form>
                 </div>
