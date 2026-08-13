@@ -10909,6 +10909,19 @@ function AdminPanel({
   const [reportsFilter, setReportsFilter] = useState<
     "All" | "New" | "In-Progress" | "Pending" | "Approved" | "Flagged" | "Resolved" | "Deleted"
   >("All");
+
+  const normalizeReportStatus = (rawStatus: string | undefined): string => {
+    if (!rawStatus) return "pending";
+    const s = rawStatus.toLowerCase().trim();
+    if (s === "new" || s === "open") return "new";
+    if (s === "in-progress" || s === "inprogress" || s === "in progress" || s === "processing") return "in-progress";
+    if (s === "pending") return "pending";
+    if (s === "approved" || s === "visible") return "approved";
+    if (s === "resolved" || s === "solved") return "resolved";
+    if (s === "deleted" || s === "trash") return "deleted";
+    if (s === "flagged") return "flagged";
+    return s;
+  };
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [allProblems, setAllProblems] = useState<ProblemReport[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
@@ -11412,16 +11425,33 @@ function AdminPanel({
                       <Download size={14} /> Export XLS
                     </button>
                     {["All", "New", "In-Progress", "Pending", "Approved", "Resolved", "Deleted"].map(
-                      (f) => (
-                        <button
-                          aria-label={f}
-                          key={f}
-                          onClick={() => setReportsFilter(f as any)}
-                          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${reportsFilter === f ? "bg-indigo-900 border-indigo-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"}`}
-                        >
-                          {f}
-                        </button>
-                      ),
+                      (f) => {
+                        const rawList =
+                          activeSubTab === "reports"
+                            ? reportsType === "posts"
+                              ? posts
+                              : allProblems
+                            : suggestions;
+                        const count = rawList.filter((item: any) => {
+                          const s = normalizeReportStatus(item.status);
+                          if (f === "All") return s !== "deleted";
+                          return s === f.toLowerCase();
+                        }).length;
+
+                        return (
+                          <button
+                            aria-label={f}
+                            key={f}
+                            onClick={() => setReportsFilter(f as any)}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-1.5 ${reportsFilter === f ? "bg-indigo-900 border-indigo-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"}`}
+                          >
+                            <span>{f}</span>
+                            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold ${reportsFilter === f ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      },
                     )}
                     {reportsFilter === "Deleted" && (
                       <button
@@ -11490,28 +11520,33 @@ function AdminPanel({
                       </tr>
                     </thead>
                     <tbody className="space-y-4 block md:table-row-group">
-                      {(activeSubTab === "reports"
-                        ? reportsType === "posts"
-                          ? posts
-                          : allProblems
-                        : suggestions
-                      )
-                        .filter((item) => {
-                          if (reportsFilter === "All")
-                            return (
-                              (item.status || "").toLowerCase() !== "deleted"
-                            );
-                          if (reportsFilter === "Pending")
-                            return (
-                              !item.status ||
-                              (item.status || "").toLowerCase() === "pending"
-                            );
+                      {(() => {
+                        const filteredItems = (activeSubTab === "reports"
+                          ? reportsType === "posts"
+                            ? posts
+                            : allProblems
+                          : suggestions
+                        ).filter((item) => {
+                          const s = normalizeReportStatus(item.status);
+                          if (reportsFilter === "All") return s !== "deleted";
+                          return s === reportsFilter.toLowerCase();
+                        });
+
+                        if (filteredItems.length === 0) {
                           return (
-                              (item.status || "").toLowerCase() ===
-                              reportsFilter.toLowerCase()
-                            );
-                        })
-                        .map((item, idx) => (
+                            <tr>
+                              <td colSpan={3} className="py-16 text-center text-slate-400">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Filter size={24} className="text-slate-300" />
+                                  <p className="text-sm font-bold text-slate-600">ఈ విభాగంలో ఎటువంటి అంశాలు లేవు</p>
+                                  <p className="text-xs text-slate-400">No items found under "{reportsFilter}" status</p>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return filteredItems.map((item, idx) => (
                           <motion.tr
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -11609,14 +11644,14 @@ function AdminPanel({
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span
                                     className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${(() => {
-                                      const s = (item.status || "pending").toLowerCase();
+                                      const s = normalizeReportStatus(item.status);
                                       if (s === "new") {
                                         return "bg-blue-50 border-blue-200 text-blue-700 shadow-[0_1px_2px_rgba(59,130,246,0.1)]";
                                       }
-                                      if (s === "in-progress" || s === "inprogress" || s === "in progress") {
+                                      if (s === "in-progress") {
                                         return "bg-amber-50 border-amber-200 text-amber-700 shadow-[0_1px_2px_rgba(245,158,11,0.1)]";
                                       }
-                                      if (s === "resolved" || s === "solved" || s === "approved") {
+                                      if (s === "resolved" || s === "approved") {
                                         return "bg-emerald-50 border-emerald-250 text-emerald-700 shadow-[0_1px_2px_rgba(16,185,129,0.1)]";
                                       }
                                       if (s === "flagged") {
@@ -11625,11 +11660,11 @@ function AdminPanel({
                                       if (s === "deleted") {
                                         return "bg-slate-100 border-slate-200 text-slate-500";
                                       }
-                                      // default pending or processing
+                                      // default pending
                                       return "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-[0_1px_2px_rgba(99,102,241,0.1)]";
                                     })()}`}
                                   >
-                                    {item.status || "Pending"}
+                                    {normalizeReportStatus(item.status).toUpperCase()}
                                   </span>
                                   <span className="text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1.5 flex-wrap max-w-xs">
                                     <Hash size={12} className="flex-shrink-0" />{" "}
@@ -11678,9 +11713,7 @@ function AdminPanel({
                             <td className="p-4 sm:px-6 py-4 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0 bg-slate-50/50 md:bg-transparent">
                               <div className="flex justify-end items-center gap-2 w-full md:w-auto">
                                 <select
-                                  value={(
-                                    item.status || "pending"
-                                  ).toLowerCase()}
+                                  value={normalizeReportStatus(item.status)}
                                   onChange={async (e) => {
                                     const tabId =
                                       activeSubTab === "reports"
@@ -11699,7 +11732,8 @@ function AdminPanel({
                                             ? "posts"
                                             : "problems"
                                           : "suggestions";
-                                      const newStatus = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1);
+                                      const val = e.target.value;
+                                      const newStatus = val === "in-progress" ? "In-Progress" : val.charAt(0).toUpperCase() + val.slice(1);
                                       await updateDoc(doc(db, col, item.id), {
                                         status: newStatus,
                                       });
@@ -11903,7 +11937,8 @@ function AdminPanel({
                               </div>
                             </td>
                           </motion.tr>
-                        ))}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -20501,7 +20536,7 @@ function PostCard({
                 likes: increment(1),
                 likedBy: arrayUnion(userId),
               });
-              const likerName = auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+              const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
               const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
               const snapLike = await getDocs(qLike);
               if (!snapLike.empty) {
@@ -20602,7 +20637,7 @@ function PostCard({
                 async () => {
                   addToast("Link Copied!");
                   if (auth.currentUser) {
-                    const sharerName = auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
+                    const sharerName = isAdmin ? "Admin" : auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
                     const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
                     const snapShare = await getDocs(qShare);
                     if (!snapShare.empty) {
@@ -24174,10 +24209,11 @@ function PostComments({
         });
 
         if (!hasReacted) {
-          const likerName =
-            auth.currentUser!.displayName ||
-            auth.currentUser!.email?.split("@")[0] ||
-            "User";
+          const likerName = isAdmin
+            ? "Admin"
+            : auth.currentUser!.displayName ||
+              auth.currentUser!.email?.split("@")[0] ||
+              "User";
           sendLikeNotification(
             post.id,
             commentId,
