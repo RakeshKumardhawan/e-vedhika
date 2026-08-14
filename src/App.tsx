@@ -137,6 +137,7 @@ import {  DollarSign,
   ShieldOff,
   Maximize2,
   FileSpreadsheet,
+  FileDown,
   Package,
   CornerDownRight,
   LayoutList,
@@ -160,6 +161,7 @@ import rehypeRaw from "rehype-raw";
 import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
+import { PdfCompressTool } from "./components/PdfCompressTool";
 import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
 import { UBDTracker } from "./components/UBDTracker";
 import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
@@ -4895,6 +4897,7 @@ export default function App() {
                     { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
                     { id: "useful_links", label: "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
                     { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
+                    { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
                     { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
                     
                   ].map((item, index) => {
@@ -5413,6 +5416,7 @@ export default function App() {
                   { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText },
                   { id: "useful_links", label: "Useful Information", icon: Info },
                   { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet },
+                  { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown },
                   { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat },
                   
                 ].map((item) => (
@@ -7519,6 +7523,17 @@ export default function App() {
                     exit={{ opacity: 0 }}
                   >
                     <ExcelPrinterTool user={user} addToast={addToast} />
+                  </motion.div>
+                )}
+
+                {currentTab === "pdf_compress" && (
+                  <motion.div
+                    key="pdf_compress"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <PdfCompressTool />
                   </motion.div>
                 )}
 
