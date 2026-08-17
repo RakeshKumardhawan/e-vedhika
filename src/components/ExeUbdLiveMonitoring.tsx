@@ -6,6 +6,8 @@ import {
   Check, Zap, ExternalLink, ChevronRight, Activity, Terminal, Trash2,
   Maximize2, Minimize2, Expand, Shrink, RotateCcw
 } from 'lucide-react';
+import { collection, query, orderBy, limit, onSnapshot, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 export const ExeUbdLiveMonitoring: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'telemetry' | 'remote_queue' | 'csharp_code'>('telemetry');
@@ -77,15 +79,41 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
     return log.pcName ? `${log.pcName} (Gram Panchayat)` : 'Gram Panchayat Office';
   };
 
+  // Helper to merge logs uniquely
+  const mergeLogs = (serverLogs: any[], firestoreLogs: any[] = []) => {
+    const map = new Map<string, any>();
+    // First insert server logs
+    serverLogs.forEach(l => {
+      const key = l.id || `${l.pcName}-${l.date}-${l.time}`;
+      map.set(key, l);
+    });
+    // Then insert / overlay firestore logs
+    firestoreLogs.forEach(l => {
+      const key = l.id || `${l.pcName}-${l.date}-${l.time}`;
+      if (map.has(key)) {
+        map.set(key, { ...map.get(key), ...l });
+      } else {
+        map.set(key, l);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      const timeA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
+      const timeB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
+      return timeB - timeA;
+    });
+  };
+
   // 1. Live Telemetry & Remote Requests Fetch Loop
   const fetchLiveCloudData = async () => {
     setSyncing(true);
     try {
+      let serverLogs: any[] = [];
       const telemRes = await fetch('/api/telemetry');
       if (telemRes.ok) {
         const data = await telemRes.json();
         if (data.logs && Array.isArray(data.logs)) {
-          setCentralTelemetryLogs(data.logs);
+          serverLogs = data.logs;
+          setCentralTelemetryLogs(prev => mergeLogs(serverLogs, prev));
         }
       }
 
@@ -105,8 +133,42 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
 
   useEffect(() => {
     fetchLiveCloudData();
-    const interval = setInterval(fetchLiveCloudData, 10000); // 10 Sec Live Fetch
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchLiveCloudData, 8000); // 8 Sec Live Fetch
+
+    // Real-time Firestore Telemetry Listener
+    let unsubscribeTelem: (() => void) | null = null;
+    let unsubscribeQueue: (() => void) | null = null;
+    try {
+      const telemCol = collection(db, 'telemetryLogs');
+      const qTelem = query(telemCol, orderBy('createdAt', 'desc'), limit(50));
+      unsubscribeTelem = onSnapshot(qTelem, (snapshot) => {
+        if (!snapshot.empty) {
+          const fsLogs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          setCentralTelemetryLogs(prev => mergeLogs(prev, fsLogs));
+        }
+      }, (err) => {
+        console.log("Firestore telemetry listener notice:", err?.message);
+      });
+
+      const queueCol = collection(db, 'remoteQueue');
+      const qQueue = query(queueCol, orderBy('createdAt', 'desc'), limit(30));
+      unsubscribeQueue = onSnapshot(qQueue, (snapshot) => {
+        if (!snapshot.empty) {
+          const fsQueue = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          setRemoteQueue(fsQueue);
+        }
+      }, (err) => {
+        console.log("Firestore remote queue listener notice:", err?.message);
+      });
+    } catch (e) {
+      console.warn("Firestore listener init:", e);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (unsubscribeTelem) unsubscribeTelem();
+      if (unsubscribeQueue) unsubscribeQueue();
+    };
   }, []);
 
   // 2. Native Remote Desktop Live Screen Stream Rendering Loop
@@ -290,6 +352,16 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(samplePayload)
       });
+
+      try {
+        await addDoc(collection(db, 'telemetryLogs'), {
+          ...samplePayload,
+          createdAt: serverTimestamp()
+        });
+      } catch (fsErr) {
+        console.log("Firestore ping sync:", fsErr);
+      }
+
       setSelectedTab('telemetry');
       await fetchLiveCloudData();
       showToast(`⚡ కొత్త టెలిమెట్రీ పింగ్ రికార్డ్ సక్సెస్ ఫుల్ గా జనరేట్ చేయబడింది! (${samplePayload.pcName})`);

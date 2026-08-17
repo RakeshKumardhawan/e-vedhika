@@ -187,6 +187,14 @@ match /deploymentLogs/{document=**} {
   allow read, write: if true;
 }
 
+match /telemetryLogs/{document=**} {
+  allow read, write: if true;
+}
+
+match /remoteQueue/{document=**} {
+  allow read, write: if true;
+}
+
 match /ubdDataChunks/{document=**} {
   allow read, write: if true;
 }

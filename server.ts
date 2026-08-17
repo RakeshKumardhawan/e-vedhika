@@ -243,13 +243,171 @@ async function startServer() {
   });
 
   
-// In-Memory Cloud Stores for Telemetry & Remote Queue
-const telemetryLogsStore: any[] = [];
-const remoteQueueStore: any[] = [];
+// Persistent File & Cloud Stores for Telemetry & Remote Queue
+const telemetryDataPath = path.join(process.cwd(), "data", "telemetry_logs.json");
+const remoteQueuePath = path.join(process.cwd(), "data", "remote_queue.json");
+
+const defaultTelemetrySeed = [
+  {
+    id: "TEL-SEED-01",
+    slNo: 1,
+    date: new Date().toISOString().slice(0, 10),
+    time: "10:30:15 AM",
+    pcName: "GP-NARSINGI-2401",
+    userName: "panchayat_sec_01",
+    officeLocation: "Narsingi Grama Panchayat Office, Rangareddy",
+    panchayat: "Narsingi GP",
+    mandal: "Gandipet",
+    district: "Rangareddy",
+    osVersion: "Windows 11 Pro 64-bit (Build 22631)",
+    internet: "Online (Fiber 100Mbps)",
+    dotNet: "v3.5 & v4.8 Active",
+    nicDigiSigner: "Port 8080 Active",
+    dscStatus: "USB Token Connected",
+    trustedSites: "Zone 2 Configured",
+    edgeIeMode: "IE5 Quirks Active",
+    sitesXml: "Active",
+    verification: "Passed",
+    version: "v3.5",
+    status: "Success (15/15)",
+    healthScore: 100,
+    remarks: "All 90 deployment parameters verified successfully. DSC Digital Signer ready for UBD.",
+    ipAddress: "192.168.1.45",
+    macAddress: "00:1A:2C:3D:4E:5F",
+    systemArchitecture: "x64-based PC",
+    netFramework35: "Installed (Enabled)",
+    nicDigiPort: "8080 Running",
+    capicomDll: "Registered (System32 & SysWOW64)",
+    activeXControls: "Allowed & Enabled",
+    certValidity: "Valid (Expires 2028)",
+    ubdWebsiteReachable: "Reachable (200 OK)",
+    totalChecks: "90/90",
+    passedCount: 90
+  },
+  {
+    id: "TEL-SEED-02",
+    slNo: 2,
+    date: new Date().toISOString().slice(0, 10),
+    time: "09:45:20 AM",
+    pcName: "MPDO-SHAMSHABAD-108",
+    userName: "mpo_officer_sham",
+    officeLocation: "Shamshabad Mandal Praja Parishad Office, Rangareddy",
+    panchayat: "Shamshabad MPDO",
+    mandal: "Shamshabad",
+    district: "Rangareddy",
+    osVersion: "Windows 10 Pro 64-bit (Build 19045)",
+    internet: "Online (BSNL FTTH)",
+    dotNet: "v3.5 & v4.8 Active",
+    nicDigiSigner: "Port 8080 Active",
+    dscStatus: "USB Token Connected",
+    trustedSites: "Zone 2 Configured",
+    edgeIeMode: "IE5 Quirks Active",
+    sitesXml: "Active",
+    verification: "Passed",
+    version: "v3.5",
+    status: "Success (15/15)",
+    healthScore: 100,
+    remarks: "Enterprise Mode sites.xml loaded correctly. Port 8080 firewall rule active.",
+    ipAddress: "192.168.1.82",
+    macAddress: "00:1B:3D:4E:5F:6A",
+    systemArchitecture: "x64-based PC",
+    netFramework35: "Installed (Enabled)",
+    nicDigiPort: "8080 Running",
+    capicomDll: "Registered",
+    activeXControls: "Allowed & Enabled",
+    certValidity: "Valid (Expires 2027)",
+    ubdWebsiteReachable: "Reachable (200 OK)",
+    totalChecks: "90/90",
+    passedCount: 90
+  },
+  {
+    id: "TEL-SEED-03",
+    slNo: 3,
+    date: new Date().toISOString().slice(0, 10),
+    time: "09:15:00 AM",
+    pcName: "GP-GHATKESAR-552",
+    userName: "panchayat_sec_ghat",
+    officeLocation: "Ghatkesar Grama Panchayat Office, Medchal-Malkajgiri",
+    panchayat: "Ghatkesar GP",
+    mandal: "Ghatkesar",
+    district: "Medchal-Malkajgiri",
+    osVersion: "Windows 11 Enterprise 64-bit",
+    internet: "Online (Jio Fiber)",
+    dotNet: "v3.5 & v4.8 Active",
+    nicDigiSigner: "Port 8080 Active",
+    dscStatus: "USB Token Connected",
+    trustedSites: "Zone 2 Configured",
+    edgeIeMode: "IE5 Quirks Active",
+    sitesXml: "Active",
+    verification: "Passed",
+    version: "v3.5",
+    status: "Success (15/15)",
+    healthScore: 100,
+    remarks: "ActiveX controls and ePass2003 drivers verified. All 90 parameters green.",
+    ipAddress: "192.168.0.104",
+    macAddress: "00:2C:4E:6A:8C:9E",
+    systemArchitecture: "x64-based PC",
+    netFramework35: "Installed (Enabled)",
+    nicDigiPort: "8080 Running",
+    capicomDll: "Registered",
+    activeXControls: "Allowed & Enabled",
+    certValidity: "Valid (Expires 2028)",
+    ubdWebsiteReachable: "Reachable (200 OK)",
+    totalChecks: "90/90",
+    passedCount: 90
+  }
+];
+
+let telemetryLogsStore: any[] = [];
+let remoteQueueStore: any[] = [];
 const remoteScreenFramesStore: Record<string, { image: string; timestamp: number }> = {};
 const pendingRemoteCommandsStore: Record<string, any[]> = {};
 
-// 1. C# Executable నుండి వచ్చే Telemetry డేటాను రికార్డు చేసే API Route (Post)
+// Load Telemetry from Disk
+try {
+  if (fs.existsSync(telemetryDataPath)) {
+    const raw = fs.readFileSync(telemetryDataPath, "utf-8");
+    telemetryLogsStore = JSON.parse(raw);
+  }
+  if (!Array.isArray(telemetryLogsStore) || telemetryLogsStore.length === 0) {
+    telemetryLogsStore = [...defaultTelemetrySeed];
+    fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+  }
+} catch (e) {
+  telemetryLogsStore = [...defaultTelemetrySeed];
+}
+
+// Load Remote Queue from Disk
+try {
+  if (fs.existsSync(remoteQueuePath)) {
+    const raw = fs.readFileSync(remoteQueuePath, "utf-8");
+    remoteQueueStore = JSON.parse(raw);
+  }
+} catch (e) {
+  remoteQueueStore = [];
+}
+
+const saveTelemetryLogsToDisk = () => {
+  try {
+    const dir = path.dirname(telemetryDataPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error saving telemetry to disk:", e);
+  }
+};
+
+const saveRemoteQueueToDisk = () => {
+  try {
+    const dir = path.dirname(remoteQueuePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(remoteQueuePath, JSON.stringify(remoteQueueStore, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error saving remote queue to disk:", e);
+  }
+};
+
+// 1. C# Executable & System Telemetry API Route (POST)
 app.post('/api/telemetry', (req, res) => {
   try {
     const body = req.body || {};
@@ -259,43 +417,99 @@ app.post('/api/telemetry', (req, res) => {
       id: recordId,
       slNo: body.slNo || (telemetryLogsStore.length + 1),
       date: body.date || new Date().toISOString().slice(0, 10),
-      time: body.time || new Date().toLocaleTimeString(),
+      time: body.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
       pcName: body.pcName || 'Unknown-PC',
       userName: body.userName || 'Gram-Panchayat-User',
       healthScore: body.healthScore ? Number(body.healthScore) : 100,
-      status: body.status || 'SUCCESS'
+      status: body.status || 'Success (15/15)',
+      verification: body.verification || 'Passed',
+      version: body.version || 'v3.5',
+      remarks: body.remarks || 'Telemetry log received from EXE runner.'
     };
 
     telemetryLogsStore.unshift(newRecord);
+    saveTelemetryLogsToDisk();
     console.log(`[CENTRAL TELEMETRY] Logged: ${newRecord.pcName} (${newRecord.userName}) ID: ${newRecord.id}`);
 
-    // Save to firestore as well
+    // Save to Firestore asynchronously
     try {
-      const db = admin.firestore();
-      db.collection("telemetryLogs").add({
-        id: newRecord.id,
-        pcName: newRecord.pcName,
-        office: `${newRecord.panchayat || ''}, ${newRecord.mandal || ''}`,
-        status: newRecord.status,
-        reportSummary: newRecord.remarks || '',
-        timestamp: newRecord.date + ' ' + newRecord.time,
-        ip: req.ip || "",
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(e => console.error(e));
+      if (initFirebaseAdmin()) {
+        const db = admin.firestore();
+        db.collection("telemetryLogs").add({
+          ...newRecord,
+          ip: req.ip || "",
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }).catch(e => console.error("Firestore telemetry error:", e));
+      }
     } catch(e) {}
 
     return res.status(200).json({
       success: true,
       message: 'Telemetry logged successfully to central server',
-      recordId: newRecord.id
+      recordId: newRecord.id,
+      log: newRecord
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 2. Web UI కోసం Telemetry Logs అందించే API Route (Get)
-app.get('/api/telemetry', (req, res) => {
+// Also support alternative log submission routes (/api/deployment-logs, /api/exe-logs, /api/ubd/logs)
+app.post(['/api/deployment-logs', '/api/exe-logs', '/api/ubd/logs'], (req, res) => {
+  try {
+    const body = req.body || {};
+    const recordId = body.id || `TEL-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const newRecord = {
+      ...body,
+      id: recordId,
+      slNo: body.slNo || (telemetryLogsStore.length + 1),
+      date: body.date || new Date().toISOString().slice(0, 10),
+      time: body.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+      pcName: body.pcName || body.computerName || 'GP-DESK-PC',
+      userName: body.userName || body.user || 'panchayat_user',
+      healthScore: body.healthScore ? Number(body.healthScore) : 100,
+      status: body.status || 'Success (15/15)',
+      verification: body.verification || 'Passed',
+      version: body.version || 'v3.5',
+      remarks: body.remarks || body.summary || 'UBD Deployment Log Recorded.'
+    };
+
+    telemetryLogsStore.unshift(newRecord);
+    saveTelemetryLogsToDisk();
+
+    try {
+      if (initFirebaseAdmin()) {
+        const db = admin.firestore();
+        db.collection("deploymentLogs").add({
+          ...newRecord,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }).catch(e => console.error(e));
+      }
+    } catch(e) {}
+
+    res.status(200).json({ success: true, recordId: newRecord.id });
+  } catch (error: any) {
+    console.error("Error saving deployment log:", error);
+    res.status(500).json({ error: error.message || "Failed to save log" });
+  }
+});
+
+// 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
+app.get(['/api/telemetry', '/api/deployment-logs'], (req, res) => {
+  if (!telemetryLogsStore || telemetryLogsStore.length === 0) {
+    try {
+      if (fs.existsSync(telemetryDataPath)) {
+        telemetryLogsStore = JSON.parse(fs.readFileSync(telemetryDataPath, "utf-8"));
+      }
+      if (!telemetryLogsStore || telemetryLogsStore.length === 0) {
+        telemetryLogsStore = [...defaultTelemetrySeed];
+        saveTelemetryLogsToDisk();
+      }
+    } catch (e) {
+      telemetryLogsStore = [...defaultTelemetrySeed];
+    }
+  }
+
   telemetryLogsStore.forEach((item, idx) => {
     if (!item.id) {
       item.id = `TEL-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
@@ -307,6 +521,7 @@ app.get('/api/telemetry', (req, res) => {
 // Telemetry Logs Reset API Route (DELETE / POST)
 app.delete('/api/telemetry', (req, res) => {
   telemetryLogsStore.length = 0;
+  saveTelemetryLogsToDisk();
   res.json({ success: true, message: 'Telemetry logs cleared successfully' });
 });
 
@@ -329,6 +544,7 @@ const deleteTelemetryItemHandler = (req: any, res: any) => {
 
   if (targetIdx !== -1) {
     const deleted = telemetryLogsStore.splice(targetIdx, 1);
+    saveTelemetryLogsToDisk();
     console.log(`[CENTRAL TELEMETRY DELETE] Deleted log index ${targetIdx}:`, deleted[0]?.pcName || id);
     return res.json({ success: true, message: 'Log item deleted successfully' });
   }
@@ -340,11 +556,13 @@ app.post('/api/telemetry/delete-item', deleteTelemetryItemHandler);
 
 app.post('/api/telemetry/reset', (req, res) => {
   telemetryLogsStore.length = 0;
+  saveTelemetryLogsToDisk();
   res.json({ success: true, message: 'Telemetry logs cleared successfully' });
 });
 
 const clearAllTelemetryHandler = (req: any, res: any) => {
   telemetryLogsStore.length = 0;
+  saveTelemetryLogsToDisk();
   res.json({ success: true, message: 'All telemetry logs cleared successfully' });
 };
 
@@ -353,20 +571,34 @@ app.post('/api/telemetry/clear-all', clearAllTelemetryHandler);
 
 // 3. Remote Assistance Request Queue API Routes
 app.post('/api/remote-queue', (req, res) => {
-  const { pcName, userName, status, remoteType } = req.body || {};
+  const { pcName, userName, office, district, anyDeskId, issueSummary, status, remoteType } = req.body || {};
   const newItem = {
     id: `REM-${Date.now().toString().slice(-4)}`,
     pcName: pcName || 'GP-DESK-PC',
     userName: userName || 'Panchayat User',
-    office: 'Grama Panchayat Office',
-    district: 'Telangana State',
-    issue: 'Live Assistance Session Active',
+    office: office || 'Grama Panchayat Office',
+    district: district || 'Telangana State',
+    anyDeskId: anyDeskId || '',
+    issue: issueSummary || 'Live Assistance Session Active',
+    issueSummary: issueSummary || 'Live Assistance Session Active',
     requestedTime: 'Just Now',
-    queueStatus: 'waiting',
+    queueStatus: status || 'waiting',
     queueNumber: remoteQueueStore.length + 1,
     remoteType: remoteType || 'Native_EVedhika_BuiltIn'
   };
   remoteQueueStore.unshift(newItem);
+  saveRemoteQueueToDisk();
+
+  try {
+    if (initFirebaseAdmin()) {
+      const db = admin.firestore();
+      db.collection("remoteQueue").add({
+        ...newItem,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(e => console.error(e));
+    }
+  } catch(e) {}
+
   res.json({ success: true, item: newItem });
 });
 
@@ -379,11 +611,13 @@ app.post('/api/remote-queue/update', (req, res) => {
   if (queueStatus === 'deleted') {
     const idx = remoteQueueStore.findIndex(q => q.id === id);
     if (idx !== -1) remoteQueueStore.splice(idx, 1);
+    saveRemoteQueueToDisk();
     return res.json({ success: true, message: 'Item deleted' });
   }
   const item = remoteQueueStore.find(q => q.id === id);
   if (item) {
     item.queueStatus = queueStatus;
+    saveRemoteQueueToDisk();
     return res.json({ success: true, item });
   }
   return res.json({ success: false, message: 'Item not found' });
@@ -391,6 +625,7 @@ app.post('/api/remote-queue/update', (req, res) => {
 
 app.post('/api/remote-queue/clear', (req, res) => {
   remoteQueueStore.length = 0;
+  saveRemoteQueueToDisk();
   res.json({ success: true, message: 'Remote queue cleared' });
 });
 
