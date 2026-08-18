@@ -368,13 +368,12 @@ try {
   if (fs.existsSync(telemetryDataPath)) {
     const raw = fs.readFileSync(telemetryDataPath, "utf-8");
     telemetryLogsStore = JSON.parse(raw);
-  }
-  if (!Array.isArray(telemetryLogsStore) || telemetryLogsStore.length === 0) {
+  } else {
     telemetryLogsStore = [...defaultTelemetrySeed];
     fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
   }
 } catch (e) {
-  telemetryLogsStore = [...defaultTelemetrySeed];
+  telemetryLogsStore = [];
 }
 
 // Load Remote Queue from Disk
@@ -382,6 +381,8 @@ try {
   if (fs.existsSync(remoteQueuePath)) {
     const raw = fs.readFileSync(remoteQueuePath, "utf-8");
     remoteQueueStore = JSON.parse(raw);
+  } else {
+    remoteQueueStore = [];
   }
 } catch (e) {
   remoteQueueStore = [];
@@ -431,11 +432,11 @@ app.post('/api/telemetry', (req, res) => {
     saveTelemetryLogsToDisk();
     console.log(`[CENTRAL TELEMETRY] Logged: ${newRecord.pcName} (${newRecord.userName}) ID: ${newRecord.id}`);
 
-    // Save to Firestore asynchronously
+    // Save to Firestore asynchronously using the custom record ID as document ID for easy deletion
     try {
       if (initFirebaseAdmin()) {
         const db = admin.firestore();
-        db.collection("telemetryLogs").add({
+        db.collection("telemetryLogs").doc(newRecord.id).set({
           ...newRecord,
           ip: req.ip || "",
           createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -480,7 +481,7 @@ app.post(['/api/deployment-logs', '/api/exe-logs', '/api/ubd/logs'], (req, res) 
     try {
       if (initFirebaseAdmin()) {
         const db = admin.firestore();
-        db.collection("deploymentLogs").add({
+        db.collection("deploymentLogs").doc(newRecord.id).set({
           ...newRecord,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         }).catch(e => console.error(e));
@@ -496,36 +497,69 @@ app.post(['/api/deployment-logs', '/api/exe-logs', '/api/ubd/logs'], (req, res) 
 
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
 app.get(['/api/telemetry', '/api/deployment-logs'], (req, res) => {
-  if (!telemetryLogsStore || telemetryLogsStore.length === 0) {
-    try {
-      if (fs.existsSync(telemetryDataPath)) {
-        telemetryLogsStore = JSON.parse(fs.readFileSync(telemetryDataPath, "utf-8"));
-      }
-      if (!telemetryLogsStore || telemetryLogsStore.length === 0) {
-        telemetryLogsStore = [...defaultTelemetrySeed];
-        saveTelemetryLogsToDisk();
-      }
-    } catch (e) {
-      telemetryLogsStore = [...defaultTelemetrySeed];
-    }
-  }
-
-  telemetryLogsStore.forEach((item, idx) => {
-    if (!item.id) {
-      item.id = `TEL-${Date.now()}-${idx}-${Math.floor(Math.random() * 10000)}`;
-    }
-  });
   res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
 });
 
+// Helper to delete all telemetry from Firestore
+const clearFirestoreTelemetry = async () => {
+  try {
+    if (initFirebaseAdmin()) {
+      const db = admin.firestore();
+      const collections = ["telemetryLogs", "deploymentLogs"];
+      for (const colName of collections) {
+        const snapshot = await db.collection(colName).limit(100).get();
+        if (!snapshot.empty) {
+          const batch = db.batch();
+          snapshot.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error clearing firestore telemetry:", e);
+  }
+};
+
+// Helper to delete a specific telemetry item from Firestore
+const deleteFirestoreTelemetryItem = async (id?: string, pcName?: string) => {
+  try {
+    if (initFirebaseAdmin()) {
+      const db = admin.firestore();
+      const collections = ["telemetryLogs", "deploymentLogs"];
+      for (const colName of collections) {
+        if (id) {
+          try {
+            await db.collection(colName).doc(id).delete();
+          } catch(e) {}
+          const snapById = await db.collection(colName).where("id", "==", id).get();
+          snapById.forEach(d => d.ref.delete().catch(() => {}));
+        }
+        if (pcName) {
+          const snapByPc = await db.collection(colName).where("pcName", "==", pcName).get();
+          snapByPc.forEach(d => d.ref.delete().catch(() => {}));
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error deleting item from firestore:", e);
+  }
+};
+
 // Telemetry Logs Reset API Route (DELETE / POST)
-app.delete('/api/telemetry', (req, res) => {
+const clearAllTelemetryHandler = async (req: any, res: any) => {
   telemetryLogsStore.length = 0;
   saveTelemetryLogsToDisk();
-  res.json({ success: true, message: 'Telemetry logs cleared successfully' });
-});
+  await clearFirestoreTelemetry();
+  console.log("[CENTRAL TELEMETRY] All logs cleared by admin.");
+  res.json({ success: true, message: 'All telemetry logs cleared successfully' });
+};
 
-const deleteTelemetryItemHandler = (req: any, res: any) => {
+app.delete('/api/telemetry', clearAllTelemetryHandler);
+app.delete('/api/telemetry/clear-all', clearAllTelemetryHandler);
+app.post('/api/telemetry/clear-all', clearAllTelemetryHandler);
+app.post('/api/telemetry/reset', clearAllTelemetryHandler);
+
+const deleteTelemetryItemHandler = async (req: any, res: any) => {
   const { id, slNo, pcName, index } = req.body || {};
   let targetIdx = -1;
 
@@ -542,32 +576,22 @@ const deleteTelemetryItemHandler = (req: any, res: any) => {
     targetIdx = telemetryLogsStore.findIndex(item => item && item.pcName === pcName);
   }
 
+  let deletedItem: any = null;
   if (targetIdx !== -1) {
     const deleted = telemetryLogsStore.splice(targetIdx, 1);
+    deletedItem = deleted[0];
     saveTelemetryLogsToDisk();
-    console.log(`[CENTRAL TELEMETRY DELETE] Deleted log index ${targetIdx}:`, deleted[0]?.pcName || id);
-    return res.json({ success: true, message: 'Log item deleted successfully' });
+    console.log(`[CENTRAL TELEMETRY DELETE] Deleted log index ${targetIdx}:`, deletedItem?.pcName || id);
   }
-  return res.json({ success: false, message: 'Log item not found' });
+
+  // Delete from Firestore in all cases (by ID and PC name)
+  await deleteFirestoreTelemetryItem(id || deletedItem?.id, pcName || deletedItem?.pcName);
+
+  return res.json({ success: true, message: 'Log item deleted successfully' });
 };
 
 app.delete('/api/telemetry/item', deleteTelemetryItemHandler);
 app.post('/api/telemetry/delete-item', deleteTelemetryItemHandler);
-
-app.post('/api/telemetry/reset', (req, res) => {
-  telemetryLogsStore.length = 0;
-  saveTelemetryLogsToDisk();
-  res.json({ success: true, message: 'Telemetry logs cleared successfully' });
-});
-
-const clearAllTelemetryHandler = (req: any, res: any) => {
-  telemetryLogsStore.length = 0;
-  saveTelemetryLogsToDisk();
-  res.json({ success: true, message: 'All telemetry logs cleared successfully' });
-};
-
-app.delete('/api/telemetry/clear-all', clearAllTelemetryHandler);
-app.post('/api/telemetry/clear-all', clearAllTelemetryHandler);
 
 // 3. Remote Assistance Request Queue API Routes
 app.post('/api/remote-queue', (req, res) => {

@@ -25,6 +25,9 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
   const [activeCategoryTab, setActiveCategoryTab] = useState<number>(1);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // Set of deleted IDs to prevent race condition resurrecting deleted logs
+  const [deletedLogIds, setDeletedLogIds] = useState<Set<string>>(new Set());
+
   // Toast Notification & Custom Delete Confirmation Modal States
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
@@ -79,21 +82,25 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
     return log.pcName ? `${log.pcName} (Gram Panchayat)` : 'Gram Panchayat Office';
   };
 
-  // Helper to merge logs uniquely
-  const mergeLogs = (serverLogs: any[], firestoreLogs: any[] = []) => {
+  // Helper to merge logs uniquely, filtering deleted logs
+  const mergeLogs = (serverLogs: any[], firestoreLogs: any[] = [], deletedSet: Set<string> = deletedLogIds) => {
     const map = new Map<string, any>();
     // First insert server logs
     serverLogs.forEach(l => {
       const key = l.id || `${l.pcName}-${l.date}-${l.time}`;
-      map.set(key, l);
+      if (!deletedSet.has(l.id) && !deletedSet.has(key)) {
+        map.set(key, l);
+      }
     });
     // Then insert / overlay firestore logs
     firestoreLogs.forEach(l => {
       const key = l.id || `${l.pcName}-${l.date}-${l.time}`;
-      if (map.has(key)) {
-        map.set(key, { ...map.get(key), ...l });
-      } else {
-        map.set(key, l);
+      if (!deletedSet.has(l.id) && !deletedSet.has(key)) {
+        if (map.has(key)) {
+          map.set(key, { ...map.get(key), ...l });
+        } else {
+          map.set(key, l);
+        }
       }
     });
     return Array.from(map.values()).sort((a, b) => {
@@ -113,7 +120,11 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
         const data = await telemRes.json();
         if (data.logs && Array.isArray(data.logs)) {
           serverLogs = data.logs;
-          setCentralTelemetryLogs(prev => mergeLogs(serverLogs, prev));
+          if (serverLogs.length === 0) {
+            setCentralTelemetryLogs([]);
+          } else {
+            setCentralTelemetryLogs(prev => mergeLogs(serverLogs, prev, deletedLogIds));
+          }
         }
       }
 
@@ -142,9 +153,11 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
       const telemCol = collection(db, 'telemetryLogs');
       const qTelem = query(telemCol, orderBy('createdAt', 'desc'), limit(50));
       unsubscribeTelem = onSnapshot(qTelem, (snapshot) => {
-        if (!snapshot.empty) {
+        if (snapshot.empty) {
+          // If Firestore is empty, don't re-populate deleted docs
+        } else {
           const fsLogs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-          setCentralTelemetryLogs(prev => mergeLogs(prev, fsLogs));
+          setCentralTelemetryLogs(prev => mergeLogs(prev, fsLogs, deletedLogIds));
         }
       }, (err) => {
         console.log("Firestore telemetry listener notice:", err?.message);
@@ -169,7 +182,7 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
       if (unsubscribeTelem) unsubscribeTelem();
       if (unsubscribeQueue) unsubscribeQueue();
     };
-  }, []);
+  }, [deletedLogIds]);
 
   // 2. Native Remote Desktop Live Screen Stream Rendering Loop
   useEffect(() => {
@@ -379,10 +392,24 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
         setCentralTelemetryLogs([]);
+        setDeletedLogIds(new Set());
         try {
           await fetch('/api/telemetry', { method: 'DELETE' });
           await fetch('/api/telemetry/reset', { method: 'POST' });
           await fetch('/api/telemetry/clear-all', { method: 'POST' });
+
+          // Direct Firestore Client-side Cleanup
+          try {
+            const telemSnap = await getDocs(collection(db, 'telemetryLogs'));
+            telemSnap.forEach(d => {
+              deleteDoc(d.ref).catch(() => {});
+            });
+            const deploySnap = await getDocs(collection(db, 'deploymentLogs'));
+            deploySnap.forEach(d => {
+              deleteDoc(d.ref).catch(() => {});
+            });
+          } catch(fsE) {}
+
           await fetchLiveCloudData();
           showToast("🗑️ అన్ని పాత టెలిమెట్రీ లాగ్స్ విజయవంతంగా డెలీట్ చేయబడ్డాయి!");
         } catch (e) {
@@ -402,12 +429,24 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
       message: `మీరు ఖచ్చితంగా "${displayName}" కి సంబంధించిన ఈ టెలిమెట్రీ లాగ్‌ను డెలీట్ చేయాలనుకుంటున్నారా?`,
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        // Immediate optimistic UI delete
+        
+        // Immediate optimistic UI delete and add to deleted set
+        if (log.id) {
+          setDeletedLogIds(prev => new Set(prev).add(log.id));
+        }
         setCentralTelemetryLogs(prev => prev.filter((item, i) => {
           if (log.id && item.id) return item.id !== log.id;
           return i !== index;
         }));
+
         try {
+          // Direct Client-side Firestore delete
+          if (log.id) {
+            try {
+              deleteDoc(doc(db, 'telemetryLogs', log.id)).catch(() => {});
+            } catch(e) {}
+          }
+
           const res = await fetch('/api/telemetry/delete-item', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
