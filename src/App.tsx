@@ -4873,7 +4873,7 @@ export default function App() {
                 navScrollRef.current.scrollBy({ left: -240, behavior: "smooth" });
               }
             }}
-            className="hidden sm:flex xl:hidden items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
+            className="hidden sm:flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
             aria-label="Scroll Left"
             title="Scroll Left"
           >
@@ -4883,8 +4883,8 @@ export default function App() {
           <div className="flex-1 w-full min-w-0 relative">
             <div
               ref={navScrollRef}
-              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap justify-start xl:justify-center gap-2 sm:gap-3 py-1.5 w-full scroll-smooth"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap gap-2 sm:gap-3 py-1.5 w-full scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'safe center' }}
             >
               <style dangerouslySetInnerHTML={{__html: `
                 .nav-trigger-bar div::-webkit-scrollbar { display: none; }
@@ -5232,7 +5232,7 @@ export default function App() {
                 navScrollRef.current.scrollBy({ left: 240, behavior: "smooth" });
               }
             }}
-            className="hidden sm:flex xl:hidden items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
+            className="hidden sm:flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
             aria-label="Scroll Right"
             title="Scroll Right"
           >
