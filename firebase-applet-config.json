@@ -5,5 +5,7 @@
   "authDomain": "e-vedhika-258f2.firebaseapp.com",
   "storageBucket": "e-vedhika-258f2.firebasestorage.app",
   "messagingSenderId": "188172181883",
-  "measurementId": ""
+  "measurementId": "",
+  "oAuthClientId": "188172181883-n6llpj52rmid5igrllvdhbb4g03h7euo.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

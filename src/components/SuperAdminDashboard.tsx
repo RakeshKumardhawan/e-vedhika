@@ -52,21 +52,36 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
 
   const generateChartData = (visitorsArr: any[]) => {
     const hoursMap: Record<number, number> = {};
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    // Initialize last 12 hours with 0
+    for (let i = 0; i < 12; i++) {
+      let h = (currentHour - i + 24) % 24;
+      hoursMap[h] = 0;
+    }
+
+    const twelveHoursAgoMs = now.getTime() - (12 * 60 * 60 * 1000);
+    
     visitorsArr.forEach(v => {
       const t = v.timestamp || v.time;
-      if (t) {
+      if (t && t >= twelveHoursAgoMs) {
         const h = new Date(t).getHours();
-        hoursMap[h] = (hoursMap[h] || 0) + 1;
+        if (hoursMap[h] !== undefined) {
+          hoursMap[h] += 1;
+        }
       }
     });
+
     const data = [];
-    for (let i = 0; i < 24; i += 3) {
-      const hLabel = (i < 10 ? "0" + i : i) + ":00";
-      const baseVal = hoursMap[i] || 0;
+    for (let i = 11; i >= 0; i--) {
+      let h = (currentHour - i + 24) % 24;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
       data.push({
-        time: hLabel,
-        users: baseVal,
-        requests: baseVal
+        time: `${h12} ${ampm}`,
+        users: hoursMap[h],
+        requests: hoursMap[h]
       });
     }
     setChartData(data);
@@ -130,23 +145,23 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
     const fetchVisitors = () => {
       const targetDb = analyticsDb || db;
       try {
-        unsubVisitors = onSnapshot(query(collection(targetDb, 'visitor_logs'), orderBy('timestamp', 'desc'), limit(50)), (snap) => {
+        unsubVisitors = onSnapshot(query(collection(targetDb, 'visitor_logs'), orderBy('timestamp', 'desc'), limit(300)), (snap) => {
           const visitors: any[] = [];
           snap.forEach(doc => visitors.push({ id: doc.id, ...doc.data() }));
           if (visitors.length > 0) {
-            setRecentVisitors(visitors.slice(0, 10));
+            setRecentVisitors(visitors);
             generateChartData(visitors);
           } else {
             setFallbackVisitors();
           }
         }, () => {
           // Fallback query without orderBy
-          onSnapshot(collection(targetDb, 'visitor_logs'), (snap) => {
+          onSnapshot(query(collection(targetDb, 'visitor_logs'), limit(300)), (snap) => {
             const visitors: any[] = [];
             snap.forEach(doc => visitors.push({ id: doc.id, ...doc.data() }));
             visitors.sort((a, b) => (b.timestamp || b.time || 0) - (a.timestamp || a.time || 0));
             if (visitors.length > 0) {
-              setRecentVisitors(visitors.slice(0, 10));
+              setRecentVisitors(visitors);
               generateChartData(visitors);
             } else {
               setFallbackVisitors();
@@ -310,7 +325,7 @@ export default function SuperAdminDashboard({ user, stats, setActiveSubTab, addT
                 { label: "Total Accounts", value: liveUsersCount, trend: "Live", color: "text-[#0B3D91]", bg: "bg-blue-50", onClick: () => handleTabClick("users") },
                 { label: "Active Content", value: livePostsCount, trend: "Live", color: "text-[#0B3D91]", bg: "bg-indigo-50", onClick: () => handleTabClick("deployments") },
                 { label: "Security Logs", value: recentLogs.length, trend: "Live", color: "text-[#0B3D91]", bg: "bg-emerald-50", onClick: () => handleTabClick("security") },
-                { label: "Recent Visitors", value: recentVisitors.length, trend: "Live", color: "text-[#0B3D91]", bg: "bg-amber-50", onClick: () => handleTabClick("monitoring") },
+                { label: "Recent Visitors", value: recentVisitors.filter((v: any) => (Date.now() - (v.timestamp || v.time || 0)) < 24 * 60 * 60 * 1000).length, trend: "Live", color: "text-[#0B3D91]", bg: "bg-amber-50", onClick: () => handleTabClick("monitoring") },
                 { label: "System Health", value: "Optimal", trend: "100% Live", color: "text-[#0B3D91]", bg: "bg-slate-50", onClick: () => handleTabClick("health") },
               ]).map((stat: any, i: number) => {
                 let Icon = ActivitySquare;

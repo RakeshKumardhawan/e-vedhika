@@ -112,6 +112,19 @@ export default defineConfig(({mode}) => {
       outDir: 'dist',
       emptyOutDir: true,
       chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+            'vendor-ui': ['lucide-react', 'framer-motion', 'sweetalert2'],
+            'vendor-charts': ['recharts'],
+            'vendor-excel': ['xlsx', 'exceljs'],
+            'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
+            'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
+          }
+        }
+      }
     },
     resolve: {
       alias: {

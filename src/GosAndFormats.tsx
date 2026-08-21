@@ -3,7 +3,7 @@ import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, getDoc 
 import { ref, deleteObject, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, storage } from '../firebase';
-import { Download, Upload, Trash2, FileBadge, Share2 } from 'lucide-react';
+import { Download, Upload, Trash2, FileBadge, Share2, Copy } from 'lucide-react';
 import { requireLoginAlert, getFriendlyError, handleForceDownload } from './App';
 
 export function GosAndFormatsPublic({
@@ -314,12 +314,16 @@ export function GosAndFormatsPublic({
                        <Trash2 size={18} />
                     </button>
                  )}
-                 <a href={item.url} target="_blank" rel="noreferrer" onClick={(e) => {
+                 <button onClick={(e) => {
                     e.preventDefault();
                     if (!item.url) { addToast("File link not found"); return; }
-                    handleForceDownload(e, item.url, item.fileNameDisplay || item.fileName || "document");
-                 }} className="flex-1 md:w-auto px-6 py-3 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
-                    <Download size={16} /> Download
+                    navigator.clipboard.writeText(item.url);
+                    addToast("లింక్ కాపీ చేయబడింది! (Link Copied)");
+                 }} className="p-3 bg-white text-indigo-500 rounded-xl hover:bg-indigo-50 border border-slate-100 transition-colors shadow-sm shrink-0" title="Copy Link">
+                    <Copy size={18} />
+                 </button>
+                 <a href={item.url} target="_blank" rel="noreferrer" className="flex-1 md:w-auto px-4 py-3 bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20">
+                    <Download size={16} /> Download/View Link
                  </a>
               </div>
             </div>

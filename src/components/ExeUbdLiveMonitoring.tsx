@@ -120,11 +120,7 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
         const data = await telemRes.json();
         if (data.logs && Array.isArray(data.logs)) {
           serverLogs = data.logs;
-          if (serverLogs.length === 0) {
-            setCentralTelemetryLogs([]);
-          } else {
-            setCentralTelemetryLogs(prev => mergeLogs(serverLogs, prev, deletedLogIds));
-          }
+          setCentralTelemetryLogs(prev => mergeLogs(serverLogs, prev, deletedLogIds));
         }
       }
 

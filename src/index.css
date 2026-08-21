@@ -569,8 +569,6 @@ html, body, #root {
 
 /* --- AD UNITS STYLING & CONSISTENT SPACING --- */
 #in-article-ad-slot,
-#monetag-ad-sidebar,
-.monetag-unit,
 .adsense-unit {
   width: 100%;
   margin-top: 1.25rem;
@@ -589,7 +587,6 @@ html, body, #root {
 }
 
 #in-article-ad-slot iframe,
-.monetag-unit iframe,
 .adsense-unit ins {
   max-width: 100% !important;
   border-radius: 0.5rem;

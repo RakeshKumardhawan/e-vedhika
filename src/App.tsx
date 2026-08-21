@@ -1,5 +1,4 @@
-import SuperAdminDashboard from "./components/SuperAdminDashboard";
-import { canShowAds, recordAdImpression } from "./adManager";
+import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmuteAdsLocally, recordAdImpression } from "./adManager";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
 /**
@@ -8,6 +7,10 @@ import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
  */
 
 import React, { useState, useEffect, useRef, useMemo, startTransition } from "react";
+const LazyGPDPSetup = React.lazy(() => import("./components/GPDPSetup"));
+const GPDPSetup = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading GPDP Setup...</div>}><LazyGPDPSetup {...props} /></React.Suspense>;
+const LazySuperAdminDashboard = React.lazy(() => import("./components/SuperAdminDashboard"));
+const SuperAdminDashboard = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Dashboard...</div>}><LazySuperAdminDashboard {...props} /></React.Suspense>;
 import { createPortal } from "react-dom";
 import {
   useSearchParams,
@@ -58,7 +61,7 @@ import {  DollarSign,
   Heart,
   Share2,
   PlusCircle,
-  Camera,
+  Camera, Calculator,
   Image as ImageIcon,
   User,
   Edit2,
@@ -161,16 +164,29 @@ import rehypeRaw from "rehype-raw";
 import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
-import { PdfCompressTool } from "./components/PdfCompressTool";
-import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
-import { UBDTracker } from "./components/UBDTracker";
-import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
 import { KnowledgeHubSection, PRActHub } from "./components/KnowledgeHub";
 import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
 import { PollsScreen } from "./components/PollsScreen";
-import { ExcelMerger } from "./components/ExcelMerger";
-import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
+
+const LazyPdfCompressToolComponent = React.lazy(() => import('./components/PdfCompressTool').then(m => ({ default: m.PdfCompressTool })));
+export const PdfCompressTool = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading PDF Tool...</div>}><LazyPdfCompressToolComponent {...props} /></React.Suspense>;
+
+const LazyFarmerRegistryToolComponent = React.lazy(() => import('./components/FarmerRegistryTool').then(m => ({ default: m.FarmerRegistryTool })));
+export const FarmerRegistryTool = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Farmer Registry...</div>}><LazyFarmerRegistryToolComponent {...props} /></React.Suspense>;
+
+const LazyUBDTrackerComponent = React.lazy(() => import('./components/UBDTracker').then(m => ({ default: m.UBDTracker })));
+export const UBDTracker = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading UBD Tracker...</div>}><LazyUBDTrackerComponent {...props} /></React.Suspense>;
+
+const LazyExeUbdLiveMonitoringComponent = React.lazy(() => import('./components/ExeUbdLiveMonitoring').then(m => ({ default: m.ExeUbdLiveMonitoring })));
+export const ExeUbdLiveMonitoring = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Live Monitoring...</div>}><LazyExeUbdLiveMonitoringComponent {...props} /></React.Suspense>;
+
+const LazyExcelMergerComponent = React.lazy(() => import('./components/ExcelMerger').then(m => ({ default: m.ExcelMerger })));
+export const ExcelMerger = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Excel Merger...</div>}><LazyExcelMergerComponent {...props} /></React.Suspense>;
+
+const LazyMonthlyActivityFormatterComponent = React.lazy(() => import('./components/MonthlyActivityFormatter').then(m => ({ default: m.MonthlyActivityFormatter })));
+export const MonthlyActivityFormatter = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Formatter...</div>}><LazyMonthlyActivityFormatterComponent {...props} /></React.Suspense>;
+
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 
@@ -246,23 +262,6 @@ import {
   deleteObject,
 } from "firebase/storage";
 
-async function saveToMediaVault(url, file, user) {
-  try {
-    if (!url) return;
-    await addDoc(collection(db, "media_vault"), {
-      url,
-      name: file?.name || "unknown",
-      type: file?.type || "unknown",
-      size: file?.size || 0,
-      uploadedBy: user?.uid || "unknown",
-      uploaderName: user?.displayName || user?.email || "Unknown User",
-      uploadedAt: serverTimestamp(),
-      isActive: true
-    });
-  } catch (err) {
-    console.error("Failed to backup media to vault", err);
-  }
-}
 
 import { auth, db, storage } from "../firebase";
 
@@ -443,8 +442,8 @@ export async function sendCommentNotifications(
 
     // Single admin alert
     await addDoc(collection(db, "notifications"), {
-      uid: "admin_only",
-      title: "కొత్త కామెంట్ (Admin Alert)",
+      uid: "all",
+      title: "కొత్త కామెంట్ (New Comment)",
       message: `${authorName} వారు ఒక పోస్ట్‌పై కామెంట్ చేశారు.`,
       type: "admin_alert",
       read: false,
@@ -1996,8 +1995,6 @@ function LandingPage({
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
 import { CloudStorageManager } from "./components/CloudStorageManager";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
-import { MediaVaultAdmin } from "./components/MediaVaultAdmin";
-
 
 export default function App() {
   const navigate = useNavigate();
@@ -2218,6 +2215,7 @@ export default function App() {
 
   const [activeAdminSubTab, setActiveAdminSubTab] = useState(initialUrlData.adminSubTab);
   const [siteConfig, setSiteConfig] = useState<any>(null);
+  const [adMuteRemaining, setAdMuteRemaining] = useState<number>(0);
   const [customMenus, setCustomMenus] = useState<CustomMenu[]>([]);
   const [customMenuCards, setCustomMenuCards] = useState<CustomMenuCard[]>([]);
 
@@ -2225,7 +2223,6 @@ export default function App() {
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [currentTab, setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
   );
-
 
   const [workspaceActiveTool, setWorkspaceActiveTool] = useState<string | null>(
     initialUrlData.mainTab === "workspace" ? initialUrlData.workspaceTool : null
@@ -2341,6 +2338,15 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const updateTimer = () => {
+      setAdMuteRemaining(getMuteRemainingSeconds(siteConfig));
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [siteConfig]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "custom_code", "global_css"), (snap) => {
@@ -3521,7 +3527,7 @@ export default function App() {
         
         const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
         await addDoc(collection(db, "notifications"), {
-          uid: "admin_only",
+          uid: "all",
           title: isNewUser ? "కొత్త సభ్యుడు (New Sign Up)" : "సభ్యుడు లాగిన్ (Login)",
           message: isNewUser 
             ? `${loginName} వారు Google ద్వారా కొత్తగా జాయిన్ అయ్యారు.` 
@@ -4145,7 +4151,6 @@ export default function App() {
     );
   }
 
-
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
       <VisitorTracker user={user} />
@@ -4224,7 +4229,6 @@ export default function App() {
                         </ReactMarkdown>
                       </div>
                     </div>
-
 
                   </div>
                 )}
@@ -4893,7 +4897,7 @@ export default function App() {
                     { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
                     { id: "union", label: "Union Corner & Polls", icon: Users, colorTheme: "orange" },
                     { id: "directlinks", label: "Direct Link", icon: Megaphone, colorTheme: "purple" },
-                    { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
+                                                                                { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
                     { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
                     { id: "useful_links", label: "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
                     { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
@@ -5283,7 +5287,6 @@ export default function App() {
                   { id: "reports", label: "Posts & Issues", icon: FileText },
                   { id: "gos_formats", label: "GOs & Formats", icon: FileText },
                   { id: "updates", label: "Flash News", icon: Zap },
-                  { id: "media_vault", label: "Media Vault", icon: HardDrive },
                   { id: "users", label: "User Access", icon: Users },
                   ...(isAdmin || isDevEmail
                     ? [
@@ -5412,12 +5415,13 @@ export default function App() {
                   { id: "chat", label: "Live Chat", icon: MessageCircle },
                   { id: "union", label: "Union Corner & Polls", icon: Users },
                   { id: "directlinks", label: "Direct Link", icon: Megaphone },
-                  { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
+                                                                        { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
                   { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText },
                   { id: "useful_links", label: "Useful Information", icon: Info },
                   { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet },
                   { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown },
                   { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat },
+                  { id: "gpdp_setup", label: "GPDP Initial Setup", icon: ClipboardList },
                   
                 ].map((item) => (
                   <MenuButton
@@ -5475,7 +5479,6 @@ export default function App() {
                     }}
                   />
                 ))}
-
 
                 {showInstallButton && (
                   <div className="mt-8 px-4">
@@ -5690,7 +5693,6 @@ export default function App() {
                                 viewport={{ once: true }}
                                 className={sizeClass}
                               >
-                                
 
                                 {el.type === "Post Grid" && (
                                   <div className="space-y-4">
@@ -5753,8 +5755,6 @@ export default function App() {
                                     </div>
                                   </div>
                                 )}
-
-                                
 
                                 {el.type === "Contact Banner" && (
                                   <motion.div
@@ -7201,7 +7201,7 @@ export default function App() {
                                     uid: user?.uid || "anonymous",
                                   });
                                   await addDoc(collection(db, "notifications"), {
-                                    uid: "admin_only",
+                                    uid: "all",
                                     title: "కొత్త సూచన (Suggestion Alert)",
                                     message: `${name} వారు ఒక కొత్త సూచన/సమస్యను సమర్పించారు: ${suggestion.substring(0, 50)}`,
                                     type: "admin_alert",
@@ -7537,6 +7537,16 @@ export default function App() {
                   </motion.div>
                 )}
 
+                {currentTab === "gpdp_setup" && (
+                  <motion.div
+                    key="gpdp_setup"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <GPDPSetup />
+                  </motion.div>
+                )}
                 {currentTab === "manage_custom_menus" && isAdmin && (
                   <motion.div
                     key="manage_custom_menus"
@@ -7637,7 +7647,6 @@ export default function App() {
                     />
                   </motion.div>
                 )}
-                
 
                 {currentTab === "my_activity" && (
                   <motion.div
@@ -7761,7 +7770,6 @@ export default function App() {
         </main>
       </div>
       </>
-      
 
       {/* IMAGE LIGHTBOX MODAL */}
       {lightboxImage && (
@@ -9519,80 +9527,6 @@ export interface CustomMenuCard {
 }
 
 
-function MonetagUnit({ zoneId, id, className }: { zoneId: string, id: string, className?: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !zoneId) return;
-    if (!("IntersectionObserver" in window)) {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setIsVisible(true);
-          recordAdImpression();
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-    return () => observer.disconnect();
-  }, [zoneId]);
-
-  if (!zoneId) return null;
-
-  const iframeSrcDoc = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; background: transparent; }
-        </style>
-      </head>
-      <body>
-        <script src="https://quge5.com/88/tag.min.js" data-zone="${zoneId}" async data-cfasync="false"></script>
-      </body>
-    </html>
-  `;
-
-  return (
-    <div
-      ref={containerRef}
-      id={id}
-      className={`monetag-unit w-full my-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 flex flex-col justify-center items-center text-center transition-all overflow-hidden ${className || ""}`}
-      data-zone={zoneId}
-    >
-      <span className="text-[9px] font-extrabold tracking-widest text-slate-400 uppercase select-none mb-1">
-        📢 ప్రకటన • ADVERTISEMENT
-      </span>
-      {isVisible ? (
-        <iframe
-          srcDoc={iframeSrcDoc}
-          title="Advertisement"
-          width="100%"
-          height="250"
-          frameBorder="0"
-          scrolling="no"
-          className="w-full max-w-full overflow-hidden rounded-lg bg-transparent"
-        />
-      ) : (
-        <div className="h-[250px] w-full animate-pulse bg-slate-100/80 rounded flex items-center justify-center text-[10px] text-slate-400 font-bold">
-          Loading advertisement...
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AdsenseUnit({
   client,
   slot,
@@ -9608,7 +9542,17 @@ function AdsenseUnit({
   const isPushed = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !client || !slot) return;
+    if (typeof window === "undefined" || !client || !slot || !canShowAds()) return;
+    
+    // Dynamically ensure Google AdSense script is present when allowed
+    if (!document.querySelector('script[src*="pagead2.googlesyndication.com"]')) {
+      const script = document.createElement("script");
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    }
+
     if (!("IntersectionObserver" in window)) {
       setIsVisible(true);
       return;
@@ -9631,7 +9575,7 @@ function AdsenseUnit({
   }, [client, slot]);
 
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || !canShowAds()) return;
     if (isPushed.current) return;
     const timer = setTimeout(() => {
       try {
@@ -9648,7 +9592,7 @@ function AdsenseUnit({
     return () => clearTimeout(timer);
   }, [isVisible]);
 
-  if (!client || !slot) return null;
+  if (!client || !slot || !canShowAds()) return null;
 
   return (
     <div
@@ -9892,7 +9836,6 @@ const DEFAULT_PERMISSIONS: any = {
     changelog: { view: true, edit: false, delete: false },
   },
 };
-
 
 export function getDirectImageUrl(rawUrl: string): string {
   if (!rawUrl || typeof rawUrl !== "string") return "";
@@ -10140,7 +10083,6 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
       </div>
 
       <div className="space-y-8">
-
 
         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h4 className="font-black text-slate-800 mb-4 text-lg">Call To Action Section</h4>
@@ -10422,6 +10364,16 @@ function AdminPanel({
   const [selectedRbacRole, setSelectedRbacRole] = useState("editor");
   const [allUserPins, setAllUserPins] = useState<any[]>([]);
   const [expandedRowIds, setExpandedRowIds] = useState<Record<string, boolean>>({});
+  const [adMuteRemaining, setAdMuteRemaining] = useState<number>(() => getMuteRemainingSeconds(siteConfig));
+
+  useEffect(() => {
+    const updateTimer = () => {
+      setAdMuteRemaining(getMuteRemainingSeconds(siteConfig));
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [siteConfig]);
   
   const [notifSoundConfig, setNotifSoundConfig] = useState<any>({
     posts: "default_ding",
@@ -10596,7 +10548,6 @@ function AdminPanel({
                     },
                   ]
                 : []),
-              ...(isSuperAdmin || isAdmin ? [{ id: "media_vault", label: "Media Vault (శాశ్వత గ్యాలరీ)", icon: <HardDrive size={18} /> }] : []),
               ...(isEditor
                 ? [
                     {
@@ -13403,12 +13354,6 @@ function AdminPanel({
                 </div>
               </div>
             )}
-
-            {activeSubTab === "media_vault" && (
-              <div className="space-y-8 pb-20 fade-in slide-in-from-bottom-4 animate-in duration-500">
-                <MediaVaultAdmin addToast={addToast} />
-              </div>
-            )}
             {activeSubTab === "trash" && (
               <div className="space-y-8 pb-20">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
@@ -15544,7 +15489,6 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                       )}
                     </div>
 
-
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                         Security PIN (Level 1)
@@ -15792,7 +15736,7 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
             {activeSubTab === "ads" && (
               <div className="max-w-4xl space-y-8">
                 <div>
-                  <h4 className="text-xl font-black text-primary mb-2">Ad Management (Monetag & AdSense)</h4>
+                  <h4 className="text-xl font-black text-primary mb-2">Ad Management (Google AdSense)</h4>
                   <p className="text-xs text-slate-500 font-medium tracking-tight">Configure ad slots to show across the website.</p>
                 </div>
 
@@ -15819,130 +15763,71 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                     </label>
 
                     <div className="pt-4 border-t border-slate-100">
-                      <label className="block text-xs font-bold text-slate-500 mb-2">Mute Ads Temporarily (Hide Ads for a duration)</label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-bold text-slate-700">Mute Ads Temporarily (తాత్కాలికంగా యాడ్స్ నిలిపివేత)</label>
+                        {adMuteRemaining > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[11px] font-extrabold rounded-full animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                            మ్యూట్ యాక్టివ్: {Math.floor(adMuteRemaining / 60)}m {adMuteRemaining % 60}s
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mb-3">
+                        ఎంచుకున్న సమయం వరకు వెబ్‌సైట్‌లో ఎటువంటి ప్రకటనలు (Google AdSense / Custom Ads) కనిపించవు.
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {[
-                          { label: '5 Minutes', ms: 5 * 60 * 1000 },
-                          { label: 'Half Day (12h)', ms: 12 * 60 * 60 * 1000 },
-                          { label: '1 Day (24h)', ms: 24 * 60 * 60 * 1000 },
+                          { label: '5 Minutes (5 నిమి)', minutes: 5, ms: 5 * 60 * 1000 },
+                          { label: '15 Minutes', minutes: 15, ms: 15 * 60 * 1000 },
+                          { label: '1 Hour (1 గంట)', minutes: 60, ms: 60 * 60 * 1000 },
+                          { label: 'Half Day (12h)', minutes: 720, ms: 12 * 60 * 60 * 1000 },
+                          { label: '1 Day (24h)', minutes: 1440, ms: 24 * 60 * 60 * 1000 },
                         ].map(duration => (
                           <button
                             key={duration.label}
+                            type="button"
                             onClick={async () => {
                               const mutedUntil = Date.now() + duration.ms;
+                              muteAdsLocally(duration.minutes);
                               const updatedAds = { ...(siteConfig?.ads || {}), globalAdsMutedUntil: mutedUntil };
                               setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                               try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
                               await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
                               await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                              addToast(`Ads muted for ${duration.label}`);
+                              addToast(`యాడ్స్ ${duration.label} పాటు నిలిపివేయబడ్డాయి (Ads muted for ${duration.label})`);
                             }}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors"
+                            className="px-3 py-2 bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95"
                           >
                             Mute {duration.label}
                           </button>
                         ))}
                         <button
+                          type="button"
                           onClick={async () => {
+                            unmuteAdsLocally();
                             const updatedAds = { ...(siteConfig?.ads || {}), globalAdsMutedUntil: null };
                             setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
                             try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
                             await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
                             await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Mute cancelled");
+                            addToast("మ్యూట్ రద్దు చేయబడింది, యాడ్స్ ప్రారంభమయ్యాయి (Mute cancelled)");
                           }}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-colors"
+                          className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
                         >
-                          Cancel Mute
+                          Cancel Mute (మ్యూట్ రద్దు)
                         </button>
                       </div>
-                      {siteConfig?.ads?.globalAdsMutedUntil && siteConfig.ads.globalAdsMutedUntil > Date.now() && (
-                        <p className="mt-2 text-xs font-bold text-amber-600">
-                          Ads are muted until: {new Date(siteConfig.ads.globalAdsMutedUntil).toLocaleString('en-IN')}
-                        </p>
+                      {adMuteRemaining > 0 && siteConfig?.ads?.globalAdsMutedUntil && (
+                        <div className="mt-3 p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs font-medium text-amber-900 flex items-center justify-between">
+                          <div>
+                            <span className="font-black text-amber-800">🛑 యాడ్స్ నిలిపివేయబడ్డాయి:</span>{" "}
+                            ఇంకా <strong>{Math.floor(adMuteRemaining / 60)} నిమిషాల {adMuteRemaining % 60} సెకన్లు</strong> మిగిలి ఉన్నాయి.
+                          </div>
+                          <span className="text-[10px] text-amber-700 font-mono">
+                            ముగిసే సమయం: {new Date(siteConfig.ads.globalAdsMutedUntil).toLocaleTimeString('en-IN')}
+                          </span>
+                        </div>
                       )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Monetag Config */}
-                <div className="bg-white border-2 border-amber-200 rounded-3xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Megaphone className="text-amber-500" size={24} />
-                    <h5 className="font-black text-slate-800 text-lg">Monetag Ads</h5>
-                  </div>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500" 
-                        checked={siteConfig?.ads?.monetagEnabled || false}
-                        onChange={async (e) => {
-                          const updatedAds = { ...(siteConfig?.ads || {}), monetagEnabled: e.target.checked };
-                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          addToast(e.target.checked ? "Monetag Enabled" : "Monetag Disabled");
-                        }}
-                      />
-                      <span className="font-bold text-slate-700">Enable Monetag Ads</span>
-                    </label>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                      <div className="md:col-span-2 pt-2 border-t border-slate-100 mt-2">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Global Ad Frequency Limit (Per User Session)</label>
-                        <p className="text-[10px] text-slate-400 mb-2">Limit how many ads a single user sees (1 to 5). Leave empty for unlimited.</p>
-                        <input type="number" min="1" max="5" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none max-w-[200px]" 
-                          placeholder="e.g. 3"
-                          value={siteConfig?.ads?.adLimitPerUser || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adLimitPerUser: parseInt(e.target.value) || null };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved Ad Limit");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Zone ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
-                          placeholder="e.g. 8945672"
-                          value={siteConfig?.ads?.monetagZoneIdSidebar || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdSidebar: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved Monetag Sidebar Zone ID");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Zone ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-amber-500 outline-none" 
-                          placeholder="e.g. 8945673"
-                          value={siteConfig?.ads?.monetagZoneIdInArticle || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), monetagZoneIdInArticle: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved Monetag In-Article Zone ID");
-                          }}
-                        />
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -19762,7 +19647,7 @@ function AdBanner({ slotId = "5641797386" }: { slotId?: string }) {
 }
 
 function CustomAdUnit({ id, code, className }: { id: string; code?: string; className?: string }) {
-  if (!code) return null;
+  if (!code || !canShowAds()) return null;
   return (
     <div id={id} className={className} dangerouslySetInnerHTML={{ __html: code }} />
   );
@@ -20934,7 +20819,6 @@ function PostForm({
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-                await saveToMediaVault(data.url, file, auth.currentUser);
                 setUploadProgress(100);
                 resolve({
                   name: file.name,
@@ -20962,7 +20846,6 @@ function PostForm({
                 async () => {
                   try {
                     const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    await saveToMediaVault(downloadURL, file, auth.currentUser);
                     setUploadProgress(100);
                     resolve({
                       name: file.name,
@@ -21136,12 +21019,10 @@ function PostForm({
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
         downloadURL = data.url;
-        await saveToMediaVault(downloadURL, file, auth.currentUser);
       } else {
         const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
         await uploadBytes(storageRef, file);
         downloadURL = await getDownloadURL(storageRef);
-        await saveToMediaVault(downloadURL, file, auth.currentUser);
       }
 
       setMedia({
@@ -21199,12 +21080,10 @@ function PostForm({
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
         downloadURL = data.url;
-        await saveToMediaVault(downloadURL, file, auth.currentUser);
       } else {
         const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
         await uploadBytes(storageRef, file);
         downloadURL = await getDownloadURL(storageRef);
-        await saveToMediaVault(downloadURL, file, auth.currentUser);
       }
 
       const imageMarkdown = `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`;
@@ -21431,8 +21310,8 @@ function PostForm({
         }
 
         await addDoc(collection(db, "notifications"), {
-          uid: "admin_only",
-          title: "కొత్త పోస్ట్ సమర్పణ (Admin Alert)",
+          uid: "all",
+          title: "కొత్త పోస్ట్ సమర్పణ (New Post Submission)",
           message: `${postAuthor} వారు కొత్త పోస్ట్‌ను సమర్పించారు: ${title.substring(0, 50)}`,
           type: "admin_alert",
           read: false,
@@ -21926,12 +21805,10 @@ function PostForm({
                            const data = await response.json();
                            if (!response.ok) throw new Error(data.error || 'R2 upload failed');
                            downloadURL = data.url;
-        await saveToMediaVault(downloadURL, file, auth.currentUser);
                          } else {
                            const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
                            await uploadBytes(storageRef, file);
                            downloadURL = await getDownloadURL(storageRef);
-        await saveToMediaVault(downloadURL, file, auth.currentUser);
                          }
                          
                          newContent += `\n\n![Pasted Image](${downloadURL})`;
@@ -23452,10 +23329,7 @@ function PostDetail({
           </button>
         </div>
 
-        {/* In-article Ad Slot (Monetag / AdSense) */}
-        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig) && (
-          <MonetagUnit id="in-article-ad-slot" zoneId={siteConfig.ads.monetagZoneIdInArticle} className="my-4" />
-        )}
+        
         {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig) && (
           <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
         )}
@@ -23738,10 +23612,7 @@ function PostDetail({
 
       {/* Right Column - Sidebar */}
       <div className="hidden lg:flex flex-col gap-6 w-full">
-        {/* Monetag Ad Placeholder */}
-        {siteConfig?.ads?.monetagEnabled && canShowAds(siteConfig) && (
-          <MonetagUnit id="monetag-ad-sidebar" zoneId={siteConfig.ads.monetagZoneIdSidebar} />
-        )}
+        
 
         {recentPostsList.length > 0 && (
           <div className="bg-white border border-slate-200 shadow-sm flex flex-col">
@@ -24365,12 +24236,10 @@ function PostComments({
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'R2 upload failed');
             uploadedImageUrl = data.url;
-            await saveToMediaVault(uploadedImageUrl, processedFile, auth.currentUser);
           } else {
             const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
             await uploadBytes(storageRef, processedFile);
             uploadedImageUrl = await getDownloadURL(storageRef);
-            await saveToMediaVault(uploadedImageUrl, processedFile, auth.currentUser);
           }
           
           addToast("Screenshot uploaded successfully!");
@@ -24933,7 +24802,6 @@ function PostComments({
   );
 }
 
-
 function SuggestionCategoriesManager({
   categories,
   addToast,
@@ -25114,7 +24982,7 @@ function SuggestionForm({
         createdAt: Date.now(),
       });
       await addDoc(collection(db, "notifications"), {
-        uid: "admin_only",
+        uid: "all",
         title: "కొత్త సూచన (Suggestion Alert)",
         message: `${name} వారు ఒక కొత్త సూచన/సమస్యను సమర్పించారు: ${suggestion.substring(0, 50)}`,
         type: "admin_alert",

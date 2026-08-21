@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { db, analyticsDb } from '../../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, increment } from 'firebase/firestore';
 import { UAParser } from 'ua-parser-js';
 
 export function VisitorTracker({ user }: { user: any }) {
@@ -13,6 +13,7 @@ export function VisitorTracker({ user }: { user: any }) {
     sessionStorage.setItem('visitor_session', sessionToken.current);
     
     const track = async () => {
+
       try {
         let ip = "Unknown";
         if (!hasTrackedInitial.current) {
@@ -23,10 +24,10 @@ export function VisitorTracker({ user }: { user: any }) {
           } catch(e) {}
           hasTrackedInitial.current = true;
         }
-
+        
         const parser = new UAParser();
         const result = parser.getResult();
-
+        
         try {
           await addDoc(collection(analyticsDb, "visitor_logs"), {
             uid: user?.uid || "anonymous",
@@ -44,6 +45,16 @@ export function VisitorTracker({ user }: { user: any }) {
             sessionToken: sessionToken.current,
             ip
           });
+
+          // Day-by-Day Traffic Logging
+          const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+          const dailyRef = doc(analyticsDb, "daily_traffic", today);
+          await setDoc(dailyRef, {
+            date: today,
+            visits: increment(1),
+            lastUpdated: Date.now()
+          }, { merge: true });
+
         } catch (fsErr) {
           // Ignore analytics write errors gracefully
         }

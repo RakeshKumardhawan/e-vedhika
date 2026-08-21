@@ -496,7 +496,28 @@ app.post(['/api/deployment-logs', '/api/exe-logs', '/api/ubd/logs'], (req, res) 
 });
 
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
-app.get(['/api/telemetry', '/api/deployment-logs'], (req, res) => {
+app.get(['/api/telemetry', '/api/deployment-logs'], async (req, res) => {
+  try {
+    if (initFirebaseAdmin()) {
+      const db = admin.firestore();
+      const snapshot = await db.collection("telemetryLogs").orderBy("timestamp", "desc").limit(300).get();
+      const logs = [];
+      snapshot.forEach(doc => {
+        logs.push(doc.data());
+      });
+      // Merge with in-memory just in case it's missing (though it shouldn't)
+      const merged = [...logs];
+      for (const m of telemetryLogsStore) {
+        if (!merged.find(x => x.id === m.id)) {
+          merged.push(m);
+        }
+      }
+      merged.sort((a, b) => (new Date(b.date + ' ' + b.time).getTime() || b.timestamp) - (new Date(a.date + ' ' + a.time).getTime() || a.timestamp));
+      return res.json({ success: true, count: merged.length, logs: merged });
+    }
+  } catch (e) {
+    console.error("Error fetching telemetry from Firestore:", e);
+  }
   res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
 });
 
@@ -2291,85 +2312,6 @@ app.get('/api/remote-commands', (req, res) => {
       }
     });
   });
-
-  app.get("/api/storage/files", verifyToken, async (req, res) => {
-    try {
-      const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-      const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-      let publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || "";
-      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-        return res.status(400).json({ error: "Cloudflare R2 not fully configured" });
-      }
-      const r2Client = new S3Client({
-        region: "auto",
-        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: {
-          accessKeyId,
-          secretAccessKey,
-        },
-      });
-      const prefix = (req.query.prefix as string) || "";
-      const command = new ListObjectsV2Command({
-        Bucket: bucketName,
-        Prefix: prefix,
-      });
-      const data = await r2Client.send(command);
-      if (publicUrl.endsWith("/")) {
-        publicUrl = publicUrl.slice(0, -1);
-      }
-      const files = (data.Contents || []).map(file => ({
-        key: file.Key,
-        size: file.Size,
-        lastModified: file.LastModified,
-        url: `${publicUrl}/${file.Key}`
-      }));
-      files.sort((a, b) => {
-        if (!a.lastModified) return 1;
-        if (!b.lastModified) return -1;
-        return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
-      });
-      res.json({ files });
-    } catch (error: any) {
-      console.error("Error listing files:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.delete("/api/storage/files", verifyToken, async (req, res) => {
-    try {
-      const { key } = req.body;
-      if (!key) {
-        return res.status(400).json({ error: "File key is required" });
-      }
-      const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-      const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-      if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-        return res.status(400).json({ error: "Cloudflare R2 not fully configured" });
-      }
-      const r2Client = new S3Client({
-        region: "auto",
-        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: {
-          accessKeyId,
-          secretAccessKey,
-        },
-      });
-      const command = new DeleteObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-      });
-      await r2Client.send(command);
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error deleting file:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   if (process.env.NODE_ENV !== "production") {
     const hmrPort = 24678 + Math.floor(Math.random() * 10000); // randomize HMR port
     const vite = await createViteServer({
