@@ -164,6 +164,7 @@ import rehypeRaw from "rehype-raw";
 import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
+import { GPDPPlanningTool } from "./components/GPDPPlanningTool";
 import { KnowledgeHubSection, PRActHub } from "./components/KnowledgeHub";
 import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
@@ -5111,6 +5112,7 @@ export default function App() {
                                       { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} /> },
                                       { id: 'monthly-activity', label: 'Monthly Activity Data', icon: <FileSpreadsheet size={16} /> },
                                       { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} /> },
+                                      { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} /> },
                                     ].map(tool => (
                                       <button
                                         key={tool.id}
@@ -11278,7 +11280,7 @@ function AdminPanel({
               <Menu size={22} />
               <span className="text-xs font-bold text-slate-700 hidden sm:inline">Menu</span>
             </button>
-            <div>
+            <button className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-700 rounded-[20px] text-white shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer ml-1 hover:shadow-lg" onClick={() => alert("Quick Actions: 1. File Complaint, 2. Download Report, 3. View Analytics (Coming Soon!)")} title="Quick Actions"><Zap size={20} className="fill-white/20" /><span className="text-xs font-black uppercase tracking-wider hidden sm:inline">Quick Actions</span></button><div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight leading-none">
                   {menuCategories
@@ -11398,13751 +11400,457 @@ function AdminPanel({
                         key={type}
                         onClick={() => setReportsType(type as any)}
                         className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${reportsType === type ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-700"}`}
-                      >
-                        {type === "posts"
-                          ? " Community Posts"
-                          : "‚ö†Ô∏è Citizen Issues"}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      aria-label="Export Reports"
-                      onClick={async () => {
-                        addToast("Generating Export Data...");
-                        if (!XLSX) await loadHeavyModules();
-                        const isPosts =
-                          activeSubTab === "reports"
-                            ? reportsType === "posts"
-                            : false;
-                        const ds =
-                          activeSubTab === "suggestions"
-                            ? suggestions
-                            : isPosts
-                              ? posts
-                              : problems;
-                        const exportData = ds.map((item: any) => ({
-                          Title: item.title || item.type || "",
-                          Description: item.desc || item.text || "",
-                          Category: item.category || "",
-                          Status: item.status || "pending",
-                          District: item.district || "",
-                          Mandal: item.mandal || "",
-                          Panchayat: item.panchayat || "",
-                          Author: item.authorName || "",
-                          Date: item.createdAt
-                            ? new Date(item.createdAt).toLocaleDateString()
-                            : "",
-                        }));
-                        const ws = XLSX.utils.json_to_sheet(exportData);
-                        const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, "Reports");
-                        XLSX.writeFile(wb, "reports_export.xlsx");
-                        addToast("Export complete.");
-                      }}
-                      className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border bg-green-50 border-green-100 text-green-700 hover:bg-green-600 hover:text-white flex items-center gap-2 shadow-sm"
-                    >
-                      <Download size={14} /> Export XLS
-                    </button>
-                    {["All", "New", "In-Progress", "Pending", "Approved", "Resolved", "Deleted"].map(
-                      (f) => {
-                        const rawList =
-                          activeSubTab === "reports"
-                            ? reportsType === "posts"
-                              ? posts
-                              : allProblems
-                            : suggestions;
-                        const count = rawList.filter((item: any) => {
-                          const s = normalizeReportStatus(item.status);
-                          if (f === "All") return s !== "deleted";
-                          return s === f.toLowerCase();
-                        }).length;
-
-                        return (
-                          <button
-                            aria-label={f}
-                            key={f}
-                            onClick={() => setReportsFilter(f as any)}
-                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-1.5 ${reportsFilter === f ? "bg-indigo-900 border-indigo-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"}`}
-                          >
-                            <span>{f}</span>
-                            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold ${reportsFilter === f ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"}`}>
-                              {count}
-                            </span>
-                          </button>
-                        );
-                      },
-                    )}
-                    {reportsFilter === "Deleted" && (
-                      <button
-                        aria-label="Empty Trash"
-                        onClick={async () => {
-                          const res = await Swal.fire({
-                            title: "Empty Trash?",
-                            text: "This will permanently delete all items in the trash. This action cannot be undone.",
-                            icon: "warning",
-                            showCancelButton: true,
-                            confirmButtonColor: "#ef4444",
-                            confirmButtonText: "Yes, Empty Trash",
-                          });
-                          if (res.isConfirmed) {
-                            const col =
-                              activeSubTab === "reports"
-                                ? reportsType === "posts"
-                                  ? "posts"
-                                  : "problems"
-                                : "suggestions";
-                            const list =
-                              activeSubTab === "reports"
-                                ? reportsType === "posts"
-                                  ? posts
-                                  : allProblems
-                                : suggestions;
-                            const deletedItems = list.filter(
-                              (i) =>
-                                (i.status || "").toLowerCase() === "deleted",
-                            );
-                            try {
-                              await Promise.all(
-                                deletedItems.map((item: any) =>
-                                  deleteDoc(doc(db, col, item.id)),
-                                ),
-                              );
-                              addToast(
-                                `Permanently deleted ${deletedItems.length} items`,
-                              );
-                            } catch (e: any) {
-                              addToast("Error: " + e.message);
-                            }
-                          }
-                        }}
-                        className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border bg-red-50 border-red-100 text-red-600 hover:bg-red-600 hover:text-white ml-auto flex items-center gap-2 shadow-sm"
-                      >
-                        <Trash2 size={14} /> Empty Trash
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto min-h-[400px]">
-                  <table className="w-full text-left border-separate border-spacing-y-4 block md:table">
-                    <thead className="hidden md:table-header-group">
-                      <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                        <th className="pb-4 pl-8 font-black">
-                          Context & Interaction
-                        </th>
-                        <th className="pb-4 font-black">
-                          Status & Identification
-                        </th>
-                        <th className="pb-4 text-right pr-8 font-black">
-                          Administrative Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="space-y-4 block md:table-row-group">
-                      {(() => {
-                        const filteredItems = (activeSubTab === "reports"
-                          ? reportsType === "posts"
-                            ? posts
-                            : allProblems
-                          : suggestions
-                        ).filter((item) => {
-                          const s = normalizeReportStatus(item.status);
-                          if (reportsFilter === "All") return s !== "deleted";
-                          return s === reportsFilter.toLowerCase();
-                        });
-
-                        if (filteredItems.length === 0) {
-                          return (
-                            <tr>
-                              <td colSpan={3} className="py-16 text-center text-slate-400">
-                                <div className="flex flex-col items-center justify-center gap-2">
-                                  <Filter size={24} className="text-slate-300" />
-                                  <p className="text-sm font-bold text-slate-600">‡∞à ‡∞µ‡∞ø‡∞≠‡∞æ‡∞ó‡∞Ç‡∞≤‡±ã ‡∞é‡∞ü‡±Å‡∞µ‡∞Ç‡∞ü‡∞ø ‡∞Ö‡∞Ç‡∞∂‡∞æ‡∞≤‡±Å ‡∞≤‡±á‡∞µ‡±Å</p>
-                                  <p className="text-xs text-slate-400">No items found under "{reportsFilter}" status</p>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        }
-
-                        return filteredItems.map((item, idx) => (
-                          <motion.tr
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            key={item.id}
-                            className={`group bg-white rounded-[32px] overflow-hidden shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all border border-slate-100 flex flex-col md:table-row md:space-y-0 ${activeSubTab === "suggestions" ? "border-l-4 border-l-amber-400 bg-amber-50/10" : ""}`}
-                          >
-                            <td className="p-4 sm:p-6 block md:table-cell md:py-4 md:pl-6">
-                              <div className="flex items-center gap-4 mb-3">
-                                <div
-                                  className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-inner ${
-                                    activeSubTab === "suggestions"
-                                      ? "bg-amber-100 text-amber-600"
-                                      : reportsType === "posts"
-                                        ? "bg-blue-100 text-blue-600"
-                                        : "bg-rose-100 text-rose-600"
-                                  }`}
-                                >
-                                  {item.photoURL ? (
-                                    <img
-                                      src={item.photoURL}
-                                      alt="Profile"
-                                      className="w-full h-full object-cover rounded-2xl"
-                                      loading="lazy"
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  ) : item.isAdminPost ||
-                                    item.userName === "Admin" ? (
-                                    <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary">
-                                      <ShieldCheck size={20} />
-                                    </div>
-                                  ) : (
-                                    <div className="w-full h-full bg-slate-50 flex items-center justify-center text-slate-300">
-                                      <User size={18} />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="ml-2">
-                                  <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
-                                    {item.title ||
-                                      item.name ||
-                                      item.type ||
-                                      "Untitled Report"}
-                                  </h4>
-                                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-1">
-                                    <span>
-                                      {item.authorName ||
-                                        item.userName ||
-                                        (activeSubTab === "suggestions" ? "Citizen" : "Citizen")}
-                                    </span>
-                                    <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                    <span className="uppercase tracking-widest">
-                                      {item.district || item.village || "General Region"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="pl-14 max-w-xl">
-                                <p
-                                  className={`text-[12px] text-slate-600 font-medium italic mb-1.5 transition-all leading-relaxed whitespace-pre-wrap ${
-                                    expandedRowIds[item.id] ? "" : "line-clamp-2"
-                                  }`}
-                                >
-                                  "
-                                  {item.desc ||
-                                    item.text ||
-                                    item.suggestion ||
-                                    item.problem ||
-                                    "No descriptor signal received."}
-                                  "
-                                </p>
-                                <button
-                                  onClick={() =>
-                                    setExpandedRowIds((prev) => ({
-                                      ...prev,
-                                      [item.id]: !prev[item.id],
-                                    }))
-                                  }
-                                  className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-wider flex items-center gap-0.5 cursor-pointer hover:underline"
-                                >
-                                  {expandedRowIds[item.id] ? (
-                                    <>
-                                      <ChevronUp size={12} strokeWidth={2.5} /> ‡∞§‡∞ï‡±ç‡∞ï‡±Å‡∞µ ‡∞ö‡±Ç‡∞™‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø (Show Less)
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ChevronDown size={12} strokeWidth={2.5} /> ‡∞Æ‡±ä‡∞§‡±ç‡∞§‡∞Ç ‡∞ö‡±Ç‡∞°‡∞Ç‡∞°‡∞ø (Read More)
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-                            <td className="p-4 sm:px-6 md:py-6 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0">
-                              <div className="space-y-4">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span
-                                    className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${(() => {
-                                      const s = normalizeReportStatus(item.status);
-                                      if (s === "new") {
-                                        return "bg-blue-50 border-blue-200 text-blue-700 shadow-[0_1px_2px_rgba(59,130,246,0.1)]";
-                                      }
-                                      if (s === "in-progress") {
-                                        return "bg-amber-50 border-amber-200 text-amber-700 shadow-[0_1px_2px_rgba(245,158,11,0.1)]";
-                                      }
-                                      if (s === "resolved" || s === "approved") {
-                                        return "bg-emerald-50 border-emerald-250 text-emerald-700 shadow-[0_1px_2px_rgba(16,185,129,0.1)]";
-                                      }
-                                      if (s === "flagged") {
-                                        return "bg-rose-50 border-rose-200 text-rose-700 shadow-[0_1px_2px_rgba(244,63,94,0.1)]";
-                                      }
-                                      if (s === "deleted") {
-                                        return "bg-slate-100 border-slate-200 text-slate-500";
-                                      }
-                                      // default pending
-                                      return "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-[0_1px_2px_rgba(99,102,241,0.1)]";
-                                    })()}`}
-                                  >
-                                    {normalizeReportStatus(item.status).toUpperCase()}
-                                  </span>
-                                  <span className="text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-1.5 flex-wrap max-w-xs">
-                                    <Hash size={12} className="flex-shrink-0" />{" "}
-                                    {item.categories &&
-                                    item.categories.length > 0 ? (
-                                      <div className="flex flex-wrap gap-1">
-                                        {item.categories.map(
-                                          (c: string, i: number) => (
-                                            <span
-                                              key={i}
-                                              className={
-                                                i > 0
-                                                  ? "before:content-[','] before:mr-1"
-                                                  : ""
-                                              }
-                                            >
-                                              {c}
-                                            </span>
-                                          ),
-                                        )}
-                                      </div>
-                                    ) : (
-                                      item.category ||
-                                      (activeSubTab === "suggestions"
-                                        ? "SUUCHANA (SUGGESTION)"
-                                        : "GENERAL")
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2.5 text-slate-400 pl-2">
-                                  <Clock size={14} />
-                                  <span className="text-[11px] font-black uppercase tracking-tighter">
-                                    {new Date(
-                                      getValidTime(item),
-                                    ).toLocaleDateString("en-IN", {
-                                      day: "2-digit",
-                                      month: "short",
-                                      year: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="p-4 sm:px-6 py-4 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0 bg-slate-50/50 md:bg-transparent">
-                              <div className="flex justify-end items-center gap-2 w-full md:w-auto">
-                                <select
-                                  value={normalizeReportStatus(item.status)}
-                                  onChange={async (e) => {
-                                    const tabId =
-                                      activeSubTab === "reports"
-                                        ? "reports"
-                                        : "suggestions";
-                                    if (!hasEditPermission(tabId)) {
-                                      addToast(
-                                        "‡∞ï‡±ç‡∞∑‡∞Æ‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø, ‡∞à ‡∞∏‡∞Æ‡∞æ‡∞ö‡∞æ‡∞∞‡∞æ‡∞®‡±ç‡∞®‡∞ø ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡±á ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡∞ø ‡∞Æ‡±Ä‡∞ï‡±Å ‡∞≤‡±á‡∞¶‡±Å.",
-                                      );
-                                      return;
-                                    }
-                                    try {
-                                      const col =
-                                        activeSubTab === "reports"
-                                          ? reportsType === "posts"
-                                            ? "posts"
-                                            : "problems"
-                                          : "suggestions";
-                                      const val = e.target.value;
-                                      const newStatus = val === "in-progress" ? "In-Progress" : val.charAt(0).toUpperCase() + val.slice(1);
-                                      await updateDoc(doc(db, col, item.id), {
-                                        status: newStatus,
-                                      });
-                                      
-                                      if (col === "posts" && newStatus === "Approved" && item.status !== "Approved") {
-                                        const postAuthor = item.userName || "User";
-                                        const title = item.title || item.problem || item.content || "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç";
-                                        await addDoc(collection(db, "notifications"), {
-                                          uid: "all",
-                                          title: " ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç (New Post Approved)",
-                                          message: `${postAuthor} ‡∞∏‡∞Æ‡∞∞‡±ç‡∞™‡∞ø‡∞Ç‡∞ö‡∞ø‡∞® ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞Ü‡∞Æ‡±ã‡∞¶‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø: ${title.substring(0, 50)}`,
-                                          type: "post",
-                                          read: false,
-                                          time: Date.now(),
-                                          postId: item.id
-                                        }).catch(()=>console.error("Failed to add post approval notif"));
-                                      }
-                                      addToast("Status Updated");
-                                    } catch (err: any) {
-                                      addToast(getFriendlyError(err));
-                                    }
-                                  }}
-                                  className="bg-slate-50 border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest p-2 pr-8 rounded-xl focus:border-blue-500 outline-none w-full md:w-auto min-w-[130px] shadow-sm cursor-pointer h-10"
-                                >
-                                  <option value="new">New</option>
-                                  <option value="in-progress">In-Progress</option>
-                                  <option value="pending">Pending</option>
-                                  <option value="approved">Approved</option>
-                                  <option value="flagged">Flagged</option>
-                                  <option value="resolved">Resolved</option>
-                                  <option value="deleted">
-                                    Deleted (Trash)
-                                  </option>
-                                </select>
-
-                                <button
-                                  aria-label="Edit Post"
-                                  onClick={() => {
-                                    const tabId =
-                                      activeSubTab === "reports"
-                                        ? "reports"
-                                        : "suggestions";
-                                    if (!hasEditPermission(tabId)) {
-                                      addToast(
-                                        "‡∞ï‡±ç‡∞∑‡∞Æ‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø, ‡∞à ‡∞∏‡∞Æ‡∞æ‡∞ö‡∞æ‡∞∞‡∞æ‡∞®‡±ç‡∞®‡∞ø ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡±á ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡∞ø ‡∞Æ‡±Ä‡∞ï‡±Å ‡∞≤‡±á‡∞¶‡±Å.",
-                                      );
-                                      return;
-                                    }
-                                    if (
-                                      activeSubTab === "reports" &&
-                                      reportsType === "posts"
-                                    ) {
-                                      onEditPost(item);
-                                    } else {
-                                      Swal.fire({
-                                        title: "Quick Signal Override",
-                                        input: "textarea",
-                                        inputLabel: "Modify Public Message",
-                                        inputValue:
-                                          item.msg ||
-                                          item.content ||
-                                          item.text ||
-                                          item.problem ||
-                                          item.suggestion,
-                                        showCancelButton: true,
-                                        confirmButtonColor: "#2563eb",
-                                      }).then(async (res) => {
-                                        if (res.isConfirmed && res.value) {
-                                          const col =
-                                            activeSubTab === "reports"
-                                              ? reportsType === "posts"
-                                                ? "posts"
-                                                : "problems"
-                                              : "suggestions";
-                                          const field = item.msg
-                                            ? "msg"
-                                            : item.problem
-                                              ? "problem"
-                                              : item.content
-                                                ? "content"
-                                                : "text";
-                                          await updateDoc(
-                                            doc(db, col, item.id),
-                                            {
-                                              [field]: res.value,
-                                            },
-                                          );
-                                          addToast("Signal Synchronized");
-                                        }
-                                      });
-                                    }
-                                  }}
-                                  className="w-10 h-10 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                  title="Edit Content"
-                                >
-                                  <Edit3 size={18} />
-                                </button>
-
-                                {item.status?.toLowerCase() === "deleted" ? (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      aria-label="Restore"
-                                      onClick={async () => {
-                                        try {
-                                          const col =
-                                            activeSubTab === "reports"
-                                              ? reportsType === "posts"
-                                                ? "posts"
-                                                : "problems"
-                                              : "suggestions";
-                                          await updateDoc(
-                                            doc(db, col, item.id),
-                                            {
-                                              status: "Pending",
-                                            },
-                                          );
-                                          addToast("Restored from Trash");
-                                        } catch (err: any) {
-                                          addToast(getFriendlyError(err));
-                                        }
-                                      }}
-                                      className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm text-xs font-bold gap-2"
-                                      title="Restore Item"
-                                    >
-                                      <RotateCcw size={14} /> Restore
-                                    </button>
-
-                                    <button
-                                      aria-label="Permanently Delete"
-                                      onClick={async () => {
-                                        const res = await Swal.fire({
-                                          title: "Permanently Delete?",
-                                          text: "This action cannot be undone.",
-                                          icon: "error",
-                                          showCancelButton: true,
-                                          confirmButtonColor: "#ef4444",
-                                          confirmButtonText:
-                                            "Yes, Delete Permanently",
-                                        });
-                                        if (res.isConfirmed) {
-                                          try {
-                                            const col =
-                                              activeSubTab === "reports"
-                                                ? reportsType === "posts"
-                                                  ? "posts"
-                                                  : "problems"
-                                                : "suggestions";
-                                            await deleteDoc(
-                                              doc(db, col, item.id),
-                                            );
-                                            addToast("Permanently Deleted");
-                                          } catch (err: any) {
-                                            addToast(getFriendlyError(err));
-                                          }
-                                        }
-                                      }}
-                                      className="px-3 py-2 bg-red-100 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm text-xs font-bold gap-2"
-                                      title="Permanently Delete"
-                                    >
-                                      <Trash2 size={14} /> Permanently Delete
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    aria-label="Trash Item"
-                                    onClick={async () => {
-                                      const res = await Swal.fire({
-                                        title: "Move to Trash?",
-                                        text: "This item will be marked as deleted.",
-                                        icon: "warning",
-                                        showCancelButton: true,
-                                        confirmButtonColor: "#ef4444",
-                                        confirmButtonText: "Yes, Trash",
-                                      });
-                                      if (res.isConfirmed) {
-                                        try {
-                                          const col =
-                                            activeSubTab === "reports"
-                                              ? reportsType === "posts"
-                                                ? "posts"
-                                                : "problems"
-                                              : "suggestions";
-                                          await updateDoc(
-                                            doc(db, col, item.id),
-                                            {
-                                              status: "Deleted",
-                                            },
-                                          );
-                                          addToast("Moved to Trash");
-                                        } catch (err: any) {
-                                          addToast(getFriendlyError(err));
-                                        }
-                                      }
-                                    }}
-                                    className="w-10 h-10 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                    title="Move to Trash"
-                                  >
-                                    <Trash2 size={18} />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {activeSubTab === "gos_formats" && (
-              <div className="space-y-12 pb-20">
-                <GosAndFormatsAdmin
-                  user={user}
-                  addToast={addToast}
-                  isAdmin={isAdmin}
-                />
-              </div>
-            )}
-            {activeSubTab === "users" && (
-              <div className="space-y-12 pb-20">
-                <div className="pt-8 text-left">
-                  <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 p-6 bg-white rounded-[32px] shadow-sm border border-slate-100">
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                         Access Control
-                      </h3>
-                      <p className="text-sm font-bold text-slate-500 mt-1">
-                        Manage user roles, visibility and suspensions.
-                      </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                      <div className="relative">
-                        <Search
-                          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                          size={16}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Search by name, email, role..."
-                          value={userSearchTerm}
-                          onChange={(e) => setUserSearchTerm(e.target.value)}
-                          className="pl-9 pr-4 py-2.5 rounded-2xl text-xs border border-slate-200 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 w-full sm:w-64"
-                        />
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <button
-                          aria-label="Export Data"
-                          onClick={async () => {
-                            addToast("Generating Export Data...");
-                            if (!XLSX) await loadHeavyModules();
-                            const exportData = users.map((u: any) => ({
-                              Name: u.name || "",
-                              Email: u.email || "",
-                              Surname: u.surname || "",
-                              Phone: u.mobile || "",
-                              District: u.district || "",
-                              Mandal: u.mandal || "",
-                              Village: u.panchayat || "",
-                              Designation: u.designation || "",
-                              Role: u.role || "user",
-                              Status: u.isDeleted ? "Deleted" : "Active",
-                              Joined: u.createdAt
-                                ? new Date(u.createdAt).toLocaleDateString()
-                                : "",
-                            }));
-                            const ws = XLSX.utils.json_to_sheet(exportData);
-                            const wb = XLSX.utils.book_new();
-                            XLSX.utils.book_append_sheet(wb, ws, "Users");
-                            XLSX.writeFile(wb, "users_export.xlsx");
-                            addToast("Export complete.");
-                          }}
-                          className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border bg-green-50 border-green-100 text-green-700 hover:bg-green-600 hover:text-white flex items-center gap-2 shadow-sm"
-                        >
-                          <Download size={14} /> Export XLS
-                        </button>
-                        <button
-                          aria-label="All Users"
-                          onClick={() => setUsersFilter("All")}
-                          className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${usersFilter === "All" ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105" : "bg-slate-50 border-slate-100 text-slate-500 hover:bg-slate-100"}`}
-                        >
-                          All Users
-                        </button>
-                        <button
-                          aria-label="Deleted Users"
-                          onClick={() => setUsersFilter("Deleted")}
-                          className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${usersFilter === "Deleted" ? "bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/20 scale-105" : "bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-100 hover:border-rose-200"}`}
-                        >
-                          Deleted (Trash)
-                        </button>
-
-                        {usersFilter === "Deleted" && (
-                          <button
-                            aria-label="Empty User Trash"
-                            onClick={async () => {
-                              const res = await Swal.fire({
-                                title: "Empty Trash?",
-                                text: "This will permanently delete all users in the trash. This action cannot be undone.",
-                                icon: "warning",
-                                showCancelButton: true,
-                                confirmButtonColor: "#ef4444",
-                                confirmButtonText: "Yes, Empty Trash",
-                              });
-                              if (res.isConfirmed) {
-                                const deletedUsers = users.filter(
-                                  (u) => u.isDeleted || u.role === "deleted",
-                                );
-                                try {
-                                  await Promise.all(
-                                    deletedUsers.map((u) =>
-                                      deleteDoc(doc(db, "users", u.id)),
-                                    ),
-                                  );
-                                  addToast(
-                                    `Permanently deleted ${deletedUsers.length} users`,
-                                  );
-                                } catch (e: any) {
-                                  addToast("Error: " + e.message);
-                                }
-                              }
-                            }}
-                            className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border bg-red-50 border-red-100 text-red-600 hover:bg-red-600 hover:text-white flex items-center gap-2 shadow-sm"
-                          >
-                            <Trash2 size={14} /> Empty Trash
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {users
-                      .filter((u) => {
-                        const isMatchFilter =
-                          usersFilter === "Deleted"
-                            ? u.isDeleted || u.role === "deleted"
-                            : !u.isDeleted && u.role !== "deleted";
-                        if (!isMatchFilter) return false;
-                        if (!userSearchTerm) return true;
-                        const term = userSearchTerm.toLowerCase();
-                        return (
-                          (u.username || "").toLowerCase().includes(term) ||
-                          (u.email || "").toLowerCase().includes(term) ||
-                          (u.role || "").toLowerCase().includes(term) ||
-                          (u.id || "").toLowerCase().includes(term)
-                        );
-                      })
-                      .sort((a, b) => (b.time || 0) - (a.time || 0))
-                      .slice(0, visibleUsersCount)
-                      .map((u) => (
-                        <motion.div
-                          layout
-                          key={u.id}
-                          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/40 relative overflow-hidden group"
-                        >
-                          <div className="absolute top-0 right-0 p-4 flex gap-2">
-                            {usersFilter === "Deleted" ? (
-                              <>
-                                <button
-                                  aria-label="Restore Settings"
-                                  onClick={async () => {
-                                    try {
-                                      await updateDoc(doc(db, "users", u.id), {
-                                        isDeleted: false,
-                                        role:
-                                          u.role === "deleted"
-                                            ? "user"
-                                            : u.role,
-                                      });
-                                      addToast("User restored from trash");
-                                    } catch (err: any) {
-                                      addToast(getFriendlyError(err));
-                                    }
-                                  }}
-                                  className="p-2 text-blue-500 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
-                                  title="Restore User"
-                                >
-                                  <RotateCcw size={16} /> Restore
-                                </button>
-                                <button
-                                  aria-label="Permanently Delete User"
-                                  onClick={async () => {
-                                    const res = await Swal.fire({
-                                      title: "Permanently Delete User?",
-                                      text: "This action cannot be undone.",
-                                      icon: "error",
-                                      showCancelButton: true,
-                                      confirmButtonColor: "#ef4444",
-                                      confirmButtonText:
-                                        "Yes, Delete Permanently",
-                                    });
-                                    if (res.isConfirmed) {
-                                      try {
-                                        await deleteDoc(doc(db, "users", u.id));
-                                        addToast("User permanently deleted");
-                                      } catch (err: any) {
-                                        addToast(getFriendlyError(err));
-                                      }
-                                    }
-                                  }}
-                                  className="p-2 text-red-500 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
-                                  title="Permanently Delete"
-                                >
-                                  <X size={16} />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  aria-label={
-                                    u.role === "suspended"
-                                      ? "Unblock User"
-                                      : "Block User"
-                                  }
-                                  onClick={async () => {
-                                    try {
-                                      const nextRole =
-                                        u.role === "suspended"
-                                          ? "user"
-                                          : "suspended";
-                                      await updateDoc(doc(db, "users", u.id), {
-                                        role: nextRole,
-                                      });
-
-                                      // Send Notification to user
-                                      await addDoc(
-                                        collection(db, "notifications"),
-                                        {
-                                          uid: u.id,
-                                          title: "‡∞ñ‡∞æ‡∞§‡∞æ ‡∞∏‡±ç‡∞•‡∞ø‡∞§‡∞ø (Account Status)",
-                                          message:
-                                            nextRole === "suspended"
-                                              ? "‡∞Æ‡±Ä ‡∞ñ‡∞æ‡∞§‡∞æ ‡∞Ø‡∞æ‡∞ï‡±ç‡∞∏‡±Ü‡∞∏‡±ç ‡∞≠‡∞¶‡±ç‡∞∞‡∞§‡∞æ ‡∞ï‡∞æ‡∞∞‡∞£‡∞æ‡∞≤ ‡∞¶‡±É‡∞∑‡±ç‡∞ü‡±ç‡∞Ø‡∞æ ‡∞™‡∞∞‡∞ø‡∞Æ‡∞ø‡∞§‡∞Ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø."
-                                              : "‡∞Æ‡±Ä ‡∞ñ‡∞æ‡∞§‡∞æ ‡∞Ø‡∞æ‡∞ï‡±ç‡∞∏‡±Ü‡∞∏‡±ç ‡∞™‡±Å‡∞®‡∞∞‡±Å‡∞¶‡±ç‡∞ß‡∞∞‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø.",
-                                          type: "system",
-                                          read: false,
-                                          time: Date.now(),
-                                        },
-                                      );
-
-                                      addToast(
-                                        nextRole === "suspended"
-                                          ? "User Access Restricted"
-                                          : "User Access Restored",
-                                      );
-
-                                      await logUserActivity(
-                                        `${nextRole === "suspended" ? "Blocked" : "Unblocked"} User`,
-                                        { email: u.email, id: u.id },
-                                      );
-                                    } catch (e: any) {
-                                      addToast(e.message);
-                                    }
-                                  }}
-                                  title={
-                                    u.role === "suspended"
-                                      ? "Unblock User"
-                                      : "Block User"
-                                  }
-                                  className={`p-2 rounded-lg transition-colors ${u.role === "suspended" ? "text-red-500 bg-red-50 animate-pulse" : "text-slate-300 hover:text-red-500 hover:bg-red-50"}`}
-                                >
-                                  <ShieldAlert size={16} />
-                                </button>
-                                <button
-                                  aria-label={
-                                    u.hidden ? "Show Profile" : "Hide Profile"
-                                  }
-                                  onClick={async () => {
-                                    try {
-                                      await updateDoc(doc(db, "users", u.id), {
-                                        hidden: !u.hidden,
-                                      });
-                                      addToast(
-                                        u.hidden
-                                          ? "Profile Restored"
-                                          : "Profile Hidden",
-                                      );
-                                    } catch (e: any) {
-                                      addToast(e.message);
-                                    }
-                                  }}
-                                  title={
-                                    u.hidden ? "Show Profile" : "Hide Profile"
-                                  }
-                                  className={`p-2 rounded-lg transition-colors ${u.hidden ? "text-amber-500 bg-amber-50" : "text-slate-300 hover:text-blue-500 hover:bg-slate-50"}`}
-                                >
-                                  {u.hidden ? (
-                                    <EyeOff size={16} />
-                                  ) : (
-                                    <Eye size={16} />
-                                  )}
-                                </button>
-                                <button
-                                  aria-label="Delete user"
-                                  onClick={() => deleteUser(u.id)}
-                                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Move to Trash"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex items-start gap-4 mb-6 pt-2">
-                            <div
-                              className={`w-14 h-14 bg-slate-100 rounded-2xl shrink-0 flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all ${u.role === "suspended" ? "grayscale border-red-200 scale-95" : "border-white"}`}
-                            >
-                              {u.photoURL ? (
-                                <img
-                                  src={u.photoURL}
-                                  alt={u.name || "User"}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <User size={24} className="text-slate-300" />
-                              )}
-                            </div>
-                            <div>
-                              <h4 className="font-black text-primary text-sm mb-1 flex items-center gap-2">
-                                {(`${u.name || ""} ${u.surname || ""}`.trim()) || (u.email ? u.email.split("@")[0] : "Unknown User")}
-                                {u.hidden && (
-                                  <span className="bg-amber-100 text-amber-600 text-[8px] px-1.5 py-0.5 rounded-full uppercase font-black">
-                                    Hidden
-                                  </span>
-                                )}
-                                {u.role === "suspended" && (
-                                  <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full uppercase font-black animate-pulse">
-                                    Blocked
-                                  </span>
-                                )}
-                              </h4>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                {u.username
-                                  ? `@${u.username}`
-                                  : u.email || u.id}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
-                              <span>Registered</span>
-                              <span className="text-slate-600 tracking-normal font-bold normal-case">
-                                {u.time
-                                  ? new Date(u.time).toLocaleDateString(
-                                      "en-IN",
-                                      {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      },
-                                    )
-                                  : "Unknown"}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
-                              <span>Usage Time</span>
-                              <span className="text-blue-600 font-bold">
-                                {u.timeSpentMinutes || 0} Minutes
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
-                              <span>Status</span>
-                              {u.lastActive && (Date.now() - u.lastActive < 120000) ? (
-                                <span className="flex flex-col items-end gap-1">
-                                  <span className="flex items-center gap-1.5 text-emerald-600 font-bold tracking-normal bg-emerald-50 px-2 py-0.5 rounded-full">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse relative -top-[0.5px]"></span>
-                                    Online ‚Ä¢ {u.timeSpentMinutes || 0}m Session
-                                  </span>
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1.5 text-slate-500 font-bold tracking-normal bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
-                                  <span className="w-1 h-1 rounded-full bg-slate-300 relative -top-[0.5px]"></span>
-                                  Offline {u.lastActive ? `(${Math.max(1, Math.floor((Date.now() - u.lastActive) / 60000))}m ago)` : ""} ‚Ä¢ {u.timeSpentMinutes || 0}m Session
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
-                              <span>Access Level</span>
-                              <span
-                                className={`px-2 py-0.5 rounded-full ${u.role === "admin" || u.email?.toLowerCase() === "rakeshkumardhawan123@gmail.com" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}
-                              >
-                                {u.email?.toLowerCase() ===
-                                "rakeshkumardhawan123@gmail.com"
-                                  ? "Website Creator"
-                                  : u.role || "User"}
-                              </span>
-                            </div>
-                            <select
-                              value={u.role || "user"}
-                              onChange={async (e) => {
-                                try {
-                                  const newRole = e.target.value;
-                                  await updateDoc(doc(db, "users", u.id), {
-                                    role: newRole,
-                                  });
-
-                                  // Send Notification to user
-                                  await addDoc(
-                                    collection(db, "notifications"),
-                                    {
-                                      uid: u.id,
-                                      title: "‡∞π‡±ã‡∞¶‡∞æ ‡∞Æ‡∞æ‡∞∞‡±ç‡∞™‡±Å (Role Updated)",
-                                      message: `‡∞Æ‡±Ä ‡∞ñ‡∞æ‡∞§‡∞æ ‡∞π‡±ã‡∞¶‡∞æ ${newRole.toUpperCase()} ‡∞ï‡±Å ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø.`,
-                                      type: "system",
-                                      read: false,
-                                      time: Date.now(),
-                                    },
-                                  );
-
-                                  addToast("Role Authorization Updated");
-                                  await logUserActivity(`Changed User Role`, {
-                                    targetEmail: u.email,
-                                    newRole: newRole,
-                                  });
-                                } catch (err) {
-                                  handleFirestoreError(
-                                    err,
-                                    OperationType.WRITE,
-                                    `users/${u.id}`,
-                                  );
-                                }
-                              }}
-                              className="w-full !mb-0 bg-slate-50 border-slate-100 text-[11px] font-black uppercase tracking-widest p-3 rounded-xl focus:border-blue-500 outline-none transition-all cursor-pointer"
-                            >
-                              <option value="user">USER</option>
-                              <option value="moderator">MODERATOR</option>
-                              <option value="editor">EDITOR</option>
-                              <option value="admin">SYSTEM ADMIN</option>
-                              <option value="suspended">
-                                SUSPENDED (BLOCK)
-                              </option>
-                            </select>
-
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-primary">
-                                  Profile Visibility
-                                </span>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                                  {u.hidden
-                                    ? "Hidden from Directory"
-                                    : "Visible to Public"}
-                                </span>
-                              </div>
-                              <button
-                                aria-label="Toggle Profile Visibility"
-                                onClick={async () => {
-                                  try {
-                                    await updateDoc(doc(db, "users", u.id), {
-                                      hidden: !u.hidden,
-                                    });
-                                    addToast(
-                                      u.hidden
-                                        ? "Profile Restored to Directory"
-                                        : "Profile Hidden from Directory",
-                                    );
-                                  } catch (e: any) {
-                                    addToast(e.message);
-                                  }
-                                }}
-                                className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${u.hidden ? "bg-slate-200" : "bg-emerald-500 shadow-lg shadow-emerald-500/20"}`}
-                              >
-                                <div
-                                  className={`w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${u.hidden ? "translate-x-0" : "translate-x-6"}`}
-                                />
-                              </button>
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
-                              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                Location:{" "}
-                                {u.mandal
-                                  ? `${u.mandal}, ${u.district}`
-                                  : u.village || "Undefined"}
-                              </div>
-                              <button
-                                aria-label="View Full File"
-                                onClick={() =>
-                                  setExpandedUser(
-                                    expandedUser === u.id ? null : u.id,
-                                  )
-                                }
-                                className="text-[10px] font-black text-blue-500 uppercase hover:underline"
-                              >
-                                View Full File
-                              </button>
-                            </div>
-                            {expandedUser === u.id && (
-                              <div className="pt-4 border-t border-slate-50 grid grid-cols-2 gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-left">
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    Gender
-                                  </span>
-                                  {u.gender || "N/A"}
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    Mobile
-                                  </span>
-                                  {u.mobile || "N/A"}
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    Email
-                                  </span>
-                                  {u.email || "N/A"}
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    State
-                                  </span>
-                                  {u.state || "N/A"}
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    District
-                                  </span>
-                                  {u.district || "N/A"}
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    Mandal
-                                  </span>
-                                  {u.mandal || "N/A"}
-                                </div>
-                                <div className="col-span-2">
-                                  <span className="text-slate-400 block mb-1">
-                                    Village/Town
-                                  </span>
-                                  {u.village || "N/A"}
-                                </div>
-                                <div>
-                                  <span className="text-slate-400 block mb-1">
-                                    Office
-                                  </span>
-                                  {u.office ||
-                                    u.village ||
-                                    (u.mandal ? `${u.mandal} Office` : "N/A")}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                  </div>
-
-                  {users.filter((u) => {
-                    const isMatchFilter = usersFilter === "Deleted"
-                      ? u.isDeleted || u.role === "deleted"
-                      : !u.isDeleted && u.role !== "deleted";
-                    if (!isMatchFilter) return false;
-                    if (!userSearchTerm) return true;
-                    const term = userSearchTerm.toLowerCase();
-                    return (
-                      (u.username || "").toLowerCase().includes(term) ||
-                      (u.email || "").toLowerCase().includes(term) ||
-                      (u.role || "").toLowerCase().includes(term) ||
-                      (u.id || "").toLowerCase().includes(term)
-                    );
-                  }).length > visibleUsersCount && (
-                    <div className="mt-8 flex justify-center">
-                      <button
-                        onClick={() => setVisibleUsersCount((prev) => prev + 500)}
-                        className="px-6 py-3 bg-white text-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-slate-100 shadow-[0_8px_16px_rgba(0,0,0,0.05)] hover:scale-105 hover:border-blue-200 hover:bg-blue-50 transition-all flex items-center gap-2"
-                      >
-                        Load More ( ‡∞Æ‡∞∞‡∞ø‡∞Ç‡∞§ ‡∞≤‡±ã‡∞°‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø)
-                      </button>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "builder" && (
-              <div className="space-y-6 pb-20">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-[40px] text-white shadow-xl shadow-blue-900/20 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                    <Layers size={200} />
-                  </div>
-                  <div className="relative z-10 space-y-3">
-                    <h2 className="text-3xl font-black tracking-tighter drop-shadow-md">
-                      E-Vedhika Page Builder
-                    </h2>
-                    <p className="text-blue-100 max-w-xl font-medium leading-relaxed">
-                      Drag and drop UI components, define custom sections, and
-                      deploy new portal views dynamically without editing code.
-                      All changes preview live on the right.
-                    </p>
-                  </div>
-                  <div className="relative z-10 shrink-0 flex gap-3">
-                    <button
-                      onClick={() => setBuilderElements(DEFAULT_HOME_ELEMENTS)}
-                      className="px-6 py-3.5 bg-blue-500/20 text-white rounded-xl font-black border border-white/20 uppercase tracking-widest hover:bg-blue-500/30 transition-all flex items-center gap-2"
-                    >
-                      <RotateCcw size={18} /> Reset
-                    </button>
-                    <button
-                      onClick={handlePublish}
-                      className="px-8 py-3.5 bg-white text-blue-600 rounded-xl font-black uppercase tracking-widest shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-105 hover:bg-blue-50 transition-all flex items-center gap-2"
-                    >
-                      <Rocket size={18} /> Publish Page
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                  {/* Elements Palette */}
-                  <div className="lg:col-span-1 space-y-4">
-                    <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm sticky top-6">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 px-2">
-                        UI Elements
-                      </h4>
-                      <div className="space-y-2">
-                        {[
-                          "Ads Gallery",
-                          "E-Vedhika Core Feed",
-                          "Hero Section",
-                          "Post Grid",
-                          "Feature Cards",
-                          "Form Builder",
-                          "Contact Banner",
-                          "Important Links",
-                          "Stats Highlight",
-                          "FAQ Section",
-                          "Alert Notice",
-                          "Quote / Testimonial",
-                          "Upcoming Events",
-                          "Gallery Grid",
-                          "Services Directory",
-                          "Profiles / Staff",
-                          "Video Showcase",
-                          "Document Downloads",
-                        ].map((el) => (
-                          <div
-                            key={el}
-                            onClick={() => {
-                              const newEl = {
-                                id: Date.now(),
-                                type: el,
-                                title: "",
-                                content: "",
-                                color: "blue",
-                                hidden: false,
-                              };
-                              setBuilderElements([...builderElements, newEl]);
-                              addToast(`${el} added to canvas`);
-                              setEditingElementId(newEl.id);
-                            }}
-                            className="p-3 bg-slate-50 border border-slate-100 text-slate-600 font-bold rounded-2xl cursor-pointer hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-all flex justify-between items-center group shadow-sm"
-                          >
-                            <span>{el}</span>
-                            <PlusCircle
-                              size={16}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Editor List */}
-                  <div className="lg:col-span-1 border-r border-slate-200/60 pr-4 lg:max-h-[800px] overflow-y-auto custom-scrollbar">
-                    <div className="flex items-center gap-2 mb-6 ml-2">
-                      <Layers className="text-slate-400" size={18} />
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
-                        Layout Sequence
-                      </h3>
-                    </div>
-                    {builderElements.length === 0 ? (
-                      <div className="mt-10 text-center">
-                        <div className="w-16 h-16 bg-slate-50 rounded-[20px] flex items-center justify-center text-slate-300 mx-auto mb-4">
-                          <Layers size={24} />
-                        </div>
-                        <p className="text-slate-400 text-xs font-bold leading-relaxed px-4">
-                          Select elements from the panel to start building your
-                          page interface.
-                        </p>
-                      </div>
-                    ) : (
-                      <Reorder.Group
-                        axis="y"
-                        values={builderElements}
-                        onReorder={setBuilderElements}
-                        className="space-y-4"
-                      >
-                        {builderElements.map((el, index) => (
-                          <Reorder.Item
-                            value={el}
-                            key={el.id}
-                            className={`group relative p-4 bg-white border cursor-grab active:cursor-grabbing ${el.hidden ? "opacity-50 grayscale border-slate-100 bg-slate-50" : "border-slate-200 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"} rounded-3xl text-left hover:border-blue-400 transition-colors ${editingElementId === el.id ? "ring-2 ring-blue-500/20 border-blue-400" : ""}`}
-                          >
-                            <div className="flex flex-col gap-3">
-                              <div className="flex items-center justify-between">
-                                <span
-                                  className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${el.hidden ? "bg-slate-200 text-slate-500" : "bg-blue-50 text-blue-600 border border-blue-100"}`}
-                                >
-                                  {el.type} {el.hidden && "- Hidden"}
-                                </span>
-                                <div className="flex items-center text-slate-300">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Drag
-                                  </span>
-                                  <Layers size={14} />
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onClick={() =>
-                                    updateElementProps(el.id, {
-                                      hidden: !el.hidden,
-                                    })
-                                  }
-                                  className={`flex-1 flex justify-center p-2 rounded-xl border border-transparent transition-colors ${el.hidden ? "text-amber-500 bg-amber-50" : "text-slate-400 bg-slate-50 hover:text-amber-500 hover:bg-amber-50"}`}
-                                  title="Toggle Visibility"
-                                >
-                                  {el.hidden ? (
-                                    <EyeOff size={16} />
-                                  ) : (
-                                    <Eye size={16} />
-                                  )}
-                                </button>
-                                <button
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onClick={() =>
-                                    setEditingElementId(
-                                      editingElementId === el.id ? null : el.id,
-                                    )
-                                  }
-                                  className={`flex-1 flex justify-center p-2 rounded-xl border transition-colors ${editingElementId === el.id ? "bg-blue-600 text-white border-blue-600" : "bg-slate-50 border-transparent text-slate-400 hover:text-blue-600 hover:bg-blue-50"}`}
-                                  title="Settings"
-                                >
-                                  <Settings size={16} />
-                                </button>
-                                <button
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onClick={() => {
-                                    setBuilderElements(
-                                      builderElements.filter(
-                                        (e) => e.id !== el.id,
-                                      ),
-                                    );
-                                    addToast(
-                                      `${el.type} deleted successfully.`,
-                                    );
-                                  }}
-                                  className="flex-1 flex justify-center p-2 text-slate-400 bg-slate-50 rounded-xl hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                                  title="Delete Area"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <AnimatePresence>
-                              {editingElementId === el.id && (
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: "auto" }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="overflow-hidden"
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                >
-                                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-3 cursor-auto">
-                                    <div>
-                                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-1 block">
-                                        Title
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={el.title || ""}
-                                        onChange={(e) =>
-                                          updateElementProps(el.id, {
-                                            title: e.target.value,
-                                          })
-                                        }
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs"
-                                        placeholder="Section Title..."
-                                      />
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <div className="flex-1">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-1 block">
-                                          Theme Color
-                                        </label>
-                                        <select
-                                          value={el.color || "blue"}
-                                          onChange={(e) =>
-                                            updateElementProps(el.id, {
-                                              color: e.target.value,
-                                            })
-                                          }
-                                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs appearance-none"
-                                        >
-                                          <option value="blue">
-                                            Blue Signature
-                                          </option>
-                                          <option value="indigo">
-                                            Indigo Royal
-                                          </option>
-                                          <option value="emerald">
-                                            Emerald Success
-                                          </option>
-                                          <option value="rose">
-                                            Rose Alert
-                                          </option>
-                                          <option value="amber">
-                                            Amber Attention
-                                          </option>
-                                          <option value="slate">
-                                            Dark Slate
-                                          </option>
-                                        </select>
-                                      </div>
-                                      <div className="flex-1">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-1 block">
-                                          Layout Size
-                                        </label>
-                                        <select
-                                          value={el.size || "full"}
-                                          onChange={(e) =>
-                                            updateElementProps(el.id, {
-                                              size: e.target.value,
-                                            })
-                                          }
-                                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs appearance-none"
-                                        >
-                                          <option value="small">Small</option>
-                                          <option value="medium">Medium</option>
-                                          <option value="large">Large</option>
-                                          <option value="full">
-                                            Full Width
-                                          </option>
-                                        </select>
-                                      </div>
-                                    </div>
-                                    {el.type !== "Post Grid" &&
-                                      el.type !== "Feature Cards" &&
-                                      el.type !== "Stats Highlight" && (
-                                        <div>
-                                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 mb-1 block">
-                                            Content / Desc
-                                          </label>
-                                          <textarea
-                                            value={el.content || ""}
-                                            onChange={(e) =>
-                                              updateElementProps(el.id, {
-                                                content: e.target.value,
-                                              })
-                                            }
-                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs min-h-[80px] custom-scrollbar"
-                                            placeholder="Description..."
-                                          />
-                                        </div>
-                                      )}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </Reorder.Item>
-                        ))}
-                      </Reorder.Group>
-                    )}
-                  </div>
-
-                  {/* Live Preview Pane */}
-                  <div className="lg:col-span-2">
-                    <div className="bg-slate-100 rounded-[32px] sm:rounded-[48px] p-2 sm:p-4 border-[6px] sm:border-[12px] border-slate-800 shadow-2xl relative h-[700px] flex flex-col pointer-events-none opacity-90">
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-32 sm:w-48 h-5 sm:h-7 bg-slate-800 rounded-b-2xl z-20 flex justify-center items-end pb-1.5 sm:pb-2">
-                        <div className="w-12 sm:w-16 h-1 sm:h-1.5 bg-slate-700 rounded-full" />
-                      </div>
-
-                      <div className="mb-4 sm:mb-6 pt-4 sm:pt-6 pb-2 sm:pb-4 flex items-center justify-center  z-10 bg-slate-100 rounded-t-[20px] sm:rounded-t-[32px]">
-                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm flex items-center gap-2">
-                          <div className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
-                          Live Canvas Render
-                        </span>
-                      </div>
-
-                      <div className="bg-white/50 flex-1 overflow-y-auto custom-scrollbar rounded-2xl sm:rounded-3xl p-3 sm:p-6 pb-20 space-y-6 sm:space-y-12">
-                        {builderElements.filter((el) => !el.hidden).length ===
-                        0 ? (
-                          <div className="py-20 text-center text-slate-300 font-bold italic text-sm">
-                            No sections added. Canvas is empty.
-                          </div>
-                        ) : (
-                          builderElements
-                            .filter((el) => !el.hidden)
-                            .map((el) => {
-                              let sizeClass = "max-w-full";
-                              if (el.size === "small")
-                                sizeClass = "max-w-sm mx-auto";
-                              else if (el.size === "medium")
-                                sizeClass = "max-w-md mx-auto";
-                              else if (el.size === "large")
-                                sizeClass = "max-w-2xl mx-auto";
-
-                              return (
-                                <div
-                                  key={el.id}
-                                  className={`relative ${sizeClass} w-full`}
-                                >
-                                  {el.type === "Ads Gallery" && (
-                                    <div className="w-full relative opacity-50 bg-slate-200 rounded-[24px] aspect-[21/9] flex flex-col justify-center items-center">
-                                      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none gap-2">
-                                        <div className="bg-slate-900/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                                          <Megaphone size={16} /> Ads Gallery
-                                          Banner
-                                        </div>
-                                        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">
-                                          Global Ad Network
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Hero Section" && (
-                                    <div
-                                      className={`bg-gradient-to-br from-${el.color || "blue"}-600 to-${el.color || "blue"}-800 p-6 sm:p-12 rounded-[24px] sm:rounded-[40px] text-white overflow-hidden shadow-xl`}
-                                    >
-                                      <div className="relative z-10 space-y-4">
-                                        <h1 className="text-2xl sm:text-4xl font-black tracking-tighter leading-tight drop-shadow-md">
-                                          {(() => {
-                                            const hours = new Date().getHours();
-                                            const timeGreeting =
-                                              hours < 12
-                                                ? "Good Morning"
-                                                : hours < 17
-                                                  ? "Good Afternoon"
-                                                  : "Good Evening";
-                                            return userProfile?.name
-                                              ? `Hello, ${timeGreeting}, ${userProfile.name}! Welcome to E-Vedhika. ‚ú®`
-                                              : `Hello, ${timeGreeting}! Welcome to E-Vedhika. ‚ú®`;
-                                          })()}
-                                        </h1>
-                                        <p className="text-xs sm:text-sm text-white/80 font-medium leading-relaxed max-w-sm">
-                                          {el.content ||
-                                            "Empowering citizens through digital transparency."}
-                                        </p>
-                                        <div className="flex flex-wrap gap-2 pt-2">
-                                          <div className="px-4 py-2 sm:px-6 sm:py-3 bg-white text-blue-600 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px]">
-                                            Learn More
-                                          </div>
-                                          <div className="px-4 py-2 sm:px-6 sm:py-3 bg-white/10 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] border border-white/20">
-                                            Contact Us
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Post Grid" && (
-                                    <div className="space-y-4">
-                                      <div>
-                                        <h2 className="text-xl sm:text-2xl font-black tracking-tighter text-slate-800">
-                                          {el.title || "Recent Updates"}
-                                        </h2>
-                                        <p className="text-slate-500 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em]">
-                                          Official Broadcasts & News
-                                        </p>
-                                      </div>
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {[1, 2].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-3"
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <div className="w-8 h-8 rounded-full bg-slate-100" />
-                                              <div className="h-3 w-16 bg-slate-100 rounded" />
-                                            </div>
-                                            <div className="h-4 w-3/4 bg-slate-200 rounded" />
-                                            <div className="h-3 w-full bg-slate-100 rounded" />
-                                            <div className="h-3 w-5/6 bg-slate-100 rounded" />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Feature Cards" && (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      {[1, 2, 3].map((i) => (
-                                        <div
-                                          key={i}
-                                          className="bg-white p-6 rounded-[24px] sm:rounded-[32px] border border-slate-100 shadow-sm"
-                                        >
-                                          <div
-                                            className={`w-10 h-10 bg-${el.color || "blue"}-50 rounded-xl flex items-center justify-center text-${el.color || "blue"}-600 mb-4`}
-                                          >
-                                            <Zap size={20} />
-                                          </div>
-                                          <h3 className="text-base font-black text-slate-800 mb-2">
-                                            Feature {i}
-                                          </h3>
-                                          <p className="text-slate-500 text-xs">
-                                            Detailed description of this
-                                            feature...
-                                          </p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {el.type === "Contact Banner" && (
-                                    <div className="bg-slate-900 p-6 sm:p-10 rounded-[24px] sm:rounded-[40px] text-white flex flex-col md:flex-row items-center justify-between gap-6">
-                                      <div className="space-y-2 text-center md:text-left">
-                                        <h2 className="text-xl sm:text-2xl font-black">
-                                          {el.title || "Contact Us"}
-                                        </h2>
-                                        <p className="text-slate-400 text-xs sm:text-sm">
-                                          {el.content ||
-                                            "Reach out to our support team."}
-                                        </p>
-                                      </div>
-                                      <div className="px-6 py-3 bg-blue-600 rounded-xl font-black uppercase text-[10px] tracking-widest text-center">
-                                        Submit Feedback
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Important Links" && (
-                                    <div
-                                      className={`p-6 sm:p-8 bg-${el.color || "slate"}-50 border border-slate-100 rounded-[24px]`}
-                                    >
-                                      <h3 className="text-lg font-black text-slate-800 mb-2">
-                                        {el.title || "Important Links"}
-                                      </h3>
-                                      <p className="text-slate-500 text-xs mb-6 max-w-sm line-clamp-2">
-                                        {el.content ||
-                                          "Quick access to essential portal resources."}
-                                      </p>
-                                      <div className="grid grid-cols-2 gap-3">
-                                        {[1, 2, 3, 4].map((i) => (
-                                          <div
-                                            key={i}
-                                            className={`p-4 bg-white rounded-[16px] shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center`}
-                                          >
-                                            <div
-                                              className={`w-10 h-10 rounded-[12px] bg-${el.color || "slate"}-100 flex items-center justify-center mb-2 text-${el.color || "slate"}-600`}
-                                            >
-                                              <ExternalLink size={16} />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-slate-700">
-                                              Link {i}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Stats Highlight" && (
-                                    <div
-                                      className={`py-8 bg-white rounded-[24px]`}
-                                    >
-                                      <div className="text-center mb-6">
-                                        <h3 className="text-lg font-black tracking-tighter text-slate-800 mb-1">
-                                          {el.title || "By The Numbers"}
-                                        </h3>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-4 px-2">
-                                        {[
-                                          { v: "15K+", l: "Citizens" },
-                                          { v: "98%", l: "Success" },
-                                        ].map((stat, i) => (
-                                          <div
-                                            key={i}
-                                            className={`p-4 bg-${el.color || "blue"}-50 rounded-[20px] text-center shadow-sm`}
-                                          >
-                                            <h4
-                                              className={`text-xl font-black text-${el.color || "blue"}-600 mb-1`}
-                                            >
-                                              {stat.v}
-                                            </h4>
-                                            <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                                              {stat.l}
-                                            </p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "FAQ Section" && (
-                                    <div className="p-6 bg-white border border-slate-100 shadow-sm rounded-[24px]">
-                                      <h3 className="text-lg font-black text-slate-800 text-center mb-2">
-                                        {el.title || "FAQ"}
-                                      </h3>
-                                      <p className="text-center text-slate-500 text-[10px] mb-6 line-clamp-2">
-                                        {el.content ||
-                                          "Common queries and answers."}
-                                      </p>
-                                      <div className="space-y-2">
-                                        {[1, 2].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="p-4 bg-slate-50 rounded-[16px] border border-slate-100"
-                                          >
-                                            <div className="flex justify-between items-center w-full text-left">
-                                              <h4 className="text-[11px] font-bold text-slate-800">
-                                                ‡∞é‡∞≤‡∞æ ‡∞¶‡∞∞‡∞ñ‡∞æ‡∞∏‡±ç‡∞§‡±Å ‡∞ö‡±á‡∞Ø‡∞æ‡∞≤‡∞ø {i}?
-                                              </h4>
-                                              <ChevronDown
-                                                className="text-slate-400 shrink-0"
-                                                size={12}
-                                              />
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Alert Notice" && (
-                                    <div
-                                      className={`p-4 bg-${el.color || "amber"}-50 border-l-4 border-${el.color || "amber"}-500 rounded-[16px] flex items-start gap-3 shadow-sm`}
-                                    >
-                                      <div
-                                        className={`text-${el.color || "amber"}-600 bg-white p-2 rounded-xl shadow-sm shrink-0`}
-                                      >
-                                        <AlertTriangle size={16} />
-                                      </div>
-                                      <div>
-                                        <h4
-                                          className={`text-xs font-black text-${el.color || "amber"}-800 mb-1`}
-                                        >
-                                          {el.title || "‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø ‡∞ó‡∞Æ‡∞®‡∞ø‡∞ï"}
-                                        </h4>
-                                        <p
-                                          className={`text-[10px] text-${el.color || "amber"}-700/80 font-bold whitespace-pre-wrap leading-relaxed`}
-                                        >
-                                          {el.content || "‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞ó‡∞Æ‡∞®‡∞ø‡∞Ç‡∞ö‡∞ó‡∞≤‡∞∞‡±Å..."}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Quote / Testimonial" && (
-                                    <div className="p-6 bg-slate-900 rounded-[24px] text-center shadow-xl relative overflow-hidden">
-                                      <h3 className="text-lg font-black tracking-tighter text-white mb-2 relative z-10">
-                                        {el.title || "Quote"}
-                                      </h3>
-                                      <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 mx-auto rounded-full mb-4 relative z-10"></div>
-                                      <p className="text-[11px] font-medium text-slate-300 italic mb-2 relative z-10 mx-auto leading-relaxed line-clamp-3">
-                                        "
-                                        {el.content ||
-                                          "Empowerment comes through information..."}
-                                        "
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Upcoming Events" && (
-                                    <div className="p-6 bg-white border border-slate-100 shadow-sm rounded-[24px]">
-                                      <h3 className="text-lg font-black text-slate-800 mb-4">
-                                        {el.title || "‡∞∞‡∞æ‡∞¨‡±ã‡∞Ø‡±á ‡∞ï‡∞æ‡∞∞‡±ç‡∞Ø‡∞ï‡±ç‡∞∞‡∞Æ‡∞æ‡∞≤‡±Å"}
-                                      </h3>
-                                      <div className="space-y-3">
-                                        {[1, 2].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="flex gap-4 bg-slate-50 p-3 rounded-[16px]"
-                                          >
-                                            <div className="bg-white rounded-xl p-2 text-center min-w-[60px] shadow-sm">
-                                              <span className="text-danger font-black text-[10px] uppercase block">
-                                                NOV
-                                              </span>
-                                              <span className="text-lg font-black text-slate-800">
-                                                {i + 14}
-                                              </span>
-                                            </div>
-                                            <div className="flex-1 flex flex-col justify-center">
-                                              <h4 className="text-sm font-bold text-slate-800">
-                                                {el.content
-                                                  ? el.content.split("|")[0]
-                                                  : "‡∞ó‡±ç‡∞∞‡∞æ‡∞Æ ‡∞∏‡∞≠"}
-                                              </h4>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Gallery Grid" && (
-                                    <div className="p-6 bg-white border border-slate-100 shadow-sm rounded-[24px]">
-                                      <h3 className="text-lg font-black text-slate-800 mb-2">
-                                        {el.title || "‡∞ó‡±ç‡∞Ø‡∞æ‡∞≤‡∞∞‡±Ä"}
-                                      </h3>
-                                      <div className="grid grid-cols-3 gap-2">
-                                        {[1, 2, 3].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="aspect-square bg-slate-100 rounded-xl"
-                                          ></div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Services Directory" && (
-                                    <div
-                                      className={`p-6 bg-${el.color || "blue"}-50 border border-slate-100 shadow-sm rounded-[24px]`}
-                                    >
-                                      <h3 className="text-lg font-black text-slate-800 mb-4">
-                                        {el.title || "‡∞∏‡±á‡∞µ‡∞≤‡±Å"}
-                                      </h3>
-                                      <div className="grid grid-cols-2 gap-3">
-                                        {[1, 2, 3, 4].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="flex gap-2 p-3 bg-white rounded-[16px] shadow-sm items-center"
-                                          >
-                                            <div
-                                              className={`w-8 h-8 rounded-xl bg-${el.color || "blue"}-50 flex items-center justify-center shrink-0`}
-                                            >
-                                              <Layers
-                                                size={14}
-                                                className={`text-${el.color || "blue"}-600`}
-                                              />
-                                            </div>
-                                            <div className="h-2 bg-slate-100 w-full rounded"></div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Profiles / Staff" && (
-                                    <div className="p-6 bg-slate-50 border border-slate-100 shadow-sm rounded-[24px]">
-                                      <h3 className="text-lg font-black text-slate-800 text-center mb-4">
-                                        {el.title || "‡∞®‡∞æ‡∞Ø‡∞ï‡±Å‡∞≤‡±Å / ‡∞Ö‡∞ß‡∞ø‡∞ï‡∞æ‡∞∞‡±Å‡∞≤‡±Å"}
-                                      </h3>
-                                      <div className="grid grid-cols-3 gap-2">
-                                        {[1, 2, 3].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="bg-white p-3 rounded-[16px] text-center shadow-sm"
-                                          >
-                                            <div className="w-10 h-10 mx-auto bg-slate-200 rounded-full mb-2"></div>
-                                            <div className="h-2 bg-slate-200 w-full mb-1"></div>
-                                            <div className="h-2 bg-slate-100 w-2/3 mx-auto"></div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Video Showcase" && (
-                                    <div className="p-6 bg-slate-900 border border-slate-800 shadow-sm rounded-[24px]">
-                                      <h3 className="text-lg font-black text-white mb-2">
-                                        {el.title || "‡∞µ‡±Ä‡∞°‡∞ø‡∞Ø‡±ã‡∞≤‡±Å"}
-                                      </h3>
-                                      <div className="aspect-video bg-slate-800 rounded-xl flex items-center justify-center">
-                                        <Play
-                                          className="text-white/30"
-                                          size={24}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {el.type === "Document Downloads" && (
-                                    <div
-                                      className={`p-6 bg-white border border-${el.color || "blue"}-100 shadow-sm rounded-[24px]`}
-                                    >
-                                      <h3 className="text-lg font-black text-slate-800 mb-2">
-                                        {el.title || "‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø‡∞Æ‡±à‡∞® ‡∞™‡∞§‡±ç‡∞∞‡∞æ‡∞≤‡±Å"}
-                                      </h3>
-                                      <div className="space-y-2">
-                                        {[1, 2].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100"
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <FileText
-                                                size={14}
-                                                className={`text-${el.color || "blue"}-500`}
-                                              />
-                                              <div className="h-2 bg-slate-200 w-20"></div>
-                                            </div>
-                                            <Download
-                                              size={14}
-                                              className="text-slate-400"
-                                            />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Fallback for form builder or anything else */}
-                                  {![
-                                    "Ads Gallery",
-                                      "Post Grid",
-                                    "Feature Cards",
-                                    "Contact Banner",
-                                    "E-Vedhika Core Feed",
-                                    "Important Links",
-                                    "Stats Highlight",
-                                    "FAQ Section",
-                                    "Alert Notice",
-                                    "Quote / Testimonial",
-                                    "Upcoming Events",
-                                    "Gallery Grid",
-                                    "Services Directory",
-                                    "Profiles / Staff",
-                                    "Video Showcase",
-                                    "Document Downloads",
-                                  ].includes(el.type) && (
-                                    <div className="p-8 bg-white border-2 border-dashed border-slate-200 rounded-[32px] text-center">
-                                      <h3 className="text-base font-black text-slate-400">
-                                        {el.title || el.type}
-                                      </h3>
-                                      <p className="text-slate-400 mt-2 text-xs">
-                                        {el.content ||
-                                          "Dynamic layout element."}
-                                      </p>
-                                    </div>
-                                  )}
-
-                                  {el.type === "E-Vedhika Core Feed" && (
-                                    <div className="space-y-4">
-                                      <div className="h-16 bg-slate-100 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-center p-4">
-                                        <Search className="text-slate-300 w-5 h-5 mr-3" />
-                                        <div className="h-3 bg-slate-200 rounded w-1/2" />
-                                      </div>
-                                      <div className="space-y-3">
-                                        {[1, 2, 3].map((i) => (
-                                          <div
-                                            key={i}
-                                            className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3"
-                                          >
-                                            <div className="flex items-center gap-3">
-                                              <div className="w-8 h-8 rounded-full bg-slate-100" />
-                                              <div className="flex flex-col gap-1">
-                                                <div className="h-2.5 bg-slate-200 rounded w-24" />
-                                                <div className="h-2 bg-slate-100 rounded w-16" />
-                                              </div>
-                                            </div>
-                                            <div className="space-y-2 py-2">
-                                              <div className="h-2.5 bg-slate-50 rounded w-full" />
-                                              <div className="h-2.5 bg-slate-50 rounded w-5/6" />
-                                            </div>
-                                            <div className="h-24 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center gap-2">
-                                              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-200 shadow-sm">
-                                                <svg
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  width="14"
-                                                  height="14"
-                                                  viewBox="0 0 24 24"
-                                                  fill="none"
-                                                  stroke="currentColor"
-                                                  strokeWidth="2"
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                >
-                                                  <rect
-                                                    width="18"
-                                                    height="18"
-                                                    x="3"
-                                                    y="3"
-                                                    rx="2"
-                                                    ry="2"
-                                                  />
-                                                  <circle cx="9" cy="9" r="2" />
-                                                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                                                </svg>
-                                              </div>
-                                              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                                                Image Preview
-                                              </span>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {activeSubTab === "trash" && (
-              <div className="space-y-8 pb-20">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
-                      <Trash2 className="text-rose-500" />
-                      Recycle Bin System
-                    </h3>
-                    <p className="text-sm font-bold text-slate-500 mt-1">
-                      Manage and permanently drop deleted resources.
-                    </p>
-                  </div>
-                  <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-inner overflow-x-auto whitespace-nowrap scrollbar-hide">
-                    {(
-                      [
-                        "posts",
-                        "problems",
-                        "suggestions",
-                        "users",
-                        "updates",
-                      ] as const
-                    ).map((tab) => (
-                      <button
-                        aria-label={tab}
-                        key={tab}
-                        onClick={() => setTrashTab(tab)}
-                        className={`px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${trashTab === tab ? "bg-white text-rose-500 shadow-sm border border-slate-200" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"}`}
-                      >
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-50 border-b border-slate-100">
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          <th className="p-5 pl-8">Item Detail</th>
-                          <th className="p-5">Type / Category</th>
-                          <th className="text-right p-5 pr-8">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {(() => {
-                          let list: any[] = [];
-                          let col = "";
-                          if (trashTab === "posts") {
-                            list = posts.filter(
-                              (p: any) => p.status?.toLowerCase() === "deleted",
-                            );
-                            col = "posts";
-                          } else if (trashTab === "problems") {
-                            list = problems.filter(
-                              (p: any) => p.status?.toLowerCase() === "deleted",
-                            );
-                            col = "problems";
-                          } else if (trashTab === "suggestions") {
-                            list = suggestions.filter(
-                              (s: any) => s.status?.toLowerCase() === "deleted",
-                            );
-                            col = "suggestions";
-                          } else if (trashTab === "users") {
-                            list = users.filter(
-                              (u: any) => u.isDeleted || u.role === "deleted",
-                            );
-                            col = "users";
-                          } else if (trashTab === "updates") {
-                            list = updates.filter(
-                              (u: any) => u.status?.toLowerCase() === "deleted",
-                            );
-                            col = "updates";
-                          }
-
-                          if (list.length === 0) {
-                            return (
-                              <tr>
-                                <td colSpan={3} className="p-12 text-center">
-                                  <Trash2
-                                    size={40}
-                                    className="mx-auto text-slate-200 mb-4"
-                                  />
-                                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                                    No deleted {trashTab} found
-                                  </p>
-                                </td>
-                              </tr>
-                            );
-                          }
-
-                          return (
-                            <>
-                              <tr>
-                                <td
-                                  colSpan={3}
-                                  className="p-4 bg-rose-50/50 border-b border-rose-100 text-right pr-8"
-                                >
-                                  <button
-                                    aria-label="Empty Trash"
-                                    onClick={async () => {
-                                      const res = await Swal.fire({
-                                        title: `Empty ${trashTab} Trash?`,
-                                        text: "This will permanently delete ALL items in this category. This action cannot be undone.",
-                                        icon: "warning",
-                                        showCancelButton: true,
-                                        confirmButtonColor: "#ef4444",
-                                        confirmButtonText: "Yes, Empty Trash",
-                                      });
-                                      if (res.isConfirmed) {
-                                        try {
-                                          await Promise.all(
-                                            list.map((item) =>
-                                              deleteDoc(doc(db, col, item.id)),
-                                            ),
-                                          );
-                                          addToast(
-                                            `Permanently deleted ${list.length} ${trashTab}`,
-                                          );
-                                        } catch (e: any) {
-                                          addToast("Error: " + e.message);
-                                        }
-                                      }
-                                    }}
-                                    className="px-5 py-2.5 bg-rose-100 text-rose-600 rounded-xl text-xs font-black tracking-widest uppercase hover:bg-rose-500 hover:text-white transition-all inline-flex items-center gap-2 shadow-sm"
-                                  >
-                                    <Trash2 size={16} /> Empty {trashTab} Trash
-                                  </button>
-                                </td>
-                              </tr>
-                              {list.map((item, idx) => (
-                                <tr
-                                  key={item.id || idx}
-                                  className="hover:bg-slate-50/50 transition-colors"
-                                >
-                                  <td className="p-5 pl-8">
-                                    <p className="text-sm font-bold text-slate-700 decoration-rose-200 decoration-2 line-through">
-                                      {trashTab === "posts"
-                                        ? item.title || "Untitled Post"
-                                        : ""}
-                                      {trashTab === "problems"
-                                        ? item.title ||
-                                          item.desc?.substring(0, 40) ||
-                                          "Unknown Problem"
-                                        : ""}
-                                      {trashTab === "suggestions"
-                                        ? item.title ||
-                                          item.desc?.substring(0, 40) ||
-                                          "Unknown Suggestion"
-                                        : ""}
-                                      {trashTab === "users"
-                                        ? item.email ||
-                                          item.name ||
-                                          "Unknown User"
-                                        : ""}
-                                      {trashTab === "updates"
-                                        ? item.text ||
-                                          item.title ||
-                                          "Unknown Update"
-                                        : ""}
-                                    </p>
-                                    <p className="text-xs font-medium text-slate-400 mt-1 max-w-md truncate">
-                                      {item.id}
-                                    </p>
-                                  </td>
-                                  <td className="p-5">
-                                    <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-rose-100">
-                                      {trashTab}
-                                    </span>
-                                  </td>
-                                  <td className="p-5 pr-8">
-                                    <div className="flex justify-end gap-2">
-                                      <button
-                                        aria-label="Restore"
-                                        onClick={async () => {
-                                          try {
-                                            if (trashTab === "users") {
-                                              await updateDoc(
-                                                doc(db, "users", item.id),
-                                                {
-                                                  isDeleted: false,
-                                                  role:
-                                                    item.role &&
-                                                    item.role !== "deleted"
-                                                      ? item.role
-                                                      : "user",
-                                                },
-                                              );
-                                            } else if (trashTab === "updates") {
-                                              await updateDoc(
-                                                doc(db, "updates", item.id),
-                                                { status: "visible" },
-                                              );
-                                            } else {
-                                              const col =
-                                                trashTab === "problems"
-                                                  ? "problems"
-                                                  : trashTab === "suggestions"
-                                                    ? "suggestions"
-                                                    : trashTab === "gos_formats"
-                                                      ? "gos_formats"
-                                                      : "posts";
-                                              if (trashTab === "gos_formats") {
-                                                await updateDoc(
-                                                  doc(db, col, item.id),
-                                                  { status: "visible" },
-                                                );
-                                              } else {
-                                                await updateDoc(
-                                                  doc(db, col, item.id),
-                                                  { status: "Pending" },
-                                                );
-                                              }
-                                            }
-                                            addToast("Restored from Trash");
-                                          } catch (err: any) {
-                                            addToast(getFriendlyError(err));
-                                          }
-                                        }}
-                                        className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm text-[10px] uppercase tracking-widest font-black gap-2"
-                                        title="Restore Item"
-                                      >
-                                        <RotateCcw size={14} /> Restore
-                                      </button>
-                                      <button
-                                        aria-label="Permanently Delete"
-                                        onClick={async () => {
-                                          const res = await Swal.fire({
-                                            title: "Permanently Delete?",
-                                            text: "This action cannot be undone.",
-                                            icon: "error",
-                                            showCancelButton: true,
-                                            confirmButtonColor: "#ef4444",
-                                            confirmButtonText:
-                                              "Yes, Delete Permanently",
-                                          });
-                                          if (res.isConfirmed) {
-                                            try {
-                                              await deleteDoc(
-                                                doc(
-                                                  db,
-                                                  trashTab === "users"
-                                                    ? "users"
-                                                    : trashTab === "updates"
-                                                      ? "updates"
-                                                      : trashTab === "problems"
-                                                        ? "problems"
-                                                        : trashTab ===
-                                                            "suggestions"
-                                                          ? "suggestions"
-                                                          : trashTab ===
-                                                              "gos_formats"
-                                                            ? "gos_formats"
-                                                            : "posts",
-                                                  item.id,
-                                                ),
-                                              );
-                                              addToast("Permanently Deleted");
-                                            } catch (err: any) {
-                                              addToast(getFriendlyError(err));
-                                            }
-                                          }
-                                        }}
-                                        className="px-3 py-2 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm text-[10px] uppercase tracking-widest font-black gap-2"
-                                        title="Permanently Delete"
-                                      >
-                                        <Trash2 size={14} /> Permanent
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "updates" && (
-              <div className="space-y-10 pb-20">
-                <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/5 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-8 opacity-5">
-                    <Zap size={120} className="text-amber-500 fill-amber-500" />
-                  </div>
-                  <h4 className="text-xl font-black text-slate-800 tracking-tight mb-2 flex items-center gap-3">
-                    <span className="w-10 h-10 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center">
-                      <Zap size={20} />
-                    </span>
-                    Broadcast Live Intelligence
-                  </h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-8 pr-20">
-                    Instant network-wide transmission system. Messages appear on
-                    citizen terminals immediately.
-                  </p>
-
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      const f = e.target as any;
-                      const text = f.text.value;
-                      if (!text) return;
-                      try {
-                        await addDoc(collection(db, "updates"), {
-                          text,
-                          time: Date.now(),
-                          type: "flash",
-                          status: "visible",
-                        });
-
-                        await addDoc(collection(db, "notifications"), {
-                          uid: "all",
-                          title: "‚ú® New Update",
-                          message:
-                            text.substring(0, 80) +
-                            (text.length > 80 ? "..." : ""),
-                          type: "flash_update",
-                          read: false,
-                          time: Date.now(),
-                        });
-
-                        f.reset();
-                        addToast("Intelligence Transmitted & Broadcasted");
-                      } catch (err) {
-                        handleFirestoreError(
-                          err,
-                          OperationType.WRITE,
-                          "updates",
-                        );
-                      }
-                    }}
-                    className="flex flex-col sm:flex-row gap-4 relative z-10"
-                  >
-                    <input
-                      name="text"
-                      placeholder="Enter flash bulletin content..."
-                      className="flex-1 !mb-0 p-5 rounded-[24px] border-slate-100 bg-slate-50 focus:bg-white focus:border-amber-400 shadow-inner text-sm font-bold placeholder:text-slate-300 transition-all"
-                    />
-                    <button
-                      aria-label="Transmit"
-                      className="bg-amber-500 hover:bg-amber-600 text-white px-12 py-5 rounded-[24px] font-black uppercase text-[11px] tracking-widest shadow-xl shadow-amber-200 active:scale-95 transition-all"
-                    >
-                      Transmit
-                    </button>
-                  </form>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-2">
-                    Active Signal Feed
-                  </h4>
-                  <div className="grid gap-4">
-                    {updates
-                      .filter(
-                        (u) =>
-                          (u.type === "flash" || !u.type) &&
-                          u.status?.toLowerCase() !== "deleted",
-                      )
-                      .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
-                      .map((u, idx) => (
-                        <div
-                          key={u.id || `upd-${idx}`}
-                          className={`bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-blue-200 transition-all ${u.status === "hidden" ? "opacity-50 grayscale bg-slate-50 border-dashed" : ""}`}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div
-                              className={`w-2 h-2 rounded-full ${u.status === "hidden" ? "bg-slate-400" : "bg-blue-500 animate-pulse"}`}
-                            />
-                            <div className="flex-1">
-                              {editingUpdateId === u.id ? (
-                                <textarea
-                                  defaultValue={u.text}
-                                  autoFocus
-                                  onBlur={async (e) => {
-                                    setEditingUpdateId(null);
-                                    if (e.target.value !== u.text) {
-                                      try {
-                                        await updateDoc(
-                                          doc(db, "updates", u.id),
-                                          {
-                                            text: e.target.value,
-                                          },
-                                        );
-                                        addToast("Transmission Modified");
-                                      } catch (e: any) {
-                                        addToast(e.message);
-                                      }
-                                    }
-                                  }}
-                                  className="text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 w-full min-h-[60px]"
-                                />
-                              ) : (
-                                <p
-                                  onClick={() => setEditingUpdateId(u.id)}
-                                  className="text-sm font-bold text-slate-700 cursor-pointer hover:bg-slate-50 p-2 rounded-xl border border-transparent hover:border-slate-100 transition-all w-full leading-relaxed break-words"
-                                  title="‡∞ï‡±ç‡∞≤‡∞ø‡∞ï‡±ç ‡∞ö‡±á‡∞∏‡∞ø ‡∞∏‡∞µ‡∞∞‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø (Click to edit transmission)"
-                                >
-                                  {u.text}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              aria-label={
-                                u.status === "hidden"
-                                  ? "Make Visible"
-                                  : "Hide From Public"
-                              }
-                              onClick={async () => {
-                                try {
-                                  const nextStatus =
-                                    u.status === "hidden"
-                                      ? "visible"
-                                      : "hidden";
-                                  await updateDoc(doc(db, "updates", u.id), {
-                                    status: nextStatus,
-                                  });
-                                  addToast(
-                                    nextStatus === "hidden"
-                                      ? "Transmission Paused"
-                                      : "Transmission Live",
-                                  );
-                                } catch (e: any) {
-                                  addToast(e.message);
-                                }
-                              }}
-                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-                              title={
-                                u.status === "hidden"
-                                  ? "Make Visible"
-                                  : "Hide From Public"
-                              }
-                            >
-                              {u.status === "hidden" ? (
-                                <Eye size={16} />
-                              ) : (
-                                <EyeOff size={16} />
-                              )}
-                            </button>
-                            <button
-                              aria-label="Delete Transmission"
-                              onClick={() => {
-                                Swal.fire({
-                                  title: "Delete Transmission?",
-                                  text: "This will permanently remove the flash news.",
-                                  icon: "warning",
-                                  showCancelButton: true,
-                                  confirmButtonColor: "#ef4444",
-                                  confirmButtonText: "Yes, Purge it!",
-                                }).then(async (result) => {
-                                  if (result.isConfirmed) {
-                                    try {
-                                      await updateDoc(
-                                        doc(db, "updates", u.id),
-                                        {
-                                          status: "Deleted",
-                                          deletedAt: Date.now(),
-                                        },
-                                      );
-                                      addToast("Transmission Trash-ed");
-                                    } catch (e: any) {
-                                      handleFirestoreError(
-                                        e,
-                                        OperationType.UPDATE,
-                                        `updates/${u.id}`,
-                                      );
-                                    }
-                                  }
-                                });
-                              }}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "changelog" && (
-              <div className="space-y-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xl font-black text-primary mb-2">
-                      ‚ú® What's New Management
-                    </h4>
-                    <p className="text-xs text-slate-400 font-medium tracking-tight">
-                      Manage the "What's New" (changelog) entries for citizens.
-                    </p>
-                  </div>
-                  <button
-                    aria-label="Post New Update"
-                    onClick={() => {
-                      Swal.fire({
-                        title: "Post New Update",
-                        html: `
-                        <div class="text-left mb-2 text-sm font-semibold text-slate-700">Version (Optional)</div>
-                        <input id="update-version" class="swal2-input mt-0 mb-4" placeholder="e.g. v1.4.1">
-                        <div class="text-left mb-2 text-sm font-semibold text-slate-700">Title / Category (Optional)</div>
-                        <input id="update-title" class="swal2-input mt-0 mb-4" placeholder="e.g. Applications & GOs">
-                        <div class="text-left mb-2 text-sm font-semibold text-slate-700">Badge/Tag (Optional)</div>
-                        <input id="update-badge" class="swal2-input mt-0 mb-4" placeholder="e.g. NEW UI or ADMIN">
-                        <div class="text-left mb-2 text-sm font-semibold text-slate-700">Content</div>
-                      <textarea id="update-text" class="swal2-textarea mt-0 mb-4" placeholder="Enter the update text..."></textarea>
-                      <div class="text-left mb-2 text-sm font-semibold text-slate-700">Visibility</div>
-                      <select id="update-visibility" class="swal2-select w-full mt-0">
-                        <option value="public">Public (Visible to everyone)</option>
-                        <option value="internal">Admin Panel Only (Hidden from public)</option>
-                      </select>
-                    `,
-                        showCancelButton: true,
-                        confirmButtonText: "Post Update",
-                        confirmButtonColor: "#2563eb",
-                        preConfirm: () => {
-                          const version = (
-                            document.getElementById(
-                              "update-version",
-                            ) as HTMLInputElement
-                          ).value;
-                          const title = (
-                            document.getElementById(
-                              "update-title",
-                            ) as HTMLInputElement
-                          ).value;
-                          const badge = (
-                            document.getElementById(
-                              "update-badge",
-                            ) as HTMLInputElement
-                          ).value;
-                          const text = (
-                            document.getElementById(
-                              "update-text",
-                            ) as HTMLTextAreaElement
-                          ).value;
-                          const visibility = (
-                            document.getElementById(
-                              "update-visibility",
-                            ) as HTMLSelectElement
-                          ).value;
-                          if (!text) {
-                            Swal.showValidationMessage(
-                              "Content cannot be empty!",
-                            );
-                            return null;
-                          }
-                          return { text, visibility, version, title, badge };
-                        },
-                      }).then((result) => {
-                        if (result.isConfirmed && result.value) {
-                          addDoc(collection(db, "updates"), {
-                            text: result.value.text,
-                            visibility: result.value.visibility,
-                            version: result.value.version || null,
-                            title: result.value.title || null,
-                            badge: result.value.badge || null,
-                            time: Date.now(),
-                            status: "Approved",
-                            type: "changelog",
-                          })
-                            .then(() => addToast("Update added successfully!"))
-                            .catch((err) =>
-                              handleFirestoreError(
-                                err,
-                                OperationType.CREATE,
-                                "updates",
-                              ),
-                            );
-                        }
-                      });
-                    }}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform"
-                  >
-                    Post New Update
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                  {updates
-                    .filter(
-                      (u) =>
-                        (u.type === "changelog" || u.status === "Approved") &&
-                        u.status?.toLowerCase() !== "deleted",
-                    )
-                    .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
-                    .map((upd: any) => (
-                      <div
-                        key={upd.id}
-                        className={`p-6 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-shadow group ${upd.isSystemElement ? "opacity-80" : ""}`}
-                      >
-                        <div className="flex justify-between items-start gap-6">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-3">
-                              <span
-                                className={`${upd.isSystemElement ? "bg-indigo-500" : upd.visibility === "internal" ? "bg-amber-500" : "bg-blue-500"} w-2 h-2 rounded-full animate-pulse`}
-                              />
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                {new Date(getValidTime(upd)).toLocaleString()}
-                              </span>
-                              {upd.isSystemElement && (
-                                <span className="px-2 py-0.5 ml-2 bg-slate-100 text-slate-500 rounded text-[9px] font-bold uppercase">
-                                  System Event
-                                </span>
-                              )}
-                              {!upd.isSystemElement &&
-                                upd.visibility === "internal" && (
-                                  <span className="px-2 py-0.5 ml-2 bg-amber-100 text-amber-700 rounded text-[9px] font-bold uppercase">
-                                    Internal Only
-                                  </span>
-                                )}
-                              {!upd.isSystemElement &&
-                                (!upd.visibility ||
-                                  upd.visibility === "public") && (
-                                  <span className="px-2 py-0.5 ml-2 bg-emerald-100 text-emerald-700 rounded text-[9px] font-bold uppercase">
-                                    Public
-                                  </span>
-                                )}
-                            </div>
-                            {upd.isSystemElement ? (
-                              <div className="scale-90 transform origin-top-left">
-                                {upd.text}
-                              </div>
-                            ) : upd.version || upd.title || upd.badge ? (
-                              <div className="text-left space-y-3 mt-2">
-                                {(upd.version || upd.title) && (
-                                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                    {upd.version && (
-                                      <kbd className="bg-slate-800 text-white px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-widest">
-                                        {upd.version}
-                                      </kbd>
-                                    )}
-                                    {upd.title && (
-                                      <p className="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
-                                        {upd.title}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
-                                  <div className="flex gap-3 items-start">
-                                    {upd.badge && (
-                                      <kbd
-                                        className={`px-2 py-1 rounded text-[9px] font-black uppercase mt-0.5 whitespace-nowrap ${upd.visibility === "internal" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}
-                                      >
-                                        {upd.badge}
-                                      </kbd>
-                                    )}
-                                    <div className="text-sm font-medium text-slate-700 leading-relaxed flex-1 overflow-hidden">
-                                      <ReactMarkdown
-                                        remarkPlugins={[remarkBreaks]}
-                                        rehypePlugins={[rehypeRaw]}
-                                        components={{
-                                          img: (props) => (
-                                            <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[500px] object-contain rounded-xl border border-slate-200 shadow-sm bg-white" /></span>
-                                          ),
-                                          h3: ({
-                                            node,
-                                            children,
-                                            ...props
-                                          }) => {
-                                            const text = String(children);
-                                            if (
-                                              text.includes("‚ú® What's New")
-                                            ) {
-                                              return (
-                                                <h3
-                                                  className="flex items-center gap-2 text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-3 mb-1.5 border border-blue-100 shadow-sm"
-                                                  {...props}
-                                                >
-                                                  {children}
-                                                </h3>
-                                              );
-                                            }
-                                            if (text.includes("üêõ Bug Fixes")) {
-                                              return (
-                                                <h3
-                                                  className="flex items-center gap-2 text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-3 mb-1.5 border border-rose-100 shadow-sm"
-                                                  {...props}
-                                                >
-                                                  {children}
-                                                </h3>
-                                              );
-                                            }
-                                            if (
-                                              text.includes("‚ö° Improvements")
-                                            ) {
-                                              return (
-                                                <h3
-                                                  className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest mt-3 mb-1.5 border border-amber-100 shadow-sm"
-                                                  {...props}
-                                                >
-                                                  {children}
-                                                </h3>
-                                              );
-                                            }
-                                            return (
-                                              <h3
-                                                className="font-bold text-slate-800 mt-4 mb-2"
-                                                {...props}
-                                              >
-                                                {children}
-                                              </h3>
-                                            );
-                                          },
-                                          p: ({ children }) => (
-                                            <p className="mb-2 last:mb-0">
-                                              {children}
-                                            </p>
-                                          ),
-                                          ul: ({ children }) => (
-                                            <ul className="list-disc pl-5 mb-4 space-y-1">
-                                              {children}
-                                            </ul>
-                                          ),
-                                          li: ({ children }) => (
-                                            <li className="text-slate-600 font-medium">
-                                              {children}
-                                            </li>
-                                          ),
-                                        }}
-                                      >
-                                        {upd.text}
-                                      </ReactMarkdown>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-sm font-medium text-slate-700 leading-relaxed">
-                                {upd.text}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              aria-label="Edit Update"
-                              onClick={() => {
-                                Swal.fire({
-                                  title: "Edit Update",
-                                  input: "textarea",
-                                  inputValue: upd.text,
-                                  showCancelButton: true,
-                                }).then((res) => {
-                                  if (res.isConfirmed && res.value) {
-                                    if (res.value !== upd.text) {
-                                      updateDoc(doc(db, "updates", upd.id), {
-                                        text: res.value,
-                                      })
-                                        .then(() =>
-                                          addToast(
-                                            "Update modified successfully!",
-                                          ),
-                                        )
-                                        .catch((err) =>
-                                          handleFirestoreError(
-                                            err,
-                                            OperationType.UPDATE,
-                                            `updates/${upd.id}`,
-                                          ),
-                                        );
-                                    }
-                                  }
-                                });
-                              }}
-                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                            >
-                              <Edit3 size={18} />
-                            </button>
-                            <button
-                              aria-label="Delete Update"
-                              onClick={() => {
-                                Swal.fire({
-                                  title: "Delete Update?",
-                                  text: "This will remove the entry from What's New timeline.",
-                                  icon: "warning",
-                                  showCancelButton: true,
-                                  confirmButtonColor: "#ef4444",
-                                  confirmButtonText: "Yes, Delete it!",
-                                }).then(async (result) => {
-                                  if (result.isConfirmed) {
-                                    try {
-                                      await setDoc(
-                                        doc(db, "updates", upd.id),
-                                        {
-                                          ...upd,
-                                          status: "Deleted",
-                                          deletedAt: Date.now(),
-                                        },
-                                        { merge: true },
-                                      );
-                                      addToast("Update moved to trash.");
-                                    } catch (err) {
-                                      handleFirestoreError(
-                                        err,
-                                        OperationType.UPDATE,
-                                        `updates/${upd.id}`,
-                                      );
-                                    }
-                                  }
-                                });
-                              }}
-                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  {updates.length === 0 && (
-                    <div className="p-20 text-center border-2 border-dashed border-slate-100 rounded-[40px]">
-                      <Zap size={40} className="mx-auto text-slate-200 mb-4" />
-                      <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
-                        No updates published yet
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "staff_management" && (isSuperAdmin || isAdmin) && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 max-w-6xl mx-auto">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm text-left">
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[22px] flex items-center justify-center shadow-sm border border-blue-100/50">
-                      <Shield size={28} />
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                        ‡∞∏‡∞ø‡∞¨‡±ç‡∞¨‡∞Ç‡∞¶‡∞ø & ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡±Å‡∞≤ ‡∞®‡∞ø‡∞∞‡±ç‡∞µ‡∞π‡∞£ (Staff & Permissions)
-                      </h4>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                        User ID‡∞≤‡±Å, ‡∞∏‡±Ü‡∞ï‡±ç‡∞Ø‡±Ç‡∞∞‡∞ø‡∞ü‡±Ä ‡∞™‡∞ø‡∞®‡±ç‡∞∏‡±ç ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞ï‡∞æ‡∞∞‡±ç‡∞Ø‡∞æ‡∞ö‡∞∞‡∞£ ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡±Å‡∞≤
-                        ‡∞®‡∞ø‡∞∞‡±ç‡∞µ‡∞π‡∞£
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <a
-                      href="#rbac-matrix"
-                      className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white hover:bg-black shadow-lg transition-all flex items-center gap-2"
-                    >
-                      <Lock size={14} /> Permissions Matrix
-                    </a>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {users
-                    .filter((u: any) =>
-                      ["admin", "editor", "moderator"].includes(
-                        (u.role || "").toLowerCase(),
-                      ),
-                    )
-                    .map((u: any) => {
-                      const userPinData = allUserPins.find(
-                        (p) => p.id === u.id,
-                      );
-                      return (
-                        <motion.div
-                          layout
-                          key={u.id}
-                          className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group text-left"
-                        >
-                          <div className="absolute top-0 right-0 p-4">
-                            <span
-                              className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                u.role === "admin"
-                                  ? "bg-red-50 text-red-600 border border-red-100"
-                                  : u.role === "editor"
-                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                    : "bg-amber-50 text-amber-600 border border-amber-100"
-                              }`}
-                            >
-                              {u.role || "Staff"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4 mb-6">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
-                              {u.photoURL ? (
-                                <img
-                                  src={u.photoURL}
-                                  alt={u.name}
-                                  className="w-full h-full object-cover"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <User size={30} className="text-slate-300" />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <h3 className="text-lg font-black text-slate-800 truncate leading-tight">
-                                {u.name || "Anonymous Staff"}
-                              </h3>
-                              <p className="text-xs font-bold text-slate-400 truncate">
-                                {u.email}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4 pt-4 border-t border-slate-50">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                User Unique ID
-                              </p>
-                              <code className="text-[10px] font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded-lg block truncate">
-                                {u.id}
-                              </code>
-                            </div>
-
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                                Access Security PIN
-                                <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded uppercase">
-                                  Verified
-                                </span>
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-900 text-white font-mono text-xl tracking-[0.5em] py-2 px-4 rounded-xl text-center shadow-inner border border-slate-800">
-                                  {userPinData?.pin || "NOT SET"}
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    Swal.fire({
-                                      title: `Reset PIN for ${u.name}`,
-                                      input: "text",
-                                      inputLabel: "Enter New 4-Digit PIN",
-                                      inputAttributes: {
-                                        maxlength: "4",
-                                        autocapitalize: "off",
-                                        autocorrect: "off",
-                                      },
-                                      showCancelButton: true,
-                                      confirmButtonText: "Update PIN",
-                                      confirmButtonColor: "#2563eb",
-                                    }).then(async (result) => {
-                                      if (result.isConfirmed && result.value) {
-                                        if (result.value.length === 4) {
-                                          await setDoc(
-                                            doc(db, "user_pins", u.id),
-                                            { pin: result.value },
-                                            { merge: true },
-                                          );
-                                          addToast("PIN Updated Successfully");
-                                        } else {
-                                          addToast("PIN must be 4 digits");
-                                        }
-                                      }
-                                    });
-                                  }}
-                                  className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                >
-                                  <Settings2 size={18} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="pt-2">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                Role Assignment
-                              </p>
-                              <div className="flex gap-2">
-                                {["admin", "editor", "moderator"].map(
-                                  (role) => (
-                                    <button
-                                      key={role}
-                                      onClick={async () => {
-                                        try {
-                                          await updateDoc(
-                                            doc(db, "users", u.id),
-                                            { role },
-                                          );
-                                          addToast(`Role changed to ${role}`);
-                                        } catch (e: any) {
-                                          addToast(e.message);
-                                        }
-                                      }}
-                                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
-                                        u.role === role
-                                          ? "bg-slate-900 border-slate-900 text-white"
-                                          : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"
-                                      }`}
-                                    >
-                                      {role}
-                                    </button>
-                                  ),
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-
-                  {users.filter((u: any) =>
-                    ["admin", "editor", "moderator"].includes(
-                      (u.role || "").toLowerCase(),
-                    ),
-                  ).length === 0 && (
-                    <div className="col-span-full p-20 text-center bg-white border-2 border-dashed border-slate-100 rounded-[48px]">
-                      <ShieldOff
-                        size={40}
-                        className="mx-auto text-slate-200 mb-4"
-                      />
-                      <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">
-                        No Staff Members Found
-                      </h3>
-                      <p className="text-xs font-bold text-slate-350 mt-2">
-                        Promote users from local directory to see them here.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Permissions Matrix Section */}
-                <div
-                  id="rbac-matrix"
-                  className="bg-white p-10 rounded-[44px] border border-slate-100 shadow-xl space-y-8 mt-12 animate-in fade-in duration-700 text-left"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-50">
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                        <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                          <Lock size={22} />
-                        </span>
-                        ‡∞ï‡∞æ‡∞∞‡±ç‡∞Ø‡∞æ‡∞ö‡∞∞‡∞£ ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡±Å‡∞≤ ‡∞®‡∞ø‡∞Ø‡∞Ç‡∞§‡±ç‡∞∞‡∞£ (Permissions Matrix)
-                      </h3>
-                      <p className="text-slate-400 font-bold mt-1 text-xs uppercase tracking-widest pl-14">
-                        Set permissions for staff roles globally
-                      </p>
-                    </div>
-
-                    <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-fit">
-                      {["editor", "moderator"].map((role) => (
-                        <button
-                          key={role}
-                          onClick={() => setSelectedRbacRole(role)}
-                          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                            selectedRbacRole === role
-                              ? "bg-white text-blue-600 shadow-sm scale-105"
-                              : "text-slate-500 hover:text-slate-700"
-                          }`}
-                        >
-                           {role}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-[32px] border border-slate-50">
-                    <table className="w-full text-left border-collapse bg-white">
-                      <thead>
-                        <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          <th className="py-5 pl-8 text-left">Module NAME</th>
-                          <th className="py-5 text-center">VIEW (‡∞ö‡±Ç‡∞°‡∞µ‡∞ö‡±ç‡∞ö‡±Å)</th>
-                          <th className="py-5 text-center">
-                            EDIT (‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡∞µ‡∞ö‡±ç‡∞ö‡±Å)
-                          </th>
-                          <th className="py-5 text-center">
-                            DELETE (‡∞§‡±ä‡∞≤‡∞ó‡∞ø‡∞Ç‡∞™‡±Å)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 text-left">
-                        {Object.entries({
-                          dash: {
-                            name: "Analytics Hub",
-                            desc: "‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø‡∞Æ‡±à‡∞® ‡∞ó‡∞£‡∞æ‡∞Ç‡∞ï‡∞æ‡∞≤‡±Å & ‡∞ó‡±ç‡∞∞‡∞æ‡∞´‡±ç‚Äå‡∞≤ ‡∞µ‡±Ä‡∞ï‡±ç‡∞∑‡∞£",
-                          },
-                          reports: {
-                            name: "Posts & Issues ( ‡∞∏‡∞Æ‡∞∏‡±ç‡∞Ø‡∞≤‡±Å )",
-                            desc: "‡∞™‡±å‡∞∞‡±Å‡∞≤ ‡∞∏‡∞Æ‡∞∏‡±ç‡∞Ø‡∞≤ ‡∞™‡∞∞‡∞ø‡∞∑‡±ç‡∞ï‡∞æ‡∞∞‡∞Ç, ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±Å‡∞≤ ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡∞ø",
-                          },
-                          gos_formats: {
-                            name: "GOs & Formats ( ‡∞ú‡±Ä‡∞µ‡±ã‡∞≤‡±Å )",
-                            desc: "‡∞∏‡∞∞‡±ç‡∞ï‡∞æ‡∞∞‡±Å ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞ú‡±Ä‡∞µ‡±ã‡∞≤‡±Å, ‡∞¶‡∞∞‡∞ñ‡∞æ‡∞∏‡±ç‡∞§‡±Å ‡∞´‡∞æ‡∞∞‡±ç‡∞Æ‡∞æ‡∞ü‡±ç‡∞≤ ‡∞®‡∞ø‡∞Ø‡∞Ç‡∞§‡±ç‡∞∞‡∞£",
-                          },
-                          updates: {
-                            name: "Flash News ( ‡∞´‡±ç‡∞≤‡∞æ‡∞∑‡±ç ‡∞®‡±ç‡∞Ø‡±Ç‡∞∏‡±ç )",
-                            desc: "‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø‡∞Æ‡±à‡∞® ‡∞™‡±ç‡∞∞‡∞ï‡∞ü‡∞®‡∞≤‡±Å, ‡∞∏‡±ç‡∞ï‡±ç‡∞∞‡±ã‡∞≤‡∞ø‡∞Ç‡∞ó‡±ç ‡∞§‡∞æ‡∞ú‡∞æ ‡∞µ‡∞æ‡∞∞‡±ç‡∞§‡∞≤‡±Å",
-                          },
-                          users: {
-                            name: "User Access ( ‡∞Ø‡±Ç‡∞ú‡∞∞‡±ç‡∞≤ ‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç )",
-                            desc: "‡∞Æ‡±Ü‡∞Ç‡∞¨‡∞∞‡±ç‡∞≤ ‡∞∏‡∞Æ‡∞æ‡∞ö‡∞æ‡∞∞‡∞Ç ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞∏‡∞ø‡∞¨‡±ç‡∞¨‡∞Ç‡∞¶‡∞ø ‡∞®‡∞ø‡∞Ø‡∞æ‡∞Æ‡∞ï ‡∞¨‡∞æ‡∞ß‡±ç‡∞Ø‡∞§‡∞≤‡±Å",
-                          },
-                          builder: {
-                            name: "Page Builder ( ‡∞°‡∞ø‡∞ú‡±à‡∞®‡±ç ‡∞¨‡∞ø‡∞≤‡±ç‡∞°‡∞∞‡±ç )",
-                            desc: "‡∞µ‡±Ü‡∞¨‡±ç ‡∞∏‡±à‡∞ü‡±ç ‡∞™‡±ç‡∞∞‡∞ß‡∞æ‡∞® ‡∞™‡±á‡∞ú‡±Ä ‡∞≤‡±á‡∞Ö‡∞µ‡±Å‡∞ü‡±ç ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡±Å‡∞ï‡±Å‡∞®‡±á ‡∞∏‡∞¶‡±Å‡∞™‡∞æ‡∞Ø‡∞Ç",
-                          },
-                          locations: {
-                            name: "Manage Locations ( ‡∞≤‡±ä‡∞ï‡±á‡∞∑‡∞®‡±ç‡∞≤‡±Å )",
-                            desc: "‡∞Æ‡∞Ç‡∞°‡∞≤‡∞æ‡∞≤‡±Å, ‡∞ó‡±ç‡∞∞‡∞æ‡∞Æ ‡∞™‡∞Ç‡∞ö‡∞æ‡∞Ø‡∞§‡±Ä‡∞≤ ‡∞ú‡∞æ‡∞¨‡∞ø‡∞§‡∞æ ‡∞é‡∞°‡∞ø‡∞ü‡±ç ‡∞ö‡±Ü‡∞Ø‡±ç",
-                          },
-                          suggestions: {
-                            name: "Suggestion & Feedback ( ‡∞∏‡∞≤‡∞π‡∞æ‡∞≤‡±Å )",
-                            desc: "‡∞™‡±å‡∞∞‡±Å‡∞≤ ‡∞∏‡∞≤‡∞π‡∞æ‡∞≤ ‡∞∏‡±ç‡∞µ‡±Ä‡∞ï‡∞∞‡∞£ ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞µ‡∞æ‡∞∞‡∞ø ‡∞´‡±Ä‡∞°‡±ç ‡∞¨‡±ç‡∞Ø‡∞æ‡∞ï‡±ç ‡∞∏‡∞Æ‡∞æ‡∞ß‡∞æ‡∞®‡∞æ‡∞≤‡±Å",
-                          },
-                          trash: {
-                            name: "Recycle Bin ( ‡∞°‡∞∏‡±ç‡∞ü‡±ç ‡∞¨‡∞ø‡∞®‡±ç )",
-                            desc: "‡∞°‡∞ø‡∞≤‡±Ä‡∞ü‡±ç ‡∞ö‡±á‡∞∏‡∞ø‡∞® ‡∞∞‡∞ø‡∞ï‡∞æ‡∞∞‡±ç‡∞°‡±Å‡∞≤ ‡∞∞‡±Ä‡∞∏‡±à‡∞ï‡∞ø‡∞≤‡±ç ‡∞µ‡±Ä‡∞ï‡±ç‡∞∑‡∞£ ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞™‡±Å‡∞®‡∞∞‡±Å‡∞¶‡±ç‡∞ß‡∞∞‡∞£",
-                          },
-                          logs: {
-                            name: "Security Logs ( ‡∞≤‡∞æ‡∞ó‡±ç‡∞≤‡±Å )",
-                            desc: "‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç‡∞≤ ‡∞≤‡∞æ‡∞ó‡∞ø‡∞®‡±ç ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞é‡∞°‡∞ø‡∞ü‡±ç ‡∞≤‡∞æ‡∞ó‡±ç ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤ ‡∞°‡±á‡∞ü‡∞æ‡∞¨‡±á‡∞∏‡±ç",
-                          },
-                          settings: {
-                            name: "System Config ( ‡∞ï‡∞æ‡∞®‡±ç‡∞´‡∞ø‡∞ó‡∞∞‡±á‡∞∑‡∞®‡±ç )",
-                            desc: "‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç ‡∞Ø‡∞æ‡∞ï‡±ç‡∞∏‡±Ü‡∞∏‡±ç ‡∞™‡∞ø‡∞®‡±ç ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡±Å‡∞ï‡±Å‡∞®‡±á ‡∞∏‡∞Æ‡∞ó‡±ç‡∞∞ ‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞∏‡±Ü‡∞ü‡±ç‡∞ü‡∞ø‡∞Ç‡∞ó‡±ç‡∞∏‡±ç",
-                          },
-                          ai: {
-                            name: "Gemini AI Node ( ‡∞Ö‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç )",
-                            desc: "‡∞ú‡±Ü‡∞Æ‡∞ø‡∞®‡±Ä ‡∞Ü‡∞∞‡±ç‡∞ü‡∞ø‡∞´‡∞ø‡∞∑‡∞ø‡∞Ø‡∞≤‡±ç ‡∞á‡∞Ç‡∞ü‡±Ü‡∞≤‡∞ø‡∞ú‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞Ö‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç ‡∞Ø‡∞æ‡∞ï‡±ç‡∞∏‡±Ü‡∞∏‡±ç",
-                          },
-                        }).map(([key, item]) => {
-                          const currentPerm = rbacPermissions?.[
-                            selectedRbacRole
-                          ]?.[key] ||
-                            DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || {
-                              view: false,
-                              edit: false,
-                              delete: false,
-                            };
-                          return (
-                            <tr
-                              key={key}
-                              className="hover:bg-slate-50/50 transition-colors"
-                            >
-                              <td className="py-5 pl-8 text-left pr-4">
-                                <p className="font-bold text-slate-800 text-sm leading-tight">
-                                  {item.name}
-                                </p>
-                                <p className="text-[10px] text-slate-400 mt-1 font-bold">
-                                  {item.desc}
-                                </p>
-                              </td>
-                              <td className="py-5 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={!!currentPerm.view}
-                                  onChange={(e) => {
-                                    const updated = { ...rbacPermissions };
-                                    if (!updated[selectedRbacRole])
-                                      updated[selectedRbacRole] = {};
-                                    if (!updated[selectedRbacRole][key])
-                                      updated[selectedRbacRole][key] = {};
-                                    updated[selectedRbacRole][key].view =
-                                      e.target.checked;
-                                    if (!e.target.checked) {
-                                      updated[selectedRbacRole][key].edit =
-                                        false;
-                                      updated[selectedRbacRole][key].delete =
-                                        false;
-                                    }
-                                    setRbacPermissions(updated);
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                                />
-                              </td>
-                              <td className="py-5 text-center">
-                                <input
-                                  type="checkbox"
-                                  disabled={!currentPerm.view}
-                                  checked={!!currentPerm.edit}
-                                  onChange={(e) => {
-                                    const updated = { ...rbacPermissions };
-                                    if (!updated[selectedRbacRole])
-                                      updated[selectedRbacRole] = {};
-                                    if (!updated[selectedRbacRole][key])
-                                      updated[selectedRbacRole][key] = {};
-                                    updated[selectedRbacRole][key].edit =
-                                      e.target.checked;
-                                    setRbacPermissions(updated);
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                />
-                              </td>
-                              <td className="py-5 text-center">
-                                <input
-                                  type="checkbox"
-                                  disabled={!currentPerm.view}
-                                  checked={!!currentPerm.delete}
-                                  onChange={(e) => {
-                                    const updated = { ...rbacPermissions };
-                                    if (!updated[selectedRbacRole])
-                                      updated[selectedRbacRole] = {};
-                                    if (!updated[selectedRbacRole][key])
-                                      updated[selectedRbacRole][key] = {};
-                                    updated[selectedRbacRole][key].delete =
-                                      e.target.checked;
-                                    setRbacPermissions(updated);
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-6 border-t border-slate-50">
-                    <button
-                      onClick={() =>
-                        setRbacPermissions({ ...DEFAULT_PERMISSIONS })
-                      }
-                      className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all border border-slate-100"
-                    >
-                      Reset To Defaults
-                    </button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          await setDoc(
-                            doc(db, "settings", "rbac_permissions"),
-                            {
-                              roles: rbacPermissions,
-                              lastUpdated: Date.now(),
-                              updatedBy:
-                                auth.currentUser?.email || "Super Admin",
-                            },
-                          );
-                          addToast(" permissions updated successfully!");
-                        } catch (err: any) {
-                          addToast(err.message);
-                        }
-                      }}
-                      className="px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-600/25 transition-all"
-                    >
-                      Save Global Config
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "ai" && (
-              <div className="space-y-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                {/* Header banner */}
-                <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 p-8 rounded-[36px] border border-slate-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden text-left">
-                  <div className="absolute top-0 right-0 p-8 opacity-[0.05] -mr-8 -mt-8">
-                    <Bot size={200} className="text-white" />
-                  </div>
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3.5 mb-2">
-                      <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-inner">
-                        <Bot size={24} />
-                      </div>
-                      <div>
-                        <h4 className="text-xl lg:text-2xl font-black text-white tracking-tight">
-                          ‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç ‡∞è‡∞ê & ‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞∞‡±ã‡∞ó‡∞®‡∞ø‡∞∞‡±ç‡∞ß‡∞æ‡∞∞‡∞£ ‡∞ï‡±á‡∞Ç‡∞¶‡±ç‡∞∞‡∞Ç
-                        </h4>
-                        <p className="text-[9px] font-black text-indigo-300 uppercase tracking-[0.2em] mt-0.5">
-                          Admin AI & Automated Diagnostics Center ‚Ä¢ Powered by
-                          Gemini 3.5 Flash
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 max-w-2xl leading-relaxed">
-                      ‡∞à ‡∞≠‡∞æ‡∞ó‡∞Ç‡∞≤‡±ã ‡∞Æ‡±Ä‡∞∞‡±Å E-VEDHIKA ‡∞µ‡±Ü‡∞¨‡±ç‡∞∏‡±à‡∞ü‡±ç ‡∞Ø‡±ä‡∞ï‡±ç‡∞ï ‡∞≤‡±à‡∞µ‡±ç ‡∞≤‡±ã‡∞™‡∞æ‡∞≤‡∞®‡±Å
-                      ‡∞∏‡±ç‡∞µ‡∞Ø‡∞Ç‡∞ö‡∞æ‡∞≤‡∞ï‡∞Ç‡∞ó‡∞æ ‡∞™‡∞∞‡±ç‡∞Ø‡∞µ‡±á‡∞ï‡±ç‡∞∑‡∞ø‡∞Ç‡∞ö‡∞µ‡∞ö‡±ç‡∞ö‡±Å. ‡∞è‡∞µ‡±à‡∞®‡∞æ ‡∞≤‡±ã‡∞™‡∞æ‡∞≤‡±Å ‡∞∏‡∞Ç‡∞≠‡∞µ‡∞ø‡∞∏‡±ç‡∞§‡±á ‡∞è‡∞ê
-                      ‡∞¨‡∞æ‡∞ü‡±ç ‡∞∏‡±ç‡∞µ‡∞Ø‡∞Ç‡∞ó‡∞æ ‡∞µ‡∞ø‡∞∂‡±ç‡∞≤‡±á‡∞∑‡∞ø‡∞Ç‡∞ö‡∞ø ‡∞Æ‡±Ä‡∞ï‡±Å ‡∞µ‡∞æ‡∞ü‡∞ø ‡∞™‡∞∞‡∞ø‡∞∑‡±ç‡∞ï‡∞æ‡∞∞‡∞æ‡∞®‡±ç‡∞®‡∞ø
-                      ‡∞Ö‡∞Ç‡∞¶‡∞ø‡∞∏‡±ç‡∞§‡±Å‡∞Ç‡∞¶‡∞ø.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleRunDiagnostics}
-                    className="px-5 py-3 hover:scale-105 transition-all text-[11px] font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-650/30 shrink-0"
-                  >
-                    ‡∞™‡±Ç‡∞∞‡±ç‡∞§‡∞ø ‡∞§‡∞®‡∞ø‡∞ñ‡±Ä‡∞®‡∞ø ‡∞™‡±ç‡∞∞‡∞æ‡∞∞‡∞Ç‡∞≠‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø (Run Check)
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                  {/* Left Column: Real-time Health Checks & Error Logger */}
-                  <div className="space-y-6">
-                    {/* Health Checks */}
-                    <div className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-md text-left">
-                      <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                        ‡∞≤‡±à‡∞µ‡±ç ‡∞ï‡∞®‡±Ü‡∞ï‡±ç‡∞ü‡∞ø‡∞µ‡∞ø‡∞ü‡±Ä ‡∞§‡∞®‡∞ø‡∞ñ‡±Ä (System Service Health)
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          {
-                            name: "‡∞°‡±á‡∞ü‡∞æ‡∞¨‡±á‡∞∏‡±ç (Firestore)",
-                            status: "ACTIVE",
-                            desc: "‡∞°‡±á‡∞ü‡∞æ ‡∞®‡∞ø‡∞≤‡±ç‡∞µ ‡∞á‡∞Ç‡∞ú‡∞ø‡∞®‡±ç",
-                          },
-                          {
-                            name: "‡∞∏‡∞æ‡∞™‡±ç‡∞ü‡±ç‡∞µ‡±á‡∞∞‡±ç ‡∞´‡±à‡∞≤‡±ç‡∞∏‡±ç",
-                            status: "ONLINE",
-                            desc: "‡∞´‡±à‡∞≤‡±ç ‡∞ï‡±ç‡∞≤‡±å‡∞°‡±ç ‡∞°‡±å‡∏ô‡πå‡πÇ‡∏´‡∏•‡∏î‡∞∞‡±ç",
-                          },
-                          {
-                            name: "Gemini API Proxy",
-                            status: "READY",
-                            desc: "‡∞è‡∞ê ‡∞ï‡∞Æ‡±ç‡∞Ø‡±Ç‡∞®‡∞ø‡∞ï‡±á‡∞∑‡∞®‡±ç",
-                          },
-                          {
-                            name: "‡∞Ø‡±Ç‡∞ú‡∞∞‡±ç ‡∞∏‡±Ü‡∞∑‡∞®‡±ç‡∞≤‡±Å",
-                            status: "SECURE",
-                            desc: "‡∞≠‡∞¶‡±ç‡∞∞‡∞§ ‡∞ß‡±ç‡∞∞‡±Å‡∞µ‡±Ä‡∞ï‡∞∞‡∞£",
-                          },
-                        ].map((srv, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl flex flex-col items-center text-center"
-                          >
-                            <span className="text-[8px] font-black uppercase tracking-wide text-slate-450">
-                              {srv.desc}
-                            </span>
-                            <p className="text-xs font-bold text-slate-700 mt-1 mb-1.5 truncate w-full">
-                              {srv.name}
-                            </p>
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-emerald-50 text-emerald-600 border border-emerald-100/50">
-                              ‚óè {srv.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Captured Logs List */}
-                    <div className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-md flex flex-col h-[520px] text-left">
-                      <div className="flex items-center justify-between mb-4 shrink-0">
-                        <div>
-                          <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest">
-                            ‡∞≤‡±ã‡∞™‡∞æ‡∞≤‡±Å & ‡∞π‡±Ü‡∞ö‡±ç‡∞ö‡∞∞‡∞ø‡∞ï‡∞≤ ‡∞≤‡∞æ‡∞ó‡±ç (Real-time Diagnostic Logs)
-                          </h4>
-                          <p className="text-[9px] font-black text-slate-400 mt-0.5">
-                            ‡∞Æ‡±ä‡∞§‡±ç‡∞§‡∞Ç ‡∞µ‡±Ü‡∞¨‡±ç‡∞∏‡±à‡∞ü‡±ç ‡∞≤‡±ã ‡∞è‡∞¶‡±à‡∞®‡∞æ ‡∞é‡∞∞‡±ç‡∞∞‡∞∞‡±ç ‡∞µ‡∞∏‡±ç‡∞§‡±á ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞∞‡∞ø‡∞ï‡∞æ‡∞∞‡±ç‡∞°‡±ç
-                            ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡±Å‡∞§‡±Å‡∞Ç‡∞¶‡∞ø
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-black font-mono text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                          {diagnosticLogs.length} LOGS CAPTURED
-                        </span>
-                      </div>
-
-                      <div className="flex-1 overflow-y-auto space-y-3 pr-1.5 scroll-smooth">
-                        {diagnosticLogs.map((log) => (
-                          <div
-                            key={log.id}
-                            onClick={() => {
-                              setSelectedLogId(log.id);
-                              setAiDiagnosis("");
-                            }}
-                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-left ${
-                              selectedLogId === log.id
-                                ? "bg-slate-900 border-slate-800 text-white shadow-lg"
-                                : "bg-slate-50 hover:bg-slate-100 border-slate-100 text-slate-700"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <span
-                                className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
-                                  log.type === "Error"
-                                    ? "bg-rose-50 text-rose-600 border-rose-100"
-                                    : log.type === "Warning"
-                                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                                      : "bg-blue-50 text-blue-600 border-blue-100"
-                                } ${selectedLogId === log.id ? "bg-opacity-10 text-white border-white/20" : ""}`}
-                              >
-                                {log.type}
-                              </span>
-                              <span className="text-[8px] font-black tracking-widest opacity-60 font-mono">
-                                {log.component} ‚Ä¢{" "}
-                                {new Date(log.time).toLocaleTimeString(
-                                  "en-US",
-                                  { hour12: false },
-                                )}
-                              </span>
-                            </div>
-                            <p
-                              className={`text-xs font-bold leading-relaxed mt-2 line-clamp-2 ${selectedLogId === log.id ? "text-slate-200" : "text-slate-700"}`}
-                            >
-                              {log.text}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Diagnosis action box */}
-                      <div className="mt-4 pt-4 border-t border-slate-100 shrink-0">
-                        {selectedLogId ? (
-                          <div>
-                            {(() => {
-                              const activeLog = diagnosticLogs.find(
-                                (l) => l.id === selectedLogId,
-                              );
-                              if (!activeLog) return null;
-                              return (
-                                <div className="space-y-4">
-                                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">
-                                      ‡∞é‡∞Ç‡∞ö‡±Å‡∞ï‡±Å‡∞®‡±ç‡∞® ‡∞≤‡±ã‡∞™‡∞Ç ‡∞∏‡∞Æ‡∞æ‡∞ö‡∞æ‡∞∞‡∞Ç
-                                    </p>
-                                    <p className="text-xs font-bold font-mono mt-1 text-slate-700">
-                                      {activeLog.text}
-                                    </p>
-                                  </div>
-                                  <button
-                                    onClick={() =>
-                                      handleLogDiagnose(
-                                        activeLog.text,
-                                        activeLog.component,
-                                      )
-                                    }
-                                    disabled={isDiagnosing}
-                                    className="w-full py-3 hover:scale-[1.01] active:scale-[0.99] transition-all bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
-                                  >
-                                    {isDiagnosing ? (
-                                      <>
-                                        <Loader2
-                                          className="animate-spin"
-                                          size={16}
-                                        />
-                                        ‡∞è‡∞ê ‡∞∂‡±ã‡∞ß‡∞ø‡∞∏‡±ç‡∞§‡±ã‡∞Ç‡∞¶‡∞ø... ‡∞ï‡∞æ‡∞∏‡±ç‡∞§ ‡∞µ‡±á‡∞ö‡∞ø ‡∞â‡∞Ç‡∞°‡∞Ç‡∞°‡∞ø
-                                        (Analyzing Check...)
-                                      </>
-                                    ) : (
-                                      <>
-                                        ‡∞è‡∞ê ‡∞°‡∞Ø‡∞æ‡∞ó‡±ç‡∞®‡±ã‡∞∏‡∞ø‡∞∏‡±ç ‡∞™‡±ç‡∞∞‡∞æ‡∞∞‡∞Ç‡∞≠‡∞ø‡∞Ç‡∞ö‡±Å (Begin AI
-                                        Diagnosis)
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 text-xs font-bold text-slate-400 uppercase tracking-wider leading-relaxed">
-                            ‡∞µ‡∞ø‡∞∂‡±ç‡∞≤‡±á‡∞∑‡∞ø‡∞Ç‡∞ö‡∞°‡∞æ‡∞®‡∞ø‡∞ï‡∞ø ‡∞™‡±à‡∞® ‡∞â‡∞®‡±ç‡∞® ‡∞è‡∞¶‡±à‡∞®‡∞æ ‡∞é‡∞∞‡±ç‡∞∞‡∞∞‡±ç ‡∞™‡±à ‡∞ï‡±ç‡∞≤‡∞ø‡∞ï‡±ç
-                            ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø
-                            <br />
-                            <span className="text-[10px] font-black text-slate-350">
-                              (Select any log above to begin AI troubleshooting)
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: AI Assistant Chat & Dynamic Diagnosist Board */}
-                  <div className="space-y-6 text-left">
-                    {/* Render AI Diagnosis Output if available */}
-                    {aiDiagnosis && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="p-6 bg-emerald-50/85 border border-emerald-100 rounded-[28px] text-left shadow-lg relative overflow-hidden"
-                      >
-                        <div className="absolute top-0 right-0 p-4 opacity-[0.04]">
-                          <Bot size={120} className="text-emerald-900" />
-                        </div>
-                        <h4 className="text-emerald-800 text-sm font-black uppercase tracking-wider mb-2 flex items-center gap-2 font-mono">
-                           ‡∞°‡∞Ø‡∞æ‡∞ó‡±ç‡∞®‡±ã‡∞∏‡∞ø‡∞∏‡±ç ‡∞´‡∞≤‡∞ø‡∞§‡∞Ç (AI Diagnosis Report)
-                        </h4>
-                        <div className="text-xs text-slate-700 leading-relaxed max-w-none prose prose-slate">
-                          <ReactMarkdown>{aiDiagnosis}</ReactMarkdown>
-                        </div>
-                        <button
-                          onClick={() => setAiDiagnosis("")}
-                          className="mt-4 text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-100 hover:bg-emerald-200/60 px-4 py-2 rounded-lg transition-colors border border-emerald-200"
-                        >
-                          ‡∞´‡∞≤‡∞ø‡∞§‡∞æ‡∞®‡±ç‡∞®‡∞ø ‡∞¶‡∞æ‡∞ö‡±Å (Clear Diagnostic)
-                        </button>
-                      </motion.div>
-                    )}
-
-                    <div className="bg-white p-8 rounded-[28px] border border-slate-100 shadow-md">
-                      <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-widest pl-2 mb-2 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
-                        ‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç ‡∞ú‡∞®‡∞∞‡∞≤‡±ç ‡∞Ö‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç (Admin General AI Assistant)
-                      </h4>
-                      <p className="text-xs font-bold text-slate-500 pl-2 leading-relaxed mb-6">
-                        ‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞°‡±á‡∞ü‡∞æ, ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±Å‡∞≤‡±Å, ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞Ö‡∞ß‡∞ø‡∞ï‡∞æ‡∞∞‡∞ø‡∞ï ‡∞µ‡∞ø‡∞≠‡∞æ‡∞ó‡∞æ‡∞≤ ‡∞®‡∞ø‡∞∞‡±ç‡∞µ‡∞π‡∞£
-                        ‡∞®‡∞ø‡∞Ø‡∞Æ‡∞æ‡∞≤‡∞®‡±Å ‡∞∂‡±ã‡∞ß‡∞ø‡∞Ç‡∞ö‡∞°‡∞æ‡∞®‡∞ø‡∞ï‡∞ø ‡∞à ‡∞ï‡±ç‡∞∞‡∞ø‡∞Ç‡∞¶‡∞ø ‡∞è‡∞ê ‡∞Ö‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç ‡∞∏‡∞π‡∞æ‡∞Ø‡∞Ç
-                        ‡∞§‡±Ä‡∞∏‡±Å‡∞ï‡±ã‡∞Ç‡∞°‡∞ø.
-                      </p>
-                      <SmartAssistant
-                        title="E-Vedhika Super-Admin Assistant"
-                        placeholder="‡∞∏‡∞Æ‡∞∏‡±ç‡∞Ø‡∞≤ ‡∞∏‡∞§‡±ç‡∞µ‡∞∞ ‡∞ï‡±ç‡∞≤‡∞ø‡∞Ø‡∞∞‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞é‡∞≤‡∞æ ‡∞ö‡±á‡∞Ø‡∞æ‡∞≤‡∞ø? (e.g. How to manage suggestions)"
-                        icon={Bot}
-                        systemInstruction={`You are the specialized AI Systems Diagnostics & Admin Assistant for the E-VEDHIKA platform.
-You are fully aware that this is a Production Ready Enterprise Application.
-You have FULL KNOWLEDGE and VIRTUAL ACCESS to the entire website structure: Users, Posts, Menus, Pages, Reports, Logs, Permissions, Analytics, Notifications, Database, Storage, Security, Settings, Backups, Themes, and Configurations.
-
-When asked by the admin:
-- Analyze user data, active/inactive users, and duplicate data.
-- Explain errors and suggest fixes.
-- Analyze SEO, broken links, and system performance.
-- Generate announcements, circulars, PDFs, Excel reports templates.
-- Maintain a strict professional tone. Do not provide dummy data in your explanations.
-- If asked to modify settings, explain exactly how to do it from the Admin Panel's System Config, Page Builder, or Logs sections.
-
-Respond dynamically, constructively, and concisely in Telugu or English depending on user input.`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "rbac" && (isSuperAdmin || isAdmin) && (
-              <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all pb-12 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
-                  <div className="text-left">
-                    <h3 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                      <span className="p-3 bg-blue-100 text-blue-600 rounded-3xl">
-                        <Lock size={26} />
-                      </span>
-                      ‡∞ï‡∞æ‡∞∞‡±ç‡∞Ø‡∞æ‡∞ö‡∞∞‡∞£ ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡±Å‡∞≤ ‡∞®‡∞ø‡∞Ø‡∞Ç‡∞§‡±ç‡∞∞‡∞£ (Permissions Matrix)
-                    </h3>
-                    <p className="text-slate-500 font-bold mt-2 text-sm">
-                      ‡∞µ‡∞ø‡∞≠‡∞ø‡∞®‡±ç‡∞® ‡∞∏‡∞ø‡∞¨‡±ç‡∞¨‡∞Ç‡∞¶‡∞ø ‡∞™‡∞æ‡∞§‡±ç‡∞∞‡∞≤‡±Å (Roles) ‡∞ï‡±ã‡∞∏‡∞Ç ‡∞ñ‡∞ö‡±ç‡∞ö‡∞ø‡∞§‡∞Æ‡±à‡∞®
-                      ‡∞µ‡±ç‡∞Ø‡±Ç/‡∞é‡∞°‡∞ø‡∞ü‡±ç/‡∞°‡∞ø‡∞≤‡±Ä‡∞ü‡±ç ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡±Å‡∞≤‡∞®‡±Å ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞°‡±à‡∞®‡∞Æ‡∞ø‡∞ï‡±ç‡∞ó‡∞æ ‡∞∏‡±Ü‡∞ü‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø.
-                    </p>
-                  </div>
-
-                  <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
-                    {["editor", "moderator"].map((role) => (
-                      <button
-                        key={role}
-                        aria-label={`Select ${role}`}
-                        onClick={() => setSelectedRbacRole(role)}
-                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                          selectedRbacRole === role
-                            ? "bg-white text-blue-600 shadow-sm scale-105"
-                            : "text-slate-500 hover:text-slate-705"
-                        }`}
-                      >
-                         {role.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto rounded-[32px] border border-slate-100 shadow-sm">
-                  <table className="w-full text-left border-collapse bg-white">
-                    <thead>
-                      <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <th className="py-5 pl-8 text-left">
-                          ‡∞Æ‡∞æ‡∞°‡±ç‡∞Ø‡±Ç‡∞≤‡±ç ‡∞™‡±á‡∞∞‡±Å (Module)
-                        </th>
-                        <th className="py-5 text-center">‡∞ö‡±Ç‡∞°‡∞µ‡∞ö‡±ç‡∞ö‡±Å (View)</th>
-                        <th className="py-5 text-center">‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡∞µ‡∞ö‡±ç‡∞ö‡±Å (Edit)</th>
-                        <th className="py-5 text-center">
-                          ‡∞§‡±ä‡∞≤‡∞ó‡∞ø‡∞Ç‡∞ö‡∞µ‡∞ö‡±ç‡∞ö‡±Å (Delete)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {Object.entries({
-                        dash: {
-                          name: "Analytics Hub",
-                          desc: "‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø‡∞Æ‡±à‡∞® ‡∞ó‡∞£‡∞æ‡∞Ç‡∞ï‡∞æ‡∞≤‡±Å & ‡∞ó‡±ç‡∞∞‡∞æ‡∞´‡±ç‚Äå‡∞≤ ‡∞µ‡±Ä‡∞ï‡±ç‡∞∑‡∞£",
-                        },
-                        reports: {
-                          name: "Posts & Issues ( ‡∞∏‡∞Æ‡∞∏‡±ç‡∞Ø‡∞≤‡±Å )",
-                          desc: "‡∞™‡±å‡∞∞‡±Å‡∞≤ ‡∞∏‡∞Æ‡∞∏‡±ç‡∞Ø‡∞≤ ‡∞™‡∞∞‡∞ø‡∞∑‡±ç‡∞ï‡∞æ‡∞∞‡∞Ç, ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±Å‡∞≤ ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡∞ø",
-                        },
-                        gos_formats: {
-                          name: "GOs & Formats ( ‡∞ú‡±Ä‡∞µ‡±ã‡∞≤‡±Å )",
-                          desc: "‡∞∏‡∞∞‡±ç‡∞ï‡∞æ‡∞∞‡±Å ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞ú‡±Ä‡∞µ‡±ã‡∞≤‡±Å, ‡∞¶‡∞∞‡∞ñ‡∞æ‡∞∏‡±ç‡∞§‡±Å ‡∞´‡∞æ‡∞∞‡±ç‡∞Æ‡∞æ‡∞ü‡±ç‡∞≤ ‡∞®‡∞ø‡∞Ø‡∞Ç‡∞§‡±ç‡∞∞‡∞£",
-                        },
-                        updates: {
-                          name: "Flash News ( ‡∞´‡±ç‡∞≤‡∞æ‡∞∑‡±ç ‡∞®‡±ç‡∞Ø‡±Ç‡∞∏‡±ç )",
-                          desc: "‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø‡∞Æ‡±à‡∞® ‡∞™‡±ç‡∞∞‡∞ï‡∞ü‡∞®‡∞≤‡±Å, ‡∞∏‡±ç‡∞ï‡±ç‡∞∞‡±ã‡∞≤‡∞ø‡∞Ç‡∞ó‡±ç ‡∞§‡∞æ‡∞ú‡∞æ ‡∞µ‡∞æ‡∞∞‡±ç‡∞§‡∞≤‡±Å",
-                        },
-                        users: {
-                          name: "User Access ( ‡∞Ø‡±Ç‡∞ú‡∞∞‡±ç‡∞≤ ‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç )",
-                          desc: "‡∞Æ‡±Ü‡∞Ç‡∞¨‡∞∞‡±ç‡∞≤ ‡∞∏‡∞Æ‡∞æ‡∞ö‡∞æ‡∞∞‡∞Ç ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞∏‡∞ø‡∞¨‡±ç‡∞¨‡∞Ç‡∞¶‡∞ø ‡∞®‡∞ø‡∞Ø‡∞æ‡∞Æ‡∞ï ‡∞¨‡∞æ‡∞ß‡±ç‡∞Ø‡∞§‡∞≤‡±Å",
-                        },
-                        builder: {
-                          name: "Page Builder ( ‡∞°‡∞ø‡∞ú‡±à‡∞®‡±ç ‡∞¨‡∞ø‡∞≤‡±ç‡∞°‡∞∞‡±ç )",
-                          desc: "‡∞µ‡±Ü‡∞¨‡±ç ‡∞∏‡±à‡∞ü‡±ç ‡∞™‡±ç‡∞∞‡∞ß‡∞æ‡∞® ‡∞™‡±á‡∞ú‡±Ä ‡∞≤‡±á‡∞Ö‡∞µ‡±Å‡∞ü‡±ç ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡±Å‡∞ï‡±Å‡∞®‡±á ‡∞∏‡∞¶‡±Å‡∞™‡∞æ‡∞Ø‡∞Ç",
-                        },
-                        locations: {
-                          name: "Manage Locations ( ‡∞≤‡±ä‡∞ï‡±á‡∞∑‡∞®‡±ç‡∞≤‡±Å )",
-                          desc: "‡∞Æ‡∞Ç‡∞°‡∞≤‡∞æ‡∞≤‡±Å, ‡∞ó‡±ç‡∞∞‡∞æ‡∞Æ ‡∞™‡∞Ç‡∞ö‡∞æ‡∞Ø‡∞§‡±Ä‡∞≤ ‡∞ú‡∞æ‡∞¨‡∞ø‡∞§‡∞æ ‡∞é‡∞°‡∞ø‡∞ü‡±ç ‡∞ö‡±Ü‡∞Ø‡±ç",
-                        },
-                        suggestions: {
-                          name: "Suggestion & Feedback ( ‡∞∏‡∞≤‡∞π‡∞æ‡∞≤‡±Å )",
-                          desc: "‡∞™‡±å‡∞∞‡±Å‡∞≤ ‡∞∏‡∞≤‡∞π‡∞æ‡∞≤ ‡∞∏‡±ç‡∞µ‡±Ä‡∞ï‡∞∞‡∞£ ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞µ‡∞æ‡∞∞‡∞ø ‡∞´‡±Ä‡∞°‡±ç ‡∞¨‡±ç‡∞Ø‡∞æ‡∞ï‡±ç ‡∞∏‡∞Æ‡∞æ‡∞ß‡∞æ‡∞®‡∞æ‡∞≤‡±Å",
-                        },
-                        trash: {
-                          name: "Recycle Bin ( ‡∞°‡∞∏‡±ç‡∞ü‡±ç ‡∞¨‡∞ø‡∞®‡±ç )",
-                          desc: "‡∞°‡∞ø‡∞≤‡±Ä‡∞ü‡±ç ‡∞ö‡±á‡∞∏‡∞ø‡∞® ‡∞∞‡∞ø‡∞ï‡∞æ‡∞∞‡±ç‡∞°‡±Å‡∞≤ ‡∞∞‡±Ä‡∞∏‡±à‡∞ï‡∞ø‡∞≤‡±ç ‡∞µ‡±Ä‡∞ï‡±ç‡∞∑‡∞£ ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞™‡±Å‡∞®‡∞∞‡±Å‡∞¶‡±ç‡∞ß‡∞∞‡∞£",
-                        },
-                        logs: {
-                          name: "Security Logs ( ‡∞≤‡∞æ‡∞ó‡±ç‡∞≤‡±Å )",
-                          desc: "‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç‡∞≤ ‡∞≤‡∞æ‡∞ó‡∞ø‡∞®‡±ç ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞é‡∞°‡∞ø‡∞ü‡±ç ‡∞≤‡∞æ‡∞ó‡±ç ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤ ‡∞°‡±á‡∞ü‡∞æ‡∞¨‡±á‡∞∏‡±ç",
-                        },
-                        settings: {
-                          name: "System Config ( ‡∞ï‡∞æ‡∞®‡±ç‡∞´‡∞ø‡∞ó‡∞∞‡±á‡∞∑‡∞®‡±ç )",
-                          desc: "‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç ‡∞Ø‡∞æ‡∞ï‡±ç‡∞∏‡±Ü‡∞∏‡±ç ‡∞™‡∞ø‡∞®‡±ç ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡±Å‡∞ï‡±Å‡∞®‡±á ‡∞∏‡∞Æ‡∞ó‡±ç‡∞∞ ‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞∏‡±Ü‡∞ü‡±ç‡∞ü‡∞ø‡∞Ç‡∞ó‡±ç‡∞∏‡±ç",
-                        },
-                        ai: {
-                          name: "Gemini AI Node ( ‡∞Ö‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç )",
-                          desc: "‡∞ú‡±Ü‡∞Æ‡∞ø‡∞®‡±Ä ‡∞Ü‡∞∞‡±ç‡∞ü‡∞ø‡∞´‡∞ø‡∞∑‡∞ø‡∞Ø‡∞≤‡±ç ‡∞á‡∞Ç‡∞ü‡±Ü‡∞≤‡∞ø‡∞ú‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞Ö‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç ‡∞Ø‡∞æ‡∞ï‡±ç‡∞∏‡±Ü‡∞∏‡±ç",
-                        },
-                      }).map(([key, item]) => {
-                        const currentPerm = rbacPermissions?.[
-                          selectedRbacRole
-                        ]?.[key] ||
-                          DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || {
-                            view: false,
-                            edit: false,
-                            delete: false,
-                          };
-                        return (
-                          <tr
-                            key={key}
-                            className="hover:bg-slate-50/50 transition-colors"
-                          >
-                            <td className="py-5 pl-8 text-left pr-4">
-                              <p className="font-bold text-slate-850 text-sm">
-                                {item.name}
-                              </p>
-                              <p className="text-[11px] text-slate-400 mt-0.5 font-semibold">
-                                {item.desc}
-                              </p>
-                            </td>
-                            <td className="py-5 text-center">
-                              <input
-                                type="checkbox"
-                                checked={!!currentPerm.view}
-                                onChange={(e) => {
-                                  const updated = { ...rbacPermissions };
-                                  if (!updated[selectedRbacRole])
-                                    updated[selectedRbacRole] = {};
-                                  if (!updated[selectedRbacRole][key])
-                                    updated[selectedRbacRole][key] = {};
-                                  updated[selectedRbacRole][key].view =
-                                    e.target.checked;
-                                  if (!e.target.checked) {
-                                    updated[selectedRbacRole][key].edit = false;
-                                    updated[selectedRbacRole][key].delete =
-                                      false;
-                                  }
-                                  setRbacPermissions(updated);
-                                }}
-                                className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                              />
-                            </td>
-                            <td className="py-5 text-center">
-                              <input
-                                type="checkbox"
-                                disabled={!currentPerm.view}
-                                checked={!!currentPerm.edit}
-                                onChange={(e) => {
-                                  const updated = { ...rbacPermissions };
-                                  if (!updated[selectedRbacRole])
-                                    updated[selectedRbacRole] = {};
-                                  if (!updated[selectedRbacRole][key])
-                                    updated[selectedRbacRole][key] = {};
-                                  updated[selectedRbacRole][key].edit =
-                                    e.target.checked;
-                                  setRbacPermissions(updated);
-                                }}
-                                className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                              />
-                            </td>
-                            <td className="py-5 text-center">
-                              <input
-                                type="checkbox"
-                                disabled={!currentPerm.view}
-                                checked={!!currentPerm.delete}
-                                onChange={(e) => {
-                                  const updated = { ...rbacPermissions };
-                                  if (!updated[selectedRbacRole])
-                                    updated[selectedRbacRole] = {};
-                                  if (!updated[selectedRbacRole][key])
-                                    updated[selectedRbacRole][key] = {};
-                                  updated[selectedRbacRole][key].delete =
-                                    e.target.checked;
-                                  setRbacPermissions(updated);
-                                }}
-                                className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                  <button
-                    onClick={() =>
-                      setRbacPermissions({ ...DEFAULT_PERMISSIONS })
-                    }
-                    className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-650 hover:bg-slate-200 transition-all"
-                  >
-                    Reset to Defaults
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await setDoc(doc(db, "settings", "rbac_permissions"), {
-                          roles: rbacPermissions,
-                          lastUpdated: Date.now(),
-                          updatedBy: auth.currentUser?.email || "Super Admin",
-                        });
-                        addToast(
-                          " ‡∞ï‡∞æ‡∞∞‡±ç‡∞Ø‡∞æ‡∞ö‡∞∞‡∞£ ‡∞Ö‡∞®‡±Å‡∞Æ‡∞§‡±Å‡∞≤‡±Å ‡∞°‡±à‡∞®‡∞Æ‡∞ø‡∞ï‡±ç‡∞ó‡∞æ ‡∞Ö‡∞™‡±ç‚Äå‡∞°‡±á‡∞ü‡±ç ‡∞Ö‡∞Ø‡±ç‡∞Ø‡∞æ‡∞Ø‡∞ø!",
-                        );
-                      } catch (err: any) {
-                        addToast("‡∞Æ‡∞æ‡∞∞‡±ç‡∞™‡±Å‡∞≤‡±Å ‡∞ö‡±á‡∞Ø‡∞°‡∞Ç‡∞≤‡±ã ‡∞µ‡∞ø‡∞´‡∞≤‡∞Æ‡±à‡∞Ç‡∞¶‡∞ø: " + err.message);
-                      }
-                    }}
-                    className="px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-500 shadow-xl shadow-blue-600/25 cursor-pointer transition-all"
-                  >
-                    Save Permissions ‚Ä¢ ‡∞ï‡∞æ‡∞®‡±ç‡∞´‡∞ø‡∞ó‡±ç ‡∞∏‡±á‡∞µ‡±ç‚Äå‡∞ö‡±Ü‡∞Ø‡±ç
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {(activeSubTab === "exe_ubd_live" || activeSubTab === "exe_ubd") && (
-              <ExeUbdLiveMonitoring />
-            )}
-
-            {activeSubTab === "logs" && (
-              <SecurityLogsSection />
-            )}
-
-            {activeSubTab === "visitor_logs" && (
-              <PublicVisitorLogs />
-            )}
-
-            {/* Survey Reports (‡∞∏‡∞∞‡±ç‡∞µ‡±á ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±ç‡∞∏‡±ç) */}
-            {activeSubTab === "survey_reports" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[22px] flex items-center justify-center shadow-sm border border-blue-100/50">
-                    <BarChart3 size={28} />
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                      ‡∞∏‡∞∞‡±ç‡∞µ‡±á ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±ç‡∞∏‡±ç (Survey Data Index)
-                    </h4>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                      Analytics based on processed farmer records
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                  {Object.keys(farmerRegistryJobs).length === 0 ? (
-                    <div className="p-20 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[40px]">
-                      <p className="text-sm text-slate-400 font-bold italic">
-                        ‡∞™‡±ç‡∞∞‡∞∏‡±ç‡∞§‡±Å‡∞§‡∞æ‡∞®‡∞ø‡∞ï‡∞ø ‡∞é‡∞ü‡±Å‡∞µ‡∞Ç‡∞ü‡∞ø ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±ç‡∞∏‡±ç ‡∞≤‡±á‡∞µ‡±Å. (No reports
-                        generated yet)
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl overflow-hidden">
-                      <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Village/GP
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Status
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Records
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Date
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50">
-                            {Object.values(farmerRegistryJobs)
-                              .reverse()
-                              .map((job: any) => (
-                                <tr
-                                  key={job.id}
-                                  className="hover:bg-slate-50/50 transition-colors group"
-                                >
-                                  <td className="p-6">
-                                    <p className="text-sm font-black text-slate-800">
-                                      {job.gpName}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                      ID: {job.id}
-                                    </p>
-                                  </td>
-                                  <td className="p-6">
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                        job.status === "completed"
-                                          ? "bg-emerald-50 text-emerald-600"
-                                          : job.status === "failed"
-                                            ? "bg-rose-50 text-rose-600"
-                                            : "bg-amber-50 text-amber-600"
-                                      }`}
-                                    >
-                                      {job.status}
-                                    </span>
-                                  </td>
-                                  <td className="p-6">
-                                    <p className="text-sm font-black text-slate-600">
-                                      {job.totalRecords || 0}
-                                    </p>
-                                  </td>
-                                  <td className="p-6">
-                                    <p className="text-xs font-bold text-slate-500">
-                                      {new Date(
-                                        job.createdAt,
-                                      ).toLocaleDateString()}
-                                    </p>
-                                  </td>
-                                  <td className="p-6 text-right">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      {job.outputPath &&
-                                        job.status === "completed" && (
-                                          <button
-                                            onClick={(e) =>
-                                              handleForceDownload(
-                                                e,
-                                                "/api/reports/" +
-                                                  job.outputPath,
-                                                `${job.gpName}_Status_Report.xlsx`,
-                                              )
-                                            }
-                                            className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                            title="Download Report"
-                                          >
-                                            <Download size={16} />
-                                          </button>
-                                        )}
-                                      <button
-                                        onClick={() =>
-                                          handleDeleteFarmerJob(job.id)
-                                        }
-                                        className="p-2.5 bg-slate-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                        title="Delete"
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Edit About Page (‡∞Ö‡∞¨‡±å‡∞ü‡±ç ‡∞™‡±á‡∞ú‡±Ä ‡∞é‡∞°‡∞ø‡∞ü‡∞∞‡±ç) */}
-            {activeSubTab === "edit_about" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-[22px] flex items-center justify-center shadow-sm border border-indigo-100/50">
-                    <Edit3 size={28} />
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                      About Us (‡∞Ö‡∞¨‡±å‡∞ü‡±ç ‡∞µ‡∞ø‡∞∑‡∞Ø‡∞Ç)
-                    </h4>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                      Adjust global platform description and journey
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl p-8 max-w-3xl">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Page Title (‡∞∂‡±Ä‡∞∞‡±ç‡∞∑‡∞ø‡∞ï)
-                      </label>
-                      <input
-                        type="text"
-                        value={aboutContent?.title || ""}
-                        onChange={(e) =>
-                          setAboutContent((prev) =>
-                            prev ? { ...prev, title: e.target.value } : null,
-                          )
-                        }
-                        placeholder="e.g. e-Vedhika ‡∞ó‡±Å‡∞∞‡∞ø‡∞Ç‡∞ö‡∞ø"
-                        className="w-full bg-slate-50 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-indigo-500 transition-all"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Content (‡∞µ‡∞ø‡∞∑‡∞Ø‡∞Ç - HTML/Markdown Supported)
-                      </label>
-                      <textarea
-                        rows={10}
-                        value={aboutContent?.content || ""}
-                        onChange={(e) =>
-                          setAboutContent((prev) =>
-                            prev ? { ...prev, content: e.target.value } : null,
-                          )
-                        }
-                        placeholder="‡∞Ö‡∞¨‡±å‡∞ü‡±ç ‡∞ï‡∞Ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞∞‡∞æ‡∞Ø‡∞Ç‡∞°‡∞ø..."
-                        className="w-full bg-slate-50 border-slate-100 rounded-3xl p-6 font-medium text-sm outline-none focus:border-indigo-500 transition-all leading-relaxed custom-scrollbar"
-                      />
-                    </div>
-
-                    <div className="pt-4">
-                      <button
-                        onClick={async () => {
-                          if (!aboutContent) return;
-                          try {
-                            const token = auth.currentUser
-                              ? await auth.currentUser.getIdToken()
-                              : "";
-                            const res = await fetch("/api/about", {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                              },
-                              body: JSON.stringify({
-                                title: aboutContent.title,
-                                content: aboutContent.content,
-                              }),
-                            });
-                            if (res.ok) {
-                              addToast(
-                                "‡∞Ö‡∞¨‡±å‡∞ü‡±ç ‡∞™‡±á‡∞ú‡±Ä ‡∞∏‡±á‡∞µ‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! (Saved successfully)",
-                              );
-                              fetchAboutContent();
-                            } else {
-                              throw new Error("Failed to save");
-                            }
-                          } catch (err) {
-                            addToast("Error saving content");
-                          }
-                        }}
-                        className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2"
-                      >
-                        <Save size={18} /> ‡∞∏‡±á‡∞µ‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø (Save Content)
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex gap-4 max-w-3xl">
-                  <div className="w-10 h-10 bg-amber-400 text-amber-900 rounded-xl flex items-center justify-center shrink-0">
-                    <Info size={20} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-amber-900/60 uppercase tracking-widest mb-1">
-                      Admin Tip
-                    </p>
-                    <p className="text-xs font-black text-amber-900 leading-relaxed">
-                      ‡∞Æ‡±Ä‡∞∞‡±Å ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞ö‡±á‡∞∏‡±á ‡∞Æ‡∞æ‡∞∞‡±ç‡∞™‡±Å‡∞≤‡±Å ‡∞µ‡±Ü‡∞Ç‡∞ü‡∞®‡±á ‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç ‡∞≤‡±ã‡∞®‡∞ø Footer ‡∞≤‡±ã
-                      ‡∞â‡∞Ç‡∞°‡±á 'About Us' ‡∞µ‡∞ø‡∞≠‡∞æ‡∞ó‡∞Ç‡∞≤‡±ã ‡∞ï‡∞®‡∞ø‡∞™‡∞ø‡∞∏‡±ç‡∞§‡∞æ‡∞Ø‡∞ø.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "settings" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="space-y-8">
-                  <div>
-                    <h4 className="text-xl font-black text-primary mb-2">
-                      Global System Config
-                    </h4>
-                    <p className="text-xs text-slate-400 font-medium tracking-tight">
-                      Adjust master operational parameters
-                    </p>
-                  </div>
-
-                  <div className="space-y-6 p-8 bg-slate-50 rounded-[32px] border border-slate-100">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Interface Theme Mode
-                      </label>
-                      <select
-                        value={userProfile?.theme || "system"}
-                        onChange={async (e) => {
-                          if (!auth.currentUser) return;
-                          try {
-                            await setDoc(
-                              doc(db, "users", auth.currentUser.uid),
-                              { theme: e.target.value },
-                              { merge: true },
-                            );
-                            addToast("Admin panel theme updated successfully");
-                          } catch (err: any) {
-                            addToast(err.message || "Failed to update theme");
-                          }
-                        }}
-                        className="w-full !mb-0 bg-white border-slate-200 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500"
-                      >
-                        <option value="system">App System Theme (Auto)</option>
-                        <option value="light">Light Mode</option>
-                        <option value="dark">Dark Mode</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-3 bg-amber-50/60 p-5 rounded-3xl border border-amber-200/80">
-                      <div>
-                        <label className="text-[10px] font-black text-amber-900 uppercase tracking-widest pl-1 block mb-1">
-                          Website Maintenance Mode (‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç ‡∞Æ‡±Ü‡∞Ø‡∞ø‡∞Ç‡∞ü‡±Ü‡∞®‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞Æ‡±ã‡∞°‡±ç)
-                        </label>
-                        <select
-                          value={siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE" ? "MAINTENANCE" : "LIVE"}
-                          onChange={async (e) => {
-                            const isMaintenance = e.target.value === "MAINTENANCE";
-                            const updatedPayload = {
-                              isMaintenanceMode: isMaintenance,
-                              governanceMode: e.target.value,
-                              updatedAt: Date.now(),
-                              updatedBy: user?.email || auth?.currentUser?.email || "Admin"
-                            };
-
-                            // Update local state immediately for instant feedback
-                            setSiteConfig((prev: any) => ({
-                              ...prev,
-                              ...updatedPayload
-                            }));
-
-                            if (!isMaintenance) {
-                              localStorage.removeItem("evedhika_admin_override");
-                            }
-
-                            try {
-                              await setDoc(doc(db, "site_settings", "home_page"), updatedPayload, { merge: true }).catch(() => {});
-                              await setDoc(doc(db, "settings", "site_config"), updatedPayload, { merge: true }).catch(() => {});
-                              addToast(isMaintenance ? "üî¥ ‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç ‡∞Æ‡±Ü‡∞Ø‡∞ø‡∞Ç‡∞ü‡±Ü‡∞®‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞Æ‡±ã‡∞°‡±ç ‡∞Ü‡∞®‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø (Admin Only Access)" : "üü¢ ‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç ‡∞≤‡±à‡∞µ‡±ç ‡∞≤‡±ã ‡∞â‡∞Ç‡∞¶‡∞ø (Public Access)");
-                            } catch(err: any) {
-                              addToast(isMaintenance ? "üî¥ ‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç ‡∞Æ‡±Ü‡∞Ø‡∞ø‡∞Ç‡∞ü‡±Ü‡∞®‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞Æ‡±ã‡∞°‡±ç ‡∞®‡∞µ‡±Ä‡∞ï‡∞∞‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø (Local Active)" : "üü¢ ‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç ‡∞≤‡±à‡∞µ‡±ç ‡∞≤‡±ã ‡∞â‡∞Ç‡∞¶‡∞ø");
-                            }
-                          }}
-                          className="w-full bg-white border-amber-200 rounded-2xl p-4 font-black text-sm outline-none focus:border-amber-500 shadow-xs text-slate-800"
-                        >
-                          <option value="LIVE">üü¢ LIVE (‡∞∏‡∞æ‡∞ß‡∞æ‡∞∞‡∞£ ‡∞µ‡∞ø‡∞®‡∞ø‡∞Ø‡±ã‡∞ó‡∞Ç - Public Access)</option>
-                          <option value="MAINTENANCE">üî¥ MAINTENANCE MODE (‡∞Æ‡±Ü‡∞Ø‡∞ø‡∞Ç‡∞ü‡±Ü‡∞®‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞Æ‡±ã‡∞°‡±ç - Admin Only)</option>
-                        </select>
-                      </div>
-
-                      {(siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE") && (
-                        <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                          <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                              ‡∞Æ‡∞∞‡∞Æ‡±ç‡∞Æ‡∞§‡±Å ‡∞∏‡∞Ç‡∞¶‡±á‡∞∂‡∞Ç (Maintenance Banner Message)
-                            </label>
-                            <input
-                              type="text"
-                              id="maintenance-msg-field"
-                              defaultValue={siteConfig?.maintenanceMessage || "‡∞à-‡∞µ‡±á‡∞¶‡∞ø‡∞ï ‡∞°‡∞ø‡∞ú‡∞ø‡∞ü‡∞≤‡±ç ‡∞™‡∞∞‡∞ø‡∞™‡∞æ‡∞≤‡∞®‡∞æ ‡∞™‡±ã‡∞∞‡±ç‡∞ü‡∞≤‡±ç ‡∞Æ‡±Ü‡∞∞‡±Å‡∞ó‡±à‡∞® ‡∞™‡±ç‡∞∞‡∞¶‡∞∞‡±ç‡∞∂‡∞® ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞∞‡∞ï‡±ç‡∞∑‡∞£ ‡∞ï‡±ä‡∞∞‡∞ï‡±Å ‡∞∑‡±Ü‡∞°‡±ç‡∞Ø‡±Ç‡∞≤‡±ç‡∞°‡±ç ‡∞®‡∞ø‡∞∞‡±ç‡∞µ‡∞π‡∞£‡∞≤‡±ã ‡∞â‡∞Ç‡∞¶‡∞ø."}
-                              placeholder="We are upgrading the platform..."
-                              className="w-full bg-white border-slate-200 rounded-2xl p-3.5 font-bold text-xs outline-none focus:border-amber-500 mt-1"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                                ‡∞Ö‡∞Ç‡∞ö‡∞®‡∞æ ‡∞∏‡∞Æ‡∞Ø‡∞Ç (Estimated Time)
-                              </label>
-                              <input
-                                type="text"
-                                id="maintenance-time-field"
-                                defaultValue={siteConfig?.maintenanceEstimatedTime || "‡∞¶‡∞æ‡∞¶‡∞æ‡∞™‡±Å 2 ‡∞ó‡∞Ç‡∞ü‡∞≤‡±Å (Approx. 2 Hours)"}
-                                placeholder="e.g. 2 Hours"
-                                className="w-full bg-white border-slate-200 rounded-2xl p-3 font-bold text-xs outline-none focus:border-amber-500 mt-1"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                                ‡∞ï‡∞æ‡∞∞‡∞£‡∞Ç (Reason)
-                              </label>
-                              <input
-                                type="text"
-                                id="maintenance-reason-field"
-                                defaultValue={siteConfig?.maintenanceReason || "‡∞∑‡±Ü‡∞°‡±ç‡∞Ø‡±Ç‡∞≤‡±ç‡∞°‡±ç ‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞Ö‡∞™‡±ç‚Äå‡∞ó‡±ç‡∞∞‡±á‡∞°‡±ç & ‡∞∏‡±Ü‡∞ï‡±ç‡∞Ø‡±Ç‡∞∞‡∞ø‡∞ü‡±Ä ‡∞Ö‡∞™‡±ç‚Äå‡∞°‡±á‡∞ü‡±ç"}
-                                placeholder="Upgrade reason"
-                                className="w-full bg-white border-slate-200 rounded-2xl p-3 font-bold text-xs outline-none focus:border-amber-500 mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                const msg = (document.getElementById("maintenance-msg-field") as HTMLInputElement)?.value;
-                                const time = (document.getElementById("maintenance-time-field") as HTMLInputElement)?.value;
-                                const reason = (document.getElementById("maintenance-reason-field") as HTMLInputElement)?.value;
-                                const detailsPayload = {
-                                  maintenanceMessage: msg,
-                                  maintenanceEstimatedTime: time,
-                                  maintenanceReason: reason,
-                                  updatedAt: Date.now()
-                                };
-                                setSiteConfig((prev: any) => ({ ...prev, ...detailsPayload }));
-                                await setDoc(doc(db, "site_settings", "home_page"), detailsPayload, { merge: true }).catch(() => {});
-                                await setDoc(doc(db, "settings", "site_config"), detailsPayload, { merge: true }).catch(() => {});
-                                addToast("‡∞Æ‡±Ü‡∞Ø‡∞ø‡∞Ç‡∞ü‡±Ü‡∞®‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤‡±Å ‡∞∏‡±á‡∞µ‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡±ç‡∞°‡∞æ‡∞Ø‡∞ø!");
-                              } catch(e: any) {
-                                addToast("‡∞Æ‡±Ü‡∞Ø‡∞ø‡∞Ç‡∞ü‡±Ü‡∞®‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤‡±Å ‡∞®‡∞µ‡±Ä‡∞ï‡∞∞‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡±ç‡∞°‡∞æ‡∞Ø‡∞ø!");
-                              }
-                            }}
-                            className="w-full bg-amber-600 text-white py-3 rounded-2xl text-xs font-bold hover:bg-amber-700 transition-colors shadow-sm"
-                          >
-                            ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤‡±Å ‡∞∏‡±á‡∞µ‡±ç ‡∞ö‡±á‡∞Ø‡∞ø (Save Details)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Security PIN (Level 1)
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="pin-config-field"
-                          type={showPin ? "text" : "password"}
-                          placeholder="‚Ä¢‚Ä¢‚Ä¢‚Ä¢"
-                          className="w-full !mb-0 bg-white border-slate-200 rounded-2xl p-4 font-black text-xl text-center tracking-[1em]"
-                          defaultValue={currentAdminPin}
-                          maxLength={4}
-                        />
-                        <button
-                          aria-label="Toggle PIN visibility"
-                          type="button"
-                          onClick={() => setShowPin(!showPin)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-primary transition-colors"
-                        >
-                          {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      aria-label="Sync Global Configuration"
-                      onClick={async () => {
-                        const pin = (
-                          document.getElementById(
-                            "pin-config-field",
-                          ) as HTMLInputElement
-                        )?.value;
-                        if (pin && pin.length === 4) {
-                          try {
-                            await setDoc(
-                              doc(db, "settings", "admin_config"),
-                              {
-                                pin,
-                                updatedAt: Date.now(),
-                              },
-                              { merge: true },
-                            );
-
-                            await addDoc(collection(db, "security_logs"), {
-                              admin: auth.currentUser?.email || "System Admin",
-                              action: "Security PIN Modified",
-                              time: Date.now(),
-                            });
-
-                            setCurrentAdminPin(pin);
-                            addToast("System Configuration Encoded");
-                          } catch (e: any) {
-                            addToast(e.message);
-                          }
-                        } else {
-                          addToast("PIN must be 4 digits");
-                        }
-                      }}
-                      className="w-full py-5 bg-primary text-white font-black rounded-2xl text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:opacity-90 transition-all active:scale-95"
-                    >
-                      Sync Global Configuration
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-8">
-                  <div>
-                    <h4 className="text-xl font-black text-primary mb-2">
-                      Systems & Audio
-                    </h4>
-                    <p className="text-xs text-slate-400 font-medium tracking-tight">
-                      Audio context and system tools
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    <button
-                      aria-label="Test Notification Sound"
-                      onClick={() => {
-                        playNotificationSound();
-                        addToast("Playing notification sound...");
-                      }}
-                      className="p-6 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between group hover:border-blue-500 transition-all"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl group-hover:bg-blue-500 group-hover:text-white transition-all">
-                          <Play size={24} />
-                        </div>
-                        <div className="text-left">
-                          <h5 className="font-black text-primary text-sm uppercase">
-                            Test Notification Sound
-                          </h5>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">
-                            Initialize & play ding-ding sound
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight size={18} className="text-slate-300" />
-                    </button>
-
-                    <div className="p-6 bg-white border-2 border-slate-100 rounded-3xl space-y-4">
-                      <div>
-                        <h5 className="font-black text-primary text-sm uppercase">
-                          Notification Sound Triggers
-                        </h5>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
-                          ‡∞®‡±ã‡∞ü‡∞ø‡∞´‡∞ø‡∞ï‡±á‡∞∑‡∞®‡±ç‡∞≤‡±Å ‡∞è ‡∞µ‡∞æ‡∞ü‡∞ø‡∞ï‡∞ø ‡∞∏‡±å‡∞Ç‡∞°‡±ç ‡∞∞‡∞æ‡∞µ‡∞æ‡∞≤‡±ã ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞®‡∞ø‡∞∞‡±ç‡∞£‡∞Ø‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø
-                        </p>
-                      </div>
-                      
-                      <div className="space-y-4 pt-3 border-t border-slate-100">
-                        {[
-                          { key: 'updates', label: 'Flash Updates (‡∞´‡±ç‡∞≤‡∞æ‡∞∑‡±ç ‡∞Ö‡∞™‡±ç‚Äå‡∞°‡±á‡∞ü‡±ç‡∞∏‡±ç)' },
-                          { key: 'posts', label: 'New Posts (‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞≤‡±Å)' },
-                          { key: 'general', label: 'Alerts / Comments (‡∞≤‡±à‡∞ï‡±ç‚Äå‡∞≤‡±Å / ‡∞ï‡∞æ‡∞Æ‡±Ü‡∞Ç‡∞ü‡±ç‡∞≤‡±Å)' }
-                        ].map((item) => (
-                          <div key={item.key} className="flex items-center justify-between gap-4">
-                            <span className="text-[13px] font-bold text-slate-600">{item.label}</span>
-                            <div className="flex items-center gap-2">
-                              <select 
-                                className="text-xs p-1.5 border border-slate-200 rounded-lg bg-slate-50 font-bold focus:ring-2 focus:ring-blue-500 outline-none w-36"
-                                value={notifSoundConfig[item.key] || 'default_ding'}
-                                onChange={async (e) => {
-                                  let val = e.target.value;
-                                  setNotifSoundConfig((prev: any) => ({...prev, [item.key]: val}));
-                                  await setDoc(doc(db, "settings", "notification_sounds"), { [item.key]: val }, { merge: true });
-                                  if (val !== 'false') playNotificationSound(val);
-                                  addToast(`Sound saved for ${item.label}`);
-                                }}
-                              >
-                                <option value="false">Mute (‡∞Æ‡±ç‡∞Ø‡±Ç‡∞ü‡±ç)</option>
-                                {NOTIFICATION_SOUNDS.map(sc => (
-                                  <option key={sc.id} value={sc.id}>{sc.name}</option>
-                                ))}
-                              </select>
-                              <button 
-                                onClick={() => {
-                                  const snd = notifSoundConfig[item.key] || 'default_ding';
-                                  if (snd !== 'false') playNotificationSound(snd);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                                title="Play Sample"
-                              >
-                                <Play size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xl font-black text-primary mb-2">
-                      Data Integrity
-                    </h4>
-                    <p className="text-xs text-slate-400 font-medium tracking-tight">
-                      Backup and recovery protocols
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <button
-                      aria-label="Full Snapshot"
-                      className="p-6 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between group hover:border-green-500 transition-all"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-green-50 text-green-500 rounded-2xl group-hover:bg-green-500 group-hover:text-white transition-all">
-                          <Download size={24} />
-                        </div>
-                        <div className="text-left">
-                          <h5 className="font-black text-primary text-sm uppercase">
-                            Full Snapshot
-                          </h5>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">
-                            Generate database backup
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight size={18} className="text-slate-300" />
-                    </button>
-
-                    <button
-                      aria-label="Point-in-time Restore"
-                      className="p-6 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between group hover:border-amber-500 transition-all"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-amber-50 text-amber-500 rounded-2xl group-hover:bg-amber-500 group-hover:text-white transition-all">
-                          <Upload size={24} />
-                        </div>
-                        <div className="text-left">
-                          <h5 className="font-black text-primary text-sm uppercase">
-                            Point-in-time Restore
-                          </h5>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">
-                            Load from existing snapshot
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight size={18} className="text-slate-300" />
-                    </button>
-                  </div>
-
-                  <div className="p-6 bg-red-50 rounded-3xl border border-red-100 flex flex-col gap-3">
-                    <div>
-                      <h5 className="text-[11px] font-black text-red-600 uppercase flex items-center gap-2 mb-2">
-                        <ShieldAlert size={14} /> Danger Zone
-                      </h5>
-                      <p className="text-[10px] text-red-700/60 font-bold uppercase mb-2 leading-relaxed">
-                        Permanent system resets and partition wipes can only be
-                        executed via the Secure Root Shell.
-                      </p>
-                    </div>
-                    <button
-                      aria-label="Restart Server"
-                      onClick={() => {
-                        Swal.fire({
-                          title: "Restarting Server...",
-                          text: "Please wait while system connections are re-initialized.",
-                          icon: "info",
-                          allowOutsideClick: false,
-                          showConfirmButton: false,
-                          didOpen: () => {
-                            Swal.showLoading();
-                            setTimeout(() => {
-                              window.location.reload();
-                            }, 2000);
-                          },
-                        });
-                      }}
-                      className="w-full p-4 bg-red-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
-                    >
-                      <RefreshCw size={16} /> Restart Application Server
-                    </button>
-                    <button
-                      aria-label="Wipe Interaction Cache"
-                      className="w-full py-2.5 bg-red-600/10 text-red-700 hover:bg-red-600 hover:text-white transition-colors font-black text-[10px] rounded-xl uppercase tracking-widest"
-                    >
-                      Wipe Interaction Cache
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "ads" && (
-              <div className="max-w-4xl space-y-8">
-                <div>
-                  <h4 className="text-xl font-black text-primary mb-2">Ad Management (Google AdSense)</h4>
-                  <p className="text-xs text-slate-500 font-medium tracking-tight">Configure ad slots to show across the website.</p>
-                </div>
-
-                {/* Global Ad Control */}
-                <div className="bg-white border-2 border-indigo-200 rounded-3xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Shield className="text-indigo-500" size={24} />
-                    <h5 className="font-black text-slate-800 text-lg">Global Ad Settings</h5>
-                  </div>
-                  <div className="space-y-6">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500" 
-                        checked={siteConfig?.ads?.globalAdsEnabled ?? true}
-                        onChange={async (e) => {
-                          const updatedAds = { ...(siteConfig?.ads || {}), globalAdsEnabled: e.target.checked };
-                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          addToast(e.target.checked ? "Global Ads Enabled" : "Global Ads Disabled");
-                        }}
-                      />
-                      <span className="font-bold text-slate-700">Enable All Ads on Website</span>
-                    </label>
-
-                    <div className="pt-4 border-t border-slate-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-bold text-slate-700">Mute Ads Temporarily (‡∞§‡∞æ‡∞§‡±ç‡∞ï‡∞æ‡∞≤‡∞ø‡∞ï‡∞Ç‡∞ó‡∞æ ‡∞Ø‡∞æ‡∞°‡±ç‡∞∏‡±ç ‡∞®‡∞ø‡∞≤‡∞ø‡∞™‡∞ø‡∞µ‡±á‡∞§)</label>
-                        {adMuteRemaining > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[11px] font-extrabold rounded-full animate-pulse">
-                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                            ‡∞Æ‡±ç‡∞Ø‡±Ç‡∞ü‡±ç ‡∞Ø‡∞æ‡∞ï‡±ç‡∞ü‡∞ø‡∞µ‡±ç: {Math.floor(adMuteRemaining / 60)}m {adMuteRemaining % 60}s
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 mb-3">
-                        ‡∞é‡∞Ç‡∞ö‡±Å‡∞ï‡±Å‡∞®‡±ç‡∞® ‡∞∏‡∞Æ‡∞Ø‡∞Ç ‡∞µ‡∞∞‡∞ï‡±Å ‡∞µ‡±Ü‡∞¨‡±ç‚Äå‡∞∏‡±à‡∞ü‡±ç‚Äå‡∞≤‡±ã ‡∞é‡∞ü‡±Å‡∞µ‡∞Ç‡∞ü‡∞ø ‡∞™‡±ç‡∞∞‡∞ï‡∞ü‡∞®‡∞≤‡±Å (Google AdSense / Custom Ads) ‡∞ï‡∞®‡∞ø‡∞™‡∞ø‡∞Ç‡∞ö‡∞µ‡±Å.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { label: '5 Minutes (5 ‡∞®‡∞ø‡∞Æ‡∞ø)', minutes: 5, ms: 5 * 60 * 1000 },
-                          { label: '15 Minutes', minutes: 15, ms: 15 * 60 * 1000 },
-                          { label: '1 Hour (1 ‡∞ó‡∞Ç‡∞ü)', minutes: 60, ms: 60 * 60 * 1000 },
-                          { label: 'Half Day (12h)', minutes: 720, ms: 12 * 60 * 60 * 1000 },
-                          { label: '1 Day (24h)', minutes: 1440, ms: 24 * 60 * 60 * 1000 },
-                        ].map(duration => (
-                          <button
-                            key={duration.label}
-                            type="button"
-                            onClick={async () => {
-                              const mutedUntil = Date.now() + duration.ms;
-                              muteAdsLocally(duration.minutes);
-                              const updatedAds = { ...(siteConfig?.ads || {}), globalAdsMutedUntil: mutedUntil };
-                              setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                              try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                              await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                              await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                              addToast(`‡∞Ø‡∞æ‡∞°‡±ç‡∞∏‡±ç ${duration.label} ‡∞™‡∞æ‡∞ü‡±Å ‡∞®‡∞ø‡∞≤‡∞ø‡∞™‡∞ø‡∞µ‡±á‡∞Ø‡∞¨‡∞°‡±ç‡∞°‡∞æ‡∞Ø‡∞ø (Ads muted for ${duration.label})`);
-                            }}
-                            className="px-3 py-2 bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95"
-                          >
-                            Mute {duration.label}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            unmuteAdsLocally();
-                            const updatedAds = { ...(siteConfig?.ads || {}), globalAdsMutedUntil: null };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("‡∞Æ‡±ç‡∞Ø‡±Ç‡∞ü‡±ç ‡∞∞‡∞¶‡±ç‡∞¶‡±Å ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø, ‡∞Ø‡∞æ‡∞°‡±ç‡∞∏‡±ç ‡∞™‡±ç‡∞∞‡∞æ‡∞∞‡∞Ç‡∞≠‡∞Æ‡∞Ø‡±ç‡∞Ø‡∞æ‡∞Ø‡∞ø (Mute cancelled)");
-                          }}
-                          className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition-all shadow-xs active:scale-95 flex items-center gap-1.5"
-                        >
-                          Cancel Mute (‡∞Æ‡±ç‡∞Ø‡±Ç‡∞ü‡±ç ‡∞∞‡∞¶‡±ç‡∞¶‡±Å)
-                        </button>
-                      </div>
-                      {adMuteRemaining > 0 && siteConfig?.ads?.globalAdsMutedUntil && (
-                        <div className="mt-3 p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs font-medium text-amber-900 flex items-center justify-between">
-                          <div>
-                            <span className="font-black text-amber-800">üõë ‡∞Ø‡∞æ‡∞°‡±ç‡∞∏‡±ç ‡∞®‡∞ø‡∞≤‡∞ø‡∞™‡∞ø‡∞µ‡±á‡∞Ø‡∞¨‡∞°‡±ç‡∞°‡∞æ‡∞Ø‡∞ø:</span>{" "}
-                            ‡∞á‡∞Ç‡∞ï‡∞æ <strong>{Math.floor(adMuteRemaining / 60)} ‡∞®‡∞ø‡∞Æ‡∞ø‡∞∑‡∞æ‡∞≤ {adMuteRemaining % 60} ‡∞∏‡±Ü‡∞ï‡∞®‡±ç‡∞≤‡±Å</strong> ‡∞Æ‡∞ø‡∞ó‡∞ø‡∞≤‡∞ø ‡∞â‡∞®‡±ç‡∞®‡∞æ‡∞Ø‡∞ø.
-                          </div>
-                          <span className="text-[10px] text-amber-700 font-mono">
-                            ‡∞Æ‡±Å‡∞ó‡∞ø‡∞∏‡±á ‡∞∏‡∞Æ‡∞Ø‡∞Ç: {new Date(siteConfig.ads.globalAdsMutedUntil).toLocaleTimeString('en-IN')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AdSense Config */}
-                <div className="bg-white border-2 border-blue-200 rounded-3xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <DollarSign className="text-blue-500" size={24} />
-                    <h5 className="font-black text-slate-800 text-lg">Google AdSense</h5>
-                  </div>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-blue-500 focus:ring-blue-500" 
-                        checked={siteConfig?.ads?.adsenseEnabled || false}
-                        onChange={async (e) => {
-                          const updatedAds = { ...(siteConfig?.ads || {}), adsenseEnabled: e.target.checked };
-                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          addToast(e.target.checked ? "AdSense Enabled" : "AdSense Disabled");
-                        }}
-                      />
-                      <span className="font-bold text-slate-700">Enable Google AdSense</span>
-                    </label>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                       <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">AdSense Client ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
-                          placeholder="e.g. ca-pub-1234567890"
-                          value={siteConfig?.ads?.adsenseClient || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseClient: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseClient: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved AdSense Client ID");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Ad Slot ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
-                          placeholder="e.g. 1234567890"
-                          value={siteConfig?.ads?.adsenseSlotSidebar || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotSidebar: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved AdSense Sidebar Slot ID");
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Ad Slot ID</label>
-                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-medium focus:border-blue-500 outline-none" 
-                          placeholder="e.g. 0987654321"
-                          value={siteConfig?.ads?.adsenseSlotInArticle || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), adsenseSlotInArticle: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved AdSense In-Article Slot ID");
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                {/* Custom Script / HTML Ads */}
-                <div className="bg-white border-2 border-green-200 rounded-3xl p-6 shadow-sm mt-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Code className="text-green-500" size={24} />
-                    <h5 className="font-black text-slate-800 text-lg">Custom HTML/JS Ads</h5>
-                  </div>
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-green-500 focus:ring-green-500" 
-                        checked={siteConfig?.ads?.customAdsEnabled || false}
-                        onChange={async (e) => {
-                          const updatedAds = { ...(siteConfig?.ads || {}), customAdsEnabled: e.target.checked };
-                          setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                          await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                          addToast(e.target.checked ? "Custom Ads Enabled" : "Custom Ads Disabled");
-                        }}
-                      />
-                      <span className="font-bold text-slate-700">Enable Custom Ads (HTML/JS)</span>
-                    </label>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                       <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Sidebar Custom Ad Code (HTML/Script)</label>
-                        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-mono focus:border-green-500 outline-none h-32" 
-                          placeholder="<script src='...'></script>"
-                          value={siteConfig?.ads?.customAdCodeSidebar || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeSidebar: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeSidebar: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved Sidebar Custom Ad");
-                          }}
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">In-Article Custom Ad Code (HTML/Script)</label>
-                        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-mono focus:border-green-500 outline-none h-32" 
-                          placeholder="<script src='...'></script>"
-                          value={siteConfig?.ads?.customAdCodeInArticle || ""}
-                          onChange={(e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeInArticle: e.target.value };
-                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
-                          }}
-                          onBlur={async (e) => {
-                            const updatedAds = { ...(siteConfig?.ads || {}), customAdCodeInArticle: e.target.value };
-                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
-                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
-                            addToast("Saved In-Article Custom Ad");
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            )}
-            {activeSubTab === "code_manager" && (
-              <CodeManager addToast={addToast} />
-            )}
-
-            {activeSubTab === "cloud_dns" && (
-              <div className="space-y-12 pb-20 fade-in slide-in-from-bottom-4 duration-700 animate-in">
-                {/* Massive Header with Glassmorphism */}
-                <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-10 lg:p-14 rounded-[48px] shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border border-white/5">
-                  <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none scale-150">
-                    <Cloud size={300} className="text-blue-400 blur-sm" />
-                  </div>
-                  <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-600/10 rounded-full blur-[100px]"></div>
-
-                  <div className="relative z-10 text-left">
-                    <div className="flex items-center gap-3 mb-6">
-                      <span className="px-4 py-1.5 bg-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] rounded-full border border-blue-500/30">
-                        Infrastructure v2
-                      </span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse"></span>
-                    </div>
-                    <h3 className="text-4xl lg:text-5xl font-black text-white tracking-tighter mb-4 leading-none">
-                      Cloud, DNS & SEO <br />
-                      <span className="text-blue-400">Control Panel</span>
-                    </h3>
-                    <p className="text-slate-400 font-medium max-w-xl text-balance leading-relaxed">
-                      Real-time infrastructure and website configuration. Manage
-                      primary cloud storage providers, monitor domain DNS
-                      propagation, and adjust search indexing presets from a
-                      single workspace.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-4 relative z-10 w-full md:w-auto">
-                    <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 flex items-center gap-6 min-w-[280px]">
-                      <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center">
-                        <Database size={24} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                          Active Pipeline
-                        </p>
-                        <p className="text-sm font-black text-white uppercase">
-                          {storageConfig === "cloudflare"
-                            ? "Cloudflare R2 (Global)"
-                            : "Firebase Hot Storage"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                  {/* Intelligent Storage Switch Card */}
-                  <div className="lg:col-span-1 bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 flex flex-col justify-between relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <HardDrive size={100} />
-                    </div>
-
-                    <div className="relative z-10">
-                      <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[28px] flex items-center justify-center mb-8 shadow-sm">
-                        <Cloud size={32} />
-                      </div>
-                      <h4 className="text-2xl font-black text-slate-800 tracking-tight mb-3">
-                        Storage Engine
-                      </h4>
-                      <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-                        Switch between Cold (R2) and Hot (Firebase) storage. All
-                        file mapping and backend translations occur
-                        automatically.
-                      </p>
-
-                      <div className="space-y-4">
-                        {[
-                          {
-                            id: "cloudflare",
-                            name: "Cloudflare R2",
-                            desc: "Infinite scaling, low cost edge storage",
-                            icon: "",
-                          },
-                          {
-                            id: "firebase",
-                            name: "Firebase Storage",
-                            desc: "Real-time, persistent hot bucket",
-                            icon: "",
-                          },
-                        ].map((node) => (
-                          <button
-                            key={node.id}
-                            onClick={async () => {
-                              if (storageConfig === node.id) return;
-                              addToast(
-                                `Migrating upload pipeline to ${node.name}...`,
-                              );
-                              try {
-                                await setDoc(
-                                  doc(db, "settings", "admin_config"),
-                                  { storageType: node.id },
-                                  { merge: true },
-                                );
-                                addToast(
-                                  `System updated: Now utilizing ${node.name}`,
-                                );
-                              } catch (err: any) {
-                                addToast(err.message);
-                              }
-                            }}
-                            className={`w-full p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden ${
-                              storageConfig === node.id
-                                ? "border-blue-600 bg-blue-50/50"
-                                : "border-slate-100 hover:border-slate-200 bg-slate-50/30"
-                            }`}
-                          >
-                            {storageConfig === node.id && (
-                              <div className="absolute top-4 right-4 text-blue-600">
-                                <ShieldCheck size={20} />
-                              </div>
-                            )}
-                            <div className="flex items-center gap-4">
-                              <span className="text-2xl">{node.icon}</span>
-                              <div>
-                                <p
-                                  className={`text-sm font-black ${storageConfig === node.id ? "text-blue-900" : "text-slate-700"}`}
-                                >
-                                  {node.name}
-                                </p>
-                                <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                                  {node.desc}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-10 p-5 bg-slate-900 rounded-3xl text-white">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,1)]"></div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Auto-Scaling Live
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-300 leading-normal">
-                        Files are served via custom edge workers for
-                        zero-latency globally.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* DNS Health Board */}
-                  <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 relative overflow-hidden">
-                      <div className="flex items-center justify-between mb-10">
-                        <div className="flex items-center gap-5 font-black">
-                          <div className="p-4 bg-indigo-50 text-indigo-600 rounded-3xl">
-                            <Globe size={28} />
-                          </div>
-                          <div>
-                            <h4 className="text-2xl text-slate-800 tracking-tight">
-                              DNS Propagation & SSL
-                            </h4>
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400">
-                              Domain: www.e-vedhika.in
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => addToast("Re-scanning DNS nodes...")}
-                          className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all"
-                        >
-                          Refresh Scan
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {[
-                          {
-                            label: "A Records",
-                            status: "Healthy",
-                            val: "76.76.21.21",
-                            color: "emerald",
-                          },
-                          {
-                            label: "CNAME",
-                            status: "Active",
-                            val: "cname.render.com",
-                            color: "indigo",
-                          },
-                          {
-                            label: "SSL Vert",
-                            status: "Encrypted",
-                            val: "DigiCert TLS v1.3",
-                            color: "blue",
-                          },
-                        ].map((item, i) => (
-                          <div
-                            key={i}
-                            className="p-6 bg-slate-50 rounded-3xl border border-slate-100"
-                          >
-                            <div className="flex justify-between items-center mb-4">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                {item.label}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 bg-${item.color}-100 text-${item.color}-700 text-[9px] font-black rounded-lg uppercase`}
-                              >
-                                {item.status}
-                              </span>
-                            </div>
-                            <p className="text-xs font-mono font-bold text-slate-700 truncate">
-                              {item.val}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="mt-8 p-6 bg-indigo-600 rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex items-center gap-5">
-                          <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <ShieldCheck size={28} />
-                          </div>
-                          <div className="text-left">
-                            <h5 className="text-lg font-black leading-none mb-1">
-                              Advanced DNS Proxy
-                            </h5>
-                            <p className="text-xs font-bold text-indigo-100">
-                              Active protection against L7 DDoS attacks via Edge
-                              Gateway.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                          Secured
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SEO Radar Board */}
-                    <div className="bg-slate-900 rounded-[40px] shadow-2xl p-8 relative overflow-hidden border border-slate-800">
-                      <div className="absolute right-0 top-0 p-8 opacity-10 pointer-events-none rotate-12">
-                        <Search size={250} className="text-emerald-500" />
-                      </div>
-
-                      <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-                        <div className="flex items-center gap-6">
-                          <div className="w-20 h-20 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-[32px] flex items-center justify-center shrink-0">
-                            <Target size={36} />
-                          </div>
-                          <div className="text-left">
-                            <h4 className="text-3xl font-black text-white tracking-tighter mb-1">
-                              SEO Health Index
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,1)]"></span>
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
-                                Live Search Optimization Grader
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <div className="text-center">
-                            <p className="text-[42px] font-black text-white leading-none tracking-tighter">
-                              98
-                              <span className="text-emerald-500 text-2xl">
-                                %
-                              </span>
-                            </p>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">
-                              Overall Score
-                            </p>
-                          </div>
-                          <div className="w-px h-12 bg-slate-800"></div>
-                          <div className="text-center">
-                            <p className="text-[42px] font-black text-white leading-none tracking-tighter">
-                              0.8
-                              <span className="text-blue-400 text-2xl">s</span>
-                            </p>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">
-                              LCP Speed
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
-                        {[
-                          {
-                            label: "Meta Tags",
-                            val: "Optimized",
-                            color: "emerald",
-                          },
-                          {
-                            label: "Open Graph",
-                            val: "Configured",
-                            color: "blue",
-                          },
-                          {
-                            label: "Keywords",
-                            val: "Trending",
-                            color: "indigo",
-                          },
-                          { label: "Sitemap", val: "Indexed", color: "amber" },
-                        ].map((m, i) => (
-                          <div
-                            key={i}
-                            className="p-4 bg-white/5 border border-white/10 rounded-2xl"
-                          >
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                              {m.label}
-                            </p>
-                            <p className="text-sm font-black text-white tracking-tight">
-                              {m.val}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() =>
-                          addToast("Forcing search engine indexing ping...")
-                        }
-                        className="mt-8 relative z-10 w-full py-5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black rounded-3xl text-[12px] uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all"
-                      >
-                        Resubmit Sitemaps to Global Crawlers
-                      </button>
-                    </div>
-                  </div>
-                <div className="lg:col-span-3 w-full mt-12 mb-8">
-                  <CloudStorageManager storageConfig={storageConfig} />
-                </div>
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "locations" && (
-              <LocationManager
-                districtsData={districtsData}
-                addToast={addToast}
-              />
-            )}
-
-            {activeSubTab === "custom_menus" && (
-              <CustomMenuAdmin 
-                customMenus={customMenus}
-                customMenuCards={customMenuCards}
-                addToast={addToast}
-              />
-            )}
-
-            {["landing_page_config", "seo_meta", "page_descriptions"].includes(activeSubTab) && (
-              <div className="mb-10 overflow-x-auto custom-scrollbar pb-2">
-                <div className="flex gap-3">
-                  {[
-                    { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
-                    { id: "seo_meta", label: "SEO & Meta Tags", icon: Globe },
-                    { id: "page_descriptions", label: "Page Descriptions", icon: FileBadge },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveSubTab(tab.id)}
-                      className={`flex items-center gap-2.5 px-6 py-4 rounded-[20px] font-black text-[11px] uppercase tracking-widest whitespace-nowrap transition-all ${
-                        activeSubTab === tab.id
-                          ? "bg-primary text-white shadow-xl shadow-primary/20"
-                          : "bg-white text-slate-500 border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
-                    >
-                      <tab.icon size={18} />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {activeSubTab === "landing_page_config" && (
-              <LandingPageConfigAdmin
-                landingPageData={landingPageData}
-                fetchLandingPageData={fetchLandingPageData}
-                addToast={addToast}
-              />
-            )}
-            {activeSubTab === "seo_meta" && (
-              <SeoMetaAdmin addToast={addToast} />
-            )}
-            {activeSubTab === "page_descriptions" && (
-              <PageDescriptionsAdmin addToast={addToast} />
-            )}
-          </div>
-        )}
-      </main>
-      
-    </div>
-  );
-}
-
-function EditorPanel(props: any) {
-  return <AdminPanel {...props} isEditorMode={true} hasPostsOnly={true} />;
-}
-
-function StatCard({
-  label,
-  val,
-  color,
-  subText,
-}: {
-  label: string;
-  val: number;
-  color: string;
-  subText?: string;
-}) {
-  const themes: any = {
-    indigo: { bg: "#eef2ff", border: "#e0e7ff", text: "#3730a3", icon: Clock },
-    rose: {
-      bg: "#fff1f2",
-      border: "#ffe4e6",
-      text: "#9f1239",
-      icon: AlertTriangle,
-    },
-    blue: { bg: "#eff6ff", border: "#bfdbfe", text: "#1e40af", icon: Users },
-    red: {
-      bg: "#fef2f2",
-      border: "#fecaca",
-      text: "#991b1b",
-      icon: AlertOctagon,
-    },
-    green: {
-      bg: "#f0fdf4",
-      border: "#bbf7d0",
-      text: "#166534",
-      icon: CheckCircle2,
-    },
-    emerald: {
-      bg: "#ecfdf5",
-      border: "#a7f3d0",
-      text: "#065f46",
-      icon: CheckCircle2,
-    },
-    cyan: { bg: "#ecfeff", border: "#a5f3fc", text: "#0e7490", icon: Info },
-    amber: {
-      bg: "#fffbeb",
-      border: "#fde68a",
-      text: "#92400e",
-      icon: ClipboardList,
-    },
-    purple: { bg: "#faf5ff", border: "#e9d5ff", text: "#6b21a8", icon: Zap },
-    slate: { bg: "#f8fafc", border: "#e2e8f0", text: "#334155", icon: Hash },
-  };
-  const theme = themes[color] || themes.blue;
-  const Icon = theme.icon;
-
-  return (
-    <motion.div
-      whileHover={{ scale: 1.02, translateY: -4 }}
-      className="p-4 rounded-[24px] border border-transparent shadow-sm transition-all hover:shadow-lg group cursor-default h-full flex flex-col justify-between"
-      style={{ background: theme.bg, borderColor: theme.border }}
-    >
-      <div>
-        <div className="flex justify-between items-start mb-2">
-          <div
-            className="text-[10px] font-black uppercase tracking-widest opacity-60"
-            style={{ color: theme.text }}
-          >
-            {label}
-          </div>
-          <div className="p-1.5 rounded-lg bg-white/50 shadow-inner group-hover:bg-white transition-colors">
-            <Icon size={14} style={{ color: theme.text }} strokeWidth={2.5} />
-          </div>
-        </div>
-        <div
-          className="text-3xl font-black tracking-tight"
-          style={{ color: theme.text }}
-        >
-          {val}
-        </div>
-      </div>
-
-      {subText ? (
-        <div className="mt-2 pt-2 border-t border-current/10 flex items-center gap-1.5 overflow-hidden">
-          <Clock size={10} style={{ color: theme.text }} className="shrink-0" />
-          <span
-            className="text-[9px] font-black uppercase text-current whitespace-nowrap opacity-60"
-            style={{ color: theme.text }}
-          >
-            {subText}
-          </span>
-        </div>
-      ) : (
-        <div
-          className="h-1 w-8 rounded-full mt-3 bg-current opacity-20"
-          style={{ color: theme.text }}
-        ></div>
-      )}
-    </motion.div>
-  );
-}
-
-function safeStringify(obj: any): string {
-  try {
-    return JSON.stringify(
-      obj,
-      (key, value) => (typeof value === "bigint" ? value.toString() : value),
-      2,
-    );
-  } catch (e) {
-    return String(obj);
-  }
-}
-
-function SmartAssistant({
-  title,
-  placeholder,
-  systemInstruction,
-  icon: Icon,
-}: {
-  title: string;
-  placeholder: string;
-  systemInstruction: string;
-  icon: any;
-}) {
-  const [input, setInput] = useState("");
-  const [response, setResponse] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [deepThinking, setDeepThinking] = useState(false);
-  const [aiEngine, setAiEngine] = useState<"gemini" | "chatgpt">("chatgpt");
-
-  const generateFallbackAdminResponse = (query: string): string => {
-    const q = query.toLowerCase();
-    if (q.includes("seo") || q.includes("meta") || q.includes("‡∞Æ‡±ç‡∞Ø‡∞æ‡∞™‡∞ø‡∞Ç‡∞ó‡±ç") || q.includes("‡∞ü‡±á‡∞ó‡±ç")) {
-      return `### üåê **E-Vedhika SEO & Dynamic Meta Tag Manager:**\n\n- **‡∞≤‡±ä‡∞ï‡±á‡∞∑‡∞®‡±ç:** Admin Control Panel > Sidebar > **Operations & Content** > **"SEO & Dynamic Meta Tags"**\n- **‡∞µ‡∞ø‡∞≠‡∞æ‡∞ó‡∞Ç:** ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞Æ‡±Ä‡∞∞‡±Å ‡∞ì‡∞™‡±Ü‡∞®‡±ç ‡∞ó‡±ç‡∞∞‡∞æ‡∞´‡±ç (OG) ‡∞á‡∞Æ‡±á‡∞ú‡±ç, SEO ‡∞ü‡±à‡∞ü‡∞ø‡∞≤‡±ç, ‡∞µ‡∞ø‡∞µ‡∞∞‡∞£ (Description), ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å Keyword Tag ‡∞≤‡∞®‡±Å ‡∞®‡±á‡∞∞‡±Å‡∞ó‡∞æ ‡∞°‡±à‡∞®‡∞Æ‡∞ø‡∞ï‡±ç‚Äå‡∞ó‡∞æ ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡∞µ‡∞ö‡±ç‡∞ö‡±Å.`;
-    }
-    if (q.includes("error") || q.includes("ide") || q.includes("code") || q.includes("‡∞é‡∞∞‡±ç‡∞∞‡∞∞‡±ç")) {
-      return `### üíª **Enterprise Code Manager & IDE ‡∞ó‡±à‡∞°‡±ç:**\n\n- **‡∞™‡∞∞‡∞ø‡∞∑‡±ç‡∞ï‡∞æ‡∞∞‡∞Ç:** Code Manager ‡∞≤‡±ã CSS, JS ‡∞≤‡±á‡∞¶‡∞æ HTML ‡∞ï‡±ã‡∞°‡±ç‚Äå‡∞®‡∞ø ‡∞∏‡∞µ‡∞∞‡∞ø‡∞Ç‡∞ö‡∞ø‡∞®‡∞™‡±ç‡∞™‡±Å‡∞°‡±Å ‡∞≤‡±ã‡∞ï‡∞≤‡±ç ‡∞¨‡±ç‡∞∞‡±å‡∞ú‡∞∞‡±ç ‡∞∏‡±ç‡∞ü‡±ã‡∞∞‡±á‡∞ú‡±ç & ‡∞ï‡±ç‡∞≤‡±å‡∞°‡±ç‚Äå‡∞≤‡±ã ‡∞Ü‡∞ü‡±ã‡∞Æ‡±á‡∞ü‡∞ø‡∞ï‡±ç‚Äå‡∞ó‡∞æ ‡∞∏‡±á‡∞µ‡±ç ‡∞Ö‡∞Ø‡∞ø ‡∞≤‡±à‡∞µ‡±ç‚Äå‡∞≤‡±ã ‡∞Ö‡∞™‡±ç‡∞≤‡±à ‡∞Ö‡∞µ‡±Å‡∞§‡±Å‡∞Ç‡∞¶‡∞ø.\n- ‡∞™‡±ç‡∞∞‡∞Æ‡±á‡∞Ø‡∞Ç ‡∞≤‡±á‡∞ï‡±Å‡∞Ç‡∞°‡∞æ ‡∞∏‡∞∞‡∞ø‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞ï‡±ã‡∞°‡±ç‚Äå‡∞®‡∞ø 'Save & Deploy Live' ‡∞¨‡∞ü‡∞®‡±ç‚Äå‡∞™‡±à ‡∞ï‡±ç‡∞≤‡∞ø‡∞ï‡±ç ‡∞ö‡±á‡∞∏‡∞ø ‡∞ï‡±ç‡∞∑‡∞£‡∞æ‡∞≤‡±ç‡∞≤‡±ã ‡∞Ö‡∞™‡±ç‚Äå‡∞°‡±á‡∞ü‡±ç ‡∞ö‡±á‡∞Ø‡∞µ‡∞ö‡±ç‡∞ö‡±Å.`;
-    }
-    return `### ü§ñ **E-Vedhika Admin Assistant (${aiEngine === "chatgpt" ? "ChatGPT Engine" : "Gemini 2.5 Pro"}):**\n\n‡∞Æ‡±Ä‡∞∞‡±Å ‡∞Ö‡∞°‡∞ø‡∞ó‡∞ø‡∞® **"${query}"** ‡∞™‡±ç‡∞∞‡∞∂‡±ç‡∞®‡∞ï‡±Å ‡∞∏‡∞Ç‡∞¨‡∞Ç‡∞ß‡∞ø‡∞Ç‡∞ö‡∞ø‡∞® ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤‡±Å:\n\n1. **‡∞∏‡∞ø‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞∏‡±ç‡∞•‡∞ø‡∞§‡∞ø (System Status):** E-Vedhika ‡∞∏‡∞∞‡±ç‡∞µ‡∞∞‡±ç‡∞≤‡±Å ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞°‡±á‡∞ü‡∞æ‡∞¨‡±á‡∞∏‡±ç ‡∞≤‡±à‡∞µ‡±ç ‡∞Æ‡±ã‡∞°‡±ç‚Äå‡∞≤‡±ã ‡∞∏‡∞ï‡±ç‡∞∞‡∞Æ‡∞Ç‡∞ó‡∞æ ‡∞™‡∞®‡∞ø‡∞ö‡±á‡∞∏‡±ç‡∞§‡±Å‡∞®‡±ç‡∞®‡∞æ‡∞Ø‡∞ø.\n2. **‡∞™‡∞∞‡∞ø‡∞™‡∞æ‡∞≤‡∞® ‡∞∏‡±Ü‡∞ü‡±ç‡∞ü‡∞ø‡∞Ç‡∞ó‡±ç‚Äå‡∞≤‡±Å (Admin Controls):** Control Panel ‡∞¶‡±ç‡∞µ‡∞æ‡∞∞‡∞æ Page Builder, Dynamic Menus, SEO Meta Tags, ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å Security Logs ‡∞≤‡∞®‡±Å ‡∞∏‡±Å‡∞≤‡∞≠‡∞Ç‡∞ó‡∞æ ‡∞®‡∞ø‡∞∞‡±ç‡∞µ‡∞π‡∞ø‡∞Ç‡∞ö‡∞µ‡∞ö‡±ç‡∞ö‡±Å.\n3. **‡∞∏‡∞π‡∞æ‡∞Ø‡∞Ç (Support):** ‡∞Æ‡∞∞‡∞ø‡∞Ç‡∞§ ‡∞∏‡∞æ‡∞Ç‡∞ï‡±á‡∞§‡∞ø‡∞ï ‡∞∏‡∞π‡∞æ‡∞Ø‡∞Ç ‡∞ï‡±ã‡∞∏‡∞Ç Live System Health Center ‡∞≤‡±ã ‡∞∞‡±ã‡∞ó‡∞®‡∞ø‡∞∞‡±ç‡∞ß‡∞æ‡∞∞‡∞£ ‡∞∞‡∞®‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø.`;
-  };
-
-  const handleAsk = async () => {
-    if (!input.trim()) return;
-    setLoading(true);
-    setResponse("");
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          prompt: input, 
-          systemInstruction: systemInstruction + `\nAI Engine selected by user: ${aiEngine}`,
-          modelType: deepThinking ? "complex" : "general"
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (data && data.text && !data.isError) {
-        setResponse(data.text);
-      } else if (data && data.text) {
-        setResponse(data.text + "\n\n---\n\n" + generateFallbackAdminResponse(input));
-      } else {
-        setResponse(generateFallbackAdminResponse(input));
-      }
-    } catch (error) {
-      console.error("AI Error:", error);
-      setResponse(generateFallbackAdminResponse(input));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 border-b border-slate-200/60 pb-2">
-        <div className="flex items-center gap-2">
-          <Icon size={18} className="text-primary" />
-          <h4 className="font-bold text-sm text-slate-800">{title}</h4>
-        </div>
-
-        {/* AI Engine Selection */}
-        <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setAiEngine("chatgpt")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              aiEngine === "chatgpt" 
-                ? "bg-emerald-600 text-white shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            ü§ñ ChatGPT Engine
-          </button>
-          <button
-            type="button"
-            onClick={() => setAiEngine("gemini")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              aiEngine === "gemini" 
-                ? "bg-indigo-600 text-white shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            ‚ú® Gemini 2.5 Pro
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <input
-            className="flex-1 bg-white border border-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder={placeholder}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-          />
-          <button
-            aria-label="Ask assistant"
-            onClick={handleAsk}
-            disabled={loading}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl disabled:opacity-50 cursor-pointer transition-colors font-bold text-xs flex items-center justify-center gap-1 shrink-0"
-          >
-            {loading ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <>
-                <span>‡∞Ö‡∞°‡±Å‡∞ó‡±Å</span>
-                <Send size={16} />
-              </>
-            )}
-          </button>
-        </div>
-        <div className="flex items-center gap-2 px-1">
-          <input
-            type="checkbox"
-            id="deep-thinking-toggle"
-            checked={deepThinking}
-            onChange={(e) => setDeepThinking(e.target.checked)}
-            className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
-          />
-          <label htmlFor="deep-thinking-toggle" className="text-xs font-bold text-slate-600 cursor-pointer">
-            ‚ú® Deep Thinking / Detailed System Audit Mode
-          </label>
-        </div>
-      </div>
-
-      {response && (
-        <div className="mt-3 p-4 bg-white rounded-xl text-xs text-slate-700 border border-slate-200/80 shadow-xs markdown-body leading-relaxed">
-          <ReactMarkdown rehypePlugins={[rehypeRaw]}>{response}</ReactMarkdown>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function UsersListModal({
-  title,
-  uids,
-  allUsers,
-  onClose,
-  anonymousCount = 0,
-}: {
-  title: string;
-  uids: string[];
-  allUsers: UserProfile[];
-  onClose: () => void;
-  anonymousCount?: number;
-}) {
-  const usersList = uids.map(
-    (uid) =>
-      allUsers.find((u) => u.id === uid) || {
-        id: uid,
-        username: "Unknown User",
-        name: "",
-        surname: "",
-        designation: "",
-        email: "",
-      },
-  );
-
-  return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-slate-100">
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-white sticky top-0 z-10">
-          <h3 className="font-black text-primary text-lg uppercase tracking-widest flex items-center gap-2">
-            {title}{" "}
-            <span className="text-slate-400 text-xs bg-slate-100 px-2 py-1 rounded-lg">
-              {uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Anon` : ""}
-            </span>
-          </h3>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-all"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1">
-          {usersList.length === 0 && anonymousCount === 0 && (
-            <p className="text-slate-400 text-xs font-bold text-center py-8 uppercase">
-              No users found
-            </p>
-          )}
-          {anonymousCount > 0 && (
-            <div className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-dashed border-slate-200">
-               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase overflow-hidden text-sm">
-                   <User size={16} />
-                 </div>
-                 <div>
-                   <h4 className="text-sm font-black text-slate-800 leading-tight">
-                     Anonymous Visitors
-                   </h4>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                     Session Views
-                   </p>
-                 </div>
-               </div>
-               <span className="text-xs font-black bg-slate-200 text-slate-600 px-3 py-1 rounded-xl">
-                 +{anonymousCount}
-               </span>
-            </div>
-          )}
-          {usersList.map((u, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-100/50"
-            >
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-sm border border-blue-200">
-                  {(u as any).photoURL ? (
-                    <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-black text-slate-800 leading-tight truncate">
-                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
-                  </h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">
-                    {u.designation || "User"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DigitalWorkspaceSection({
-  addToast,
-  user,
-  activeTool,
-  setActiveTool,
-  pageDescriptions,
-}: {
-  addToast: (s: string) => void;
-  user: FirebaseUser | null;
-  activeTool: string | null;
-  setActiveTool: (tool: string | null) => void;
-  pageDescriptions: Record<string, { title: string; description: string }>;
-}) {
-  const tools = [
-    {
-      id: "dsr",
-      title: "DSR Analyzer",
-      icon: BarChart3,
-      desc: "Analyze Daily Status Reports",
-    },
-    {
-      id: "multiday",
-      title: "Multi-Day attendance",
-      icon: Layers,
-      desc: "Multiple Attendance Records",
-    },
-    {
-      id: "training",
-      title: "Digital Training",
-      icon: GraduationCap,
-      desc: "Workflows & Tutorials",
-    },
-    {
-      id: "pract",
-      title: "Knowledge Hub",
-      icon: Book,
-      desc: "‡∞®‡∞æ‡∞≤‡±Ü‡∞°‡±ç‡∞ú‡±ç ‡∞π‡∞¨‡±ç (PR Act Guide)",
-    },
-    {
-      id: "monthly-activity",
-      title: "Monthly Activity Data",
-      icon: FileSpreadsheet,
-      desc: "Format Monthly Activity Reports",
-    },
-    {
-      id: "excel-merge",
-      title: "Excel File Merger",
-      icon: FileSpreadsheet,
-      desc: "Merge Multiple Excel Files",
-    },
-  ];
-
-  return (
-    <div className="section-card card-blue relative">
-      <div className="flex justify-between items-start mb-1">
-        <div>
-          <motion.h2
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            style={{
-              fontSize: "20px",
-              fontWeight: 800,
-              color: "var(--primary)",
-              marginBottom: "5px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <LayoutDashboard size={24} style={{ color: "#0891b2" }} /> Mana
-            Panchayath
-          </motion.h2>
-          <p
-            style={{ fontSize: "12px", color: "#64748b", marginBottom: "20px" }}
-          >
-            Advanced tools for PR & RD Officers.
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            const sharePath = activeTool ? `workspace/${activeTool}` : "workspace";
-            const url = `${getSiteBaseUrl()}/?tab=${sharePath}`;
-            const toolObj = tools.find((t) => t.id === activeTool);
-            const title = toolObj ? `${toolObj.title} - E-Vedhika` : "Mana Panchayath - E-Vedhika";
-            handleShare(
-              title,
-              "Access tools on Mana Panchayath - E-Vedhika!",
-              url,
-              () => addToast("Link copied!"),
-            );
-          }}
-          className="flex items-center gap-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider h-fit mt-1"
-          title="Share Mana Panchayath"
-        >
-          <Share2 size={16} /> <span className="hidden sm:inline">Share</span>
-        </button>
-      </div>
-
-      <div className="mana-grid">
-        {tools.map((t) => (
-          <div
-            key={t.id}
-            className="mana-card"
-            onClick={() => setActiveTool(t.id)}
-          >
-            <div
-              style={{
-                color: "var(--primary)",
-                marginBottom: "10px",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <t.icon size={32} />
-            </div>
-            <h4>{t.title}</h4>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {activeTool && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-0 z-[2000] bg-slate-50 flex flex-col h-[100dvh] overflow-hidden"
-          >
-            <div className="flex-none p-4 bg-white border-b border-slate-200 shadow-sm flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-xl font-bold text-slate-800">
-                    {tools.find((t) => t.id === activeTool)?.title}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const currentToolObj = tools.find((t) => t.id === activeTool);
-                      const url = `${getSiteBaseUrl()}/?tab=workspace/${activeTool}`;
-                      handleShare(
-                        `${currentToolObj?.title || 'Tool'} - E-Vedhika`,
-                        `Access ${currentToolObj?.title || 'tool'} on Mana Panchayath - E-Vedhika!`,
-                        url,
-                        () => addToast("Direct link copied!"),
-                      );
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors font-semibold text-xs sm:text-sm"
-                    title="Share direct link to this tool"
-                  >
-                    <Share2 size={16} />
-                    <span>Share Link</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTool(null)}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors font-medium text-xs sm:text-sm"
-                  >
-                    <ArrowLeft size={18} />
-                    Back
-                  </button>
-                </div>
-              </div>
-              <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} />
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative">
-              {activeTool === "dsr" && (
-                <DSRAnalyzer addToast={addToast} user={user} />
-              )}
-              {activeTool === "multiday" && (
-                <MultiDayAnalyzer addToast={addToast} user={user} />
-              )}
-              {activeTool === "training" && (
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "15px",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        color: "var(--primary)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        margin: 0,
-                      }}
-                    >
-                      <GraduationCap /> Digital Workflows
-                    </h3>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "10px 0",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "15px",
-                    }}
-                  >
-                    {[1, 2, 3].map((step) => (
-                      <div
-                        key={step}
-                        style={{ display: "flex", alignItems: "center", gap: "15px" }}
-                      >
-                        <div
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            background: "var(--primary)",
-                            color: "white",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: "800",
-                          }}
-                        >
-                          {step}
-                        </div>
-                        <div
-                          style={{
-                            flex: 1,
-                            background: "#f8fafc",
-                            padding: "15px",
-                            borderRadius: "12px",
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <span style={{ fontWeight: 700 }}>
-                            Workflow Step {step}
-                          </span>
-                          <p
-                            style={{
-                              fontSize: "12px",
-                              color: "#64748b",
-                              margin: "4px 0 0 0",
-                            }}
-                          >
-                            Detailed tutorial content for step {step} will appear
-                            here.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {activeTool === "pract" && <PRActHub user={user} />}
-              {activeTool === "monthly-activity" && (
-                <MonthlyActivityFormatter addToast={addToast} />
-              )}
-              {activeTool === "excel-merge" && (
-                <ExcelMerger user={user} addToast={addToast} />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function FormsHub({
-  addToast,
-  user,
-}: {
-  addToast: (s: string) => void;
-  user: FirebaseUser | null;
-}) {
-  const [forms, setForms] = useState<any[]>([]);
-  const [showUpload, setShowUpload] = useState(false);
-  const [formName, setFormName] = useState("");
-  const [formPurpose, setFormPurpose] = useState("");
-  const [formUsage, setFormUsage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, "forms"), orderBy("time", "desc")),
-      (snap) => {
-        const fArr: any[] = [];
-        snap.forEach((d) => fArr.push({ id: d.id, ...d.data() }));
-        setForms(fArr);
-      },
-      (e) => console.error("Forms Error:", e),
-    );
-    return () => unsub();
-  }, []);
-
-  const handleUpload = async () => {
-    if (requireLoginAlert(user)) return;
-    if (!formName.trim() || !formPurpose.trim() || !formUsage.trim())
-      return addToast("Please fill all details to upload.");
-    setSubmitting(true);
-    try {
-      await addDoc(collection(db, "forms"), {
-        name: formName,
-        purpose: formPurpose,
-        usage: formUsage,
-        uid: user.uid,
-        userName: user.displayName || user.email || "User",
-        time: Date.now(),
-      });
-      addToast("Form uploaded successfully!");
-      setFormName("");
-      setFormPurpose("");
-      setFormUsage("");
-    } catch (e: any) {
-      addToast("Error uploading: " + e.message);
-    }
-    setSubmitting(false);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-        <div>
-          <h3 className="font-bold">Forms Hub</h3>
-          <p className="text-sm text-slate-500">
-            Download essential technical forms or contribute new ones.
-          </p>
-        </div>
-        <button
-          aria-label="Share Form"
-          onClick={() => {
-            if (requireLoginAlert(user)) return;
-            setShowUpload(!showUpload);
-          }}
-          className="bg-primary text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 text-sm hover:bg-primary-light transition-all"
-        >
-          <Upload size={16} /> Share Form
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {showUpload && user && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm mb-4 space-y-3">
-              <h4 className="font-black text-sm uppercase text-slate-600 mb-2">
-                Upload New Form
-              </h4>
-              <input
-                type="text"
-                placeholder="Form Name (e.g. DSR Leave Template)"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="w-full bg-slate-50 p-3 rounded-xl outline-none focus:border-primary/50 border border-slate-200 text-sm font-medium"
-              />
-              <textarea
-                placeholder="What is this form for?"
-                value={formPurpose}
-                onChange={(e) => setFormPurpose(e.target.value)}
-                className="w-full bg-slate-50 p-3 rounded-xl outline-none focus:border-primary/50 border border-slate-200 text-sm h-24 custom-scrollbar"
-              />
-              <textarea
-                placeholder="Who uses it and how is it used?"
-                value={formUsage}
-                onChange={(e) => setFormUsage(e.target.value)}
-                className="w-full bg-slate-50 p-3 rounded-xl outline-none focus:border-primary/50 border border-slate-200 text-sm h-24 custom-scrollbar"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] text-slate-400 font-bold uppercase w-2/3">
-                  Note: All uploaded forms are publicly visible and verified by
-                  Admin.
-                </p>
-                <button
-                  aria-label="Publish Form"
-                  disabled={submitting}
-                  onClick={handleUpload}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl disabled:opacity-50 text-sm transition-colors"
-                >
-                  {submitting ? "Sharing..." : "Publish Form"}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="grid gap-4">
-        {forms.length === 0 ? (
-          <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-            <p className="text-slate-400 font-bold">No forms uploaded yet.</p>
-          </div>
-        ) : (
-          forms.map((f) => (
-            <div
-              key={f.id}
-              className="p-4 bg-white border border-slate-200 rounded-2xl hover:shadow-md transition-shadow group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center font-black">
-                    
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 leading-tight">
-                      {f.name}
-                    </h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      By {f.userName}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  aria-label="Download form"
-                  onClick={() => addToast("Starting download...")}
-                  className="p-2 bg-slate-50 hover:bg-primary hover:text-white text-slate-600 rounded-xl transition-all"
-                >
-                  <Download size={18} />
-                </button>
-              </div>
-              <div className="space-y-2 pt-3 border-t border-slate-100">
-                <div>
-                  <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-                    Purpose
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {f.purpose}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                    Usage Guide
-                  </span>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {f.usage}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DirectorySection({ allUsers }: { allUsers: UserProfile[] }) {
-  const [q, setQ] = useState("");
-  const [distFilter, setDistFilter] = useState("");
-  const [mandalFilter, setMandalFilter] = useState("");
-
-  const districts = [
-    ...new Set(allUsers.map((u) => u.district).filter(Boolean)),
-  ].sort() as string[];
-  const mandals = distFilter
-    ? ([
-        ...new Set(
-          allUsers
-            .filter((u) => u.district === distFilter)
-            .map((u) => u.mandal)
-            .filter(Boolean),
-        ),
-      ].sort() as string[])
-    : [];
-
-  const filtered = allUsers.filter((u) => {
-    const term = q.toLowerCase();
-    const matchesSearch =
-      (u.name || "").toLowerCase().includes(term) ||
-      (u.surname || "").toLowerCase().includes(term) ||
-      (u.designation || "").toLowerCase().includes(term);
-
-    const matchesDist = !distFilter || u.district === distFilter;
-    const matchesMandal = !mandalFilter || u.mandal === mandalFilter;
-
-    return matchesSearch && matchesDist && matchesMandal;
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="section-card card-blue !p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <Users size={100} />
-        </div>
-        <h2 className="text-3xl font-black text-primary mb-2 flex items-center gap-3">
-           ‡∞∏‡∞≠‡±ç‡∞Ø‡±Å‡∞≤ ‡∞°‡±à‡∞∞‡±Ü‡∞ï‡±ç‡∞ü‡∞∞‡±Ä{" "}
-          <span className="text-slate-400 text-sm font-bold">
-            (Member Directory)
-          </span>
-        </h2>
-        <p className="text-sm font-bold text-slate-500">
-          ‡∞™‡∞Ç‡∞ö‡∞æ‡∞Ø‡∞§‡±Ä ‡∞∞‡∞æ‡∞ú‡±ç ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞ó‡±ç‡∞∞‡∞æ‡∞Æ‡±Ä‡∞£‡∞æ‡∞≠‡∞ø‡∞µ‡±É‡∞¶‡±ç‡∞ß‡∞ø ‡∞Ö‡∞ß‡∞ø‡∞ï‡∞æ‡∞∞‡±Å‡∞≤ ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤‡±Å.
-        </p>
-
-        <div className="mt-8 flex flex-col md:flex-row items-center gap-4">
-          <div className="flex-1 flex items-center gap-4 bg-white/50 backdrop-blur-sm p-4 rounded-3xl border border-white/20 shadow-inner w-full">
-            <Search size={20} className="text-slate-400" />
-            <input
-              type="text"
-              placeholder="‡∞™‡±á‡∞∞‡±Å ‡∞≤‡±á‡∞¶‡∞æ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞¶‡±ç‡∞µ‡∞æ‡∞∞‡∞æ ‡∞µ‡±Ü‡∞§‡∞ï‡∞Ç‡∞°‡∞ø (Search by name or post...)"
-              className="!bg-transparent !border-none !p-0 !m-0 focus:!ring-0 text-sm w-full font-bold text-primary placeholder:text-slate-400"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-
-          <div className="flex gap-3 w-full md:w-auto">
-            <select
-              value={distFilter}
-              onChange={(e) => {
-                setDistFilter(e.target.value);
-                setMandalFilter("");
-              }}
-              className="bg-white px-4 py-3 rounded-2xl border border-slate-200 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[140px]"
-            >
-              <option value="">‡∞Ö‡∞®‡±ç‡∞®‡∞ø ‡∞ú‡∞ø‡∞≤‡±ç‡∞≤‡∞æ‡∞≤‡±Å (All Districts)</option>
-              {districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <select
-              value={mandalFilter}
-              onChange={(e) => setMandalFilter(e.target.value)}
-              disabled={!distFilter}
-              className="bg-white px-4 py-3 rounded-2xl border border-slate-200 text-[11px] font-black uppercase tracking-wider outline-none focus:ring-2 focus:ring-primary/20 transition-all min-w-[140px] disabled:opacity-50"
-            >
-              <option value="">‡∞Æ‡∞Ç‡∞°‡∞≤‡∞Ç ‡∞µ‡∞æ‡∞∞‡±Ä‡∞ó‡∞æ (Mandal Wise)</option>
-              {mandals.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.length > 0 ? (
-          filtered.map((u) => (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              key={u.id}
-              className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/20 group hover:border-primary/20 transition-all flex flex-col h-full"
-            >
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-md overflow-hidden shrink-0">
-                  {u.photoURL ? (
-                    <img
-                      src={u.photoURL}
-                      alt={u.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <User size={30} className="m-auto mt-3 text-slate-200" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-black text-primary text-base truncate leading-tight">
-                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || "Active Member"}
-                  </h4>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 truncate">
-                    {u.designation || "PR Officer"}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-                      Active Verified
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 flex-1">
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                  <Building size={16} className="text-slate-400" />
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                      Workplace
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700 leading-tight">
-                      {u.office ||
-                        u.village ||
-                        (u.mandal ? `${u.mandal} Office` : "General Office")}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
-                  <Flag size={16} className="text-slate-400" />
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                      Jurisdiction
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700 leading-tight">
-                      {u.mandal
-                        ? `${u.mandal}, ${u.district}`
-                        : u.district || "Undefined Area"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-5 border-t border-slate-50 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">
-                    Contact
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    {u.mobile
-                      ? `+91 ${u.mobile.substring(0, 5)}...`
-                      : "Not Public"}
-                  </span>
-                </div>
-                <button
-                  aria-label="View Card"
-                  onClick={() => {
-                    Swal.fire({
-                      title: `<div class="font-black text-primary p-2">${u.name || ""} ${u.surname || ""}</div>`,
-                      html: `
-                      <div class="text-left space-y-4 p-4">
-                        <div class="grid grid-cols-2 gap-4 mt-6">
-                          <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                             <span class="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Mandal</span>
-                             <span class="text-xs font-bold text-primary">${u.mandal || "N/A"}</span>
-                          </div>
-                          <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                             <span class="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Village</span>
-                             <span class="text-xs font-bold text-primary">${u.village || "N/A"}</span>
-                          </div>
-                        </div>
-                      </div>
-                    `,
-                      confirmButtonText: "Great!",
-                      confirmButtonColor: "#0d3b66",
-                      customClass: {
-                        popup: "rounded-[32px] border-none",
-                        confirmButton:
-                          "rounded-2xl px-10 py-3 font-black uppercase text-xs",
-                      },
-                    });
-                  }}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg active:scale-95"
-                >
-                  View Card
-                </button>
-              </div>
-            </motion.div>
-          ))
-        ) : (
-          <div className="col-span-full py-20 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-100">
-            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search size={24} className="text-slate-300" />
-            </div>
-            <h3 className="font-black text-slate-400 uppercase tracking-widest">
-              No Members Found
-            </h3>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-function StatusCell({ status }: { status: string }) {
-  if (status === "P-I")
-    return (
-      <span
-        className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black border border-emerald-200"
-        title="Present (Intime: <= 9:00 AM)"
-      >
-        ‚úÖ Attendance in time
-      </span>
-    );
-  if (status === "P-L")
-    return (
-      <span
-        className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-black border border-orange-200"
-        title="Present (Late: > 9:00 AM)"
-      >
-        ‚ö†Ô∏è Late Attendance
-      </span>
-    );
-  if (status === "P")
-    return (
-      <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black border border-emerald-200">
-        ‚úÖ PRESENT
-      </span>
-    );
-  if (status === "A")
-    return (
-      <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[10px] font-black border border-rose-200">
-        ‚ùå ABSENT
-      </span>
-    );
-  if (status === "M")
-    return (
-      <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-[10px] font-black border border-cyan-200">
-         MEETING
-      </span>
-    );
-  if (status === "T")
-    return (
-      <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black border border-amber-200">
-         TRAINING
-      </span>
-    );
-  if (status === "L")
-    return (
-      <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-[10px] font-black border border-slate-200">
-         LEAVE
-      </span>
-    );
-  return <span className="text-slate-300 font-bold">-</span>;
-}
-
-function MultiDayAnalyzer({
-  addToast,
-  user,
-}: {
-  addToast: (s: string) => void;
-  user: any;
-}) {
-  const [aggregatedData, setAggregatedData] = useState<
-    Map<
-      string,
-      {
-        gp: string;
-        mandal: string;
-        district: string;
-        division: string;
-        mandalLgd: string;
-        panchayatLgd: string;
-        attendance: Record<string, string>;
-        times: Record<string, string>;
-        dsr: Record<string, boolean>;
-      }
-    >
-  >(new Map());
-  const [allDates, setAllDates] = useState<string[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [mandalFilter, setMandalFilter] = useState("All");
-  const [rawRows, setRawRows] = useState<any[][]>([]);
-  const [parserDebug, setParserDebug] = useState<
-    {
-      file: string;
-      sheet: string;
-      date: string;
-      gpColIdx: number;
-      gpColName: string;
-      statusColIdx: number;
-      statusColName: string;
-      rowsFound: number;
-      datesFound: number;
-    }[]
-  >([]);
-  const [showDebug, setShowDebug] = useState(false);
-  const [expandedMandals, setExpandedMandals] = useState<Set<string>>(
-    new Set(),
-  );
-  const [showStats, setShowStats] = useState(true);
-
-  const toggleMandal = (m: string) => {
-    const next = new Set(expandedMandals);
-    if (next.has(m)) next.delete(m);
-    else next.add(m);
-    setExpandedMandals(next);
-  };
-
-  const toggleAllMandals = (expand: boolean) => {
-    if (expand) {
-      const mandals = Array.from(
-        new Set(Array.from(aggregatedData.values()).map((v) => v.mandal)),
-      );
-      setExpandedMandals(new Set(mandals));
-    } else {
-      setExpandedMandals(new Set());
-    }
-  };
-
-  const onUpload = async (e: any) => {
-    const files = Array.from(e.target.files) as File[];
-    if (files.length === 0) return;
-
-    if (requireLoginAlert(user)) return;
-
-    setIsAnalyzing(true);
-    await loadHeavyModules();
-    const newAggregated = new Map(aggregatedData);
-    const datesFound = new Set(allDates);
-    const updatedRawRows: any[][] = [...rawRows];
-    const debugLogs: any[] = [...parserDebug];
-
-    try {
-      for (const file of files) {
-        const dataBuffer = await file.arrayBuffer();
-        let sheetsToProcess: { sheetName: string; rows: any[][] }[] = [];
-
-        try {
-          let text = new window.TextDecoder("utf-8").decode(dataBuffer);
-          let isHtml = false;
-
-          if (
-            !text.toLowerCase().includes("<tr") &&
-            !text.toLowerCase().includes("<table")
-          ) {
-            const utf16Text = new window.TextDecoder("utf-16le").decode(
-              dataBuffer,
-            );
-            if (
-              utf16Text.toLowerCase().includes("<tr") ||
-              utf16Text.toLowerCase().includes("<table")
-            ) {
-              text = utf16Text;
-              isHtml = true;
-            }
-          } else {
-            isHtml = true;
-          }
-
-          if (isHtml) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, "text/html");
-            const trs = doc.querySelectorAll("tr");
-            const rows = Array.from(trs).map((tr) =>
-              Array.from(tr.querySelectorAll("th, td")).map((td) => {
-                let val = td.textContent?.trim().replace(/\s+/g, " ") || "";
-                if (
-                  val.includes("</th>") ||
-                  val.includes("</td>") ||
-                  val.includes("<th") ||
-                  val.includes("<td")
-                ) {
-                  val = val.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                }
-                return val;
-              }),
-            );
-            if (rows.length > 0) {
-              const firstRow = rows[0];
-              if (
-                firstRow.length === 1 &&
-                (firstRow[0].includes("<tr") || firstRow[0].includes("<td"))
-              ) {
-                const betterRows = text
-                  .split(/<\/tr>/i)
-                  .map((trStr) => {
-                    return trStr
-                      .split(/<\/td>|<\/th>/i)
-                      .map((tdStr) => {
-                        return tdStr.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                      })
-                      .filter((c) => c !== "");
-                  })
-                  .filter((r) => r.length > 0);
-                if (betterRows.length > 0) {
-                  sheetsToProcess.push({
-                    sheetName: "HTML_REGEX_" + file.name,
-                    rows: betterRows,
-                  });
-                } else {
-                  sheetsToProcess.push({
-                    sheetName: "HTML_" + file.name,
-                    rows,
-                  });
-                }
-              } else {
-                sheetsToProcess.push({ sheetName: "HTML_" + file.name, rows });
-              }
-            }
-          } else {
-            const workbook = XLSX.read(dataBuffer, { type: "array" });
-            for (const sheetName of workbook.SheetNames) {
-              const rows: any[][] = XLSX.utils.sheet_to_json(
-                workbook.Sheets[sheetName],
-                { header: 1, defval: "", raw: false },
-              ) as any[][];
-              if (rows.length > 0) sheetsToProcess.push({ sheetName, rows });
-            }
-          }
-        } catch (e) {
-          console.error("File parsing failed for", file.name, e);
-
-          if (sheetsToProcess.length === 0) {
-            try {
-              const workbook = XLSX.read(dataBuffer, { type: "array" });
-              for (const sheetName of workbook.SheetNames) {
-                const rows: any[][] = XLSX.utils.sheet_to_json(
-                  workbook.Sheets[sheetName],
-                  { header: 1, defval: "", raw: false },
-                ) as any[][];
-                if (rows.length > 0) sheetsToProcess.push({ sheetName, rows });
-              }
-            } catch (e2) {
-              console.error("Fallback XLSX failed", e2);
-            }
-          }
-        }
-
-        if (sheetsToProcess.length === 0) {
-          addToast(`No data found in ${file.name}`);
-          continue;
-        }
-
-        for (const { sheetName, rows } of sheetsToProcess) {
-          if (rows.length < 1) continue;
-
-          let headerRowIdx = -1;
-          let gpCol = -1,
-            mandalCol = -1,
-            districtCol = -1,
-            divisionCol = -1,
-            mLgdCol = -1,
-            pLgdCol = -1;
-          let dataStartCol = -1;
-
-          for (let r = 0; r < Math.min(rows.length, 50); r++) {
-            const row = rows[r];
-            if (!row || !Array.isArray(row)) continue;
-            const rStr = row.map((c) =>
-              String(c || "")
-                .toLowerCase()
-                .replace(/\s+/g, " "),
-            );
-
-            if (
-              rStr.some(
-                (c) =>
-                  c.includes("panchayat") ||
-                  c.includes("gp ") ||
-                  c.includes("gram"),
-              )
-            ) {
-              headerRowIdx = r;
-              gpCol = rStr.findIndex(
-                (c) =>
-                  (c.includes("panchayat") ||
-                    c.includes("gp ") ||
-                    c.includes("gram")) &&
-                  !c.includes("lgd"),
-              );
-              mandalCol = rStr.findIndex(
-                (c) =>
-                  (c.includes("mandal") || c.includes("block")) &&
-                  !c.includes("lgd"),
-              );
-              districtCol = rStr.findIndex((c) => c.includes("district"));
-              divisionCol = rStr.findIndex((c) => c.includes("division"));
-              mLgdCol = rStr.findIndex((c) => c.includes("mandal lgd"));
-              pLgdCol = rStr.findIndex((c) => c.includes("panchayat lgd"));
-
-              if (gpCol === -1)
-                gpCol = rStr.findIndex((c) => c.includes("name"));
-              if (gpCol === -1) gpCol = 0; // Fallback to first column
-
-              dataStartCol =
-                Math.max(
-                  gpCol,
-                  pLgdCol,
-                  mLgdCol,
-                  mandalCol,
-                  districtCol,
-                  divisionCol,
-                ) + 1;
-              break;
-            }
-          }
-
-          const dbgIdx = debugLogs.length;
-          debugLogs.push({
-            file: file.name,
-            sheet: sheetName,
-            date: "N/A",
-            gpColIdx: gpCol,
-            gpColName:
-              headerRowIdx >= 0
-                ? String(rows[headerRowIdx]?.[gpCol] || "N/A")
-                : "No Header",
-            statusColIdx: -1,
-            statusColName: "N/A",
-            rowsFound: 0,
-            datesFound: 0,
-          });
-
-          if (headerRowIdx === -1) {
-            continue;
-          }
-
-          console.log(
-            `[${file.name}] Header Row at ${headerRowIdx}:`,
-            rows[headerRowIdx],
-          );
-
-          let curDistrict = "Unknown",
-            curDivision = "Unknown",
-            curMandal = "Unknown",
-            curMLgd = "-";
-          let rowsAdded = 0;
-
-          for (let r = headerRowIdx + 1; r < rows.length; r++) {
-            const row = rows[r];
-            if (!row || !Array.isArray(row)) continue;
-
-            const gpNameRaw = String(row[gpCol] || "").trim();
-
-            if (
-              !gpNameRaw ||
-              gpNameRaw.toLowerCase().includes("total") ||
-              gpNameRaw.toLowerCase().includes("attendance")
-            )
-              continue;
-
-            updatedRawRows.push([file.name, sheetName, ...row]);
-
-            if (districtCol !== -1 && String(row[districtCol] || "").trim())
-              curDistrict = String(row[districtCol]).trim();
-            if (divisionCol !== -1 && String(row[divisionCol] || "").trim())
-              curDivision = String(row[divisionCol]).trim();
-            if (mandalCol !== -1 && String(row[mandalCol] || "").trim())
-              curMandal = String(row[mandalCol]).trim();
-            if (mLgdCol !== -1 && String(row[mLgdCol] || "").trim())
-              curMLgd = String(row[mLgdCol]).trim();
-
-            const pLgd =
-              pLgdCol !== -1 ? String(row[pLgdCol] || "").trim() : "-";
-            const key = `${curMandal.toUpperCase()}_${gpNameRaw.toUpperCase()}`;
-
-            if (!newAggregated.has(key)) {
-              newAggregated.set(key, {
-                gp: gpNameRaw,
-                mandal: curMandal,
-                district: curDistrict,
-                division: curDivision,
-                mandalLgd: curMLgd,
-                panchayatLgd: pLgd,
-                attendance: {},
-                times: {},
-                dsr: {},
-              });
-            }
-            const entry = newAggregated.get(key)!;
-
-            const headers = rows[headerRowIdx] || [];
-            for (let c = 0; c < row.length; c++) {
-              if (
-                c === gpCol ||
-                c === mandalCol ||
-                c === districtCol ||
-                c === mLgdCol ||
-                c === pLgdCol
-              )
-                continue;
-
-              const val = String(row[c] || "").trim();
-              const headerVal = String(headers[c] || "").trim();
-
-              const dateRegex =
-                /(\d{1,4}[-./ ]+\d{1,4}[-./ ]+\d{2,4}|\d{1,4}[-./ ]+[A-Za-z]{3,10}[-./ ]+\d{2,4})/i;
-
-              const dateMatch = val.match(dateRegex);
-              if (dateMatch && val.includes(":")) {
-                const dateKey = dateMatch[0]
-                  .replace(/\//g, "-")
-                  .replace(/\./g, "-");
-                datesFound.add(dateKey);
-
-                if (!entry.times[dateKey]) {
-                  entry.times[dateKey] = val;
-                }
-
-                if (c > 0 && !entry.attendance[dateKey]) {
-                  const statusVal = String(row[c - 1] || "").trim();
-                  if (
-                    statusVal &&
-                    statusVal.length < 50 &&
-                    !statusVal.includes(":") &&
-                    !statusVal.includes("202")
-                  ) {
-                    entry.attendance[dateKey] = statusVal;
-                  }
-                }
-              } else if (val && !val.includes(":") && !val.includes("202")) {
-                const hMatch = headerVal.match(dateRegex);
-                if (hMatch) {
-                  const dKey = hMatch[0]
-                    .replace(/\//g, "-")
-                    .replace(/\./g, "-");
-                  datesFound.add(dKey);
-                  entry.attendance[dKey] = val;
-                }
-                if (c > 0) {
-                  const prevHMatch = String(headers[c - 1] || "").match(
-                    dateRegex,
-                  );
-                  if (prevHMatch) {
-                    const dKey = prevHMatch[0]
-                      .replace(/\//g, "-")
-                      .replace(/\./g, "-");
-                    datesFound.add(dKey);
-                    if (!entry.attendance[dKey]) {
-                      entry.attendance[dKey] = val;
-                    }
-                  }
-                }
-              }
-            }
-            rowsAdded++;
-          }
-
-          if (debugLogs[dbgIdx]) {
-            debugLogs[dbgIdx].rowsFound = rowsAdded;
-            debugLogs[dbgIdx].datesFound = datesFound.size;
-          }
-        }
-      }
-
-      setAllDates(Array.from(datesFound).sort());
-      setAggregatedData(newAggregated);
-      setRawRows(updatedRawRows);
-      setParserDebug(debugLogs);
-      addToast(`Analyzed ${files.length} reports successfully!`);
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to analyze files");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const downloadRawExcel = async () => {
-    await loadHeavyModules();
-    if (rawRows.length === 0) return;
-    const ws = XLSX.utils.aoa_to_sheet(rawRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Combined Raw Data");
-    XLSX.writeFile(
-      wb,
-      `MultiDay_Combined_Raw_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("‡∞Æ‡±ä‡∞§‡±ç‡∞§‡∞Ç ‡∞ï‡∞≤‡∞ø‡∞™‡∞ø‡∞® Raw ‡∞°‡±á‡∞ü‡∞æ ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  const downloadRawPdf = async () => {
-    await loadHeavyModules();
-    if (rawRows.length === 0) return;
-    const doc = new jsPDF("l", "mm", "a4");
-    autoTable(doc, {
-      body: rawRows.slice(0, 500), // Limit for PDF safety
-      styles: { fontSize: 5 },
-      margin: { top: 10 },
-    });
-    doc.save(`MultiDay_Combined_Raw_${new Date().toLocaleDateString()}.pdf`);
-  };
-
-  const downloadMandalSummary = async () => {
-    await loadHeavyModules();
-    if (aggregatedData.size === 0) return;
-    const mandalSummary = new Map<string, { total: number; present: number }>();
-    filteredData.forEach((info) => {
-      const m = info.mandal;
-      if (!mandalSummary.has(m)) mandalSummary.set(m, { total: 0, present: 0 });
-      const s = mandalSummary.get(m)!;
-      allDates.forEach((d) => {
-        s.total++;
-        const attStr = String(info.attendance[d] || "").toLowerCase();
-        if (
-          attStr.startsWith("p") ||
-          attStr.includes("‡∞™‡±ç‡∞∞‡±Ü‡∞∏‡±Ü‡∞Ç‡∞ü‡±ç") ||
-          attStr.includes("‡∞π‡∞æ‡∞ú‡∞∞‡±Å")
-        )
-          s.present++;
-      });
-    });
-    const exportData = Array.from(mandalSummary.entries()).map(([m, s]) => ({
-      Mandal: m,
-      "Total Checks": s.total,
-      "Present Count": s.present,
-      "Avg Attendance %":
-        s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
-    }));
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mandal Summary");
-    XLSX.writeFile(
-      wb,
-      `MultiDay_Mandal_Summary_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("‡∞Æ‡∞Ç‡∞°‡∞≤‡±ç ‡∞Ö‡∞ü‡±Ü‡∞Ç‡∞°‡±Ü‡∞®‡±ç‡∞∏‡±ç ‡∞∏‡∞Æ‡±ç‡∞Æ‡∞∞‡±Ä ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  const downloadGPSummary = async () => {
-    await loadHeavyModules();
-    if (aggregatedData.size === 0) return;
-    const aoa: any[][] = [];
-
-    const row1 = ["Telangana State"];
-    for (let i = 0; i < allDates.length * 2 + 3; i++) row1.push("");
-    aoa.push(row1);
-
-    const reportDate = allDates[0]
-      ? new Date(allDates[0].split("-").reverse().join("-")).toLocaleDateString(
-          "en-GB",
-          { day: "2-digit", month: "short", year: "numeric" },
-        )
-      : "";
-    const row2 = [`Report On Attendance Status & DSR Raw Data ${reportDate}`];
-    for (let i = 0; i < allDates.length * 2 + 3; i++) row2.push("");
-    aoa.push(row2);
-
-    const row3 = ["", "", "", ""];
-    row3.push("Attendace Status");
-    for (let i = 0; i < allDates.length * 2 - 1; i++) row3.push("");
-    aoa.push(row3);
-
-    const row4 = ["S.No", "District Name", "Mandal Name", "Panchayat Name"];
-    allDates.forEach((d) => {
-      row4.push(`First Attendance Status (${d})`);
-    });
-    aoa.push(row4);
-
-    filteredData.forEach((info, idx) => {
-      const row = [idx + 1, info.district, info.mandal, info.gp];
-      allDates.forEach((d) => {
-        const s = info.attendance[d] || "-";
-        row.push(s);
-      });
-      aoa.push(row);
-    });
-
-    const statuses = [
-      {
-        label: "Total Present",
-        matches: (s: string) =>
-          s.startsWith("p") ||
-          s.includes("‡∞™‡±ç‡∞∞‡±Ü‡∞∏‡±Ü‡∞Ç‡∞ü‡±ç") ||
-          s.includes("‡∞π‡∞æ‡∞ú‡∞∞‡±Å") ||
-          s.includes("‚úÖ"),
-      },
-      {
-        label: "Total Absent",
-        matches: (s: string) =>
-          s.startsWith("a") || s.includes("‡∞ó‡±à‡∞∞‡±ç‡∞π‡∞æ‡∞ú‡∞∞‡±Å") || s.includes("absent"),
-      },
-      {
-        label: "Total Leave",
-        matches: (s: string) =>
-          s.startsWith("l") || s.includes("‡∞∏‡±Ü‡∞≤‡∞µ‡±Å") || s.includes("leave"),
-      },
-      {
-        label: "Total Meeting",
-        matches: (s: string) =>
-          s.startsWith("m") || s.includes("‡∞∏‡∞Æ‡∞æ‡∞µ‡±á‡∞∂‡∞Ç") || s.includes("meeting"),
-      },
-      {
-        label: "Total Training",
-        matches: (s: string) =>
-          s.startsWith("t") || s.includes("‡∞∂‡∞ø‡∞ï‡±ç‡∞∑‡∞£") || s.includes("training"),
-      },
-    ];
-
-    statuses.forEach((st) => {
-      const row: (string | number)[] = ["", "", "", st.label];
-      allDates.forEach((d) => {
-        let count = 0;
-        filteredData.forEach((info) => {
-          const s = String(info.attendance[d] || "").toLowerCase();
-          if (st.matches(s)) count++;
-        });
-        row.push(count);
-      });
-      aoa.push(row);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-
-    const totalCols = allDates.length + 4;
-    ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Telangana State
-      { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Report Title
-      { s: { r: 2, c: 4 }, e: { r: 2, c: totalCols - 1 } }, // Attendace Status
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "GP Comparative");
-    XLSX.writeFile(
-      wb,
-      `MultiDay_GP_Comparative_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("GP ‡∞µ‡±à‡∞ú‡±ç ‡∞ï‡∞Ç‡∞™‡∞æ‡∞∞‡∞ø‡∞ü‡∞ø‡∞µ‡±ç ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±ç ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  const downloadMultiPdf = async () => {
-    await loadHeavyModules();
-    if (aggregatedData.size === 0) return;
-    const doc = new jsPDF("l", "mm", "a4");
-    const head = [
-      [
-        "S.No",
-        "District",
-        "Mandal",
-        "Panchayat Name",
-        ...allDates.map((d) => `Attendance\n${d}`),
-      ],
-    ];
-    const body = filteredData.map((info, idx) => [
-      idx + 1,
-      info.district,
-      info.mandal,
-      info.gp,
-      ...allDates.map((d) => info.attendance[d] || "-"),
-    ]);
-    autoTable(doc, {
-      head: head,
-      body: body,
-      styles: { fontSize: 5 },
-      theme: "grid",
-    });
-    doc.save(`MultiDay_Comparative_${new Date().toLocaleDateString()}.pdf`);
-  };
-
-  const mandals = Array.from(
-    new Set(Array.from(aggregatedData.values()).map((info) => info.mandal)),
-  ).sort();
-  const filteredData = Array.from(aggregatedData.values())
-    .filter((info) => {
-      const target =
-        `${info.gp} ${info.mandal} ${info.district} ${info.division}`.toUpperCase();
-      const matchesSearch = target.includes(searchTerm.toUpperCase());
-      const matchesMandal =
-        mandalFilter === "All" || info.mandal === mandalFilter;
-      return matchesSearch && matchesMandal;
-    })
-    .sort((a, b) => {
-      const mIdA = (a.mandal || "").toUpperCase();
-      const mIdB = (b.mandal || "").toUpperCase();
-      if (mIdA !== mIdB) return mIdA.localeCompare(mIdB);
-      return (a.gp || "")
-        .toUpperCase()
-        .localeCompare((b.gp || "").toUpperCase());
-    });
-
-  const totalGPCount = filteredData.length;
-  const groupedByMandal: Record<string, typeof filteredData> = {};
-  filteredData.forEach((item) => {
-    const mKey = (item.mandal || "UNKNOWN").toUpperCase();
-    if (!groupedByMandal[mKey]) groupedByMandal[mKey] = [];
-    groupedByMandal[mKey].push(item);
-  });
-  const mandalList = Object.keys(groupedByMandal).sort();
-
-  const gpIndexMap = new Map<string, number>();
-  filteredData.forEach((item, idx) => {
-    gpIndexMap.set(
-      `${(item.mandal || "").toUpperCase()}_${(item.gp || "").toUpperCase()}`,
-      idx + 1,
-    );
-  });
-
-  const sortedDates = [...allDates].sort((a, b) => {
-    const parse = (s: string) => {
-      const parts = s.split("-");
-      if (parts.length === 3)
-        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
-      return 0;
-    };
-    return parse(a) - parse(b);
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-slate-50 p-8 rounded-[32px] border-2 border-dashed border-slate-200 text-center">
-        <h3 className="font-black text-primary uppercase text-sm tracking-widest mb-4">
-          Multi-Day Comparative Hub
-        </h3>
-        <input
-          type="file"
-          multiple
-          onChange={onUpload}
-          className="hidden"
-          id="multi-up"
-        />
-        <label
-          htmlFor="multi-up"
-          className="bg-primary text-white px-8 py-3 rounded-2xl font-black text-xs uppercase cursor-pointer hover:scale-105 transition-transform inline-flex items-center gap-2"
-        >
-          {isAnalyzing ? (
-            <RefreshCw className="animate-spin" size={14} />
-          ) : (
-            <Upload size={14} />
-          )}{" "}
-          {aggregatedData.size > 0
-            ? "Upload More Reports"
-            : "Upload Multiple Daily Reports"}
-        </label>
-        {aggregatedData.size > 0 && (
-          <div className="flex justify-center mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest gap-4">
-            <span>Reports Synced: {parserDebug.length} files</span>
-            <span>‚Ä¢</span>
-            <span>Real-time Comparative Engine Active</span>
-          </div>
-        )}
-      </div>
-
-      {showDebug && parserDebug.length > 0 && (
-        <div className="p-4 bg-slate-900 rounded-2xl text-[10px] font-mono text-emerald-400 space-y-2 overflow-auto max-h-64 border border-white/10 text-left">
-          <div className="text-white font-bold mb-2 uppercase tracking-widest text-xs">
-            Parser Analysis History
-          </div>
-          {parserDebug.map((d, i) => (
-            <div key={i} className="border-b border-white/5 pb-2">
-              <span className="text-blue-400 font-bold">
-                [{d.file} / {d.sheet}]
-              </span>
-              <br />
-              Header Row: {d.gpColName !== "No Header" ? "Found" : "Missing"} |
-              GP Col Name: {d.gpColName} | GPs Parsed: {d.rowsFound}
-              <br />
-              <span
-                className={
-                  d.datesFound > 0 ? "text-emerald-400" : "text-rose-400"
-                }
-              >
-                Report Dates Found: {d.datesFound}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {aggregatedData.size > 0 && allDates.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-6 rounded-2xl flex flex-col items-center justify-center text-center">
-          <h4 className="font-black text-xl mb-2">No Dates Detected</h4>
-          <p className="text-sm">
-            We successfully found the Gram Panchayats in your report, but we
-            could not find any attendance dates. Please ensure the columns
-            contain dates in standard format (e.g., DD/MM/YYYY, DD-MMM-YYYY).
-            Check the debug panel for more info.
-          </p>
-        </div>
-      )}
-
-      {aggregatedData.size > 0 &&
-        allDates.length > 0 &&
-        (!user || user.isAnonymous) && (
-          <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl flex flex-col items-center justify-center text-center">
-            <Lock className="w-16 h-16 text-slate-400 mb-4" />
-            <h4 className="font-black text-2xl text-slate-800 mb-2">
-              Full Access Required
-            </h4>
-            <p className="text-slate-500 max-w-md">
-              The file has been uploaded and processed successfully. Please log
-              in to view the detailed table, analysis, and download the
-              PDF/Excel reports.
-            </p>
-          </div>
-        )}
-
-      {aggregatedData.size > 0 &&
-        allDates.length > 0 &&
-        user &&
-        !user.isAnonymous && (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 items-end px-2">
-              <div className="flex-1 w-full">
-                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block ml-1 tracking-widest">
-                  Global Search
-                </label>
-                <div className="relative">
-                  <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={16}
-                  />
-                  <input
-                    className="w-full bg-white border pl-10 p-3 rounded-xl text-sm shadow-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all border-slate-300"
-                    placeholder="Search District, Mandal, GP..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="w-full md:w-64">
-                <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block ml-1 tracking-widest">
-                  Filter by Mandal
-                </label>
-                <select
-                  className="w-full bg-white border p-3 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all border-slate-300"
-                  value={mandalFilter}
-                  onChange={(e) => setMandalFilter(e.target.value)}
-                >
-                  <option value="All">All Mandals</option>
-                  {mandals.map((m, idx) => (
-                    <option key={`${m}_${idx}`} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  aria-label="Expand All Mandals"
-                  onClick={() => toggleAllMandals(true)}
-                  className="bg-primary/10 text-primary px-4 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-primary/20 transition-colors border border-primary/20"
-                >
-                  Expand All
-                </button>
-                <button
-                  aria-label="Collapse All Mandals"
-                  onClick={() => toggleAllMandals(false)}
-                  className="bg-slate-100 text-slate-600 px-4 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-slate-200 transition-colors border border-slate-200"
-                >
-                  Collapse All
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-[24px] border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold">
-                  <Users size={20} />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-black text-slate-400 leading-none mb-1">
-                    Gram Panchayats
-                  </div>
-                  <div className="text-2xl font-black text-slate-800">
-                    {totalGPCount}
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[24px] border shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-bold">
-                  <Calendar size={20} />
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-black text-slate-400 leading-none mb-1">
-                    Report Dates
-                  </div>
-                  <div className="text-2xl font-black text-slate-800">
-                    {sortedDates.length}
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-2 flex gap-3">
-                <button
-                  aria-label="Download Mandal Summary"
-                  onClick={downloadMandalSummary}
-                  className="flex-1 bg-white border border-slate-100 p-5 rounded-[24px] text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-1">
-                    <BarChart3 size={18} />
-                  </div>
-                  Mandal Summary (XL)
-                </button>
-                <button
-                  aria-label="Download GP Comparative"
-                  onClick={downloadGPSummary}
-                  className="flex-1 bg-white border border-slate-100 p-5 rounded-[24px] text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                >
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-1">
-                    <Database size={18} />
-                  </div>
-                  GP Comparative (XL)
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-[24px] shadow-2xl overflow-hidden border-slate-100 ring-1 ring-slate-900/5">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-xs border-collapse min-w-[1400px]">
-                  <thead className="sticky top-0 z-20">
-                    <tr className="bg-indigo-600 text-white font-bold text-xs text-left">
-                      <th className="p-3 border border-indigo-700 w-12 text-sm text-center">
-                        S.No
-                      </th>
-                      <th className="p-3 border border-indigo-700 text-sm min-w-[120px]">
-                        District Name
-                      </th>
-                      <th className="p-3 border border-indigo-700 min-w-[120px] text-sm">
-                        Mandal Name
-                      </th>
-                      <th className="p-3 border border-indigo-700 min-w-[150px] text-sm">
-                        Panchayat Name
-                      </th>
-                      {sortedDates.map((d) => (
-                        <th
-                          key={d}
-                          className="p-3 border border-indigo-700 min-w-[120px] text-center text-sm"
-                        >
-                          Attendance ({d})
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {mandalList.map((mName) => {
-                      const isEx = expandedMandals.has(mName);
-                      const items = groupedByMandal[mName];
-                      return (
-                        <React.Fragment key={mName}>
-                          <tr
-                            className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-b border-slate-200 group transition-colors"
-                            onClick={() => toggleMandal(mName)}
-                          >
-                            <td className="p-3 border border-slate-200 text-center font-bold text-indigo-600">
-                              {isEx ? (
-                                <ChevronDown size={16} className="mx-auto" />
-                              ) : (
-                                <ChevronRight size={16} className="mx-auto" />
-                              )}
-                            </td>
-                            <td
-                              colSpan={sortedDates.length + 3}
-                              className="p-3 border border-slate-200 font-black text-slate-700 uppercase text-xs flex items-center gap-3"
-                            >
-                              <span>{mName}</span>
-                              <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 shadow-sm">
-                                {items.length} GPs
-                              </span>
-                            </td>
-                          </tr>
-                          {isEx &&
-                            items.map((info) => (
-                              <tr
-                                key={`${(info.mandal || "").toUpperCase()}_${(info.gp || "").toUpperCase()}`}
-                                className="hover:bg-indigo-50/50 text-slate-700 border-b border-slate-100 group transition-colors"
-                              >
-                                <td className="p-3 border border-slate-200 text-center font-medium bg-slate-50 text-slate-400 group-hover:text-indigo-600 text-xs">
-                                  {gpIndexMap.get(
-                                    `${(info.mandal || "").toUpperCase()}_${(info.gp || "").toUpperCase()}`,
-                                  )}
-                                </td>
-                                <td className="p-3 border border-slate-200 uppercase text-xs font-bold text-slate-500">
-                                  {info.district}
-                                </td>
-                                <td className="p-3 border border-slate-200 uppercase bg-slate-50/50 text-xs font-black text-slate-600">
-                                  {info.mandal}
-                                </td>
-                                <td className="p-3 border border-slate-200 font-black text-slate-800 bg-white text-sm">
-                                  {info.gp}
-                                </td>
-                                {sortedDates.map((d) => {
-                                  const status = info.attendance[d] || "-";
-                                  const time = info.times[d] || "-";
-                                  const statusLower = status.toLowerCase();
-                                  let color = "text-slate-400";
-                                  if (
-                                    statusLower.includes("present") ||
-                                    statusLower === "p"
-                                  )
-                                    color = "text-emerald-700 font-bold";
-                                  else if (
-                                    statusLower.includes("absent") ||
-                                    statusLower === "a"
-                                  )
-                                    color = "text-rose-700 font-bold";
-                                  else if (statusLower.includes("leave"))
-                                    color = "text-amber-700 font-bold";
-                                  else if (statusLower !== "-")
-                                    color = "text-blue-700 font-bold";
-
-                                  return (
-                                    <td
-                                      key={d}
-                                      className={`p-3 border border-slate-200 text-center whitespace-nowrap text-xs font-black ${color}`}
-                                    >
-                                      {status === "-"
-                                        ? "-"
-                                        : status.length > 15
-                                          ? status.substring(0, 15) + "..."
-                                          : status}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot className="bg-slate-100 font-bold text-sm">
-                    {[
-                      {
-                        label: "Total Present",
-                        color: "text-emerald-700",
-                        matches: (s: string) =>
-                          s.startsWith("p") ||
-                          s.includes("‡∞™‡±ç‡∞∞‡±Ü‡∞∏‡±Ü‡∞Ç‡∞ü‡±ç") ||
-                          s.includes("‡∞π‡∞æ‡∞ú‡∞∞‡±Å") ||
-                          s.includes("‚úÖ"),
-                      },
-                      {
-                        label: "Total Absent",
-                        color: "text-rose-700",
-                        matches: (s: string) =>
-                          s.startsWith("a") ||
-                          s.includes("‡∞ó‡±à‡∞∞‡±ç‡∞π‡∞æ‡∞ú‡∞∞‡±Å") ||
-                          s.includes("absent"),
-                      },
-                      {
-                        label: "Total Leave",
-                        color: "text-amber-700",
-                        matches: (s: string) =>
-                          s.startsWith("l") ||
-                          s.includes("‡∞∏‡±Ü‡∞≤‡∞µ‡±Å") ||
-                          s.includes("leave"),
-                      },
-                      {
-                        label: "Total Meeting",
-                        color: "text-cyan-700",
-                        matches: (s: string) =>
-                          s.startsWith("m") ||
-                          s.includes("‡∞∏‡∞Æ‡∞æ‡∞µ‡±á‡∞∂‡∞Ç") ||
-                          s.includes("meeting"),
-                      },
-                      {
-                        label: "Total Training",
-                        color: "text-amber-700",
-                        matches: (s: string) =>
-                          s.startsWith("t") ||
-                          s.includes("‡∞∂‡∞ø‡∞ï‡±ç‡∞∑‡∞£") ||
-                          s.includes("training"),
-                      },
-                    ].map((st, idx) => (
-                      <tr key={idx}>
-                        <td
-                          colSpan={4}
-                          className="p-3 border border-black text-right uppercase text-[#004085]"
-                        >
-                          {st.label}
-                        </td>
-                        {sortedDates.map((d) => {
-                          let count = 0;
-                          filteredData.forEach((info) => {
-                            const s = String(
-                              info.attendance[d] || "",
-                            ).toLowerCase();
-                            if (st.matches(s)) count++;
-                          });
-                          return (
-                            <td
-                              key={d}
-                              className={`p-3 border border-black text-center ${st.color} w-[10px] h-[31.33px] text-base font-black`}
-                            >
-                              {count}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-    </div>
-  );
-}
-
-function TrainingCenter() {
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3">
-        {["DSR Workflow", "EPFO Registration", "Aadhar Seeding Guide"].map(
-          (guide) => (
-            <div
-              key={guide}
-              className="p-4 bg-slate-50 border rounded-2xl flex justify-between items-center cursor-pointer hover:bg-slate-100"
-            >
-              <span className="font-bold text-sm"> {guide}</span>
-              <Play size={16} className="text-primary" />
-            </div>
-          ),
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ToolCard({
-  icon: Icon,
-  emoji,
-  title,
-  onClick,
-}: {
-  icon?: any;
-  emoji?: string;
-  title: string;
-  onClick: () => void;
-}) {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.05, translateY: -5 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={() => { onClick(); }}
-      className="mana-card"
-    >
-      {emoji ? (
-        <div className="text-3xl mb-2">{emoji}</div>
-      ) : (
-        Icon && <Icon size={24} className="mx-auto text-primary" />
-      )}
-      <h4 className="font-bold mt-1 text-sm">{title}</h4>
-    </motion.div>
-  );
-}
-
-function DSRAnalyzer({
-  addToast,
-  user,
-}: {
-  addToast: (s: string) => void;
-  user: FirebaseUser | null;
-}) {
-  const [data, setData] = useState<any[]>([]);
-  const [filteredData, setFilteredData] = useState<any[]>([]);
-  const [rawJson, setRawJson] = useState<any[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    present: 0,
-    dsr: 0,
-    pending: 0,
-    meeting: 0,
-    training: 0,
-    leave: 0,
-    before901: 0,
-    after900: 0,
-  });
-  const [mandalSummaries, setMandalSummaries] = useState<Record<string, any>>(
-    {},
-  );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
-
-  const [currentTime, setCurrentTime] = useState(
-    new Date().toLocaleTimeString(),
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const onUpload = (e: any) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsProcessing(true);
-    setUploadProgress(10);
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        setUploadProgress(30);
-        await loadHeavyModules();
-        setUploadProgress(50);
-        const dataBuffer = evt.target?.result as ArrayBuffer;
-        let allRows: any[][] = [];
-
-        try {
-          const text = new window.TextDecoder("utf-8").decode(dataBuffer);
-          if (
-            text.includes("<html") ||
-            text.includes("<table") ||
-            text.includes("<style")
-          ) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, "text/html");
-            const trs = doc.querySelectorAll("tr");
-            if (trs.length > 0) {
-              allRows = Array.from(trs).map((tr) =>
-                Array.from(tr.querySelectorAll("td, th")).map(
-                  (td) => td.textContent?.trim().replace(/\s+/g, " ") || "",
-                ),
-              );
-            }
-          }
-        } catch (e) {
-          console.error("HTML fallback failed", e);
-        }
-
-        if (allRows.length === 0) {
-          try {
-            const workbook = XLSX.read(dataBuffer, { type: "array" });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            allRows = XLSX.utils.sheet_to_json(sheet, {
-              header: 1,
-              defval: "",
-            });
-          } catch (e) {
-            console.error("XLSX parsing failed", e);
-          }
-        }
-
-        if (allRows.length === 0) {
-          setIsProcessing(false);
-          setUploadProgress(0);
-          addToast("‡∞ï‡±ç‡∞∑‡∞Æ‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø! ‡∞´‡±à‡∞≤‡±ç ‡∞ñ‡∞æ‡∞≥‡±Ä‡∞ó‡∞æ ‡∞â‡∞Ç‡∞¶‡∞ø ‡∞≤‡±á‡∞¶‡∞æ ‡∞ö‡∞¶‡∞µ‡∞°‡∞Ç ‡∞ï‡±Å‡∞¶‡∞∞‡∞≤‡±á‡∞¶‡±Å.");
-          return;
-        }
-        setUploadProgress(70);
-
-        setRawJson(allRows);
-
-        let bestHeaderIdx = -1;
-        let maxScore = 0;
-        const mandalKeys = ["mandal", "block", "tehsil", "‡∞Æ‡∞Ç‡∞°‡∞≤‡∞Ç", "‡∞Æ‡∞Ç‡∞°‡∞≤‡±ç"];
-        const gpKeys = [
-          "panchayat",
-          "gp name",
-          "gram",
-          "habitation",
-          "village name",
-          "‡∞ó‡±ç‡∞∞‡∞æ‡∞Æ ‡∞™‡∞Ç‡∞ö‡∞æ‡∞Ø‡∞§‡±Ä",
-          "gp",
-        ];
-
-        for (let i = 0; i < Math.min(allRows.length, 100); i++) {
-          const rowStrings = (allRows[i] || []).map((c) =>
-            String(c || "")
-              .toLowerCase()
-              .trim(),
-          );
-          let score = 0;
-          if (rowStrings.some((s) => mandalKeys.some((k) => s.includes(k))))
-            score += 3;
-          if (rowStrings.some((s) => gpKeys.some((k) => s.includes(k))))
-            score += 3;
-          if (
-            rowStrings.some(
-              (s) => s.includes("attendance") || s.includes("status"),
-            )
-          )
-            score += 1;
-
-          if (score > maxScore) {
-            maxScore = score;
-            bestHeaderIdx = i;
-          }
-        }
-
-        if (maxScore < 4 && allRows.length > 3) {
-          const row4 =
-            allRows[3]?.map((c) => String(c || "").toLowerCase()) || [];
-          if (
-            row4.some((s) => s.includes("mandal")) ||
-            row4.some((s) => s.includes("panchayat"))
-          )
-            bestHeaderIdx = 3;
-        }
-
-        if (bestHeaderIdx === -1) {
-          setIsProcessing(false);
-          setUploadProgress(0);
-          addToast(
-            "‡∞ï‡±ç‡∞∑‡∞Æ‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø! ‡∞Æ‡±Ä ‡∞´‡±à‡∞≤‡±ç‚Äå‡∞≤‡±ã 'Mandal Name' ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å 'Panchayat Name' ‡∞ï‡∞æ‡∞≤‡∞Æ‡±ç‡∞∏‡±ç ‡∞¶‡±ä‡∞∞‡∞ï‡∞≤‡±á‡∞¶‡±Å.",
-          );
-          return;
-        }
-
-        let headers = allRows[bestHeaderIdx].map((h) =>
-          String(h || "")
-            .toLowerCase()
-            .trim(),
-        );
-        if (bestHeaderIdx + 1 < allRows.length) {
-          const nextRow = allRows[bestHeaderIdx + 1].map((h) =>
-            String(h || "")
-              .toLowerCase()
-              .trim(),
-          );
-          nextRow.forEach((val, idx) => {
-            if (val && val.length > (headers[idx]?.length || 0))
-              headers[idx] = val;
-          });
-        }
-
-        const getIdx = (keys: string[]) =>
-          headers.findIndex((h) => keys.some((k) => h.includes(k)));
-
-        const mandalIdx = getIdx(mandalKeys);
-        const gpIdx = getIdx(gpKeys);
-        const attStatusIdx = getIdx([
-          "first attendence status",
-          "1st attend status",
-          "attendance status",
-        ]);
-        const attTimeIdx = getIdx([
-          "first attendence datetime",
-          "1st attend time",
-          "attendance time",
-        ]);
-        const dsrStatusIdx = getIdx([
-          "dsr entry status",
-          "dsr status",
-          "dsr entry",
-        ]);
-        const dsrTimeIdx = getIdx([
-          "dsr submited",
-          "dsr submitted",
-          "dsr time",
-        ]);
-
-        const finalMandalIdx = mandalIdx !== -1 ? mandalIdx : 3;
-        const finalGpIdx = gpIdx !== -1 ? gpIdx : 5;
-
-        const processed: any[] = [];
-        let present = 0,
-          dsr = 0,
-          pending = 0,
-          meeting = 0,
-          training = 0,
-          leave = 0,
-          before901 = 0,
-          after900 = 0;
-        const mandalStats = new Map<
-          string,
-          {
-            total: number;
-            onTime: number;
-            late: number;
-            pending: number;
-            meeting: number;
-            training: number;
-            leave: number;
-            dsrPending: number;
-          }
-        >();
-
-        allRows.slice(bestHeaderIdx + 1).forEach((r) => {
-          const gpRaw = String(r[finalGpIdx] || "").trim();
-          const mandalRaw = String(r[finalMandalIdx] || "UNKNOWN")
-            .trim()
-            .toUpperCase();
-
-          if (
-            !gpRaw ||
-            gpRaw.length < 2 ||
-            gpRaw.toLowerCase().includes("total") ||
-            /^\d+$/.test(gpRaw)
-          )
-            return;
-          if (gpRaw.toLowerCase() === "panchayat name") return;
-
-          const attStatusRaw = String(r[attStatusIdx] || "").toLowerCase();
-          const dsrStatusRaw = String(r[dsrStatusIdx] || "").toLowerCase();
-          const dsrTimeStr = String(r[dsrTimeIdx] || "");
-
-          const isP =
-            attStatusRaw.includes("present") ||
-            attStatusRaw.startsWith("p") ||
-            attStatusRaw.includes("‚úÖ") ||
-            attStatusRaw.includes("‡∞™‡±ç‡∞∞‡±Ü‡∞∏‡±Ü‡∞Ç‡∞ü‡±ç") ||
-            attStatusRaw.includes("‡∞π‡∞æ‡∞ú‡∞∞‡±Å");
-          const isM =
-            attStatusRaw.includes("meeting") ||
-            attStatusRaw.startsWith("m") ||
-            attStatusRaw.includes("‡∞∏‡∞Æ‡∞æ‡∞µ‡±á‡∞∂‡∞Ç");
-          const isT =
-            attStatusRaw.includes("training") ||
-            attStatusRaw.startsWith("t") ||
-            attStatusRaw.includes("‡∞∂‡∞ø‡∞ï‡±ç‡∞∑‡∞£");
-          const isL =
-            attStatusRaw.includes("leave") ||
-            attStatusRaw.startsWith("l") ||
-            attStatusRaw.includes("‡∞∏‡±Ü‡∞≤‡∞µ‡±Å");
-          const isD =
-            (dsrStatusRaw.includes("entered") &&
-              !dsrStatusRaw.includes("not")) ||
-            dsrStatusRaw.includes("yes") ||
-            dsrStatusRaw.includes("‚úÖ") ||
-            dsrStatusRaw.includes("uploaded") ||
-            (dsrTimeStr && dsrTimeStr.length > 3 && dsrTimeStr.includes(":"));
-          const attTimeStr = String(r[attTimeIdx] || "");
-
-          let isOnTime = false;
-          let isLate = false;
-          if (isD && dsrTimeStr) {
-            const timeMatch = dsrTimeStr.match(/(\d{1,2}):(\d{2})/);
-            if (timeMatch) {
-              let hour = parseInt(timeMatch[1]);
-              const min = parseInt(timeMatch[2]);
-              const isPM = dsrTimeStr.toLowerCase().includes("pm");
-              if (isPM && hour < 12) hour += 12;
-              if (!isPM && hour === 12) hour = 0;
-
-              const totalMinutes = hour * 60 + min;
-              if (totalMinutes <= 10 * 60 + 30) isOnTime = true;
-              else isLate = true;
-            }
-          }
-
-          let isAttBefore901 = false;
-          let isAttAfter900 = false;
-          if (isP && attTimeStr) {
-            const attTimeMatch = attTimeStr.match(/(\d{1,2}):(\d{2})/);
-            if (attTimeMatch) {
-              let hour = parseInt(attTimeMatch[1]);
-              const min = parseInt(attTimeMatch[2]);
-              const isPM = attTimeStr.toLowerCase().includes("pm");
-              if (isPM && hour < 12) hour += 12;
-              if (!isPM && hour === 12) hour = 0;
-
-              const totalMinutes = hour * 60 + min;
-              if (totalMinutes <= 9 * 60) isAttBefore901 = true;
-              if (totalMinutes > 9 * 60) isAttAfter900 = true;
-            }
-          }
-
-          if (isP) {
-            present++;
-            if (isAttBefore901) before901++;
-            if (isAttAfter900) after900++;
-          }
-
-          if (isM) meeting++;
-          else if (isT) training++;
-          else if (isL) leave++;
-
-          if (isD) dsr++;
-          else if (!isM && !isT && !isL) pending++;
-
-          const currentM = mandalStats.get(mandalRaw) || {
-            total: 0,
-            onTime: 0,
-            late: 0,
-            pending: 0,
-            meeting: 0,
-            training: 0,
-            leave: 0,
-            dsrPending: 0,
-          };
-          currentM.total++;
-
-          if (isM) currentM.meeting++;
-          else if (isT) currentM.training++;
-          else if (isL) currentM.leave++;
-          else if (isD) {
-            if (isOnTime) currentM.onTime++;
-            else currentM.late++;
-          } else {
-            currentM.pending++;
-            if (isP) currentM.dsrPending++;
-          }
-
-          mandalStats.set(mandalRaw, currentM);
-
-          processed.push({
-            mandal: mandalRaw,
-            gp: gpRaw.toUpperCase(),
-            attStatus:
-              r[attStatusIdx] ||
-              (isP
-                ? "Present"
-                : isM
-                  ? "Meeting"
-                  : isT
-                    ? "Training"
-                    : isL
-                      ? "Leave"
-                      : "Absent"),
-            attTime: r[attTimeIdx] || "-",
-            dsrStatus:
-              r[dsrStatusIdx] ||
-              (isD
-                ? isOnTime
-                  ? "Attendance in time"
-                  : "Late Attendance"
-                : isM
-                  ? "Meeting"
-                  : isT
-                    ? "Training"
-                    : isL
-                      ? "Leave"
-                      : "Pending"),
-            dsrTime: dsrTimeStr || "-",
-            isPresent: isP,
-            isMeeting: isM,
-            isTraining: isT,
-            isLeave: isL,
-            isEntered: isD,
-            isOnTime,
-            isLate,
-            isAttBefore901,
-            isAttAfter900,
-          });
-        });
-
-        if (processed.length === 0) {
-          setIsProcessing(false);
-          setUploadProgress(0);
-          addToast(
-            "‡∞™‡±ç‡∞∞‡∞æ‡∞∏‡±Ü‡∞∏‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø, ‡∞ï‡∞æ‡∞®‡±Ä ‡∞°‡±á‡∞ü‡∞æ ‡∞è‡∞Æ‡±Ä ‡∞¶‡±ä‡∞∞‡∞ï‡∞≤‡±á‡∞¶‡±Å. ‡∞´‡±à‡∞≤‡±ç ‡∞´‡∞æ‡∞∞‡±ç‡∞Æ‡∞æ‡∞∞‡±ç‡∞ü‡±ç ‡∞í‡∞ï‡∞∏‡∞æ‡∞∞‡∞ø ‡∞ö‡±Ç‡∞°‡∞Ç‡∞°‡∞ø.",
-          );
-          return;
-        }
-
-        setData(processed);
-        setFilteredData(processed);
-        setStats({
-          total: processed.length,
-          present,
-          dsr,
-          pending,
-          meeting,
-          training,
-          leave,
-          before901,
-          after900,
-        });
-        // @ts-ignore
-        setMandalSummaries(Object.fromEntries(mandalStats));
-        setLastUpdateTime(
-          new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-        );
-        setUploadProgress(100);
-        setTimeout(() => {
-          setIsProcessing(false);
-          setUploadProgress(0);
-        }, 500);
-        addToast(
-          `‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞™‡±ç‡∞∞‡∞æ‡∞∏‡±Ü‡∞∏‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! ${processed.length} ‡∞ó‡±ç‡∞∞‡∞æ‡∞Æ ‡∞™‡∞Ç‡∞ö‡∞æ‡∞Ø‡∞§‡±Ä‡∞≤‡±Å ‡∞¶‡±ä‡∞∞‡∞ø‡∞ï‡∞æ‡∞Ø‡∞ø. `,
-        );
-      } catch (err) {
-        console.error("DSR Processing Error:", err);
-        setIsProcessing(false);
-        setUploadProgress(0);
-        addToast(
-          "‡∞´‡±à‡∞≤‡±ç ‡∞™‡±ç‡∞∞‡∞æ‡∞∏‡±Ü‡∞∏‡±ç ‡∞ö‡±á‡∞Ø‡∞°‡∞Ç‡∞≤‡±ã ‡∞≤‡±ã‡∞™‡∞Ç ‡∞∏‡∞Ç‡∞≠‡∞µ‡∞ø‡∞Ç‡∞ö‡∞ø‡∞Ç‡∞¶‡∞ø. ‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞Æ‡∞≥‡±ç‡∞≥‡±Ä ‡∞™‡±ç‡∞∞‡∞Ø‡∞§‡±ç‡∞®‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø.",
-        );
-      }
-    };
-    reader.onerror = () => {
-      setIsProcessing(false);
-      setUploadProgress(0);
-      addToast("‡∞´‡±à‡∞≤‡±ç ‡∞ö‡∞¶‡∞µ‡∞°‡∞Ç‡∞≤‡±ã ‡∞≤‡±ã‡∞™‡∞Ç ‡∞∏‡∞Ç‡∞≠‡∞µ‡∞ø‡∞Ç‡∞ö‡∞ø‡∞Ç‡∞¶‡∞ø.");
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-  const downloadMandalReport = async () => {
-    await loadHeavyModules();
-    if (Object.keys(mandalSummaries).length === 0) return;
-
-    const exportData = Object.entries(mandalSummaries).map(
-      ([mandal, s]: [string, any]) => ({
-        "Mandal Name": mandal,
-        "Total GPs": s.total,
-        "On Time (10:30 AM)": s.onTime,
-        Meeting: s.meeting,
-        Training: s.training,
-        Leave: s.leave,
-        "Late Submission": s.late,
-        Pending: s.pending,
-        "Success Rate (%)": Math.round(
-          ((s.onTime + s.meeting + s.training + s.leave) / s.total) * 100,
-        ),
-      }),
-    );
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mandal Summary");
-    XLSX.writeFile(
-      wb,
-      `Mandal_Summary_Report_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("‡∞Æ‡∞Ç‡∞°‡∞≤‡±ç ‡∞∏‡∞Æ‡±ç‡∞Æ‡∞∞‡±Ä ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±ç ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  const downloadFullReport = async () => {
-    await loadHeavyModules();
-    if (data.length === 0) return;
-
-    const exportData = data.map((r) => ({
-      Mandal: r.mandal,
-      "GP Name": r.gp,
-      "Attendance Status": r.attStatus,
-      "Attendance Time": r.attTime,
-      "DSR Status": r.isMeeting
-        ? "Meeting"
-        : r.isTraining
-          ? "Training"
-          : r.isLeave
-            ? "Leave"
-            : r.isOnTime
-              ? "Attendance in time"
-              : r.isLate
-                ? "Late Attendance"
-                : "Pending",
-      "DSR Time": r.dsrTime,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "GP Details");
-    XLSX.writeFile(
-      wb,
-      `Full_Attendance_Report_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("‡∞™‡±Ç‡∞∞‡±ç‡∞§‡∞ø ‡∞∞‡∞ø‡∞™‡±ã‡∞∞‡±ç‡∞ü‡±ç ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  const downloadRawExcel = async () => {
-    await loadHeavyModules();
-    if (rawJson.length === 0) return;
-    const ws = XLSX.utils.aoa_to_sheet(rawJson);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Raw Data");
-    XLSX.writeFile(
-      wb,
-      `Original_Raw_File_${new Date().toLocaleDateString()}.xlsx`,
-    );
-    addToast("‡∞í‡∞∞‡∞ø‡∞ú‡∞ø‡∞®‡∞≤‡±ç Raw ‡∞´‡±à‡∞≤‡±ç (Excel) ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  const downloadRawPdf = async () => {
-    await loadHeavyModules();
-    if (rawJson.length === 0) return;
-    const doc = new jsPDF("l", "mm", "a4");
-
-    let headerIdx = 0;
-    for (let i = 0; i < Math.min(rawJson.length, 10); i++) {
-      if (
-        rawJson[i].some(
-          (c: any) =>
-            String(c).toLowerCase().includes("mandal") ||
-            String(c).toLowerCase().includes("panchayat"),
-        )
-      ) {
-        headerIdx = i;
-        break;
-      }
-    }
-
-    const body = rawJson.slice(headerIdx);
-
-    autoTable(doc, {
-      body: body,
-      styles: { fontSize: 7, font: "helvetica" },
-      margin: { top: 10 },
-    });
-
-    doc.save(`Original_Raw_File_${new Date().toLocaleDateString()}.pdf`);
-    addToast("‡∞í‡∞∞‡∞ø‡∞ú‡∞ø‡∞®‡∞≤‡±ç Raw ‡∞´‡±à‡∞≤‡±ç (PDF) ‡∞°‡±å‡∞®‡±ç‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±ã‡∞Ç‡∞¶‡∞ø...");
-  };
-
-  useEffect(() => {
-    const term = searchTerm.toLowerCase();
-    let filtered = data.filter(
-      (r) =>
-        String(r.gp || "")
-          .toLowerCase()
-          .includes(term) ||
-        String(r.mandal || "")
-          .toLowerCase()
-          .includes(term),
-    );
-
-    if (activeFilter === "P") filtered = filtered.filter((r) => r.isPresent);
-    else if (activeFilter === "D")
-      filtered = filtered.filter((r) => r.isEntered);
-    else if (activeFilter === "M")
-      filtered = filtered.filter((r) => r.isMeeting);
-    else if (activeFilter === "T")
-      filtered = filtered.filter((r) => r.isTraining);
-    else if (activeFilter === "L") filtered = filtered.filter((r) => r.isLeave);
-    else if (activeFilter === "B9")
-      filtered = filtered.filter((r) => r.isAttBefore901);
-    else if (activeFilter === "A9")
-      filtered = filtered.filter((r) => r.isAttAfter900);
-    else if (activeFilter === "NE")
-      filtered = filtered.filter(
-        (r) => !r.isEntered && !r.isMeeting && !r.isTraining && !r.isLeave,
-      );
-
-    setFilteredData(filtered);
-  }, [searchTerm, activeFilter, data]);
-
-  return (
-    <div className="space-y-6">
-      <div className="p-8 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] text-center relative overflow-hidden">
-        {isProcessing && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center z-10">
-            <div className="w-64">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-                  Processing DSR...
-                </span>
-                <span className="text-[10px] font-black text-primary">
-                  {uploadProgress}%
-                </span>
-              </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  className="h-full bg-primary"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-        <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">
-          DSR Analytical Engine
-        </h4>
-        <input
-          type="file"
-          onChange={onUpload}
-          className="hidden"
-          id="dsr-up"
-          disabled={isProcessing}
-        />
-        <label
-          htmlFor="dsr-up"
-          className={`bg-primary text-white px-10 py-4 rounded-2xl font-black shadow-xl transition-all inline-block text-xs uppercase tracking-widest ${isProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-90 active:scale-95"}`}
-        >
-          {isProcessing ? "Processing..." : "Select DSR File"}
-        </label>
-      </div>
-
-      {data.length > 0 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
-            <button
-              aria-label="Filter Total"
-              onClick={() => setActiveFilter(null)}
-              className="text-left w-full"
-            >
-              <StatCard label="TOTAL" val={stats.total} color="blue" />
-            </button>
-            <button
-              aria-label="Filter Present"
-              onClick={() => setActiveFilter("P")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "P" ? "ring-2 ring-emerald-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="PRESENT" val={stats.present} color="emerald" />
-            </button>
-            <button
-              title="‡∞â‡∞¶‡∞Ø‡∞Ç 9:00 ‡∞ï‡∞Ç‡∞ü‡±á ‡∞Æ‡±Å‡∞Ç‡∞¶‡±Å ‡∞µ‡∞ø‡∞ß‡±Å‡∞≤‡∞ï‡±Å ‡∞π‡∞æ‡∞ú‡∞∞‡±à‡∞® ‡∞µ‡∞æ‡∞∞‡∞ø (Present) ‡∞∏‡∞Ç‡∞ñ‡±ç‡∞Ø."
-              onClick={() => setActiveFilter("B9")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "B9" ? "ring-2 ring-indigo-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="ON TIME" val={stats.before901} color="indigo" />
-            </button>
-            <button
-              title="‡∞â‡∞¶‡∞Ø‡∞Ç 9:01 ‡∞§‡∞∞‡±ç‡∞µ‡∞æ‡∞§ ‡∞µ‡∞ø‡∞ß‡±Å‡∞≤‡∞ï‡±Å ‡∞π‡∞æ‡∞ú‡∞∞‡±à‡∞® ‡∞µ‡∞æ‡∞∞‡∞ø (Present) ‡∞∏‡∞Ç‡∞ñ‡±ç‡∞Ø."
-              onClick={() => setActiveFilter("A9")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "A9" ? "ring-2 ring-rose-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="LATE ATT" val={stats.after900} color="rose" />
-            </button>
-            <button
-              aria-label="Filter DSR"
-              onClick={() => setActiveFilter("D")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "D" ? "ring-2 ring-blue-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="DSR REP" val={stats.dsr} color="emerald" />
-            </button>
-            <button
-              aria-label="Filter No DSR"
-              onClick={() => setActiveFilter("NE")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "NE" ? "ring-2 ring-amber-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard
-                label="NO DSR"
-                val={stats.pending}
-                color="amber"
-                subText={stats.pending > 0 ? `LIVE: ${currentTime}` : undefined}
-              />
-            </button>
-            <button
-              aria-label="Filter Meeting"
-              onClick={() => setActiveFilter("M")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "M" ? "ring-2 ring-cyan-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="MEETING" val={stats.meeting} color="cyan" />
-            </button>
-            <button
-              aria-label="Filter Training"
-              onClick={() => setActiveFilter("T")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "T" ? "ring-2 ring-amber-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="TRAINING" val={stats.training} color="amber" />
-            </button>
-            <button
-              aria-label="Filter Leave"
-              onClick={() => setActiveFilter("L")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "L" ? "ring-2 ring-slate-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="LEAVE" val={stats.leave} color="slate" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 py-2">
-            <button
-              aria-label="Mandal Export"
-              onClick={downloadMandalReport}
-              className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-100 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-100 hover:border-blue-200 active:scale-95 transition-all"
-            >
-              <Download size={14} /> Mandal Export
-            </button>
-            <button
-              aria-label="GP Export"
-              onClick={downloadFullReport}
-              className="flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-slate-100 active:scale-95 transition-all"
-            >
-              <Download size={14} /> GP Export
-            </button>
-            <button
-              aria-label="Raw Excel Download"
-              onClick={downloadRawExcel}
-              className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-100 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-emerald-100 hover:border-emerald-200 active:scale-95 transition-all"
-            >
-              <Download size={14} /> Raw Excel
-            </button>
-            <button
-              aria-label="Raw PDF Download"
-              onClick={downloadRawPdf}
-              className="flex items-center justify-center gap-2 bg-rose-50 text-rose-700 border border-rose-100 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-rose-100 hover:border-rose-200 active:scale-95 transition-all"
-            >
-              <Download size={14} /> Raw PDF
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1 bg-white p-6 rounded-[32px] border shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  Overall Success
-                </h4>
-                <span className="text-sm font-black text-emerald-600">
-                  {stats.total > 0
-                    ? Math.round(
-                        ((stats.present +
-                          stats.meeting +
-                          stats.training +
-                          stats.leave) /
-                          stats.total) *
-                          100,
-                      )
-                    : 0}
-                  %
-                </span>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${stats.total > 0 ? ((stats.present + stats.meeting + stats.training + stats.leave) / stats.total) * 100 : 0}%`,
-                  }}
-                  className="h-full bg-emerald-500 rounded-full"
-                />
-              </div>
-              <div className="mt-3 flex flex-col gap-1">
-                <p className="text-[10px] text-slate-500 font-black uppercase">
-                  Total Compliance:{" "}
-                  {stats.present + stats.meeting + stats.training + stats.leave}{" "}
-                  / {stats.total}
-                </p>
-              </div>
-            </div>
-
-            <div className="lg:col-span-1 bg-white p-6 rounded-[32px] border shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  DSR Compliance
-                </h4>
-                <span className="text-sm font-black text-blue-600">
-                  {stats.total > 0
-                    ? Math.round((stats.dsr / stats.total) * 100)
-                    : 0}
-                  %
-                </span>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${stats.total > 0 ? (stats.dsr / stats.total) * 100 : 0}%`,
-                  }}
-                  className="h-full bg-blue-500 rounded-full"
-                />
-              </div>
-              <p className="mt-3 text-[10px] text-slate-500 font-medium uppercase italic">
-                {stats.dsr} Present GPs reported DSR (out of {stats.total}{" "}
-                total)
-              </p>
-            </div>
-
-            <div className="lg:col-span-2 grid grid-cols-3 gap-4">
-              <div className="bg-cyan-50/50 p-4 rounded-[24px] border border-cyan-100 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-cyan-600">
-                    <Users size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Meeting
-                    </span>
-                  </div>
-                  <div className="text-2xl font-black text-cyan-700">
-                    {stats.meeting}
-                  </div>
-                </div>
-                <p className="text-[8px] text-cyan-600 font-bold uppercase mt-2">
-                  DSR Not Required
-                </p>
-              </div>
-              <div className="bg-amber-50/50 p-4 rounded-[24px] border border-amber-100 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-amber-600">
-                    <GraduationCap size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Training
-                    </span>
-                  </div>
-                  <div className="text-2xl font-black text-amber-700">
-                    {stats.training}
-                  </div>
-                </div>
-                <p className="text-[8px] text-amber-600 font-bold uppercase mt-2">
-                  DSR Not Required
-                </p>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-200 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-slate-500">
-                    <Hash size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Leave
-                    </span>
-                  </div>
-                  <div className="text-2xl font-black text-slate-700">
-                    {stats.leave}
-                  </div>
-                </div>
-                <p className="text-[8px] text-slate-500 font-bold uppercase mt-2">
-                  DSR Not Required
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-3 w-full mt-12 mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Database size={14} /> Mandal-wise Summary Hub
-              </h4>
-              <div className="bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-2">
-                <Info size={12} className="text-emerald-600" />
-                <span className="text-[9px] font-black text-emerald-700 uppercase">
-                  Note: Total OnTime = OnTime + Meeting + Training + Leave
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(mandalSummaries).map(
-                ([mandal, mStats]: [string, any], mIdx) => (
-                  <button
-                    aria-label={`View mandal ${mandal}`}
-                    key={`${mandal}_${mIdx}`}
-                    onClick={() => setSearchTerm(mandal)}
-                    className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all text-left group"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h5 className="text-sm font-black text-primary truncate pr-2">
-                        {mandal}
-                      </h5>
-                      <span className="bg-slate-50 text-[10px] font-black text-slate-400 px-2 py-1 rounded-lg uppercase">
-                        {mStats.total} GPs
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1">
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-emerald-600 uppercase mb-0.5">
-                          OnTime
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.onTime}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-cyan-500 uppercase mb-0.5">
-                          Meet
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.meeting}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-slate-500 uppercase mb-0.5">
-                          Leave
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.leave}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-rose-500 uppercase mb-0.5">
-                          Late
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.late}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-slate-300 uppercase mb-0.5">
-                          Pend
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.pending}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex gap-1 h-1.5 rounded-full overflow-hidden bg-slate-50">
-                      <div
-                        className="h-full bg-emerald-500 transition-all"
-                        style={{
-                          width: `${((mStats.onTime + mStats.meeting + mStats.training + mStats.leave) / mStats.total) * 100}%`,
-                        }}
-                      />
-                      <div
-                        className="h-full bg-rose-400 transition-all"
-                        style={{
-                          width: `${(mStats.late / mStats.total) * 100}%`,
-                        }}
-                      />
-                      <div
-                        className="h-full bg-slate-200 transition-all"
-                        style={{
-                          width: `${(mStats.pending / mStats.total) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-
-          <div className="relative space-y-4">
-            <div className="relative">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={18}
-              />
-              <input
-                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none"
-                placeholder="Search GP or Mandal..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {activeFilter && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Filtering by:
-                </span>
-                <span
-                  className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 ${
-                    activeFilter === "P"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : activeFilter === "D"
-                        ? "bg-blue-100 text-blue-700"
-                        : activeFilter === "M"
-                          ? "bg-cyan-100 text-cyan-700"
-                          : activeFilter === "T"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {activeFilter === "P"
-                    ? "Present"
-                    : activeFilter === "D"
-                      ? "DSR Reported"
-                      : activeFilter === "NE"
-                        ? "DSR Not Entered"
-                        : activeFilter === "M"
-                          ? "In Meeting"
-                          : activeFilter === "T"
-                            ? "In Training"
-                            : "On Leave"}
-                  <button
-                    aria-label="Clear filter"
-                    onClick={() => setActiveFilter(null)}
-                    className="hover:opacity-70"
-                  >
-                    <XCircle size={12} />
-                  </button>
-                </span>
-                <button
-                  aria-label="Clear Filter"
-                  onClick={() => setActiveFilter(null)}
-                  className="text-[9px] font-bold text-primary hover:underline uppercase"
-                >
-                  Clear Filter
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-[32px] border shadow-xl overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <th className="p-2 sm:p-4 text-[9px] sm:text-[10px]">
-                      Mandal / GP
-                    </th>
-                    <th className="p-2 sm:p-4 text-center text-[9px] sm:text-[10px]">
-                      Attendance
-                    </th>
-                    <th className="p-2 sm:p-4 text-center text-[9px] sm:text-[10px]">
-                      DSR Status
-                    </th>
-                    <th className="p-2 sm:p-4 text-center text-[9px] sm:text-[10px]">
-                      Submitted
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filteredData.map((row, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0"
-                    >
-                      <td className="p-2 sm:p-4">
-                        <div className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[80px] sm:max-w-none">
-                          {row.mandal}
-                        </div>
-                        <div className="text-xs sm:text-sm font-black text-primary uppercase truncate max-w-[120px] sm:max-w-none">
-                          {row.gp}
-                        </div>
-                      </td>
-                      <td className="p-2 sm:p-4 text-center">
-                        <StatusCell
-                          status={
-                            row.isPresent
-                              ? row.isAttBefore901
-                                ? "P-I"
-                                : row.isAttAfter900
-                                  ? "P-L"
-                                  : "P"
-                              : row.isMeeting
-                                ? "M"
-                                : row.isTraining
-                                  ? "T"
-                                  : row.isLeave
-                                    ? "L"
-                                    : "A"
-                          }
-                        />
-                        <div className="text-[8px] sm:text-[9px] text-slate-400 font-mono mt-1">
-                          {row.attTime || "-"}
-                        </div>
-                      </td>
-                      <td className="p-2 sm:p-4 text-center">
-                        {/* Logic: Green if OnTime OR Meeting/Training/Leave. Red if Late. Amber if simply Not Entered (Present but no DSR) */}
-                        <span
-                          className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase inline-block whitespace-nowrap ${
-                            row.isOnTime ||
-                            row.isMeeting ||
-                            row.isTraining ||
-                            row.isLeave
-                              ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                              : row.isLate
-                                ? "bg-rose-100 text-rose-700 border border-rose-200"
-                                : "bg-amber-100 text-amber-700 border border-amber-200"
-                          }`}
-                        >
-                          {row.isMeeting
-                            ? "Meeting"
-                            : row.isTraining
-                              ? "Training"
-                              : row.isLeave
-                                ? "Leave"
-                                : row.isOnTime
-                                  ? "DSR On Time"
-                                  : row.isLate
-                                    ? "Late DSR Entry"
-                                    : row.isEntered
-                                      ? "DSR Entered"
-                                      : "Not Entered"}
-                        </span>
-                      </td>
-                      <td className="p-2 sm:p-4 text-center text-[8px] sm:text-[10px] font-mono text-slate-500">
-                        {row.dsrTime || "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AdBanner({ slotId = "5641797386" }: { slotId?: string }) {
-  return null;
-}
-
-function CustomAdUnit({ id, code, className }: { id: string; code?: string; className?: string }) {
-  if (!code || !canShowAds()) return null;
-  return (
-    <div id={id} className={className} dangerouslySetInnerHTML={{ __html: code }} />
-  );
-}
-
-function PostCard({
-  post,
-  isExpanded,
-  toggleExpansion,
-  addToast,
-  isAdmin,
-  onEdit,
-  allUsers,
-  userProfile,
-  storageConfig,
-}: {
-  post: Post;
-  isExpanded: boolean;
-  toggleExpansion: () => void;
-  addToast: (s: string) => void;
-  isAdmin: boolean;
-  onEdit: (p: Post) => void;
-  allUsers: UserProfile[];
-  userProfile?: UserProfile | null;
-  storageConfig?: "cloudflare" | "firebase";
-}) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [localExpanded, setLocalExpanded] = useState(false);
-  
-  const [commentPulse, setCommentPulse] = useState(false);
-  const prevCommentCount = useRef(post?.commentCount || 0);
-  
-  useEffect(() => {
-    if (post?.commentCount > (prevCommentCount.current || 0)) {
-      setCommentPulse(true);
-      const timer = setTimeout(() => setCommentPulse(false), 2000);
-      prevCommentCount.current = post.commentCount;
-      return () => clearTimeout(timer);
-    }
-    prevCommentCount.current = post?.commentCount || 0;
-  }, [post?.commentCount]);
-  const isActualExpanded = isExpanded || localExpanded;
-  const handleToggleExpansion = () => {
-    if (toggleExpansion && toggleExpansion.toString().replace(/\s/g, "") !== "()=>{}") {
-      toggleExpansion();
-    } else {
-      setLocalExpanded((prev) => !prev);
-    }
-  };
-  const isOwner = Boolean(
-    (auth.currentUser && post.uid && auth.currentUser.uid === post.uid) ||
-    isAdmin,
-  );
-  const postTime = getValidTime(post);
-
-  const [showComments, setShowComments] = useState(false);
-  const [showViewsModal, setShowViewsModal] = useState(false);
-  const [showLikesModal, setShowLikesModal] = useState(false);
-
-  // Automatic view count tracking for registered and unregistered (anonymous) visitors
-  useEffect(() => {
-    if (!post?.id) return;
-    const sessionViewedKey = `session_post_viewed_${post.id}`;
-    const hasViewedInSession = sessionStorage.getItem(sessionViewedKey);
-    const userId = auth.currentUser?.uid;
-
-    if (!hasViewedInSession) {
-      sessionStorage.setItem(sessionViewedKey, "true");
-
-      let sourceKey = "source_direct";
-      const referrer = document.referrer.toLowerCase();
-      if (referrer.includes("whatsapp")) sourceKey = "source_whatsapp";
-      else if (referrer.includes("facebook") || referrer.includes("fb")) sourceKey = "source_facebook";
-      else if (referrer.includes("t.co") || referrer.includes("twitter")) sourceKey = "source_twitter";
-      else if (referrer) sourceKey = "source_other";
-
-      const updateData: any = { 
-        views: increment(1),
-        [sourceKey]: increment(1)
-      };
-      if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
-        updateData.viewedBy = arrayUnion(userId);
-      }
-      updateDoc(doc(db, "posts", post.id), updateData).catch((err) => {
-        console.error("View count increment error in PostCard:", err);
-        sessionStorage.removeItem(sessionViewedKey);
-      });
-    } else if (userId && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(userId) : false)) {
-      updateDoc(doc(db, "posts", post.id), { viewedBy: arrayUnion(userId) }).catch(() => {});
-    }
-  }, [post?.id, auth.currentUser?.uid]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      layout 
-      className={`post-card ${commentPulse ? 'ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20' : ''}`}
-      whileHover={{ scale: 1.005, y: -2 }}
-      animate={commentPulse ? { scale: [1, 1.02, 1] } : { scale: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="flex items-center gap-3 mb-3 sm:mb-4">
-        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-black overflow-hidden border shadow-sm">
-          {post.userPhoto ? (
-            <img
-              src={post.userPhoto}
-              alt={post.userName || "Author"}
-              loading="lazy"
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="text-lg">
-              {(post.userName || "U").charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h5 className="text-[17px] font-black text-primary leading-tight">
-              {post.userName || "Portal Member"}
-            </h5>
-            {post.isAdminPost && (
-              <span className="bg-blue-600 text-white text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                <ShieldCheck size={10} /> Official
-              </span>
-            )}
-            {post.pinned && (
-              <span className="text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] uppercase font-black tracking-widest border border-amber-100">
-                <Pin size={10} fill="currentColor" /> Pinned
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-bold uppercase mt-1">
-            <Clock size={12} />
-            <span>
-              {new Date(postTime).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </span>
-            {(post.lastEditedAt || post.updatedAt) && (
-              <>
-                <span>‚Ä¢</span>
-                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200/60 flex items-center gap-1">
-                  Last Update: {new Date(typeof (post.lastEditedAt || post.updatedAt) === 'number' ? (post.lastEditedAt || post.updatedAt) : ((post.lastEditedAt || post.updatedAt).seconds ? (post.lastEditedAt || post.updatedAt).seconds * 1000 : (post.lastEditedAt || post.updatedAt))).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
-                </span>
-              </>
-            )}
-            <span>‚Ä¢</span>
-            <span className="text-primary/70">
-              {post.categories && post.categories.length > 0
-                ? post.categories.join(", ")
-                : post.category || "Update"}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {isOwner && (
-            <>
-              {isAdmin && (
-                <button
-                  onClick={async () => {
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), {
-                        pinned: !post.pinned,
-                      });
-                      addToast(post.pinned ? "Post Unpinned" : "Post Pinned");
-                    } catch (err) {
-                      handleFirestoreError(
-                        err,
-                        OperationType.UPDATE,
-                        `posts/${post.id}`,
-                      );
-                    }
-                  }}
-                  className={`p-1.5 hover:bg-slate-50 transition-all rounded-lg ${post.pinned ? "text-amber-500" : "text-slate-400 hover:text-amber-500"}`}
-                  title={post.pinned ? "Unpin Post" : "Pin Post"}
-                >
-                  <Pin size={16} fill={post.pinned ? "currentColor" : "none"} />
-                </button>
-              )}
-              <button
-                onClick={() => onEdit(post)}
-                className="p-1.5 hover:bg-slate-50 text-slate-400 hover:text-primary transition-all rounded-lg"
-                title="Edit"
-              >
-                <Edit3 size={16} />
-              </button>
-              <button
-                aria-label="Delete Post"
-                onClick={async () => {
-                  const res = await Swal.fire({
-                    title: "Delete?",
-                    text: "Move this post to recycle bin?",
-                    icon: "warning",
-                    showCancelButton: true,
-                  });
-                  if (res.isConfirmed) {
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), {
-                        status: "Deleted",
-                        deletedAt: Date.now(),
-                      });
-                      addToast("Moved to recycle bin");
-                    } catch (err: any) {
-                      addToast(getFriendlyError(err));
-                    }
-                  }
-                }}
-                className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-danger transition-all rounded-lg"
-                title="Delete"
-              >
-                <Trash2 size={16} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <h4
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setSearchParams({ postId: post.id });
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        className="post-title !mt-0 flex flex-wrap items-center gap-2 cursor-pointer hover:text-red-600 transition-colors group"
-      >
-        <span className="group-hover:underline">{formatPostTitle(post.title) || "Platform Update"}</span>
-        {post.version && (
-          <span className="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase">
-            {post.version}
-          </span>
-        )}
-        {post.versionStatus && (
-          <span
-            className={`${post.versionStatus === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase`}
-          >
-            {post.versionStatus}
-          </span>
-        )}
-      </h4>
-
-      {post.tags && post.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {post.tags.map((tag, i) => (
-            <span
-              key={i}
-              className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-slate-200/50"
-            >
-              <Hash size={10} strokeWidth={3} /> {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {post.attachments &&
-      (post.downloadStyle === "techspot" ||
-        (!post.downloadStyle && post.attachments.length >= 2)) ? (
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 mt-4">
-          <div className="flex-1 min-w-0">
-            <div
-              className={`post-body mb-4 relative ${isActualExpanded ? "" : "max-h-[220px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
-            >
-              <ReactMarkdown
-                remarkPlugins={[remarkBreaks]}
-                rehypePlugins={[rehypeRaw]}
-                components={{
-                  img: (props) => (
-                    <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" /></span>
-                  ),
-                  h3: ({ node, children, ...props }) => {
-                    const text = String(children);
-                    if (text.includes("‚ú® What's New")) {
-                      return (
-                        <h3
-                          className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("üêõ Bug Fixes")) {
-                      return (
-                        <h3
-                          className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    }
-                    if (text.includes("‚ö° Improvements")) {
-                      return (
-                        <h3
-                          className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm"
-                          {...props}
-                        >
-                          {children}
-                        </h3>
-                      );
-                    }
-                    return (
-                      <h3
-                        className="text-lg font-black text-primary mt-4 mb-2"
-                        {...props}
-                      >
-                        {children}
-                      </h3>
-                    );
-                  },
-                  ul: ({ node, children, ...props }) => (
-                    <ul className="space-y-1.5 ml-4 mb-4" {...props}>
-                      {children}
-                    </ul>
-                  ),
-                  li: ({ node, children, ...props }) => (
-                    <li
-                      className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed"
-                      {...props}
-                    >
-                      <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                      <span>{children}</span>
-                    </li>
-                  ),
-                }}
-              >
-                {post.content || ""}
-              </ReactMarkdown>
-              {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
-                <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-              )}
-            </div>
-
-            {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSearchParams({ postId: post.id });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
-              >
-                <ChevronRight size={14} strokeWidth={2.5} /> ‡∞Æ‡±ä‡∞§‡±ç‡∞§‡∞Ç ‡∞ö‡∞¶‡∞µ‡∞Ç‡∞°‡∞ø (Read More)
-              </button>
-            )}
-
-            {post.attachments.filter(
-              (att) =>
-                /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                (att.url || "").includes("image"),
-            ).length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
-                {post.attachments
-                  .filter(
-                    (att) =>
-                      /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                      (att.url || "").includes("image"),
-                  )
-                  .map((att, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() =>
-                        (window as any).setLightboxImage?.({
-                          url: att.url,
-                          name: att.name || "Attachment",
-                        })
-                      }
-                      className="relative group overflow-hidden rounded-xl border border-slate-100 shadow-sm transition-all hover:border-primary/20 cursor-pointer"
-                    >
-                      <div className="absolute top-2 right-2 p-1.5 bg-black/50 backdrop-blur-md rounded-full text-white md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                        <Maximize2 size={12} strokeWidth={3} />
-                      </div>
-                      <img
-                        src={att.url}
-                        alt={att.name}
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-40 object-cover transition-transform group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <a
-                          href={att.url}
-                          onClick={(e) =>
-                            handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 bg-white rounded-full text-primary hover:scale-110 transition-transform"
-                        >
-                          <ExternalLink size={16} />
-                        </a>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                        <p className="text-white text-[10px] font-bold truncate px-1">
-                          {att.name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            {post.websiteName && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-                <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-                  <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-                    <ExternalLink size={12} strokeWidth={3} />
-                  </div>
-                  {post.websiteName} Issue / Problem
-                </div>
-                <Target
-                  size={14}
-                  className="text-primary/40 group-hover:text-primary transition-colors"
-                />
-              </div>
-            )}
-
-            {post.mediaUrl && (
-              <div className="mb-4">
-                {post.mediaType?.startsWith("video") ? (
-                  <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
-                ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-                  <SmartImage src={post.mediaUrl} alt={post.title} className="post-media" />
-                ) : post.mediaType?.startsWith("audio") ? (
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
-                      {post.mediaName || "Audio Attachment"}
-                    </p>
-                    <audio src={post.mediaUrl} controls className="w-full" />
-                  </div>
-                ) : post.mediaType === "link" ? (
-                  <a
-                    href={
-                      post.mediaUrl.startsWith("http")
-                        ? post.mediaUrl
-                        : `https://${post.mediaUrl}`
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl hover:bg-blue-50 transition-colors w-full group"
-                  >
-                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                      <Link2 size={24} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-bold text-slate-800 text-sm truncate">
-                        {post.mediaName || "External Link"}
-                      </h5>
-                      <p
-                        className="text-xs text-slate-500 truncate mt-0.5"
-                        dir="ltr"
-                      >
-                        {post.mediaUrl}
-                      </p>
-                    </div>
-                  </a>
-                ) : (
-                  !(
-                    post.downloadStyle === "techspot" ||
-                    (!post.downloadStyle &&
-                      post.attachments &&
-                      post.attachments.length >= 2)
-                  ) && (
-                    <a
-                      href={post.mediaUrl}
-                      download={post.mediaName || "Document"}
-                      onClick={(e) =>
-                        handleForceDownload(
-                          e,
-                          post.mediaUrl || "",
-                          post.mediaName || "Document",
-                        )
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 hover:border-primary/30 transition-colors w-full group"
-                    >
-                      <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                        <FileText size={24} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h5 className="font-bold text-slate-800 text-sm truncate">
-                          {post.mediaName || "Attached Document"}
-                        </h5>
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">
-                          Download File
-                        </p>
-                      </div>
-                      <Download
-                        size={20}
-                        className="text-slate-400 group-hover:text-primary transition-colors ml-4"
-                      />
-                    </a>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full lg:w-[280px] xl:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6 flex flex-col">
-            <div className="mb-5">
-              <a
-                href={(() => {
-                  const att = getLatestAttachment(post.attachments);
-                  return att ? att.url : post.attachments[0]?.url;
-                })()}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
-                  handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect);
-                }}
-                className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, #2b88d8 0%, #1565c0 100%)",
-                  padding: "10px",
-                }}
-              >
-                <div className="bg-black/15 p-2.5 flex items-center justify-center border-r border-black/10">
-                  <ArrowDown
-                    size={28}
-                    color="white"
-                    strokeWidth={3}
-                    className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform"
-                  />
-                </div>
-                <span
-                  className="text-[20px] font-semibold pr-6 tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] flex-1 truncate"
-                  title={(() => {
-                    const att = getLatestAttachment(post.attachments);
-                    return att ? `Download Now (${att.name})` : "Download Now";
-                  })()}
-                >
-                  {getLatestAttachment(post.attachments)
-                    ? "Download Latest Version"
-                    : "Download Now"}
-                </span>
-              </a>
-            </div>
-
-            <div className="text-[13px] text-gray-800 mb-2 font-sans font-black uppercase tracking-wider">
-              Download
-            </div>
-            <div className="flex flex-col gap-2 w-full">
-              {post.mediaUrl &&
-                !post.mediaType?.startsWith("video") &&
-                !(post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image")) &&
-                !post.mediaType?.startsWith("audio") &&
-                post.mediaType !== "link" && (
-                  <a
-                    href={post.mediaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      if (requireLoginAlert()) { e.preventDefault(); return; }
-                      handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document");
-                    }}
-                    className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
-                  >
-                    <div className="flex items-center h-full min-w-0">
-                      <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                          <ArrowDown
-                            size={12}
-                            className="text-[#666666]"
-                            strokeWidth={4}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex flex-col px-3 min-w-0">
-                        <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                          {post.mediaName || "Attached Document"}
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                )}
-              {post.attachments?.map((att, idx) => (
-                <a
-                  key={idx}
-                  href={att.url}
-                  onClick={(e) =>
-                    handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
-                    att.isDirect
-                      ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
-                      : "bg-white border border-[#cccccc] hover:border-blue-500"
-                  }`}
-                >
-                  <div className="flex items-center h-full min-w-0">
-                    <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                        <ArrowDown
-                          size={12}
-                          className="text-[#666666]"
-                          strokeWidth={4}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col px-3 min-w-0">
-                      <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
-                        {att.name}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 pr-3 shrink-0">
-                    {att.isDirect && (
-                      <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
-                        <Download size={10} strokeWidth={3} /> ‡∞°‡±à‡∞∞‡±Ü‡∞ï‡±ç‡∞ü‡±ç ‡∞°‡±å‡∞®‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
-                        title="Version Number"
-                      >
-                        <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                          {att.badgePrefix || "v"}
-                        </span>
-                        <span className="text-[9px] font-bold text-blue-600 leading-none">
-                          {att.version || "1.0"}
-                        </span>
-                      </div>
-                      {att.status && (
-                        <span
-                          className={`${att.status === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}
-                        >
-                          {att.status}
-                        </span>
-                      )}
-                    </div>
-                    </div>
-                  </a>
-                ))}
-          </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div
-            className={`post-body mb-4 relative ${isActualExpanded ? "" : "max-h-[220px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
-          >
-          <ReactMarkdown remarkPlugins={[remarkBreaks]}
-          rehypePlugins={[rehypeRaw]}
-          components={{
-            img: (props) => (
-              <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" /></span>
-            ),
-            h3: ({ node, children, ...props }) => {
-              const text = String(children);
-              if (text.includes("‚ú® What's New")) {
-                return (
-                  <h3
-                    className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm"
-                    {...props}
-                  >
-                    {children}
-                  </h3>
-                );
-              }
-              if (text.includes("üêõ Bug Fixes")) {
-                return (
-                  <h3
-                    className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm"
-                    {...props}
-                  >
-                    {children}
-                  </h3>
-                );
-              }
-              if (text.includes("‚ö° Improvements")) {
-                return (
-                  <h3
-                    className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm"
-                    {...props}
-                  >
-                    {children}
-                  </h3>
-                );
-              }
-              return (
-                <h3
-                  className="text-lg font-black text-primary mt-4 mb-2"
-                  {...props}
-                >
-                  {children}
-                </h3>
-              );
-            },
-            ul: ({ node, children, ...props }) => (
-              <ul className="space-y-1.5 ml-4 mb-4" {...props}>
-                {children}
-              </ul>
-            ),
-            li: ({ node, children, ...props }) => (
-              <li
-                className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed"
-                {...props}
-              >
-                <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                <span>{children}</span>
-              </li>
-            ),
-          }}
-        >
-          {post.content || ""}
-        </ReactMarkdown>
-        {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
-          <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-        )}
-      </div>
-      {post.websiteName && (
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-        <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-          <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-            <ExternalLink size={12} strokeWidth={3} />
-          </div>
-          {post.websiteName} Issue / Problem
-        </div>
-        <Target
-          size={14}
-          className="text-primary/40 group-hover:text-primary transition-colors"
-        />
-      </div>
-    )}
-
-    {post.mediaUrl && (
-      <div className="mb-4">
-        {post.mediaType?.startsWith("video") ? (
-          <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = "none"; }} />
-        ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-          <SmartImage src={post.mediaUrl} alt={post.title} className="post-media" />
-        ) : post.mediaType?.startsWith("audio") ? (
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
-              {post.mediaName || "Audio Attachment"}
-            </p>
-            <audio src={post.mediaUrl} controls className="w-full" />
-          </div>
-        ) : post.mediaType === "link" ? (
-          <a
-            href={
-              post.mediaUrl.startsWith("http")
-                ? post.mediaUrl
-                : `https://${post.mediaUrl}`
-            }
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl hover:bg-blue-50 transition-colors w-full group"
-          >
-            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-              <Link2 size={24} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h5 className="font-bold text-slate-800 text-sm truncate">
-                {post.mediaName || "External Link"}
-              </h5>
-              <p
-                className="text-xs text-slate-500 truncate mt-0.5"
-                dir="ltr"
-              >
-                {post.mediaUrl}
-              </p>
-            </div>
-          </a>
-        ) : (
-          !(
-            post.downloadStyle === "techspot" ||
-            (!post.downloadStyle &&
-              post.attachments &&
-              post.attachments.length >= 2)
-          ) && (
-            <a
-              href={post.mediaUrl}
-              download={post.mediaName || "Document"}
-              onClick={(e) =>
-                handleForceDownload(
-                  e,
-                  post.mediaUrl || "",
-                  post.mediaName || "Document",
-                )
-              }
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 hover:border-primary/30 transition-colors w-full group"
-            >
-              <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                <FileText size={24} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h5 className="font-bold text-slate-800 text-sm truncate">
-                  {post.mediaName || "Attached Document"}
-                </h5>
-                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mt-1">
-                  Download File
-                </p>
-              </div>
-              <Download
-                size={20}
-                className="text-slate-400 group-hover:text-primary transition-colors ml-4"
-              />
-            </a>
-          )
-        )}
-      </div>
-    )}
-  </>
-)}
-
-<div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-auto">
-  <div className="flex items-center gap-6">
-    <div className="flex items-center gap-2">
-      <motion.button whileTap={{ scale: 0.85 }}
-        aria-label="Like Post"
-        onClick={async (e) => {
-          e.stopPropagation();
-          const userId = auth.currentUser?.uid;
-          if (requireLoginAlert()) return;
-          const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
-          try {
-            if (likedBy.includes(userId)) {
-              await updateDoc(doc(db, "posts", post.id), {
-                likes: increment(-1),
-                likedBy: arrayRemove(userId),
-              });
-            } else {
-              await updateDoc(doc(db, "posts", post.id), {
-                likes: increment(1),
-                likedBy: arrayUnion(userId),
-              });
-              const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
-              const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
-              const snapLike = await getDocs(qLike);
-              if (!snapLike.empty) {
-                await updateDoc(snapLike.docs[0].ref, {
-                  message: `${likerName} ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞á‡∞§‡∞∞‡±Å‡∞≤‡±Å ‡∞í‡∞ï ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞®‡±Å ‡∞á‡∞∑‡±ç‡∞ü‡∞™‡∞°‡±ç‡∞°‡∞æ‡∞∞‡±Å.`,
-                  time: Date.now(),
-                  read: false
-                }).catch(()=>console.error("Failed to update like notif"));
-              } else {
-                await addDoc(collection(db, "notifications"), {
-                  uid: "all",
-                  title: "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞≤‡±à‡∞ï‡±ç (New Like)",
-                  message: `${likerName} ‡∞µ‡∞æ‡∞∞‡±Å ‡∞í‡∞ï ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞®‡±Å ‡∞á‡∞∑‡±ç‡∞ü‡∞™‡∞°‡±ç‡∞°‡∞æ‡∞∞‡±Å.`,
-                  type: "like",
-                  read: false,
-                  time: Date.now(),
-                  postId: post.id
-                }).catch(()=>console.error("Failed to add like notif"));
-              }
-            }
-          } catch (err: any) {
-            addToast(getFriendlyError(err));
-          }
-        }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
-            >
-              <Heart
-                size={18}
-                fill={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
-                    ? "currentColor"
-                    : "none"
-                }
-              />
-              <span
-                onClick={(e) => {
-                  if (isAdmin && post.likes > 0) {
-                    e.stopPropagation();
-                    setShowLikesModal(true);
-                  }
-                }}
-                className={`text-sm font-black ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
-              >
-                {post.likes || 0}
-              </span>
-            </motion.button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <motion.div
-              whileTap={{ scale: 0.85 }}
-              className="flex items-center gap-2 p-2 text-slate-400 cursor-pointer hover:bg-slate-50 rounded-xl transition-all"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowComments(!showComments);
-              }}
-            >
-              <MessageSquare size={18} />
-              <span className="text-sm font-black">
-                {post.commentCount ?? post.comments?.length ?? 0}
-              </span>
-            </motion.div>
-          </div>
-
-          {/* Views - Visible to all, clickable only by admin */}
-          <div className="flex items-center gap-2">
-            <div
-              onClick={(e) => {
-                const displayViews = getPostDisplayViews(post, isAdmin);
-                if (isAdmin && displayViews > 0) {
-                  e.stopPropagation();
-                  setShowViewsModal(true);
-                }
-              }}
-              className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
-            >
-              <Eye size={18} />
-              <span
-                className={`text-sm font-black ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:underline cursor-pointer" : ""}`}
-              >
-                {getPostDisplayViews(post, isAdmin)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-4 items-center">
-          <button
-            aria-label="Share Post"
-            onClick={(e) => {
-              e.stopPropagation();
-              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
-              const shareText = generatePostShareText(post, url);
-              handleShare(
-                post.title || "E-Vedhika Post",
-                shareText,
-                url,
-                async () => {
-                  addToast("Link Copied!");
-                  if (auth.currentUser) {
-                    const sharerName = isAdmin ? "Admin" : auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
-                    const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
-                    const snapShare = await getDocs(qShare);
-                    if (!snapShare.empty) {
-                      await updateDoc(snapShare.docs[0].ref, {
-                        message: `${sharerName} ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞á‡∞§‡∞∞‡±Å‡∞≤‡±Å ‡∞í‡∞ï ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞®‡±Å ‡∞∑‡±á‡∞∞‡±ç ‡∞ö‡±á‡∞∂‡∞æ‡∞∞‡±Å.`,
-                        time: Date.now(),
-                        read: false
-                      }).catch(()=>console.error("Failed to update share notif"));
-                    } else {
-                      await addDoc(collection(db, "notifications"), {
-                        uid: "all",
-                        title: "‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞∑‡±á‡∞∞‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø (Post Shared)",
-                        message: `${sharerName} ‡∞µ‡∞æ‡∞∞‡±Å ‡∞í‡∞ï ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞®‡±Å ‡∞á‡∞§‡∞∞‡±Å‡∞≤‡∞§‡±ã ‡∞∑‡±á‡∞∞‡±ç ‡∞ö‡±á‡∞∂‡∞æ‡∞∞‡±Å.`,
-                        type: "share",
-                        read: false,
-                        time: Date.now(),
-                        postId: post.id
-                      }).catch(()=>console.error("Failed to notif share"));
-                    }
-                  }
-                },
-                post.mediaUrl,
-                post.mediaType,
-              );
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all cursor-pointer"
-          >
-            <Share2 size={16} strokeWidth={2.5} />
-            <span>Share</span>
-          </button>
-
-          <button
-            aria-label="Share WhatsApp Poster"
-            onClick={(e) => {
-              e.stopPropagation();
-              if ((window as any).setSharingPostForPoster) {
-                (window as any).setSharingPostForPoster(post);
-              }
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-emerald-600 font-black text-xs uppercase bg-emerald-50 hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 cursor-pointer"
-          >
-            <Smartphone size={16} strokeWidth={2.5} />
-            <span>‡∞µ‡∞æ‡∞ü‡±ç‡∞∏‡∞æ‡∞™‡±ç ‡∞ï‡∞æ‡∞∞‡±ç‡∞°‡±ç</span>
-          </button>
-
-          <button
-            aria-label="Read Post"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSearchParams({ postId: post.id });
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
-          >
-            <Eye size={16} strokeWidth={2.5} />
-            <span>Read post</span>
-          </button>
-          
-          <button
-            aria-label="Copy Post Link"
-            onClick={(e) => {
-              e.stopPropagation();
-              const url = `${window.location.origin}${window.location.pathname}?postId=${post.id}`;
-              navigator.clipboard.writeText(url);
-              addToast("‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞≤‡∞ø‡∞Ç‡∞ï‡±ç ‡∞ï‡∞æ‡∞™‡±Ä ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! (URL Copied!)");
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-slate-500 font-black text-xs uppercase bg-slate-50 hover:bg-slate-200 hover:text-slate-800 transition-all cursor-pointer"
-          >
-            <Link2 size={16} strokeWidth={2.5} />
-            <span>Copy Link</span>
-          </button>
-        </div>
-      </div>
-
-      {showComments && (
-        <div className="mt-6 pt-6 border-t border-slate-100">
-          <PostComments
-            post={post}
-            addToast={addToast}
-            userProfile={userProfile || null}
-            isAdmin={isAdmin}
-            allUsers={allUsers}
-            storageConfig={storageConfig || "firebase"}
-          />
-        </div>
-      )}
-
-      {showLikesModal && (
-        <UsersListModal
-          title="Liked By"
-          uids={post.likedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowLikesModal(false)}
-        />
-      )}
-      {showViewsModal && (
-        <UsersListModal
-          title="Viewed By"
-          uids={post.viewedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowViewsModal(false)}
-          anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
-        />
-      )}
-    </motion.div>
-  );
-}
-
-function toDatetimeLocalString(val: any): string {
-  if (!val) return "";
-  let ms = typeof val === 'number' ? val : (val.seconds ? val.seconds * 1000 : Date.now());
-  const d = new Date(ms);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function PostForm({
-  addToast,
-  onCancel,
-  currentUserProfile,
-  editingPost,
-  isAdmin,
-  isEditor,
-  storageConfig,
-}: {
-  addToast: (s: string) => void;
-  onCancel: () => void;
-  currentUserProfile: UserProfile | null;
-  editingPost: Post | null;
-  isAdmin: boolean;
-  isEditor: boolean;
-  storageConfig: "cloudflare" | "firebase";
-}) {
-  const [loading, setLoading] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState("");
-  const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
-  const [title, setTitle] = useState(editingPost?.title || "");
-  const [content, setContent] = useState(editingPost?.content || "");
-  const [version, setVersion] = useState(editingPost?.version || "");
-  const [versionStatus, setVersionStatus] = useState<"New" | "Old" | undefined>(
-    editingPost?.versionStatus,
-  );
-  const [attachments, setAttachments] = useState<
-    { name: string; url: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean }[]
-  >(editingPost?.attachments || []);
-  const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
-  const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
-    editingPost?.downloadStyle || "techspot",
-  );
-  const [updateTimeOption, setUpdateTimeOption] = useState<"now" | "custom" | "keep">(
-    editingPost ? "now" : "now"
-  );
-  const [customUpdateTime, setCustomUpdateTime] = useState<string>(() => {
-    if (editingPost?.lastEditedAt) {
-      return toDatetimeLocalString(editingPost.lastEditedAt);
-    }
-    return toDatetimeLocalString(Date.now());
-  });
-  const [overrideCreatedTime, setOverrideCreatedTime] = useState<boolean>(false);
-  const [customCreatedTime, setCustomCreatedTime] = useState<string>(() => {
-    if (editingPost) {
-      return toDatetimeLocalString(editingPost.createdAt || editingPost.time);
-    }
-    return toDatetimeLocalString(Date.now());
-  });
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    if (requireLoginAlert()) return;
-
-    const paramsFiles = Array.from(files);
-
-    setUploadingFile(true);
-    setUploadProgress(0);
-
-    const uploadFile = async (currentFile: File) => {
-      let file = currentFile;
-      if (file.type.startsWith("image/")) {
-        addToast(
-          `${file.name} (Size: ${(file.size / 1024 / 1024).toFixed(2)}MB) is being compressed...`,
-        );
-        try {
-          const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1920,
-            useWebWorker: true,
-            initialQuality: 0.8,
-          };
-          const compressedBlob = await imageCompression(file, options);
-          file = new File([compressedBlob], file.name, {
-            type: file.type,
-            lastModified: Date.now(),
-          });
-          addToast(`Compression complete! Uploading to cloud...`);
-        } catch (error) {
-          console.error("Compression error:", error);
-        }
-      } else {
-        addToast(`Uploading to cloud...`);
-      }
-
-      return new Promise<{ name: string; url: string; version: string }>(
-        async (resolve, reject) => {
-          try {
-            const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-            const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-            
-            if (storageConfig === "cloudflare") {
-              try {
-                const token = await auth.currentUser?.getIdToken();
-                const formData = new FormData();
-                formData.append('file', file);
-                const response = await fetch('/api/upload', {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${token}` },
-                  body: formData
-                });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-                setUploadProgress(100);
-                resolve({
-                  name: file.name,
-                  url: data.url,
-                  version: "1.0",
-                });
-              } catch (err) {
-                reject(err);
-              }
-            } else {
-              const storageRef = ref(storage, `uploads/${uniqueFilename}`);
-              
-              const uploadTask = uploadBytesResumable(storageRef, file);
-
-              uploadTask.on(
-                "state_changed",
-                (snapshot) => {
-                  const progress =
-                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                  setUploadProgress(progress);
-                },
-                (error) => {
-                  reject(error);
-                },
-                async () => {
-                  try {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    setUploadProgress(100);
-                    resolve({
-                      name: file.name,
-                      url: downloadURL,
-                      version: "1.0",
-                    });
-                  } catch (err) {
-                    reject(err);
-                  }
-                }
-              );
-            }
-          } catch (error) {
-            reject(error);
-          }
-        },
-      );
-    };
-
-    try {
-      for (let i = 0; i < paramsFiles.length; i++) {
-        const file = paramsFiles[i];
-        addToast(
-          `Uploading file ${i + 1}/${paramsFiles.length}: ${file.name}...`,
-        );
-        const result = await uploadFile(file);
-        
-        setAttachments((prev) => {
-          if (replaceIndex !== null) {
-            return prev.map((a, j) => (j === replaceIndex ? { ...a, name: result.name, url: result.url } : a));
-          }
-          return [...prev, result];
-        });
-
-        // Auto-set primary media if not set and this is an image
-        if (!media && file.type.startsWith("image/")) {
-          setMedia({
-            url: result.url,
-            type: file.type,
-            name: file.name,
-          });
-        }
-
-        addToast(`${file.name} uploaded successfully!`);
-        
-        if (replaceIndex !== null) break;
-      }
-
-      addToast("All files uploaded successfully!");
-    } catch (err: any) {
-      console.error("handleFileUpload complex error:", err);
-      let errorMsg = "File upload failed!";
-
-      if (err.message) {
-        errorMsg = `Error: ${err.message}`;
-      }
-
-      addToast(errorMsg);
-      Swal.fire({
-        icon: "error",
-        title: "Upload Failed",
-        text: errorMsg,
-        confirmButtonText: "Close",
-      });
-    } finally {
-      setUploadingFile(false);
-      setUploadProgress(0);
-      setReplaceIndex(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
-    const raw = editingPost?.categories
-      ? editingPost.categories
-      : editingPost?.category
-        ? [editingPost.category]
-        : [" General"];
-
-    const mapping: Record<string, string> = {
-      " General": " General",
-      " General (‡∞∏‡∞æ‡∞ß‡∞æ‡∞∞‡∞£‡∞Ç)": " General",
-      " Updates": " Updates",
-      " Updates (‡∞Ö‡∞™‡±ç‚Äå‡∞°‡±á‡∞ü‡±ç‡∞∏‡±ç)": " Updates",
-      " Portal Update": " Updates",
-      " Daily Reports": " Progress Reports",
-      " Progress Reports (‡∞®‡∞ø‡∞µ‡±á‡∞¶‡∞ø‡∞ï‡∞≤‡±Å)": " Progress Reports",
-      " Election": " Election News",
-      " TSEC Poll Issue": " Election News",
-      " Election News (‡∞é‡∞®‡±ç‡∞®‡∞ø‡∞ï‡∞≤‡±Å)": " Election News",
-      " Mana Panchayath": " Gram Panchayat",
-      " Gram Panchayat (‡∞™‡∞Ç‡∞ö‡∞æ‡∞Ø‡∞§‡±Ä)": " Gram Panchayat",
-      " Suggestions & Feedback": " Ideas & Feedback",
-      " Ideas & Feedback (‡∞∏‡±Ç‡∞ö‡∞®‡∞≤‡±Å)": " Ideas & Feedback",
-      " Applications & GOs": " GOs & Circulars",
-      " GOs & Circulars (‡∞ú‡±Ä‡∞µ‡±ã‡∞≤‡±Å)": " GOs & Circulars",
-      " Useful Information": " Useful Links",
-      " Useful Links (‡∞Æ‡±Å‡∞ñ‡±ç‡∞Ø‡∞Æ‡±à‡∞® ‡∞≤‡∞ø‡∞Ç‡∞ï‡±Å‡∞≤‡±Å)": " Useful Links",
-      " ePanchayat Issue": " Technical Support",
-      " Online Tax Collection Issue": " Taxes & Finance",
-      " Taxes & Finance (‡∞™‡∞®‡±ç‡∞®‡±Å‡∞≤‡±Å)": " Taxes & Finance",
-      " Housing & Layouts (‡∞á‡∞≥‡±ç‡∞≤‡±Å/‡∞≤‡±á‡∞Ö‡∞µ‡±Å‡∞ü‡±ç‡∞≤‡±Å)": " Housing & Layouts",
-      " Ubd Portal Issue": " Technical Support",
-      " eGramSwaraj doubts": " Technical Support",
-      " Technical Support (‡∞∏‡∞æ‡∞Ç‡∞ï‡±á‡∞§‡∞ø‡∞ï ‡∞∏‡∞π‡∞æ‡∞Ø‡∞Ç)": " Technical Support",
-      " Technical Support (‡∞∏‡∞π‡∞æ‡∞Ø‡∞Ç)": " Technical Support",
-      " Applications (‡∞¶‡∞∞‡∞ñ‡∞æ‡∞∏‡±ç‡∞§‡±Å‡∞≤‡±Å)": " Applications",
-    };
-    return raw.map((cat) => mapping[cat] || cat);
-  });
-  const [tags, setTags] = useState(editingPost?.tags?.join(", ") || "");
-  const [websiteName, setWebsiteName] = useState(
-    editingPost?.websiteName || "",
-  );
-  const [media, setMedia] = useState<{
-    url: string;
-    type: string;
-    name?: string;
-  } | null>(
-    editingPost
-      ? editingPost.mediaUrl
-        ? {
-            url: editingPost.mediaUrl,
-            type: editingPost.mediaType || "image/jpeg",
-            name: editingPost.mediaName,
-          }
-        : null
-      : null,
-  );
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const primaryImageInputRef = useRef<HTMLInputElement>(null);
-  const contentImageInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-
-  const handlePrimaryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    let file = files[0];
-    if (!file) return;
-
-    setIsUploadingImage(true);
-    addToast("‡∞ö‡∞ø‡∞§‡±ç‡∞∞‡∞æ‡∞®‡±ç‡∞®‡∞ø ‡∞™‡±ç‡∞∞‡∞æ‡∞∏‡±Ü‡∞∏‡±ç ‡∞ö‡±á‡∞∏‡±ç‡∞§‡±ã‡∞Ç‡∞¶‡∞ø... (Processing image...)");
-
-    try {
-      if (file.type.startsWith("image/")) {
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          initialQuality: 0.8,
-        };
-        const compressedBlob = await imageCompression(file, options);
-        file = new File([compressedBlob], file.name || "post_image.jpg", {
-          type: file.type || "image/jpeg",
-          lastModified: Date.now(),
-        });
-      }
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-      let downloadURL = "";
-
-      if (storageConfig === "cloudflare") {
-        const token = await auth.currentUser?.getIdToken();
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-        downloadURL = data.url;
-      } else {
-        const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
-        await uploadBytes(storageRef, file);
-        downloadURL = await getDownloadURL(storageRef);
-      }
-
-      setMedia({
-        url: downloadURL,
-        type: file.type || "image/jpeg",
-        name: file.name,
-      });
-      addToast("‡∞´‡±ã‡∞ü‡±ã ‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞ú‡±ã‡∞°‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! (Image added successfully!)");
-    } catch (err: any) {
-      console.error("Primary image upload error:", err);
-      addToast(`‡∞´‡±ã‡∞ü‡±ã ‡∞Ö‡∞™‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç ‡∞µ‡∞ø‡∞´‡∞≤‡∞Æ‡±à‡∞Ç‡∞¶‡∞ø: ${err.message || "Error"}`);
-    } finally {
-      setIsUploadingImage(false);
-      if (primaryImageInputRef.current) primaryImageInputRef.current.value = "";
-    }
-  };
-
-  const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    let file = files[0];
-    if (!file) return;
-
-    setIsUploadingImage(true);
-    addToast("‡∞ï‡∞Ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç ‡∞á‡∞Æ‡±á‡∞ú‡±ç‚Äå‡∞®‡∞ø ‡∞™‡±ç‡∞∞‡∞æ‡∞∏‡±Ü‡∞∏‡±ç ‡∞ö‡±á‡∞∏‡±ç‡∞§‡±ã‡∞Ç‡∞¶‡∞ø... (Processing content image...)");
-
-    try {
-      if (file.type.startsWith("image/")) {
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          initialQuality: 0.8,
-        };
-        const compressedBlob = await imageCompression(file, options);
-        file = new File([compressedBlob], file.name || "image.jpg", {
-          type: file.type || "image/jpeg",
-          lastModified: Date.now(),
-        });
-      }
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-      let downloadURL = "";
-
-      if (storageConfig === "cloudflare") {
-        const token = await auth.currentUser?.getIdToken();
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-        downloadURL = data.url;
-      } else {
-        const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
-        await uploadBytes(storageRef, file);
-        downloadURL = await getDownloadURL(storageRef);
-      }
-
-      const imageMarkdown = `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`;
-      setContent((prev) => prev + imageMarkdown);
-      addToast("‡∞ï‡∞Ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç‚Äå‡∞≤‡±ã ‡∞´‡±ã‡∞ü‡±ã ‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞ú‡±ã‡∞°‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! (Image added into content!)");
-    } catch (err: any) {
-      console.error("Content image upload error:", err);
-      addToast(`‡∞á‡∞Æ‡±á‡∞ú‡±ç ‡∞Ö‡∞™‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç ‡∞µ‡∞ø‡∞´‡∞≤‡∞Æ‡±à‡∞Ç‡∞¶‡∞ø: ${err.message || "Error"}`);
-    } finally {
-      setIsUploadingImage(false);
-      if (contentImageInputRef.current) contentImageInputRef.current.value = "";
-    }
-  };
-
-  const wrapText = (prefix: string, suffix: string = "") => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = content;
-    const before = text.substring(0, start);
-    const selection = text.substring(start, end);
-    const after = text.substring(end);
-    const newContent = before + prefix + (selection || "text") + suffix + after;
-    setContent(newContent);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  const CATEGORIES = [
-    " General",
-    " Updates",
-    " Progress Reports",
-    " Election News",
-    " Gram Panchayat",
-    " GOs & Circulars",
-    " Taxes & Finance",
-    " Housing & Layouts",
-    " Technical Support",
-    " Ideas & Feedback",
-    " Applications",
-    " Useful Links",
-  ];
-
-  const toggleCategory = (cat: string) => {
-    if (selectedCategories.includes(cat)) {
-      setSelectedCategories(selectedCategories.filter((c) => c !== cat));
-    } else {
-      if (selectedCategories.length < 5) {
-        setSelectedCategories([...selectedCategories, cat]);
-      } else {
-        addToast("You can select up to 5 categories only.");
-      }
-    }
-  };
-
-  const onSubmit = async (e: any) => {
-    e.preventDefault();
-    if (!auth.currentUser) return;
-    if (loading) return;
-    if (selectedCategories.length === 0) {
-      addToast("Please select at least one category.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const extractedHashtags =
-        content.match(/#(\w+)/g)?.map((tag) => tag.substring(1)) || [];
-      const manualTags = tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag !== "");
-      const finalTags = Array.from(
-        new Set([...manualTags, ...extractedHashtags]),
-      );
-
-      const cleanAttachments = (attachments || []).map((att) => {
-        const cleaned: any = { ...att };
-        Object.keys(cleaned).forEach((key) => {
-          if (cleaned[key] === undefined) delete cleaned[key];
-        });
-        return cleaned;
-      });
-
-      const postData: any = {
-        title,
-        content,
-        category: selectedCategories[0],
-        categories: selectedCategories,
-        tags: finalTags,
-        websiteName,
-        mediaUrl: media?.url || "",
-        mediaType: media?.type || "",
-        mediaName: media?.name || "",
-        version: version.trim(),
-        attachments: cleanAttachments,
-        downloadStyle: downloadStyle,
-      };
-
-      if (versionStatus) {
-        postData.versionStatus = versionStatus;
-      }
-
-      const estimatedSize = JSON.stringify(postData).length;
-      if (estimatedSize > 950000) {
-        // Safety margin
-        addToast(
-          "Post content or media is too large for the portal. Please reduce image size or text content.",
-        );
-        setLoading(false);
-        return;
-      }
-
-      if (editingPost) {
-        const updatePayload: any = {
-          ...postData,
-        };
-
-        if (updateTimeOption === "now") {
-          updatePayload.lastEditedAt = Date.now();
-        } else if (updateTimeOption === "custom") {
-          if (customUpdateTime) {
-            const parsedMs = new Date(customUpdateTime).getTime();
-            updatePayload.lastEditedAt = !isNaN(parsedMs) ? parsedMs : Date.now();
-          } else {
-            updatePayload.lastEditedAt = Date.now();
-          }
-        } else if (updateTimeOption === "keep") {
-          if (editingPost.lastEditedAt) {
-            updatePayload.lastEditedAt = editingPost.lastEditedAt;
-          } else {
-            updatePayload.lastEditedAt = deleteField();
-          }
-        }
-
-        if (overrideCreatedTime && customCreatedTime) {
-          const parsedCreatedMs = new Date(customCreatedTime).getTime();
-          if (!isNaN(parsedCreatedMs)) {
-            updatePayload.createdAt = parsedCreatedMs;
-            updatePayload.time = parsedCreatedMs;
-          }
-        }
-
-        await updateDoc(doc(db, "posts", editingPost.id), updatePayload);
-        addToast("Update Saved!");
-        
-        const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
-        await addDoc(collection(db, "notifications"), {
-          uid: "all",
-          type: "post_update",
-          title: " ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç ‡∞ö‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø (Post Updated)",
-          message: `${postAuthor} ‡∞µ‡∞æ‡∞∞‡±Å ‡∞í‡∞ï ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞®‡±Å ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç ‡∞ö‡±á‡∞∂‡∞æ‡∞∞‡±Å: ${title.substring(0, 50)}`,
-          time: Date.now(),
-          read: false,
-          postId: editingPost.id
-        }).catch(()=>console.error("Failed to add post update notif"));
-      } else {
-        let postTime = Date.now();
-        if (overrideCreatedTime && customCreatedTime) {
-          const parsedCreatedMs = new Date(customCreatedTime).getTime();
-          if (!isNaN(parsedCreatedMs)) postTime = parsedCreatedMs;
-        }
-
-        const docRef = await addDoc(collection(db, "posts"), {
-          ...postData,
-          subCategory: "",
-          likes: 0,
-          likedBy: [],
-          views: 0,
-          commentCount: 0,
-          comments: [],
-          time: postTime,
-          createdAt: postTime,
-          uid: auth.currentUser.uid,
-          userEmail: auth.currentUser.email || "",
-          userName:
-            isEditor || isAdmin
-              ? "Admin"
-              : currentUserProfile?.username ||
-                auth.currentUser.displayName ||
-                "User",
-          userPhoto:
-            isEditor || isAdmin ? "" : currentUserProfile?.photoURL || "",
-          isAdminPost: isEditor || isAdmin,
-          status: isEditor || isAdmin ? "Approved" : "Pending",
-        });
-
-        const hasUpdateTag =
-          finalTags.some((tag) =>
-            ["update", "updates", "‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç"].includes(tag.toLowerCase()),
-          ) ||
-          selectedCategories.some(
-            (cat) =>
-              cat.toLowerCase().includes("update") ||
-              cat.toLowerCase().includes("‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç"),
-          );
-
-        const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
-
-        if (hasUpdateTag) {
-          await addDoc(collection(db, "notifications"), {
-            uid: "all",
-            type: "post",
-            title: " ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç (New Update)",
-            message: `‡∞™‡±ã‡∞∞‡±ç‡∞ü‡∞≤‡±ç ‡∞≤‡±ã ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç: ${title}`,
-            time: Date.now(),
-            read: false,
-            readBy: [],
-            postId: docRef.id,
-          });
-        } else if (isEditor || isAdmin) {
-          await addDoc(collection(db, "notifications"), {
-            uid: "all",
-            type: "post",
-            title: " ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç (New Post)",
-            message: `${postAuthor} ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞®‡∞ø ‡∞°‡∞ø‡∞ú‡∞ø‡∞ü‡∞≤‡±ç ‡∞¨‡±ã‡∞∞‡±ç‡∞°‡±ç ‡∞≤‡±ã ‡∞â‡∞Ç‡∞ö‡∞æ‡∞∞‡±Å: ${title.substring(0, 50)}`,
-            time: Date.now(),
-            read: false,
-            readBy: [],
-            postId: docRef.id,
-          });
-        }
-
-        await addDoc(collection(db, "notifications"), {
-          uid: "all",
-          title: "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞∏‡∞Æ‡∞∞‡±ç‡∞™‡∞£ (New Post Submission)",
-          message: `${postAuthor} ‡∞µ‡∞æ‡∞∞‡±Å ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞®‡±Å ‡∞∏‡∞Æ‡∞∞‡±ç‡∞™‡∞ø‡∞Ç‡∞ö‡∞æ‡∞∞‡±Å: ${title.substring(0, 50)}`,
-          type: "admin_alert",
-          read: false,
-          time: Date.now(),
-          postId: docRef.id
-        }).catch(()=>console.error("Failed to notify admin"));
-
-        addToast(
-          "Post Published! " + (!isAdmin ? "Waiting for admin approval." : ""),
-        );
-      }
-      onCancel();
-    } catch (err: any) {
-      handleFirestoreError(
-        err,
-        OperationType.WRITE,
-        editingPost ? `posts/${editingPost.id}` : "posts",
-      );
-      addToast(getFriendlyError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <motion.form
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      onSubmit={onSubmit}
-      className="bg-white p-6 rounded-3xl shadow-xl border-2 border-accent mb-8"
-      style={{ borderColor: "#fbbf24" }}
-    >
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="font-black text-primary uppercase text-lg flex items-center gap-2">
-          {editingPost ? "‚úèÔ∏è Edit Update" : "‚ú® New Update"}
-        </h3>
-        <button
-          aria-label="Close edit modal"
-          type="button"
-          onClick={onCancel}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors font-black text-lg"
-        >
-          ‚úï
-        </button>
-      </div>
-
-      <div className="space-y-4 text-left">
-        <div>
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">
-            Title / Header
-          </label>
-          <input
-            name="title"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter catchy title..."
-            className="w-full text-lg font-black text-primary p-3 bg-slate-50 rounded-xl border-2 border-transparent focus:border-primary/20 outline-none transition-all"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="col-span-full">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
-              Categories (Select up to 5)
-            </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  type="button"
-                  key={cat}
-                  onClick={() => toggleCategory(cat)}
-                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
-                    selectedCategories.includes(cat)
-                      ? "bg-primary text-white border-primary shadow-md"
-                      : "bg-slate-50 text-slate-400 border-transparent hover:border-slate-200"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">
-              Website Name (Optional)
-            </label>
-            <input
-              name="websiteName"
-              value={websiteName}
-              onChange={(e) => setWebsiteName(e.target.value)}
-              placeholder="e.g. ePanchayat"
-              className="w-full bg-slate-50 text-xs font-bold p-3 rounded-xl border-2 border-transparent focus:border-primary/20 outline-none transition-all"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">
-            Tags (Comma separated)
-          </label>
-          <input
-            name="tags"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="e.g. help, important, notice"
-            className="w-full bg-slate-50 text-xs font-bold p-3 rounded-xl border-2 border-transparent focus:border-primary/20 outline-none transition-all"
-          />
-        </div>
-
-        {/* POST IMAGE UPLOAD SECTION */}
-        <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-              <ImageIcon size={16} className="text-primary" />
-              ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞´‡±ã‡∞ü‡±ã / ‡∞á‡∞Æ‡±á‡∞ú‡±ç (POST FEATURED PHOTO)
-            </label>
-            {media?.url && (
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                ‚úì ‡∞´‡±ã‡∞ü‡±ã ‡∞â‡∞Ç‡∞¶‡∞ø (Selected)
-              </span>
-            )}
-          </div>
-
-          <input
-            type="file"
-            ref={primaryImageInputRef}
-            onChange={handlePrimaryImageUpload}
-            accept="image/*"
-            className="hidden"
-          />
-          <input
-            type="file"
-            ref={contentImageInputRef}
-            onChange={handleContentImageUpload}
-            accept="image/*"
-            className="hidden"
-          />
-
-          {!media?.url ? (
-            <div className="flex flex-wrap sm:flex-nowrap gap-2">
-              <button
-                type="button"
-                disabled={isUploadingImage}
-                onClick={() => primaryImageInputRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-primary text-white rounded-xl text-xs font-black hover:bg-primary/90 transition-all uppercase tracking-wider shadow-md shadow-primary/20 active:scale-95 disabled:opacity-50"
-              >
-                {isUploadingImage ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Camera size={16} />
-                )}
-                <span>‡∞´‡±ã‡∞ü‡±ã ‡∞é‡∞Ç‡∞ö‡±Å‡∞ï‡±ã‡∞Ç‡∞°‡∞ø (CHOOSE IMAGE)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  Swal.fire({
-                    title: "‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞á‡∞Æ‡±á‡∞ú‡±ç URL",
-                    input: "url",
-                    inputLabel: "‡∞á‡∞Æ‡±á‡∞ú‡±ç ‡∞µ‡±Ü‡∞¨‡±ç ‡∞≤‡∞ø‡∞Ç‡∞ï‡±ç (Image Direct URL)",
-                    inputPlaceholder: "https://example.com/image.jpg",
-                    showCancelButton: true,
-                    confirmButtonText: "‡∞ú‡±ã‡∞°‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø (Set Image)",
-                    confirmButtonColor: "#2563eb",
-                  }).then((res) => {
-                    if (res.isConfirmed && res.value) {
-                      setMedia({
-                        url: res.value,
-                        type: "image/jpeg",
-                        name: "Image URL",
-                      });
-                      addToast("‡∞á‡∞Æ‡±á‡∞ú‡±ç ‡∞≤‡∞ø‡∞Ç‡∞ï‡±ç ‡∞ú‡±ã‡∞°‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø!");
-                    }
-                  });
-                }}
-                className="px-4 py-3 bg-white border-2 border-slate-200 hover:border-primary/40 rounded-xl text-xs font-bold text-slate-700 transition-all flex items-center gap-1.5 shadow-sm"
-              >
-                <Link2 size={16} className="text-blue-600" />
-                <span>URL ‡∞≤‡∞ø‡∞Ç‡∞ï‡±ç</span>
-              </button>
-            </div>
-          ) : (
-            <div className="relative rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-900 group">
-              <img
-                src={media.url}
-                alt="Post featured preview"
-                className="w-full h-44 object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-3 flex flex-col justify-end">
-                <div className="flex items-center justify-between text-white">
-                  <span className="text-xs font-bold truncate max-w-[220px]">
-                    {media.name || "Post Image Attachment"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setMedia(null)}
-                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-black flex items-center gap-1 transition-all shadow-md active:scale-95"
-                  >
-                    <Trash2 size={14} />
-                    <span>‡∞§‡±Ä‡∞∏‡∞ø‡∞µ‡±á‡∞Ø‡∞ø (Remove)</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between ml-1 mb-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-              Content Details
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowMarkdownPreview(false)}
-                className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-colors ${!showMarkdownPreview ? "bg-primary text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}
-              >
-                Write
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowMarkdownPreview(true)}
-                className={`text-[10px] font-black uppercase px-3 py-1 rounded-full transition-colors ${showMarkdownPreview ? "bg-primary text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"}`}
-              >
-                Preview
-              </button>
-            </div>
-          </div>
-
-          {!showMarkdownPreview ? (
-            <>
-              <div className="flex flex-wrap items-center gap-1 mb-0 bg-slate-100 p-1.5 rounded-t-2xl border-x-2 border-t-2 border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => wrapText("**", "**")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary"
-                  title="Bold"
-                >
-                  <Bold size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => wrapText("*", "*")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary"
-                  title="Italic"
-                >
-                  <Italic size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => wrapText("# ", "")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary"
-                  title="Heading 1"
-                >
-                  <Type size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => wrapText("## ", "")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary"
-                  title="Heading 2"
-                >
-                  <Type size={14} />
-                </button>
-                <div className="h-6 w-px bg-slate-200 mx-1"></div>
-                <button
-                  type="button"
-                  onClick={() => wrapText("- ", "")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary"
-                  title="Bullet List"
-                >
-                  <List size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => wrapText("[", "](url)")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary"
-                  title="Link"
-                >
-                  <Link2 size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContent(content + "\n---\n")}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-600 hover:text-primary text-[10px] font-black"
-                  title="Divider"
-                >
-                  LINE
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    Swal.fire({
-                      title: "Attach File Link",
-                      html: `
-                        <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">File Display Name</div>
-                        <input id="swal-file-name" class="swal2-input mt-0 mb-4" placeholder="e.g. Update Document, GO Copy">
-                        <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">File URL</div>
-                        <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://example.com/file.pdf">
-                      `,
-                      showCancelButton: true,
-                      confirmButtonText: "Add Link",
-                      preConfirm: () => {
-                        const name = (
-                          document.getElementById(
-                            "swal-file-name",
-                          ) as HTMLInputElement
-                        ).value;
-                        const url = (
-                          document.getElementById(
-                            "swal-file-url",
-                          ) as HTMLInputElement
-                        ).value;
-                        if (!url) {
-                          Swal.showValidationMessage("URL is required");
-                          return null;
-                        }
-                        return { name: name || " Download File", url };
-                      },
-                    }).then((result) => {
-                      if (result.isConfirmed && result.value) {
-                        wrapText(
-                          `[${result.value.name}](${result.value.url})`,
-                          "",
-                        );
-                      }
-                    });
-                  }}
-                  className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-blue-600 hover:text-primary"
-                  title="Attach File Link"
-                >
-                  <FileText size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => contentImageInputRef.current?.click()}
-                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-emerald-600 border border-emerald-200 flex items-center gap-1 text-[10px] font-black"
-                  title="‡∞á‡∞Æ‡±á‡∞ú‡±ç ‡∞Ö‡∞™‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø (Upload Image)"
-                >
-                  <ImageIcon size={15} />
-                  <span>‡∞ö‡∞ø‡∞§‡±ç‡∞∞‡∞Ç</span>
-                </button>
-                <div className="h-6 w-px bg-slate-200 mx-1"></div>
-                <button
-                  type="button"
-                  onClick={() => wrapText("### ‚ú® What's New\n- ", "\n")}
-                  className="px-2 py-1 hover:bg-blue-600 hover:text-white rounded-lg transition-all text-blue-600 border border-blue-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest"
-                  title="Insert Whats New Section"
-                >
-                  ‚ú® New
-                </button>
-                <button
-                  type="button"
-                  onClick={() => wrapText("### üêõ Bug Fixes\n- ", "\n")}
-                  className="px-2 py-1 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-rose-600 border border-rose-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest"
-                  title="Insert Bug Fixes Section"
-                >
-                  üêõ Fixes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => wrapText("### ‚ö° Improvements\n- ", "\n")}
-                  className="px-2 py-1 hover:bg-amber-600 hover:text-white rounded-lg transition-all text-amber-600 border border-amber-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest"
-                  title="Insert Improvements Section"
-                >
-                  ‚ö° Improv
-                </button>
-                <div className="flex-1" />
-                <div className="flex gap-1 ml-auto">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!content.trim()) {
-                        addToast("‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞Æ‡±Å‡∞Ç‡∞¶‡±Å‡∞ó‡∞æ ‡∞ï‡±ä‡∞Ç‡∞§ ‡∞ï‡∞Ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç (Content) ‡∞é‡∞Ç‡∞ü‡∞∞‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø.");
-                        return;
-                      }
-                      setIsAiLoading("‡∞∏‡∞Ç‡∞ï‡±ç‡∞∑‡∞ø‡∞™‡±ç‡∞§‡∞Ç ‡∞ö‡±á‡∞∏‡±ç‡∞§‡±ã‡∞Ç‡∞¶‡∞ø (Summarizing)...");
-                      try {
-                        const res = await fetch("/api/chat", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ 
-                            prompt: `Please summarize the following text into 3-4 professional bullet points. Output ONLY the summary text in the same language as the input:\n\n${content}`,
-                            systemInstruction: "You are a professional editor. Output ONLY the summary.",
-                            modelType: "fast"
-                          }),
-                        });
-                        const data = await res.json();
-                        if (data.text && !data.isError) {
-                          setContent(data.text);
-                          addToast("‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞ï‡±Å‡∞¶‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! (Summarized successfully!)");
-                        } else {
-                          addToast(data.text || "Failed to summarize content.");
-                        }
-                      } catch (e) {
-                        addToast("AI ‡∞∏‡∞Æ‡±ç‡∞Æ‡∞∞‡±à‡∞ú‡±ç ‡∞∏‡∞Æ‡∞Ø‡∞Ç‡∞≤‡±ã ‡∞≤‡±ã‡∞™‡∞Ç ‡∞è‡∞∞‡±ç‡∞™‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø. (Error occurred!)");
-                      } finally {
-                        setIsAiLoading("");
-                      }
-                    }}
-                    disabled={!!isAiLoading}
-                    className="px-2 py-1 hover:bg-slate-800 hover:text-white rounded-lg transition-all text-slate-700 border border-slate-200 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
-                    title="Summarize Content with AI"
-                  >
-                    Summarize
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!content.trim()) {
-                        addToast("‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞Æ‡±Å‡∞Ç‡∞¶‡±Å‡∞ó‡∞æ ‡∞ï‡±ä‡∞Ç‡∞§ ‡∞ï‡∞Ç‡∞ü‡±Ü‡∞Ç‡∞ü‡±ç (Content) ‡∞é‡∞Ç‡∞ü‡∞∞‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø.");
-                        return;
-                      }
-                      setIsAiLoading("‡∞Æ‡±Ü‡∞∞‡±Å‡∞ó‡±Å‡∞™‡∞∞‡±Å‡∞∏‡±ç‡∞§‡±ã‡∞Ç‡∞¶‡∞ø (Enhancing)...");
-                      try {
-                        const res = await fetch("/api/chat", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ 
-                            prompt: `Enhance the following text. Fix grammar/spelling, make it sound highly professional and polished while keeping its original meaning and language (if it's in Telugu, keep it in Telugu. If English, keep it in English). Return ONLY the enhanced text:\n\n${content}`,
-                            systemInstruction: "You are a professional editor. Output ONLY the edited text, no pleasantries.",
-                            modelType: "general"
-                          }),
-                        });
-                        const data = await res.json();
-                        if (data.text && !data.isError) {
-                          setContent(data.text);
-                          addToast("‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞Æ‡±Ü‡∞∞‡±Å‡∞ó‡±Å‡∞™‡∞∞‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø! (Enhanced successfully!)");
-                        } else {
-                          addToast(data.text || "Failed to enhance content.");
-                        }
-                      } catch (e) {
-                        addToast("AI ‡∞Æ‡±Ü‡∞∞‡±Å‡∞ó‡±Å‡∞¶‡∞≤ ‡∞∏‡∞Æ‡∞Ø‡∞Ç‡∞≤‡±ã ‡∞≤‡±ã‡∞™‡∞Ç ‡∞è‡∞∞‡±ç‡∞™‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø. (Error occurred!)");
-                      } finally {
-                        setIsAiLoading("");
-                      }
-                    }}
-                    disabled={!!isAiLoading}
-                    className="px-2 py-1 hover:bg-indigo-600 hover:text-white rounded-lg transition-all text-indigo-600 border border-indigo-100 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest bg-white disabled:opacity-50"
-                    title="Enhance with AI"
-                  >
-                    {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} 
-                    AI Enhance
-                  </button>
-                </div>
-              </div>
-              <textarea
-                ref={textareaRef}
-                name="content"
-                required
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onPaste={async (e) => {
-                  const items = e.clipboardData?.items;
-                  if (!items) return;
-                  const files: File[] = [];
-                  for (let i = 0; i < items.length; i++) {
-                    if (items[i].type.indexOf("image") !== -1) {
-                      const file = items[i].getAsFile();
-                      if (file) files.push(file);
-                    }
-                  }
-                  if (files.length > 0) {
-                    e.preventDefault();
-                    addToast("Uploading pasted image...");
-                    try {
-                      let newContent = content;
-                      for (let file of files) {
-                         if (file.type.startsWith("image/")) {
-                           const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, initialQuality: 0.8 };
-                           const compressedBlob = await imageCompression(file, options);
-                           file = new File([compressedBlob], file.name || "image.png", { type: file.type, lastModified: Date.now() });
-                         }
-                         const safeFileName = (file.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
-                         const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeFileName}`;
-                         
-                         let downloadURL = "";
-                         if (storageConfig === "cloudflare") {
-                           const token = await auth.currentUser?.getIdToken();
-                           const formData = new FormData();
-                           formData.append('file', file);
-                           const response = await fetch('/api/upload', {
-                             method: 'POST',
-                             headers: { 'Authorization': `Bearer ${token}` },
-                             body: formData
-                           });
-                           const data = await response.json();
-                           if (!response.ok) throw new Error(data.error || 'R2 upload failed');
-                           downloadURL = data.url;
-                         } else {
-                           const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
-                           await uploadBytes(storageRef, file);
-                           downloadURL = await getDownloadURL(storageRef);
-                         }
-                         
-                         newContent += `\n\n![Pasted Image](${downloadURL})`;
-                      }
-                      setContent(newContent);
-                      addToast("Image pasted into markdown successfully!");
-                    } catch (err: any) {
-                      addToast(`Failed to upload pasted image: ${err.message || "Unknown error"}`);
-                      console.error(err);
-                    }
-                  }
-                }}
-                placeholder="Write details here (Markdown supported)... You can paste screenshots here!"
-                rows={8}
-                className="w-full bg-slate-50 p-3 rounded-b-2xl border-2 border-t-0 border-slate-200 focus:border-primary/20 outline-none text-sm font-medium leading-relaxed"
-              />
-            </>
-          ) : (
-            <div className="w-full bg-white p-6 rounded-2xl border-2 border-slate-200 min-h-[300px] overflow-auto break-words">
-              {/* Full Post Preview */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  {currentUserProfile?.photoURL ? (
-                    <img
-                      src={currentUserProfile.photoURL}
-                      alt="Author"
-                      referrerPolicy="no-referrer"
-                      className="w-10 h-10 rounded-full object-cover border-2 border-slate-100 shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center text-white font-bold shadow-sm">
-                      {currentUserProfile?.name?.charAt(0) ||
-                        currentUserProfile?.username?.charAt(0) ||
-                        "U"}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm">
-                      {currentUserProfile?.name ||
-                        currentUserProfile?.username ||
-                        "You"}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
-                      Just now (Preview)
-                    </p>
-                  </div>
-                </div>
-                <div className="shrink-0">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-1.5 rounded-full bg-primary/10 text-primary whitespace-nowrap">
-                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                    <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">
-                      {selectedCategories[0] || "General"}
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              <h4 className="post-title !mt-0 whitespace-pre-wrap flex items-center gap-2">
-                {formatPostTitle(title) || "Post Title Preview"}
-                {version && (
-                  <span className="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase">
-                    {version}
-                  </span>
-                )}
-                {versionStatus && (
-                  <span
-                    className={`${versionStatus === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[9px] px-2 py-0.5 rounded-md font-black tracking-widest uppercase`}
-                  >
-                    {versionStatus}
-                  </span>
-                )}
-              </h4>
-
-              {tags && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {tags.split(",").map(
-                    (tag, i) =>
-                      tag.trim() && (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-slate-200/50"
-                        >
-                          <Hash size={10} strokeWidth={3} /> {tag.trim()}
-                        </span>
-                      ),
-                  )}
-                </div>
-              )}
-
-              <div className="post-body mb-4 whitespace-pre-wrap [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline">
-                {content.trim() ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkBreaks]}
-                    rehypePlugins={[rehypeRaw]}
-                    components={{
-                      img: (props) => (
-                        <span className="block my-3"><SmartImage src={props.src || ""} alt={props.alt || "Photo"} className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50" /></span>
-                      ),
-                      h3: ({ node, children, ...props }) => {
-                        const text = String(children);
-                        if (text.includes("‚ú® What's New")) {
-                          return (
-                            <h3 className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-blue-100 shadow-sm">
-                              {children}
-                            </h3>
-                          );
-                        }
-                        if (text.includes("üêõ Bug Fixes")) {
-                          return (
-                            <h3 className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-rose-100 shadow-sm">
-                              {children}
-                            </h3>
-                          );
-                        }
-                        if (text.includes("‚ö° Improvements")) {
-                          return (
-                            <h3 className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-4 mb-2 border border-amber-100 shadow-sm">
-                              {children}
-                            </h3>
-                          );
-                        }
-                        return (
-                          <h3 className="text-lg font-black text-primary mt-4 mb-2">
-                            {children}
-                          </h3>
-                        );
-                      },
-                      ul: ({ node, children, ...props }) => (
-                        <ul className="space-y-1.5 ml-4 mb-4">{children}</ul>
-                      ),
-                      li: ({ node, children, ...props }) => (
-                        <li className="flex items-start gap-2 text-slate-700 font-medium text-sm leading-relaxed">
-                          <span className="text-primary mt-1.5 w-1 h-1 rounded-full bg-primary shrink-0" />
-                          <span>{children}</span>
-                        </li>
-                      ),
-                    }}
-                  >
-                    {content}
-                  </ReactMarkdown>
-                ) : (
-                  <span className="text-slate-400 italic">
-                    No content to preview...
-                  </span>
-                )}
-              </div>
-
-              {attachments.filter(
-                (att) =>
-                  /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                  (att.url || "").includes("image"),
-              ).length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                  {attachments
-                    .filter(
-                      (att) =>
-                        /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) ||
-                        (att.url || "").includes("image"),
-                    )
-                    .map((att, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-2xl overflow-hidden border-2 border-slate-50 shadow-sm relative group"
-                      >
-                        <img
-                          src={att.url}
-                          alt={att.name}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          className="w-full h-48 object-cover transition-transform group-hover:scale-105"
-                        />
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              {websiteName && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group">
-                  <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-                    <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-                      <ExternalLink size={12} strokeWidth={3} />
-                    </div>
-                    {websiteName}
-                  </div>
-                </div>
-              )}
-
-              {media?.url && (
-                <div className="mb-4">
-                  {media.type?.startsWith("video") ? (
-                    <video src={media.url} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
-                  ) : media.type?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(media.url || "") || (media.url || "").includes("image") ? (
-                    <img
-                      src={media.url}
-                      alt="Media preview"
-                      className="post-media"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : media.type?.startsWith("audio") ? (
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 truncate">
-                        {media.name || "Audio Attachment"}
-                      </p>
-                      <audio src={media.url} controls className="w-full" />
-                    </div>
-                  ) : media.type === "link" ? (
-                    <div className="flex items-center p-4 bg-blue-50/50 border border-blue-100 rounded-2xl w-full">
-                      <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex flex-shrink-0 items-center justify-center mr-4">
-                        <Link2 size={24} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold text-slate-800 truncate mb-1">
-                          {media.name || "External Link"}
-                        </h4>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">
-                          {media.url}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center p-4 bg-slate-50 border border-slate-200 rounded-2xl w-full">
-                      <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex flex-shrink-0 items-center justify-center mr-4">
-                        <FileText size={24} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold text-slate-800 truncate mb-1">
-                          {media.name || "Document Attached"}
-                        </h4>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Document Upload
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* VERSION & ATTACHMENTS SECTION */}
-        {isAdmin && (
-          <>
-            <div className="mt-6 pt-4 border-t-2 border-dashed border-slate-100 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary"></div>
-                  <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
-                    ‡∞∞‡∞ø‡∞≤‡±Ä‡∞ú‡±ç ‡∞µ‡∞ø‡∞µ‡∞∞‡∞æ‡∞≤‡±Å & ‡∞´‡±à‡∞≤‡±ç‡∞∏‡±ç (RELEASE DETAILS)
-                  </h3>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                {/* Version Number Input */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    ‡∞µ‡±Ü‡∞∞‡±ç‡∞∑‡∞®‡±ç ‡∞®‡±Ü‡∞Ç‡∞¨‡∞∞‡±ç (VERSION)
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative group flex-1">
-                      <Hash
-                        size={16}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"
-                      />
-                      <input
-                        type="text"
-                        value={version}
-                        onChange={(e) => setVersion(e.target.value)}
-                        placeholder="e.g. V1.5.0"
-                        className="w-full bg-white border-2 border-slate-100 rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-primary/30 focus:shadow-sm transition-all shadow-sm"
-                      />
-                    </div>
-                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setVersionStatus(
-                            versionStatus === "New" ? undefined : "New",
-                          )
-                        }
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${versionStatus === "New" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-                      >
-                        NEW
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setVersionStatus(
-                            versionStatus === "Old" ? undefined : "Old",
-                          )
-                        }
-                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${versionStatus === "Old" ? "bg-rose-500 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-                      >
-                        OLD
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* File Upload Section */}
-                <div className="space-y-1.5 pt-[21px] max-w-[609px] w-full">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    multiple
-                    accept="*/*"
-                    className="hidden"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={uploadingFile}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1D61FF] text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all uppercase tracking-wider shadow-md shadow-blue-200 active:scale-95 disabled:opacity-50 min-w-[140px]"
-                    >
-                      {uploadingFile ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Upload size={16} />
-                      )}
-                      {uploadingFile
-                        ? `Uploading ${Math.round(uploadProgress)}%`
-                        : "Upload File"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        Swal.fire({
-                          title: "Add External Link / Drive / R2 File",
-                          html: `
-                              <div class="mb-3 text-left">
-                                <a href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files?prefix=uploads%2F" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors">
-                                  <span>‚ö° Open Cloudflare R2 Bucket (‡∞Ö‡∞™‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø)</span>
-                                </a>
-                              </div>
-                              <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">File Label / Title</div>
-                              <input id="swal-file-name" class="swal2-input mt-0 mb-4" placeholder="e.g. UBD_Site_Setup.bat, Govt Order PDF">
-                              <div class="text-left mb-1 text-xs font-bold text-slate-500 uppercase">External File Link (Cloudflare R2 / Drive / CDN / URL)</div>
-                              <input id="swal-file-url" class="swal2-input mt-0" placeholder="https://drive.google.com/... or https://pub-xxx.r2.dev/file.zip">
-                              <div class="flex items-center gap-2 mt-4 text-left px-1">
-                                <input type="checkbox" id="swal-file-direct" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" checked>
-                                <label for="swal-file-direct" class="text-xs font-bold text-slate-700 uppercase">Background Proxy Download (Seamless on Website)</label>
-                              </div>
-                            `,
-                          showCancelButton: true,
-                          confirmButtonText: "Confirm & Add Link",
-                          confirmButtonColor: "#2563eb",
-                          preConfirm: () => {
-                            const name = (
-                              document.getElementById(
-                                "swal-file-name",
-                              ) as HTMLInputElement
-                            ).value;
-                            const url = (
-                              document.getElementById(
-                                "swal-file-url",
-                              ) as HTMLInputElement
-                            ).value;
-                            const isDirect = (
-                              document.getElementById(
-                                "swal-file-direct",
-                              ) as HTMLInputElement
-                            ).checked;
-                            if (!url) {
-                              Swal.showValidationMessage(
-                                "File URL is required",
-                              );
-                              return null;
-                            }
-                            return { name: name || "File Attachment", url, isDirect };
-                          },
-                        }).then((result) => {
-                          if (result.isConfirmed && result.value) {
-                            setAttachments((prev) => [...prev, result.value]);
-                          }
-                        });
-                      }}
-                      className="px-3.5 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold hover:bg-emerald-100 transition-all shadow-sm flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide"
-                      title="Add by Link / Drive / Cloudflare R2"
-                    >
-                      <Link2 size={16} />
-                      <span>Add Link</span>
-                    </button>
-
-                    <a
-                      href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files?prefix=uploads%2F"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3.5 py-3 bg-orange-50 border-2 border-orange-200 rounded-xl text-orange-700 font-bold hover:bg-orange-100 transition-all shadow-sm flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide"
-                      title="Open Cloudflare R2 Storage Bucket"
-                    >
-                      <ExternalLink size={15} />
-                      <span>Cloudflare R2 Bucket</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-              {uploadingFile && (
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-              )}
-              <p className="text-[9px] text-slate-400 font-bold px-1 animate-pulse text-right">
-                Note: Large files or a slow network connection may increase upload time.
-              </p>
-            </div>
-
-            {/* Attachment List Preview (The "Box" below) */}
-            {attachments.length > 0 && (
-              <div className="bg-slate-50/70 border-2 border-slate-200/80 rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-sm max-w-[609px] w-full">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[12px] font-black text-gray-800 uppercase tracking-widest font-sans flex items-center gap-2">
-                    <FileText size={15} className="text-blue-600" />
-                    Download Options (Total - {attachments.length})
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    Drag to reorder
-                  </span>
-                </div>
-                <Reorder.Group
-                  axis="y"
-                  values={attachments}
-                  onReorder={setAttachments}
-                  className="flex flex-col gap-3"
-                >
-                  {attachments.map((att, idx) => (
-                    <Reorder.Item
-                      key={att.url + idx}
-                      value={att}
-                      className="flex flex-col bg-white border border-slate-200 hover:border-blue-400 rounded-xl shadow-xs transition-all overflow-hidden p-2.5 gap-2 cursor-grab active:cursor-grabbing"
-                    >
-                      {/* Top Bar: Icon, Name, Status, Version Badge & Controls */}
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {/* Drag Handle */}
-                          <div className="text-slate-300 hover:text-slate-500 shrink-0 cursor-grab">
-                            <GripVertical size={15} />
-                          </div>
-
-                          {/* File Icon / Thumb */}
-                          <div className="w-7 h-7 bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200 rounded-md relative overflow-hidden">
-                            {/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(att.url) || (att.url || "").includes("image") ? (
-                              <SmartImage src={att.url} alt="Thumb" className="w-full h-full object-cover" allowLightbox={false} />
-                            ) : (
-                              <ArrowDown
-                                size={13}
-                                className="text-slate-600"
-                                strokeWidth={3}
-                              />
-                            )}
-                          </div>
-
-                          {/* File Name Input */}
-                          <input
-                            type="text"
-                            value={att.name || ""}
-                            onChange={(e) => {
-                              const newName = e.target.value;
-                              setAttachments((prev) =>
-                                prev.map((a, i) => (i === idx ? { ...a, name: newName } : a))
-                              );
-                            }}
-                            placeholder="File Name (e.g. UBD_Site_Setup.bat)"
-                            className="text-xs font-bold text-blue-900 bg-slate-50 border border-slate-200 hover:border-blue-300 focus:border-blue-500 focus:bg-white outline-none truncate py-1 px-2 rounded-md transition-all flex-1 min-w-0"
-                          />
-                        </div>
-
-                        {/* Badges & Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {/* Status Toggle (NEW / OLD) */}
-                          <div className="flex bg-slate-100 p-0.5 rounded-md border border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAttachments((prev) =>
-                                  prev.map((a, i) =>
-                                    i === idx
-                                      ? {
-                                          ...a,
-                                          status:
-                                            a.status === "New"
-                                              ? undefined
-                                              : "New",
-                                        }
-                                      : a,
-                                  ),
-                                )
-                              }
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-black transition-all ${att.status === "New" ? "bg-emerald-500 text-white shadow-xs" : "text-slate-400 hover:text-emerald-600"}`}
-                            >
-                              NEW
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAttachments((prev) =>
-                                  prev.map((a, i) =>
-                                    i === idx
-                                      ? {
-                                          ...a,
-                                          status:
-                                            a.status === "Old"
-                                              ? undefined
-                                              : "Old",
-                                        }
-                                      : a,
-                                  ),
-                                )
-                              }
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-black transition-all ${att.status === "Old" ? "bg-rose-500 text-white shadow-xs" : "text-slate-400 hover:text-rose-600"}`}
-                            >
-                              OLD
-                            </button>
-                          </div>
-
-                          {/* Version Badge Selectors */}
-                          <div
-                            className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md"
-                            title="Change Prefix & Version"
-                          >
-                            <select
-                              value={att.badgePrefix || "v"}
-                              onChange={(e) => {
-                                const newPrefix = e.target.value;
-                                setAttachments((prev) =>
-                                  prev.map((a, i) =>
-                                    i === idx ? { ...a, badgePrefix: newPrefix } : a,
-                                  ),
-                                );
-                              }}
-                              className="text-[9px] font-black text-blue-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer outline-none"
-                            >
-                              <option value="v">v</option>
-                              <option value="TOOL">TOOL</option>
-                              <option value="EXE">EXE</option>
-                              <option value="Doc">Doc</option>
-                              <option value="PDF">PDF</option>
-                              <option value="Alapa">Alapa</option>
-                            </select>
-                            <select
-                              value={att.version || "1.0"}
-                              onChange={(e) => {
-                                const newVer = e.target.value;
-                                setAttachments((prev) =>
-                                  prev.map((a, i) =>
-                                    i === idx ? { ...a, version: newVer } : a,
-                                  ),
-                                );
-                              }}
-                              className="text-[9px] font-black text-blue-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer outline-none"
-                            >
-                              {[
-                                "1.0",
-                                "2.0",
-                                "3.0",
-                                "4.0",
-                                "5.0",
-                                "6.0",
-                                "7.0",
-                                "8.0",
-                                "9.0",
-                                "10.0",
-                              ].map((v) => (
-                                <option key={v} value={v}>
-                                  {v}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReplaceIndex(idx);
-                              fileInputRef.current?.click();
-                            }}
-                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Replace file"
-                          >
-                            <Upload size={13} />
-                          </button>
-                          
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAttachments((prev) =>
-                                prev.filter((_, i) => i !== idx),
-                              )
-                            }
-                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Remove attachment"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bottom Bar: External Link Input */}
-                      <div className="flex items-center gap-1.5 bg-amber-50/70 border border-amber-200/80 rounded-lg px-2 py-1 w-full">
-                        <Link2 size={12} className="text-amber-600 shrink-0" />
-                        <span className="text-[9px] font-bold uppercase text-amber-800 shrink-0">
-                          Link:
-                        </span>
-                        <input
-                          type="text"
-                          value={att.url || ""}
-                          onChange={(e) => {
-                            const newUrl = e.target.value;
-                            setAttachments((prev) =>
-                              prev.map((a, i) => (i === idx ? { ...a, url: newUrl } : a))
-                            );
-                          }}
-                          placeholder="Paste Cloudflare R2 / Google Drive / Direct URL..."
-                          className="text-[10px] font-medium text-slate-700 bg-transparent outline-none border-none w-full placeholder:text-amber-400/80"
-                        />
-                      </div>
-                    </Reorder.Item>
-                  ))}
-                </Reorder.Group>
-              </div>
-            )}
-
-            {/* Download Style Setup */}
-            {attachments.length > 0 && (
-              <div className="flex flex-col gap-2 mt-4 p-5 border-2 border-indigo-100 bg-[#F5F8FF] rounded-3xl shadow-sm">
-                <label className="text-[11px] font-black text-slate-700 uppercase tracking-widest flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
-                    <Settings size={14} />
-                  </div>
-                  ‡∞°‡±å‡∞®‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç ‡∞≤‡±á‡∞Ö‡∞µ‡±Å‡∞ü‡±ç (DOWNLOAD LAYOUT)
-                </label>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <label
-                    className={`flex items-start gap-4 cursor-pointer bg-white px-5 py-4 rounded-2xl border-2 transition-all flex-1 ${downloadStyle === "classic" ? "border-indigo-500 shadow-md ring-4 ring-indigo-50" : "border-slate-100 hover:border-indigo-200"}`}
-                  >
-                    <div className="mt-1">
-                      <input
-                        type="radio"
-                        name="downloadStyle"
-                        value="classic"
-                        checked={downloadStyle === "classic"}
-                        onChange={() => setDownloadStyle("classic")}
-                        className="w-5 h-5 text-indigo-600 border-2 border-slate-200 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-black text-slate-800">
-                        Classic (Grid)
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-bold leading-tight mt-1">
-                        Standard grid layout with small cards.
-                      </span>
-                    </div>
-                  </label>
-                  <label
-                    className={`flex items-start gap-4 cursor-pointer bg-white px-5 py-4 rounded-2xl border-2 transition-all flex-1 ${downloadStyle === "techspot" ? "border-indigo-500 shadow-md ring-4 ring-indigo-50" : "border-slate-100 hover:border-indigo-200"}`}
-                  >
-                    <div className="mt-1">
-                      <input
-                        type="radio"
-                        name="downloadStyle"
-                        value="techspot"
-                        checked={downloadStyle === "techspot"}
-                        onChange={() => setDownloadStyle("techspot")}
-                        className="w-5 h-5 text-indigo-600 border-2 border-slate-200 focus:ring-indigo-500"
-                      />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-black text-slate-800 tracking-tight">
-                        Advanced (TechSpot)
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-bold leading-tight mt-1">
-                        Large display format with a highlighted "Download Now"
-                        card action. Recommended for single releases.
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* Post Date & Time Settings */}
-            <div className="p-5 border-2 border-amber-200 bg-amber-50/60 rounded-3xl space-y-4 shadow-sm my-6 text-left">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <label className="text-[11px] font-black text-amber-900 uppercase tracking-widest flex items-center gap-2">
-                  <Clock size={16} className="text-amber-600" />
-                  <span>üìÖ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞™‡±ç‡∞∞‡∞ö‡±Å‡∞∞‡∞£ & ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç ‡∞∏‡∞Æ‡∞Ø‡∞Ç (POST DATE & TIME OPTIONS)</span>
-                </label>
-                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-                  {editingPost ? "‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞é‡∞°‡∞ø‡∞ü‡±ç ‡∞Æ‡±ã‡∞°‡±ç" : "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞Æ‡±ã‡∞°‡±ç"}
-                </span>
-              </div>
-
-              {editingPost && (
-                <div className="space-y-3 bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
-                  <span className="text-xs font-black text-slate-800 block uppercase tracking-wide">
-                    1. ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç ‡∞ü‡±à‡∞Æ‡±ç ‡∞Ö‡∞Ç‡∞°‡±ç ‡∞°‡±á‡∞ü‡±ç ‡∞Ü‡∞™‡±ç‡∞∑‡∞®‡±ç (LAST EDITED TIMESTAMP):
-                  </span>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞∏‡∞µ‡∞∞‡∞ø‡∞Ç‡∞ö‡∞ø‡∞®‡∞™‡±ç‡∞™‡±Å‡∞°‡±Å ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç ‡∞°‡±á‡∞ü‡±ç ‡∞ö‡±Ç‡∞™‡∞ø‡∞Ç‡∞ö‡∞æ‡∞≤‡∞æ ‡∞≤‡±á‡∞¶‡∞æ ‡∞™‡∞æ‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞ü‡±à‡∞Æ‡±ç‚Äå‡∞®‡±á ‡∞â‡∞Ç‡∞ö‡∞æ‡∞≤‡∞æ ‡∞é‡∞Ç‡∞ö‡±Å‡∞ï‡±ã‡∞Ç‡∞°‡∞ø:
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "now" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
-                      <input
-                        type="radio"
-                        name="updateTimeOption"
-                        value="now"
-                        checked={updateTimeOption === "now"}
-                        onChange={() => setUpdateTimeOption("now")}
-                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                      />
-                      <div className="text-xs">
-                        <span className="font-black text-slate-800 block">‚ö° ‡∞á‡∞™‡±ç‡∞™‡∞ü‡∞ø ‡∞∏‡∞Æ‡∞Ø‡∞Ç (Now)</span>
-                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">‡∞®‡±á‡∞ü‡∞ø ‡∞™‡±ç‡∞∞‡∞∏‡±ç‡∞§‡±Å‡∞§ ‡∞°‡±á‡∞ü‡±ç & ‡∞ü‡±à‡∞Æ‡±ç ‡∞∏‡±á‡∞µ‡±ç‚Äå‡∞Ö‡∞µ‡±Å‡∞§‡±Å‡∞Ç‡∞¶‡∞ø</span>
-                      </div>
-                    </label>
-
-                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "custom" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
-                      <input
-                        type="radio"
-                        name="updateTimeOption"
-                        value="custom"
-                        checked={updateTimeOption === "custom"}
-                        onChange={() => setUpdateTimeOption("custom")}
-                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                      />
-                      <div className="text-xs">
-                        <span className="font-black text-slate-800 block">üìÖ ‡∞ï‡∞∏‡±ç‡∞ü‡∞Æ‡±ç ‡∞°‡±á‡∞ü‡±ç & ‡∞ü‡±à‡∞Æ‡±ç</span>
-                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">‡∞Æ‡±Ä‡∞ï‡±Å ‡∞®‡∞ö‡±ç‡∞ö‡∞ø‡∞® ‡∞°‡±á‡∞ü‡±ç & ‡∞ü‡±à‡∞Æ‡±ç‚Äå‡∞®‡±Å ‡∞é‡∞Ç‡∞ö‡±Å‡∞ï‡±ã‡∞Ç‡∞°‡∞ø</span>
-                      </div>
-                    </label>
-
-                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "keep" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
-                      <input
-                        type="radio"
-                        name="updateTimeOption"
-                        value="keep"
-                        checked={updateTimeOption === "keep"}
-                        onChange={() => setUpdateTimeOption("keep")}
-                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
-                      />
-                      <div className="text-xs">
-                        <span className="font-black text-slate-800 block">‚è≥ ‡∞™‡∞æ‡∞§ ‡∞°‡±á‡∞ü‡±ç‚Äå‡∞®‡±á ‡∞â‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø</span>
-                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">‡∞Ö‡∞∏‡∞≤‡±Å ‡∞ï‡±ç‡∞∞‡∞ø‡∞Ø‡±á‡∞∑‡∞®‡±ç ‡∞°‡±á‡∞ü‡±ç‚Äå‡∞®‡±á ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡∞ï‡±Å‡∞Ç‡∞°‡∞æ ‡∞â‡∞Ç‡∞ö‡±Å‡∞§‡±Å‡∞Ç‡∞¶‡∞ø</span>
-                      </div>
-                    </label>
-                  </div>
-
-                  {updateTimeOption === "custom" && (
-                    <div className="mt-3 p-3 bg-amber-100/60 border border-amber-300 rounded-xl space-y-1">
-                      <label className="text-[10px] font-black text-amber-900 uppercase tracking-widest block">
-                        ‡∞Ö‡∞™‡±ç‡∞°‡±á‡∞ü‡±ç ‡∞§‡±á‡∞¶‡±Ä & ‡∞∏‡∞Æ‡∞Ø‡∞Ç ‡∞é‡∞Ç‡∞ö‡±Å‡∞ï‡±ã‡∞Ç‡∞°‡∞ø (Custom Last Edited Date):
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={customUpdateTime}
-                        onChange={(e) => setCustomUpdateTime(e.target.value)}
-                        className="w-full text-xs font-bold p-2.5 bg-white rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Original Creation Date Option */}
-              <div className="bg-white p-4 rounded-2xl border border-amber-200 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={overrideCreatedTime}
-                    onChange={(e) => setOverrideCreatedTime(e.target.checked)}
-                    className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
-                  />
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                    {editingPost ? "2. ‡∞Ö‡∞∏‡∞≤‡±Å ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞ï‡±ç‡∞∞‡∞ø‡∞Ø‡±á‡∞ü‡±ç ‡∞ö‡±á‡∞∏‡∞ø‡∞® ‡∞§‡±á‡∞¶‡±Ä / ‡∞∏‡∞Æ‡∞Ø‡∞Ç ‡∞Æ‡∞æ‡∞∞‡±ç‡∞ö‡∞Ç‡∞°‡∞ø (Override Creation Date)" : "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞ï‡±Å ‡∞™‡±ç‡∞∞‡∞§‡±ç‡∞Ø‡±á‡∞ï ‡∞™‡±ç‡∞∞‡∞ö‡±Å‡∞∞‡∞£ ‡∞§‡±á‡∞¶‡±Ä/‡∞∏‡∞Æ‡∞Ø‡∞æ‡∞®‡±ç‡∞®‡∞ø ‡∞ï‡±á‡∞ü‡∞æ‡∞Ø‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø (Set Custom Created Date)"}
-                  </span>
-                </label>
-
-                {overrideCreatedTime && (
-                  <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">
-                      ‡∞™‡±ç‡∞∞‡∞ö‡±Å‡∞∞‡∞£ ‡∞§‡±á‡∞¶‡±Ä & ‡∞∏‡∞Æ‡∞Ø‡∞Ç (Created Date & Time):
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={customCreatedTime}
-                      onChange={(e) => setCustomCreatedTime(e.target.value)}
-                      className="w-full text-xs font-bold p-2.5 bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-800"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Content Helper Buttons */}
-        <div className="space-y-3 mt-8">
-          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-            QUICK CONTENT TEMPLATES (INSERT)
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                wrapText("### ‚ú® What's New\n- ", "\n");
-                addToast("Section added to Content editor");
-              }}
-              className="flex flex-col items-center justify-center p-6 bg-[#EDF3FF] border-2 border-blue-100 rounded-3xl hover:border-blue-300 transition-all text-blue-600 shadow-sm group active:scale-95"
-            >
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <RefreshCw size={24} className="text-blue-500" />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-center">
-                UPDATE FIXES
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                wrapText("### üêõ Bug Fixes\n- ", "\n");
-                addToast("Section added to Content editor");
-              }}
-              className="flex flex-col items-center justify-center p-6 bg-[#FFF2F2] border-2 border-rose-100 rounded-3xl hover:border-rose-300 transition-all text-rose-600 shadow-sm group active:scale-95"
-            >
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <Wrench size={24} className="text-rose-500" />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-center">
-                ADD BUGFIX
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                wrapText("### ‚ö° Improvements\n- ", "\n");
-                addToast("Section added to Content editor");
-              }}
-              className="flex flex-col items-center justify-center p-6 bg-[#FFFAF0] border-2 border-amber-100 rounded-3xl hover:border-amber-300 transition-all text-amber-600 shadow-sm group active:scale-95"
-            >
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <Zap size={24} className="text-amber-500" />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-center">
-                ADD IMPROV
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button
-        aria-label={editingPost ? "Save Changes" : "Publish Now"}
-        disabled={loading}
-        className="w-full bg-primary text-white py-4 rounded-2xl font-black shadow-lg hover:bg-primary-light transition-all active:scale-95 mt-6 disabled:opacity-50 uppercase tracking-widest"
-        style={{ background: "#0d3b66" }}
-      >
-        {loading
-          ? editingPost
-            ? "SAVING... "
-            : "PUBLISHING... "
-          : editingPost
-            ? "SAVE CHANGES "
-            : "PUBLISH NOW "}
-      </button>
-    </motion.form>
-  );
-}
-
-function getIconColors(label: string, active: boolean) {
-  if (active) return 'bg-white/20 text-white';
-  let hash = 0;
-  for (let i = 0; i < label.length; i++) hash = label.charCodeAt(i) + ((hash << 5) - hash);
-  const colorSchemes = [
-    'bg-sky-100/70 text-sky-600 group-hover:bg-sky-100 group-hover:text-sky-700',
-    'bg-emerald-100/70 text-emerald-600 group-hover:bg-emerald-100 group-hover:text-emerald-700',
-    'bg-purple-100/70 text-purple-600 group-hover:bg-purple-100 group-hover:text-purple-700',
-    'bg-amber-100/70 text-amber-600 group-hover:bg-amber-100 group-hover:text-amber-700',
-    'bg-rose-100/70 text-rose-600 group-hover:bg-rose-100 group-hover:text-rose-700',
-    'bg-cyan-100/70 text-cyan-600 group-hover:bg-cyan-100 group-hover:text-cyan-700',
-    'bg-indigo-100/70 text-indigo-600 group-hover:bg-indigo-100 group-hover:text-indigo-700',
-    'bg-pink-100/70 text-pink-600 group-hover:bg-pink-100 group-hover:text-pink-700',
-    'bg-orange-100/70 text-orange-600 group-hover:bg-orange-100 group-hover:text-orange-700',
-  ];
-  return colorSchemes[Math.abs(hash) % colorSchemes.length];
-}
-
-function MenuButton({
-  label,
-  active,
-  onClick,
-  emoji,
-  icon: Icon,
-  tourId,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  emoji?: string;
-  icon?: any;
-  tourId?: string;
-}) {
-  return (
-    <motion.button
-      id={tourId || `nav-menu-${label.replace(/[^a-zA-Z0-9]/g, "-")}`}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={() => { onClick(); }}
-      style={{ width: "100%", border: "none" }}
-      className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${
-        active
-          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
-          : "bg-transparent text-slate-600 hover:bg-slate-100/80"
-      }`}
-    >
-      {emoji ? (
-        <span className="text-[18px] w-9 h-9 flex justify-center items-center mr-3">{emoji}</span>
-      ) : (
-        Icon && (
-          <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 transition-colors ${getIconColors(label, active)}`}
-          >
-            <Icon size={18} strokeWidth={2.5} />
-          </div>
-        )
-      )}
-      <span className="text-[13px] tracking-tight text-left flex-1">{label}</span>
-      {active && (
-        <motion.div layoutId="navIndicator" className="w-1.5 h-1.5 bg-white rounded-full opacity-80" />
-      )}
-    </motion.button>
-  );
-}
-
-function ChatSection({
-  messages,
-  user,
-  isAdmin,
-  addToast,
-  userProfile,
-}: {
-  messages: ChatMessage[];
-  user: any;
-  isAdmin?: boolean;
-  addToast: (s: string) => void;
-  userProfile: UserProfile | null;
-}) {
-  const [msg, setMsg] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isBotMode, setIsBotMode] = useState(false);
-  const [botMessages, setBotMessages] = useState<ChatMessage[]>([{
-    id: "welcome",
-    msg: "Hello! I am Mana Bot. You can ask me anything about the application or village data.",
-    time: Date.now(),
-    uid: "bot",
-    userName: "Mana Bot"
-  }]);
-  const [isBotLoading, setIsBotLoading] = useState(false);
-
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, botMessages]);
-
-  const send = async () => {
-    if (!msg.trim()) return;
-    if (requireLoginAlert(user)) return;
-
-    if (isBotMode) {
-      const userText = msg.trim();
-      setMsg("");
-      const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        msg: userText,
-        time: Date.now(),
-        uid: user.uid,
-        userName: userProfile?.name || user.displayName || "You"
-      };
-      setBotMessages((prev) => [...prev, userMessage]);
-      setIsBotLoading(true);
-
-      try {
-        const response = await askMana(userText, "User is chatting in Village Real-Time Chat bot mode.");
-        const messageText = typeof response === 'string' ? response : (response?.text || "");
-        const botMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          msg: messageText || "I could not process your request.",
-          time: Date.now() + 1,
-          uid: "bot",
-          userName: "Mana Bot"
-        };
-        setBotMessages((prev) => [...prev, botMessage]);
-      } catch (err) {
-        addToast("Error communicating with bot");
-      } finally {
-        setIsBotLoading(false);
-      }
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "chat"), {
-        msg,
-        time: Date.now(),
-        uid: user.uid,
-        userName: userProfile?.username || user.displayName || "Portal User",
-      });
-      setMsg("");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, "chat");
-      addToast("Error sending");
-    }
-  };
-
-  const deleteMessage = async (msgId: string) => {
-    if (!isAdmin) return;
-    try {
-      await deleteDoc(doc(db, "chat", msgId));
-      addToast("Message deleted");
-    } catch (err) {
-      addToast("Failed to delete message");
-    }
-  };
-
-  return (
-    <div className="bg-[#e5ddd5] rounded-3xl border shadow-sm flex flex-col h-[600px] overflow-hidden" style={{ backgroundImage: "url('https://whatsapp-clone-web.netlify.app/static/media/bg-chat-tile-light.698007dc.png')", backgroundSize: 'contain', backgroundRepeat: 'repeat' }}>
-      <div className="p-4 bg-[#075e54] text-white flex items-center justify-between shadow-md z-10 rounded-t-3xl border-b border-[#054c44]">
-        <div className="font-bold flex items-center gap-3">
-          <MessageCircle size={20} className="text-white" />
-          <span className="tracking-wide">{isBotMode ? "Chat with Mana Bot" : "Village Real-Time Chat"}</span>
-        </div>
-        <button
-          onClick={() => setIsBotMode(!isBotMode)}
-          className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${isBotMode ? "bg-white text-[#075e54]" : "bg-[#128c7e] text-white hover:bg-[#0da492]"}`}
-        >
-          <Bot size={14} />
-          {isBotMode ? "Switch to Community" : "Chat with Bot"}
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-        <AnimatePresence initial={false}>
-          {(isBotMode ? botMessages : messages).map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className={`flex group ${m.uid === user?.uid ? "justify-end" : "justify-start"}`}
-            >
-              <div className="flex flex-col max-w-[80%] md:max-w-[65%]">
-                {m.uid !== user?.uid && (
-                  <span className="text-[10px] font-bold mb-1 px-1 text-[#075e54]">
-                    {m.userName || "Portal User"}
-                  </span>
-                )}
-                <div
-                  className={`relative p-2.5 px-3.5 rounded-xl text-[14px] shadow-sm whitespace-pre-wrap leading-snug ${m.uid === user?.uid ? "bg-[#dcf8c6] text-slate-800 rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none"}`}
-                >
-                  <div className="mr-8 break-words text-left">
-                    {isBotMode && m.uid === "bot" ? (
-                      <div className="prose prose-sm prose-slate max-w-none prose-p:leading-snug prose-headings:text-base prose-p:my-1 text-slate-800">
-                        <ReactMarkdown remarkPlugins={[remarkBreaks]}>{m.msg}</ReactMarkdown>
-                      </div>
-                    ) : (m.msg)}
-                  </div>
-                  <span className="text-[9px] text-slate-400 absolute bottom-1.5 right-2 flex items-center gap-1">
-                    {new Date(m.time).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true })}
-                    {m.uid === user?.uid && <span className="text-blue-500 font-bold">‚úì‚úì</span>}
-                  </span>
-                  
-                  {isAdmin && !isBotMode && (
-                    <button 
-                      onClick={() => m.id && deleteMessage(m.id)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
-                      title="Delete completely"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-          {isBotLoading && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="flex justify-start"
-            >
-              <div className="flex flex-col max-w-[80%] md:max-w-[65%]">
-                <span className="text-[10px] font-bold mb-1 px-1 text-[#075e54]">Mana Bot</span>
-                <div className="relative p-3 px-4 rounded-xl text-[14px] shadow-sm bg-white text-slate-800 rounded-tl-none">
-                  <Loader2 size={16} className="animate-spin text-slate-400" />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div ref={scrollRef} />
-      </div>
-      <div className="p-3 bg-[#f0f0f0] flex gap-2 items-center rounded-b-3xl border-t border-slate-300">
-        <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1 shadow-sm border border-slate-200">
-          <input
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Type a message..."
-            className="w-full bg-transparent p-2 focus:outline-none text-[15px]"
-          />
-        </div>
-        <button
-          aria-label="Send message"
-          onClick={send}
-          className="bg-[#128c7e] text-white p-3.5 rounded-full hover:bg-[#075e54] transition-colors shadow-sm flex items-center justify-center min-w-[48px]"
-        >
-          <Send size={18} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function PostDetail({
-  postId,
-  onBack,
-  isAdmin,
-  addToast,
-  userProfile,
-  allUsers,
-  onEdit,
-  storageConfig,
-  siteConfig,
-  allPosts = [],
-}: {
-  postId: string;
-  onBack: () => void;
-  isAdmin: boolean;
-  addToast: (s: string) => void;
-  userProfile: UserProfile | null;
-  allUsers: UserProfile[];
-  onEdit: (p: Post) => void;
-  storageConfig: "cloudflare" | "firebase";
-  siteConfig?: any;
-  allPosts?: Post[];
-}) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showLikesModal, setShowLikesModal] = useState(false);
-  const [showViewsModal, setShowViewsModal] = useState(false);
-  const [fetchedRecent, setFetchedRecent] = useState<Post[]>([]);
-
-  const isOwner = Boolean(
-    (auth.currentUser && post?.uid && auth.currentUser.uid === post.uid) ||
-    isAdmin
-  );
-
-  useEffect(() => {
-    let isInitial = true;
-    let unsub: () => void = () => {};
-
-    const rawParam = decodeURIComponent(postId).trim();
-
-    async function fetchPostBySlugOrTitle(target: string) {
-      try {
-        const normTarget = target.toLowerCase();
-
-        // 1. Check if post exists in allPosts prop
-        if (allPosts && allPosts.length > 0) {
-          const matchedFromProp = allPosts.find((p) => {
-            if (p.id === target) return true;
-            if (p.slug && p.slug.toLowerCase() === normTarget) return true;
-            const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
-            if (slugFromTitle && slugFromTitle === normTarget) return true;
-            const cleanTitle = (p.title || "").trim().toLowerCase();
-            if (cleanTitle === normTarget) return true;
-            return false;
-          });
-          if (matchedFromProp) {
-            setPost(matchedFromProp);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // 2. Query Firestore by slug field
-        const qSlug = query(collection(db, "posts"), where("slug", "==", target), limit(1));
-        const snapSlug = await getDocs(qSlug);
-        if (!snapSlug.empty) {
-          const found = snapSlug.docs[0];
-          setPost({ id: found.id, ...found.data() } as Post);
-          setLoading(false);
-          return;
-        }
-
-        // 3. Fallback: fetch recent posts from Firestore and search
-        const qRecent = query(collection(db, "posts"), limit(100));
-        const snapRecent = await getDocs(qRecent);
-        const docs = snapRecent.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
-
-        const matched = docs.find((p) => {
-          if (p.id === target) return true;
-          if (p.slug && p.slug.toLowerCase() === normTarget) return true;
-          const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
-          if (slugFromTitle && slugFromTitle === normTarget) return true;
-          const cleanTitle = (p.title || "").trim().toLowerCase();
-          if (cleanTitle === normTarget) return true;
-          return false;
-        });
-
-        if (matched) {
-          setPost(matched);
-          setLoading(false);
-        } else {
-          if (isInitial) addToast("‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞≤‡∞≠‡∞ø‡∞Ç‡∞ö‡∞≤‡±á‡∞¶‡±Å (Post Not Found)");
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("Error fetching post by slug or title:", err);
-        if (isInitial) addToast("Error loading post");
-        setLoading(false);
-      }
-    }
-
-    try {
-      const docRef = doc(db, "posts", rawParam);
-      unsub = onSnapshot(
-        docRef,
-        (snapshot) => {
-          if (snapshot.exists()) {
-            setPost({ id: snapshot.id, ...snapshot.data() } as Post);
-            setLoading(false);
-            isInitial = false;
-          } else {
-            fetchPostBySlugOrTitle(rawParam);
-          }
-        },
-        () => {
-          fetchPostBySlugOrTitle(rawParam);
-        }
-      );
-    } catch (e) {
-      fetchPostBySlugOrTitle(rawParam);
-    }
-
-    return () => unsub();
-  }, [postId, allPosts]);
-
-  useEffect(() => {
-    if (!allPosts || allPosts.length === 0) {
-      const q = query(collection(db, "posts"), limit(12));
-      getDocs(q).then((snap) => {
-        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
-        setFetchedRecent(docs);
-      }).catch((e) => console.error("Error loading recent posts:", e));
-    }
-  }, [allPosts]);
-
-  useEffect(() => {
-    if (!post) return;
-    const uid = auth.currentUser?.uid;
-    const docRef = doc(db, "posts", post.id);
-    const viewedSessionKey = `session_post_detail_viewed_${post.id}`;
-    const hasViewedInSession = sessionStorage.getItem(viewedSessionKey);
-
-    if (!hasViewedInSession) {
-      sessionStorage.setItem(viewedSessionKey, "true");
-      
-      let sourceKey = "source_direct";
-      const referrer = document.referrer.toLowerCase();
-      if (referrer.includes("whatsapp")) sourceKey = "source_whatsapp";
-      else if (referrer.includes("facebook") || referrer.includes("fb")) sourceKey = "source_facebook";
-      else if (referrer.includes("t.co") || referrer.includes("twitter")) sourceKey = "source_twitter";
-      else if (referrer) sourceKey = "source_other";
-
-      const updateData: any = { 
-        views: increment(1),
-        [sourceKey]: increment(1)
-      };
-      if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
-        updateData.viewedBy = arrayUnion(uid);
-      }
-      updateDoc(docRef, updateData).catch((e) => {
-        console.error("View count increment error in SinglePostView:", e);
-        sessionStorage.removeItem(viewedSessionKey);
-      });
-    } else if (uid && !(Array.isArray(post.viewedBy) ? post.viewedBy.includes(uid) : false)) {
-      updateDoc(docRef, { viewedBy: arrayUnion(uid) }).catch((e) => console.error(e));
-    }
-  }, [post?.id, auth.currentUser?.uid]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center flex-col items-center py-32 space-y-4">
-        <Loader2 className="animate-spin text-red-600" size={40} />
-        <span className="font-bold text-slate-400">‡∞µ‡∞æ‡∞∞‡±ç‡∞§‡∞≤‡±Å ‡∞≤‡±ã‡∞°‡±ç ‡∞Ö‡∞µ‡±Å‡∞§‡±Å‡∞®‡±ç‡∞®‡∞æ‡∞Ø‡∞ø...</span>
-      </div>
-    );
-  }
-
-  if (!post) {
-    return (
-      <div className="text-center py-32 space-y-6">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300">
-          <AlertTriangle size={32} />
-        </div>
-        <div>
-          <h2 className="text-xl font-black text-red-600">‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞≤‡∞≠‡∞ø‡∞Ç‡∞ö‡∞≤‡±á‡∞¶‡±Å (Post Not Found)</h2>
-          <p className="text-slate-500 font-medium mt-1">
-            ‡∞ï‡±ç‡∞∑‡∞Æ‡∞ø‡∞Ç‡∞ö‡∞Ç‡∞°‡∞ø, ‡∞à ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞≤‡∞≠‡∞ø‡∞Ç‡∞ö‡∞≤‡±á‡∞¶‡±Å ‡∞≤‡±á‡∞¶‡∞æ ‡∞§‡±Ä‡∞∏‡∞ø‡∞µ‡±á‡∞Ø‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø.
-          </p>
-        </div>
-        <button
-          aria-label="Return to Feed"
-          onClick={onBack}
-          className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 inline-flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={16} /> ‡∞π‡±ã‡∞Æ‡±ç ‡∞´‡±Ä‡∞°‡±ç‚Äå‡∞ï‡±Å ‡∞§‡∞ø‡∞∞‡∞ø‡∞ó‡∞ø ‡∞µ‡±Ü‡∞≥‡±ç‡∞≤‡∞Ç‡∞°‡∞ø
-        </button>
-      </div>
-    );
-  }
-
-  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
-  const shareText = generatePostShareText(post, postUrl);
-  const availablePosts = (allPosts && allPosts.length > 0 ? allPosts : fetchedRecent);
-  const recentPostsList = availablePosts.filter((p) => p.id !== post.id).slice(0, 6);
-
-  const mainCategory = post.categories?.[0] || post.category || "‡∞§‡∞æ‡∞ú‡∞æ ‡∞µ‡∞æ‡∞∞‡±ç‡∞§‡∞≤‡±Å";
-
-  return (
-    <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative items-start">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl shadow-xs border border-slate-200 w-full space-y-2.5 min-w-0"
-      >
-      {/* Top Bar: Back & Edit */}
-      <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100">
-        <button
-          aria-label="Back to Feed"
-          onClick={onBack}
-          className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg text-slate-700 hover:text-red-600 hover:bg-slate-200 transition-colors font-bold text-xs sm:text-sm w-fit group cursor-pointer"
-        >
-          <ArrowLeft
-            size={14}
-            className="group-hover:-translate-x-1 transition-transform text-slate-500 group-hover:text-red-600"
-          />
-          ‡∞¨‡±ç‡∞Ø‡∞æ‡∞ï‡±ç (Back)
-        </button>
-
-        {isOwner && (
-          <button
-            aria-label="Edit Post"
-            onClick={() => onEdit(post)}
-            className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors font-bold text-xs sm:text-sm group cursor-pointer"
-          >
-            <Edit3
-              size={14}
-              className="group-hover:scale-110 transition-transform"
-            />
-            ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç ‡∞∏‡∞µ‡∞∞‡∞ø‡∞Ç‡∞ö‡±Å (Edit)
-          </button>
-        )}
-      </div>
-
-      {/* Article Header */}
-      <div className="space-y-2">
-        {/* Title in Blue / Bold News Display Style */}
-        <h1 className="text-lg sm:text-xl md:text-2xl font-black text-blue-600 dark:text-blue-500 leading-snug tracking-tight whitespace-pre-wrap">
-          {formatPostTitle(post.title)}
-          {post.version && (
-            <span className="ml-1.5 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase align-middle">
-              {post.version}
-            </span>
-          )}
-          {post.versionStatus && (
-            <span
-              className={`ml-1.5 ${post.versionStatus === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase align-middle`}
-            >
-              {post.versionStatus}
-            </span>
-          )}
-        </h1>
-
-        {/* Sub-Header Metadata Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-slate-500 py-1 border-y border-slate-100 font-medium">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span>By <strong className="text-slate-800 font-bold">{post.userName || "Naandi Newsteam"}</strong></span>
-            <span className="text-slate-300">‚Ä¢</span>
-            <span>Last updated <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</strong></span>
-            <span className="text-slate-300">‚Ä¢</span>
-            <span className="flex items-center gap-1"><Eye size={12} className="text-slate-400" /> <strong>{getPostDisplayViews(post, isAdmin)}</strong></span>
-          </div>
-
-          <span className="bg-red-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-xs uppercase tracking-wider shadow-xs">
-            {mainCategory}
-          </span>
-        </div>
-
-        {/* Tags if present */}
-        {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-0.5">
-            {post.tags.map((tag, i) => (
-              <span
-                key={i}
-                className="px-1.5 py-0.5 bg-slate-50 text-slate-600 rounded text-[9px] font-bold uppercase tracking-wider border border-slate-200/60 flex items-center gap-0.5"
-              >
-                <Hash size={9} className="text-red-500" /> {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Featured Image */}
-        {post.mediaUrl && (
-          <div className="my-2 rounded-lg overflow-hidden border border-slate-200 shadow-xs bg-slate-900">
-            {post.mediaType?.startsWith("video") ? (
-              <video
-                src={post.mediaUrl}
-                controls
-                className="w-full max-h-[400px] object-contain"
-                onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }}
-              />
-            ) : post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image") ? (
-              <SmartImage src={post.mediaUrl} alt={post.title} className="w-full object-cover max-h-[420px]" />
-            ) : post.mediaType?.startsWith("audio") ? (
-              <div className="bg-white p-3">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 truncate">
-                  {post.mediaName || "Audio Attachment"}
-                </p>
-                <audio src={post.mediaUrl} controls className="w-full" />
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        {/* Colorful Social Share Buttons Bar */}
-        <div className="my-2 flex flex-wrap items-center gap-1">
-          {/* Facebook Share */}
-          <a
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#1877f2] hover:bg-[#166fe5] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
-          >
-            <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            Share
-          </a>
-
-          {/* WhatsApp Share */}
-          <a
-            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#25d366] hover:bg-[#22bf5b] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
-          >
-            <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-            Share
-          </a>
-
-          {/* Telegram Share */}
-          <a
-            href={`https://t.me/share/url?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#0088cc] hover:bg-[#0077b3] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
-          >
-            <Send size={11} />
-            Share
-          </a>
-
-          {/* Pinterest Pin */}
-          <a
-            href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(postUrl)}&media=${encodeURIComponent(post.mediaUrl || "")}&description=${encodeURIComponent(post.title)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#e60023] hover:bg-[#cc001f] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
-          >
-            <Pin size={11} />
-            Pin
-          </a>
-
-          {/* X / Twitter Post */}
-          <a
-            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(post.title)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-black hover:bg-slate-800 text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs"
-          >
-            <span className="font-serif font-black text-[11px]">ùïè</span>
-            Post
-          </a>
-
-          {/* General Share */}
-          <button
-            onClick={() => {
-              handleShare(
-                post.title || "E-Vedhika Post",
-                shareText,
-                postUrl,
-                () => addToast("Link Copied!"),
-                post.mediaUrl,
-                post.mediaType,
-              );
-            }}
-            className="flex-1 min-w-[75px] sm:flex-initial inline-flex items-center justify-center gap-1 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold text-[11px] px-2.5 py-1 rounded transition-colors shadow-xs cursor-pointer"
-          >
-            <Share2 size={11} />
-            Share
-          </button>
-        </div>
-
-        
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig) && (
-          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
-        )}
-        {siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeInArticle && canShowAds(siteConfig) && (
-          <CustomAdUnit id="in-article-custom-ad" code={siteConfig.ads.customAdCodeInArticle} className="my-4" />
-        )}
-
-        {/* Article Body Matter */}
-        <div className="prose prose-slate max-w-none text-slate-800 leading-relaxed font-normal whitespace-pre-wrap my-3">
-          <ReactMarkdown
-            remarkPlugins={[remarkBreaks]}
-            rehypePlugins={[rehypeRaw]}
-            components={{
-              img: (props) => (
-                <span className="block my-4">
-                  <SmartImage
-                    src={props.src || ""}
-                    alt={props.alt || "Photo"}
-                    className="w-full h-auto max-h-[600px] object-contain rounded-2xl border border-slate-200 shadow-md bg-slate-50"
-                  />
-                </span>
-              ),
-              h3: ({ node, children, ...props }) => {
-                const text = String(children);
-                if (text.includes("‚ú® What's New")) {
-                  return (
-                    <h3
-                      className="flex items-center gap-2 text-blue-700 bg-blue-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-blue-100 shadow-sm"
-                      {...props}
-                    >
-                      {children}
-                    </h3>
-                  );
-                }
-                if (text.includes("üêõ Bug Fixes")) {
-                  return (
-                    <h3
-                      className="flex items-center gap-2 text-rose-700 bg-rose-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-rose-100 shadow-sm"
-                      {...props}
-                    >
-                      {children}
-                    </h3>
-                  );
-                }
-                if (text.includes("‚ö° Improvements")) {
-                  return (
-                    <h3
-                      className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest mt-6 mb-3 border border-amber-100 shadow-sm"
-                      {...props}
-                    >
-                      {children}
-                    </h3>
-                  );
-                }
-                return (
-                  <h3
-                    className="text-xl font-black text-slate-900 mt-6 mb-3"
-                    {...props}
-                  >
-                    {children}
-                  </h3>
-                );
-              },
-              ul: ({ node, children, ...props }) => (
-                <ul className="space-y-2 ml-4 mb-6" {...props}>
-                  {children}
-                </ul>
-              ),
-              li: ({ node, children, ...props }) => (
-                <li
-                  className="flex items-start gap-3 text-slate-700 font-medium text-base leading-relaxed"
-                  {...props}
-                >
-                  <span className="text-red-600 mt-2 w-1.5 h-1.5 rounded-full bg-red-600 shrink-0" />
-                  <span>{children}</span>
-                </li>
-              ),
-            }}
-          >
-            {post.content}
-          </ReactMarkdown>
-        </div>
-
-        {/* Additional Attachments/Files if present */}
-        {post.attachments && post.attachments.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <h5 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">‡∞Ö‡∞ü‡∞æ‡∞ö‡±ç‚Äå‡∞Æ‡±Ü‡∞Ç‡∞ü‡±ç‚Äå‡∞≤‡±Å (Attachments)</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {post.attachments.map((att: any, idx: number) => (
-                <a
-                  key={idx}
-                  href={att.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  download={att.name || "Attachment"}
-                  onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
-                  className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors group cursor-pointer"
-                >
-                  <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center shrink-0">
-                    <FileText size={20} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{att.name || "File Attachment"}</p>
-                    <span className="text-[10px] text-slate-400 font-medium">‡∞°‡±å‡∞®‡±ç‚Äå‡∞≤‡±ã‡∞°‡±ç ‡∞ö‡±á‡∞Ø‡∞Ç‡∞°‡∞ø</span>
-                  </div>
-                  <Download size={16} className="text-slate-400 group-hover:text-red-600 transition-colors" />
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Likes, Views, Actions Bar */}
-        <div className="flex justify-between items-center sm:mt-10 mt-6 pt-6 border-t border-slate-200">
-          <div className="flex gap-4">
-            <button
-              onClick={async () => {
-                const userId = auth.currentUser?.uid;
-                if (!userId) {
-                  addToast("‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞Æ‡±ä‡∞¶‡∞ü ‡∞≤‡∞æ‡∞ó‡∞ø‡∞®‡±ç ‡∞Ö‡∞µ‡±ç‡∞µ‡∞Ç‡∞°‡∞ø");
-                  return;
-                }
-                const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
-                if (likedBy.includes(userId)) {
-                  await updateDoc(doc(db, "posts", post.id), {
-                    likes: increment(-1),
-                    likedBy: arrayRemove(userId),
-                  });
-                } else {
-                  await updateDoc(doc(db, "posts", post.id), {
-                    likes: increment(1),
-                    likedBy: arrayUnion(userId),
-                  });
-                }
-              }}
-              className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-colors cursor-pointer group"
-            >
-              <Heart
-                size={18}
-                className={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
-                    ? "fill-red-600 text-red-600"
-                    : "text-red-600 group-hover:scale-110 transition-transform"
-                }
-              />
-              <span
-                onClick={(e) => {
-                  if (isAdmin && post.likes > 0) {
-                    e.stopPropagation();
-                    setShowLikesModal(true);
-                  }
-                }}
-                className={`font-black text-sm ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
-              >
-                {post.likes || 0}
-              </span>
-              <span className="text-xs uppercase font-bold hidden sm:inline">Likes</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const displayViews = getPostDisplayViews(post, isAdmin);
-                if (isAdmin && displayViews > 0) setShowViewsModal(true);
-              }}
-              className={`flex items-center gap-2 text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 transition-colors ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:bg-slate-200 cursor-pointer" : "cursor-default"}`}
-            >
-              <Eye size={18} />
-              <span className="font-black text-sm">{getPostDisplayViews(post, isAdmin)}</span>
-              <span className="text-xs uppercase font-bold hidden sm:inline">Views</span>
-            </button>
-          </div>
-
-          <button
-            onClick={() => {
-              if ((window as any).setSharingPostForPoster) {
-                (window as any).setSharingPostForPoster(post);
-              }
-            }}
-            className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl transition-all cursor-pointer font-bold text-xs"
-          >
-            <Smartphone size={18} />
-            <span className="hidden sm:inline">‡∞µ‡∞æ‡∞ü‡±ç‡∞∏‡∞æ‡∞™‡±ç ‡∞ï‡∞æ‡∞∞‡±ç‡∞°‡±ç</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Post Comments */}
-      <div className="pt-8 border-t border-slate-200">
-        <PostComments
-          post={post}
-          addToast={addToast}
-          userProfile={userProfile}
-          isAdmin={isAdmin}
-          allUsers={allUsers}
-          storageConfig={storageConfig}
-        />
-      </div>
-
-      {/* Recent Posts Section */}
-      {recentPostsList.length > 0 && (
-        <div className="mt-12 pt-8 border-t border-slate-200 lg:hidden">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span>
-              ‡∞∞‡±Ä‡∞∏‡±Ü‡∞Ç‡∞ü‡±ç ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‡∞∏‡±ç (Recent Posts)
-            </h3>
-            <button
-              onClick={onBack}
-              className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full border border-red-100 transition-colors cursor-pointer"
-            >
-              ‡∞Ö‡∞®‡±ç‡∞®‡∞ø ‡∞™‡±ã‡∞∏‡±ç‡∞ü‡±ç‚Äå‡∞≤‡±Å ‡∞ö‡±Ç‡∞°‡∞Ç‡∞°‡∞ø ‚Üí
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {recentPostsList.map((rp) => {
-              const rpImage = rp.mediaUrl || (rp.attachments && rp.attachments.find((a: any) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(a.url) || (a.url || "").includes("image"))?.url);
-              return (
-                <div
-                  key={rp.id}
-                  onClick={() => {
-                    setSearchParams({ postId: rp.id });
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="group bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all overflow-hidden cursor-pointer flex flex-col h-full hover:border-red-300"
-                >
-                  <div className="relative aspect-[16/10] w-full bg-slate-100 overflow-hidden">
-                    {rpImage ? (
-                      <SmartImage
-                        src={rpImage}
-                        alt={rp.title}
-                        allowLightbox={false}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-xs p-4 text-center">
-                        {rp.title || "E-Vedhika Post"}
-                      </div>
-                    )}
-                    <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-xs">
-                      {rp.categories?.[0] || rp.category || "‡∞§‡∞æ‡∞ú‡∞æ ‡∞µ‡∞æ‡∞∞‡±ç‡∞§‡∞≤‡±Å"}
-                    </span>
-                  </div>
-                  <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
-                    <h4 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
-                      {rp.title}
-                    </h4>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-2 border-t border-slate-100">
-                      <span>{new Date(getValidTime(rp)).toLocaleDateString("te-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      <span className="flex items-center gap-1">
-                        <Eye size={12} /> {getPostDisplayViews(rp, isAdmin)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {showLikesModal && (
-        <UsersListModal
-          title="Liked By"
-          uids={post.likedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowLikesModal(false)}
-        />
-      )}
-      {showViewsModal && (
-        <UsersListModal
-          title="Viewed By"
-          uids={post.viewedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowViewsModal(false)}
-          anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
-        />
-      )}
-      </motion.div>
-
-      {/* Right Column - Sidebar */}
-      <div className="hidden lg:flex flex-col gap-6 w-full">
-        
-
-        {recentPostsList.length > 0 && (
-          <div className="bg-white border border-slate-200 shadow-sm flex flex-col">
-            <div className="bg-[#0ea5e9] text-white px-4 py-2 font-black text-[15px] uppercase tracking-wide">
-              RECENT POST
-            </div>
-            <div className="p-4 flex flex-col gap-4">
-              {recentPostsList.slice(0, 4).map((rp) => {
-                const rpImage = rp.mediaUrl || (rp.attachments && rp.attachments.find((a) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(a.url) || (a.url || "").includes("image"))?.url);
-                return (
-                  <div
-                    key={rp.id}
-                    onClick={() => {
-                      setSearchParams({ postId: rp.id });
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="flex gap-3 cursor-pointer group"
-                  >
-                    {rpImage && (
-                      <div className="w-[85px] h-[60px] flex-shrink-0 bg-slate-100 overflow-hidden relative">
-                        <img src={rpImage} alt={rp.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                      </div>
-                    )}
-                    <div className="flex flex-col justify-start">
-                      <h4 className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-3 group-hover:text-red-600 transition-colors">
-                        {rp.title}
-                      </h4>
-                      <span className="text-[10px] text-slate-500 mt-1 font-medium">
-                        {new Date(rp.time || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* AdSense Placeholder */}
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && canShowAds(siteConfig) && (
-          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
-        )}
-        {/* Custom Ad Placeholder */}
-        {siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeSidebar && canShowAds(siteConfig) && (
-          <CustomAdUnit id="sidebar-custom-ad" code={siteConfig.ads.customAdCodeSidebar} className="w-full flex items-center justify-center" />
-        )}
-
-        {recentPostsList.length > 4 && (
-          <div className="bg-white border border-slate-200 shadow-sm flex flex-col">
-            <div className="bg-[#0ea5e9] text-white px-4 py-2 font-black text-[15px] uppercase tracking-wide">
-              TRENDING POST
-            </div>
-            <div className="p-4 flex flex-col gap-4">
-              {recentPostsList.slice(4, 8).map((rp) => {
-                const rpImage = rp.mediaUrl || (rp.attachments && rp.attachments.find((a) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(a.url) || (a.url || "").includes("image"))?.url);
-                return (
-                  <div
-                    key={rp.id}
-                    onClick={() => {
-                      setSearchParams({ postId: rp.id });
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="flex gap-3 cursor-pointer group"
-                  >
-                     {rpImage && (
-                      <div className="w-[85px] h-[60px] flex-shrink-0 bg-slate-100 overflow-hidden relative">
-                        <img src={rpImage} alt={rp.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                      </div>
-                    )}
-                    <div className="flex flex-col justify-start">
-                      <h4 className="text-[13px] font-bold text-slate-800 leading-snug line-clamp-3 group-hover:text-red-600 transition-colors">
-                        {rp.title}
-                      </h4>
-                      <span className="text-[10px] text-slate-500 mt-1 font-medium">
-                        {new Date(rp.time || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CommentRoleBadge({
-  commentUid,
-  isAdminComment,
-  postUid,
-  allUsers,
-}: {
-  commentUid?: string;
-  isAdminComment?: boolean;
-  postUid?: string;
-  allUsers?: any[];
-}) {
-  const userDoc = allUsers?.find((u) => u.id === commentUid);
-  const isOfficialAdmin =
-    isAdminComment || commentUid === "KGT2roF9bPTNhWIceHgWsJEnEnH3" || userDoc?.role === "admin";
-  const isPostAuthor = commentUid && postUid && commentUid === postUid;
-  const isModerator = userDoc?.role === "moderator";
-
-  return (
-    <div className="inline-flex items-center gap-1.5 flex-wrap">
-      {isOfficialAdmin && (
-        <span className="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <ShieldCheck size={9} /> ‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç (Admin)
-        </span>
-      )}
-      {isPostAuthor && (
-        <span className="bg-emerald-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <UserCheck size={9} /> ‡∞∞‡∞ö‡∞Ø‡∞ø‡∞§ (Author)
-        </span>
-      )}
-      {isModerator && !isOfficialAdmin && (
-        <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <Shield size={9} /> ‡∞Æ‡±ã‡∞°‡∞∞‡±á‡∞ü‡∞∞‡±ç (Moderator)
-        </span>
-      )}
-    </div>
-  );
-}
-
-function PostComments({
-  post,
-  addToast,
-  userProfile,
-  isAdmin,
-  allUsers,
-  storageConfig,
-}: {
-  post: Post;
-  addToast: (s: string) => void;
-  userProfile: UserProfile | null;
-  isAdmin: boolean;
-  allUsers: UserProfile[];
-  storageConfig: "cloudflare" | "firebase";
-}) {
-  const [comments, setComments] = useState<any[]>([]);
-  const [dbComments, setDbComments] = useState<any[]>([]);
-  const [optimisticComments, setOptimisticComments] = useState<any[]>([]);
-  const [commentsLoaded, setCommentsLoaded] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "popular">("newest");
-  const [showAdminOnly, setShowAdminOnly] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editCommentText, setEditCommentText] = useState("");
-  const [submittingEdit, setSubmittingEdit] = useState(false);
-  const [showLikesModalFor, setShowLikesModalFor] = useState<{
-    id: string;
-    uids: string[];
-  } | null>(null);
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [submittingReply, setSubmittingReply] = useState(false);
-  const [editReplyId, setEditReplyId] = useState<{ commentId: string; replyId: string } | null>(null);
-  const [editReplyText, setEditReplyText] = useState("");
-  const [submittingReplyEdit, setSubmittingReplyEdit] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState<{ query: string; index: number; target: "reply" | "comment" } | null>(null);
-  const [commentFile, setCommentFile] = useState<File | null>(null);
-  const uploadFileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setReplyText(val);
-    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
-    const match = val.match(lastWordRegex);
-    if (match) {
-      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "reply" });
-    } else {
-      setMentionQuery(null);
-    }
-  };
-
-  const handleCommentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setNewComment(val);
-    const lastWordRegex = /@([a-zA-Z0-9_\u0C00-\u0C7F]*)$/;
-    const match = val.match(lastWordRegex);
-    if (match) {
-      setMentionQuery({ query: match[1], index: match.index !== undefined ? match.index : 0, target: "comment" });
-    } else {
-      setMentionQuery(null);
-    }
-  };
-
-  const handleMentionSelect = (username: string) => {
-    if (!mentionQuery) return;
-    if (mentionQuery.target === "reply") {
-      const newText = replyText.substring(0, mentionQuery.index) + `@${username} ` + replyText.substring(mentionQuery.index + mentionQuery.query.length + 1);
-      setReplyText(newText);
-    } else {
-      const newText = newComment.substring(0, mentionQuery.index) + `@${username} ` + newComment.substring(mentionQuery.index + mentionQuery.query.length + 1);
-      setNewComment(newText);
-    }
-    setMentionQuery(null);
-  };
-
-  const postRef = useRef(post);
-  useEffect(() => {
-    postRef.current = post;
-  }, [post]);
-
-  const handleAddReply = async (commentId: string) => {
-    if (!replyText.trim() || !auth.currentUser) return;
-    setSubmittingReply(true);
-    try {
-      const authorName = isAdmin
-        ? "Admin"
-        : auth.currentUser!.displayName ||
-          auth.currentUser!.email?.split("@")[0] ||
-          "User";
-
-      const newReply = {
-        id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
-        text: replyText,
-        time: Date.now(),
-        uid: auth.currentUser!.uid,
-        userName: authorName,
-        isAdminComment: isAdmin,
-      };
-
-      const targetComment = comments.find((c) => c.id === commentId);
-      if (targetComment?.isLegacy) {
-        const currentComments = postRef.current?.comments || [];
-        const updatedComments = currentComments.map((item: any) => {
-          const itemCid = item.id || item.time?.toString();
-          if (itemCid === commentId) {
-            const currentReplies = Array.isArray(item.replies) ? item.replies : [];
-            return { ...item, replies: [...currentReplies, newReply] };
-          }
-          return item;
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          comments: updatedComments,
-          commentCount: increment(1),
-        });
-      } else {
-        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-          replies: arrayUnion(newReply),
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          commentCount: increment(1),
-        });
-      }
-
-      // Global notification for reply
-      await addDoc(collection(db, "notifications"), {
-        uid: "all",
-        title: "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞∞‡∞ø‡∞™‡±ç‡∞≤‡±à (New Reply)",
-        message: `${authorName} ‡∞µ‡∞æ‡∞∞‡±Å ‡∞í‡∞ï ‡∞ï‡∞æ‡∞Æ‡±Ü‡∞Ç‡∞ü‡±ç ‡∞™‡±à ‡∞∞‡∞ø‡∞™‡±ç‡∞≤‡±à ‡∞á‡∞ö‡±ç‡∞ö‡∞æ‡∞∞‡±Å.`,
-        type: "comment_reply",
-        read: false,
-        time: Date.now(),
-        postId: post.id,
-        senderUid: auth.currentUser!.uid,
-      });
-
-      const parentComment = comments.find((c) => c.id === commentId);
-      if (parentComment && parentComment.uid && parentComment.uid !== auth.currentUser!.uid) {
-        await addDoc(collection(db, "notifications"), {
-          uid: parentComment.uid,
-          title: "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞∞‡∞ø‡∞™‡±ç‡∞≤‡±à (New Reply)",
-          message: `${authorName} ‡∞Æ‡±Ä ‡∞ï‡∞æ‡∞Æ‡±Ü‡∞Ç‡∞ü‡±ç ‡∞™‡±à ‡∞í‡∞ï ‡∞∞‡∞ø‡∞™‡±ç‡∞≤‡±à ‡∞á‡∞ö‡±ç‡∞ö‡∞æ‡∞∞‡±Å.`,
-          type: "comment_reply",
-          read: false,
-          time: Date.now(),
-          postId: post.id,
-        }).catch(() => console.error("Failed to send notification"));
-      }
-      await logUserActivity("Replied to a Comment on Post: " + post.id);
-
-      setReplyingToId(null);
-      setReplyText("");
-    } catch (e: any) {
-      addToast("Failed to add reply");
-    } finally {
-      setSubmittingReply(false);
-    }
-  };
-
-  const handleDeleteReply = async (commentId: string, reply: any) => {
-    const res = await Swal.fire({
-      title: "Delete Reply?",
-      text: "Are you sure you want to delete this reply?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it"
-    });
-    if (!res.isConfirmed) return;
-    try {
-      const targetComment = comments.find((c) => c.id === commentId);
-      if (targetComment?.isLegacy) {
-        const currentComments = postRef.current?.comments || [];
-        const updatedComments = currentComments.map((item: any) => {
-          const itemCid = item.id || item.time?.toString();
-          if (itemCid === commentId) {
-            const currentReplies = Array.isArray(item.replies) ? item.replies : [];
-            const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
-            return { ...item, replies: newReplies };
-          }
-          return item;
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          comments: updatedComments,
-          commentCount: increment(-1),
-        });
-      } else {
-        const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
-        if (commentDoc.exists()) {
-          const data = commentDoc.data();
-          const currentReplies = data.replies || [];
-          const newReplies = currentReplies.filter((r: any) => r.id !== reply.id);
-          await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-            replies: newReplies,
-          });
-          await updateDoc(doc(db, "posts", post.id), {
-            commentCount: increment(-1),
-          });
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to delete reply");
-    }
-  };
-
-  const handleEditReplySubmit = async (commentId: string) => {
-    if (!editReplyText.trim() || !editReplyId) return;
-    setSubmittingReplyEdit(true);
-    try {
-      const targetComment = comments.find((c) => c.id === commentId);
-      if (targetComment?.isLegacy) {
-        const currentComments = postRef.current?.comments || [];
-        const updatedComments = currentComments.map((item: any) => {
-          const itemCid = item.id || item.time?.toString();
-          if (itemCid === commentId) {
-            const currentReplies = Array.isArray(item.replies) ? item.replies : [];
-            const newReplies = currentReplies.map((r: any) =>
-              r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
-            );
-            return { ...item, replies: newReplies };
-          }
-          return item;
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          comments: updatedComments,
-        });
-      } else {
-        const commentDoc = await getDoc(doc(db, "posts", post.id, "comments", commentId));
-        if (!commentDoc.exists()) return;
-        const data = commentDoc.data();
-        const currentReplies = data.replies || [];
-        const newReplies = currentReplies.map((r: any) =>
-          r.id === editReplyId.replyId ? { ...r, text: editReplyText, edited: true } : r
-        );
-        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-          replies: newReplies,
-        });
-      }
-      setEditReplyId(null);
-      setEditReplyText("");
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to edit reply");
-    } finally {
-      setSubmittingReplyEdit(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!post?.id) return;
-    const commentsCol = collection(db, "posts", post.id, "comments");
-    const unsubComments = onSnapshot(
-      commentsCol,
-      (snap) => {
-        const docs = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-        setDbComments(docs);
-        setCommentsLoaded(true);
-      },
-      (err) => {
-        console.error("Error fetching comments snapshot:", err);
-        setCommentsLoaded(true);
-      },
-    );
-    const unsubPost = onSnapshot(
-      doc(db, "posts", post.id),
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const updatedPostData = docSnap.data();
-          if (updatedPostData.comments) {
-            postRef.current = { ...postRef.current, comments: updatedPostData.comments, commentCount: updatedPostData.commentCount };
-          }
-        }
-      },
-      (err) => console.error("Error fetching post doc snapshot for comments:", err)
-    );
-    return () => {
-      unsubComments();
-      unsubPost();
-    };
-  }, [post.id]);
-
-  useEffect(() => {
-    const currentPost = postRef.current || post;
-    const legacyComments = currentPost.comments || [];
-    const combinedMap = new Map();
-
-    legacyComments.forEach((c: any) => {
-      const cid = c.id || c.time?.toString() || Math.random().toString();
-      combinedMap.set(cid, { ...c, id: cid, isLegacy: true });
-    });
-
-    dbComments.forEach((c: any) => {
-      combinedMap.set(c.id, c);
-    });
-
-    optimisticComments.forEach((opt: any) => {
-      const matchesReal = dbComments.some(
-        (dbc: any) =>
-          dbc.uid === opt.uid &&
-          dbc.text === opt.text &&
-          Math.abs((getValidTime(dbc) || 0) - opt.time) < 30000,
-      );
-      if (!matchesReal) {
-        combinedMap.set(opt.id, opt);
-      }
-    });
-
-    let combinedComments = Array.from(combinedMap.values());
-    
-    if (showAdminOnly) {
-      combinedComments = combinedComments.filter((c: any) => {
-        const u = allUsers.find(user => user.id === c.uid);
-        return c.isAdminComment || c.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3" || u?.role === "admin" || u?.role === "super admin" || u?.role === "moderator";
-      });
-    }
-
-    combinedComments.sort((a: any, b: any) => {
-      const aTime = getValidTime(a) || 0;
-      const bTime = getValidTime(b) || 0;
-      if (sortOrder === "oldest") {
-        return aTime - bTime;
-      } else if (sortOrder === "popular") {
-        const aReactionsCount = Object.values(a.reactions || {}).reduce(
-          (sum: number, uids: any) => sum + (Array.isArray(uids) ? uids.length : 0),
-          0
-        );
-        const bReactionsCount = Object.values(b.reactions || {}).reduce(
-          (sum: number, uids: any) => sum + (Array.isArray(uids) ? uids.length : 0),
-          0
-        );
-        const aLikes = (Array.isArray(a.likes) ? a.likes.length : 0) + aReactionsCount;
-        const bLikes = (Array.isArray(b.likes) ? b.likes.length : 0) + bReactionsCount;
-        if (aLikes !== bLikes) return bLikes - aLikes;
-        return bTime - aTime;
-      } else {
-        return bTime - aTime;
-      }
-    });
-
-    setComments(combinedComments);
-
-    const trueCombinedCount = combinedComments.reduce((acc: number, c: any) => {
-      const repliesCount = c.replies && Array.isArray(c.replies) ? c.replies.length : 0;
-      return acc + 1 + repliesCount;
-    }, 0);
-
-    const currentCount = currentPost.commentCount ?? legacyComments.length;
-    if (currentCount !== trueCombinedCount && post?.id) {
-      updateDoc(doc(db, "posts", post.id), {
-        commentCount: trueCombinedCount,
-      }).catch(() => {});
-    }
-  }, [dbComments, optimisticComments, post.id, post.comments, sortOrder, showAdminOnly, allUsers]);
-
-  const handleToggleReaction = async (commentId: string, emoji: string) => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) {
-      addToast("‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞≤‡∞æ‡∞ó‡∞ø‡∞®‡±ç ‡∞Ö‡∞µ‡±ç‡∞µ‡∞Ç‡∞°‡∞ø (Please login first)");
-      return;
-    }
-    const targetComment = comments.find((c) => c.id === commentId);
-    if (!targetComment) return;
-
-    const currentReactions: Record<string, string[]> = targetComment.reactions || {};
-    const existingUids: string[] = currentReactions[emoji] || [];
-    const hasReacted = existingUids.includes(uid);
-    const newUids = hasReacted
-      ? existingUids.filter((id) => id !== uid)
-      : [...existingUids, uid];
-
-    const updatedReactions = {
-      ...currentReactions,
-      [emoji]: newUids,
-    };
-
-    let updatedLikes = Array.isArray(targetComment.likes) ? [...targetComment.likes] : [];
-    if (emoji === "‚ù§Ô∏è") {
-      updatedLikes = hasReacted
-        ? updatedLikes.filter((id) => id !== uid)
-        : [...new Set([...updatedLikes, uid])];
-    }
-
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId
-          ? { ...c, reactions: updatedReactions, likes: updatedLikes }
-          : c
-      )
-    );
-
-    try {
-      if (targetComment.isLegacy) {
-        const currentComments = postRef.current?.comments || [];
-        const updatedComments = currentComments.map((item: any) => {
-          const itemCid = item.id || item.time?.toString();
-          if (itemCid === commentId) {
-            return { ...item, reactions: updatedReactions, likes: updatedLikes };
-          }
-          return item;
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          comments: updatedComments,
-        });
-      } else {
-        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-          reactions: updatedReactions,
-          ...(emoji === "‚ù§Ô∏è" ? { likes: updatedLikes } : {}),
-        });
-
-        if (!hasReacted) {
-          const likerName = isAdmin
-            ? "Admin"
-            : auth.currentUser!.displayName ||
-              auth.currentUser!.email?.split("@")[0] ||
-              "User";
-          sendLikeNotification(
-            post.id,
-            commentId,
-            targetComment.text || "",
-            targetComment.uid || "",
-            targetComment.userName || "User",
-            uid,
-            likerName,
-          );
-        }
-      }
-    } catch (err: any) {
-      console.error("Error toggling reaction", err);
-      addToast("Failed to update reaction");
-    }
-  };
-
-  const handleAddComment = async () => {
-    if (!newComment.trim() && !commentFile) return;
-    if (requireLoginAlert()) return;
-    if (submittingComment) return;
-
-    const commentText = newComment;
-    const fileToUploadLocal = commentFile;
-    const authorName = isAdmin
-      ? "Admin"
-      : auth.currentUser!.displayName ||
-        auth.currentUser!.email?.split("@")[0] ||
-        "User";
-
-    const tempId = "temp_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
-    const localPreviewUrl = fileToUploadLocal ? URL.createObjectURL(fileToUploadLocal) : null;
-
-    const optimisticComment = {
-      id: tempId,
-      text: commentText,
-      time: Date.now(),
-      uid: auth.currentUser!.uid,
-      userName: authorName,
-      isAdminComment: isAdmin,
-      likes: [],
-      replies: [],
-      edited: false,
-      mediaUrl: localPreviewUrl,
-      isOptimistic: true,
-    };
-
-    setOptimisticComments((prev) => [optimisticComment, ...prev]);
-    setNewComment("");
-    setCommentFile(null);
-
-    setSubmittingComment(true);
-    try {
-      let uploadedImageUrl = null;
-      if (fileToUploadLocal) {
-        addToast("Uploading screenshot...");
-        try {
-          let processedFile = fileToUploadLocal;
-          if (fileToUploadLocal.type.startsWith("image/")) {
-            const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true, initialQuality: 0.8 };
-            const compressedBlob = await imageCompression(fileToUploadLocal, options);
-            processedFile = new File([compressedBlob], fileToUploadLocal.name || "image.png", { type: fileToUploadLocal.type, lastModified: Date.now() });
-          }
-
-          const safeName = (fileToUploadLocal.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
-          const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-          
-          if (storageConfig === "cloudflare") {
-            const token = await auth.currentUser?.getIdToken();
-            const formData = new FormData();
-            formData.append('file', processedFile);
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${token}` },
-              body: formData
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'R2 upload failed');
-            uploadedImageUrl = data.url;
-          } else {
-            const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
-            await uploadBytes(storageRef, processedFile);
-            uploadedImageUrl = await getDownloadURL(storageRef);
-          }
-          
-          addToast("Screenshot uploaded successfully!");
-        } catch (e: any) {
-          addToast(`Failed to upload screenshot: ${e.message || "Unknown error"}`);
-          console.error("Screenshot upload error", e);
-          setOptimisticComments((prev) => prev.filter((o) => o.id !== tempId));
-          setSubmittingComment(false);
-          return;
-        }
-      }
-
-      await addDoc(collection(db, "posts", post.id, "comments"), {
-        text: commentText,
-        time: Date.now(),
-        uid: auth.currentUser!.uid,
-        userName: authorName,
-        isAdminComment: isAdmin,
-        likes: [],
-        replies: [],
-        edited: false,
-        mediaUrl: uploadedImageUrl
-      });
-
-      try {
-        await updateDoc(doc(db, "posts", post.id), {
-          commentCount: increment(1),
-        });
-      } catch (err) {
-        console.warn("Could not increment comment count", err);
-      }
-
-      try {
-        await sendCommentNotifications(
-          post.id,
-          commentText,
-          auth.currentUser!.uid,
-          authorName,
-        );
-      } catch (err) {
-        console.warn("Could not send comment notifications", err);
-      }
-      
-      addToast("‡∞ï‡∞æ‡∞Æ‡±Ü‡∞Ç‡∞ü‡±ç ‡∞ú‡±ã‡∞°‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø (Comment posted successfully)");
-      await logUserActivity("Commented on Post: " + post.id).catch(() => {});
-    } catch (e: any) {
-      console.error(e);
-      addToast("Error: " + (e.message || String(e)));
-      setOptimisticComments((prev) => prev.filter((o) => o.id !== tempId));
-    } finally {
-      setOptimisticComments((prev) => prev.filter((o) => o.id !== tempId));
-      setSubmittingComment(false);
-    }
-  };
-
-  const handleEditComment = async (commentId: string) => {
-    if (!editCommentText.trim()) return;
-    setSubmittingEdit(true);
-    try {
-      const targetComment = comments.find((c) => c.id === commentId);
-      if (targetComment?.isLegacy) {
-        const currentComments = postRef.current?.comments || [];
-        const updatedComments = currentComments.map((item: any) => {
-          const itemCid = item.id || item.time?.toString();
-          return itemCid === commentId
-            ? { ...item, text: editCommentText, edited: true }
-            : item;
-        });
-        await updateDoc(doc(db, "posts", post.id), {
-          comments: updatedComments,
-        });
-      } else {
-        await updateDoc(doc(db, "posts", post.id, "comments", commentId), {
-          text: editCommentText,
-          edited: true,
-        });
-      }
-      setEditingCommentId(null);
-      setEditCommentText("");
-    } catch (e: any) {
-      addToast("Failed to edit comment");
-    } finally {
-      setSubmittingEdit(false);
-    }
-  };
-
-  return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h3 className="text-2xl font-black text-primary flex items-center gap-3">
-          <MessageCircle
-            size={24}
-            className="text-accent"
-            style={{ color: "#fbbf24" }}
-          />
-          Community Comments{" "}
-          <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full">
-            {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
-          </span>
-        </h3>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button 
-            onClick={() => setShowAdminOnly(!showAdminOnly)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm border ${showAdminOnly ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-200'}`}
-          >
-            <Filter size={14} />
-            ‡∞Ö‡∞°‡±ç‡∞Æ‡∞ø‡∞®‡±ç ‡∞∞‡∞ø‡∞™‡±ç‡∞≤‡±à‡∞∏‡±ç
-          </button>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
-          <ArrowUpDown size={14} className="text-slate-500" />
-          <span className="text-xs font-bold text-slate-500">‡∞µ‡∞∞‡∞∏‡∞ï‡±ç‡∞∞‡∞Æ‡∞Ç:</span>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as any)}
-            className="bg-transparent text-xs font-black text-primary border-none outline-none cursor-pointer"
-          >
-            <option value="newest">‡∞ï‡±ä‡∞§‡±ç‡∞§‡∞µ‡∞ø ‡∞Æ‡±ä‡∞¶‡∞ü (Newest First)</option>
-            <option value="oldest">‡∞™‡∞æ‡∞§‡∞µ‡∞ø ‡∞Æ‡±ä‡∞¶‡∞ü (Oldest First)</option>
-            <option value="popular">‡∞Ö‡∞§‡±ç‡∞Ø‡∞Ç‡∞§ ‡∞™‡±ç‡∞∞‡∞ú‡∞æ‡∞¶‡∞∞‡∞£ ‡∞™‡±ä‡∞Ç‡∞¶‡∞ø‡∞®‡∞µ‡∞ø (Most Popular)</option>
-          </select>
-        </div>
-        </div>
-      </div>
-      <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
-        <label className="block text-sm font-black text-primary mb-3">
-          Add your perspective
-        </label>
-        {auth.currentUser && !auth.currentUser.isAnonymous ? (
-          <div className="flex flex-col sm:flex-row gap-3 relative">
-            <div className="flex-1 flex flex-col gap-2 relative">
-              {mentionQuery?.target === "comment" && (
-                <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                  {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3"
-                    >
-                      <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                        {(u.username || u.name || "U")[0].toUpperCase()}
-                      </div>
-                      <span className="truncate text-slate-700 font-bold">{u.username || u.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {commentFile && (
-                <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg">
-                  <Paperclip size={14} className="text-slate-500" />
-                  <span className="text-xs text-slate-600 truncate flex-1">{commentFile.name}</span>
-                  <button onClick={() => setCommentFile(null)} className="text-red-500 p-1 hover:bg-red-50 rounded">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              )}
-              <div className="flex relative">
-                <input
-                  value={newComment}
-                  onChange={handleCommentChange}
-                  onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && !submittingComment && handleAddComment()}
-                  onPaste={(e) => {
-                    const items = e.clipboardData?.items;
-                    if (!items) return;
-                    for (let i = 0; i < items.length; i++) {
-                      if (items[i].type.indexOf('image') !== -1) {
-                        const file = items[i].getAsFile();
-                        if (file) setCommentFile(file);
-                        break;
-                      }
-                    }
-                  }}
-                  placeholder="Type your comment here..."
-                  className="flex-1 text-base bg-white p-4 pr-12 rounded-xl border-2 border-transparent focus:border-accent outline-none shadow-sm transition-all text-slate-700"
-                />
-                <button
-                  onClick={() => uploadFileInputRef.current?.click()}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-primary transition-colors bg-white rounded-lg"
-                  title="Attach Screenshot"
-                >
-                  <Paperclip size={20} />
-                </button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={uploadFileInputRef}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setCommentFile(file);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
-            </div>
-            <button
-              aria-label="Post Comment"
-              disabled={submittingComment || (!newComment.trim() && !commentFile)}
-              onClick={handleAddComment}
-              className="bg-primary text-white py-4 px-8 rounded-xl font-black uppercase tracking-wider disabled:opacity-50 hover:bg-opacity-90 flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
-            >
-              {submittingComment ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Send size={18} />
-              )}
-              Post
-            </button>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-sm font-bold text-slate-500">
-              Please login to join the conversation and comment.
-            </p>
-          </div>
-        )}
-      </div>
-      <div className="space-y-4">
-        {comments.length === 0 && (
-          <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-[24px]">
-            <MessageCircle size={40} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-base text-slate-400 font-bold">
-              No comments yet.
-            </p>
-            <p className="text-sm text-slate-400">
-              Be the first to start the conversation!
-            </p>
-          </div>
-        )}
-        <AnimatePresence initial={false}>
-        {comments.map((c) => (
-          <motion.div
-            key={c.id}
-            layout
-            initial={{ opacity: 0, y: 15, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className={`bg-white p-5 rounded-2xl border ${c.isOptimistic ? "border-blue-300 bg-blue-50/20" : "border-slate-100"} shadow-sm flex gap-4 items-start relative`}
-          >
-            <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex-shrink-0 flex items-center justify-center text-slate-400 font-black border border-white shadow-sm mt-1">
-              {(c.userName || "U")[0].toUpperCase()}
-            </div>
-            <div className="flex-1">
-              <div className="flex flex-row justify-between items-center sm:items-baseline mb-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[15px] font-black text-primary">
-                    <AdminUserTooltip uid={c.uid} userName={c.userName && !String(c.userName).includes("@") ? c.userName : "User"} allUsers={allUsers} isAdmin={isAdmin} />
-                  </span>
-                  <CommentRoleBadge commentUid={c.uid} isAdminComment={c.isAdminComment} postUid={post.uid} allUsers={allUsers} />
-                  {c.isOptimistic && (
-                    <span className="bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-                      Posting...
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-slate-400 font-bold bg-slate-50 px-2 py-0.5 rounded-md">
-                    {new Date(getValidTime(c)).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  {(auth.currentUser?.uid === c.uid || isAdmin) && (
-                    <div className="flex items-center gap-2 ml-2">
-                      {auth.currentUser?.uid === c.uid && (
-                        <button
-                          onClick={() => {
-                            setEditingCommentId(c.id);
-                            setEditCommentText(c.text);
-                          }}
-                          className="text-slate-400 hover:text-blue-500"
-                        >
-                          <Edit3 size={12} />
-                        </button>
-                      )}
-                      <button
-                        onClick={async () => {
-                          const res = await Swal.fire({
-      title: "Delete Comment?",
-      text: "Are you sure you want to delete this comment?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it"
-    });
-    if (!res.isConfirmed) return;
-                          try {
-                            const repliesCount = c.replies ? c.replies.length : 0;
-                            if (c.isLegacy) {
-                              const currentComments = post.comments || [];
-                              const updatedComments = currentComments.filter((item: any) => item.id !== c.id);
-                              await updateDoc(doc(db, "posts", post.id), {
-                                comments: updatedComments,
-                                commentCount: increment(-(1 + repliesCount)),
-                              });
-                            } else {
-                              await deleteDoc(
-                                doc(db, "posts", post.id, "comments", c.id),
-                              );
-                              await updateDoc(doc(db, "posts", post.id), {
-                                commentCount: increment(-(1 + repliesCount)),
-                              }).catch(() => {});
-                            }
-                            addToast("‡∞ï‡∞æ‡∞Æ‡±Ü‡∞Ç‡∞ü‡±ç ‡∞§‡±ä‡∞≤‡∞ó‡∞ø‡∞Ç‡∞ö‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø (Comment deleted)");
-                          } catch (err: any) {
-                            console.error(err);
-                            addToast("Error deleting comment: " + (err.message || String(err)));
-                          }
-                        }}
-                        className="text-slate-400 hover:text-red-500"
-                        title="Delete Comment"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {editingCommentId === c.id ? (
-                <div className="mt-2">
-                  <textarea
-                    value={editCommentText}
-                    onChange={(e) => setEditCommentText(e.target.value)}
-                    className="w-full text-base bg-white p-3 rounded-xl border-2 border-slate-200 focus:border-blue-400 outline-none shadow-sm transition-all text-slate-700 min-h-[80px]"
-                  />
-                  <div className="flex items-center gap-2 mt-2">
-                    <button
-                      disabled={submittingEdit || !editCommentText.trim()}
-                      onClick={() => handleEditComment(c.id)}
-                      className="text-xs font-black bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {submittingEdit ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      disabled={submittingEdit}
-                      onClick={() => {
-                        setEditingCommentId(null);
-                        setEditCommentText("");
-                      }}
-                      className="text-xs font-black bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap word-break">
-                    {c.text}
-                    {c.edited && <span className="text-[10px] text-slate-400 ml-2 italic">(edited)</span>}
-                  </p>
-                  {c.mediaUrl && (
-                    <div className="rounded-xl overflow-hidden border border-slate-200">
-                      <SmartImage src={c.mediaUrl} alt="Attached screenshot" className="max-w-full max-h-[300px] object-contain bg-slate-50 rounded-xl" />
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-slate-100">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {["üëç", "‚ù§Ô∏è", "üòÇ", "üòÆ", "üôè"].map((emoji) => {
-                    const reactionUids: string[] = c.reactions?.[emoji] || (emoji === "‚ù§Ô∏è" && Array.isArray(c.likes) ? c.likes : []);
-                    const count = reactionUids.length;
-                    const userHasReacted = auth.currentUser?.uid ? reactionUids.includes(auth.currentUser.uid) : false;
-                    
-                    if (count === 0 && !userHasReacted) return null;
-
-                    return (
-                      <button
-                        key={emoji}
-                        onClick={() => handleToggleReaction(c.id, emoji)}
-                        className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${
-                          userHasReacted
-                            ? "bg-amber-50 border-amber-300 text-amber-800 font-bold scale-105 shadow-sm"
-                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                        }`}
-                        title={`${count} user(s) reacted`}
-                      >
-                        <span>{emoji}</span>
-                        <span className="font-black text-[10px]">{count}</span>
-                      </button>
-                    );
-                  })}
-
-                  <div className="relative group">
-                    <button
-                      className="text-xs text-slate-500 hover:text-primary bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors font-bold"
-                      title="Add Reaction"
-                    >
-                      <Smile size={13} className="text-amber-500" />
-                      <span className="text-[11px]">‡∞∏‡±ç‡∞™‡∞Ç‡∞¶‡∞ø‡∞Ç‡∞ö‡±Å (React)</span>
-                    </button>
-                    <div className="absolute bottom-full left-0 mb-1 hidden group-hover:flex items-center gap-1 bg-white p-1.5 rounded-full border border-slate-200 shadow-xl z-20">
-                      {["üëç", "‚ù§Ô∏è", "üòÇ", "üòÆ", "üôè"].map((emoji) => (
-                        <button
-                          key={emoji}
-                          onClick={() => handleToggleReaction(c.id, emoji)}
-                          className="hover:scale-125 transition-transform p-1 text-base hover:bg-amber-50 rounded-full"
-                          title={emoji}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {c.likes && c.likes.length > 0 && (
-                  <button
-                    onClick={() =>
-                      setShowLikesModalFor({ id: c.id, uids: c.likes || [] })
-                    }
-                    className="text-[11px] font-bold text-slate-400 hover:text-primary transition-colors ml-1"
-                  >
-                    ({c.likes.length} ‡∞≤‡±à‡∞ï‡±ç‡∞∏‡±ç)
-                  </button>
-                )}
-
-                <button
-                  onClick={() =>
-                    setReplyingToId(replyingToId === c.id ? null : c.id)
-                  }
-                  className="text-xs font-bold text-slate-500 hover:text-primary transition-colors ml-auto flex gap-1 items-center bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100"
-                >
-                  <MessageCircle size={12} />
-                  ‡∞∞‡∞ø‡∞™‡±ç‡∞≤‡±à (Reply)
-                </button>
-              </div>
-
-              {/* Replies List */}
-              {c.replies && c.replies.length > 0 && (
-                <div className="mt-3 space-y-3 pl-5 border-l-2 border-indigo-100 relative">
-                  {c.replies.map((reply: any) => (
-                    <div key={reply.id} className="flex gap-3 items-start relative pb-1">
-                      <CornerDownRight size={14} className="absolute -left-6 top-1 text-indigo-300" />
-                      <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-[10px] text-indigo-500 font-black shrink-0 shadow-sm">
-                        {(reply.userName || "U")[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 bg-slate-50 p-3 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl border border-slate-100 shadow-sm">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[12px] font-black text-slate-800 flex items-center gap-1.5 flex-wrap">
-                            <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
-                            <CommentRoleBadge commentUid={reply.uid} isAdminComment={reply.isAdminComment} postUid={post.uid} allUsers={allUsers} />
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                              {new Date(reply.time || Date.now()).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric"
-                              })}
-                            </span>
-                            {(auth.currentUser?.uid === reply.uid || isAdmin) && (
-                              <div className="flex items-center gap-2">
-                                {(auth.currentUser?.uid === reply.uid) && (
-                                  <button
-                                    onClick={() => {
-                                      setEditReplyId({ commentId: c.id, replyId: reply.id });
-                                      setEditReplyText(reply.text);
-                                    }}
-                                    className="text-slate-300 hover:text-blue-500 transition-colors"
-                                  >
-                                    <Edit2 size={10} />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleDeleteReply(c.id, reply)}
-                                  className="text-slate-300 hover:text-red-500 transition-colors"
-                                >
-                                  <Trash2 size={10} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {editReplyId?.replyId === reply.id ? (
-                          <div className="mt-2 flex gap-2 w-full">
-                            <input
-                              value={editReplyText}
-                              onChange={(e) => setEditReplyText(e.target.value)}
-                              className="flex-1 text-sm bg-white p-2.5 rounded-lg border border-slate-200 focus:border-blue-400 outline-none transition-all"
-                              onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && handleEditReplySubmit(c.id)}
-                            />
-                            <button
-                              onClick={() => handleEditReplySubmit(c.id)}
-                              disabled={submittingReplyEdit || !editReplyText.trim()}
-                              className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-                            >
-                              {submittingReplyEdit ? "..." : "Save"}
-                            </button>
-                            <button
-                              onClick={() => setEditReplyId(null)}
-                              className="text-xs font-bold text-slate-400 px-2"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <p className="text-[13px] text-slate-700 leading-relaxed">
-                            {reply.text}
-                            {reply.edited && <span className="text-[9px] text-slate-400 ml-1.5 italic font-medium">(edited)</span>}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Reply Input Box */}
-              {replyingToId === c.id && auth.currentUser && (
-                <div className="mt-3 flex gap-2 pl-4 border-l-2 border-primary/20 relative">
-                  {mentionQuery?.target === "reply" && (
-                    <div className="absolute bottom-full mb-1 left-4 w-48 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                      {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                        <button
-                          key={u.id}
-                          onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
-                        >
-                          <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                            {(u.username || u.name || "U")[0].toUpperCase()}
-                          </div>
-                          <span className="truncate">{u.username || u.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <input
-                    value={replyText}
-                    onChange={handleReplyChange}
-                    placeholder="Write a reply..."
-                    className="flex-1 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-200 focus:border-primary/50 outline-none transition-all"
-                    onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && handleAddReply(c.id)}
-                  />
-                  <button
-                    disabled={submittingReply || !replyText.trim()}
-                    onClick={() => handleAddReply(c.id)}
-                    className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-opacity-90 flex items-center gap-1"
-                  >
-                    {submittingReply ? <Loader2 size={14} className="animate-spin" /> : "Send"}
-                  </button>
-                </div>
-              )}
-
-            </div>
-          </motion.div>
-        ))}
-        </AnimatePresence>
-      </div>
-      {showLikesModalFor && (
-        <UsersListModal
-          title="Comment Liked By"
-          uids={showLikesModalFor.uids}
-          allUsers={allUsers}
-          onClose={() => setShowLikesModalFor(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function SuggestionCategoriesManager({
-  categories,
-  addToast,
-}: {
-  categories: string[];
-  addToast: (s: string) => void;
-}) {
-  const [cats, setCats] = useState<string[]>(categories);
-  const [newCat, setNewCat] = useState('');
-  const [editingCat, setEditingCat] = useState<{old: string, new: string} | null>(null);
-
-  useEffect(() => {
-    setCats(categories);
-  }, [categories]);
-
-  const saveToDb = async (newCategories: string[]) => {
-    try {
-      await setDoc(doc(db, "settings", "suggestion_categories"), {
-        data: newCategories,
-        updatedAt: Date.now()
-      });
-      addToast("Categories updated successfully");
-    } catch (e: any) {
-      addToast("Error saving categories: " + e.message);
-    }
-  };
-
-  const handleAdd = () => {
-    if (!newCat.trim()) return;
-    if (cats.includes(newCat.trim())) {
-      addToast("Category already exists");
-      return;
-    }
-    const updated = [...cats, newCat.trim()];
-    setCats(updated);
-    setNewCat('');
-    saveToDb(updated);
-  };
-
-  const handleDelete = (catToRemove: string) => {
-    const updated = cats.filter((c) => c !== catToRemove);
-    setCats(updated);
-    saveToDb(updated);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingCat) return;
-    const trimmedNew = editingCat.new.trim();
-    if (!trimmedNew) return;
-    
-    // Check if duplicate
-    if (trimmedNew !== editingCat.old && cats.includes(trimmedNew)) {
-       addToast("Category already exists");
-       return;
-    }
-    const updated = cats.map(c => c === editingCat.old ? trimmedNew : c);
-    setCats(updated);
-    setEditingCat(null);
-    saveToDb(updated);
-  };
-
-  return (
-    <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-sm border border-slate-100">
-      <div className="mb-8">
-        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-          <MessageSquare size={24} className="text-primary" />
-          Manage Suggestion Categories
-        </h3>
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">
-          Add or remove categories for the Suggestions & Feedback form
-        </p>
-      </div>
-      
-      <div className="flex flex-wrap gap-3 mb-8">
-        {cats.map((cat, idx) => (
-          editingCat?.old === cat ? (
-             <div key={idx} className="flex items-center gap-2 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
-               <input 
-                 value={editingCat.new}
-                 onChange={e => setEditingCat({...editingCat, new: e.target.value})}
-                 className="bg-white px-2 py-1 border border-slate-200 rounded outline-none text-sm font-bold text-slate-800"
-                 onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === 'Enter' && handleSaveEdit()}
-                 autoFocus
-               />
-               <button onClick={handleSaveEdit} className="text-blue-500 hover:text-blue-700 p-1">
-                 <Check size={16} />
-               </button>
-               <button onClick={() => setEditingCat(null)} className="text-slate-400 hover:text-slate-600 p-1">
-                 <X size={16} />
-               </button>
-             </div>
-          ) : (
-             <div key={idx} className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl group transition-all hover:border-slate-300">
-               <span className="text-sm font-bold text-slate-700">{cat}</span>
-               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                 <button
-                   onClick={() => setEditingCat({old: cat, new: cat})}
-                   className="text-slate-400 hover:text-blue-500 transition-colors"
-                   title="Edit"
-                 >
-                   <Edit3 size={14} />
-                 </button>
-                 <button
-                   onClick={() => handleDelete(cat)}
-                   className="text-slate-400 hover:text-red-500 transition-colors"
-                   title="Delete"
-                 >
-                   <Trash2 size={14} />
-                 </button>
-               </div>
-             </div>
-          )
-        ))}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <input 
-          value={newCat}
-          onChange={(e) => setNewCat(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder="New Category Name"
-          className="px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-primary/50 font-bold text-sm min-w-[250px]"
-        />
-        <button
-          onClick={handleAdd}
-          className="bg-primary text-white hover:bg-primary/90 px-6 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2"
-        >
-          <Plus size={16} /> Add Category
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SuggestionForm({
-  addToast,
-  onCancel,
-  categories,
-}: {
-  addToast: (s: string) => void;
-  onCancel: () => void;
-  categories: string[];
-}) {
-  const [name, setName] = useState("");
-  const [village, setVillage] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [category, setCategory] = useState(categories[0] || "General Suggestion");
-  const [suggestion, setSuggestion] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => {
-    if (categories.length > 0 && !categories.includes(category)) {
-      setCategory(categories[0]);
-    }
-  }, [categories, category]);
-
-  const handleSubmit = async () => {
-    if (requireLoginAlert()) return;
-    if (!name || !suggestion) {
-      addToast("‡∞¶‡∞Ø‡∞ö‡±á‡∞∏‡∞ø ‡∞™‡±á‡∞∞‡±Å ‡∞Æ‡∞∞‡∞ø‡∞Ø‡±Å ‡∞∏‡±Ç‡∞ö‡∞® ‡∞®‡∞ø‡∞Ç‡∞™‡∞Ç‡∞°‡∞ø");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, "suggestions"), {
-        name,
-        userEmail: auth.currentUser?.email || "",
-        userId: auth.currentUser?.uid || "",
-        village: village || "Not specified",
-        mobile: mobile || "Not specified",
-        category,
-        suggestion: suggestion,
-        text: suggestion,
-        status: "pending",
-        time: Date.now(),
-        createdAt: Date.now(),
-      });
-      await addDoc(collection(db, "notifications"), {
-        uid: "all",
-        title: "‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞∏‡±Ç‡∞ö‡∞® (Suggestion Alert)",
-        message: `${name} ‡∞µ‡∞æ‡∞∞‡±Å ‡∞í‡∞ï ‡∞ï‡±ä‡∞§‡±ç‡∞§ ‡∞∏‡±Ç‡∞ö‡∞®/‡∞∏‡∞Æ‡∞∏‡±ç‡∞Ø‡∞®‡±Å ‡∞∏‡∞Æ‡∞∞‡±ç‡∞™‡∞ø‡∞Ç‡∞ö‡∞æ‡∞∞‡±Å: ${suggestion.substring(0, 50)}`,
-        type: "admin_alert",
-        read: false,
-        time: Date.now()
-      }).catch(()=>console.error("Failed to notify admin"));
-      
-      await logUserActivity(`Submitted Suggestion: ${category}`);
-      setSubmitted(true);
-      addToast("‡∞Æ‡±Ä ‡∞∏‡±Ç‡∞ö‡∞® ‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞™‡∞Ç‡∞™‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø!");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, "suggestions");
-      addToast("Error submitting suggestion");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (submitted) {
-    return (
-      <div className="p-10 text-center space-y-6 bg-white rounded-[24px]">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner"
-        >
-          <CheckCircle2 size={40} />
-        </motion.div>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tighter">
-          ‡∞µ‡∞ø‡∞ú‡∞Ø‡∞µ‡∞Ç‡∞§‡∞Ç‡∞ó‡∞æ ‡∞™‡∞Ç‡∞™‡∞¨‡∞°‡∞ø‡∞Ç‡∞¶‡∞ø!
-        </h2>
-        <p className="text-slate-500 font-bold">
-          ‡∞Æ‡±Ä ‡∞∏‡±Ç‡∞ö‡∞® ‡∞Æ‡∞æ ‡∞¶‡±É‡∞∑‡±ç‡∞ü‡∞ø‡∞ï‡∞ø ‡∞µ‡∞ö‡±ç‡∞ö‡∞ø‡∞Ç‡∞¶‡∞ø. ‡∞ß‡∞®‡±ç‡∞Ø‡∞µ‡∞æ‡∞¶‡∞æ‡∞≤‡±Å.
-        </p>
-
-        <div className="gap-3 flex flex-col pt-4">
-          <button
-            aria-label="Send another suggestion"
-            onClick={() => {
-              setSubmitted(false);
-              setName("");
-              setVillage("");
-              setMobile("");
-              setCategory("General Suggestion");
-              setSuggestion("");
-            }}
-            className="bg-[#a855f7] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90"
-          >
-            ‡∞Æ‡∞∞‡±ã ‡∞∏‡±Ç‡∞ö‡∞® ‡∞™‡∞Ç‡∞™‡∞Ç‡∞°‡∞ø
-          </button>
-          <button
-            aria-label="Go back"
-            onClick={onCancel}
-            className="bg-slate-100 text-slate-600 py-4 rounded-2xl font-black hover:bg-slate-200"
-          >
-            ‡∞§‡∞ø‡∞∞‡∞ø‡∞ó‡∞ø ‡∞µ‡±Ü‡∞≥‡±ç‡∞≥‡∞Ç‡∞°‡∞ø
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-0 overflow-hidden rounded-[24px] bg-white">
-      <div className="bg-[#a855f7] p-8 text-white relative">
-        <h2 className="text-2xl font-black tracking-tighter">
-          Portal Feedback & Suggestions
-        </h2>
-        <p className="text-white/80 font-bold text-sm">
-          ‡∞Æ‡±Ä ‡∞µ‡∞ø‡∞≤‡±Å‡∞µ‡±à‡∞® ‡∞∏‡±Ç‡∞ö‡∞®‡∞≤‡∞®‡±Å ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞§‡±Ü‡∞≤‡∞ø‡∞Ø‡∞ú‡±á‡∞Ø‡∞Ç‡∞°‡∞ø
-        </p>
-        <button
-          aria-label="Close suggestion form"
-          onClick={onCancel}
-          className="absolute top-6 right-6 p-2 bg-white/20 rounded-full text-white hover:bg-white/30 transition-colors"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      <div className="p-8 space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              ‡∞Æ‡±Ä ‡∞™‡±á‡∞∞‡±Å
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter Name"
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              ‡∞Æ‡±ä‡∞¨‡±à‡∞≤‡±ç ‡∞®‡∞Ç‡∞¨‡∞∞‡±ç (‡∞ê‡∞ö‡±ç‡∞õ‡∞ø‡∞ï‡∞Ç)
-            </label>
-            <input
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              maxLength={10}
-              placeholder="Mobile Number"
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            ‡∞µ‡∞ø‡∞≤‡±á‡∞ú‡±ç / ‡∞Æ‡∞Ç‡∞°‡∞≤‡∞Ç
-          </label>
-          <input
-            value={village}
-            onChange={(e) => setVillage(e.target.value)}
-            placeholder="Village / Mandal"
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            ‡∞µ‡∞ø‡∞≠‡∞æ‡∞ó‡∞Ç
-          </label>
-          <select
-            value={category || "General Suggestion"}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 font-bold text-slate-700 appearance-none"
-          >
-            {categories.length > 0 ? categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            )) : (
-              <option value="General Suggestion">General Suggestion</option>
-            )}
-          </select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            ‡∞Æ‡±Ä ‡∞∏‡±Ç‡∞ö‡∞®
-          </label>
-          <textarea
-            value={suggestion}
-            onChange={(e) => setSuggestion(e.target.value)}
-            placeholder="‡∞Æ‡±Ä ‡∞∏‡±Ç‡∞ö‡∞®‡∞®‡±Å ‡∞á‡∞ï‡±ç‡∞ï‡∞° ‡∞µ‡±ç‡∞∞‡∞æ‡∞Ø‡∞Ç‡∞°‡∞ø..."
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 min-h-[120px] font-bold text-slate-700"
-          />
-        </div>
-
-        <div className="flex gap-4 pt-2">
-          <button
-            aria-label="Submit Suggestion"
-            disabled={isSubmitting}
-            onClick={handleSubmit}
-            className="flex-1 bg-[#a855f7] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
-          >
-            {isSubmitting ? "‡∞™‡∞Ç‡∞™‡∞ø‡∞∏‡±ç‡∞§‡±Å‡∞®‡±ç‡∞®‡∞æ‡∞Æ‡±Å..." : "Submit Suggestion"}
-          </button>
-        </div>
-      </div>
-    
-          </div>
-  );
-}
+          xúÏ}€r…u‡˚~ENõ;nHË+.¬ iHŒpMr(Ç…À`ê’›tâ’UÌ™j6z Dxf√ñcˆ>…éPlÑWªZ{¬±ñ@ExW˚b˝
+¬?∞ø∞ÁdfUe›OV70úK*4DwWfeûÃ<˜cqªıÔXA;SìÌÔÔ≥∆‘ıøQ¯$c∑YÉ∫ì…Ã±Ç{\ı¯.k¸€/˛€ˇ˚›aáV`}f:ÏæÔœLøq^–iØ3òÅÎ‰œvm-Øﬂ^gdΩ…vÄg3ﬂÌ¡ìlhæˇ»òò˚çc€<e¯ü÷–µŸd¥Àˇˆ‹9˛mÊƒoM'0=ˆ„ôX«ã÷¿Ê&¨„ƒò∂∂Ÿd–⁄i‰Õµ¯Esœò≤ƒ–8‘FÓ(0é G¥œ2Z∂10Ì˝∆›”©ÎÏââˇnäÎ⁄÷ı˛ô·/ú!kÆ±˝[Ï¨pç—Ë©k¯A≥ÒëÈòûXŒ	ìo∫cFª›n¨˝QawÎò5ﬂ˚—É£≠1cnX≥]cÙ±iºY<tG3€Ùõ%ùáÆ„ÃÚ˘!c˚%ßÃ÷Ûh6xjƒ9ˆ ° ⁄m&{J?ˇx§è€7´Ê=“ù≤?;91·åAÔ™i+èVLUBØÙ)qJxjóM=w`√¡≠Zª…û∂ÄhOåi≥âG~óŒÇπfÒôcÏ©ÿÊ.ø$Ì ˇf?˘â¸Ñ;çıí˛wLËYSêeﬂƒÉòßAı áF`û∏ﬁBé0î´;F0Ûe7ü‡ù¶¶3ÇÎS>sÀ<kÑ”ñ´_˙–pFÜ-ªM¯áÍNèg86F¯∫i¯π∫Î¡,ªûÏgàË{pAÍôatTw«úÛnÕdØµv‡>páÜm‚èG (Á§πVq! &wæVâçÊp´"¥ˆ,∞lø˝cﬂu^ÓKlöA3>˜’í\˜ıKXhBL?nLÒH…wœÎ0ªu÷	@’@s¿yœ≤Mﬁ5ƒò/≈⁄ß∂Z6DL$5∫ì©mf	=8/"˙
+ùúû∂∂ÿt—Í3œù9#s‘:µ^ÿ÷Û^wz˙ÇªN–ÿ∆5õ¡˙Ω°·õ,‡3lkn¡M≥„[xˇ[Üm≥ÅÎçÄŒNZ'–Ó÷VW~%?˜∫]ÒÒÒ¯8vﬂòﬁn‘c;˙ä?7Ï89œRÚ>Û«∆»ù∑¸I>/bƒˆÓ∏s	$ÛÅS⁄?Îmû≥Œ≠ê⁄¬ûÂ3•”ŸÛ∆Åm7`ôs¸Áæ”zÏπ∞(ﬂ«èèCúƒS@ÔoÃQÉü!ﬂµÂﬂwL‹÷Q„G„soW0‚‘{∆¸†¥wáò”iú£«í¸U†Ö:WaÅ!úqÄFóˆ±e√1J” 2R)∆A¨‰∏ﬁƒ∞·‰ ®PS!B%∑Ypj«lx`÷ ö¡Ãs`‰˜ªë<eCD=pîcéúÁ¶w˜≥©ùØµm”9	∆îÂ÷S#>lÂ|≤h
+∑|v\ÑãD{m.*üâXi¡D˚f QÔ=±ã«Ã˘ñ#ø≥WWâ˝Ú±UØΩ≈núyÍƒ≈˛°§Ëœ¸p‚∂nv#î©|£‡BâÛÏìYË(æñ}|(tåf≈«ÕÕ™Oıª›∆˘´2òK≤ÿˆ|`cn¡ÊÌu¯_’ß∑ aõ–Ö¬mòå‰6‹åw¡µG•†„ËÙU0Ö¿…Ö«ñXx˘Ñ•s§Q~¶™ó^N6∞ìÒ|™‡òÁ (")Ï˝˜/u’ÖNàæìi∞`O=√£{M…7"Y&"W!ΩÕp¥gñJ/åB~QÁuªî)f¸@èßcÀgsn-\n`„·¢⁄&∞/í qÅôÂ∞`Ã/æ?n3ﬁ	…¶GŸp7`ì¡¡u`« ﬂkQFjÃœ©íM\rw~2Çi»7gf03À˚¿¯ ±âËpË⁄(44˛¿<ﬁÑVÒ∫D◊ß@jè´ÓwŸÁï$v∑m˘á‚EÊh≠Ù@ƒT€.Â`∞’‰b∞’ÂdD_˙≥ ÕP†Ø~|7©†(Ék&ªä”√ˆï¡â¬ıa£s~‚i˜áM™â*ºœØı>áY»Vº¨i!´úQ”Ruçµ$_&¿rwÂ◊±Ù2Û∑áI4
+–úXæŸ¿V-í% î£H"Ï†·é;léˇ Ï¬^*k¥∂VæjlïèTÄFó+ﬂıÍqÒ#õë É`òœ1xµ‰‰ŒÅf√1kö®ïõã˛û«—9˚>3€)ç≥ÍmeË∫XH(˛È˙tkSƒ¿·ámUkê¸B·ì'vÀòn]›AÛª«	b?•=àIe=ããÜ¡E~]itAò€∞ SãâÂ¥∆≠Á ¿&Â[SØ:∆ºu<≥ÂÓ⁄ÊqIÊ‘EÚòC‹‹Ekìlv~2⁄Â£\Ä±2FÍ´∆÷hd:Qø˛ŒUGÓlZ0„©cú¬î4îs(üw€}síïh¬âK0ÄïNÌ÷éÚûíﬁåÛ√‚Ô≥˚xY¸∂N0÷õqB_Å≥ `÷±Xiµ7’:lÍ—·s0ÇÛâzx9v0,∑ªîÕ~Û
+N]áª¢#9pGu=x™Õú3çñÀäÉy÷¨í|c"òêò3i÷‚‘ÍÒhÓå óÌí¨ek	’€µj›r‰„ïh‡„“µq%j8Æ#TèÖdD¯Î∫ÂåAÖ«ëfC∑åê};öŒ˛Ÿ∆y‚í/ZΩmqÀ%IM¢◊“[.G/u»ıP©7·π”ÇL˜7œ3tBÃxfú2‚4;ƒDQR)Én#./˛ä]^¸ÀÂ≈Ô//˛˘Ú‚_//˛ÓÚ‚ãÀãﬂ^æ˝¸7ó˘ˆs˛ƒ¯˜≈Ô·€ø‡˛7¸úÒ~äOΩ˝|Ø3≠9—S?≥Kè\©Â8F.ı ≠FRètﬁ`‚zëﬁ\¿Ø§
+
+ØÚDÈ˘,ªWï Ì‰≈äêSFß¬b^¶Õõ∏àﬂ⁄ÅWÆÏqÄØ5Ï˝≥3Ê"_,vYwù¡{›2õ·Xÿ¢DﬂÔ[Ÿ5Ê®±7 2çÍ£Sˆ=÷mw∑™∫s]ºî÷Ë™tNY§à%ÇÁ}‰¡"T2w€-9v˘‰˘ÕÃ¿¿µªΩEBZ’ùÒ-äH4~IxÑªrgÆNÉ€HÒ√?ç… ˛EæV)>lu;Ω.W2/ßBﬁÍOv—ﬂ)≈nMõØlä¨˛k∑∂+ë`.íÕàBõË[U‰ïéÄ{‘≥1á˝ac¸Ox,˙∞”Ÿy§pº<ñ„¿áUb≤hK¯˘ƒMÿƒG2ß¯àù8 Ó˙2u{¶ÿ.¯'çY0iÒ\_Ö"éR~≤E£P#ÅS¶c7pü=y ã´VŒ`€≥&'ƒµ˙ﬁp?˘ñÍôãfÿ¡~∏[†
+&≤YÈx,˛q?6á¿!&SO<u`ÙI Ytøaü-®ù<ÛÿÙ<”{Ï⁄÷p±ﬂp‹V¯mÎ≥∆§/ëÂs9Ω›ÿO~BzÔ7ÛM·∏$o£A?
+)Lñ;Ú©D”[ RÆ∆.¸»$Fíœ‡hlôˆËplZñe˜ú;"_Ñ¡º"êÑ∂N"@b^òíg~ƒ]˜vÆ ’wò8VVõ*Bå7ã9˛¥b	ıúj) »k´ºÃçs~û*@•	qŒ^õƒ=„}·?®”E∫Éª4û9|^#È$]ËÑÆ∂ΩŒxì¥'$Æ¶ü£èNâh»–MÇVèÔΩj'á∏ùe›5…d;â.5:Êhé“Ï≠‡úk¯7·ûa£xyDœ¶º= ;ıêåÒ öàB"∆j‹Zj¸B+õùe¸Ä˘o,€6NÑª≠Ã∑·Pü @IáZlTdFì±)•n=êå”
+dâ`™)»;…%√§≤D\—â9≤fÄºº %Ë!îímì3I¿‰ÿ∆)†.v
+!oÍô"ÍÉ(3òß∞5pü∏Û˚#ˇπ}_‡E·7ƒ∂ΩlcÇ*ßkdò)Ô:S›ÌÈlòt…ßwà1àV7È@Ì”x‰≤ë&pë©8q‡¢yÊ–Ñ6jìÓZ5‘h:,ÇÉ£hIøD“:}3∏õ8tÕ&⁄7’ëjk∑€ÿ©⁄ú.ZtÆwŸ{ÿ/˙L‡|≠‹’_>•Ö	JÕt“Ô1e’ïﬂÓ‰[ÔŸy^¢{·pÊ˘Æ◊ö∫ˇZåÀûx«´OIÃ-F'DñûÃyÉÚ∆sùg”ê˝Óü3 \ÓkÛá÷(Él“ﬁ‚VÈÀã_]^¸¸ÚÌ_Ûˇ¢™æ˙≈Â€/./˛â´•ø¿è¯ﬂ_¢ˆπy4vÁÏÅÈ˚î=«µb°FË…_É__æ˝œ	¿„ãøTñ˛≠—]œ\È“)2LïÉh¯\%I'h÷Ûéßa…µã˘öG©
+çåˇ#√ÈMjbA‘Ñ^·£≠jA2ÕD∆÷•H˘aüDyy5“ˆ'¥ú1‚∏¸ı –MtêÈ)ûÕ±Öéìå‘yßx†’∆Â‘tWdGUZ)Ö¥·òÛFµ?S‹§)&Rr∆ﬁ>¸c?°Ûƒ(!©~ﬁ}Ÿõûæ˛Ò•w20ö[7◊{›ı˛Êˆz∑›[{Q·.7™zPY£Â )zjÆ5¥Ñãü˚IEs…r˚õ[ÎΩ≠ùı^ÔÍóÎÖëI(˙»Ôå0r©Ê˙Õ	 O™sW¯MK¬ ¸¢
+ΩÌıﬁ ¢ÛÍ°p¬ﬂI˝smª‚ Ü˚	U|ÈnoÆoo¨ﬂ‹º˙eÜ>5óõ‚“&È∞ãUØ°”±·ÿòŸìQød≠y4{…Yn•o¢ÈÀœ%[uP∑xHÔbûØ5◊(2#çˇ¥π∑˜·üB”Àëi≠ÕO’UôxÅ†n‰‘b YÜ≥	R◊·SUÄﬂ£∞õ)˛£Âè=Ày›‚Ó$gF‘ù©aÔñÈ≥˜ﬂßÀŸq∑–GËÎí%éJ>äÉå¨CÀÆ•,î5Ø5áª»ƒ√6Æ3kó93$âï^9À"3rqÓTÃ6Ö‘Ï	;àõ•›KòáÕcUváËS
+Î˘Æˇ·&øúx∞g5ÜEoÕnz–¢ü#—ŒÜz„Î®êE#ƒ$DèRÁB6pÈH∆…Îæ†õ*å:.	Gœû~|ËÄ5èû}Ù—›£ß˜?y¥¶Âé—›Gwü<h–DÏïíßö¶¬Î™•ìTlJ∂)r[XÇ∂ˆ™%InT4=™Y1JB‹ÿ3¯xé—Sk"áÔTnVëÜÈ¥Ó?j¨ì˘–∫∏5˙-‡–¨†"Æ*n ÿ#Ì∆hù§ˆZò· Q2=kHÓ6vg^ù9ZŒ3∏hv<ø˛[s’ö©iéˇ}}µî ov‰èpIP¡25<∏„ı¸ÍBü
+êBÚ¨—“=^6Á±8óRŸ∞<gèho{»§ö˚ß◊9Œâ≈oõö&°gÇ-∫?™åH€ë©aª]£èV†mÿxûµ±·ﬂY∆ZæΩõ|¡ktÈô•∂F®∆ˇ?®ŒŒhÓ◊ô5ˇˇı_˘Oﬂ˛ﬂ/y«/Ö{˘ØÂ¯’/.ﬂ˛Txú…çøÊÍqÒ‘€?&É»˝¸‡CUê{‹»ZD!àÂe“Sî¯ÿ∞—„Ã„∂ÇÛ∫\Lµ:Jù^ZÒËân˙&1†(∂œÃv`x¿0¥9∆“¯∫∂/FK+ej÷%ò0<◊éÔ hvS™ˆ}˛´o[C≥Ÿ#WX=õéåíHg:˚¬dt≈nº<Í+œπ†6} ø	Òaƒº!
+‹πÁf®∆ﬂ‘Ã{Ô%~’—$ä˝≈7ädw∞¡i(÷@gCÚôã˜é€œKp;(H…JH“¸]Û≈CÜ∆“∑?CÏäüˇ˛´1qb „„q¯"MGöÅß¶·∏q¶ﬂ–:8åÕ¨‹I”éiÙ
+s¶∞ÍU≤Ê#∏´o∏±kZÔí°ÍªÏ’ç≥xœ#B%»êjâÜ?æÃõ…Â≈_r™Ù3$DÒ„ˇKê?˛øﬂe7Œ¯€˛l IÕÓ:€ÍÆùWÜÔ'ÄXyW‹≠{¶1íyKıˆdØC9®Ì∏Û¶ÜVÇÒ{szgè»=œ◊⁄<A≥π∂ØãP31—@≥qœ∞–{3pÒ‹Ú70a˚ºÀèl£,ÉcÍ=∫<QC¢õg…é í#&ﬁ•W<bÇÖÃ´Å4›Û,`·ÌOπÄcQWJYgE ñhädëUçÁõV>?ÍòñQ,·ÒŸJácwƒHµ≈n¡–Ó,‡ÆpéÎòIÜgò√õ7¯´„ Ø¥œM´Gà:!ÈB\ûqVä=‹¯|’^G|_cïç∏•K&°Ω%3?.1TdvΩb·%-ö∑Óâ?ñ*2ﬂ
+”X.1XhÇ§i©db3÷‰	7(ÍD˙‘ˆ:BŒI∞ëyîÏ+ò»¢6¬‹<HZh‚∏ö¸;1€wb¯ª/Ü„-}Ù®∂P∂î8M?1Æ√è-T›T÷ƒÜê¸jˆCµÖ\˝fÄ,ÿëü˛‰/@Ï5XXÀôŒ0˝rp≥∫] äÉ˛›ëuº`ègÙ‰(‰ ›¡>E“∞´¡ã§Ï˛âN‘KÀ∫=u\ÍïnöÚJœ_“·Y'£§⁄Ú≥Kˆ∑∂7Ãy[A‰∆¶”îäe‡¥ús3I¢ø‚lÑé÷°ûÚ€JÄÿV£#’ÌYS(ª÷QbSôˆ(Tœ¿µ’’}B]Õßzı¥w+Ñî>†TSgse◊Z€ã¯Iks“:N≠óÊ+DµÜ–u§yŒœ—ã›ËΩØ œr~#sTÿùÜ†»GÄ¯∆ûÎXü—|ä+V
+_Ö≤"Nˆ°∏u'É†µ≤ÄD9£Óô$è)∑¯ úéj„ì∆©◊ã$ÿ‚êzÅÒqHÂ£gä“˝vYíY¢ —„ÖÍ"Iñà±©RÒ†#ÆGN¬°ùe<ŸtåÑÿæ„ÿW≈+|›»Qh—ãkæºs‘Hﬁµ;ˆ‹âÃÔÆCçÍ´⁄ÛXF›ŒÁA•ä‘ì9é7Dé„Jjv≈ƒåÖ˘˚‚,#%	ù‹sÜyÔh]…¡òO\8ÚÊ·pûLâ,ﬂH£t»ØMf‘¨ﬂBã|Mß~ïãd5=ŸÖTïæHç£¬®Y”"ŸdÖnB‘Í∏¨nb©⁄%ÒJZ∏[TÕª¡î“ò›≠£Vaçd”ÂÇÍÛA+‰ÑV…-√-≈-≈Ö<Q\pAÛÌ+‡ä¥8ï˜»‚--IxiÓcÖ¸áN¸ÀµÒ*πıj±*ÖµÆòS©K¢…¸J^˝ÜÏK5˘ ≥§jPê§r@|ıl‡R|œj∏ûêÁy'ΩíHïæ(Ãû}Q˙ùâ·Ω9»√0:<èVM/µ]ç5Fõﬂ)¨˚U]ÒKmtñeIÜÂ;•ÕwJb´≠¥πC*—ïn◊°¥A‰7ä∞ﬂ7Z_C≥a–+≤PÑπ9‚\[µ-Q˜ïZ("Ü(Aˆ(=â∫˙$DM·Kgy*„ÕV9∏◊âJ2îîX-Æ±∫Vî^å’Är´duxbaaÆ /SØÃ©Kp‚˙/è1ûOFa§hQÓ¨^üM≠~^Ú≠Ωè\ˇ¿›£Ú‹9k√†ã˝3¸oXBT Ã†¸+Ô)ô#|ˇL˛ë}&s–j	gπ:§≥°≠ù∏ÏY~µ¥t^ÈVªJT£'ª¸o,FÁbìÅÃM”·≤“6„’
+™iƒíVA¢î¢Zk%◊loºëâ+Áÿ/7aÀN7/°8Œº¥Ñƒ¡ph˙>∑≥zÆ]4ìŒx£pñÙ“;[’yù&ı≈Û ∂ëÂ}c˘÷¿≤≠`rƒ¸ô?5Ù*ı€Ö”-»&ZÇ’ Î©áE¿ÿ/»úrpßﬂÅârÒÊîï∂;2oXT∏õ2û1]{áÔEk”¥’ÎÙôà°Ê[∞‡_§Íïå.)–v1Ω(°L{‹W∞dtÊg¶lS8ÍÊŒ‡øÜÄ,&K_gÊƒ∞Ä≈≥“n∑ÀÜë±ÿx¥ƒ OMoRF„xkiÌõ¡≥DÔf2l≤î™&”9ﬂƒ ûâ∞Ø$NÍá’:O˝\<“ÁÈò1$¯ëà	.lÖèb®U´Ø~Èw√ò8«Û÷ˆf1¯
+wπîQ–ÕYÜ©™ï*	O˛SîÓ0pÀ(;54(1€/≤é Q¶ºOaÁÕù‰Ù‡ËGkR√Ú"õ∆õ≈Cw4§WVüõüM˛R|'€ÁSÕöE•Å´3„æÏ≤YXyÄ5*≈´ªx·∞øy¥>G3œë/Ú≈ü¥~è«pº±◊ƒ
+@ÏtGfä«~j÷¯Íû@|F_€ÑˇEÎı©HDè›¶Ü3É¯æ;&OßçL2ül¸ë÷ˇâkÛ◊"Ú„=ToÜ®gmÀ£un«‚5Í8CW9“pçp§°gbD‡AµÂm•±Q∫Â¶ú©⁄≠“yï,Æ“µ†x#€≥¿≤˝ˆè}◊y∏/˝±iÕ¯¢—$∏ÓÎó∞Í™[ùÓbL1TMŒa>XáYÆãpkø
+√°Ê ÿ{poxg¡ìøkiü⁄˛i’ JïkÅﬁÜÓdäá§¡ïäˇy≈™Û(‡JÍUüx¿Ω+!ö‚sdÉ?P´VãØrm+µÎUóK˝{ò)	@™jµ 9ld1E¨˜ıhÊ¿Nú.
+≈l™,ë¨IŸu[i˚ˆÍä¿ŒÎe   ní	bI∂â).7÷>	ˇR¯&Q±◊›j»bn˘—¿ΩL¢’¯®≈¢aY¶—“∫Ã·Ü]€	È≈≤«$2/øªGÂNÏ¨€ê&◊≠8èn¯±Ï∏»grèK^˛·d)¿ƒYâ~óﬂ$≥◊>@‘`]ÇX	 s¥@â¡	÷“k?ô~)j◊Z6“Âl£°MTLîlU-°‹:Uﬂ¬äøßœ,ác~º˝qõ-Î+¶m/≠k']“>ZhU`]9LµU¥¶5TiÆÊ¯.ÃdmuÇø9„GTÂŒÅµóL~"å†\’r+Æ¡cœùXæŸÜsH3™¿ê“)π$S‹®B√£‘,Ø#|Fk‘Ññî«H÷2Ω∏ÙWè37x§&ë˙\R&¬Dc≥¢ÜQQa˜—ÑàâàæœÃ∂ÃDyk’Ω+ó‘®Ö≠ØAnî[•ıø≠j_¨%‰Ö Í‘y~R
+
+,µ UqÑÖ<YôˆºËß‚R™¡œ1¸Í€˝V”ÿƒ˚Ã>Q>nãLÅ∂P∞"ã1±D≥≈C sÀà7)‰kJ [»ˇîÓ‰m
+¢/aóΩßÃñ‚=uà‚€ÀïëâeÆÖ5x∂¨äûIuz‘πÅ‚û2
+tê2!7W<Ñ|O"nŒx¢∫X›∏ñºm9C{ò†©ó∆˚7
+œ%GävÀdç(√_ıb„{—ıÒ]/h6çu6
+ÊAS§·,∫k¨≈öÜÚπxû€±+m{∂…I·!†Ú†∞KÃ;îÏ˘ûÙ8 ‹R7€X∏•f)^o ÅKTdEFa¥ái„‘.,ö!I¿iÏv˛‘ŸÏ≤–,»ê¢€Ûÿç–ç5åkjôRË62¢ç^âô»·_LÓÃÈ%≤¥TfÆ‚êÂÍÂp
+£©éÃ M3$◊∫%iu<ãRî&ôZùTìﬁ◊Nmà(H'ÑFõ.•€miû–ÍZ7VÔsª\ì‡%‚.?æobz√®LwîiPâµ$DLÜH–>…)Ø^Pˇ'£†ë, ºıœHGå‰Lóâù‹÷äù§;„’√sŸ∞‚‚óBw´à(éì‰+†G¨4P≤Vê‰r·+	X"0r…†H*≤]*∂@/≤ }W†6“»ù$Yï¨Fà‹RŒﬁ+rı&:p_%Iâ,)ëû•ZóRFO4®Dù¯5≠¯QÇF¨å6Tï2¶§]£M;∫*€(<7Gt∆X∆gé(/C%mÿ â~®’âX|Â:DÑ∞¢¬iÑ√çåñ4∂¸˘Æ˙™eÎ4‘Ç∏(¡LGT >⁄ÈÄ4Èåÿ#•& F}‡åµV-kêWVUîÄ<êvÒ‹Ñ:µ./˛ñÁœ˝¸óÖu˛'œ«À3Á6ÜC‘ÛH/¥zE¥D»¯.’æÿn„⁄0Î/K-Ò7¸É»=À˝K±h¯·üyJ‡øÊIÜÂ≥?ìˇ˛«o‰?a“‚∞ûÇêZ¿f3Üæ`"#1$]_°‘ı9ØÌj/Ëüx‰/yr‰œ√≈˝c8Õ¸≤zâJdq·cÙ;]ﬁÅWHG3˙IØWp∂oè¬0•[tò’d7;*Stíak·Q€=¡˜q7U+X–ˆÍ∆YÃúmê>∞íÛÄOÁúë–®Rr&¢"'Èu¢T≠cCy¨ñ•[tÿt,º¸ç´íO˛-c#>m ï* núÂØWT Jé5AS¬tò∞&ôïˆÖç§hˆNà_[Âﬁda#IEGcLˇz`õ)uÚ—ã.“ÏÇv«Óù_é-[@ıckdF_|ΩDå’3‡N‹-˛ºBuΩÜ@$Ê¢GÂñ∆$Lè
+Ü›?ÊØ^u1ào≤øÊãßçî„˘qDjL¶"‚CÚç+)‚_u¢¥{≥wwa~r|¨á¨uä•„¥GØÜ∆U€Z§äú™I9øE1r‹cÉTÎ7Oq™CƒW•1’LpAbíŒk◊¨1-~e“ãíå‹"ôõl2¿lA•≈^πü
+65Õ[ΩMLí≤…‘ËëÑ§?ˆ,Áu+/@*CJ⁄∑D˙®Ù’úqI˜»2nÙƒ3<∆Aıôƒhe¯pS∆=àﬂ∏JøÀUÌ4Ãf:v˜Ÿì$¸∂gM(e,|o∏ØMπ´Ü`ó»œåÀ⁄)˙yˆX¸„~l∏≠oh√«,Ádøaü-(<ÛÿÙ<”{Ï¢ZÏ7∑~U›ΩÚ∫“Ë¡W,–ﬂ<œfë—]É∆rpS≤Ÿ2 Óç7∑?ïá#B˜–@Ø»òê¥ˇ¨˘ÍÜz¨Á¸
+&®œ_µxks]c≈€°Ê°ÌOm+h6˛∏±ˆº˚B®5^;Ó‹B-Å≈LDEO$j8)Ô8¡E>‘‚„vTs=∂ßß≠^õ˚uwøn~bÓ‰ƒ™SeÄΩŒ{ôì8»rÒ‰ Ã	7´∫îíÄH©ªNHÓu∆õïW2õ}&êLwR@πî±O1∑Ÿ´?æ°t9EËî»≠PÂÖ aPîÓ&~†äØhp>a⁄¶MãS^√$ùkI/ä√KÁ≤©<0¸p>1O,ﬁéÖQ)ß5s'ï∑r<Œ…¡^∂í˛H|—¬ô”éö$HGK…£Ä}rS(ı”i›DVW–5C#c4«ôMLœjt& ø1ZÇ∆ÆßSÁ{a^≠é›vÏ∑F÷â•Û∆âÂÃ≥FW¢%ÄRA7&Îïl'Â∏π•wZ?C’{
+∑aôkπµ∆é®‰õ{ƒ>x»œÑœÉ Œô¸Ù≠ﬁaÌßm
+@Êà4úiäÌ≥¨≈øÓ±Hô›ÓMLow2…õ :zpdcî?d÷π¯28ìaèí«+C>Ä„‹Í"{◊œcÓ®Öø“SúÛÈå˘Ãb‚µ)[Rï“¬êëÁ081ç[Tn€'Ê,cˇˆÁˇΩ¯∫Lÿë…kFØê”§=GîZ57<N¸Q∫›Q˙ê¢Õ÷Ã+Y1i8x 2€´óﬁÓOéè˘n'Ø3pƒÕgç`‹ûßÕﬁ:„€ÆÎ5ã/˙Î∞m~—◊‡Ñ'Ó⁄+û¸È|UáâxDV¢fxÒ≥t‹x`æ1m“Y	÷T
+ó¸ìùT,òó∂!d.ÂñRÙå◊¶?~=õﬁhlÃß◊ﬂ¯„ÆÚ∫5iK:r;Ã¿¬©|ÙcHÛ	∆/P4Û æU+#âçöïáò`Õ%Èâ‰H*ÃU±,æâNé/≥w¶í›UÕ1Œ·)çÍ&—™Nµ®áªs·SƒíAI9%VjèùaÁT_X¢Ïí>∞˙˛Ø+Ò}•J™⁄>Ø±øÎˇΩ|˚3ÓÎàæìøñûËâÓí¨…è≈3æπ#∫∑kËÈ ^Â˚h*/Eè6æŸÄlû!Q»Êúªõ¬íì s—${∂’sœ¨·öYœ-ì$Q”NªRê˜Ô`å]œ˙Lúzπõ¥¿ü|á≈W+âDj<èÁ+ÍË%ôÖïyN¥±CÂ3J\Õ'?≤Õ{ñå∫qL§5¿+hã˝d sÛ∫xiˇ…˝ßwi_q¥€π! ¨,#O≈ïN4Y[·{ìA´À™S>Ôı»q¶≠çDE25±t‰±í»=ù2gûÔz≠©k!3[ŒwT≤òÓîﬂ7A˙ΩøıÏËÓìΩé¯EsÄâ;¬3Ï–≠áü‹π˚‰‡È'uá2GÁÓù˚ıúÓ≠£?=zz˜!;∏Û˛£ö#≈F¶jÊÙËŸ—„ªèÓ‹Ω√ö>¯‰O™å¥)/»π∏ä*±˙‚ûHıå+ß≥ÆD\öÍü ¡|≠°V‚)≈\L‡Cø¬O£Z+íhW≥/&U≈°ƒÑÊës¶Âöyõ˚¸°ößf∏Dcwè‰Ê¿U„üä3»¨>ûlkHÕ  ¿î≤ÅTè≥D!@˜‰ƒ6svΩz—µùàÈ.ƒ´v ÆÈ>Lu÷u÷vŒq∆√¶yR±e<à”gûh3¢ ¶¶3qMW‚Í+Gp#N9√ıŸX…∑ƒy"ûF$…ëåfÇ‰ZÕ§ÛnDW˙±ZHUÄg2˙*?v˙´—| ≥KG7¿Õl-"Q £»Øq}ò”ñt\VæŸ&y$W˙h—\8´]rBmÜl@ê‰∂ \!%è°Õ0
+yÛÍºL–éœ´Bú5ÅZùÖ+H AÓU&û?_Á!¨íAvOy#J^U!Ωc¨A–^π¸‘2ÁÏ˛{§®Ä§6aÕ>‹ß¿åD÷V¢®™Ù‡Jk xõ98Q∫∂©⁄@qñ∫HE^|vÖ[9¢eæ*ÿV3πW´DeèúÂo¡#O◊§≤òˆ•Cxµ_⁄V∆®(vóùp-õ`
+âÄIÙa%⁄ô?B	î¢¶€7ùQ9¶y‘9 ±Ó$ |e`z»K≠LJÅ§oò∏Çs’Pä3∏~3ÄÑn5+?JXp˘õtí¬z`´ÜS¢∂ÿ7T©\§näã©≠LÍÍÅ‰∂pZ§Ëä+Äû,◊yÍŒWÈΩƒa®r‹ﬂå≥ˆ…Ò±5\9Úr˘®Ây≥„¶¬ï‘°ùÊ§%W√ùíp{H1´i®˙°e"£›%O≠Âæ†XL?K<)M≥üõb_;ë˛2)ÙóIû_/q~Ω§˘K&ÃØHñø≤D˘´Iíøí˘À%«œÖ„˘ö¨÷¬ne◊ÀíôZ‰AXã<í[\6∫B%í≠µˆizvÕÊ‘3ﬂüÒˆ}g	ÊHV[ŸF∑ΩçXﬂòÙíW„è”¬≠îyã%€ä˘œª/w¶ß/{€Ôd`4ªÎ¸ÌÓ÷⁄©úàj´%ã£Ò˘ıªÈt’[›¥^¥(B≥ 8≈ÿÙq|àY®õ¬Î&Jåˆ+¯¸[Ó≤ÛKëJ-J„ˆÖp∆)RÚî+@
+±;ÏlÊ€‹ásæL˜=3∏Ó—l‘§:òYXå;7¢±(PŒ– ∂#Áêß{*ú∆»ÇΩhnÀ„6ê¯∏¡Wñ3≤N\˛i
+w)<Äœ7˘aÀñ‰ãÎ,Qnäö|ÖeíQìQ∫Ù{Å•∫∏$π¯¬s\V∞Ä„Ã§EÀ|ÔÛπ∑Eäÿ{`,∞ÿòå•ÓvR*êãÒD†˘'naQuÓΩq?√n§êAxÌ\+ o‰¡“Â¶Lä›Ó∂>5GcÎµ¡#óˆ°8xóa‹/ò_6F4r˛ùß≠y+úÏƒY≥	≥MNﬂB0úñ8U‹Òå _{vü»u1ø∞øŒÑVú·î∏@ ‹ïæáÁÜôS€]∏>¨˝
+LÊÀú˚l¥  lñ≥lncw0t@¡¬„Cwd∂∆√Ú†CÓgÊs¨èöWõxQ;êüª¸Œ!•uP"+EY°˜rRó%tÚ@‹µÕ	BΩyÁÓΩÉgûæ¸¯ìáw_ﬁ}p˜·›GOè
+È\ïko)•8û»ICù<‹I∆üƒ~≈D/Më∫ùçÂ®R!Áê©a∞÷00Ûı!á∂=¬Ωè;[¯cw‡ó1I»É∏äËï´·Jˆd¯⁄í"a≈±úˆæ‹ "≠≤ÚZ¢‘⁄f	];Î|èÖW¶¬Ï€˜:πÚbÍ•éH]”ã(LQ4yã\⁄“)∏‰"‡à.8Â-™óIÙë,LBÒÌäı"ìÄC_J‘"@9B0ÚÅ≈©ä8Æ≤7û=/Q4F>˚ºY·q“à…Û!≤Ω˜ÃäúØçèMœeGÇñ?˘ÿX~«∞¸±{¶¢≠…o‰W<ÍÇÙ,	F˘ìá∞œ¿ı≤«©zˆ˛Ñ”j  ç´òÍÎ}ˆ1–]io≈|~@ïH∞âÅC≥¸…Ã\∏4ˆ™5qÀ∞À;<õKÉ|∆]ŒÑñ?,èa◊éLÔL÷'z6ÖNQ>L@x|\˛Ùßp·îç›9œ∫P˙Ïw8√ã«Ó∏s”(ï≠ÒÖ®Bg⁄eË^=ºƒúió´	S¸≠j5∞èwm∂OpÁ¬òù˛a¢¬ËZEÁ ‡O}X‘»A˙Lx<t,$≈ûúWπ±Â∞õœ€Ìˆ ˘›∫ÿÄï^që#›´x≥Œ√U9 :•)@æ˚˛®…ﬂçﬁóÂù5jÌ¶‹Øãl*JÏ8¨jáí¡Yv+ùS©≥´Ëtz›|∆,-è'5,ù∏í“ª‹Å;F
+|lœ¸CÀVZ¸£làUó<ﬁõPW–´k	P≈Ñò‰◊Â<•>|∂Ñ|;AE«™∫¡EL'ø ä¯Æø&)Lû„>b€]ïÅcÉÁQ50n=ﬂÈr≠R§$Z¥åﬁR.◊∑¸°Á⁄ˆ¿(“ﬁV<à¢–<e‰ƒ.a⁄B%O°	Æë)
+9€çÏì:úm	w˘ÄXÊÂœf¶Sh„ûvCÛT¿Óß–m®ëGΩd∑$	Héæ'±VÖˆ=€wﬁÍmcˆÑÌ‹¿îÁ}·ÊUïÄ3ï“ur*Œ •‘î≤o≥4}jï˝/´ã%óL9∆¥^≈öÚπÒò `§å(äkéAn3”Fb'“¶ÚME6ŒMôŸïÄúxÉåS§˜*T_U@§,»ﬁì£äˆGàj_lúZ˛~£ÀÚÄ-?}åã±æÎ»7Ôüeí'Æµ-ô€&˘ﬂuÿÑëyZÕáPª°îÚ»˛*éX≤ÕïIÒTwyA˙#ç‰TıúóÏådLN<c¿ÑπcW˘jÄ'ô4≈c>§≤‹Á3ï˚6Êä‘¨ﬁJ‹à‹(j™>™© sºlmftUk/Á	5G‰ö√m&È~îµ‹LÒäerP‚z0[f>«TÂgj‰Ü»∫RP#Jdl)”Wå±îá?5üIÚdÂ«îD◊û∂˙"Og/ù%q∏‘∏îîìp"{…V*yIä;πÂ’%îáY¢xŒî˘æˇ>k¥¬Ç´ä¨£Ïq*Ip}'¶åë:'Sì‹¡â[WãÔ&˙*z%I5›%*…-Ù πÖxx∫k““Wïökçûπﬂu	u:˚g2ÂãŸÜ}˙ÿÉ9·¡5MR"~ÌX&##%¢≈˙MégkDDF◊åIxL∑"GŒΩ<è¶À»hﬂ˘%òj◊r	í]´é∆fíÆ™JÉ∏§ZàF°‡¿®ÍÅåø’âª•‚œÔ*r§ü¸⁄‹Î<ÖÒBó2_2 L‡“ÄÔƒ5◊g2Cæ% ¸Æ2·q
+6…‚§”ö$Iî(#VIô.ÑP*ÖDÖ√·æ˙2hWxâà‰-GèNºEiiT˙{3-é„{·¡$◊ËZaÏΩ~Rn$êÃ∑tKf˛ågmD	bAM‚E÷◊,^RÅ:Jà∑ÇU‘öFÆü™ç%øY™îë,‚t‡ô∆◊¢êQu‚DJ®¸ÅH‚˚ÿ3}‘≈VΩ∂ÉìÍWÏ≈ZºÕ∞˜œŒB©jóu◊ŸÿDÛ8¸I;ä2Qqbî^<J´⁄PÊ©,9’BìÙ,•’[~&ù·¨^|ìïƒ8sgö–4‘õq¯“x(j∏ñá˜k%^(£û⁄Ä•xU≠Dú2∂ßàB®”ÓyìWi9”%8Q4$Ù¥2ërµÕQ°,DÓÁPßë‹q¢∞h“° ô\Uß–7I2ñèíüÃÊ‰õû¬≠ò.ÄËUÕ˚yNçQ¶≠Sam
+ó¿ª»!ﬂ ÜƒÅm∑…U·Ir9®ê?öß˘°÷æ*Ç_»xw0‡ê1‹vàl}z∏Ñì)´-Fú£‚»Å˚◊–Ô¡R(buH"Ú™è&¥Ö™∏Zd¡8±∆Cëïìé<tv*ïtíΩù˛∫∞#Îƒ·Nõ:Ø&Ê≈,ôÆ“ú}ﬁâ=q§∞¯NW¶”úÔ]—ã	—zßåBöÊ|ü@∆˝WØw™\-¨9◊Ï√tW§’'Y·Ñ9–ú√{ÕélZäê˙sçSøRü◊ëæQ,@Ëe}FﬂíkePï¡9 ^_Ëk»‡æc Æá'°:¬VÄ‚De„÷C˛Ô
+¥Ò4n=¿V0úF…≠∞Ò<w?¥F¡¯ÎäÅ5‘"wFø√ﬁüj%SHFˆ‘$pC≠¡+öé≤ä?ˇ.—∆EhÎ∞;¶?‘:Åö$∫‡öœ4¥f® ûbÆö™)lKQûU“%òe§IÇÙà–ì°âÂüy<Òy≠y&‘ZxÄ=ã£E•6¢bõcJ≤èRsp“0ﬂª◊—0¯ÏuTˇ‹z°	øËøjÕRùÔ±Ë©˚XÊ,xl8u¬äãÙå9¡ƒ±m#Ú‚ﬂË„ˆ'ªqvQkÆ	|;ç-$œ∑Âì·ÁÔö∏8;±Ø/BEŒ»pW>Ë∆ÒëlNÓè»Ìf±Øci¢ë>Cè·VØ”g-5Ω7~1omeÕ[õ;0©-¸{‹˙ F;
+l|ü6»5˘∆eTß^¡5(U˚ÊDX»ÈàH1ùûH &ÙÅ2!Œôïƒºî⁄I30ÿÜ˜Òàn	√˘2Åç\Ãfu|áH}ë{∏Ç0HD9^Å<rePJ{Ø&ÀƒfÍÀ&1x¯K\Ë¶úÇv˘N0ßh,\DõºP¸ÑRπËãR'î¢ßÏ©/ÇK$À◊Ús—ßW±≈SRïSù„ûCÑ…ûîÁ4.˜√’;waLBG¶¨GG„äò≥Dp•rñ0D`*∑(Lºƒ‚DLu¯°Wö$†¿ﬂ&ÄéΩS◊î0¨¬· ¬≥Ú Ç«)¢ïôäŸ+0lk(üT∞…è‹(è∫máªm˘ÃúLÉEq`QudÖ„e
+§•-Åwy?5JΩäâµe*íC<ëIdD‚(µ WsÜJ#ûLh™π◊úéê!pïØ5±uÊ›R}PÎÂì—í/™ÜZÔ∆ªøºbÑäDéq#ñ°∆Sâ¶∫ãF,Ãç≥hQÁLúáõ´IIËb|ñÜpÁ~ã„∏Q7q4Á&íE√ü ÄOΩŒÕ4ØñÀ˛TïñO3b‹,«717g&Ú ’Á3y¸£ûÌΩÑO∆¸y; /`
+x∑Å=ÛxΩôÿ•7‰~√Z¡∆uÜÃ
+ö–iåãW}Ùòrî4FŸ`ÆFö,	≈MïéóÇˆ2’e‚ˆëÌ‡¡ô¡‹ı^k¨Æ0¬6˚ËÍµçy	.≥-â@πáÙ0q•*~Le±»4ñ7Ú-¬ºñ˘?Ó4ó€ÇõÎı”®)!¢¶`¶S[F	1IætÎ -Ådy∞xjƒq/s!$õÀˇﬁ¨H0∆™Ûœ‘tìyÌ¨©„‹6ëãgÏŒ<$ıò“3Ì4◊⁄'f1~[î™π|@,å¸ëgö<˜cu1˘d≥ŸcΩæ∂bÛ6k|‰∫<ª≠Ø÷”‰a€çﬂ˛ÅvÁ¯˝«∞∑éÎí\i≥sÉ`.+\ÑﬁH÷eÀtT∑€ò1[s"∑Ÿ´èM€v±Úñ∫õ¢W<8˚¸=ˆC”∫^Ω2 ∂÷fˇˆ_ø§‘ÍR€n—ãÀﬁ°¢Û5Z–àh{ùqo)ÍD0ƒ	ﬁYìídÆ,7Ùê@¬D°˘∆›…ìèÛl≠V |»ù¡pˆ…òç¨î]Y€4\¥5Ïd∏,Ù~ÓSôàfË2Yi±=b˝ÑÜh[™Ü*ÛáSS{*Ø4ÕcLÓ3ÊÎ÷2çÈ⁄µ¡”È≠&…ikX1!‚3=è2=XÀ-Ë·)VÓö"©>w§góŒKœ≠0RÈ¥˝iFJEvài¬ñå8xb¢ «ûq{´ØÖ‰ä2{Á>M§îª◊ªéÓøI(ûw€}s¢á_xAP˚áûkå‡EÅœﬁ1kNøBW#ce`&0Ä!S√PcÒgœ{Î¨/ìeZïIÇÚ¶ßÖù∏À™mWí	oÍ&é2„kº\ı»i"Ù<≈˛v2¶îhŸ%6Í;∆@ÂÊâºiäUL{|mRú7°M4}v6sï˙3 ]oí+´≥ÄjÇ≥ÿ'`âÅØîVg j“Î∫úåtπ°â.≤\g5Ò•&∂‘«ï˘òrªLµ—œrû9ËÛäúTu…G™™|MÀ‹êØéKF≠”“<k˝–€Ä®ã” „?Ç`ñÖ!fwâ˙jã:9πEq>≠¥Î„éXæ.È
+Ø±ﬁ).N6Z|ÜhjÜcòÅaŸÊàçbg6Ê≥`lÈàUå¥€evÍÃÇ¥4ZûpDJp•»=ï≤ø>vW≠\ä⁄=c,UªØºÇeÊQ›áÑœº\ßzx4∏é–∏ÑPkÆ_ Tì‹∆™ƒk”>1ç·òa<P‡¬?ÛA&u=TÊì+R.%'&*“’wä2*Wm•i*gÏh6òXØ6Ç6ËØö.rÂñ»âÌ‰05"Æº,µÒ≠⁄pò√3ÿ'´„íÿ&{∫CÁ(úÉL˜:>Ÿñc∂†”DOêØç|?òY YÉ«#ˆÅ0®’∞√¬sûÈFÇüÈxHïKT}b‡∏EB‘:€¸∫Ëùb*ô®£[÷Ó‰ëé©ËZ“ùÅ,{ï¢Ü.¯ä$ØBå,ƒY è¯"WG¶]∏ dÓû¢’⁄∞ÈËÊ⁄TÜ©°Ô*Àwúr*ä‹ÍµUâ|Y∫Åû¬8ÓÒWP’V¨À,Oê¬@WBÁS(?!¢4§ÀPn√‚ïK»,.0ó{4√ÑörùçX°EGöp™ ¶[ië¿Ã√ÏÕ.kÙ∂˛‰˚çuf√üá“◊°¡Œu‚≈87w˛ΩFf2—E≤ >‹ßuˆıa*ıç2jHΩ;üpïî}ºπaUiñæT'⁄ªbí|Üg£˝Fód·,ËëïÑ°9óˆñ∆ÇkSe±ƒäz*Ÿ%jh	ø$Y≠¡Y_ßàx∫‰LâU9IàÈ˙@]Q:EÉÎã’ •Î•≥ë`ëX-ŸZ.Z_ªD}ËN&Æ√˛lfzñÈÛ¢Ü„œÅ?∏	öRÛ7›æfníHfÎ≠	Åπ‡Z]≥cFiJÈ
+PG/_ôSñ˙yØWHPt˝µDªº¯õÀãﬂ^^¸+¸ıóó./~w˘ˆØ//~u˘ˆs¯·óozyÒ˛<˚{îˇnÎ.GõûBü√±˘∆sÃé¨Ω≤b3Ä?ˆ@àmi—§8ﬂ◊;◊Zy)∞ÈcøÈ§9Qı˙îËy,∫H#®hœ[vú¢ŸÓRîX¢"◊jÛˆ:ƒÉ|02¨|¡≤∂Efˇ–?$¯ß8Ã…{FfÔ5‘¸@<ı,√¡⁄=5‘l⁄"∑éŒBGÑ äO~ï¯n√éæ¸T_ryÒk†Hê2¸»¬ﬂ·W_A∏º¯πûfDÉÏ‡Ã∂l¡æ^,E@Ò·U~¨ì5ıL/ë
+,πBà´…±8M˛MHÄá§7	ˆ/7¸Ê∑Hªﬂ~é˘íæj[ÚïÇÃ\@9ˆ§dòpÀ∞óó’bêîﬂGéÚEMËìÆ¯∞B·-W©)-7r$b.kÀröW#ÕÂz˜X*RV ÜEH1.V§nÊü¬2…	7eû≤'µ|=dû£ßQ¯jIñJ?"ìédaM2z¶H•:÷M:SZ_~ïAjòîÑa,`¢f9«Æ71¬‘ktTBù6Â\)y6Öecåﬁ]û2·õßÌ©,,ûÖ“_pQÔ]æ˝íü∑?™Ûs˛’Ö ˛¯ˇ∏‡§àKÖo?ø<a|cuQÌå§
+ÖÑ§(q}ÍéåŸêÁúJ˘ZNkﬁzæ›Mx4Ë´=r≠ÿ#Ã˘Èe|¶òoùÃ©ÿ}Ú©∂>C◊§Õ{ÂÆÆÏ*◊XÃô≈æœzõ∫Jä:+ZAXéZOÆ ÕŒJtgQ.öïËÕ‚´›Ûƒ›€˛‘∂Çf„'çµÁ›5€Eå˝w!>d¸k∆eÖ÷L≠[ÀÊıù¶*≈Z»TCÀ∆	øª|E}ÀQxJ#E2p~-\C EbC;årŸ¿≠ÎÁ"d3ˇœfÜgÊg&=µµ8ào¸’=2Ω7÷§°;ñ∞sµsœ’R5oózÉË^˝w¿c{¡„w\—ı/◊(P|+›ëï˙|\Æ®vLN$:ºRπCìgI∫'√⁄OÌ“ªUÈN¨m¿®≥fXıcazzaÅÿ§’Cõ—Ø∂Ûƒ˛YöKøzSg^`|?Iﬂ¬¥ü22^óp}òTôvÃgv««´R°◊ X◊ÊÒ¥Y˙ís¨BÌıπ N ∫Àãø∏º¯Ga˛
+µcüu§Î€¿’*FÁ¥6,ﬂSˆ˙tdqLKh»Õ1⁄0˙5RÓÎ«∏O8Ω_rÌw6¢÷ﬂ·Vñ∆≠üZ#”eGcwé…U'ÛPÎŒ5¢÷ÿ¸∏*˝ê˘//~…±Êo∏Å·⁄•âﬂ -vB»Ò°ªÚÿ6trNß∑@‰Ô€–ÚSìÈ?4x¬´òπ“v«Œ∏È›m◊–ŒÔS_LœS«Â≥ŒÔ∏åæÃN∏ÒèpCˇƒF#5Ùµ€ø¡˛–’˛∆ISa¬#Ô›ñ^Eª{ ¥<Ö√¸Óâ [W/*ì∏øæÆ7åπFó˝j.¢ÓV˙sÎπqÎ”‰uæ«ÓXQ
+√±ã6uoV*bŸp¡}cxÒõ¸J|ôAﬂ£Eè&Í∫PC<ïºª¥.©‰ƒN©§Rƒ^Q
+uvË¬1Mµk:?	±[:pú
+%∏çÿ%·tOÏìÁüIÏöv "vK\©0ÃZzà=3ö3bøîTHÏï√ÍRzæh[Œ–ûçL^›9Áµeƒ–ù4ÎãdG¸12¸±9*Æ+≥C÷I˝§ô`pSÀç#¡”J]k~ åCö°ïVz¡˙~üwé1±ÜƒRÃDfä∫tW≥x•Ú_ ΩÓÑÏI.¨ …qa^È~B8¨4CÈ%‰ﬁ;2o8.8wúK‹‚e_'^kC+op^J‚<%'Ê}ÓÙ5Ü^*ˇE}ó–Ø©Ê[7qy“µNÿ∑øbŸOgØÚ«ΩéÊY¿Èeí…§6µ∂qÚﬁÙ7kÃõ†∂WnÊv»\èHYò‰t™ß›….¯-*U•WÒä≠é>‰Wc¡…è•ÔG»£úü”À?wµ
+îåªïIrhmù€Îø9—ÓƒÿÈƒv| ~Lw;ù˘|ﬁûo¥]Ô§ÛÈv`Ã:5ÕÊ÷(Ô7zõu:èMÎˆ~côÛ›”˝Fóu®~≠Q@t≤˜X†¥No?‹◊p8Ü3œÉ}>D\˝q~(ÄŸØ?àÌÊ–òÓ7¯)]núªñS{ ˝SÁﬂ˝‚S∏Sg≈ 9¨ŸŒ†˚∑EÌûﬁiÕÉ]5ª÷‡`Wáñ7©væŸ`√ˇ«√)‘pjc6⁄oL˙=÷€jm¥ª;€‚øFüı¢É.Ωù˛Î>ÿf˝^=˛Q‚50%E8â,ôi’¬∆JSu1vbúòÏ±g"R’^Û5È|›‘ﬁ+´¢DÎyqΩ˜¬îº∑ßÇrøŒ˘25ó3càë G≥¡Sc ‘'p~˝qÆ¬§à˝ﬁa”A+∑å`π¿§ñB»∑]ä(\F@‹TÛãlßıâ’’frA[º9∫∆ú,Ü±	]W™›{äPœVY\üæó Õ'ÊpÅ(˝CÀaGﬁYp†ä¥íy:»ÇX∏-°ï,ñr‚.Ãx¯pb8∞x{¡+.≥ëiõq:ÒÇâÊ*ã/DﬁKZª{ se•ö¬„a°Å'Nﬁ Ωıî¨éÀs~¯CœECôá˘Ãòú)çä-bç©Îó⁄7Sœÿp∏ ûÒg''hdqù“«∞ p˘≤Dc—#/ò·ãÇ‘π¨	Z`JUh{ÉY∏≈Yºœ2Z∂10Ì˝3´ßs5ZÈÆsh[√◊˚g¢î∑o¸Ú‰≥,Óòp¯ëÂ/˙ —:µ√®„^äY(©’äµ~-‹•ñ"Ïç≥@ŒÖ#còVªN÷ qBEZ¯>bç]ñ6*åÒ\Ô*_nG_™
+°ŒV∑q^Ë±PL+À@ø◊õúﬂ;üK('wï'∏≤ë»@UÑ(â[“ØJ·ãt∞A˛[UeÓc”Âñ'äSé≤n<≈õµxzúÓfmN&ü4n±©›⁄i‹∫KV√⁄ÎcΩ1∑û¢Ÿß√av'Æ∑–B‹'î7üëá3:‡Fpø|(¯’+‹®ﬂ©‚}∏£Ö:8I ¡–IÒeÔŒö}ùï¨Ë-≥-?ÿEßçÁ/ÿ>{˛¢åã≈Áë1.∞QˆúuÃö	<%)÷ZÈlüŒn[6EU&ïÊîOû/u⁄∆,∆3ˇv;p`ÇöC8ÖúÅ‰.*ÏﬂLº\ºXMŸ£Á¬˚%!e¶¬B>ˇNÉ#\S-à®|(J*\¸.˛u¡E]Y-–ﬁã˛0≥≥∂Âﬂë¨˜O~Åi5W±ñz`ê&‚ÒZ†∏¶ìÆ®eû$\n€6ù†Y8√n|<3òyN•ïzØòr©çp1GS√Ÿ?€8O“›^_€cG
+∏$’é ›Ï“¥F Ã¬¿™îyá˜∆"È%5§Â˙‹R‹πë‹âÁ:‡f)ì•8‰ ªR»´(œTö“ãQz÷I«vØrÜƒSMÄörÓ)Og≤íK≠ì√ïÛüza©‰<ëÎ¨|ÈlV—jSjÃ˜,ø°4KD$B˛¬≤jNTm\WÄZ ¿î∆‹∞v47l@ÁûŸ§é¡˜Œ€eØƒ‹o(óÉØ„ˆ+zÖ‹îüé-üÕ-ê≈™+~˚ÿ¡ÉBü«,áÈeC)r¥Ôhp©æu7`ì¡u≥Mvc§êÅyÃœ<°——ªÛC√öˆá¸ Ï≤ôôÙ˛^Ä˛DtÊfSò∆ò«õ–4¶ëÊ© Íüö˛:Sœu∏Û
+J7§ïpöÄÕ90GUîRmÅ∑–xö…#˚ÿs'ño∂€÷Ò
+LåÙ)É„ÑG”¬#‰wÿ·ˇÎàØ÷˘·l[£µ5ù˙JÄ∂u'o	6c4zÍ~†ûWè3wo∑[·ÖŒ’ÀÆqÀµ¶é◊{8fMSrèZ'$\y„ÆÁÒªƒæœÃˆƒÙ}„ƒ‘ôıÆêû;◊Êß¶ß®YÑ>K)‚ÖüR5ÛÚìßû1C)#Ö¶¢õî˙Œ§v‘rx“‹Çp1Ω†~¢ïQ⁄e‘Úù•)â+SÄ&ü\O∆ÿY› öù]YÅ°",Ix≠
+‹É‚%åØ…4•tœÇoR6ûá“˘+bêÇQæívË¨ˇpöGÊ–ıx™dq¬˚…Ô˙"¥Ã¨Lv8ÀSºë1 mA'‚p›gˇ{ƒ0àä>‡4rT@z∆°6©Ó§501ÔhgxªÌœ~‡"jv◊Ÿ&»“z°œú◊é;wêÓ„ÏØR™~Èk	¨£h◊/°Ç“Öî91,ª§¿5·ÚÃ◊Ií∂D§J˚Ù &´íá.Ü	üÍU@Öïî≈Ô!/ìM˙/¥z≤p˚dÑ2óÉB!ïK∫π“eP8˛\ÜR©`⁄A∏ƒ‰{äÓ£ÄE¥OXÅë±ÿBû¥—Ü<®>Ω§BôÍ?W–“ŒHõOYa9”i˙”Îhà∞©Z¢'∞ÆßqEó“a”ÕÛ,ì4K∂	1_ P∂5ªÉú.•Û–√&í–ıtl∫s«}vŸ±a˚⁄†∏°•h∑F?I∏°È˝˜ó‡=’8Sk¨à¨·x5Gÿ˚®°õV¡klZZñò’≤mÖg?t[ÊÙ3aµÉ-xc˘∞ﬂöUƒ±’™.‡Ñjõµóπ¨î∑€Àuﬂe+CRÛYzåÙ§N\ˇ•(E§3‡ˇ  ˇˇÏ}Îí«ïÊˇyädØVB{Ùù¢zyâ&ŸîzÜ∑`7©òa(®j†]&Ä¬Vl∂€åêaÀ^èÌ˘1¥bµä`p§µíFj)ñ6˝«zÜü`aÛúÃ¨ *Tfû–ºhîaS†.y=yŒ…sæØ\≠)<eï.RUF¨^ˇE;Öeõ/‹ÇKyú≠c*ã÷{ŸéΩp_ÿŒª∆u<8z6ùÁ'#ΩÆŒù‚Rèl!µõ<Ú™jÓúOí1‹ÛZ]⁄·‡bÒ.ÓÏ£´û8ÎW∫3ü~iÖqÖÈ⁄íOÿP¯°‰w&æfŒ÷Ïnóœ=ñ≠fT*õköM'Lø›ÃÃ`JΩŸ¢‚zÃóVxæπóçÅO_æïjFë˘Ú˙	Ã.˝@L®Ùœ–õŒY=y^_—ú≥ûJµ~\?ÖSw(Ú‰=‡yÎ§gÔP¶t˛>Ú(<É˜‹ƒâΩ¶ñW=Ëá˜P&<¿á‚Ô)P;~~ú>ñï3éö∞=éN0ë´[/g'∫ª¨á{{òG+3Ÿ öƒÚ…Í4˘Cä’˚1P&7ûDôÜ& «¶bÑâ2ÉNîUwûπH›ç˝à›∫>∫∑¸‘)(‚SU≈˝,íg™∏ª#gËö;9ZÊôkÓ„k™˙{1 G(ÔŸãèD}'#–NÑ(a;.ƒÑS÷PuÀ™π?[≥†`bö	è èë†πí@©>†ÛdTI Gî∫µ<O@–≤IU∫¡‹JN ?Ni∞ù∆ù!,Á∏_Á2bƒÎÛX∑ò∑-ÏèjO˝3d•ãï±8‰4;ËnÛFÄÏ †•¸£]¿úr_AükÖC»DÕ #ﬁÅ`¿"a‰‘9ß”·√ßZ¬JÕúoá÷©–ßÜïg;7>óƒAãã\ rÊìbÉøÆ”â⁄!7+{Ωöd∑":°påNK>π5ﬂXªÔ¿úÑsË eÉ˛Ä=›{qr7	±√t£4£;E∞âª,‚Zπ1Œ_$Ã‡Á‡3ówbè◊1ÈFΩ†ì≤®aº≤ù˝*(x®˙º Wƒ=.5∫— ÛwÑVáGÿË'!`I_wÇagP3
+N·Ÿaß˘=É ·∫
+ÄpÖ«~Ü—úf;O”∏tÜ°È∞Åè¡e≥2∆t°›“6-W™¿†m∆ùé@Ù.∆Õ∑™iPõ:à∫·*ª¿’Ë≈{5´Œ
+®º\ïﬁÈ∏BˇGNÃÉsaºË≈|¡GÕ@&£⁄ªaµxu∏"e≠∑rk˝Ì„œÿïpOÖ1Ÿnëq‡v«ŒòBﬁ…˘Yˆ˜÷{jxìÃ<√o ã®—h ƒyún›mH¬ÄX@ü*÷A›i$aZ÷ßn◊Ë‚N@` ã‡’\€L›®±Ÿ3ª∑U¬ãQ"<«¬h±Ùú≠´ÆrQço_ﬂÿZ∑]ÓÑe±®Å’
+†¡Ã1¢7•›ΩI 2ejœO¯∂\•˙∂Œ®◊öT˜^∂€ôlâ>W8¬›Ë)Nœ¨„Œé”òm˘ÍD=&¡–a%òƒu±ëıvåoêÛ
+Q‰f’uéù∏…ÖXéC*>ä;ÑV≤\Ü#◊§„¥,Õœó,ºÍ÷òÎÑ~‡†÷°≥4’Kë_ùPÊÆ‘≠ÔA⁄07àGz¥:
+P“)™#∫∑x!ƒ◊€a5mù∞˛∆
+©√LäüÍÉæg6!OÕÅÜ2>hçræJ˘¥ÖkÇK†	ÚÅ1≈Æao≤Õ®Õı5“˜—W+ŸH3X˝ÅiÜ·pÊ˚◊Üél∫⁄Pc	*	‰@f6u¿ÄpåÇ`¬l§q2®’tûg€9TAmªõ'‘èÔ˚uV¥œ∆«a¢œêíÂ„Äß«¥û°ÃÈyóL˝ïHÌ±rXÈ¯XöMÌÖΩ¶‡Ë≠\fm˛¿æí72√Œ≥GD${Â@úviàÉfîY”Û¸Å¡> å
+™bây-î([XqáH®˜ÀbwuÅ»®ä¨ÁãlWc|C∏)Kød]∞,ƒÚ».`{Q~ÎπÍgÌ(DÖ™^!@Ëp´ëÔÎm°ko¥∞8YœíÚ⁄∏h∏KËµÑax,7Xp+≈(aÛ'\˜ŒuÜ	—d-ÆØª¢÷„ÉKÙöÉ…©ÃYaú¢0≠§{Ú˝é^'≥™*˙FXyû*c§A±èºé¡È{út‰¶ŒñÓéπ∑∏qÎsà3AísVˇ¥fb≤2·*“¡åO∆¶ãß~±ËRÏcbt<`"'†÷KçLvpÊ2˘©¯∑£^}∑~Î®mÓC'0Õ,”…◊'â£2:fYƒ‡¢õv◊7á	◊ÖÍ˝8*ûv—8Kq”ÔÄ˙_Tr˝¢§»qËÑÑW÷¡tΩƒ|_∏SﬂãÅê–ByıÙÚ⁄~ã¨’7{z¯—”o>xz¯Ñ≈?èë˜ñˇ˛>¸ˇ…5´aw≥AÃ`W+xXgßìÙLﬁ∑fŒs)«Qô˚í¢¥êÖÃe∞.F]}[p˘µK≠"ÈÈ@¥Œ≠‘±C∆µ∞À¡ùê›îŒP¬-\O{\Ù!®ˆ⁄põœ*◊mÆ1fÙ U!>Úüöõ≤ìH;√∏}
+ÂlÓ_&ﬁ±öΩÇ≤øïµ£ BU§W<Ô$äFAãæÛ√g—ái¨~/Ë*◊ÇaJœÊZ-›ßh§∏B?å•ç•˝∏VõSõ)$ë.jA‡Áõä◊Sn	N∞ºà=Ì˚-€ú¶…8&(YÎ˚a.f:™Í’ùØª∂jJå˜û8##áıÎ´í Èûz~1ËÍàÆ¢f¥–s+>\v˘“cÉ›P;Ù¬Ωî>ﬁ€¯—Ê«ò—›ÆπuÃu¥cÑ«‹ümûÍ’§FëÑÈ∞3 {<d†8øeúXqG≈ÿnä…ù>.äÏ‘¸	º∂TUqœ⁄Äzò_,dÁŸ3`pl`ƒ_ùÓÿ€≠·{¢[,û°‚YÔçk÷ÏáΩ≈ÚÆúZsØ†áûéÅGÌ?ääIXÈÆ∑ç•$\•)Ë;‚ãq’'∆Z˛€ƒ€™√∂˛<KÜÛKBfì/évÿâ€~ÃPTN® ¿<yˆ„Õ’D
+NÏ'Q7‡;ƒ"’Ûˆn0x-≈‡¡n‘5õNBM»B•3⁄–P!`“E∑ «L^œVÀÜkñÒ⁄&Q8Fâä¡õÛíE9,d0∆‹Œ◊Ç£*o *Å’/K5,Ω◊,'w›Œ*{◊º$≥9+GàZDk¡≥ôÜ›®¬ª9sÊfò‡^Vª⁄¡tf]B ÉbX‘:-5â˙]ÒàUèî˜ƒb]\÷ÖaÑ9/Ü√ÑçvÉ›]h,7lßj∑nqørñIöâÉÁﬂ»µ~ø£"˚ÿ´ÏÕ´ÈQ6¯\–jás[A{íñn√C¸[ze˝mvcÉÒ’ºv·Ú∆ï£lÊy8emYvúZDà◊*∂,ªÃ‘8∫¢L<DÑ@63gNÕ©õçïòx}Ç3"ÍDÉ}{c”JÀ2ª≥‘`y©:·≠∂Uå”à·#WwÑè„åu∞öÙï‡)ó˚q/‰ÛM‹C~(û¨ô:sf≠’ç¿	◊;Ïjè±µ∑–√!ƒÀùœ?5'ZX˝ªE)ıµa´OÌN±^mÛ.ÆúX
+∑-∑ıìPó´ß∑pcKÈÃN;ú9‹>Ç—háÉıÍÁˆ7Z.3£º	8HJ :˝≠≠Àó6@ú»◊XÓòµ«¶Á≠ èG‹F±<ß¢P>Í
+…ˇº∆P$%ÌÇ¸'∂VÙóÌSlb.ìè|=Ê“üÿ‹MöSi¨ñ3bwq†“b˜f–âZ®$…§g;•
+†!lÑÄ~ÓÚı9åI˘¡Jv⁄Á#D∫ä6‰«ï,>.ƒ’qπ¶Ô[≤"MçQÓJö£≤⁄=	ˆ≤¸G‘>Xì•Ó(_µ˛æÜ+üáiùW∫UÎU˚DèóÔñ{‚Oä#mÑ4⁄ä5W0ÂÓ€qåK∑ãq'æùû”§π]π’ëƒwù~Wô]ì˚Pló[àƒ°»	âS1wò
+Uæ‡.6õ|yÉﬁ…™1ZX>ù•5ëÌ‚$#œEÍH}•Ë=}ù‰%‰¡à‚R[Œ¥Q8Tﬂ„N§Q‰¡KLG‚“í%ÙÄio¿dI›i´ø‘!Ò‹¢Úõä¸àÖ˘BÇ˛	ôÙ‘ùíá•“ydÚáR≥!Dﬁ ˇ≤é“˙ ù®¥•¨é¸Gˆ@!w@sÜ"£¢~Vúâk>¡Ÿ’Ày™ô2è†ﬂ“ûb±ºç≠Y˝ñ„º¿™Õ◊Eñ9` ®¶rñ[|F4ˆlbã/e÷¿+¢BÈ&f/K=LO89Ô
+ıßx\*–∫ã©|¸ìÅe.€I pG—-ÇáƒîpØ=2€ùÇXFcÛ±çz≠®‘ÅUpı4tm¶Êßêwh0≈dÑô˚¨2∑°ê£‡»P ◊é@%O∂(=.SAXT⁄∑¯íÖ9;ã‰˜¶HvÜ‚“ Ì+á¨‚®á–?êQ€€|cÖu;GƒÕªIÉhê€‹E<É¨I ˜¢Ól˝.	Ü÷+ŒŒ=8V›oŒ˜€g>©„â]/÷O÷ı‚„Î”ÌzÜ®Pwt(R™N$Z8∫®+çâ∏§j‹§ªvv™√∆€ëùV>pÍã©ù2?ª1# *6'µq˘Z‰À`p–mYúDÌà+ªq	(¬ÍBâ†'¥kVÌyπiåOWÜ.|f´cÛÉu¸æ«rêÉö©RÙ9]•r†≤≤ó˝J∫æÓ™Òg§ézâï¬ä›Ÿ.∞dõ—…ëılóó»Bßÿ^dñbs® sßÊx[hØ %Ë®πç≥œßK·ï9=YÁr’ú¥VÜ3®¢æ=áu¶˜ëä‘kD<8¬≥*Ä»¥|ßesæìñ6≠ñ:çÖΩjë‚"‘≠ü)ÑïÁr$u¡6îÎs¡º˘ï'úπÚ≈åÀ[ÙS/Fa$Ïö›1™7ÃêÏg¸ø∫r¢Û‚9Â±´üü®®‹n‘¡˙(?h)ÂÏ:â≠BA≈´¨¡ı0h.…nŒ”¡‘ì∞Àoπ÷Ú}?=}pK|>ô~È;tlœ$‹›Ôá˙c‡Ûı`œ„Õ∏€è!pú?¿'Œ7Í∂WY≠üƒ˝î»ﬁ™óusªÛÖ“E©qjì˜∆`£qdi“<}Äoi?ëî€ÿAg†æÂ‚∑◊v„A<S îqªu»}GRº›˙-n‡¡Íå∑6u¿·	¢ûK¨-– î;0
+È‰l™x%áÔ.ÒNˆÀÔ≈-_¨˜›®”J¬ûﬂ]çFG¿„¶˚ﬁ`ˇ•bÈ_Pˆƒ‚Ö√0Ø$ÊY‘kvÜ\ó™ÕÉ/gÏ«Â‚èD,˝›OÌ.yﬂ3ä´U° ˆùˇ#c\ÃU’™W'‚/ﬂ ó¿œ)ÆƒloÛ‚‘.ó5m˝®b†¯,ÚÏuj™˙øÓ‘‹ÓíÔ+èúZ≤C◊√>¸◊ˇ√Œ€ÏbtéÇø7S≠ÂW¸°G?≈3LÓ¶∏±˘üpá¯Ë€Ë‚y8à“ˇ™{DÓ“’±êè~	Â“k»Xétç9!«ôéèü*À"£∆˚ÒcOˇ)0ˆ~?.9õ†∂JfMHmﬂ”.,∏Ò0Zû¨Ù©á?Nî1;ïÏö≈Àûv¶–G√éﬁIù(‘[Q⁄d˝N}”2ú∏Æ\∆Ó≥aÁ»:≠M°”:—®ßÖƒâbû€≥Î±NtD=FfáÒup°°úö+x∆¶NkB∫êtÒàl¨£//_‰≥>˜≥=cJ†Xã/(÷¿≈Y3=ÛÚåÄ?Ùëp9 „Çﬂß≤ŒË7!P®8·uG]ã2.¢áöÓ†QûNâM}éÜ*õL∑©Ï(Y4H∆…ÇíEæ˚·t:¬≠ı¢Ö^{Ï%~8[™®àÓÆDı,u˚ÏËõôG_xÖçÎe2î(§prΩLÜ∑E«‹Ò¨d‘(>C= È»É 5é:_®≤&‰k:P8ùÍà˛%Öﬁqr*ËÄbΩPªb°Ncai‡W 3±/à5ƒà4t‹ˇRÄX≤gøèàXi8òKnÌts»C–6˛|—¸R@hÒN`›0Å7òﬁGäΩï)w!ƒ&Tø-;{R±LàºÂ£L{ÀS¯ﬁnÏ~ê\SŸ÷ã®\”Ÿ◊'AÂ≤¸Xÿ•2’[†Õõ√Ë  > 2ÏL⁄ˇÚ@f±»YbŒùÏ¶ŒÀÂ"èh˜û—¶ƒÎ<„(T‡_ô¿‡«MùπKã2 &ÿ˛˝–îbÙ;á≤bßàØ∆∑°ùù€›`L§ÄDÈÊêwÖ¿k˘ÈOYî‚üïAŸF∂,ä?c'h·”NÑ‘Aa„c¿G∑æÃZC!q=#}.FrÌ’O‹Î09ÙTH∑å(Æ€ â‚¯ﬂ6®7ë«& ‰Ul◊∆ÿ~ö/Õ»∞[∫{Øæ∞,¥ÀzxNnÓË$ﬂ∑1R’EÙ≠ÖæUÜ‰Ã≠ògNmÓF!_OíÆ÷,-Àå¨Wç≠∑Ë√¸´º∞Hñg ñ-»û~â‹
+_"e¬Ä2·U˛”œü~ˆÙõü==¸ÍÈ·ß¯«∑æÇÒÜ«OˇÚÙV€Ñ•≈oñp)öö¸føJV»ëcÖ~∞t¡çîèˇ∆`ñ¯Êg«±Gæ˘Öbõ¯˙È7Ô+NâáOøyèˇ¸9~¯~"h(æRóÀ∆‡ﬁ√ø™.˙ˇ˛Ø¯§∫S-£S—ŸS∂ÊHÀ◊»"m"}⁄M¬ù”3ˇ-Ÿöu.+ìËÅ˝0O„ü(_?ã˙£òê¢˘I‡yZâ ƒîQQŸ „Ïæ!¡R°Zπ°Øv˚ƒ0Üï∞lvHRÁ2íıœwé¸„"Î¥µèKVL æÜÏà µañÁnËù[3Ïª‹zùññ8Åø∫qL	˛·ù<&…∏^j√Fã$ØôôŸb⁄øë6–@$ÌÁ)˚&„K˘B∑\ãz‹lÿi∆Á—ÒE {•g¡?™ıÒ·}†[Sºk∆˙õågÿ ©nÛªag∫Î˚±ë9JFcH£-ú—è˘∆Ω¥HP<40•œ-œÁú∏•§âFêÎ*∆
+˙€i‹vb‹ØÛó√ûã4∂&ŒÕÏAÑˇR2ŒR!GDˇ{ÀæW(<∏nPK´ê`!ãiàfV*®c• –li$zM§ ôÙ¢2*}w•îŒ;Z)-ÛóˆÇ’NÇ8˙,fœ…†·»cr
+‰U∞WV∞+π√¥whWi6πÊiG›®‘ÙOÄ¶¢»f:JöŸ‡Bí‰Í|Y,Å$Í›!ƒbÒÆÓCFŒçÎóh%Q∑MÒ≠C:P˛hÒ%‰
+¿⁄Ì…óÂ·≤å!ﬁgî5¿’∑0I¯w¢Ê˛Èô^\W_=;z=‘÷Ö
+µTÙöiº-éíÏçg–óÁ/0ÓÊ“©›•—§Ú∂’¬ˆö‡1V6ç≤</rû†ÄX„Ü–~7¶å"*hëò’†ÎFcMµÉVÛ∞Dw-¡çTæ<ëóëá≥>„*Çƒ¢ﬁbq!ÿüÍéq¨4ìè*›ç^Ù?á!∑î'~Iì´ı÷&t„^\ÚÒs≥äi ∞zD¬•ﬂ≥+≠¢5PW“{€≤!⁄ò äe£dÿfÿ&êŸ}m„ä[pW<ù¨Ì‰J‹<+Ít|‹µDOñõaÇQ>Ó™í2`)”úRH®}5@ô—´QZB‡0Q”‡÷|c%Ïæ´g˙≥ Ä†üvHù*Íı2Ω∂(ﬂNŒ”ÿ4+¯l£/úÏ3WÆn±Õı-Á&Dç%å@Òé˝Ä‚ˇE∆Äº{=L√¨dyEin‰3M=Rí|pé7]Ç¿àÕƒÖPëÂ˙Ö®am¸µ6$Ô·0]ıàË˜ƒŸØ-ﬁC8i˝ht∏¶«oéπ∫‚y{Ãı“Ê¿Û^Úôˇ¯!1P™¢ZdHÄœ»å	ΩØó…"c†LêŸ¯DÅ1¨ùﬂ.˚ÂéP%™·“Î6óZc∞ÃA9`¸ﬁ"f≤_“ÿa)PºR£ÚVb>∂ÿ¶KßΩá ï∞√ıØ—*T†;L}ôµ@f•^/ßÆw‚"°ºôî§Rà/X¢Ä6¬æ\åÊ<Q[~Èº¬#Wîîû≤Äü>ıà¡˚H±û4[{%ªOAfõÆ~m•:ÀÀu⁄≠•i‘Ó98
+D€«”5©ÍÂÅÛÏŒ=Û§ﬁHèd6∫“O‡‘Â=&π∫*>°õP∆&4ÖRÿp∆ﬁl–¸∂àwqånå`|EÃª^;ƒò¢Öö¯–Égo¶n‘ıciõï@‡HŸ•V%IY¢Kåpò£ävîxtÆ8L…MÀÇ›W¥5}í–≈ä<ÆE∑U∆>Ía9K’©‘
+P!„®i6Çà∫B!¨x5u7˚ÇSs˘·±È*uC9ROC@ò8X¿?T†ÚÎŸ1ÉKõqß^&q3jZZ&1ß'≠1ß"vÌÍŒéqd≥àT„ƒHU√˝Ê¯’äCcÿ€¨"TÌrg¥)ªg™ëÂ ƒ„‡cieﬁÖ|-â˘z
+1`$	>¿üÁ¶x1ÄÓì˜rbPóÌÜIXM/;›†€ëÔÊ~T≤û`$A¸—\≈£™√KÄ›—	V3≤†Oˆeb–H¶À«aa±*X7ã }]ÌE’#‰xπ	Bs˚€ü+∑>‚°í=¢tteyEî˙ ‚+G–◊5"c¯.ØîùßC†[\¥Z†.'æwêfå˘5…~ä˜·Âµ—aâ}ıë(%ﬁj,0Éôí7f;¥ﬂ©/ÿí∏Aœ˙ZΩ¡7çÒÒ®+¶¨›â∑π⁄ibpI“&à”™à«¨´ÃãHÊΩ˙NdñÛ‹û5õ±’móíl—“IC3aÿ∫ŒEòP¢2¥»9å√`ÿ≈"⁄òwDX…¥pÿi©ŒTã‚¨¶Ó◊{Øìëdπ‘xy ¢˘«4[ '∂<≈f Xïe«0ª¥˚Í‰$w\6a£…¢ù§Fà¶4o É ÿèG£Ör ˘ ‡M˙|Ze∞¡Fë∆µï¿Çê}jê†ŸÁÚXØÌ—’îºŒÖ}køæ¬Ù§ûÚr9ny_]Yªº~jn∞Î˚8M”ü9ssc˝mVÉÕ2aòˇG∏π6;ÒÛ≠Îj˝¬∆º¸+m/¸®\´ïxîµª∞~i}kÍ«w€ˇ	á‚¸>daLR3˛kbŒ3¥Œ⁄SÉÌ∏µØ∑ä/JHÙ⁄gÚèl;≥'Iârp£ê⁄qs’&ä¡¯sø¬Ÿ2êfˆÇŒ˛ j¶Ï≠°Î,ê/â&øfh:øWˇ¯KÆÙ0ÏıOpÜºØ‘&»ï¡°ïƒø¸Çˇ˝∑˜˛E(Kèü~Ûû ¢˘3øﬂŒ«i˚1	˚q2p<Àñ]b ´∂ë¶CÆ«‘Dä”W"W€Öuü•v
+ühˇÇKC*ÅÂáâå ë˛Ûg¸V)ñáÔØ»‚œ˚µ∫ˇaˆ‘¢¬y¯›¯Ω’é”€@¬ê{ÏÕ´–_≈=ÿa„ÿ=∆ö˙ı÷%E2ÌZ‰C¡Ú*Ûßœá~˙ˆ”ÔÒ6—;üäõø–dìêSÒo≥F>~Á…ÏVb«]‰2`‚*DØ}!™ÖU¸≥H˚LK"√\1rG◊‚Á™ô†#†¥ºµﬂ®w(˚VJÀEu>≈∫}Ãˇ≈ö˜Îß‚)t8.à›Ü—Ñ2Ü˙Mtœ«™.r9<R.ìÌº∫ÓÿÍ/ıG>Q≥Á£lyV¨NC6§6”˛ä7=`¯;ˇG5D˜·ˆ0Íp=á*ÁÄL‚ú∏ªÒ÷c1Qƒxâ_}ã5|$:Éﬁçè±øOzÇè}(>dSèÿrV~ ÷5√~Äc¯'Ò√,IR”1‡á¯/ØÎ¢ÁˇÄü?«Î`Mèﬂï‡<ÛÜ:%/cN8ª§n√˝•÷lÃü’Zˆá_·z§§ÇZ©˙¶˘ïÿ@ﬁWgà«oôX™j?Àˆ∑j§e∑~Ñ√ƒßÔo∆ÔÆtÿnsΩÿ£√6≥;`Î√÷6(‡r≥˝Uˇ:Öù6R&ﬂî^°\5Â¨ƒÆ⁄/‚Gj5‰ÆûjZÀi)grVÎÒ˚°\àΩx=lÓ7π!q.Í©%ú)˘˙ıì~è‘öOü"(—ãUÙóÓˇzîu˙!ﬁ(ñ˚ÉL|TËs’™Æg9Ü¿kˇ8Èû‹â€‰Y©"í/Ò{‰ÜF~8∆“≠ÿÇD©GfC3⁄Â5ö◊BL–Ôﬂ√lf?¬z(ª¨â÷≥å÷°võ‡t≈‡Ω6v€π†Õ_`}?ƒQÕ%·D…Ùe®Óü®Õ•ÿ±é=„´Löfª∑ZB†¸&ÀÁ®æÕ5¢Iª9à®vÿçz[€`W Ò°&4úbm•ŒÚ–´o?∆€≤éÖÕ˜™øDSøêÜâ‘^‰b˛@ΩÎJIO*†X´h¡q{Û˛¨pŒﬁ∫Ó«≥Üwú—:"…ö/˘Ñ[œ‡Ñgßú)i˛¯≥ç[^æMÀ≈ÔgÒ Ω„¢∞Ω∞~qÌ∆•≠€◊÷Ø_ﬁÿ‹‹∏zeÛV˘5⁄≥úQ/w£poïÌù‘_No‚•UçtÒ}[`â·‘ qT›È¸¿¨,(R˜Nk–r8Y?q&~„ì¸Ë<}Û¸;Ä5CL
+%ò„"K~V<ë Z‰QYcS©Ï©πÅìá±j(ÈÆH|fBZ7ÿÔCà«nÿº≥ANÙÇ◊Ü≠”«éi‚¨Küb˜Œc$ﬁÈÉZË„(A*d†˜iv –é%j_˝yÅ†˝cÚQ£‚éäyl| ‘n*5A±;quÑ¶◊…˛ gvöX©∞1ív8h»I„—+Â[}ÅƒçÄçá‹ &6j∏¶„’b#;öó”¬˚∏∂}Ω∏hj≤ŒGí7∞«◊Æ^yv¨~F∂§±◊ÔƒÕa∫
+,ì9:4ó1iú‘˚1“ÒN!yˇ•¿≠(Ö„Oê¿„`É¸ÜeÒÉ¸˛˛Ào/Ò7û¸~ŸÖL∂¬2™î•˘¸;ym/@@Jº∂~JG%îƒÜ˘ÉX˙˛ã%O’Ë¡Ù¬&[|
+K◊ﬁ7FÚáBËä)n„ø&ãG√ÄN”ˆZ"L@rN¯Ç‰ÿ#0ãÅï∆æ®òõ(å*\tfé"Sw!HÈ H2p…ŸU¢”Ú√ ±r~•´b+f¬ù`ÿTcz⁄#â#GK…t•`“¸≥¸Ju8±¡∞+›÷¬†gÈWÆcßWÀNhó/Ae∫Ω«Ö≥ÁˆWù")vR	Äã≥[K‡˙9[ÈTvG∞Ìg´¥œ3˚AÁJG(ÚnŸÑõ∆|AHÕìDìÑê&jZÈ∆=™(NNGdõZ5LÒPP-é ¢™€ÊWJ¢¡OlwCˆ&FˇÀAo`á%v~I@Ú¢?x~Å≥?HˇÎï(GêıV†¿!…î˙Täon'A+‚ã∞>àÎ	&zÒw∑¢v\É˝ªQ†'Ÿ∆Ÿo¿†√Ù/ù0≈wü,Ãs&í»ÊIπ∆7 f%Qv˝∏ åπ'3jÕ[Ûç˘ïwXΩõ/Î›A˝§II8T:–|§àNØV»»ËÁYª¬˜S"eÅ!a™±b«á®¿C]<‘Eêr.pm`nA
+˘’r1Ö zZú8⁄ÉÁ∏_∂/≠Îó-ôXvJ{éqo]ßΩjÃ`À∞P¥Ï5´o
+O¯›”√≈¯ÊÍê^˘aüˇè*ÚË¶¬∆ﬁWQ0nhn®Ö°˙Æ"†œÜ•Í‘æ®¯ç/ß˘ÜâzCAÖ≤∂¡;`m»Â!Ó—¢†›ãSå)?/¶—ﬂﬁ˚wv“¶!#Ÿî)E∆?¿¸«òYKOœ˙llñü¸IÃ,*ïÒ”√_Úˇˇáä	zC,~ç°+/Ö–ÎıõÎﬁ⁄¯«5¶GUñÇ*øV—Üø—•ﬂ‚èèU Ã∑œexÜäÎ£¬‰dXÙGÍ¶2Ó£?◊2„TÕ"ªæS∑≤@bQ<ñ·•¯êb≠T¸Ï˚ÿèµuÛ©à÷Å5e¨ıóYd˜h>Ãñ˘#ˇ§bπ>(÷ˆª¨œËÅÄ≈/¶˝, 	≤±r?œ"ÅıÿÙÏÀÍTl√\6Ô;ª)≥öâ€ıaO[é’⁄iQ7]∫©–#≥§ª≤9J∏bá(…w•∫ç*ø{Ω®√j	ã9ÕF∂€àß¨Ãœ-ÕÁò‹´^á{¯æÕ˛ùàv‚˘˜8->S3!èΩ=T≥5õE"Z˜;V„]ÃŒÉ¨ -`V~«¶ﬁ∏◊)PoÄ∫P≠ıÄÍy	OŒs5™€[Â6{–©(h§ù¡Æ®6§t ≈ƒB∂
+™Yc6!∑K≈W{Mıs+ïﬂ
+⁄á≈ìÑ˛nãêJU•-‹ZXú «kŸ»˙‚ë˜æá…∫ª¯oÃvæ»Í†Lì˛∞x∂ÓÙı¬˛ ≈X∆ZÙPÖòÊ¨EÖ≈¿j2‰s3LÓFM5s∆bl≤OÏ≈"ßÃ≤8‡¿ØG
+∂4Ö”≤Z∆}ÈäØÃ¯J◊Œom‹\ßá^´˜f	#"˜‚qr˘q¶dévJÏÖ'ÿ˛œ≥xrµ—ä)ÛŒüoia∞Zó\Ωri„
+πKÚ∑059ø≈0ìˇ><˘ﬂOˇÚ/OˇÚ˛”'_<}Úü>˘7Q…#Ó!î{m‡WÓÌS;‡˙˙⁄Ö¢∂Ì\ü_i©`ü… |-û˙»ßC!À*ãä.‰µP{`s˝¸çÎ‰)ö…T	j?+%så€÷!MÓgQÎû~–ÄHìFÂO≤Mô†<πÛzôf®iqƒ;SÿgÙ3hK-ßHNÃuõzWÿ+ùd|Ú ÑtR–’=¨∂◊U *6Vr¶Å^@´µ;j÷Õ21x#9
+Ê5¨çø©<„íŸò*U˘€áøÌ+xJA¶üMxﬁ®sû˙É!¯0≥ÁRƒ5¥g£x◊Ën˝÷ bmWHù>¡≤üuN!ë›m6mUÿ1Ω*‹ ‡7˚n/ êßúÈT†ìÂ÷Kn—‚ €¡l3óY!à›Âc¬√êg≤ãb£GG:Ç~á˚_Ó5˘≠2S≥Ω¯q…Síπcxá=2%Ï˝∆QUëı˜5∫VD~_¡iaÌ^ã∞sCVÔ9#G`%ä
+Õç†ª∫´=’BÏ!Lc•Ç!œ‰Ø∞éÓA+õ0˝$Æ„}vÈÍõõÏ¸⁄µ-ÆÚò©oÏR”é]m ˜»éYˆ∏è2Õó Â∂∫¥ôƒùN=Ì∆Ò`◊fRïZÜ⁄R'nOIQ‚OrÚËxRnh@Yº∆≠öxá3†àﬂ∑I9•µdº#¯® ΩÖß7–d%Z)∏(œr˜¶zãÒòS¥⁄y∏oEÎ=Yt¬eû7w”*”ô™"P™qôH`\.<^á≤ÂΩµ"%°
+û¿–Yú^5¿Úô¥BxgòM*Œ¬—ÀÁCíôƒibÑ¥:¸ÏAäY¨À€A“„≠•b2ü%pj“…4ÛJÕë&K<ÔÓGﬁÁCbZô≤˛Íÿz°∞“tÇ π≈˘®÷åÑö ÷Ø∫‹M‚±¢âÂâ¨}b>ﬂ )LP˘f‹Ì«=æPÔ√‚¡#∞@Ù¬=åç¬Ω F⁄G[¸”Ê Ç<)ê˚3aØ~cìƒès¿•ﬁ0YXîi≤`}87¡˛% x˜ÔëR∫tºâ¯ƒ¨ı¬:øØ€ÁÏ”æ¯<SÇg·?1µ-é3ÊDÜ˘§∂™·W0I3=É˝x;æg4JG˜¨Ó¿N)ÃPß-X%;3≠Àp‰è´—44„/≥¯õŸiVR2ÌÁ™‘:¯∂é":/4∆µÿúÍ ÜÏguúUπÍ=æﬂ∫n%•µC1RÉíÚ†+|Óí~fjrUP@ØÙ∑ç-lí¢_¥ﬂAÛ¯ç@¶…\	ÔW#v—ZH…n7tEAHÊ6j∫ú8jã≤Hgûm r#R çÛBÆ/ò¿)≈bHgø)ˆèÕ_v_¶PPo¶eÍ–Ü*œ“äRµ'Ù⁄¥{G—vG¬4n-4ÊﬁëçUﬂÕ7ﬁx„ùë g4∆H™ÀJAe-Æ á%C	ÁÖŒpDq®NË0⁄d,åâ´]îS‘πé@Ù¸ªHæ°0‘Í¨?ÌG=˛IΩvÇ JDHE KvV˘'î¡,;˝:vj42Ä(˘3SGÀ2ÎW*éFF”êÎPCÿ⁄ü¿∞at	5ßÓ±©4öy˘Ã1zÔëF˙PÜï	¥W’ôÆ §o~∆jÁ¬6Ü_í_ûi¢SÔ, L£≥ëv+óÀn∂f≠ïK·wY!”Iy∏h>¡Fµö≤îê#JEqÖ;>RÄÖ‚`@F∂Iåÿ_È:·¸Ó‘‚3dp˘ÄÅ≤ÃOm'.iD=:(RÎ8ı∞öp%C∂∞,ÿÊ;#–ÈlÀu∆*Úm1›çc»≥Ø¢…œG«?5˛PÒò®◊ëΩE
+Úñ„d:z¸À›`¿^eˆ{A7jÊ"d¿Œ≈A“Útö!Xù∞Å◊#∑ùØ˝· Lµ‡nuêÉ¿dDπsﬂLµ≈kôsìG!Íq≈)Ëú>8PÆ¨U6\Qøo¨ÿN‰^∏{!ª{¡vk!l‰DÒ‹Ó‰ä˘§ø|vù-‰˙ó)G«§eÿœòIi;ÀÖ¥ùe3˜>5œYX¨HÿQÕ}|JVvÔÃıheç„	;¶@P™˝KQæPíèïkÖErÕr…ë@RµßÒ-¨E3‚ƒ\à∑´XNƒø‚˚ _πµr9HÓYŸ;£Ø⁄˚ßÊä?é=¬N{vî{ßt4H#›~:Ü} Ω.NµıµúYgÍÀEn+ù¿3Ìed¯)áñABb—v†aœÇ“g_!'Ç°÷ˇW•õûÁ≥$—B5ls“Æ∫$´y"≠>'Ω|ûU<yø±–Y‚TæÄAÂ"®<O‡+ú)R¢»´≥ﬂ>ñ(Œ*p◊ä[ÈboÜ=òÖ-c¨ÄrzÏ4˚uDtmD≥´≥˙Ú¯Ì„Y–ç†ÎPà∫àí-A‹À†œ?WFsñ\Ùù»‰ä|ñ"ˆWù∫‚Pe:˝ÂÈ·'ñ
+gÙ_È9`%k›h‰ ˝°∫P“H´’ı˚D¡∞mÛ¡*‡˙' µ˚ÎÃ4&´‰?mvÉdêM%„[—†√' z˝fÿ⁄çÓÒÍ2áQ›nñã}æé√›hNœT“ª<Q_è ¥n&}çCXFN˛≠àq”m$1hﬂùeµ∞—n∞∑‚=0A∫Çw@√ﬂü5◊4j∆Ω”\É2Ô\)¶ulÙ“A2ƒC©”Ô˛S<dAÇÃ°,ÌáMÆır¨UdÅ§Ö‹ŒWY©ÎênŒ”yüÄc¶ÒwÍ·› h¯"nZvπﬁgc\ﬂïÅT•÷>[°◊O".%◊˙}æIc¶Ωx÷.†\ºqÈ˚«+Wﬂæ¥~·ÕuÆl∑ÿÕçÎ[7÷.±µÛÁ◊77°Î†F\|F¸Ö{·vä¡-ÿÍa¬Up πHè3$:Œ.áΩ!|‚}Õˇ#¥)˛T◊˘Lè≥å7È8ª¬∑ßY9˛ÒB0∂πd?Œ6q¬ütú)∏y¯K`ägÁ∏ÿˆ˘[ª|[ÊˇÖ⁄	)ê6˛ÓÔﬁﬁ{,HÔ`‚,6ÈåWˇÆ.jAÀZ¸•«•Ôw.Íâ?Ÿäxrk(:0ƒK¸˛ı{|t¯¯Öí‚Erz±ùË^ò6¥wlÆ_=Œ∂ì¯ØM'Í›ë≥ê:êH®◊·&!‡˘õÇ^èÔ2MﬁºÙb3Jö√NÄ›}·"ˇw˝^3Ï(÷&.Øª0]ƒã/Ûö†vV‘¯‰x'ƒﬁÁ{W¬ª≥^åø ùob∑ªèÕ„F€èá	°ç=’õu∂±#;ñT‹ävˆ3¸„‚bËê{º˚¯$›KØÛMXPÌBˇãI-ËÖù◊RV@ƒGq≠g"ß.ÂØh™Òº¶˝ÜCò”@úy\úë‚:º¬gËZ˛]ìO|^˛∂≠∞3l·yÎΩv'JwY+Ïs¸ü|µ‡@tπÜÒ,›`#π¸§Ø«ÉÊ ÏŒ•(äEœ˛Ùß\‡ü≥‰·Ô<çW†àœƒR<*Èo®Ç∞pV¯œä«:±QØTû˛MõÿL»k_ùZiÈYú2Uƒ¿KGIl•ŒN≥GxÅó¨º¿V‡V,
+õ:¸<ÅÕ|¿F6‡ï2¢rgX0
+2Ù;›3l$ª±¸YÉ0®ø¿ÇÈ,Sö›qHˇ{-»_òèí™ÃRï7WbJô´dØ©Ë˘L˚- ?RéÓØ2'vê”ÄT¯Æ«I·',¿"√1Æ]≈Ò¢É‚xBÇcó˜Ñ@n$QPÔ€aá´ò“√˛ä∏«¯59!2ïôzåÌCÖ<ÚiêI$»ñgòá∆‚¬Am‚–áÁyö‡Ï>üÍ`;ªF‚‹e«†@^–ªæzù:≤ù	Ÿ¬É¸˙äE8:d
+≤’°(¸è¥§Áo≥≥∆$.NM(€|àV_π∞âTô’nF·ûÉZôtk2´≠s=È;¨]<Jä<Zâ<^õAh≠…TÇ‰KùŸÕâÏÕà¸‹˘ê-aÊ$.‰i2!ø∏<»ñ^"s Oã˘•·?∂tâ˚¯®òè_Xﬁc[áπ9èèíÒ¯≈Á;∂ÙâÎ¯Hôé_ûcK9éèÇ·¯Ö„7∂tô€x⁄Ã∆/Ø±•	ú∆”f4~â˘å≠k÷E ;-&„óÉ«ÿ∂nI∆G«`¸}‡/∂tØãª¯Hòã_Nﬁbc/˙sOÃXLÊ+¶±Oó´òÃTLÊ)&≥[ì©ú.~b;ÒTπâ°ÚS‚%¶∞gd4Ê¶º–Yà)¥æUƒ’ƒ ®ÅıOπƒ"Ú”Yà›onJß	ôÊà<sæ,s1èE7=z∏iê√MN75b∏)—¬MèkxB∏âxÜI4õ>æ”%»#øòí67oÅ5Ôy2ªΩ^Va9!ÁD¡?HZg-^8IÎ¡
+<é§}ô»¥I78eB˛ﬂDé≥/ú»ÒRh~:œUËÿ9~ç›i‚˜µ∞˚π}©AVf^_zYudÖ‰»Ü;4J_
+_“TÈ|K–®'F—TG¯|È‹GÇ≥w`ÂÏµ≤uRÜÑ¬÷kÁÍ-0ıR…x≠{é?ŸÓDª9…ÓHtÔ[Ñd∆Uk©Ãåê∫8»±≈Eˇ\tc†í:¿Q~ÙØµ◊ø;fiúYb˘êˆÊL¡≈”ìœıÊd—€èt∆Ω«Í‡‡[7"√Vy«˝=£p Wã√æıúÿW\ÏøeÍ1Â
+Îj–=V¨©c™Dt?N•¸‹ﬁKçùâTME
+ÔÖ∑á€≠€˛˝,S„%3’IIÎ˜¬€≠K¸ûÀq¬Ì!3kŒQë—ó¿©o5_±:ÊÖSﬁMëN6∆ÛÔF)TÓ∂˘=◊Ü€\éﬂ◊·ë≤Î-s?bõ√‰n∏Ø“%YMãn{,Œ/+S§ÂA‹ÏåKEÕS|≈m’Ë…È<õÛä»ûZ$Áoç‰6USDT˜.C~˛23"QÁ@S¿íó'c⁄UÍîôÊ‘π ·¶\2XRIR'IRVNdS
+Ÿ(LB3Ø1ÖLÂÓ#–ê¯X“ò|Ê´…˘âªlÉ˜µ9À F`>ÚEˇJãÌ461RÜT„dÅˆì‚¡¬	í.˜$lÚëØ“Ú\	KÜØù+aÑ¨´Ÿ)e‡6∑F”ö®ı∞•\7¸áx;ùï¥∏˙ÁçÿåÂ
+ÙÅº]áb”qrÂ:XT@D8‰Uõò∑D©9E±"ÒÆ[Ê|¸£A¿%´l"#‘©cŒäÜ“[˝XÜ+‡∑÷9Æb#CoÌJ¨ƒç’iÀ,Ó€-¯Ü„N£Ä0„Í3{ΩìzÀòV∆t§5π`Â€Ç†OŸ¨,Áﬁâ@vd$kê∫∆òîOˆ—\ ∑á≤îk¢0€é$}HïõÔïv8˜Ê5WÌ¨y2œ±õHôˆ≤÷˛∫eØx	™&˙Yw…ù
+°k'b‚ñÿ=Üé¥,y	19Àâ´©6˙ª◊?+∑zGsI»Â2dì∫.ƒª«€“w‡ ≠RÌ¥GtâÇq]¸…N˛*Qºº∏“˚Óc
+o˘Ñ äpU∏±R°1ÍÁt\{Ë∏vˇ
+!÷KVd\˛¬Rı—ª…ÕŸ∏∞ <Êπ9Ó≥Gy›ÿ„K"≠•î=øTAûWÕañÑ$∆*Q†w©∞˛∂Œ´ú'-zÈÙÆTüá≠é‘i'à:~≤“j˘=h’∆áE}îõcJØuNaéUÖ∆;%Æ<Íµ·!˚N¯ æAÃm?©aÅwq˛%ì^@ãÙÆ…à∫º‰B3	¡*]£SxdÙ_2IˇE¨C‡ß‚3»îÜÍ¸u1^ûzF](%9]A#ë_˚MÒ—πØ\Å~ı’)»yjweØx–÷®í#á¸5™õãq“/ƒ{ΩNh¨ ≈ë’PUfÊÇ~4'Ω7s3ÏÔΩü ˙=1ˇ:º˚äÆ”›¶Ôm·ˇo‹Î§˜ﬁı}&ïêB:Ø	î¢P ·⁄]Ì0ú~Œ¶!ËHåû""Pé„U;	K™Êê<EÒyÜﬂÃ=ïΩ)câÒaqa˜T¢∞ı_≈cPAãW`û\Dãî[¢5°‘”ß"}VM¡Ã/ùÎÅ+Ü9ò˝xsPÕ?ÏÍmÙæ>µ)¡ã„L6øâFg8#m÷.
+3)§|Ç)Œ*ª†:⁄J˝ÏœÚQQ°±œ…Á~ƒ ôà≠mÛ≠B õ÷0÷„KLSœ°rú-è HGª˝|;Äó|Oèusí˙2É˝¥évt˜¶√]Ãó¸`WL≈i’D|¨ÚÄ(„%8¿m¡ÿ≤v'ﬁ:N6&>'Q„; ¯«Ò0ÈÖ˚œw¸c7`UHπ&V#+êiŒÆ7s úB§I?n('ÉyB2!∑`ÖI˘'ƒä8TXpdk>:≈™bœ˘–Ûñç˜”(ZœÛñsr∂Å€=F"Z∏¥À˝ñ]ËR¥‘j˝$ºÎ‘∆‡"vV˝√ﬂ«Ö≤öáöcÂŸ}∂ä,º6s¬¨ØôX¿ÚGú˝0£¿8µüi XkÓÂ—#ﬂäòÉ—‡ÇE\0À#Ú•Àxg"ø6äC¨^Û+§`(v–Ôóu……©Î≠ ÙYùΩµu˘“ú‚Ç∞•B£JÔZÉP„ 	cUíx/ÂZ≠≈°Wπõ≤/ﬁ2î5{>qtS†¡x‰¿e0Á√ Kb47S_ØK∏^OH"/Æ≥ªì¨ÿ&öëXì£[“êça^Õ‹+–ä‡V◊Ê¶¢W∑•Ÿ3†à¸±2Rúâ∏wngeíA˘∂ü≠-x®Û¥yï/]{&ì®b¶PA|ﬂN8hÓ÷ÑOX<ˆƒ(›p∞∑ ›ÓÍÊñ4
+Î;¡Eôë„Qﬂ‚∫ƒAês¨Ã˝8çm˘	™¨ÒåìË'x”*{˜\»≈e¬^9¿ÅπÔtZpáDzï˝√Ê’+ç=˜‹≤Äº™"µ	}⁄	Õ«›§Lnñﬂ:€cM±Áu@Å≈¬'L#æ„FB†‰ÅàR!Xf{êØßL|©åyôqå’ “Xb†ô|Ï0NPúÈ~∏(
+õóãŸóÖÆ5∏˙g∞p»¥7µôãxb	P)o«åÎ-ñ_ıD◊@Ây*Xx7$»	eØÖπDﬁPôm≤\¢|◊à∫>Z÷’Ó•%≠L=ø¯Œh≤IëﬁΩ¿Lˇ∆JyG4—›jÒ´aBät8¢£√8«•¬ f∂R,Õ⁄¢Õ9&ìé”ó‹ØŸYøÆêmrq	(-ÿï–{Àû˘êËÏ¬?Ÿ+óÁÒo]‘óó⁄wÍFØ‘Fo'VN©˘):•(g÷YãÄP”<”Ì.)$-⁄ä˙>.{˝Úòw9ï⁄ﬁÀ§Àö≤ƒƒ§c÷‹„\ﬂV Ñ9ˆ-Êl–oø≈ês‰ Ω«0Ë‚;c%Úk •˜·?Ãˆ® ¯œ5∏æO≥d√q8YH_èGlï•™R‹Ÿ#)ùˆj˛qWÒ≈]ù˘≈çùÓæ≠ÿ˙I‘∏VÃ§∆Ÿ˜¶f@6'˜ƒà≥¨
+eÑú….kóÔƒ|Ç∆˝PúÄÔ5H¯ª¯∑„d ¯89—A™õ4
+íó◊7∫;¿Øñ‡8dó„ñ)J€Ââ0./ ≠_K‚ÆÁùmù‡b4Ö$Gã¥j›8&¬¨-Ÿè”1m	%7ÀèGåynNéò¥√®Â0J∏cÿY£^˜ç›ê_ø [Âæ‹°pÁä≤ÿS˚@±(*ñ·ƒË¶áCuˆ…%/º^Kˇ∆Ÿìõ¢¢JG´∏Kœ‘1.mÁ3∆†QÊØIú…*E|˝:ÁSb—©’uf≠ﬂWí_,˜⁄⁄pœûöóìü◊r¸ûÇ»~B+HÓÃúπ¿ˇ%›jNHóÈ9ÀótçŸ⁄Î+N≈à›Oö√'Õ;8˛Í%€sΩ“.€Ÿv≠
+0î∑%Ø.≤∂Ü= Ç≈û.z≥Ê¯ïL˝ó^Üá
+¢π‘¸jò Æm#(≤Ó Ó=$€E†)Bw9€àR≠Mÿ$.Ù⁄`Áø¢xym„ ÷˙ïµ+Á◊g ÊªyïÕ\⁄∏πnŸç∆⁄èîª±Pav∫,—GÍGqaJÈ{-ÿ«∏±”N◊ÀHØ≠ørm+≈N-oKÆªeu◊TËÌ&Äo![`G=kÇs@.vG“ˇ®™ÃÕ15ÉD±!ã∫†ﬂÚø:˚»´ı$«∂$ö∞>Ë≥9*ŒÇ¥ú(◊Ë©√ ˜e≈â·|Œ:˙5™¬4q˚@±«$Õv#	ª|ﬁl®6ﬁßπ∑ë.˚6Ã'nTú~÷ü›∫õæà«m√h7ÓÜ∑˚º⁄ ^TÏ«„eµj∂Å∫LM∂∏ú»%¨OÁ«ëT@)SEqƒe·>¸∑ˇÁ'¯Ô
+Ç‡3áõ+$®X^ÌÒ5%HñfQˇÁ√áˇÓˆq¸2sJØƒØ¥'‹îÏ©N∂ËO™n˙<:Ù≥"”L
+1⁄´ò\Åπ´w√)uËDŒy€èïßøÌ:S∆⁄µf!€‘k•˝ÂRi9“XMk^nQ’EU‚ˆ7¸)±w2>	˜ıXÚgH∆ñ_˜´≥‚¥u+⁄#Ô◊Uâ38µoÿÂ´∞JcL¿:À+≈Ü∞Ív-0°¶™ÛUbDiu1Z} ÈvÜµb»È…bZó9Wv√Ø√1¥2âcHE#Ùï"Õ˘4£öC1 b¸O0Ok∫»;Ùz‹t∫,⁄ÏsŸxëóo'J‘:=”ÕÎ[Ô¶Ì˙Nvú©¢-Å xs‘—wYsL<=¸e] 	°)»˜Áù√Œ»t3|¡ÖT_¨å£.V∞Y}8 ¨¯u«üƒe:®√_ñ†µﬂ¬Ô∆«ó9ı≠Áª¿	–>©ÿ#V
+J!∏ËÌê	xí⁄	•Ä'ãªµFâ‚ﬁ9L~ô%≈8í{f¯f@Ÿ:∫æåÏ∆ÉÊ¡&Ù
+◊iD∑5r±‰XÿnyÛ‹$`ïBëë@Pka¸`m=†Ïm±≠®Îê-DÈBî/>fT∆Zá4!C3YG@?HaÛî‚_8.dãL”=îGáµµ~?âÔ5¯Oo≈√Ñ+¬Ó©—P\y3Åíf¸%ydíÄˆÏﬁè_Ïî—5ÇãÊz§qÔÂY,	÷w™ÀEtÅ\'éÕ≠ö∫O«÷U§®∞Ø„MØf‹~¥ß*¬≈˜åÿºæÀÔné!]Ù_u∂MBû™ò¢‚B{çΩCjÒÒWîÚﬂrîùf‡v!ò±÷;!¸yn£U3®´≥,H1†~ñ§ºaˆ¨¡∫1¸eÄ.Ï‘wk€ÿT^.¶1˘ı¡0ï
+¥¬AuR∫„ ®∂ø
+#H…®7Ì‡´8ûOBmUˆ"ÂÊJ«ªÛ>ùÖ√üùß/?J}é~g◊Û«ÒŸﬂ3πÀtØÌT° ™Ns⁄îÈ}ïoå)ñ‘ÎRº≥^ôªîË,ùf;¨nPˇñÿΩöd⁄–|∑ÕPüÙ†ﬁjÄ˘B dÜ- ˙|*	N¿æ€˙Õâ{AÃlõp£X7z#9 Kùó±Å_€∏¬jó¬ª¸Ì„føïö°ß‡‚∑°‡∫¥w–≈˚Ã/êanï®Ét7ﬁªı‡¥U~8bËÛzÌqÌ–™‚î€øΩ˜ÔŸˇlÔúVéGﬂ)`Rgczk!Ïæc´J—¯êG–ËÁ›akx7∏w	Ò≥O,õØ≥( n7H¢†éËÙÃV‹nwBút@1∞u @ 5ÆÂ∏ÇzÄòµcrRX!8¥°∂”∏3ÑÑà+‚É^ÙÖπEVG±ácπè_ÄsΩ¥5ÿÎ¡—lê⁄‹>µæ^›Ÿ)√Ûô_æ37ÿ%›à"’øYÁÇ>6¡~ëA¿BYìá¶ŒÒ4}ÑVÕËÙ∂ucP˜≠;’®`≤&ªVŸ∆Î›ÜD?@√^}⁄ß£ﬂ/€û#ä'’’NCëÈùéG∏µ3ﬁ@∑91Vœ‘V	ÀuMËX¿uƒ,™≈V,»VU¯4ËeyîØt±G…Á5ERÊLA)∏∑">ªÌì  ÌFj◊ﬂwıüOÁã˚LwrHp!•@
+∂ﬁk∆|ﬂ•{Ü;9†È∆ﬂYäyÛ`d∫êü∞≤e÷ä⁄— µ5ÀÙZ£1™‘ s)◊i≤-74˝•Ç•
+aq*4‘[ÛçEÆœåf 7@
+`xÚçë¨¯Rä`ı∂a⁄ﬁåªèa«≥0›Mñ≤˜"§‚àì≤WŸ⁄∞≈Ü.xÊY8Pë˚zoÄ G"zúkcqgL5Ñ#MÃã4%’êUù-∞∆Æƒ.LE <€Ñ•‚Tt\*7Yˆı«‚Sm—ö·∑¬¡vOØU
+˜√Ò∂ô é 3dj¡˛Y¥Éeò3C∑√¡^ˆ≠rDìH¯6T√µ:±ÿÅQïÉªT∫R≤˛tx]ùÜOˇﬁàﬁhè‚Å—Uv¿≤E—q¿Qn\∆PcˇÓJ°O2I∆e˚É„D—∞å¨~ü›kE'‡pTv£««*Ë1‡b*√ú\å&Iù’∂ I[GÃ˛„˘›n˜Æc∂LûÛ>fÆhêgÃ2j?$9ø∆êj[¥Äœÿ'ÓQL¡—π«∂í®›6•ÉäÆ≤M¡âH)|”V_tZˇZê~)^ÕË>˝≥ÚgKÎÔÑÔıØÍZIˆa@ﬁœŒ£ÖWˆ±ÚÕ˛∫"k\è«˙Ds•î(X∫ 8Ì≠Ûö(⁄≥)°ìKû”¢‹≤πgÄ˘eïΩ&å—Ùµ„∑˛ÕE^â]ô∏Åxî_»æá~¸ÛË°~~(/Y/_≥[üÍÕ˝8ËÔΩÓ±kºSƒ’}*“·≥`>[ ﬂ”Å˙6A˙÷—ﬁ∑÷	Å”sék‘]pq‡{Eˆ˝¸
+Úï◊ïøﬂ¯˙wqÏ–N“ú »∆ó{‡}˚V?¢t8∂~|	–RT,‚%„"FJQ%Ï∏˚jöûbVÒÛÍbË≥iÕ‰•B•Ô◊ ç∫"Û\wlw⁄ÖºıºDî‡2q·Ø}»üBL«^}ÈÑ;®Df·°ãYÿr∑‘ÄøÆê◊§k¸6læØπ√\∆ ®•†N#πtÓ”TÙz\)µcÙ¯:;ΩŒõ∏
+o$]SéçuÉ‡6**¬!U~!ó#g»îÄÔn?v˙4{m'Ë§·k≥CÜ_Fkî≤jﬁ{rä»Sê˜äæÃﬁ%<Ãq™J3/%=`gŒ\Ü„Ñöä_AY ÚHy¢\π∫µqq„¸⁄÷∆’+∑7Øﬁ∏ra•a⁄§—óÂuC°ò6Åï*Kd≈Og‡ø= j†◊ÀéléØu$\d◊	≠“-ú»r^ƒq@⁄É»qAù”d¬úÊóMcñnêÀÊc®L¿ñmM]fèË=˛ﬁ¿)[aÜ/Pò§${ ßõ∞∑∏Ó!¨6Õ‘]∞õ∫ÚQ 5ÓœÙ≥yMåÉ‘o«è9zˇ†$ªÑm8xA‹ÉÁ¯U√>˙Åºöœ»}†µƒÕÒºÉœœ=x\ÏõΩ†üÓ∆∆ÂÁ‡`k'¸á◊√¶™'ÊR^Yãè-øh
+N∂7Œ˜»—Vòê/¶{ÌM…8Œ∏M ≠=€Fy}ˆ™ë µ8ÍwI≥Îa:à„^˚K¢ˇB
+ñ*™Lá`…/öÇ`π—ˇ~äï i˘bäóK0 ê@Õ¬{Q:@ß=Eæ4∆XÇ$≈D∂Ï≥pAÜ0ˇÄ⁄dMµ˘ÙKìrîw'ü†‚Wπ¡]fW{˘;7w!∏˝ö#É´ƒΩ6 ?«=3J°yˆögnVˇ◊“l>ì5ø?Ø4‰ï/ª0È=∞€‰˘y¶· EÕôtîJl/Íá)k=n\wˆŸ∂yaÜ˜¬ÊÚ^ÔF&FcÃ_–q<`õªaßSç±jY6£àºÎÅ@·Õ·’I∏ù¯p}s/Ë4v¢$¥b Ixır‚˝pånÛ¢√@P?G>§Ëñ„;E'TÉ‘å{="ñb.zòÍH±ev‘ƒXÆ®∑[Ø„;Qºwu8H£VàΩ≤ –{aªbP—kítœ·»ÓiE≠´˝ê_Iq◊`ø√[@#˝Æ›_¬Á2§-≈√AçÊ⁄ãz≠xØpP–ΩæÇÄè’Ö"sú-Œœœ€ºÃù`vé˙Ña	pv%ﬁà»ÏÊ(¨:ª|0$wxÉØópºÖlï]ù∂˙K÷{n—‡+2JÀÎ·óYªÁ˜
+ÃêL-¯µúãB.>ÔÕœGŒºÕ%•Ä´QìÏ|–‹•®◊y0ùdıT≤0_ê˚≈q—…Jo›Ë®„~¢¡Ø'ÄﬂhT7\uÉÙıx–⁄AãÜ™-PÔóµ†É™X<ìj2ñüm≠≈.Ω†çÅ‡¨ˆfCJƒZk3Ï•·¨…óÊÙ§≠8<i*–1d`^tbÆ ¡óµ|…'qö‚væ' :ïªµIKPN…‰	◊ı åûU›o48%!ƒ‚¸(±RûkFâÍ´V˛ñ`,ådÇBÒÈÔú£i∆mü9Ã(ç„≠≤ˆÃôº7ÂëúIã$á4:iG“ŒL∫2WÚ“8©˜¡ä„˙ïQZc^óÃ⁄·í°yg;æ7SîÉ+l7π-:ñÊã‘ßbNgá≈˙ 7[|kÿ*B0pqp∂!(4◊ZÈzËt[ÏÏY<ºú*‹wïørπ!€∏V™6‹ü=Œ µ“@LeSÏâœ‰îg˛“UΩbéScL)‚fÚWI–Ã€9j¶J˜8^&_ _≈_Tf¬±ùqçìd}0⁄º…“úΩs¨ß_É<¡†4Œ≤ôLX§LŒLv‘ææ•‚{[vÄiåNßëàóJoÀÎÂ"Í≈÷:¢>\YêËœ∂êó,’‘Ë"(‘çÀÂﬁ# ~Ló´`Dé
+<lùå÷I ›≥v˚|ï%∑økä≥‰S\'êÿæS<á
+D™ØÒáGzn∫à¿˚V„@∞oüŒ:quÇ‘Ê:dı¿ñ=√ÊÌ¯Ñ”!ÍaOı6'’˝{® s=xAw∑Êzpûß^Ö}æ"¢F@¸s`+u’mëÿvúnøë∂ÏÒ}oóˇøDΩŒ3g(—[£qŸ–=P‡>bú~≥ .É›∆N'éìZy<Êÿâ˘Ÿ˚›—Å˙Ô¸á˚Ê(Tå¡∞VsúkÉ#k!sdÂj)_=6,8§É«(Q@|Äˇä ’œ“ˇ  ˇˇÏΩ{s◊ï'¯ø>E≤Ãñ™LT°™	Ç‰ÇI±MêÇ≤›aƒDU*Õ™ rfAFÑ•∑{€÷æ&<éz√Îmo∑√3≠¶4·nulÑıU˛;aÔ9˜˝ Ã@ëÌQvõBeﬁÁπÁû{ÓπÁ˛á]„‡ ?W£9PcπØ·Oi—ø∆ˇ¿»æT
+Œb1X2]gFå∂	3¥aá¢û≠§ÕmÙÚ!4î¶·¥‘£Øƒï{eÆ[ÒdÜûß+B<z~Ÿxg!”Ok¡
+˘˛|ìp˘áœvô(Ø°#™PKÏ∞";ß+Å›ÇzG«iÌ]m”“±‡πK/ÇÕê»ŸNw®ï˚nó‹ÈÚÇO—v,∫ª¨›Y^fewóÁ*õ:Ωr◊R∑◊
+ÄSË ∆d˛qÖ^1B√û≥Ú˚ì<Jyõ4∏$ l[„¨Ã{
+
+!sÅ¶GGuôìC©˜’Èµ˜-—¸5µ+•òEØJ}áÁı©ºj|ACæBU[!Uä€Es>Ä˜◊]»©◊π°í ¿>£l»\aç‚e˛∞’ÜàB∑ÑfMÈ˘›QÕò2ÿ§b»§/Ö˘C(ƒçY1b¶hâó^È60}äu5T«ÁêçÂÖE≤Â¬zn¯ìÍrw61Ñe	GúèhÑ–eBÒ’âƒ◊)ﬂq¯&CtÕ‹!n8º˝{*˚ºq:‹{`°‹SŸè1R(Ó!hURJ‚tÔÜ·hıK¢qTëÓpªäßÑv¨”i∑ugÖs{G≤Î>‰–-$L‡ªΩ`éTQƒ≠S√˘Õ~ÛÆî7ÛÖW√Õ@√lÒ≤€°Lò∞y¸ F†Vjd:kl∑eŒåÂÒDÆˇ∑_ˇˇ€|ˆ#∑û±∆«µ†AÔä~LmY§©yöLÆó;¥-+ﬁ\Kò«¢Ä+\Iim/Â¢è4L ≥5îD	fT.Ω‡π(|$é"ÂñdíîX¶pÓ}ƒŒÇ2Kª»Zp¡Îaœ§,∆0)\s¢— \Ú#úÿ¡•≠˛N4iﬁ{N·eû2#“P+(:Å‰F⁄˝≥?‚Ωñ◊s¯∏ôåFa∫ÿ\$"qæí„GÕÙunGèﬁoÍ—£∏0Â∏•z™cGÚPî:ı}¶^Ô©£ﬁ®ØœﬂÌ¸ıÎÊÖgé\¿™é¸›õr⁄hJ±Û:i¨Ô±%
+lˆñæŸ_#πõ–ƒÛ?]dÁ.7bÎ‚(á£{õÂpUQJÅtùê“‚û, ,ûœÅ>Gx˚_Í»Œ@”@Å»uÖÑÈÖÕÈåtªª¥º≤˙ÓÂ+Ö7Sa|UâÕxäÉŒ~w~YMõcá^=∆î¬›p2π9ö•ßJ¸UQÂkC–∞ÿh∞ù€`â™S[d¸KJ·âˆú°”Áí√;q?⁄St%ÓÇ¯\$0–âìÌM√Jõæñ≈ÁFöØÚ-ê˘$dÇÎœI,ﬂõ47“<Ó·Æ·ø…‹ær˘›’ïÂ•na|¥
+í˘ﬁÑÓMíÕ¢U_KÁs$Œ◊Ú˘çñœä{"zn"∞◊3◊ ù^OÛ`cd†+Ùô,˜Â•–tÿ©~ƒı≥⁄ÔoA§w”r/∞g^âÈûQ∏¯ó;@√ˇ~Õ˜ÂG±ﬂ+‰?Öøá‰UÓΩ&|≥Y_ÒﬂàÖ‚ı/ÖF|È–ÆŸÒï◊oä)_iRùâ∂∆◊}≈ê$‡öCâDó”Ú€>ÎPtòF·˘Ô[íI¢ÔZ§L÷P~áÕ•nıΩÀzFÖ,Ì]{á»¶w‡Úæ∫~ö}óû@∫7∆ƒ‰h‘◊ªòÛ£Õ◊õò7`u≤71ñ<{Ê•◊ ∆ï=€◊í¸ú$˘dír6Îki~û‘˘ZûøëÚ‹%ÿﬁ(sT•◊éón("ıßâ"O~8F¿ü‘IsÄ"•Çñdˆ±ø,;QÙ£ﬁ(ôı?ÏO™a q[OßL˜…í¬> ŒŸ(∆?ö ÜIV≤úå%Y ¯ı(
+∆nÿ«.ˇu0ÛmëzHÛÇ˜¢ñü√8w°ÚqíNáq6ÆjÔ;H√>∏4Û§πü"@'GÑπBñ∑gq»5∂á4h3õ6;Ì`t∞F˛ª,ñ∫›ÂÀ‡éÕ,ÇÄõ∆cñpMc0"oáqøM¸J¢‡ﬂirX=Ê≤±‰¢¡rq•íÂQD°ÜË”mã∫ΩÈ<*&È≥™5£gqá.∆Ù:Hg≈á±~∏ÉŸ!ó⁄mKOô 1ï¸ëÇØ≥{V6&äŒpÍ.D6Wóâ±∫,Á1T4vZ≤€iÉ=¿.TÖ+„˙É&ò(@¿=˚Ø√“¡µ™~„gx«_¶Übã,Ï°∫!Tui‹&™Y*
+juo2HâêIgΩ†¡ûuΩ“∂»˘ø2tF4Ü®Q}‘ ŸÏ€mÿ˛∞”ù>ˇ0=ÿÎù’ÖŒÂïÖN˜ Bªµ“ÿ3!<ä-@ñ,6‘7"Ôlõ@€Sp‘}…‡/V<ıë'⁄B∞˘`'x;ÿπ˝0X'r´∫ÖLõã‡Ü∏j€·$ìa∏‰˘b#v∏√0PX<~±i?¡U∞ ∞≥è¢pDqûcùΩ uñ!Ã=5nãA‚y
+‰ z=*π®Æûë*Õ≤Sâ…€†ü¿ç †∏∑$"=∞ŒlNÿ—M4®0%™YO¢Áp°h pr:ÙñëîD…9L“ß∏Ü∫/ù9ÚÑ°ºËrçÌˆ»ÍtÿgπÔ>QQh∆≈—Ô˙4Qÿé˚ËŒ4K«u´⁄∑
+∏ÑÅvªó©¿Æ∏Û>ÑÂmˇxÂ‰≤Å≈^ÜGZ¥ﬂ‰·*†≠ü≈A•™‹<€[—–´M¿Vj<(P¶7P∂„i;t≥
+ÀíbÏëê’p’èŸ¥e◊≥§û:Ö˛ ÙÅsë4x‘ÍË¨Qúm-®›â”á¯=¿ß¶-(0ú.
+Ây›b+=£ ´ï¸πƒîÃb•Tp lç‚©e4và"Nﬁ≠0Ì;pª5§raÎ»PRßFñvYô:rµó¡ﬁÖjqÙ⁄ÀÜ¶m*‘^c.Tx^≠zU(’+ZE’Vna≥∑~±ˆ°Íf
+≠eò≈†e{a˘}Î@â6;èT]©∫ÍMΩ™HT"∞Q.ïÅ<!tπ‰.$kã∂ŸËûZ¿:Äv]p◊äsÑ¶∂ïAêÒYq{r‡ô˛0W>yY œkËRH—¢“È g√-∞*◊u®√Äl´sI◊‡˙Q†Ω n~Nß†Ì@!∞˙G‰ø»Á£êÇœ'ΩﬁÃ®®D7è?§≠"ßñ~.>+\‚˛ö∂ÊzDB\3ûí,dÅÓë,dSp˝t+NËªyE^≤zG}¬elÄJ
+c@˛Ö©ä1… â1`LSçb1›©‘F±Xàûê≈YN√Ê¡˛å∞\˛j…¿bOí~T3∏*xî3Sû
+£IZä´ØAVA≤èöTÜö*IO∂‚ÿÅ0£Åá¶Lmpã¥£¥’j=)® ®HV⁄(Õ¶]ööôÀÏˆ…D⁄Ω+sÃÁÂ„£)·vFÛ‚)&ÛjÙÚ,‚ÄVE2é;4p3ÎØà¿ôÂÒ(˛å≠:ê•£X°qÍI	;è™0¨¬-)M[„(À©Àk*¸^•Ï¯âà¢±‚ÿ÷6ªRã6·vºäÁ≈≤.{Áq)©»~Gµ‚!ÆP›W*Ñ[]%XêlÊ˘ØrF∂¬bÇ?)¢x1äâc»ÁX	 0<Ö™¸2SÂóuµ∂4 z¿±˛oÅÉ7¯uu%_L®ÆªCÛG∞cÂ8ÕÜD9Æ]gÎÇï¬ÃWA¬TEÅ˘£Œ=á˘‡b7Óó√xúv◊’X	NÇ≈åHüÚû¶îÇ±ºﬂEëh˛∏tc≤mπèÖ‹Õ≈Í\ö[Åã+C>=bπM•“∂òŒ¬ö+Rñ]1. Hs’P·≈·O°WêΩ˚nÅ„:;˝QO@¥”ı8‰≤„4§”ê_ﬁ∫ã¿ßäOîòuQgÕb;#Ÿ˝5wË'∏OV»´Z··—È0∆ù”	N—‰—L:ã¢mﬁ![`_-É¿Q4¶uL°˚40ÏG^…ø˛Aî&M®{“;bêó%{·πh‡ü`ÿÉì•˜»ˆ*7ì”YÚ∫ÖÅè\πœﬂÚÁS±Œ7ÄCÅ≈¨Í‰_Q&Q)\ü~“Ç«€"ÄçÂfUóUea
+¿Ù-é,.óË*Â‚ª|ÿﬁ
+n•´∞Ó∂<åÉ“ù˚%+ëﬂ¸∆RxÖ≈π<l60Æááá≠®…\ÃZq±Õ†d%.Í%üKçF‘KÈÆı(jfΩpÇä0†\dª≤Pu’=V¡≥aI_x=±	=Q[Àb2ñ∂ät†¶,ú`@.?Õ*ñVîN≈WMË1éﬂù‰LOî†∂A˙›#Ç9+1∂eyòœ2íÅÆ*G%…üÖP¯ª´-Úˇ›˘ˇíÙÆê‰`J–´2mÚ^ﬂz∞±uªjèÈ±i•˜`ø–J#¬Ÿi´óå+ˆöä˚W›i"FÉoGiôYUÙ˚ˆ§óMÛ®x4x◊7„É¯D~|'x÷i-UÏ;ÏÂŒh¬Ö’x!àÀ≠∏d˙ïõp„Í ˜‘KB¯—˚Ω"d‰©SIúzà©Ãhz	∏#ù“HPËÖ∞\‰ÖPa≥z≠¨]§l†ı°¥Z’Ó ±¶`yj”≠◊E⁄$d…â¡≠øAvØ¥·„>:êt)µBT•ùéÁA®*{zg,Qı á˚j&X∑'Ω∞`≠wäàåÿô£RªB≈ı‡ 6À*˘ÓRW`7S•Ê>¡EÎ|≈=»\èCp{¬?¬—´{nTX°√Äz.õãE¸vE>:Å$®ìXı€,w•Çg£ˇú˚|«Ú¸®ló‚D^PR¯güúsåã¢äRØiö‰4f|@ˆT1‹«πˇn∞πôÏaûìæghﬂ∏›˜zYÚÁ.ô·á°◊à¡˚˘*˜4ÊˆY›g0∑\œ⁄Ω]∏,§N‘õ•ëˇ»¶ÿzu:˚&òv¿]¯Qÿ”BÀé”:c[@ôÖFπÔPdvqj5óÁàß)Œf∏Éu∑Ç:KÓ.F™–¿∫C}uô∞Yq\`På¨ûªeCPvì†l	†¡È…˚Ú["g^ä÷◊ä@Ä!¸£[£E N’B≠sÇö∫k-ê•NcŸ0ç'Oõem˝1^‰>c´Øo1±Ì^Ks](_\`ñ3Ó=p=?´¨øM.VéÔ>«9`TRı´,ëÖ€î›v´ç˝ûÁÚÅìãÄâîá”<«?†…ª)\X+’»KŸ*úüUY)œ("äwàŒRM˚sX\óªÆM%ù%ö˙eNô“¡∫r˘T€\ïcÂ·x)c¸≈πl∆ ÿ„|Ô¬’∞Á·3 «(ÿÈ%i±*x6œµÙLüãÎäZq:˛2hªu:7[${fˇVŸÎ˛≠Ì`g®ÃZ~ñÌ√‹õ¬èÜâæ´õËó]óÆ^≠¡~+ √‡qxPf∞ßVY∂nï⁄pøb˚˚√iÑÀËtX©∑ÿç¿ ›8ãQπjæV88°=xgd¬|U“Ë+~8≠-∞Ü†2	tua‘±Z3˚k≤±/k7›ó≥’,Ï_Ìm<xé+Ÿ¡O#ÃΩwÚÊ<ç?~sçµ%«€˙·vA˚‰±˜ù$Ì¡ë7ªÛ·ùÂÍ/˘¡ΩÖ˘ÈdZïù◊tßG‘SM¥`xö™ö4s∏:±¢ü®;N$ñ‰·z◊cÈb˚!€G›”/µµ#˜›N´››≥¢åV;Ö˜≈£(õÌè„<`B+É´Ù>gp+GQöyY•Ë\~ÓkònQK‚N5Íﬁ€YÙ~ª√A\4◊÷k∫ß´”öqF\ö
+à0 íÑW∫‹à0˜Ÿg÷´%˝@ìzyW¶Øk?ÌŸ‡ ±1“ú“˝Ú>Gìôßkhã$ÿÄª6YO$»Æ+?Ï»èp?VKç/^Eówk£ïÑãíêUµ,JH∑Û˛∆O‡˛hi8ú{≠x“Õ»ª∫J¥F‡täì÷ﬂÁà¿:ﬂ$u$£‡ÚM›ØNÀ∫»∫/"ªï‚czÕ›wÆﬁ‹ß_Ém∏£yã•7√®;úGØa•+$”Ìá¡€Å¢fœQú=
+≤\l‚¶˛çñÓ¶7C+uñN’Ø¯›ß{ØÖ®rë¸”O∞, 7û©”ÃﬁÖZ=Z˜X!Ó5;´Q–ñ∫Nı™‘5◊;Íù:I…6¬ºöSp« ¥o˙‹π9hr§e¡µñLñf±[ËÁ±‘Ù√*©NöòıÖWtñ⁄Jp·ÑBﬂ(Â^Ò{ù¯ÓJx7–H+¬≥¸ˆz—y.r\Åv[¥dªt¬9÷<≠é%œ!R‹ãM∏-÷h\?¨ñçd2∫
+/Ïæ¢º7ºofsΩ=ü•Ñ B
+:©∞% È⁄YÜÆ§>[L:+F(©N◊ÉEƒ∑ıEpÿÂﬁ“í6ÆæEV·¡lBèÕo˜C·ïÍÄî)WÈ≈€`áIÇcﬂ$…NÇ8£y∑í>ô/pÙ$ÜŸvíÂŸ√…Ëàø[ºÆ◊∏ìá9(u®'¨d'ˇ¡ù;¸A‘Â«d¢/ºu≤àÑkÖ±º˙3>Lf∞√ø˙ñ0/»Ô¨ÄÚ›	ÌÖÌÃád@;∏ùH#jö ıëç
+ëdﬂà¢Aw0 kïM¯™ΩãØ@
+¡ã•wó⁄·íXÔn!.[Î“$ã÷Ñ…Öñ9:y•^ñ<DÀ—™¯¿Àø2ËtóÆà◊¥ñ≤]»ßqPLÙ´¨CJÉU£˚É˛˛ R:–âñ€·@t‡˝.¿≠Z£˝@g˚£^ÿÌˆ_ÈÏwˆ]ÌÿÀ√Éd¢5°v≠*€É˛`ŸQÂ˛˛‡›~€™≤≥∫∫≤¥lTâæ:∑‚¥7ä∫Zïl/hVıH•+éJ√wKéJ€´+ÉÂ’™ïˆé¬â2L=BU}ò¬ï¡“†ß·ªÂ+m1L˜&ÉÑÜV.üÌG˚ÆqÍG´ó„‘]n∑#≥˝£x∫û˜…ﬁGÎ¿tñNG
+ß¬¡ä9UÆÙW¥©≤∫ﬂÌÑóE˛=—mXi∏ö+Ö]&≈ıÙ¬∫—ÂA[ùwKÀùïQÿ{a6§•ù\’Á8ô›tÆÔ¢àÿ4^˙¢ìE¶æã?Kåö¿’∑§§|}ú põ4UgΩz…µ„cäBπÄ	aA`äDµ≈P\€6,ÄRa\∂/a”0 «–ô˘Ç~P,Ç¶¬Ÿ(Ütg_à7ƒu©,?E–ÄG9¿Æ1∫ÏQπE.{M[Õ˙»˝öÕ^æÃëƒ‹ÇYÿ≥\˙„N9´Ü
+):ﬂS;≈Î7Ôıe˘ÿ“-ıÕæ∑#[i˜«‚…v
+8ìTØ%`K3c∫~OQfóOä˚kdÚ4˙N‹œá◊é…é∆–;åŒò?ıq)Û—≠¥J∆j§W€u¨pµfÈ÷c¶êO›Àëp‘á—OƒÙ„ê…s–˛CYtëoù*´l8Tx Ó@dåàÂnM”ó[ôxîL˚‰ÿqûÛ‘`§◊'á~Œ´ç\Él#ÎòkÿÏá`oVr»¢√$ÔÔãæo≠»iz≥Nò"-á>ùÖÉhG`≠'˚ﬂ£˙4◊Bqïñà0lu1⁄YÖ$3_éÎO££ÄSA»∞d@ﬂ–ç«~|OÚap|Ÿ ⁄å:êìÊ‰•1]qH$™ICoÀMA”È:¸òËçpç¬Iéö|ÁTU¬†"è -˜&5¶
+Sbzã)¯ò_U‡ïr4Ωﬁ,O˝HÀ%7¥˝]¥∂ ∆ü{◊YËgY[ë®^£8Ì,eJÊ˘+¬ƒèÿèÇÙ  ÑpW$˘}˙∑ñÉ¶©˙Q4}<$söÁ⁄T^gcä’ÜŸ6ÿ5ÀzÌ "{µ∏¸0®ıÜa~0Õk◊Î‚œÍ4¥¥Éà¨-$œù,ûΩß∏À„&e÷ø?ã“#N]…¡–âÛ}íSéªü≈ÄHò:√∏dßÔKc-Ï∆k–¿‘ó∏=∑ﬁæ|ÒÈÀœ>y˘‚ü^æ¯„Àø˘‚Àó/>~˘‚‰•+ÒØ_~ˆ˛UÛ0^~Úço|#¯oø˛Ÿˇ|Ûõ∑õﬂ¶Xj›<öÑ„∏'¨¢î7]˚Ê7?ò|0ií,/_|˛Ú≥ø}˘‚ÁX«øº|Ò;R˘–]ªÜQ\°]Æì¨ßQ `Âﬁ∆ÑD&ëå©ÊÆ?´A≈¥⁄?`Øˇ)“}®ÛÂãü`K>Å_¸&@:˝ËÂã/?˚à¸¯è@´œ˛ö∂1†ÅèPƒÜWıáw¥êO±;ø"/êHƒøÅ°÷œÒ=o√∞åøÍä—¢±Äï√á/aúH˝Ãq ÈE@+†Uø√™†âÿë?íWø¡∫~á%|I{Ùß˝L|˛[¸[ˇK¨ˇóÏÔœ>j=°‹u‚‰±(Mì‘f2(ˆKàS‡‚¶ˇôW˝Ç˛·Á©ˇ˝ˇû=`ö∆YDcŸ3±∑É{õ∑È ¸ˆ¯ç´~œi˜/|8±ÀtúµÇp8~‹⁄ŸÅpÙ'!Ëﬂ≠0Ñ(ß¥$#!Ïó‰Ì|ËËÏ˘%˛Ò;‰ëOﬂè0œG¨lƒÁîs˛#¿g?&A2`Åˆ◊òˆÖ` “SŒîüc—l˜ÀÕÛP¶˚µsÃø¿o†˝ß˛ó¥aC_´%˛òw>”ﬂ¿Ó¸ˇ˝©ÛehÕSæ‡’ìÇ?D¸9Oˇﬁ
+FØü„§ˇ-f˝≠á¬Ô@Ùò≈—tî°_Ì;H;Ë‚Ôx“ﬂ”&rÒæ»Œ?¡*øﬂâ|˘;‰Ñœy˜îÓbqøa4TJ¯ß¬)¢≥Ïoˇì&©ãyPøxÃ◊v
+…D$&ﬂ›~Ã0C§Ë.Æ8ÉlßIÌ§¡x‹L?FâÉ<‚1Æ'5îkbê˛ˇ¯:"#M…øˇ`∞≤!°(Ÿ>ZÉtZ8Àæ¿œúoqU|¸ˇ‡∑ﬂ˘ÎMn/%B'I#∆êÂ¸èœi„t(öÚ_ÿËbçíç©Ã˛©=Kæ‡<ÄúJó;‰…ﬂSvì¸Ç<âå˚;N¨?“	C8æ€“≈ÀÔ]êZ_‡ÍkNπ™ÚÜ|‘µuç“B_‰`r1bPëıGzLys£ﬁß¨jìYFó±¿ŸÀﬁ7"Zzp?9»¥Ö„Ï„Á∏JrPZàÒ¯WÖ'ÙY¡dI0¡ør}L∆öÏÖí4o–ıSEB˛ñ√Ò]K'l`ñ¬%∞'Û®ß,ƒ.7‹¢€C1∫/0ı/ÙÊˇß‡ﬂa
+ælãYMÂ“ót>ü(Í€0úÙG—FˆîË_6ÿ&,äPÈm≠m\oË0öRW≠Éëæ!ﬁr˝è+π:|%≠ôh»P'V‚πNΩ∂N„Eêµ≈≈ê(v√Œé∑Ó<V<˛Ü'É_çÈDM¿ü¨ÅÀﬁt:ä©_∆‚˜≤d¢yÔÌ'}¢êª•c’Èaö&„iæ0}_›Ú9ˆÊ´‡R‰É…∆=&ﬁAFQ/á∞ÀG†bì}àîç:¶‰ò¨÷#ä°©Í˜ 2{§E£Ë9 J™s+˛C'bSvBusIÊ~HÊß3°y»Q◊√T’è1Ê7⁄íA«\oøçπÈÜñ¸∏Äø‚Ï6®F*l•:‚"á¿ß<	"≤q[Z
+°eUùf˛S#øwu≤ÜYπªñ˘J¢+°ﬂ©àùå¢æÆ◊`·Ø5¬…4%/ÊîıüÉx¯X¢FeÚ…mÊâ√ÊÏªÎ∏óóµkÕæhá6hπ?‹ZÄJ/°wÿíªcUπ∏⁄6]hNsOK3b^∂Ô<2Ø”6¶_b3ØPiÂx„ç'˙]3”E.®J—∞É¢dÜzIµZ*û$÷er•\Á’â‡Ä°!„È›HÁpwaK1Ë«ÿ&|8¥)Ì∏¬{Íázƒ{€K≈£R©∏G
+w–\’›@πWJÊ»®√eÆ∂´∏ãËN"∫Ÿıd]›’ò∂á«˘ç3‚ºˆa‚∆$œ()7—_” ˝ÈWøÙ˝G·î«*ïeÒÖ+ÅœJè•+AE|“õ∫ò)w˝•<D©’Ç““W†a<[ÒCÄƒUc‘+?tŒcQh±7'&ÎeπÖµÆG5mòŸæm&áë/j=çé(◊°5›fÑé[◊Ú/ñÕ∫0ç√&û»]´ÅÜÚÕ≠g
+äzÙVˆ„,‹E˝k«Ã»Îõè∆d'uÏ›ª˙ëáï1ÂuâË+dy7&´u‚g^Üâ_v◊y+›j√∫¨ò1äÉˆ•]˝Ä¨À¶1Qıº.t˙—+Œ·eãßCÃf@mÜü}‰ª∏æ<XïÆãÛÎ≈.TÖB¢≤⁄£⁄)õ¸t5ËÅW»~Ú\g∆∏≠[áfŒˆÕ<98A¢0/p§∫À(üíÍÉúô¨0Ô2Sc¸i·é8K0lB`ÀeÉmkﬁâK#âÛÒËNíz:_˘J<4À®ÿ^*ÄÅÿõ-íﬂyè ;›∏oÃ˙dØmá±»ãéô˘ÈëÓÙÁ8h^
+‘Î_ñt'›4`®<´Ëéb≈à2¸î¸9i¬Nπ0t·˙£(ÏÂ[,=Ÿr	onèfdÒœÆÔ“ﬂè¬√ΩìÎ¢SDA÷r˘Œo˘A©˚Ñ=Ã¿°à–9Ègá≥∏ü¡â™Ç…‡oê“IÜüC≤∆çìYvãê+'õ„∂ˇ¯ä‚øw˜Æ*ÖR'7¢+@8 ˙â’±∆l(œí∏’™ÔÜÙ7‘gºCpGjEüv$A}ÒKƒ-ﬁÄŸˆÎı÷5ÙwX˜0-Ñ
+Tø{ÚV⁄†&ñÊ˝…”	®òVÿWÂM6KÌó˝(ã&!5É®¢1ôÍ+¥æ4 ∑•É:Êâ ˚ÊÄæ”nÔi©∞'‘√-ÇS∂`©8ˆ›zzÊèÅ;«}¸cÿ‹ΩºÚl∏g∏:Ÿ Œ›TπªgH‹cÛŒ≥HòõhÄ^õBPU˜∫CcT0ç:'Z ≤ÆaQ^Õösø
+„gyDUNa{Â„Z`ÑtﬂÚóÄ%\Æ	ñÄ>r¥Buc›§9∆Y5ä&˘‰ÿ◊É6—Qûó¿6ß}:	6»Ô'∞È0õj©f¯XóV)‘E&-Ù2Uù?∑Í¯’’â`‹tËrb…À÷.È]à∆A—p˚ÆO;õ[ÛÂàﬁ°Çç„™wÌUtª£Ó±ùltQ∂aÒ4E=ØkèÖ±}=˙ó+GÕÀQ<$TÆì‹Ñ ˜hwÇ5ı…≈ùv´O!-ñ˚&å∆DˆÓ¿oÏáŸ¨⁄Ü.a_a´¬u˜Õ *bß-6V†l/˚À,].§x3≈9€5ªØÖØ√:Z¥â¸WmΩhÚ.0-«Âu	'œ∂¬˚Îú√Ço«\¿p^ˆ‚fù"VK!8JAóùàÏªâ∆˜Ì8:Ù4“uªﬁMgœ[Á¢#&=Ÿ«Y´t˝Y“◊7L“%sm±õgÔN≠&Î¢B
+?ƒ†òπ1(®núâ◊)PD.+NóµØp¶<*∆)B	dfÏ<≈ãA¨√)ZÅÍ≥ Ã–?¥5&yÚ˛£˚{În<>≤¥wÕïÎÑÏ-ÚkµöC9féˇ…˛˜¢Y¸†ŸxHóqÜ>3u£µ€∆Î≥ﬂà(ØpÁ ~◊ﬁw]Ã¨zı—±c∆–Ín2ûMÃñ·;◊ü\<¶¿é’N¯Õ∂UÏ’q Æë~’i»¿≤øZŸtÁı⁄ˇPk µ`W95(’‘]ù3™çG¨ü´TÁ)ÔÑ 6í6ﬂﬂlá†ØzÎ’£
+πå1⁄üÜı∞¸ÛpÙù$}ä∫Í=≈C3øtâñàå∫/”ûèìØ'äÀ„¸≈‘∏«)Ïº,2•ÑB≥-P]’è"'\’jn∑Ú£÷R~n'”j2€∏∆‚b¨”,¡±a=	î˚´¢‡ìÎÊJR-8ÇPànµ@¨Ä~&m¨Ë⁄ÊŒ#¢∫Ñ££(ÍØ}3Lo√4_‚ØY]ñ<ÿ$ìÊà9fë∂ÉÁá¶bŒ!ZÌ„Ÿ(è˚·ë’Ñ-¯–‹è :öÙ‚⁄h ˝àôùîv`æÈ(
+6D6#¥à´dV≈KPÇ≤`ÿL¿¿“∞?√9u+ú-∂ÖEºâì=Ÿséä⁄0%3;∑-"cFÏÎΩôy5Ûfí<5*Âﬁeü£Áÿo–mÈW‘MÈ_©õhPﬂ~ê‹¡]≤SèEcC§—pD6å¿¿Nﬁ#öÄ|ÉK‹7⁄†;”îHq≤çâr£πw XqçÇ 'zﬁãFMjkµÎ6|√öÉ-H`Úpqõ0K ¯HV‘úÉi⁄úéh¨"´Aıª€õ€ç‡O?˙è¡6KCò‚Ê¨0¬#é}S~£Sg’Y¸SÍvHΩÍ®À€o_~ˆ#Í…˘èÃÂÚ≥ˇë{˛ua>ú‘ÖıøR◊9µì{Â∂ƒå ‰f0¿·T£Ñ=Æÿâ•‰Fa«∞⁄iv≥gÿ’÷kNÊ\zæ˝qÅﬂ*Z#ª{#/;câ’§3)øÑd¨Ä∞`Ôêç(¿±êÚ‡˚w"P]÷¢Õòü9ˆ›≥0≠7πıØaïBﬁƒìõIû'cíz≈QQ?&äJx”¡Õ¸é»⁄®—Å(.©ôÜËÚ‰„e´ÇÎbÎD'≥|3ÃÜ»®Ú‹qÖ±ˆçˆÂ+ù˝nÆÃ-^Goy≠¨m"™á·Qò’Q^√¨˛‘98Íp –òÇ.¯ç’Âwó/já≠®è"º]CI˙vh3x8ƒ=8#–Z¨hO¶QŒ2Té%:{—•;#´m¥ÇΩMQ5¿åz»ı¢≈ã«ÚÀ	Q≈∑⁄UGô≥tDJ#∫2ë? rv¥ötToú,ﬁ»√˝kèE≠'O\ -ÓÆ`Uÿ!Iéù»˘!âlS√YGVîuƒ~¥®·:hJønÏpç¬)Íw££‘M`∫aÓìƒ	ñ˙‘6zΩ(Àÿ(Â≥†™÷‹!5_ô±ÏÓìm.È˘4é˙ÃxÔ}4^¨pòmlÛ3ã«≠XÿiJ—o5€f€.ÎŸä§∞yç— ‘Q∑ìHÏk5ì¶2ù6π1mW3Ÿ∂#∂ìœ∆kÒ\jj◊1õ}YU7î;çI˚ö ´´,<«î√—Ïì[6À‚CAÆ,à+≥X)K}Ãƒ¸©Á&Ïï!ámªìg¡™ºÊX´N«µæï.<_„ôÔ∏˘1\kØô´àOK]ÀÏÎ⁄åí˝7ó√®ç«£ Úh,≤AïÑÌ4 "≤(å°Hc„ÿ¿∆û†è¢ùH≠d! ˇÆ)'R-¡¥V“ËyúW*≥Ë∏´üØò!DÜ`§h˜·¥÷¥˜Ú•ÂEáæoöCÖ◊3Y¡—∞}¸Ïìåπœj™ÇV;E!¸÷µÕ€#∑U«ÆÊ∏⁄ízÉÒµ´ã∫∫ƒﬂV≤ﬁÕí£ÔØPµë’¿„3©f°eZéOÚïZ†R»áTßwÜçÿ‹ﬁÅWÔËZçÓ˙	”Hä
+ÃiÅ%ÍJA%≈E>¶
+≥ßd∑å
+4˘xÁƒ≈∞ÙúEn\¢Œòä*£Î6ˆÅA°zÉS3ã∆±ÊòIî
+~ Èl¨¶”Ù¢‰Iêc™D∫≤∫'ºK·q'D›ÜVÍ§?C®·ìVWB–Xy ·ÎÍÉWËOa˙»À@œ é£~<W>i7“49ºÚrL…õDÌùãÊUçÁÑñ⁄∏∞õ!Ç	ÒâOÑï*°òøÜj'ævlZé+)HÆıπ8ùE∆kÃ™ªl[w¯£ÍDË÷e®"©{sÁ∑1;¡¡Ë~^#aÒ°U≥∞,{™GﬂfxÙ*€ Ã û6¯‡¿}¡ºJ=}Juq˙X9u‚:ë/[ÃΩÉÀdEÁz‡ô£√%Ou%tôc”√üä§úè*~õ˙P⁄ÅÔI‚YB=é¡∫vHõi~®!N(‹‰6‹Ï‰{_8Ñ”ÚÌîL82Kÿ&3h{âSqT‡#’U®œ,˝ŸÿœÿtPŒáGèw…≠ª,±`%YMÉï*Ac·Ë lü&m‹ú©v÷«HE±J‚™îNDxπé4bŸmQPü!≥ùWI´ VüËpÈÄª—≤Zpã˙($–u•˝%*KxÊì&T5ØËèz.QÉ≠hQr/õG≤)a‹
+vœ h@p0öTggZòEëW~°! ◊ÜûKT»iâ0ÃíŸ˜
+L’Û&jY’éP8gÄ„Ú…IQÊ@¨!¡Ì≤1wªﬁ)¶ÖıU¯¿>	*Ioùï§Áãtm,¯øí,£SJ‹| ôÿ7`∂„aT&ÈN$ÎhÑ”iáFiT=ª0í“iJª,ÕY¶\·¶>†mØo?"[◊˜f˚Ü_æo0Ω|˚öéª,POÜ‹≥è8≈ﬁAup4]®áÉ÷ÀsjÅÓ”‡ix6püÃzö m¸]∏”»µæË¥ ˚¸»`l2¬
+«±s”,P‚>bÕËc89⁄›ª^ﬂ›S±"≥ar¯˛nÒbÆÒ≥bÍÅçª®
+~¿_B˙ÌY:M2ôÖ˝.…ı~»<¯´ üïsÃÃÒ”ŸJŸ€É—◊Î™±òYq'§8í/ôÏL¬)°TŒπÒ»ÍDr3tèzÅhY@ÚZc!¿UÙÊQΩñ«c —ØÅÎL≠!ñıåîgÿ¶iïÉç4Ed“]h0ΩuH»“"5‹÷ÔbÍ÷tñÎ4˙NøìalµZ˝ Ïêù4c(Áä:‰ì∏7¢UÙ∞ÅtÉ9∞õÜÇ
++tËE†≈Ù<Yêœƒ»P6e-/U}Fx¸~B8ˇØ„†TàY≈˘è9‘ÇE˙Ç¬cÊkdÓ|À∫Àö.mÃ€£Œñ∏íëˇıqÒ√l3lw´&∞$g©–X*
+Ed"≈o&=?´H†◊/≈ƒÔß¥KÙüC‚ÎzFø—ô"ø‡ΩPBøñu9ÙVÖﬂÿ·sC∆w‘YxÍ º¿Œk‡jµ&…a]•bùV#	é›à˛êÕD|Ãè.‘T∞$.<$îX`«Ï™|/Aõî∞$zsêÅY{®\
+¢÷ò4ä•`+ô£+E_‘%~ØÕµ¿˘åŸ¨ÁEn≤Øòñ^˚LF˝⁄u:±…⁄d]jt∆“‘ÔZÊW¿Ë¿ôM»IzäbıÜì∏éê73"QwL„˝YìËêà’Ë˛KÍEJz.RÕÓÖ«Äï≈¥≈±~AÆõï<h‹·≥¶œõ+ƒG—5’Ìf,0X—Õª©‡æ„©ç1ìƒößã$£2ÖN,~I–ﬁÄÆgÙT‡ˆò™ﬁ
+¬~Áñ¡…Â∑‡≠¡uôu^ˇÉ)çkZ·£NuÈ0ﬁWnÃ:\\0f }ñ±âË/µ¨–Ùa„ˆÄÃQç8ÿwK &P ®‘>S!ÖËbÅkP=j¥∏p?Ã‹«—x
+Ìmÿ%0∏!æb⁄[<ƒâXn
+Åá‡±ÔHÈíyIù¥t%6∫<"ﬁäõ#–Æ"—E≥∑6Zd"”5,&ÏwÜa¿±0ú•‡üÖ¥d´nurÚe˙§ËéÕ+ÊÁG[º¸ù†ÊM˙D©cÑ˙ËòÍ$¶˙ŒüÅœ√[ {ïÕJu˘è6ªãnG™	Ñò⁄ §∫+’_`iúŒˆâF1:
+û≈Yº?äpÿ…äbDuîáêü∂¡À}”ÕÎ°*;€–àlh©;¸ëpdr3Ï2∞fTËªÍj∆^”]{È+ﬂOíùG=5‡È\PfBŸ¥¢YÌrﬁîï=ÏA–gX¿r‡÷Á∫bÍv¢®r’p~£ëg{ ¿®Â-´~¿»Å:ˆ≈Àÿö¡¢”÷ÅΩ£ê±å™a>j({å	õ=b2Òe0øÈk‹/¶ù«#Õ¡ﬂéXøFLµπÙ1-|⁄XCÃ§/i¸≠S\k/πä‰íSgrı^àﬂWp⁄40∑ÖœGÂ◊ﬂ•Íq4u5À°ﬁk÷/ù/ÉÃ2ºΩÌ’Î¡…8«+’&ù|nAÎ∏Â∆◊BÁ¡…<áUW ±€xñ cÁ-≠0;¿‘ ù˚¨êÕŒ√íÍv…w‘ Ω+¶Ù™Œ∫~¸#˙8I(˙[Ëü7«˙·7a`9òùYz‘¢úÕvbûÿ±ÕâÓΩÔaO¶˛;yœÎ$jO P‡m∞Ìê«Âe–ö˙v+>ÀÔä~f"r8Í”P5|z1˙5QrÊﬁíÃC«j®.˝® 8U%Èë@b8âú¢˘`˝|Ï˚x,ÙÔ
+NêàZöﬂâG9Ñ'HTÒ≥ œòh–·H…µ•º∞ÛâåPW˜râè@‰!òFw¢º.` )ÏCÅ‰Y≠ñ^øô$d}õ–√•ΩVñ§9ë∫a¶aZ“Íh3°2ŸI¨ï(ìªbTî&®ÊV÷mpy¨÷°í*+iËπ¥—F5úÂÚæ…Òß´ß¥ê5<6ù¶EExË$Å5’f´G~‰ı"’π¢‘q"ÊΩaîÌDa⁄# 8kN]Ö~iËπe»0(•d&fé|&§JI^˚CÎ¡&Ö"Ω áâ¢“x∆–A ÂPÜ:h)cˆçî°~daá(:-ﬂ~[kö¸IÎ¡#ò
+£|)]ıû¡xÄ.L!J(GÛÙ#Kô≈Ö˚Y2ÇCäºôÇñŸsÀeV‘ƒ‚§rãáymk˙ÑyÚ·∏ŸeÜ U<¡¶Î990ˆíËYÙDåü$‚ÌΩ@èüÛËO‰ÁèL$œJ8û_	wÉ⁄ØoE í+ª*Ïª¥Íµ2˜ïS›6è™|`Ã‚W<Íñ´K√ª¿`e∂¬oÒcÄå«Í„‘uƒ k)ùú*æÕ0ËÀ∆UƒqˇN¡hˆ≤ŒqÓÎn>Y÷bL[XºÍ°‰íu(IÛuçÿ‘‘iZÿƒg–m;pã`'ãÃy‚‡?o–∑à?ÚrN	íà_~™Ñ/¸ƒ√«¸Ø1‚◊œEË≠†Œz≥ÑG˘p‡I4”ú,ß÷ŸÖ“ÕÑ‘j¯ˆååhïΩ Ú‰¬∏…°‘/ ñ∫ú[Ã»kp>ójd\ÉöF{òa˙˚¶ˆÁ2Gˇªb3¥+x	2(?é“‹_;ƒª?&≥–([ÓñÀe™¥∂˚¶¶ÂôΩ≥ØÍùÍù¿À„R7°ÍÒñ*≈fb˚éNµ¿ı©À∫oá˚‡Ü˛n€ CÅÙv;‡¸æWb”J÷äZçdÒA˛JÑä≈ }IMõ\n¨/“í¨õ]BM¶öcﬂs´Å7Õ˝¡N7‚cá©€◊ ”}î¨N»ãs0®™Uôeáïú˚HÉˇˇ<¯∑ÕÅÆ√ÇππÚS.´?ßaπDá#F÷ôB˚ù8ã¸‹»vQî«Uxq,xqÏÊ≈Ò˘Ú¢©AVgDè»?†_dDA “X˛Ï£ÂÁ
+ÓUÌ†Çm∂¯Y≈uÎ§B§P6ÅÜAﬂ„‚ı…z!@ùµ[WVl…ÎÒay,∞-vx0+><ê3®π*#,uÅS=.Z"˙ÜÙÏ±9Û„Ÿ∑lÍß∞ˆ‘0—1Pµ*û˛ÛzŒ@’>≤wX≠p⁄pÿÏ¨¬â¡™.7≠y™§Ö¸˜-T\h»9=f’`où
+Ü+ã]Ü d\‡ÍKR5◊ìô9^´ç¬˘•— J”(›NFqÔËZmí4˘+wñ9zU¸Ú%]ﬂ”◊sF—ª›õ’rjî^∂˘ò¨∑0Z≈>]|mï√û˘¡zkå †õ÷s≈‹5°á´@©ó¢€¢ÌG4Æ:Ùn’É∆.4Àç”‚0íÙC≈Áë;™®Ês(l:A‘Ö¢ª[˝ï"˝Í),ÙA¿x‡€Ã·√›ö`åÍ'qÓãŒ>K◊í+hÜ;ãG›zØà·ÓÏ'F˜ÜC>È\Z}__–læ‚UÂ3 óO9”º\ ◊qk=Á¯˚ì:ﬁ”‚w´ü^œZ	Noi&∂üYÎY<¡ASA¢∫0ﬁ","ˇu¬ƒÇ!ﬁ•™Ÿ+˜	ÓÈÁ¬¡≈wù˛L9¯/giúıc4ÇøiLLôÕÀú:K.‡≤ÕÕ'OºŸ÷‘sä†ﬂèdw⁄6“(tÆà_≠,'Ë*ú˝ØxŒ˛9(ﬁy` ≤·¸L∏‰f¬›v´ç˜<É®°e-)°z˘aºÌm„◊ê∆…~<rKqd¥KW:»_4—˜ÈAcùÏ9W'≠VÀ«pDB>HÚ {uÀ•Ù,~9@'∏e¡{“ß(ﬁŒa8j‚4™˚nπ3\Ò'í±¸⁄9b˜ï+⁄¥œ^§8à¸I*Ù|U€Ac◊!êøáò!˛‹ÜÌ£À˜ƒπsOÏ.√Án]ÌÓñªx…Ù§¸Q¬â|ÍeÅ¡õS[W9(ÇŸO∏46Êtºô˛ √˚`qF∏z°í„ﬂ,ïøMı≠WCf©ÃùùO∞‡ùºΩdBƒ…¯&äØ«§†<í7∑Å¨ùYn	˜˛“˛Í™?^A∏¥[Û~¡4ôŒ Ñ»i≥CKuñÜ÷∞µ"◊TÜÑÄœmjew[ÕÈ@{Î=q8qÇ\:°>TWJS\ç∏™∫ÌõÜ≠}¥ü„-øL√l…Ã£Ü£∫ÜFÿÊïïjnòbus,ösxÓªıuØ4√zf™Pduh¬4£v f[ãiáê’ò¨–”ﬁñT~€´k£CèÉÀ‹≥«œô≠oﬂ±8áÚÀæ≠œíÎPﬁÑ]vˆ4€ò	3√e¡G‘M„2≥qπ†‘ÂPx“@B∑¢—®~d4™z“øeƒ#Í`äY*Ñ0Ÿnﬁ´Q¶“ºïòò“O∏}J`…ÚÔ:É“êÆnã¢æÚr∫Í·?ì•óRÚ†~oB/¯Ø_Æ¨ë
+7∂ÑÁÇ§‡ü~ıc5¿Q<AT AUπ °Ä≤©r~™$)èJ¢∞ﬂg•	+¶ê$˜C∏vΩàø¸ø˛ø/˛ó *t©Lèjºﬁ–«y˚—Ìù€WÌÃFıŒ§I¶(˛:k7∞£ˇÁœÇçõÛta´zzGd]¿_gÌb‹∂⁄∫}˚ÒΩw´v‡qıÑ CeËœ≥vÅñbÙ·Ò£ç{ÊËDëå0:°"’-NgÈÑÛ⁄€˝€ﬂæÌÎkiëS‰í~5Æ… –›‹Mh‡s¡ç
+'G&NTxpêF§Y}úÜ>Î⁄+9
+˚πN◊Y˜YD@ˆK™€SPº£{A˚=7«πæ¿ıZS–,Î˛Aﬂ˛4Â¯ÛŒØ2êü’ê˛˜∫LÀô¸–J÷œR+—>ıW©®≤lrΩ>ıÑÑıÜzqÄ®≈Ä¶Cª6ÿçÙ‹∑›ƒÌä3 "ÈÍû¸]å‹ï°z˜8J«!K¸<ü˚§Z÷4<|î“>¢€†dv˜¶aJXw3⁄ü—ÓmÀﬂ6grÑÊÿcò=ÛeWu˝›¡îÏ5ÔıüCúUêa⁄{
+òdîLıCg&ÒÕï1%4∏CQ?ı\–,◊óì›=d!πMháˇ*˝Ë9ô(D“§√r[ß—w' ^øN≈0øÇ71Ãˆ@¶L¥iÌaPY"Sûå"qè†>÷§òz1cB)I¡k7˙—ê–`ê∞5≥˙∏—¿\≠~4äH›cñ("$°à¯om:`I
+ì⁄b¬Â[‚2kÃü˛®˝*1©Ãª8iµi2ñªNﬁMÂõ.±©+`F§	u§zF≈>øM#Æ…®¿Yvˇh%¨))ÓÑRË∏<£»a–(ôò8oóÀTò∞	ÑØ#~√Î=w"óa¸¢›ÜóàM"Q)∂uEp™HnΩzÒ^>;⁄J˙≥–˚™∆ìár—dÃ	"^*-ãú‚
+3ÛU@K9õB⁄>ìôê¢∂Z-&V˜¥≤a˙ìg
+Ä I™à“=÷m¶Ä\Îr8Çd0“õÿÑ )xs6=È£§lÖ0zÙC]±JëIG•oˆ8ŸNÄ√›3º“ƒ"
+DŸ¡}(ód•ΩºË\
+Ñ√x“O[`^‹$rú≤g˘†yπ÷ ì^‘e€5ªgÔÂcê>(,Ø™u¿H œ ∏ µ˙nZ’÷Û¥÷ﬁ~{Æ,‡÷ZSÔæ4ú±I:´èÀ˚‹YÖ‚x∑µÇeÇ :∫»ÍK:o˘T…hë¿&B¿«[îgö?≈0¬$÷?™FQC∫ï‰=1πÅ¶tùhl|6nQù•nóÕ•§G“tÜﬁ!“oáû/BW‹;,¬Èóy¡Ä≠D)ﬁ‰Lz-D#›A7‡$%KSΩc· 3Mó∑§∂Ñ‰)»gÉ™ZJWE√Ö Ô◊¯2î˜=áã0—û·ü˜[–1ÜÉ9Ÿµ“}jÍãdóâJSj‘ÒÆf¥ì?·!Â´lµòØª8“ô¥_5i>¨ö∞o∞4<6[≥úÑ0ê_Pa˝É≈ªˇ·˙ﬁ•˙ı^l A‡ä'“ &àmıg˚—gÙ⁄§ñ∂( ([;	ó(‹v£˘rëf9YÖH€!«n{œöìÆÅ‚Ÿ‘ºcJMxÍ<%)Ÿ!hﬂg`G£0›i'ˆ#@Œ~DÁ0¶c|ZŸtÁ8(yz}1∂«ï_jŒ”:ç<gPlX0ô3Å^Yˇ˙·?COùJΩ˝‚z’∫!Èiç>'ﬁ∆ã’=ä$\ ké}? [à(Äv&Uπ–-‰¯r,<Ü2¬Äìù]Qîî⁄{è∑Ó¯Ëˆ›€ﬂ˝0cQÂôhΩÍCuŸ*W*◊Ÿùs]:{ª+∂∏r+Ma‚kµªÕeÌ£Îì]±^mÈrNg6ƒX$;≤ßd^˜˛Œw	Àá}E\ ∫(‹ÑPX‰jVΩäf,⁄Í1/∏µ√ﬂf>ô™;6dñ«£¨ÖE~ò'~/K&∂î‘+…vEˆÏ±:Ü§o`ÈÎ,ê]¿‡ÿ€j5BŒpç™µˆ12n≠XÀ\r€Z Ü‘3z⁄hâø%b≥N:|v$†¡A€ÄÜ¢ √B∫¶0M‘∞îv≥≠˙fQ+ss!GÔÃtF:;Õ«Gß‰§b^:_n≤dÅ‡£Æ{™Ã:eÔ)“èq ⁄w´q¨‰±˘8L†_=yê‡å0Ïˇ„IpÒX∞Ò…≠ ïO‘ÕàRø¬Tä{≠”dé«z–i(€c d)ª◊NxØŸ1˜œh ≈/:cP≥í˚7˛˚æ“ Oπ˜˙Ó/SÂãŸJ <¢è…J
+§($ÉÌ[˚*˘œz∞Ê√÷8û®¥ZVà"§ó.π∑Ä©‘ÜSc&`ÿ¯1	Ë∂*ŒøPA£·r•\¢≥—Ç©æ◊sl’ÿÊ±«`¨i®o¿ÌœÆòµU(≥@C[Y2vÑ)v6ª®hÔ‚«∑ÀRLÉJ…“pl.≥7|üörà≥=ˆ¢EﬂõÙ£Ástª>Wø+˜‹’wÀ(Eüj —AﬂA$≥◊Í§>üû”ÈéN}èNòÁŸt]ÊçÁ;•Tûæ÷p•
+®*E—Ùé¢§4+/Üπ’bw≠Ç¶s$∏MîÂP É_aiã˚;*É’Õ—^´
+Q$ëøããÅX≠ÛÑÓÙK”l™.ÿ≠vR):ÿìı¡•1Z∫>ç>Òπ·˙®pü˚≥‡(ózu)ËòÙ€'⁄Ë”"≈≈–™…∏@eô8(`´öZä¸Êÿf“Vœ~íü¥
+}D_”Ò»›îıÚ‹’1ÚµH:_'<cÌ_q5V”Ô›hÌb¡{¬s⁄Êoº¬ºáŸåÎø¶b˝:z¨úˇ∂m"9?ùÿ[}}bS»“I,ç¬‚PêG…Å>?ûÏ™™È£C ∆>"4.´ïü¨=±˚ß\˝ﬁ∞4Ãﬁ,›òsp5ÎÈ$94cÊb":G
+â≥‰Ç$d
+CÇfÕT°Â˝>Êµ˝
+¢Fzòö®/*j‚+◊LÅ·ÖPº‰|ï—ª^ôwAñf)‚ì˜D'Or∂¢œùU:ÍòBˆﬁŒE˝‘î ∞]≈V†Ïñ‡59‹sQCU.‡‘4BÖ™JÉ∂V;5Êˆ·6∏“ñHM√”ë†JKƒÚ·oâ‘¸úÌüÀ[!¶®3{AòÜ„Æü~¨P;ù˝é¨ûÈ¡˜0õGÁb-Róú›©≥A∞Æ4kÆ-ﬁ”Ëà4Î…≈cA!2Iﬁßx:IN>ºx¨Œı”_–º–#ÜT—∞7:z∫, !›Ç√ﬁ}¢∂ñ¬˝D˚Ì$“ÁOôÆd‹P·Y_ÖËÔ«∆’N£ªNùiTÁ¿cáuã9∫>°†˝°» «;öÄ·ÒöA˛J˛∆'“Ö'„à∂∆üô÷7±jı®Z›£ÀîX•zˆ*Â9¥Î°äA5t«∂≥ß Ω&Q%´ø6≠º	ÿ‹*‹—3™π	NŒg¶ÍY•+%˚∑’Ãl`8KÄ5ÍQt=wlXÎÙè;À'ªÕ÷b∞w…˙’%ø~®ø››h˛˚∞˘ÉΩ„•ÖN€H⁄XåZ±Ö÷Sz¯åhªu—6ÁéMÊ!‚W?Ò^´9ÑãZ◊∑P¬âv€{éçêbÜZD+T”°úk…Z<ômyñ˙4˙˙±Fÿ£¬$&N…N˜]ñvœ}îËJI©Ë:3s÷÷Cp4BEV≠îB%u≥”‹f|€‚‡†tJ∏ò∑¿i<íÂ:Ì.Ji>^i˚_ê©5Fô+}∑›uÚÄõ<|pÙ$§Â;è§cg¸¶«ç@ΩgH¢‡Ç5	o±˛…1‰≥PHñ“π»ˆÄò±àM˙t“f\Â9Wu÷ŸÛéN:;ù=R≈…EÉûˇ¿üiniÙÏ=NaS^k”Ö›Ÿs1.„çwÜ…™}º™çíLÓ©9∆™˙hU/MNö√ÊÎ‚º√èÎsÖŸY†tâ≠˝•KÖ~¬˛µKÕeV∑¨-aœazVsµ$ìÊ¨–Æ›Í4ˇMVÆå®é‚≤∞ãë†:ÅÎ∑|Íöˆ©¶c;Ë∫æ°VS(W2$’Ï@–OÿU¶>;Ì‰6íìÄ∞'i^¶«ÜÊ«†Ú`7Muﬂyy¢)QÃï¿”‘M OÇê÷L˝ôe¨ËALﬁè‰°ø·.ÔLÿûÌ<l!«ÌÁΩh‰åd^Ï:éßØÃ<·ˆaÁÕtJSN˚√$Ñ≥~4bB4ßÒ√}=ú¸H∆òWn~
+…&r“gÓ/pSßv+Ô#6ÿÄMjjˆ√4Œ#pÃ‡íí‰c=·◊◊>‰E|Hä WÙàÖ 4L‹˚áüL7NZœGŸÛ'Zdy9†∫ˇ∑’ˇ	ÇÆxÔœ∆˜KƒÛ'ˇ˛€ä·~Ç!˛H¸å#Qé∏Óø°àÓ?F˜è∞»ü"*ﬂìR0’Uˇào˜Øxº©W0Î{ŸˆÊùzmT#√1√ø·2∏ªˇ|¶Î$Ω‹®Ô'˝£µÄWïçb"˘©®›n,¿Å ˝x˚dKHä≤pÂ<`eñçpããwàZV§£«8L‚	|ŒìÈZ–iÛO|üN»Y¯,™üû¶˝¡/Ò©=ag6FXâ”çÅq‰¨ ∆FÖÏfá∏Ëî»¡ÿ¡Æi¡“∆˘ã‡‰:Øõc≠Ñ˙∑C¢c‘„… —¸5YΩ§.¯ƒÓÒp·Ü´Æ÷&q√I÷õ±“<2˛¢em≈,¡ˆ¡5#?ò∆`|`Bï-/≤›¶w÷¬ö‘EïñMV{Í≥¿Ü{•™ rìbG⁄·}V÷AZ^—ä≥Ôƒ˘∞^õö&fñFÍ›Œ·Œ‰¸˜c◊°Bﬁe1A0NÑ¢e©˙V÷bÙï‡T>—$sÙ;`›ˇ^ß?hJ±r≠k.iÓQêlNÙ-fgÛÈY{C‹FΩßYmçèâ¯Ã¡nù «Ô¨Õ"≈∆≥”·/jkÊ 3$o<M≈˚‘ı∫(&X‰©¡7âthÉï≥Õ%D£hAØ5π¢IΩÇEçYù•Á_—h˛Y˛ÛX”=_ì~ÕÙ7¯]∏æ†üø¿Uúc÷úÁÚvw˚+îÆDç—Ó≥Ò´^‚Ñ¨okè£Q89 JB±D5f‹FÕò5„`]
+*∂¬~3ËóÇ%Ú,úP"=
+æË§	Ù|”√cQµä£!√∞`π!ªàÅW>2Ø}ÿbëm◊3≤∑æ¯^OùìE1Rã&Õª7µ£ c≤+ Îy≠€Ï«qNTÄ1Yõá‰M6$Ì#øè¢†±»ä•qØ¶:frµ&Óœ⁄vÅ∂Oa'ÉáuﬁSƒõ‡Ì`sÁë–˝à⁄.)rÚ‰,É–-Ñn√dÇ%dP}ƒˇXÂë≈Z/œãÆ⁄æ&úﬁÚˆ-¥o…jﬂ2∂oßı Å∂âC>8©Iy√nó|√zR∂¿B5¥	OÓ†å=Zıã«˝ì∆c—QõæÃõÓWEÇ∏ˇ‹°è–”Í›òûs/P›Ñ€TUÖ˝8òÓUW§‚—‘ì28∑¿…=¶‘g‘Ó*îPå˛"iQ≈≠@¸Ã5æê≤ıRôç,ù	≥°ÈÖöIv:•$+“G¸IˇÙ´K8!|››ÿ?coCÍºß7ˆ<é‹'ÆÜkâC⁄ÄÍ-æO°ËπL‚s∫t⁄	FXgı6nÂÉ¥„≠ª[	
+¿±ïd£˚œÑuÏdcVwı÷>N√xr∂ÊÊÆÊ˛3ãÇ\//_¸ùù&Á5õçÂJü∏Rådπ[RAS)$€Ÿ6¨Aıu…Úv}1Ö®†;SØ ˛∫‚∆N61;√nàc$µÿ∞)ÿ†çR∑^Íπ≥êóòÍT2≥–¸D~Ë©qp+ALs©Ω,”≥›⁄¢ØDYmOï≈öR‹≤ˆp≥∫D⁄+Y~‚ˆ@Ç≈≈¿P≠‚:vqùÇ‚ò^Ù`‡¨≤∫òqY-´[Pñ©õhl}û[õª€do7ûÜ)F.ùksw˚C%ˇY∑6§5(û˛Fƒ”§Aœ(~â:9ÛìÄø¢Å_®ÅœsÉÉù=ΩoÆ˝M53ût&PÊ¡ÆòøL≥îøπÜ©æ£J¶˙∆–3ÂB1+ï0zO§F˘¡T…'2ƒ≤ƒ≤π`d®Uˆai∫…ª¡G˛SS’ócÕcà©í¸ßßÈ^•ëı`Øÿ^
+î_√y=‘Ç
+ˇÚ7%Ü—|°è/†Ü◊™òDÁôcNã®6hn» ±R)@ÅÉ¯π—UQ≠:ﬁz›æ:∞M‚:∑«‹I°~'ò'èŸÿPº“0ÒS{ê/®ƒkRù‚tSßµõ’,ıâä¶ó‚.Ü{0* íˇöbaéF5`G•é`ÿ4wI4Ï-≈ÃnÕ”™á¡æÀä|Øø∏T°
+ƒé∫Öü>˜˙7!À~ï,Ëå	uÄﬂ#‰là.ê∑≠23Âˆ®éﬂçûíñLÕ{jz]Úµ^i°»Í*¶√(:…›Ì[L{”ƒñº˚¿®!_‘øyƒ¨∏\ı•‡H¢åÎ§Ã„(¬£Ê—ÿΩ”√~¸®R˚˝ﬂz;‹D« £ÖªczÏÓ|ÕÏjê◊˘ù™~ÿ@î1 dg~ï4<¸Cm◊zeu£ )&$ßxh+ú:M®NŒF¸3m≤L<ﬁ‡⁄À≈cãÇ&È¿eñ&Ú∞Ãâ∏π†-TÇ"¢_–Ql+5 (“û{**à@0÷ô◊NIîC©ôbCTg~Wèó‰‰`ÛI¨%Ñ*ò|∑ªw“‰wîø€{dÅácû«ÒXô—¨∂ª9af6˙;QD∑•Ó´Ù— Z} d 3Ö ·Úi0”ElZänÆ@∂ñ`èsòzã?ªb9Ë@È∏¶7…¢Æ*ﬁ¡{≥}Y∑ÜCnE+ßë ¡1AøC±S-&çÃQıTø•w4í¶ZZ‹øV√õ≥©|Ø@∂Ø„NX…`Swí‘ïÕƒ‰÷"0äp¬óÌp¬&’üg
+¡{≥îLüÊ4âòûF†a:Ì5Ä ˛I‰ƒò¨®VÿâP∂XØc.’ä!∫˛(§Q6ºu®ˆëG Ã¶Ò§∆Å-üËê˜v§Õu}ËÀpr\¥à@«Æ≠≈u„B€≤<–r∑í4bª‘Lèõ∞&”06"2!â‘'
+s‚»+Å{=ç -§(Ç] o.k0À–øåh‚%Å°w¨  óÃ:Ïê=\DÙ˜cﬁPx°√è+
+-„O?˙ø˝E·®	ûΩ⁄‘æ=9 L«"@⁄ôK¢pKÇÄl∫⁄∑)n“ië;‘ôfA[èìI¢C≈˝πPÓ (º4D¯º9lÆ.Xÿ8∑;L∆Bt%m\Ã*Ú@4ëü›Ç—Ê!PÙ·†˛eŒ€,ŒÇ˜àBí§G~™:3–ù"—&\1¶°’È9÷‚[∞>ÔÎù_	¶˚é¶n∞Ô}≤“˘‹{h˜∏è ßD:‰O¥Áúò.üÓh>Î˚©qPﬁœ\ÉÚƒµY
+¿%/≤Ç A◊¿àã≠8`ù⁄I`^¥@ã=º“$I…«åNø	˜G””ŸR=Œ$è≠od/≠zKRGÑö…÷ÿ!L`π›∂£ ò¥«Öôˇ®¢«.‚´’[}t…ì-’òÌ⁄«ÜÂ,¿¶1ÌN≈rB†˚ãX‹>ø
+˙Úõz8o=»xQ8∑ÚU√ô‘1∆iEÿì|3 …^#Íõëîî≥±1´æi~§c'F¡›4¬,ñÓŒQ2KŸ9?Q€gyp®áÏ%3"µ&	>H)·‰Hπ$FΩu[¡ˆ(aM≤Yí°&
+PêEMÚêTâô†Ó,áKä8VD¡ÍQÎ†µln.nm-˛y‡ÔÊ÷÷V~4ZZiË„Éu°«-\oãFxÿ=Ω çöÄTÇ:œœy"´…Å∆Á˙¿VÜ¸.-Oí…—8ôeç2¬o+˜Íæ`È\8ì¥„>Ñxs∆U2‘‘˝≠@G≈¨-VcZÃeZåΩÇ‹Åà»µDÙ `µÕ»à)ÓöåÄm\¬õc{≈y<§^–¡0ÃÇ˝(öê’T≈òªL)L˘•Œ!¡‚£‰¿(¢˛$¡3à»Eô1gN◊`f]†é◊dÕ^¿“π	íÂloﬁY§é‘ÃºetZ¨eù#+ø/ò¨\∆…ˆ^◊ùNÁﬁqˇGoíÚs£Ú‹•t8äkvÇCån‚
+ ãö˛Y"–C √ÄÜDè»üU¢ﬂ%˚‡lá¶LªMÊˆ√◊π4—#-g4XOÈ®˚∏˝åàe¢éÇÍJˆ¶y2mvª›QbèÖ6÷YÆàÌ¯Ímn¸ùm§£'#«1I8aË@eC-‰ òG”#íﬁ,[Î—≤ïlãæÿm…,«M3D84√ÚiÚv…◊sºI4$⁄lî^´1µ∏¡Õ|RàjápŒd‡⁄±4¥ªc.K{@C≈]ãQ"√`qŒ∏„éq(äÀlº¥¬Ì·»êizH∂FoÃ¸b'˚GåÚsL±·ªeV‡G7' }û‰Iç·*0Ë)xí1îz†‚bC©·k Y 9Øì)∆k¢ç¿”ûÎ‰6Ÿ˙"˝Ó  ZÃé2s∑˚Ê!Ø	w´O.è¡™M≤ú<9$8ÒT˜Ã≤¢ˆ5$ €dõSÕ!\Ò®qÓ¥ë≠ií@°pÖ◊f®ﬁ£$B™4m
+õágÕÇßjì¿ú·l‚ÀÈmFE5∏Ωn3C˜ïI´ÖFï‰qåú;6jU ì}ˇ(úí~úëˆÙV]9ÒùÒ‹Vi<∑≥P_9+(!æ˛Vâˆ*Å*SﬂôV5≤w∆L≤BîìuI˛\vöMù{.f∞oÆ»óÓ≤<pQïßô›π⁄ëjª∞£¬X√h[aÉä?VÎei‘⁄"{ÿ›3@FaQk€'ï’ ⁄pgë.”¶≈a˛%ûlû˙∞Ã·H√Å;Ö±a†pµƒy€ŸD◊©ãÿàz⁄p¨ûîªf©èvß÷¨^r{·äAıºyÒV8cQ˙oíUËÎ·EÂ¥ùÈ|){w°≤,ùZeŸ‰V„‚Y—⁄ÈºÔZ≤f2Ä©´õa≈]”Ã≥S1œ√≈l,¶+ñ⁄^›2áÍ†2¡Ÿ…/˝=ÓW[zsΩs›àáÆ,?•[_ü
+f…˙Õ0%ã4_‚FÅÀŒI^0at∆ÍﬂΩo#yúU}\h¯W·Bq'kÑÁl®,=’òP]õä¯û˚@™”≤°ŒÛ±·)ıXìUÆ`É ká8¢¶Ó-6S°!°Cˇ#é≈WJï`Qsz˙›#CêåõY/M w⁄</¿"–∫Ì∞ìàìq··¬„yÛΩ¡8û4	£ìuòt–≠4‰Ë
+ÆZîs2è–`Ÿ~@v$>»SÉ∏Ò§$»:ŒÛxﬁL˜ëæ—*›ˇ`…òﬁ¨*à∏ç™ñp°ÚΩ®¯∏˚jÜ∏WÁ–*ﬁ >]Ô–Gª»˘ä€¶µâ∑¥†m ù“Ø®e+[¶_;8E„4•OqÚw≈Xwºﬂj.≥éÎ’ÁÉ§ iBo%~zÍMﬁ:‹‡ı˜≥Äj.[Àì∫î2n˘Éw;™Äg}?jÏ)tπ¸ˆ)“Éò9°¿¬t‘6Œn>Ω‹ôbù`Wã≥√öJÚ[œÔ»óWÛ`u=Îè¢∞ó∑Ó§·¡‡.êµ∞LØ›ï‘‚èµŸ}
+n®8@n√K“tRí¶-Ï∏m‡Ú3(<NÀ•£z—,*¢ –†_<œú.ºÊJ%ó≥	Dücd!”√”Ÿ¥[√ËYöL@CñÁzjk«T5∞ˇÌ«v-™ÒQ|0Ãœ\e—†‡DwŒr%Eﬁ/©Ç0œôà◊˚q¿u(n@â|ï„Ó∂º´ëq}≈mZ*ÊÔ2JR∑O6°›>wŒ,>[åPnﬁ≈Û|∞`∑[+∆ˆ¿µÙ¿ƒªìRæŒ∫ÿª€.„ç÷â
+]-c#ﬂ:#”—ˆ ⁄p˝NZŸl*Æ≥∫zÀOÑﬁ;Û‹)cv›üãp6î+dC“6π€-≈;ßï‚Â|~6i<é˙Òlh[o›æàÕn“æõ¨Ôˆu?« Öüy·ß¯9ßavGH’ü…ãÑ.ïæò™˙p8D°æD
+∞j$÷ØRæŒ˛(%&âËûπ*T— dˇÿÕ—Øæw^É∑±6TíÎº7”ÛÍâo´Â”Õ’G”©Ü€SV^µ`%1@ı˘°B‰ÚÌá“=ËÉ»Zàd∏ÉU…ÔU7•πjT6Ü;‰ÏWPΩt<-[#‡ÒÔ4’Gß7Fæ´›k®BÅó~¬pÄ†S”%|Ut¡ªg äªøkË4¢˛¸Á”"zyƒè/^‘<B1õQ°ú“Õ∏˙îoa¯SnRÂ6 ì™JäuÍ<I”pÍZ .#ï™®ìTY‡9ÊÚòéW≈\x´pé‘k\Æ
+ÍŒJÂÃPÀûÕˆÈ]h@'Ó¨@p√ö◊k¥∏)’»XmUÙ¿¯ÎœI©ÚW∂#Ú€Ïhn›÷‰µ˚πõÍniòˆ‹FøAí‰^,S…ÙÈ+«ªûv˙Uä2»=Û¡â≥f/GY ÃÃß≈œN~*Tø‚b
+Q˛ä≤j®Ê„à]Eü™#d°öè6@|]|Ö£ŒG÷b<¬ä≈òHÖÊsf*õ»ÜÊ£Y¨ıØê Œ0ézÚb≈äYxEÛ93am8FÛ—H€;
+'Øò≤„y)Î~¨XÄ	i>g¶∞B“|ærÓ-›3T@´¨ò€∆±4Ö˜Ë<ÀÀ.–É~ziΩˇº‡Ë©X-V˝ÂSé*¶çœ2Û‘Ó7⁄ÌÂˆÂïΩ”ùåsåŒ"=©H•;çÅ√Úi?s¿~⁄èZ¢M˙pBãÌî(¢é**‡ä⁄è·R*Ì‚ wo’vm≈ª5ÖWŸNÌ"›áá¸–fÿ‹]Í¥ññƒˇæÓL[≤c+=ñÏ˘¸™ÂS∂M)†∏[‚ﬂé∏∑!$=Ï\nµË˝T›Ã˚Ç’+ﬁí~ùºı÷`6È·='æé‹¬—™”ÿOïP¶§;∏˚ﬁÑ·Œ{º[ú˚Ô$ÈSppŒ€€wè¢0åá–xπˆáaÏD∏Owgq?™Q©≠t≤~ Ô=P#—êØ1Ω9>®y;ﬁrSÁæÉ˚Q~ªµ„Q'æí∫≈”%¥5∫Ê9ßcC∞ûx–J∂G·ë˚¨[Ω[e_∞∑04L“yπ)IF∑¬¥è—S‚ƒæ◊£¡Ñ£qÚΩ˛»Ï˛`ûoù¨<˝åTqïßø¡ıê´<£˙Ç∞∆¿eü%qü4«≈¬„ö◊íºq8åG—{0>◊éèÑ¿Z:≠ˆ B .*ˇ’Z–\	NN‘,è√©í°›∫¢$0<;é˘≤$»D™˜A8	õ=B- ú¸«ÿsÕ©¬ÈÎø$=héqBÛëÄAÄıÎ¯ª&±ÏÚÖ<|"π¿Ö≈Ä®C9‹¶Â|zå£u"÷Â 88á»π.EÊ· «¿(Ä ∏Ñ0µT6¸4ıZp'N#XTﬁG®å`2çoPµ ‚îÜp?t@p$9’zÉ•\ØÔÓ)0çª™&ÇŸÓ(/ ≥ß··_fd*∞hwy&∞ªeòej†HDû¬_2˙˝ç≥˘7¢’Zâﬂlè"~sïZº¿M¢¯µÌ+∫“Óà7·ÄtˇJªÕ^®òñªjú•8¢]ÿ“ﬂiΩ7¿?	1Æ_ßÏK√}kD˜”ÙÎÍyXXñ'D$1:bòkCy°µD¡¥çÆ◊·_µ†8€¶ËÿNåe(_hêÅYVäBRêQ¢$y_{•eo´Y…|#i‘Ä$1Î}ÌUÖ.»“»2ï.E›íøµ& ˝¿…êê'≥¡°ÛÓˆ`ıÚz›BÊÑìF<*$ÙÇ•ÒY8“RF3Í%µrŸà’nh ö¥‹·ﬁT‘ÖıSÕÖ ßò†«y‹–W´ıÂr-7◊Ôn∑Ωß`≈¬+âM˛Îë Ù:ÙU˛I˘zßmFEBÑ1äÍ
+ÄÚèE]t~µí	k9√XèûÈ± ‰Ω‹!Ÿµ.µ-∑ï›]¿äZÄ=ﬁúFÄ÷ì1¢›hë≥QNöJÒ¨iôvÑ·h—ù—™Ï˛Ê"k£‘a<È'á≠«‰Õ&ë(@±⁄,4/◊≠>æ®ÀˆYÒ4ïJUÎ ÷i[(ÃT®µó'C†sÌ§œå{´ ⁄r6ÿ|∏EA˙Ã=¶
+ÉOs¥?w“dÃf4`ÅöÇiO\E‰)ÏïK˝˚≥(=⁄AÇ$›ç¿‚bÊíë
+¬èìòç®bN21PÙ<uò¥¥Æ∂Ùâö6¨1hu«æ™ûSDﬁoAóo%ÖHñ,Bª©9ªÑ°ö)≈µ”∑L‘=Ö=Xƒ”mX+#Í÷ﬁ{ºu? ≈h∂ÕDu"õ ’ÛZ	ôåë(Açÿ¶jÊ$¡/»Œ¢Z CîŸÄa,è¶ÄØ˘kñ—ÅYS <ëî¡ãkÌ¿ãlWˇ !àH√\≤ÉjKÑH'û∞éø,F¢!ƒ◊dp˛Ù£¡3–ÄÃ±”[ÔkD†]8â`uà$zŒ¡15˙±HaŸ∂ˆ]j(lßü¢)ı„ó/~…√~y!x˘‚?„)ãx¯ü–û˝__~ˆ#8û¡àΩˇìÊ`≤ü‡¯ÚK¸ÎXçˇÒ?˛£áÑü}‘“EÇöCßì›©w≈Ç«æ3ùò”P˝
+K√~îÂUÛ^.-4;˙“1üÔÙ îO≥'™ÎﬂäéMº6fQ<Ç¬ ’P.≥_ië"_|lΩ˙Ïì⁄ûY˛¡îó≠£6Âwt4∆¨LÉâ*^¶·X3˜„úE‘˜œ‚—(<àe‡°â¬8` ‰˜?aÙñômQ~´≠+û#«ÉÀQk∞®~ˆ‚ú&át	 0DÕ∫£aï(btËY´ [∂zf‘˙ËWÎ#
+yµ£óB∑2õUXËh—‹Vñ=¥û·:"9àΩ~J±ç‰ö˛¥—0<àhóÆK+°lth…Ã⁄r± µsWa∑àe,Ó£.l5M∆›»éÊêÑfp¸t]L]S2+SìÍKâ)‚JZîπ,3∞WUb_ñ<Lº¨ÑÅásÚ“ﬁÖáMæ’µAôæl¥ñ5Æ–é©‰jX˙ea.)à˛q2…π‰’@åî◊@ø≤ENkcÖÔS´W.|˙—œh4´‡Â:Á;ãÏÖ¸Y…ÇwÙ+ïÔ–8ZƒU‡S520Y˜˛s˛\_	ΩÚ∆^µÖã*6,ä≤îF`v^94$$„≥°K>HGK6¿ı±ΩthWeä∏¶«Ñ®ÿè0t©≥Péß≈9£†gÕíßÜœ0n™yUvû|ë@˛#≈Aùƒd%3ùΩ'mm[˛¢jJBäg2û<<'nïû)d¬‡¨´C‡n’‹›3®≈jhJ2ﬁŸ`Ö}›ÍÎ∆U≥B*Hhù¥Ú∫\‚¨-˝¡TKI◊)+Ütá≈AK¨©D™KóóÆ‚≤’DSJ:"âÛ≥Çm}ﬁs5
+ÏFs4	,j`.Ú6 ˛®4…¯h7®ü•eT"IàL‰Ï?|ıΩ«\e’”ãüÌè„<Í;*∆/ŒOéûu∂@≠_r·\EÇ ´5u	R
+∏Àôq™e§?◊Ç´ZÅ∂ÃÃJJ®&x@3≥9(Ñjø†[∆+fD7_3[∫˘öõ‘Õ˜hY7_
+ª˘Å€Ÿ˝[<PB@©+-µ®+ot¡«Œh∞(]√J&¿*Óop>Ê˛"é\≈ôÉÎ£<Äp÷HO#\ü»8m˚kï∫‡ı∫ î|]ÀFq/≤WæÜ\7ROÑŸÉ)DmŒ%ÈÆdP`◊®´V^:pÆ¸bÜÏÈq \ππÓkÅÃä‘Ã¥ÌÜâ/˘"∑t›ﬂµ5Yı…V≤müãˇ·É˛•ãã≠úP∏é%¯µPSW¢-wTÀ.‡ù∑√Ü^%∑Xúä´ãVyP`CÑe©¢}é≤ÿπÜQì“ºGó‚l€‹ì(ù¨r—IK_‚äÌ)Ω†+¶ùÀg€[Ü·Mlì4Œ∂™—E8iV¶ã√â‘€Nß©´µè´µVz<VnnŸê;c∫⁄zøZ[ô{qÂÜ:§F]5ügW+7çV÷’´ÜN;DóiÿWÊ/x≤Lí‹±˝ˆ$>ä2ªcû¥Œâ‰IÀÉIÿÍä<![˘K1pd±kµÜÉúLÉ6$î‘´ù
+MáŸCT  ( L·&¢D∏æÇÃáQ‘Í> ≠s-˚◊‘N°{e}±˛Aˇ∏≥–=i¨¡_‰øãÆ#,^Ñ}zÖ˚s^√Œ’ÓMrô|∑≥gî&÷ˆx‚Œ—ıÂ ≤|KÔÅoëùéÕc8N/R!6w=ËtÙO∞ºu].h9`9yPœt∂ó¯≠x2£ë91ı7É’6QòHß]’h9÷I%mûa©›Pyé«ÕË5IŒ'v
+˝ÏÕ‚Øç<ø©(’.$©6§ÜÌa∆m4ä©‡fFˆùÛ£L>?™•TcI5GeÆ‘2ï1¶“ï?W∆ºÇÈ6€hl˜ˇ  ˇˇÏΩks«µ ¯]ø"Ÿ¢Õn	›x!©Eíêƒ]>∞$(Ì]K∫Ëªª⁄U›`˜:b÷w÷„πw√≥G8º„8|Ô⁄¥7º£˘2˛+ˇÅùü∞Áú|T>´™AÄ§fTãç™¨¨Ãì'Oû˜	uâ˘æÜPs`≠ óΩËÇ≥=ƒyk}∞≠BÜ6ñ#k)±“lÍ–˝ñî€Ã¶*àxòñíﬁÇmÓµ∏á\bﬂB‚x˜≤tÄóêY‚ˇBgB–¥∫„Ë <úÓ+%I»îﬂD	^§ç˜
+√K¶qC ¡÷m.[7m';yŸŒvÍã∂”ùÍ›pæìó.ÈèNçÉ[ÃæCÛÒ¬÷Tµ™±∏Eè5VY5VÀÌmy«∆s~õZ/¸6BSG≈ó`-,<Ê-,2-€k∏„é`S˚xím¢£XÆ£ÿÇÍ»dèîJäó∑Õ^ºz—ã%ÉwïÆâ˚f#≈=w-¬ÂJºVúøuã"◊e»∞Û¨ãósóﬁëQÄûß¯÷ñÁ>Ωßb€º’{ﬁ'Ù2èÈ<Ô≤∆∫7®Tp]Ê≤∂ÌÜ≥C∞µ5 .lÔx`+qﬁD-q%ñÅC-´û‚íä÷ﬂ¸ïœ^*¡$wu›âoù–SWxC√O˚Ÿ}Iê·ß˝lKe¯m?º«	3¸∞ülpqü›±üÒv˙Ç%≥ÔÈ∫Áô<ø‚Ø€ñtJCıÏ≠y-^I∆à5ïjBæñäüüíá™E˛Ú≈?sÎ≠rEZP¶◊ﬂrcÓØ®Â/πc“?(o¿kª=˝u≈#—Ø˝˛%¸èÙ˛◊‚9B¡»∏EYÿïœf€q¸MGZ=x ‘ÜN„täΩ¶ÜÖÇ#Ωe«ÿ0<ˆüÌ¬±[xm>{≈ÇÅîÚ˜‚"˚”ºùå·M}∂Vx@Û·ﬁWqoJ^†∞≥Ëñv–∂LPôﬁ:ñ{íoÔÿÆÜ(: ÒYi˜ìÉƒŒ¿0"v?¯8èÅ˝Ïü˙ÕÓ>_%Û9é7ùM-èyÒï6ÓÈªn|Õ∑èw…/§t˝˝˛:ì·Ö·¸õ¸ª|bcÒ)´Â¬F;˚ÔtI0˛ÄªïÌz‡\¯fÜnybÑbN∂ÅwªËˇôeÊíîBΩÊ>7,¢UPNû»±Öˇ√a≈àñ¡ìˇ[._˘Aª‡}}ÕâﬁÔ…5Ùß‹ATá˙Oë;7:e,@Mˇ
+ÅD*Ä—√¡é˙(Ådu7XtÜÁÍŸ $Êüı\ã]hR–∂9’‚IÃ¢2¢∫èä––f_oÅG∑†ÄË›—¥™Z÷inæ¯@‚#¸4û/y—Ul“¢7Õèæ)Ç∑Xæ”≈4íµ√„mã›”–\™Rb)PB§™¯l3áá9óFµß«åt@∫Wóÿ˙˝5K-VIqjy«9¶
+N-Ô∏ñ`’ÚéunqV˘1˙2 ⁄•c˙Ï–‡≈îîùwú„≤Òx&jHc7ÕÔ‡∞…9ñÇÖç(Â¶ú{ø>˝VÆÔÀÒµÿ¢RãΩá^µ⁄Êí?Â!bFŸıËHèı‰Kﬂ,A‡ñxiœ|	ù˜ü¬i)1–~M¢œ√Ω¯ÍÇ¬ YnI˜0K¶aßécxI¸⁄ÂØ=Ø=Â€‰ÈÂœiç ∏Ø”Œ—0?⁄U0∞)Å·®ÕÑNp~/8a„Á≈Ôàú ∞ôˇöxŒüJrÒ+˛‡_r[—¡üT¢#ËÑoÛc•ÒW⁄˙ó1ÁßW»À.3˜È}°P»:Êm|∂)wn÷9ò®€öƒ…•Yj†Ùævà‚≤ïæ{È@’:Qró¬lü…[ Ω≠ÌßÄƒ…€”n7ÿ1øå…[{EÓZ‚∂¯`•GñØ#Ö+¡÷Äí°k˘√”÷[≥”[ÓP·˘ºˆ.«m¥ ∆πmÛﬂëÑ∆wÔØ9ˇÚZ∂ı£Ëp„®œ∏©Ex`_á9J£bçE'∞¿ËŒÇ∏S{yf ‰åÅå√õO±Õ´ØÏ? ï¸˝˜∑Çí„–>ØIÎ–:ˇı›ÏÔ_ÍÚ8MÑ”W˘ÊùO—˚Ä?·£k ê^¯ÜsG·˙Wôc#sÏ¿√L4ﬂNvú»êfOÖBL∆7¥Çv@£`´?´ﬂ‘‚4ŒG¸“Ö∂Å?Ïc8Ùgñ¢”N*∏≥*g-¸˛T_Óòc£xõ∞PÖr _Ó“Âÿ(Ü7Ô≤ [Ù8˘∞ö,–@„Ò9kΩ®Qd"Vˆæ1M']4ÖüJ*/>é°∑9úXÕ≥Ì≠I˜U6†„´o©“< q6¢4 2eÉœ?±[&€ê|ˇ[â(fÿ∞ÙJ)
+hò!(0Ge‡´Í–(opÜNMfù¨˚Zﬁ	Óƒ∏	{EõÆ¸)ß,∏9‰9Ñ>[ÄIô“‹.Ô®¡÷ÎXhÆ´;æ?g«Çµ´ÓxkŒé%X›ÛΩ⁄‡%^±∫√[Õ9V√D_Ÿ˝˙∫WF˝ ﬁl‘È]!¥¯Ã%I» Ø≠≠˙[.â∫qOó∫Â∞UﬂÚ”*9áû›≈Ã⁄ÇÑ@Ñ‘JPv#ò†l“˛–ìÏ´Ω"Ù#`ç˙nrU8ÛÍä]ú.ãáº†ßUBSœÄ¶ÁéA(ÈÆ=ƒh/Oá≥)J! ≤vQÀbÒC¯ıûı≥tÇyﬂ≥ˆ6¶~)÷¥óÌ∫na’’ÖÌ´Û°ÒÙTéTZœ…ÆÊ!RQÈI/3xàH ¥˛bö†A∏Ç D†”YÁ¬âôÔÁÙ;5áP´xˆ†Ω¬å‹·FÖ+Wü}K„dJ”/ÿﬂ”$b4Ä˝t–eKEf3˝ä∆ ói¨5‹ΩÏ¿c◊ˇÆ1KYœW⁄iÔTn;{äDzbf7ì’LÁFJD}s°åOŒê)≤ç1∞wÖ°»ìF%„…l™Ωåâ9`√®C ﬂD„ ≥Lb§√Sá#'E⁄√§øäQ[ÌôQ√§ü‰»˘ˆWRUt™˚&•å’ﬁ≈¨2ü¶ôØ[=eh±ñz≠‹…qû∑Øô∞ã⁄lp”*Aùåá »6•rPE ¬ÎrŸ§¬k¨ë¬qëLèÒ˘«ÈªØﬂ@}ç7≠£|Ì£%qLu))`˚£ÎΩ‡ÑéŒßãøêá∆OÒ47Ñ,»Ù74Ã\$à´#Õ®˚|¢Î?Å]iú.’§Øœ‚	ˇ¡%«‚›£nÒÁU6Ík^g√ÌœèxΩo˚îÒ÷P◊ÎßVÖÏˆ^∑“+Z9‹xñ≥íüE’h^F∫"'*-1ì%#€z∏µ~ØÅQΩ´TˇChÍOyñÌ’V`Ò§’Ù’ÒÆÜÄœU P†√·d◊Ñæ°Ë'∞™#ßaﬂ¯$Db™æ¬KÇe◊E©tŸó}[¢7Ï™,ï+∞˘h„Ò∆É-cÑ≥ÉZÒ˝WZJ\π⁄†Ï8‹P˙#ˆQ&DVf∞Ùcûj‡ÔÑLÊhnL¸èt˜O<c3√ï@Œ˛-o(ùMöR§SV…GR˜ú˙,UãéR…ÎYu¯íΩÏ™‚˘Ø˙√lÎÓ˝c’ï◊âZw>ÄãXˆeF*fÆRÊ+˜Î7æÿÎØm±◊›≈¶b#±‘˜÷∑6ÿ˙ñπ√•3ëZj¸¸yZ8nÁ]Ç;ØkÓ8@≈æ.bêÎx¥±i¿∏πs•ÆË?Hœ≤ ®…x=+ _≤óÄW”8œ5p£}¿a∆!»ÕâÆ,%ñçÎˆêœˆ0O¶’qèkl˜ﬁ›/6∫XA≠H z∫S¬˘Ì√Ì‘	8_ú8$W!≈˝◊Ö˜î†6±+Ôoll›}ô±+Ö'â⁄ô¯ÒÛﬁñ!ﬂÓ™5ÿz]k∞ı∂•bˇ≠ﬂ}`ØÇÙ·95w⁄9ØÉ◊MæjÓΩÆE∏Á,Ç™ç|˛¬∆˙&'HéS
+¸ÙÂZ‡7•g∫S%˝ÚÌ5^ﬁ5Ûπ¬ejÉú5ÇÎÛ#,oI[¶ı%ÅUiÇ}`f·PªåÀå´qÇùÎjÌLùåÆh\2©∏…GE9’ª∏£}µÏ6⁄ô
+ü
+π˝é õ,ÇqÌÅ ?óÕ˘Ÿf›,|¡Œe˘|ı‡›,l≤ÇÖﬁ˘KÅˆ\
+≠‹‹iG~≠r≈§õœπ¨W°aNmgsÕ‰ì€w˙å≠'\–ÓSKpn∫yÁ”πñs≥ø.ã)d_fV£6óën_ÿ™ﬁç§ª∏z ÔÛ?SóM≤˜àΩQa®ÑW†uÌh–ü¥ë2x—6÷äER =Û¶k%ı€êÃ¬‘f±˚9Mõü„fEókÚBw?oòí‘]ØY”c⁄í¥‡Ü◊>(™_Ì7
+ãû&ËÎwà7Øf”–‚≤˜É-yëyÕÉæ≤e·__ŸTzﬂW˜)|ÛK./Y˚≈ÂØÎﬁeK>#Ë9ãØ÷7ø£∞Ö°ÿ¬0,ÖecäçŒ™[kk≠ ÆÅ˛;ªæÂ™oó6Tœf®vón4Öµ3];ê,.˚ViÚZ–»ÕuUfúvº¢<ﬁ≠Œ√wnß£…0AˇÌÓIÉ5|†9yï’9ı∫h–∑≈Õ≈I}„ˇ∑ßày°Æ∑XŸÛ>DHñ;ø§©t—ﬁù¸-e} Z⁄s!íÖ¡‚<(‰ƒ°èU¥n˜ìŸH€ 	L0Èy÷C7zkÜ/≤å‰˜∏O€¶ôŒ¶,›7©ìüàqP:”öºâZa'}ïÖjèΩ=•¶^!f¢y€lØ\”»õê*®-"Åy Y‘Ãá÷ûuÛç«º∏§Ö~É¨®"$–!ñwÃy≈ﬂÆ¶S_H|^ß˙?0 ∂@4Ãè‰Hp˘ ÀLP°€ﬁ‚√¬V,+äÅÄÑÍÛÂ'–Ét ≈ﬂü%YÏZ¿ÍùÔ^,óÜÄZhŒøY<Ác(AÙœ≤®?£z@∑£…DxOT¶æ<áÒBï(Øl2åÛj¡ﬁ§Wö·Jå/¥√o„’¬¯œ£|›'.÷„‚∞\ÈÛÀ±úNå‚∂ƒ¯zQ<‰¥]¢_‘y§´“≤âe©	Ô>¨P%ö[!uÈwñ‚oØvXäsƒ|˘Â∏Ûì‚X`K˘6)F÷`Òkü∫ÀcôØÅ}>€sñ¬ï¸<ƒF3kLé∏%tYSvJåsÃ‰Óx?ï≥XqÎŸÎ JÖPáè|±∫a¶\/ÿwÖvDÂ/~(Û|‹WZè≠Bﬂ·ß&µ%Oﬂ≠*Â∫·Æm)◊C√…ybä´»3‚e ≠¥1pˇÆ®∫‰S˚M>¸“?'ª_$Ò°H2√.ü∂Åºû≈«Üjı~¡B≠]wä¢™∏ Ç„O¡/sWHΩ—ı:Á/n€¬#˛ıM˚éôXº∫dá?û…â+Uªvı˙ä*J’èÙÌj¥º9∏>O‹Ã4õç{ò)cíN~…Â}uqp=8"{Î;∂Û@LWAãÅ∞≠a”…Z9iê√~¨á|∂ÈZi‰B¨D	3Qπ˜Øuƒ˛◊µ8∆íIyﬂ‚ÏBâIÁˆ⁄KùÎ%_`,òµ$·ñ≠rò—‚ó\Hûƒ)ÑÜ+x—k°¸ÁZ<ƒﬁæe(—g‘Ÿõ]áÇõûk!¬bHÂî.r%ÇHçqΩŸuP·Û-É/›S≠	]Ë*@„o‰"i^ùw0q÷€∑
+Aˇ˚Z#+;ÊÎs  Â^„r˝l`Hc˛†Ç*ÂÇ”™4àó9Èe“	Ø¯Uò∞öM„L∆è-k≥‰æ
+ÒKßZË†Ûg¬“∞rÒÀkÎ¬+†ï:‰à0]ª0∞i$„-@°ïºP»@óãBXËu}ƒ´e›;œ†SôIdÿ∑-ˆá^pïY\(vÌK[Ç")ê§i
+‘hqÖÒ®Z‡c∫aäZûË$ÆÛ˘∞"Ãàππú1	E‡dàä@8Ø°LwµpÛÈ∆ıLR†MgSJ70N«û‹é8B‚A:Ñ~VXËÕúfB˜ÜQ˛ŒKœ£·¶Z‰Ωq±¨HÙ–å=
+ä∏˙A<ÌPWé¢¬âáp≠Õf`áïöÜ^™ßﬂ’d/gıf·«]ΩwlóÂKŸ44Ooz§åWPicô?.˚Iï/¥>@j÷X√Ú‰∂ïó·äæ‡“ ±„R°F¥H¯-ﬂGÓáõÀœ(O”∏]ÚûÔC[e/»O÷^À¨X˙nó5?ãMÙºÎS5zΩ°j/~Y>∆9xçgù}$[ÊAö•X#Ì?"_ÿ˘‚ ›q(4¥™Áj‰ÄæÀÎŸ›cÓróÁ5¬’Sh7n?öâ‰k˛/û%Á	øtÀ»WÛÅ[Ãˇ|;…z√X≥¿xYù0?$ΩAπ ˙4†≥ÇßÃ ÑVNCWÕ¡á¥?√£_S ◊⁄ﬂ˙<‡ÒŒ√9©Ê˙wSÍ¿zTÂ§hw´Zµ1Q*ÎÕÚi:jÁΩ,˜"W=psä•<Ïò2\¯xÜ)¶eıb⁄4ÈÙeaMÂ˛|ç…L!H	ë–´°‹—æˆ„6¨E`Ç√tp¶Qfc˛I∫ﬂíâ„ﬂíQπÄí_‹œ|T1Ä‡7ßî§X?Ï?¿ ˆ1?JU6'2õÊù¢@z∏¿í†ÌïvT`∆dBMB2Øs¿h{›Ó4û¬≥ÛbÉí4Öû¶““‡√ÇZÜiﬂø⁄g”Sö∏`ü~‚!,ô£Ë®}›,â~¯ﬂ$'ñ*aÅ:ÂVŒ≥©6èr5õö	Õâ,Øúe&ì3´Aß^ÇOœBã¨oÈ≤ÁÑ‰v<ñå?ßF´e $∆pé*siKd)yk=ˇo≈+ú…oﬂ-Á?ÒÍùÀÏøïÔàﬁÔU˜ŒÀTTµìc(sÇ∂æ^ ﬂõΩñzö:W∞˜f◊ÂF5´ÁZ‡‚•EÀZÜ˜EPÖZèT}d9Ï]SaÈ8%˜∑Ím+ ∂à:öo·>Y|è›Kí^ó}ñëg æÙ∏z¯HäÑãeiÅ; ›ˆ±!Ô:l%}¸3OFì·±.£™‘lÿq6¶|T-ˆﬁb	 ™#y˘THKùÎ4itó√u•R¡˚V◊´c2üØœº„Ù0ã&!Uìº¯F t*’˙⁄Jø∂ZçïÎ[≠÷uˆcµ‚+‡q∏R•€—ËBôï◊àä√ØLP„˚Rø“My*˙π∫·UIÍ—ÙÚ¬¡˙‰Ê¢ËïuÖ›ûÎÙ™ö√nø˛HF◊(±àívsùEupNé˘3¸Dı$√.˚é uµﬁQÛ©‘·ŸﬂjËöø≤s$Ï˜vâóíj,=ùåµ¢¢!™rUúê·ë˚A∆Z¥E1–U
+ë.•ûõº˜OÒ-uØıÒ;ßÔº≥å? ilΩ+è„¨y¬Úa:Ωã•!◊o\[˛‡£Æ~x£¡N±v¥÷e‹≈óùÚ“<¢$Í‹Ã^oìähΩˇdúL°Á§ø¿zi?^(ñë˜õÙeóSÉ5ÌOŸ“˘*Vπ∏Ñ≠qa.ı¢Ò„Az∏ﬁœõ≠ñ9"_Õàù˜uØÚıÛîı—‚Ás><~OÔ"`>ﬂ∫£qü>≈lÁ]&;JQòõiN…À®ﬂ˛@À.l√#@|8ÒÒØizp0åÈñ°ƒ[≤loºﬁ%t;oÙ∫áÛàøgc3K1-<˛	`Œ¢É¯v:ﬁOﬁA†äOwi4¿bFÈ0é®6ï5íÆ(}ı<M˙k£Ç˚π\£Å™—'3º2·ü7{”Ë≤'≈$∂w>6gµf<f?TkiLuS¥”Yeqö5ˆì,∆ à¨	G^HTŸå≤hî/fT~cæÆﬂ‚5âƒÀC,π§ê NÎw‰ÎS,—TT≤-ﬁÔ•£–ßÕ<¢◊ok7oÛW'Y¸\4æ„î∑}Ô7qy◊:=˝ÏÑ%˘e1&™Ôæ¯	Vã7?‘˘?yß-ΩpØ>¯Ê4õu{E≠' ó{≤
+X€ÔÚ….0`hä˙æ¡Å¨FóÔ»N_È°ﬁ]~ò∆"´˙æS£HeÅ˜Òé∂R∞z”YÅX¢LÌ9Ï«@¢‚Ω¸=å∑Ã}h’K∆e≥v*⁄Í≠[ùi*+Çu≤ò\öãﬂÀ∞àªÑ∆∞fkıìì”F±ûV≤◊)Ø%§≠∫ÅÒM¬^"à~>’AÚpL®pãSNÇõ—l:ê`«més°µù%Te»~N˜—ñ'©ö]•‘74¡9ÒÙãhòÙ©8<ﬁoi’ˇ∂s83.¢†›(›óÙ*Ü•‰˜S^2ôø\‹™~˝^Ú,∂^/ny_á˜Ÿ˙é’höÙÿsåãÈ¢J[’	Ã‚É$Á.,õçµÕhúéèGpºµ‡˝<Çöó“ãKÔÍnM√<¶B 8Ì∏ˇ?∆XfoW‹{äÔ=}NOû^>°µÉCwW}Â¸’ª„«¸-¢ÙÎ1'ıX¬ª”x‘¥?e¬ƒ≥Éÿw÷_¥2ló‹OÍƒÕ¯r¯2Ï'${™b#Ø\óß≥¨s4¯O˚pı¶ì>fÒ~„√}—O{3D∂éºÁ+ã'™L E›ƒ√A4Õ£…§ÙŸ˜uı\ˆ£ÍÉy:€rÅ5B©Ä#Û5ÿ}GΩZÁ;H¡Éﬂò¢•%}H>~«ˇZ:–K∆*Ã&}ÿZh/°Çó–¸Ñ)Ê±XX„˙4ó5ˇºmıç≥âhq™/õ@L,ç÷§Ú®∫≈âu¯ˆ∏u‹¡À∏Q Ö˜–ãìΩ f1	ı"ÓÏ∏n Á‚e≥8¶z/Ìa≠Àf0øû7òÿßp,ù∑:Ωh⁄4õ dç:H`mÔ¿ì4k6æ((íÇ£gXUY≤∆]¯vUî¥vºò>èÀ∂=Øù©UÏZ ;a≤ÀÆg`»êäß˙π©8îºdÃ[œI$§%Æ]∂¥¿‡øWµ,Bá`¨ÔXçñÀ‘RkàBW!jÖπ¿–`\¨¨i⁄ !zr‘(^F«ò'Gn6]
+”k˜0ØÛÂù%ÜÂ∏*&#¸ÜÚóˆpqeÈ
+¨‘ï+Ö ã¶ı9ö%qºîÊ‘YZ∫NÛÇ/®q™‹I÷P‘k€ xu˛ªX÷-û,Ω÷N¸`ñQ™Ä`Á™l$ÖzÆîW)ﬁíÃof\π[™oy›˝WL]≤·≠Vô‡‘∞	j⁄Ê@!9˙3~∂ì¯6Hß)&ó2U…»V˝ÂYo’zÕVáD√©÷Ñ‘®ÉÓgêfé"”óÓ¨6Ü—ôÎÑ"úœSäzn˜p∫ˆKÚLŸLáIÔxµ1N€ÚñŸ‘0„ È∞fÔ3Â‹Ï¶;Ÿ'†É([ü6ó∞ˆÔ4pﬁ†¬=\/mg)Ü<hhôäŒÊÙÎﬁ^˛†¨∂#∏jÌir0p˝o<´ø	î(≤˚1%‹∑a`¶ì	x¯x=ú=Ò¬2çù^™N3À†aßs›ÒÆŒ:ÃÊ∞\íYÌÿÉ$ˆob,à«]Úñ(µ√√˝˝§‘ﬁ—∫jVc8l&…xÃKªVÇE≥L a÷í-1›–%·1ÍßÍOÅ¨„à≥@⁄&§6ÅÕ( ¥üá´qéﬁFoÃ¡6i÷Û¬Ã’∏âê!Œ„.4|V[7ÕämøΩyõL~AüÃõ>›zQ<\ä≈ﬁ"‚çx‹æ˚†±†±vÚÍGpr6V⁄˝‰ ô6‹(ôå~ -@¶Õ|œè„(É«cêt≤§Ái0 ~∫¸…xÜô7Jö`À+Ç9±ûû:ƒ“î†æËëÑ⁄À∏øN NÅàıÉ;-ÔF	ƒ|Ú◊ø˝øÊ´5kò4ÌL+ˆÛx;"M°ã7B˘W¸n˜ Ï	Õº´!$MÖ±Z®≥πÎ˚ı
+rµ^ÇÛ≥VCœA¯ËÁu;VÌ)ﬁ\÷z≠U±]ÏÌao˝t˜†∑ÅŒ˛ÜpÔñ“¸RºÙ„§L@ÚÅKm˘	ÇÆc)&âQjº‚ñVô‘ô¡ö”¯´47aÚ7Øk◊h|Ãô#Z#á	∞gÊ∑ãï≤CˆÊD*3
+‡Ïˇ¡p¯àEôºrjèÚ„qœP €◊@rÛà£dZS\t¡Á∫Ïí∆%Ñ‚#O59ﬁä05u^]—ê{2Ê7®&›·«r#–›)#Ÿôq%DhË\ù˛ií≈h*ä7H-ú&té˙|G1Is[@Û:O6Ô¨omÑ[ìtõ/jäŒ`>¯¿¸<w+RÌÇHM·ﬁéÆù,HcR/üXãaÚu¥{¬ª∑⁄˘›Lx1M˚¥‘§˝·ã-ˇ®(•Ût7Og¡dÒê‹¢◊™7j%z·Ÿ–NµÇO∏πì<•¯tóÖ¿Z°]dM
+¨¶Îü!™ô‚êÏáP`≥´l=ôòq*ÿËA<w‚ar≠tàUƒNÍÃsTli{|;hËmà#Ç PÄÕ√,R+ 04∫–f”AíYd”>’;∆–ßΩdz7È°äßqe‰´‰oD∆%¨ﬁ"X˘ySº¸îÎµs_…⁄ùç‚~àÏ]¯q¿]§L˚Å)„’Á-÷∏»/u∆Èa”	n/ü9[¥B}kaÍú§÷ÍÒÙS`?‡ÿ8Êßû/Û–hÁûájá…@˜Àâ wG9‡kUÉ
+leQ>Xôüò‹fH„d2\7◊T≥Çê∆Œˆè±®ƒs Èw‚˝h6ú6çâ;p∫O6≥t–m>∂‹;ö'Ñ‰w˚]âÏ‚&„~zÿ·¡l[)¥áﬁIkæ¢ÁIä¸z>J”È†aº™≠¥æ¬®Á¶E`ó@å◊ìÌÜp~Âi÷û å7µÂG¸∏±‰´1Ú˛iÆÕ«Sª∂Õÿ¯‰K=F”M“
+¿X9ìF√nq]`#ïÉîå∂Õ[ÛC∫ï	:£N√˜a©^ÕßG
+kÜBI˘å°ôJs÷Ô»Ô§åÈÃÿe_<r:>lXéÃí◊*äãOu˛p1∏¥Ò—÷ÇO˚éﬁ…4:(ƒ?¸C¸LVËÃH≥trNﬂ··mÀﬁÊs–˜¥È;Vp(‹_Øc1ÍÎÀS#€tP»A≤x›ÚÒv(≤û%{È}Û“gÒóòÙfı‰*ÈÜO FU¬q+Dµ·æ±¬—tı‰*qí!ÀÌ=∆§<ﬂßqoêOR`˜µ0 ÓIb5óH£ıØpgï≠¥ZÜ5©<uÛ†H›L5‰(˜-¸¯µ©◊*MXò.∑€∂Æ√ì“»±kR¸&öÏò ªs˘ƒq
+@ªCÎÌÌkgábü≤ÌÔ>ÖÛoßkMySC eÌ6˙BÀﬂZÌAyÀé‡Ü˚Ë∆∫cñıTwÕúyÍ6Ï‹ü≈ﬂ|”®øµ¬?\|ÑN∞IDŒv∆3˙T2ƒYb=ÅØ-Ywé≈ùù.•îáüëËAm¯=u‘UU~GΩÈ˝({ÜòÈpGY"ÿ≥Õ·Ï Á´'€¸Ô[Y=Àw\F/ã«ìXoé?ä=m{Èhb*†º?ïU2:@%%p9yYØs–íï`tåÙÊcÌÙÓ(:àÖÕ{Î¿O:‚”∏ôïÓ¬O~£9∂qÍ5õÍÏXˆJ#ÍxÅ§ÆgO
+eX*≤Î…ËÄhÖ„º2ƒ‡* ËÑçπ[˘ ˆªXß”°°≥xPá&úUs@≤j]ŸEÄ˝'?LxAÛX˙Î/~ÀæD”+9√Cæ8∑ÔBÆüUî-’¨KEaÁ¢‚3l# }U∏
+x*Â%VKJ3H.P/∫0_ñÃ·D.Ã#î‰Úî≈óÆÜ∫òC¶Û.ı˝Âø˝˜Ï÷ÏÄ}ö≈˘[∞‘EYQ†ˆ‚ñZæ˝w∞‘˝˘Øÿ›åˇ9y∞Ωã≠≈öñ˜ZÓ"$ÒøµıÆX∞≤Âr›xÇÆ-
+Æa®U¬¨$4≠
+^ahyauÍ;]g√:ßkÄ+ôuh…î$€e—°©VLÙÊ‚lXõ[&Ø0üa°Û“	⁄˛U9„å“Ñ2MátÑBŸ·(wYÅ1¡ÿ…2”.yö¿≤ÚÏ¡é7°lñÄEz÷ˆ◊[—æÛI±dÂUÜIÕïsÙ©Ó{¬ê1K«∏ts—`Ù´Ì%GXC≈Ö—Ø}£–r,Ø,)ﬂ˘∞8Næ7ÜƒÎ<‚
+¢*ëÍ^:≈[K<£ÍÀ–G˛Ö5¢3‡ îÅÔ¥ßi{ ˆ3h+G©!j	ùbõ¥©9OÁ‚.°ﬂü–£/:Xx˝h*ÕmÆñX^Â⁄‚¢U©÷X^ÛjèÂuf-≤º ÌÜ6ÿR`8ë	œ†”øÆûB
+ÈÛ!®…j•ãÑxÖı¬∞f,/’,%ª™m7kŸ/o‚ÁY:~Ñ[C´ye(√V:◊IˆÚ≈Ô_˛Ò˘‚◊/ˇ¯S¸Ôã¡≠üø|Òõó/˛º|Ò´ó/˛¬ö@$˙Ï~ö≈nıVü§–ìÒÀ—ñuxj.€õ–—Ÿô”‚˜:ÕØ&?¸j¸p2>¯·A≤ˇ√√xoÚ√Ω—§uy1ÈLÅm√◊;≥lÿÚÂŸê9liõ/AE@√"±≠†≤VL¸’N≠∏
+∏ ∏<˚* ¡
+8û4œSYﬂlH}Ω-∞§§6ñWÈ(/ÆœÓÖò?”C!»D69≈bQN¶Råwªá;i/="ç—Z'`aÁ@£ÀX¬ˆ`∆∆Ä5º·X9Ò´/±$ü˙À{á3*˘rüìÒÀ	g–Ñ•Í]ñÂ’[üé<ìXŒôÕ.ƒ`ıqÙØ0NüI±¥ìÌÌ¡ø}8–Pì°>ÕÕ+ƒôÇQ_%Ç]¬?t£†|`—bqõ˝ QíæÍ~tîåÄØhﬁ Æâ"(ªî%õrÉIäãTú%√í$©<%>ÜõïÜîWÌ8˝Ú©VØ-Ò(˙R–O≤≈ÍÎF—H∞8◊Cﬂ)≠—‡≈∑dD†ΩT‡J·ÕHSyJØÜïêî@∏∆B;ÃcIKÂ:òfΩ¯é∞Q5APî.L¡ËIíﬂ°`ﬂ—¬´l§<ìˇj„)¿}¸¨L’í°s’8M'1˙£é”jl≥¸OVòì$∏ fˆcÅbÀK^l±“77é ∆—»ìe^'⁄+ã—Ÿà≈º¬ï éG∂‚€·∆í%^ïa∞[dW∑Ï;ôFUiD;Àæj–.O©› >rì˘U{Xa`∂ mbä‡™¡\í⁄l¬´tHÛE¿‰†k<É‘F¥$yÜ3JXë=y≥÷j`◊÷◊zÇ*˝qO5 Rª°ü7‡º∏°kg4Ù“#“*®p(Âµoá÷=¡ÉH‰‡√)ªõÁ3¨J2˘ﬁ0πîØﬁ"bÈì›•Ëy
+m∏fl!œ[ÅÆ¿Ê:À’‹®åûÄLQg_¯äL°ó˙ZáÙé˘ó…t–l`ﬁhÃµ`«„ä/–c-WÁM£∞“√‹qj£&tyFO…B%√ö±åVÁKÉ2&Õ˙ø±1$+
+ËÚ—È'˘da¢Ç+»F^˘Xe“2Øñå˙LO^x◊ÛL®sIˇÒ>pEº ª	Õ"êôúÎNCP=¢Y?)Ya∑4Är:Ggëñ˙Åpè∂37'Àì<˙ÇßûR-ÊŒ4>,d!úÑ7	xµÒü≥ÈÂwÄNπÀ«›£Ü@V°EÛÛΩú„Ä«æÅ ÉÈt‚	ßí◊ö˘j∞]óÌbOywQ∏(`Ìz_ÚØEWp∑ÂLmÈ!å®]pã’‚ø…x”ÿAÌÀmi¸Uñnx8rNìˆóR©jîI6ß]ãÅ2âxÚK·}ÂZê9ü£Re©áùˆöôE¿õâ_yìv¶Çv¯©á‰pN¥$≠gIùÒIÈﬁÒÕ+d §˚S*~Ï™üd´ç·4(‹’öıì∞ê&è·ÜYÃM{¡ØK~›Ê\~£˙!-£ã^œ’™ñÜ™O ÚÛ
+*.8	Øµ*r~´>‘Ω#íÜ±∂Æ“√ß(;Ω±KÚÚpPıöª”
+ø7ØB∏ûN•÷âSÔÃ±jïóñ¥"óïYœ“-_=ÀaT_◊lHÚõÀK¶˚ÊO$¯ß…0ﬁBÕ ciNµPÕ£ÈBß sK§(Ó≥ Õ^~HyYıyRØXå|eU	IH∞YY·Ù≥®ß‡°Ï>l‡®±óçbrıµ ‰√4ß÷=†√tiZM]õÛ\ø„Ïq¢√ÉÓa{{Öó*:‚WEµπïÌôb[˘’§ÍØ°´Ú!àì®∂ÉF—x2lﬂ`FtFE}9ê›û£î¢Õ™xa8 yˆWÃúüO)±iüÙ^W·"àΩ¨IÄîÂ¥w∑óv÷ë«ï£egË¬´Í<™ØŸØ„£ ±ï™]Y& «úÏ«<Ö™—•ô÷Z¨†E•x_ŸV¥[„Ç'w~êLv+eqô◊ìFPÒ´oØyT©~c∞Q›LÓäÌwó˙◊>àñù†°|jgx%Õ—∆{@#q+„ÖÍÑ8 î—¢9MÖ}cÅΩª≤˜·á˝Ÿ“w‡˜Úı◊{Kò˝Ê;-/ó5â˙hÒÏ≤ûû&5<Ò<J'n:Yæé÷ïŒıj”†t*vzﬂ0ﬂ\œ≤Ùé/tá‡ œßú8øh	Å<‚b˚…π•ÚÆ“Fê-^`Àˆ“”ï…˝?;ÿãöKÙøŒı÷Œ<ëÁìﬁ¨~Mye•k¡¨÷®<%ƒ‘L2 ‚C¿¨˘-√‹ñÌ˘]Ö˘	éJÒ?û!àT!%§¸úàπEŒw1|ê≤ÊÂ¬ö÷⁄≈–<˝q√Î+Ì•Ì^ãG≠1{áº¶Ñw¡æ‡ë∫°–Ê¿Îgå≤∏üÁßøŸÚUUÄHœ11æ§ŒÂX¯['2÷Ÿ‘^œÉﬁÂ±†‹'®≠?sïf~qÄu©é]≈˜^Û≠≤X¯«X«¢‡yœ“d_*4Ÿ]H©*ªÜduqMgà:l^<˜ ˜g¿_`ÒπÒ˙0Œ¶XZÊƒÁj,9††"¿˘t&•öëPòKÂ±TmW!6;”£kGcÅ+∫¶Røæ‰‰ù≤y†A{˚⁄§!6®Æ›ùê»Ë[©^vµÀÚ]Ä¡ˆª˚+¯øùj.≈ô\òÕQäV≥Ë{sjrL≈ ˙tÌî&ï’SŒB…K˘î∂réâwo–µS^KÃ‡≥ºÊ{yï∫	ïV©úS#T&‰Õ^C;‰≥Ÿ^^ˆî9aÈ˙ı(⁄)LÂ…êıÎ’5FÂUÿÊwÚÏ8ﬁﬁkµº°ΩÁHôt•{`˘≈πzÁUûuÛútzväj⁄oìˆ˘àx®‡®Ö ¶Òå8“P˚Å"•+Ü©ˆ™≠Wßçœì+Dfx™ùÚ3Œ˚_áæ‰áu∑ŒxlΩá÷[td’:∞ÍWg:¨ÍUg±MÃiOüÛà≤®ì›¿	Â=íïÂûVπCe∆â"u®:‹0KhâÖ∫ èµ<~4xÖ‘tﬂúdXCFª˙ønB"hˆeg1Ωã3È],§Ìd‹O“äÚv6pM“.í´ÑkîNé∆≠¥	•9¶0jÓèˇÚ≈ãó¸ﬂ^æ¯Ö÷˝˛À¸Îó/~¸ıo·«ü^˛Ò'tÛßgXlèæeé-%iuÏD˛~ód,éÚ3…ë¨•Ò{ïU*É£–¯∞îB}~ê Cj'-+vÒu√WOÓ˛ä`±ˆ¢˛Aº	\IrD,—Û33†uÆiµsÊ≠ÃZà#]Ó,]≥,æî{3	zÊ[Îú¬,ÉZØØò]√‰$òZ∞8™œZqºò»Y¡"Á&¬TT )´πl∏DY‚∫Ûm6πof69cQçÙıÛ∆’ÀŒWï%Óø˘¸pVËıŸr¬ÕïÓåy‡JÖí}≥≥æï¶´	0÷e˘~¸IçúÂ±_=c.∑\Æ∑3s€€ª\ıÚ±]‡ÇΩµŸ◊ﬁí5Çﬁ¯Û £V2{Ø=><sﬂº≠Y[9“ŒñÌ’Û¢'·ÊB≥N∆≥Â?Ûe>{=9œÇ´sπ–gırõπYÕå5–,µz´“Ïe¡ºeØ?cŸœU¶Â†◊$≠“@ÛoBÄ˘k,]Âg
+$w§Ï9«mÅ‹	˜àüs`∏öå6 ¸Æ¯>C†˜[‡ÕÀpŸﬁo{`˜tü-ê˚¸∏_W‡ˆ∂ùòêÛ–∂Ë¡<Ÿñ◊Å7 {Ó¿Î™ÄÎ⁄Å÷&Ï ºJ√€ﬁ™@ÍrˇŒ∑;p∫*`∫¶kI⁄9∆ûÕÌã1Û@üC‡s(‡πtRóú∏ ˚»§˙Ó∑óÁXÆ®\†\70ŸêÏ∏M’pº=[‡qï;UÕ@coÄqÕ¿‚˘äm¬lO®‹´"`¯õ(ÏÏÁoZ`p≠Ä`ØΩoÓ ‡s¸=´˚¶?–˜5¯ñˆzz˝ÄÜw/,`◊9¢pA#|Z∫á0Q≤´Q‘Óö£00…¬•o{Î$£ÖUA√-L=e¡±àÛ∫»‹•∂œuÕ∏≈¢…Í…	£˝ŸeKùØÎä,Ω‰ÔΩ‰ô]◊.ÙÎ+ıYöñù[Êfyú›≈¯UÄ√@ä¢O‡ÊZgñÙıˆ¡ÿ7Nïw=ÑA˜o°∏∫ûe—q'…È_.;äá-…πÀ∆]∂Ω£wÂñ‡≈qà÷Öƒ…ß·±^ºRô^¸LﬁeïåÒf{ŸìèZ¶+”{è`ﬂ»Ÿ≠ÌÙÙß,πÿQW˙…—£ÊòııÕà–Æ2X€>PyÙú†Ë>ac‘%©¿êƒŸmè¢d¸dòLõç—hm/Ì««N– ∆˜is¨≤Ôœ‚Ï∏	di˜€	`cÿv˚Iè?o ºq7Ä‹ ∆∆Í*˛7˘∂x4ÒµxÜ≥‘ÚíÍq±√dî ®¿ «—Dî/.A∞≤yìÜÔµÑ_íÔ X&So…eO‘Ä0Xﬁ^ _zÁyt dg˜ÚâZ»SJÊˇ‚≈Ày˘‚/ˇ¯w˜è)ßˇ¯É|Ò÷?æ|Ò3¯Áw‰y¯µÚM$wƒﬂ™∑˛ìx Ì»=ë
+¸ﬁUg◊«kNLh^^›:ã£~óÌG∞kúßß≠ï©n6[´ü ÿ”!¿éjO7>ƒ‚ÂÆ9¥{aG√]≥¿∂î è˙}Ñv%Æ˘ à◊ÂÁØ±N>üEQF∞ˇ{Ó	 ö‚CFh„Ì#∏¥Vø»EÑ›”€¶bœäVŸê3‚,bCïÂ–Á(Ç^ÙÎÑñGõßj”HnÖò\>i÷?{ã”‘ÀHıØXºñåînÜ'yœY‚ïSåΩaG{8LÌÁqîπ1.¬‘‡I=∞üáﬁdéœ«(˛Fºwπ‰`d9iÒ]Ù-gßC^≠ubpÒXëGµ¨LÏ÷(	ï‚´Yﬁá¯§áHôÚ˚i?6A\sœ6ﬂ+RãàÄ
+ 5âã7˝S¡∞´ÍXu$˛Ü’aºkX|GêÚ¨o.ÏæGsÆﬂ9ì∑Ω(\W˚≤ÖﬂpÃÜÈrÄ¬°∑xëæÀÉ‰»Fıjå≠ÖzÌnß#“‰ﬂ§˝ÂRı
+ösüüûèø?ã≤∏†5Å]Ë
+—:äUƒ=>∫€ ©)[[c˙Õ|MÍ"·¡|ÿÊ˜¢÷Óú,æ«æH‚√úµ·ﬂ<Ÿ∆tá0XãÔ§„·1€;ÜS7◊{ãßØé¨.ñV/>gúÖÃ¿GMŸJPæ£›%ræ EÇXTœË1H˜Ê(jËFùï“<{!œ|⁄[€±Ï◊&]7I7´ˆ∑ür:ªc„∏z˜º≈Ø?£s;	™?Yoª÷äv(˛ˆm9Æ˚“QƒtDÒ˝”JèH›Lç^Uª≤∆Æz•lª$ÄŸcÊ≠(èüd√fÎtqçÛÔ´¬õÙOw23rãªé`t6  ˘±º/Äè∆Ï∏iÑZ∫&ë¬«ÄõË⁄_ƒ˝AÚ,‚ qE5˜ë∑FóP…Ÿ0%4»Áv:I‚˛%$^6'‚‘4∞Õ£ò©“ÀÃ©ñ—«Ú}éh¶ù°πæíz∆Ä‹8ö»[Z∫]Ræ˛íz7¨≠ãÔ—Ÿ+ï6¸“Â˚b≠œOw2ˇèÈ≠üR!G¸„ˇ≠˙˘UGvÁWôá_sÈr
+A9^tRÈË´Ú*ä~ï´w$ú§í«^?ÙˇÚ≈?Û2öTOÛ7TOI#ºÈ˚’@¸
+#À¥A2°fÍ'ØÑ,\Oƒ7p-L9ƒ´RÒ´ÚV0AÅÊ®îÓë}›Ê˘≤«Ële?∑çÊkä}Ñ°sóeN≤F0Ü.*ˆ—¨¶GÃö\k∏‹£≈EÓØhuŒ|’iÕWà£˜\æ¨(C;7ÖÒi˘˙dBÏÉÌ∑pû/ûö¢¯Òd|Ä˝4Õ¯∑}«NÕWâô™RÇû&…àÍ™ƒrõäËÎüÙ˜´p tëo.; å2lC◊’… «Ûcú§µø$∫˙5˝˛ßò?ì¥Úß\ø~NxI≈ñ/Ñªüøà˜7â˙î Ä&œ÷_yZLŸ∫˜ÊXaêéiÖπ_·q¢˚0Â<P'ÕíÉd|Í>òD”eû©!‰ç£Á	|?Õ:Ωa2ŸK£¨ﬂ9Ã`QH¥Û	uÖ‹‰eù˛$9§üÈõ˛m+uâ5ü<∫'Ö∞ñ-Öù#˙ﬁöÛ#p·¡¶°∞Êu∆CT˜ÆùØ	˚›:xm®7LÂ∆âÆ™5=-=ÒE7*‹yLnŸµ1DHÓái.≠ƒÆ’˘À|éÓ∞iˆLØ¨˝Åíx6¥|>Ö‡Ω*UV÷∑ÜCîùs¯ñ¯e>áö€~;Ô'´'∆ü$yÔ'Yºÿb∏≥-Ä^îI$Ä‰4ê{I>•áZ«"oæÿg∑å¢Õ ‰´Öç}x`|€FíÖÚŸ"πJÛXTU˜Xë∏•≠xeQõó6≠B;Á¥≈≤y=ßÁÁ51MUlO:ß„„Q:À…4∞zrËig5óX≥Ü∆T-÷:r‡ ¢@èK i[ÄÍÏœ∆$É–É2J[˜Ä‡E:áÁ—ê¡ªH>‡8§ÅG“?å5HQ4åßlÑä|îˇ“}-»„˚ òr1]akt´À∞[`U· ÍÁ¸¶˙Î=Lµøƒtâèà∂0@Á„¯ê6G‹ ƒ- ¢Õ~†∏3h∂Z÷–¯Î™Ê–w-ùòÈ∏\ˇ1Ü£4WXcâ¢8'©˜OÅ¸HÕ÷iéø®œ?zh˛ 0·}∂l>†Å¬™li˜>OÅÇ„ÕÆﬁC2ûMc∫Ωk.å`‰GMÑº§^(
+F„^L§¶—îÔÇ9¢ ˛)0âˇ‹ÄgiÜø¥ŒióÈ_Ç’ Â‚ºûß‹wP~æ+î°Úæ;î.{¢ST"®õ√Îr~ßx&∆⁄ÖÉ Ùh¸±6h„¶1˙.kÙÜÈ¨ø?D¡ùÈ¥Ä (é
+€¢R˝n›{¸˜ –~¿X4æ‹ŸÜ%˜¥óÓ/6˙[HºdÚf„Æ]ê‘¬∫_˛y¢gÙÍ˛2kÄ\”tﬂ∆@Dº2ıpõˇ˜aÑUÎΩà`‘ã»¥ÓEœÊÎÂ1•±“˚‚wÙoÚL]–√√aˇE∂k?«˝O¯)‡˚¢Ë¯°-_’"BËõETù˘EÍˆÑ!´+ˇcdóã?ƒg÷ä;<#‹0Ü˚1”ºi≠eƒ5Ö…Ït{æ˚â	@= ÖŒ'}:Y'E/æ8¢˘<“n‚ƒNlÆOö¯_Ω##ﬁÜz∫£ﬂ1WÉ∏∂§GSTÅ<æ•0£x~®7∑Ükzëp?úL%v=±nö√ÄÉÅÜ–õ¡˛—œgq<Òå≠#‘∫ÀˇµæÕ;(>∆˜áu”¯6_ƒOåx≥(MëX≈˝ıi°∑áâˇ®’ﬁ7_Á2?ƒK{∞éÃS}û(XdI?æù≈–™Ø¶˙–ΩoÃV‡Á'.A‚ê≥˚ªmﬂùvgÄVèmùËï˛ _:Õ&‚º¿HÅü⁄ùr“Õ_ÜÛÔ ãÛ\{[ﬁ2^_“^≈ÛÓx2ÉΩΩœ€¿èõCNwEπ⁄“Í=<oÛ°ÕKÑt•∆Ë‹Ü6Ò&çp;‘ñßrvqááyuË∆«j/Ò ˙!yR‰˛ñä(’º4÷@˚ÏÑQüäèsG?ÃÑ—§Ø¥D[{5t7÷_Ì|qµHÇÖ˘îx¸Ø°jA6wü∑◊JÕNüvê	vCÙÕ4LJÎ°…	¿kR§kaÕ« ¿w—€ìn¢8œÅI^π&˛iu¶)f‰Í7WZß˜oµ‡ta{1≤Íòˇß˜;›\£iAÏìî(.Ç‹T/Å∞Ç£π´ÀñÏ'§Xxò}ch— íï¸'èøå˜æL≥g1∞p∏FÊÛd;7˛O≥hòLè…±Õ»„F°º5L˜îaó }[<CÒ√rVÜH¨# Ñ9€fó;L-Öm‰F.µ‘V⁄†à$“d?â˚!Îï©LUò∞´çúf¯_b
+√—<EL..™÷ÖÓ∏úZ∆ÀŒ•Ånu¸áﬁﬂ;≤_À∏Zå¥bLJ3!».B∂·(…„õu¯+%sû~RÏ±Ea¯È9,Jc¶DGÍ∆	7Äh?Óje;Çïj.nˇØQ˚ÎÌˇe©˝QÁ{Ìß;ã¿Í_yz≈R
+¬1Næ?#;Ê˝¡æ-•@IQÿ‰?Å*Ìj°êDM‰pl™π1Ä§òZ"ä£÷$◊4‰Œø˘4}è’nq]°ÅæﬂÖ%ÜF>ø8q ÄD
+≥ç‰Ê˙^êM;—d,Æ ‡ØùÏ÷w?
+oç˝ç∂W£I≤»iˆïPÙÀtê¬¶ª≤˘Ò÷üπxG}¿0êsŸïuò}ö%? ˜ï.€Ω£!Ë-AÈt◊g¿esÕv’ÃúnXï“`pòÒ9…Ivæ ˝>àt¥™VÈ≥õ≤Ùê@Œc∞?æ≠ÒΩr[·{¥"Œ6∂OfmãÒrO«Â•%O;±€ö>xÛ}\êIO⁄‹4RØK+6<Âïˆ‘PÙDÒ‘Œü◊…=≠0{˙}Gµ‡ªés_ ≈…m∏¿v9lÛ≈À'&!8›u>ËÌöøøÂœê±£?nO„¸QúœFË™€,>Æˆä’S—G«ÅA•“¯iè8Ωæ¨‰üîRó|öcùÏ`´û&Z7ù=ú¡ÖücòXılöN£!M±≈µ|ó[!Â∑}n∑ûâ√/0ù+R/ºVπ˚˘È,^bø1ÕPÜ„ô∫›‘VQp-àQkÀÚÈÜ∑-^5∂.^|˚#µ´⁄≈x˘(cınÊì	ÓhÍ¬]MÎém¸”Y±ﬁ©k¥¯.9[)näΩ™£ú¨â¬Cò∞Ù1¸sSpÑÃ˜ﬂ_A!Ä¡kZ˚ÌD¶ˆ {Fo_>IPA}äYíúœû¢àQàAÅAùŒ≥·T!t!C5≠C]˝0ımÕ&t6-’K$Ÿ÷Yb(±QkÅ}≈3q~EÃë—ÀÙ0!h√ûè^0ıÑ‹‚⁄ƒO—â6∆ßæºMi6„Á‚Um)Nu:Ω∏»Ä√H€0}¶2k¢kŒuúN.ÿB8◊AlK–ãáã/™b¯+ﬂ˝.´/Y»Ô„{÷ˆ∑&ln”R°¶Ñ\úÇÉGT0dZé/X#z÷Î	√l+«óv}xSÇ{òﬁë5
+?Çu,©D™ˇ˜§7@Iƒß%79j.ûBîönuzp??¿º~§c0X≤KÖ*§À≤éÈ‘WRÎcóò>‹™Z€BvpÅ ﬂUÉz|;h—∞"È—¶∂ŸñÆ¨bÆ‹9RÅú/ø∞†ì¯¿Ëπ
+lQ£K’ªß
+Ú˚…8ÇµP≥uT9Ö2Õxlhs‘3]^®π%xueöxZÃw∑Û<Œê‹6ÖˆT∑ÍƒËC˜ou ‚CÃµzèù€ÌÁˆé©ˇ5:DıöaÑQΩàI¨ MÁq◊˚˙±Zó5∂ÌyˇxG5Ë≤Ì˚åÇ1ÜçCKDvBUŒ≈Ω4Îã©,˝MSTÙ–’~/ÿOYSzÀ˝G·&˜‚?º|Ò£V‡-ÆãœÈ©¸Ì<≈>ˇ%wø#ÁÊ_ë[êÙÃ˚„O[Å◊7”XSÒ –Ê`ˇ1Ã~m˘0$
+™õZá÷#ÿo…/Èœ4§ﬂ–Ôüq«˝VUo¬_ù⁄…?∞bÇﬁhÎÒ∆mòê<JÛZ⁄÷∏èc˚7ºÊî§1∞P'˜£qƒ6£1H«—t¿◊∏ä‚ûæË∆¸‰Ô»GÎÁ¥ˆ èÛømï˜ÒxvpÁ\1˘]ˆi˜˜0ﬂπ€è#„fÒñ˝à„›˘∑´O¥§ìı…d(C†≈g9¿ø◊Ì$ÎÕ@‚÷Åc=¡è˛fHÎˇ˝£·.û‰1SÏÓïëZq˝≥<≠È6~Ì˜‰ ˇÔhQˇ@˛=L◊Ú£˚;}$Åé„b’
+ƒ⁄ä{É1 dã2At’^x8¶8º≠Ëà›V°˙ª—QL` ?Ó≈:
+õOñHƒ4GÓÂÛtñ#À˚]v/:Ng|Û¡û˚®Ïaë˛˘1—ä?SøøTœxÔN:§˜˙í`‘Hå«n}B‘lOêè≤Wúgµ‰+«„5˛¬;‡¡ñ˚H–≥t>O∆ÜhA{ÅËÜ=p∑Õ_[¶ø!:
+}¡Q√»YyhDß£8r∂·o
+H√˚é]n£w~î¯D¿”µŒWi2nb¸XÀuI–2eS_›“êçæıÍ*’¢ﬁ51Ôä7X~jÍ o.6ÆﬂA∆yMøu™Ï˘ˆêº‹Çì=wçyƒﬂ>¡iGiÅqˆ\¡‘”ñÄŒãlAB„FpzÔËXêE4!¿1é"”πl˚h°œ"Iå≤Uœa^-ÃN‰s÷◊∑ì\Ò∏‘áp'2ozM ÔòﬁMmoï°[kfRj∫Ω¥cucô|=@–-π∫É¯œâ¯ÒJ/àÍ¸uSæ¶*õ_ÎAläB˝D9äÉ8œö¿É°tàîü–níÀ∏£…ôœ∆[fSYT´Ì©Â÷‘R[™fI=;ÍVT"Ë¿˙îÉ¯´	
+”rg™  ®Jµïµ–K(Ÿ¯<ÏÄjƒçc™ç¶û†æ-UÏ}µÌ|5Ì{gµÎÖÌyØ`«ÿÔNùÒ÷≥◊]îùŒDiAS(mõÆj≠äXa¿“ıªdªÒY•¸£ı⁄:ä∑›çÈ—WÜ-µ©D@iY¨¥~Æ¸ù	ø‰·œ¶CÊƒˇôNä_”ˇO8W	t?—¬ç~Óç>‚1‡∂Ú±5øˆQúˆú,KúÒjµ´5%];RóVs˝'íπ∞(Ê`ÈyNR*<ÒjÒúì‹T‰·ÜÒqaÖ^ÆÏiH?g±G∑5>Ìø+ˆËg¥|ø$ŒÁG*ÑÓ«¥¥?&Ãï—ˇÁƒ.IÒoŸ¶ãdõæÂòæÂòæÂòﬁ«4±:oªƒáN˚\–ÜıΩÒ˜∆ó∂5s+Aèéã+ß;ÕÀ'⁄gO[ÿZm£"2H≥œ„ˆæ˘/Ô‰9tü¡.òµJ∆ËÄ «~÷Í∂~~’f≠åım„Æ|J™Çª*{Z…]aÅë∫Òd?9íä…`r˜µø©áâíz;å-TxÚÛ$üöúì‹≥X8µË°√m≤<˙+õÍMÅƒznå˚[√Bü~˝…^t/}tÚŸüÓ“0Z∆¿d˜n{jºÄ„1ﬁàˆ1¡Ä”⁄n§Q‚È™“˚å/ ¸hÊ—VG”F§ÚÅÙôè%/)wz—k1Åq;Èl⁄4›ﬁ ˜”ﬁ,/àπXaá1<BÆöOXRp√ ˚¶ƒˆ∆-˙:æ›^ﬂ⁄¯Ï·£ªèa‚€‘Œ∂€&€†A’o–òCˆπê˝)l9
+õSÇÜGØÕƒcß€— 5M@Óñ}‹ü∫Ω{¢vóÎ√P§«F[KK'8ÆgÉÔ}8s0ŸP≥GüÍëØu%Iôq˙!D¶õÏ∫Œó˘«ÄnX>_¥'f0Ä°Ò7È⁄é≈û¬èÅ◊Y·ZA˘r;ÌÙıD†9≥ΩQ25ƒK:oƒcrÉ]v'ﬁèf√©‹>DÁ‹ê:Ω£¢(úÿª¬ 2ßúv1ÈÕaå©Hƒú£)ï¶Iƒr‚˙åıûJ!‚ûu˘SÙŸ=¬∫I0∂œ£|Ä8Õ}XŸŒàR±-æ€¸ﬁ·˚≠≈É÷∑BkÇ¸´ƒÂVãá¡öB≈(Éº∂E¿7äå 2´ÂÇVU“˝ tÜ÷B¢±÷àPπ—∞ƒ:ô≈áµ‡¥B˜ÃÏ„xJhZåí™á;¿ŸQ2X·?(ƒL¿‘ú'q[ªë¡¬rj˚rk}†»Xâ≤4˘CNß∫L˚pΩ\;œ‚cÿˇºyH}∂a≤<∏Ìu◊-∑·˘°úäœn±~å°KLoR|NÑ	X4T{Õj-Q¯P≥P‡xª¥ØªÃ›/€K;N√ãÏxKÒAX±n±˛≈›é¨nJSjóˇZ#GS´,ü2£™FJñ∑[= ï¶h56ÏŒ¸Réÿ‚á@Ò¢ÅÜ>]øäfFw◊¸S)RA€¿◊È∑\;3D—¯; ‰†€œC|QÈÔ¸è>Ëp¢êÏÛíÿwK∫Pk2_˝Ñ}t}	.}dããÏq2ı1íÏ )“r˘|™R.’] ö
+gﬁéîQ'H~ﬁ”AÃ&‰%“aÇﬁfq÷ãÖàAaúÿyNIµ‘6áFnM.ﬂ§Õ–Ç’EÏ	ÚJõ—1Æ¶ªõR	TCˇeàÔvÿ>◊´`åΩÈál|ÕmáØ⁄ç4;¸ıﬂr©ë∏o˚ç´®‚<Óﬂœıd2ŒõE.ôèç.Jgsâ'¢ë†˙#Úc]Ô\Hs√ÃF®Ç•Jp°Ã@0œ‡Bùº⁄î˘QÚi˚¡YõÿÈIxÄÙN÷7PV"àh‰√˝}?¢_ßcÉÍÕ)dgNºHf∞jè£1ôA˘^HU£”óìímü’U_äø‰õàÍs+ÒπEÖ\	IπÃyn< |yÕõnZ!8Fs,øHln%>Á˘Ã]›Y≤B˚Û@ã§«dZÂ@2ozO&ÊBu§˚,◊HÕ!mÂà÷≥B >KVË≤Aâ†QáEì3#◊óZßª& ¬âúô†e˙Q	5≤n-0ÏH&∑Sâ;ƒ≠	¯¬ﬂR>j˚∂m¯Aä†Q™ÿ„“ù¡	Éµ#º¸∞.≥=©ãËZ5®E!À%˚’≠‹ﬁ—ocn,ª©^d«ˇ(∑ª·¯'!cº!IÆˇ1mwáº¿]ÀÆòm`)OS*±‡ñ·∆Wàï7»∫áœYA≠˚]OÍ5ÉFZÌYÕt⁄sjœasêN” I‡∞Å1N∞4É80/Ûqû^l#¬€å`6ôd∞g˚î	j3#G≠}À€ì^π`£#ÙY…}ù<Ö})∂Ú`‚ß/UmÏ™7“H§˜“√8ªbC≥e ñπ,Ìç»âÙ®∂ñÓö*∆ áﬁrë†Ï-ˇ‹ÃÒ;@~C\ÄA ıÖ6…ı´îéïã–˚I¡#ÿ%B}g1’
+Â∑ÀDLÄ<‚_»jüí	ï…W„;ÍÄ?›µá[Vö!X›∏Tæ8Ì˘9‘1ÈÎ©_>Ù Ã[∫Ä”G´GÚypÌlÆ≤OÂ“Û+i`˝ãæÊˇ¨a¬Ø4¯WZ8÷<L›D[à9GN>X®◊ØEiºıªó/˛C±Æåå‰t&ΩÍ„:´nç‚/g\NÅŸTiÑâŸåÅV≥úıúì{ßÂÂ
+âiØ°û€úÌì| “'Ïƒ˜âMVG…óâ§§„5#‚¢aáã”FoY}äî∑Me–
+:»PÒ,Féòª¥®û°}Òôá¨~XÇ⁄ﬂŒóèÓnmÕLñªƒ}/^>1%¢”]÷U"˚;÷‡k’+ˆz¯‘éÖÈK(Ì˘§d≈RÙ_:¨TöN¢˜ß[(™ñ~§U-ç∆§§5⁄.´∂ÀECii[=ëø‰-ù¸ﬁÅ( 1iﬂPâ˙Ø±ûO?=ƒú˝"Ω¸ä¸ı0Õ?Ìµ?îluéZnoB’~ ÔÓÔÌÌØ\k»1©‰˜æJ~_Å0Ë€ﬁãßáq<6+
+¿«nhiÌoÆÔ[edˆà¢ñ ›*◊(”yb‚Q„Øø¯áˇÔÎ`xx ∏gD°ø˛‚∑¨`*¥¸Û7Wµ°:,åÚÎOàÀFò
+]óSê¿¿—Î˙}U÷Bn1=ÁÜ¨ø`’MX÷
+e¢oµ^/°áãñ;%Ü≈∑u(˝ı?”fl÷:0ãÿ´ù÷∆Ì„ˆ5ÒÅx™/≠]í Â‘ó›^^öÌ8£-ÍÅjkü¡cXœˆa¨7 zÿ^FÑZf{√‘)NK£Ÿ"˚ú‹ˇÙÅ,“Hå±%Ëdº>ÊCƒNLôS§Ò4Kmë˜–™‡ç'∞∂‰l≠äó»d÷MÂNM/[ï6…√têaË´çBp"ª«¸†Ót:Ê®4∞
+åê;%∞ß&Ì´,PÂÿ&Ñ\ìÂF~0]Ò@Ùµ∏≤ƒ“Ÿc†€Xº§ç[—¡@}Y“g¯ƒËó∫ﬂ-˛\·CÕV–∞çÂ< vﬂC«/:2V»´¨˘ÿΩ0ãÆ{3@iÒ?mtLÖZ„ŒgO
+O"3÷ÿÕùÊ´—√Ø	ì◊≥¯xı:ˆïá+™˜p«√]áF„{KØú;9\ù√Ì
+4ÓrÎ„÷ÃÇ>.üx>ÁU+ÆAﬁóH1•ïc“
+1ô[D√£æ|xu©#µ-¥ÛÏDq$Ë5cVññ|›ªµÄ}’ÄUº+Ë+ÏÑWÀZ∑™2¿Óë˙∆Då;#ÂHì£aùËûÚî–¸lãÉAkaÿw@hÅ¯Â«ÑuPƒùÉéñΩ¬å{H8w$Ëëéà◊s,0≥,Sç“oîµ@Ôß&÷bä`µ0Ø§Œ b@g&($3j–jVÇ0d',ë≥ñ«@Å≥Wqo≤î'ãÔ1 awÔØ∂¡ûlﬁ{∏~á=ﬁ∏Ωu˜·ˆﬁ‚©ÅCñ¸§&7—jù≠xÊR‡íæZ á∏¬ä%#’ÂMñ√¯¸A)>◊óËÀ‹9æóéµjˆ8ƒä5ÏRjÃØ,“Ç Ìà<÷§’˙tc}Î…£ç;lÛÛá[k„ÕßÃ®ç%ﬁAÆØú  :u;Õ“ú¿v¨ €±‘πÆ–a‘ﬂ\± µÒÎØø¯?Ï0ê•¥•wØÕ\∏UË¥⁄`ºÅâ˜^˙¬ô6¥ÿÃ˛Íâ/‘4DmBâ7¨pΩ^<ôÆä(º˜Ç‘dêÙ˚Ò8∞°Áüà/™£|"nàÏ9ND◊?\“∞tÕB“
+Ü>uÈèqZ˜ÓnÎÂ‹z?…1’r+˘ô5.ÔgÒÓeÒ…kXı≤˜¨È·Ê≠i¬©¶àfÂ…cd¸±Ù§ü«∂≈Å#CÌaK]¸»©+†òY¡ÆÀ_⁄1ı¶…Û∏Kä∫ˆG◊@ªBç¥√Ü∫K‡;"÷íq∂‚ß«BáR.⁄
+zå∂”Æø€€.≠WﬂÀa@ 6H⁄øöwÃ~ı32˝+¢p∑?¯Ò?é[>≤(LŒÑﬁ ˙Ñ=_>P„eıÏÕÛÎ…£{Å§œD∆†ÿ¸e-Ó··Fﬂ≤#Î˛LQÖˇÏ++‚ yA-ÉmN3>±Y0Ä°¡t:…ªããÒQÑy\;Ωt¥®Y˚ec¨jJ*Jû‡‘W…D^æL®æËFÖ"è„)£˘Ñ&aÙ®T“+◊o\ç˜ºØú∂:”A<nb¡å »4ª ÊÁ∑˘‚>2xãÛ—Å˜ÇYÜıKfÊ]˘'Üó∞>SàÈOÎ—‡ã∆ºP¬qºÙ‡U·Ïr√5"RÌ‚¬j ﬁUq€ûñD˘ÈP÷?+^î∂ÑäkK·3BqÄmù~ÆyÿAq(‰£jBÔî$∂Ÿ“=¿‰>ΩÙõ”[t≤÷ßäñöw-ÅŸ=lv$ã(p È‡C Ôa⁄úÒ)Y%L}@ówIFŒlÛ¨∑ Y{‰ô\‹àÜ¿ñë9g?é¶3,∂0·u$›s¿ï_Ìk◊XJ?ÌN∆}	8J¨·êm¶pÜØ6∆i[ﬁ≤;ãeÉ0⁄À”·p6ΩhT28ï⁄”¥ì»“ÁU?\bœìH¸<>◊$fÆ±óøè˚πcn	T„™<›Ö$*s/e≥1ÜaBíˆa{{e≈-ooRÄ+yhQ9a+¢r>2‚G|zT_W+∞æAëxJdËàM™HEΩå´ú•9ÌËÇ•;Da\Êux‡c^¥«&Qüjq•æI˙ó‚ÊVÂE°ÆyYAj(xø_SVﬂØµ‹Œ†É¸Q<Ç˘∏<Í †IˆP®¿MóíÈÊ⁄
+-·‹{Bi/‹v∞âê´;Ò4JÜπâ∫V¢Ûî›M‚©ÈÎ)Œ/›¶Siæ)vTÖ°˚Ú…%O¡·†a¶aXZVñSÀu}”Ú[W·dv(.
+ôAÁµé„ã>Ö'ø>ÿø†ﬂ=/‰™“B¯dqLUÁø•—Ò–r -ØÑ˙dŒ]J†OuÌÛë¶K˜\>&‡ÃÊ\”dÓìf„Ω˜–ü˛[a≥mâ®ı‰'ˇSÒŒ∆	hk^Á®°|ˆÕ
+≈ˆ’∆-`F‹«ﬁÛõñ´@Jé¨Ä.˜mÜÌ›iCØ	]ﬁ¯-ÇÔª¸6√ùï–Ssπ&à)˘[‡oÑWŒ a?k\aÎD¥o∞√ˆ‰àg‡ËL/|!ã‘~Î◊Ë0Òî›Kr«Ö!∞JÿÙ-⁄€·ùÊ,∂ﬁf8£f™6ÄM%÷õÅ∞ñ¬K¶£xü5æ7n∑€ﬂøqH\“J‡NÚ≠Mı÷‡ﬁ›oË~wï•∞¢p}e{•^A≠ı`:vŸnP˝]êS!p£«1˜“)’Ï^◊EÔ∆'4ê;<Dé‹¿§W}ñå(,ÈØ6ròtÌ–mT\5‰`ˆJõ7°¶∆t≠·qºYÓ§ΩÍ∑ÿgA»üîdÁ=È'èÓùeÆh¡
+M’ö•œ∏DI9'˝˝‡$wC1èŸ…oxZÔ˜Àqní≈¬¯”-)x´>Ä	y_üQU^}±æƒ.≤jﬂ:æ€/{õ»6°˛> ôù∏;ÿæ≈mP!ìêJêì/x^aSËÖLã≤‡\≤¶Çê!¶}“JübíÓÛXµfÌ.IÆ\˛C÷.~âÿ ‘áõ˘…⁄Î'¬ ß4„LÊ∆%
+⁄†‚≠z
+3´?|uãËl.}çó0ãb©T◊2äw+å£¨`ÑJ†µª}˘DÔèWI≈\Ω∆]4µÇØF	J◊ÀøÅ:ÕØÅ≠ê6¿˘¯7Ád≠«Àa{Je˚¶Ÿπ≤Ñº%ÓD∂·eE^4Á=µ∫ü]◊„Y√70‰ˆ6’ÃÀŒë]Ye…Qn¢ÿÉ§®©°±Ω=Øå?“Ùc’†˙Q»÷ÛMìâﬂ}˜]ÜqÄ_¢Èï√A® 9πé\°PP!ùo?◊¬8ı¢ânt{π◊>*Ü—Ne*æqgSÇÇ=ïXk°î¶|”j®wŸ˝Âø˝˜Ï÷Ï ®„Qúø⁄jZˆ‹˙´©^4Wìnø÷’TÄòo5	àÙﬁõ_–ø˛¸W@‹(ù•:zµ%çF{∞gY”‚MsQ˘˝◊∫™:8Ê‹¶
+òØ@∫π/Øﬂm)dà^F£z4õ¶~/ìÛÒ‡˘®+π‹K2	©»Ü\¬“Í~sø°ÉW÷	¢‘#ºÙ0y≈·Q“Å'≥¯œd·´O‘îYËïÌ/yBœ	ﬂ)ì>Ã§®ˆ:®®¬z"S4h:¬øÏÂãˇDg˝ÔD!§?*´çƒöèg#‡Vì`¬nåNVœôÌ^™¸ãU˘•Aï_zLS_*Œ…:0,)ï6µ∫0≤Fµ˝X∫7*≤–/bóFH∞‚ØceË=a%o†Ê!M¶]∂+Sì ∆îGw?”C4TP∂\™ıqΩ!≥tüWXäÜlèÎ…')<Œ;Ï·läjôáÓ˝ı¡{<ñ={(V£Ò¡å
+â‰tìª*cYîÀ2ú¬Œxc_˘qË–4õ›†aby,Uô£å)YQpxù“EbòN!Ú—ç˝»OÂu⁄
+˜ˆâÒqÍ˜ÿ“™∂C˘˝ï‰îj§\Ì†©≤U•ÍùUîí·eŒS^JFnÿ`ë>/}Il„, Éjå"ªMÅË*tŸC4M•°©G∂◊Ô åAHºxﬁ†øWrO%ƒâ≠»≈≈≠ﬂq¬˜Zû!ê÷§≈fiè◊~¸‹Ñ3Óe”‰íﬁ¸:ˇÌ"ËÁfí˝◊Òk¥Y'.•}x÷©p¥6YßBÓ;'÷©NHøC•6ÉÚπ;L¶∂~∑æ•Í¬«◊y™oyû7ŒÛ¸ûÜ˜BLˇ˚;˘ßó”Ÿ¢qÔ[>g^>á√Õ«ﬁtP∆dYÑ;h1üƒ√!’’EœÄ9ô≤…
+$ ùoç1œ1O|∆ÄcÜyﬁ©ö9»Diñ ≈hEcºâÌ˜”Ñ˝ê†∫x£≠x8;ò-–€¯Iu´√ÓÓ≥çÒ~√x,Óµ:Ï◊‹+∆&ÊÂÊ∏◊ŒV≈î@ûæçÅ˝lÇÏe4ûRFì9x≠QkÍ[v´ä›
+ê ﬂµ!±„ır])_?œÂB Òßoy.Î*Áπíq?9Hœ§Ø“^5π.Ò‡5VEòﬁº¸ó<ÊÊ∫N4¿≤5'Zz•4ZöuŸÕ«ì({ÜÂ´ã7?9ıiÄœb†sÒxuÉ[‡¶,+ËÙA©¥¬ë.çE 3⁄ﬁæ»6O⁄:ºD∂y@9œ}Ig$)≠»MÑ/o%à{˘SQŸqêJç˜Ü…d/ç≤>Ê◊_Î–ﬂÆ‰%i´Ñ#‘
+ôw…^∫ΩÉew|m1Kjı*	4Y˙˛π…«%+-±‰˝˜CêÚ3c„Ìdáó¸Üm=‹ıæ-™™÷^S–b¨ò\ˆP^œ©bvê8…R„-Qá}2ÀM´˛Æ~yÉt 6*ª¬ñB√ï¸≥/Ωrä»Ç¿&à*}UO=DÖÀk\6£d®Qÿ‘Ω‘Z∏”}πRVbæÇÓûÀ©ÒnVv’s˜Uq˜’n˚Üh_’*Ó>Pû©∞˚dLÖ›ÌrÓ¡¢Ì•åeâ{çV–á'ä∫7Õä—jLWZı´ºøunÖﬂÂÄã‚Ôû+¸ƒ_)>ÿ|æ⁄Ò¡Ÿü≠ú|∞ªÊ=WÕ¢Û¡ØŒ_áﬁsÖK”{ÆW®VÔπÏ=WÈ∂öØÃΩÁ¢SZΩP£Ú}Yπ{œe¢7ı5ÀJ‹ÍàT™Ê∂,G=&˜∆€Â#ÃG"TpÒÚâπÁUAÛ¿%+ëa7∑éßX`X}≠íö”ÊΩ¡æ∫S‹÷:<#›?—⁄˜Å∏°¢„“ˆ&?ƒ…≥Ω˘¥!û∂ÇÙ´D[¨ŸÌ^S¡3	HÜçgrçL±;òø$ú‰>¯—›Bÿ®´34æ™˜O∆œ∆8$B˚F	≤òï0Ö˝´ptq’p‚¶Hf÷ÁAÁ@ê≤ò5Ô‡£BﬁX'∑”a≤ñ4ÕîÂΩ,é«˘ ùÚ◊.yƒêÙ0_=˘∞4Ìã'›§û\rœõìël8ÊÑZâ&…41‚.¶•òç∞:4≤§mLÉr;·§ñ«√M„ÔÍ‰*≈›î˝·|ì‰óå€Éˆˆ’%r*T	Y–°ÇÌÅd¯¨}Ø‰nË≈˜ÿß¯M^+BÑ4Î˘0˝#≠ë#aœJ¬]∑#‘0\ızÅúîñÀÚßI$î·•ïq;U}Ü®•õ·ápH:G¬yà∞ºƒ¯#Œ^œQSñ|4îÑà_^GŒP>8íz«f'±…xïr_≈Î^≠íï‰OSb1,≈¨BÒ"^¸¿„v≠”DŸ˙¥π‰)‚•-@I=≠ö]4ûxs” ˇ   ˇˇ ÙÆ≠áxúÏΩks#…u ˙}~E4ö$$¿G≥9Õ¶ŸØô^˜ÀMˆåmä;]äD©TUh6√[≤º^kΩèò∏˜jµ°–›	á¬Îï[⁄p¨ÓÎØtË\˝Ñ=Á‰£2≥2´
+ÏÓç<ê¶	Teeeû<yÚºœÚ zvÌ-V¯¥ŒØz√ù·*ÎèÇ4Ωå√Ì∆q<…⁄GÒh¿≤y÷NGA∂7WVƒœq√›cÛ˛,I¬Iˆ8ìáI|ç¬ùŒ˙dü~ÍyÑ1◊33¯Qı\„œ‚Y√5OòœÚp’3”©>QöœAwe˙¸ê•„-˙˘<’gΩ≥&på√A4Ûœ¸ﬂÃ“åM‚S÷|òÑœ¢¥Âÿ‘’√’eÁ“¯.√U}È0â&O€+Œ¡]Mß¡DoMF—$lè¬Á, ¬q⁄ÓÙ√Ñù”v∑≥Œ¶œ€´lz÷Ó"H/\K‚Ÿd⁄«≥—àù¥ßI4í≥ÂÆ¿	Òõù°Kxc?l0í`ÍXaTßÌ¬û±`a=¶≥Q6Æ]]∆jˆÌYeéÂ£†ˇîÕ¶”0Èi»≤~Gììˆi4?¢ß·(Ïg·‡Í$N¢0=X9leç˜√Iò#/f˙Óª„Dq—æ:\”Á=ç”¨ùEŸ(doè≥ˆäæ:”$l„˙07Ù3ü«	¨¡CËu;mR◊-ö4^dtï	¸wÃ˛,L“(û∞wﬂeÕ:®
+Îo—öˇzp◊êµá»∫¢!Èx†Ø≠±¢0Jµ÷û≈ï£tRPœ9»≠Ïf/≤YZ:eÁ0r0Ãüºcu∂ΩΩÕ˜∆lá!ê¬1b‹ âUÉm—•$Nâx5Œ_?‡û∏@SL>W)–Ùµ∆œ≥‡ƒ\õJ¢„?Ô%µµWùò@]w“È( öç•F´3¶Æ%d¨	-óX‘b€>r:P≤fÀábÃ^t‡üß·Ÿˆ<rS˛—∑ø∂¬j'u’)Æé7mı5¸®A=¥£Àé‚oÛ?‚MΩïïÂıïÜwË>–X>“!K£O`3tWŒYö%Ò”£hê∑Á´Ál˘≠ñ ±<eß`‹R=F Iê°ùçØ˛5>ägàrkNZ|Ó«˝pÀ†{Ú¢∂j]ÌÚ˙íﬂÂJ>©K1l¿„Q|⁄~ﬁfYå◊˚Ò@áËå_•óH⁄ë_T¬ΩíˇÊX•~k(ƒ_úøPf”DœºGØä&√0â¨;∂Î ô∏r∏¿Î·◊@Ùp4öÖÌ>X∏Ü„Hê¡q`}¿iá‹ä;ní¸(˙ŸΩ y:àO›õ1	Å'y˙p4;â&Èˆ¸ÄˇæûÑ¡”Ù–ç~I8<õÜ˙#¯˚QpÍiﬂè«”xÉÖ∆s¬F„ì-÷ú&Ò4E⁄SEWåìu√∆ü!Ìª∫£œÓåÉìê•I{N=v‡+ÌpÇ£L^ÖØ¸¿∆Y∑éò∂!G¥qº=l¿  5âèæÏR à&ä‰Ù S=ƒÇ•√  QJ°*–ÿÎÿ≈¯Æ∞Ê¿£¬%÷F£‡‰Ît:43vN0Ù¡Wdá ‚€f{ÄBìì¶Ï¶ıû˜±ËŒx®M˙£§Õ∆oÚsˆ—0».•ÒV´‰≠à9Ÿ,ôî,.~lŒÕ‘±|«\\È˚˙
+rkxV‰8¨åŒûŸs `Ä¡\c¥9Õ•7tÛı,ëÂg.¡Zv–ï	y¸S≤(˛éÀıªü˛«ˇ ÆœNÿÌËyò~·ÀE‘X,ó†ÃopπË_ÈÂ˙Ìè∆ÓåaO?∂ËÁæ`¡¯ )Våˇx£K∆_Ò’Y≥ ∑¿M∞ù¿%ï
+2ÛÆ5ÎÚ9{g|Ó;wf£:ÁN…Ÿ= bπVf<‚Û^k\Àßvuy6Z¯pEØ8»Q‰ŸiÃÖæ=¯Q~Ÿ‘´IÕ"Ö¡ q>	G¡ÛpP∫†nEèÜ£SêGÜüO±§îg¿YTΩÀÄrÇX4ä\ÖÛƒj¡…∫jÉÅuH÷l´û˙E[Æ5XÆ(FQﬂ≥"˜c&∆ƒÄ˘õr†œ´I¸.%◊<»≤†?$⁄ﬁ9éF@}ã≥iB#è<æ¸ùNÛª”ìOø;O>ùNN>=âé?=è¶üçß≠wñ£»ev–ô%£ñ[-osπ•?Ú—ç¬∑:£príŸ5∂RO_qíDÜˇ ◊<Jπ66ˇŸc£ÌÁ*Ì∞5D˙∑6CÉösΩ†¨ËkÎÅÀ?nç;©m∞«%ûóí1\Ô†∏Íe‹thkßÀ7JFÉA8ëßvœîx÷µ”õ!ÒÀ¢g!,<õ˙t&%ƒ$√ZFBûÄqŸIHb∂CKLY√QLD{ª1
+>9Û´xË?ì$L∆@IŒ∂ì∏-/ï=Ê2◊6s° ÃHœeQ<·*TVs¯µáÿ`+Ì#dm◊˝oÚû C~Z◊Õa{¿êCúY=ö@åŒvª&∫yƒ-ùÀ,p´ﬂù•Yt|÷>
+≥”pí4RŸú¶	ó*’«˛ É’f÷ÑfASã˝Í”ˆ,˛Ü~Çk˙m9i‰ΩìÊ?Ωú≈’[œ34>éÓ_ ïé=ó“—c‡Ò¢äæﬁÓìªæ–ÅM»I;D8Î!1éÆ≥ÇzÍdg”pßC¸[˙Qîõçg∞Pq√ß8É7PN_xHaà1H‡î*hC©MÉ≈ì[I'€Ûf»u0¨vÑUx?HN¬å)˚`ˇﬁ›±ˇ[#ÏZ0¥≥QÿDÈtú±mviO¬KÔ#Â^d||S'95O25AqL·ü¬≈‚ŸÂûüh[ ı¥Br›∏á≠$ˇÂ£tÓuâuà˚¬Ñ}·
+fÉ®˜,Ï÷îÜ9£*G?I(:òˆcãS.ë·Q|œíŸ§mKÑ±⁄¬Ç5vqˆlWÒpÎ≤◊¡ÄnkÌN~ zE"/ç3ê€)G@Fµó≠H∂qÒÚ„nπ˙ƒ√Ç¢p™t—˝ ˛ëoRv2e_∞T2%JÈ±Ï§a„ƒCh≈`†Èâì¶∑Ê=YJœ7$AjGìˆ©«7D<hzHI‹Ô$–ëπ[*†€X,OVÜ3ˆ¢∞4ızÔz]x.≤#klF5ëR~πlÁ˘◊≠t+Ω‚ñQÙœgby];∆ÁÙÊ∂ÃÌhÓ£)Ê_¡Æπ˜gHÛ˘ø;ßtjÃèß»?|aõ¶æ,V⁄Fªo+°ÊÀﬂbﬁz¥wÁ¡}ˆ.€›ﬂﬂΩÒ¡Ω[˜˜˜ÿﬁ≠˚xı[À˘”Û(› 2Ÿ˘UsD9oÉMQÿ{6ÀıÉ 073)ˇÖb∏®ˇ©&ñ<ËX⁄ö"`-Òq(≥~«BÙÛ¨±À6p–Ì˙±x˝X¸Ú≈ãó/~ÛÚ≈Ø^˛Ú/^æ¯…À_˛.˝3]˙g∫˜/tÔ/^æ¯/˘◊ÙÛG/_¸õ6›∫{kwÔªyk˜Œ›=óf mfXƒŸoA}!WÚ%'.Õ:°∂p—ª?C´ª3ôŒ2£}Ø◊Ïn$G°a…‡>Øz~èG^räkıÀø¬Â¬ï˘ﬂ/_¸úØ„œÈÍ˜_æ¯G~è5≈ÜvØº∂Zƒøäòz>~<˙œÚÇÚRR°®ÿ®•üé“x4É√hgÌUñ≈”vwπ«∏Íå†~F¨e‡˙¥c Ó)¿?Fì-„¿◊îpÄuqí˙‰Eˇa!∆yÁÄbﬂÛ~-ﬁ≥ XˆÌ27N˛â'7Ü¡‰$Tzá4Ã˙7√NFäáuV‚R6lápﬁá…v#Ïútÿá∞:%énEe&ê=Æær´Ü-mﬁÙ›≥ÎAÆ.âïrhfãgy|£vÑ—⁄mâ˛%ﬂ∂∫"ÆÁ*hm%bnY^lAÀq◊Ó1º“¶öŸÓ"R˚—,Àbø;%«%ﬁ»ø\Ä%£®ˇê§‘¸¡4Ï·ŒÆÂ~á^úÔ1¨◊ =yÒöœfã∑Õ?uË¿¸âÚı◊é‚—âó(õH±Ä[≤Æ§Õq	ghQÆ´◊.n†≥”„?˛πÎ#/c…◊¸oåº¡k_-º≥–}◊øx§yp˜ÊÖê∆œ¨ñ™Ùùä∂Blb{a°∂(Ü¢√AèXbt√<E7LrÍ.ÚK^éòÂF˜$<ﬁû„m‚Ö«n¿ÁÁ-¸åBú(üßª˝x6 ¢È(tﬁ˙˝pöm7æµ¸-˜†tyÉØÆfŒS´F‡Äó¡+%u« JÉ£Q8ÿûœ¶BÛépÚ°≤Ieòæ“Ç≤”Ècø_|Q˚Qe;Ê>‚D`ø|£{s£{˚ˆ°À∑CaŒw¨T∂^&˝àA#º1π[∞¯F=†6+Ë#/-ÏºW÷(∑bÿQvÜö0Æ◊9ËÆ!ârØÅ7‰ÀXØB?WÔB√0ÈÂLπ¡|ãP∂tMJºé¸
+@zÖ†˘¸˘ﬁúë˜U;Ï…cŸh˜Ω vhuõ¸˘áI|íÑi⁄:ˇÊo'@¥≈àÒ]ﬁ‡8Idﬂ–Ó≤∂ãﬂ-tÔ4ué£$lñπéR Ãlw0`Ünõ-≥õ	
+vÀÏQèœ∏Ï4f„—Ûèr∫D∂€UæØPÇ´t˜D„"ùn≥lön-/£	(C<èÇ$ÏÙ„ÒÚ&ú k·Íqoµ∑ÇﬁÍ†∑yºnÉÓÒÒ—⁄r“[&# ¬+’fÈrÿ~Ü—”†çƒ'›ô¬[¢Á€5“oˆn7•∂√ﬁG[àΩh!åß)…&±≤ ŸUÜ®öE…<qÇÁYkÄ¥à_˝∑∏é$√√∆(Í$övM˙$D€j†K∑AtI~ ≥e7º/ÆYÛÂãº|Ò/˘£ﬂ˛≈ﬂíÈﬂø|Ò3Æ™¯ÒÀ_˛Âã"m≈œ^æ¯M´ ÔPΩx9®jT™Wç4§S¯F:lﬂ"8înçkD2Ôíhô«â÷{;1%, {;íP¨çäqÖ*xπ◊ÊÕ(∆ïºb˘„Î7?ﬁd˙x/Ãf”ŒQê-±˜„g{@∏ÒÊÌ }M∞PîÇ…E”Dåúz‹∏y˛}¸ËnÎ‚ö%#/∏,H)‚ÄØÔúƒÒ…àSÜNß√‚Ñ…˚”ŸQ˚˘ÛÁù§◊ÑœñÒ5ùO"_∞∑Ç>'"Úq ¡;-SâfŒÅ˛0Ï?=äü7,HÄ†˜3åSx—PæLŸya€ü$¡mzA1Ë˜jÆÜ⁄íviÄ$Ω5‘+WÖ«I…‡J1Í≤âQ◊ÅC:°±18åüü±õÒÈÑ€Ê^åÅ,ßpÙ±è∏˚Q´D•i≥„ûîùjÈ0>ΩL˙·Ë: [hÀûË«8s«º9ö˜‡lΩ¡Ø°≠NY2◊Ó‚jË„Ωıç’®ÙA8∑ƒ´ÄÌ™‡ƒã0„È∂+ÇGÄ´Ê∞úÉ¬}È˙ŸùA’cåŸdØl¯iIO)íƒ´Jüiqß?ê?|≤Ë÷Ù≈ÃI÷ó:’(ΩI€ÒöØÿ˚ob Ç*ïO√®ﬁ&∑Ïr§å1ÓÏÉQ4ê∫‰%8	kLò´6›¯ΩÃ∫\MES(∫ä'öÃF£Ú¶Â±N¢õ9ÌÈ-¶ÃÔ4hÕÛj	˜¡Ré!Áe/ıF¡≠V'Üìfd'`®+IÆo⁄âRA™‡(z˜]&ÆrSE≈
+¶añœ%m6—Sê^}@±>·≥%£ª√RË˚zÓèì™°Ü@∂µXBøêÎëy´g⁄HË®î˜T®ù¢ä∑ó∑ªEÂCn©•	—%èﬁ¬'êíπM‰—ô-:L·b 
+√ß¨T;¿%y∂ñÊ’©êŒœæ,π”rSı¥Ú ®cØ-ÜÊ»´	¢6Óä[‘uã•_
+Ê:ƒ⁄Ω∆w
+ÒvAºu9ﬂØW¢ØKÆ.GeßtºàæÛ¢•#¨ÂÜ/Ωa§)∏hÙ•;Vë◊—¶RÆ^$%á≥ÑŒuîx‹´Gé˜€Û9;≈hà-ˆ‰ùπ©
+<ˇÊ7°w¨c-∑Îô4,SPæ[Pp4”Üâx˙ËdË“ò›è38ˆÔ"u =zäo¿RÄ9õÑŸiú<EÊp"L2„‡åEì~‚é·≥á=1Ìà«ÇáõÀˆÉvü¸XJ,®»£≈ö˚√ê5Æ£4B[|⁄*XÉåà»Ú0√/˘ÂÀE
+ïßÓŸÃ—qù@l∆ÏpÌuÂwÜ4/'?5ÌNª¶˘ıæ¥o=ógIÙõ•éEÙH
+;cÅi4À7…ó=*©l™ˇï ˇ`äÿñƒY0bm◊büª˝ñºâÊ Ú„9’k^/ãõ@È1‡7		aáè÷>‚=uﬁGW#G¡Û(›n8QàcM∑uπhP<Ôÿûõ‹∞´±”ÿèGÑ´≈QT≈ﬁ÷GUÄ∏àÁ9¸(&UÀ~õïDß
+ü(h[”
+òO‘ÚN*zë∂Dã∆X39A0±¶y“ÿ°±∞©Äàp5`ñ§1©ﬁé§eOªtuAÛêÿ˝x Æ…ªÑ|â·lówBXRûè◊Éú Ô≤2.∆e|k¥0ı‚s´µØp)‹‘´<Â¸i∑~@∆˜íYπ†ÉUó√≈:eé˝⁄:UhnØæüDS |ıÅ∏’`˜Ë!èÛÑ9Wb¿pù—‡0úçèúÒi˚2¬GV…T+TÖ\åyîw÷Nü‹¬ëˆ’ı•Êl ;Mòå ÁÅá„Ü3TõÛØZ∞vÅ˘ﬁENÏ(~æ=?Ä=´Xˆ*ã∏Âníƒß7}ô€Ùè@∑’rµ~‹a√«/1£Ü+⁄W†<oMÌmAÁ~◊n≠œro\¸‘Ò»≈O~Âë-%Å,¯)8ËV)'ÖN><Ωœ’Ú¶oï—ß´\cl(Œuëî5#ÚjÉv÷ÛË¿-°X√;lZ~G<˛©–~zµibd∫q/_˙¶«"⁄*_Bo¨bÈÙø¬çhï—gEæaue≈tPV"™∏*Y√•YEVQŒj z™ß45Y+æ´dæ%{±j´·F#6"E≥Uüse;≠ﬁyﬂ%	´$◊∑˛~·[πüú¿≤7Ôﬂ˙¬wo≈«C±‹≤≠ú¡ã:fãU∏ŸÚO=g[˛©ÌrÀ?ﬁÔÆ_„!∆Q®’=Ø™(û˛!"≥@˚î0dkÅ'@˙Í§ñØ˜Bè3›Oy¡'kx√õüÍs]v\lﬁ‹iZìäU#≤<¨ª\ã¨Ì6OÇÊÇ5û≤ˆB’r ûV¯WÀ«À=¨˘ßjS¯]Ù˘ß Q_¥˙öéT}~ﬂÈ˙˛ët§*:¬¸|MG“®$"ÙÏÎ† ˛x˛©CAÍ…M¶vhè™ƒI9WWbêëüjûØ"’ób-.10fÂ{J∏àÖ÷Ü„Ë9∞´b¢eœV–c^•bÂ4qA*ﬁèR·≥
+±Ç°&ä-*~©d^ì!5`mi”9ù‘ß
+BgQP,;π^%@†7…v”ˆäÓl©tã”8¢-¢ÇÂË^ÈÌì•E & ·µgWó˘µ›‡n„˛{¡n˝È≠∆5¯ÁÇèﬂå˚çkœ'Oh¯ÁÇèÔéÇi–∏FÍuquôSå◊LVd±!$)›Œ %*@4ø≤E¿iKŒ„kRÚ™§d~P	¬»j¯5zıö≠÷k∂VØŸzΩfıö]Æ◊l≥^≥+ıöuWj¥;‰;ËYEns˘ëÑé¨ÆœŒUûâÛ:{öUø†&≈u•ú5˚©&®ı∏^Æªd‹õæíŸ≠!à◊√káÍÒ–“G!©ªÔ ˜˚ºâ∆ı*‚S-˚Jzw›PF9%!ubƒÆÁ°&µS™è‡Í,ò?hõ*Œ\3»‘üÙV4Ø!m}I¯ÛFM?"szÛci˝âÿ€¸ò≠<"À%˝◊ÑdI80q/ºC,˜my<˚”◊ábÂŸ˛J©ômbË~ÃΩDÃêﬁ*{i}éV&w∫3´πX.w£UØ±[√{ƒp˛Ó›œ¯;64üç“Íá±+¶øòÊIóøcSGŸ¬‚ê˝*ƒ jUvÍzVjMzPŒe{pAëAâè)êjq·Ç™Æefª%V«.]R2√"˝0H≥êŸ±ØÔSÿ©äÇa6è›Ö±÷¨Ph4™Ã®JKZ0¨ ∫Ë <Y¥±oi8æF{ııV¿".π˚ü3’•3◊•·=Y√e›N#O^b“˜t›ºyºNü„¢•˙Eob€9ö¢ìò„b¶ë€Î∑71”àÓå\Vˆ™òv∞:a‰Ârø`ü/ûØ˛TI	mvî.`¢t&=ª·5¥_ÖïÀ`‡©<	|IrΩxHi˛ñÁM,Ê&¯Â&¯eY¸Àó/~Jôo>¯Ë˛›ª7Ÿ››?{xøHFº¡«Âhíé∑Ë{üÚLñ%I&ù––m"ŒÚTk∂B@yõ¿—K⁄uWyJÁÓÚ0yg>˚ào#≤ü– ¢>∑°ænTº$≈ˇ£“Œvf@√ãF¥ÌyM+ıRÒaÈ,ZΩ:ì ≥ı{MË5Ä™Ú9*ÿy€âH◊Ì2¿◊ )ìAﬁ‘˚i™>J§ocóØ√._∑˜™?ƒBWNÂHÒÜÛ-™˝Uï⁄SlÏ!°õ•Ó?78$YÛ˝$¯8çrûœƒ–µbÇ÷çò Y].CœSVäÊ=®&É ·IuŸ(8˛Äa÷S F∏—˚p/u8´}I∂8ÆŸﬂs ñÖ˝a:ç≥ØI€HõﬁÖhõz˙UàõÍ‰kÍVã∫ÂlaÊâ'îü›¡3LÇ2`Õ}ÄÒ¿¯˜ñ‚Ò‡GYP	+®Ç‚lå∞òICâ˜„@$êªO:ÏQÿè« .Ù9	§îÚípÑî_≠…Îã∆¿¸ﬂD?„wŸ~4&¡à≥◊∂ld„¢KÆQjC¥aFY – 5=∞ÚDÊ∑≈Cí™3[.&CÒ…\πàÂÊÈoPûxg*ESõÂQbÒÒﬂ˝Ùø¸ÄQöµœ≥ÙâÖg^£ú˛?&9æ¸wJÎˇyÎg$Ëà÷ø~˘‚<#k>|∞∑œnÓÓﬂBî∏sÔ{+@Ïy≥¥˘≥2&~'AÓiü´◊˛tπ+PØË
+ƒ#æj∆Uõ6‚6·<ËN∏˝ûíN˝˛ÖÈ8˘‚≥óø¸õó/>ßg>w√^{∆•ŒpA—SVq≠∏{∑¨±C•u¬Ú-õ˚π’èØı£5$˜e`pSøn«ã£?•Çø‡?~ í“£Ÿ_…áeiÑÊ›]@Ë[7ÔÏﬂ∫IΩ∑ø{ÔaÀ•ó-	/vôÒR\1Á-‡‡@ô_Àø°â˝òæ¸\NÂhˇKs¯†c¸Ä=ˇ}lï˜Fï=^¸ãRp¸=ˇÒt«É∆9¿IM¿¸!\˝w≈.ˇÉ∏ÑÉ¸å˙â›0û:mãU˛‡•Å{<+¥ÔÙ/êxè(A›@óÖ¥¸yƒÆ2
+Œ§≥È ñèN‘Œπ◊I|™ÀÚ(4œ≈MΩ:ÆbnäRC!¨(Y’3¨ìÒÊ• {∆ïÇ¿§îùí2ÄêI è≠nö‘E=˛sG ‹1π5I„Ò’:.^ƒzÏ!µ‚	õ‡V⁄%d}˘‚á9—Ä¸‚7÷Èºme∫’“s€¢wú»Ú,ò√iÜÜbI8ï˘úË≈Á&Ìz◊&Ùø¶{ˇ,âêRÃÚßøOîÏ72FôEB∞.øgÙ0.ã«_ì•&Â∏(èø"!Ω¸´†%B∞¯,g	‰ÜÙn÷/é™¸ÇÍó}∆Ÿ°üÁÒ#≈3ïQÚ1Y∆¥¸¡ìßa8˝öîHRB–∏(!°á_ëåPˇ*à»oˇÓ2Fæ/ùE≠˝˜:È»à5˙ßüIÓ‰7»*·@Û⁄zÓÅˇÇ&ˆBüœ$GÚ3.˝;ç¿ºfn≈˚îKÎQŒa8µ
+‘c—∆∞JÑIWÕ†nœ£Ç1r%…*>~]µOÁ,°XG'p–ãF>A˙s!ˇÚ/Ë–xÁí3É5o<Ÿ› ^}k°B’™N5C≈Z“Ì:◊≥Ûµa™¡®≤v _Úú -VDÜıt˝jÇ≈Ï9≈D¸‹S:+Õoƒá^ú
+:  aÏ9©§mÃ}MÜö
+Ù⁄
+æÂo±It°CÊç$§ï\/6k—5”ëÌpAEüÿçı¥‚>œ ã·Œ˘<ŒƒI†™*q©Úns∞<óëÛH`á∞¬Åè]8¸†¯pé∆‚D6êX´∞êÀ“Ò∏¿’=Ø˝z˛≈ÙÆãi\m≠xOh`Ûì—°,ñπÊÒáÙ¨`≈5j∫lSSÎ¸T§TÆíπ!Z5ıÔtB¶FŒá…õÛë~Ê±éËÉ]÷Ü˙/ú I„7|Ó\ßÒ/t˚7˚Ç’)2&éÅhb.Ã™4™Ó∏∂ÄÔw‚=yàW¶2Z‡ _Ï¯Vô∆.||WØ†}x7ı•∆Nœ·\z4óÃãÀ∆°\IÕ Œd'5+?î_Áël∫7p$/‚‡YL≤\lW∏tU{É~J„˘å)3—ë˙Ép»ÍÛ[·`√mX¸Vˇì«wn¸1ªÒ‡˛˛≠˚˚lˇ÷Ωáww˜oÌ±Êù˚{∑^¨îøà=∆ˆ_u?ïÖ;U»°MÛ7ﬂ¯∆7ÿoÚsˆ—0».•Ï~x˙ùIõ5ñX„;ìÜ√ó?ˆc`œõYÄÆ`†P¨ñè¬8)>\p˛˜˙‰î98Oπ{Ù¡7n›ºΩäÓﬁ∂˚E…Èn”Ë.·N(g©~Ã∞ª\è√K∞[5$MòW˘Zú∂ª=`w‡ü)@&≥FÚPÂ‰ÅÂ˝x±u>)>†n◊ò}E/w˙(<N¬tx„TxNÙ÷<i®◊ùénOô2$m+˙˜=¿ßÎÙ„á‰Lq˚Œüﬁ⁄+åßx¯ªÉ¡ﬁ¯N˙›Oˇ„⁄v¬nGœ√Ù´≤ìnﬂæ›ª›+Ó$ ≈S∫ì®Öo'…T>¿;È£$úÙá%€H¶B˙}ŸFª7o≤ÎèﬂámÙ˚ªâ–{g<M`M(ÜË+¥çvoØ∑QÓÇÂ›GπB∆µëÙòÃ?‘ùÙÁ¡¥dÂˇÔ—>∫sÔ·£^pY£6~öjh{øI¥â—‹∂µ{¡3ê˜I¿·y÷ŒéFQ:$_‹ŸÛB‚¢"M~´(“ nLìh$gz:∑B`ÄSÅz±\—CõºÑm∑ãs∑ø·¨–Ì]¨ÔU˘ô#U˜ã<ÆVè66˘éœ!/a†≠Õ”‡j¨$¬x˜√;˜ﬂ«¢ßÊnCh?æ~˜Œﬁé€[=ﬁb7>ÿΩˇ>àæNŸ˝1µÜ&F]]«‰Içõ/•ÒÎx6·$YÃvO%/”&°ŒfáÒ,IË±äGa0·E‚∞†ø—í≈Ô.I"±‹”˚]B¢:
+36 œ∂Ÿ
+˛F'Ó&^åË
+¸π Ëµ"Æ|˚€-˘ø”…çxÓfÕ®≈æÕöM∫}ı*[o±6µ%Œ#•)¡^'D
+]¨:8ƒÙ)ïg≈‡y.ı¡o§ú:u õóU˚À++óñTèZ18’´ñÍ‘ÓYØWË]´;ßΩa:K¶£–xÅ∏‰Ë?o\Ï^‹3{œÕL≤Û¸<±˙ŒO™B◊¸ñŸ≥‰U«ä„≥˙Uåd°[∫cˆ⁄?&FØt¡—´lXÏïÓòΩÊ·¥™_-6≈ÍYãΩ-Ù-ÓY+àYåı√Æ’káwÃ^ÛZn™_≠åπ’≥V¯≠–w^2éz?ƒ}$∂µæëÓŸ∞•¥ıZÏõ∆]±wM⁄r/úÃ∏2ßâÑÉˆ2æÉS¸&∏?¸é„ÔF¯%ÍcV1*µø≤xñ‹,Ωuæ≈Tí@Ωß˙R$ÍΩºSYè˜YQSz¡é˛,æ	.ì≥˜‘õ¥Áúﬁ	`pÂÔUAMçs7Ç”í?çπûLÇgm`NgÌwÊú|%<´Ns˘‡ﬂÌOv€æ“ær∏Ùµ—n¥Ú®4†ô£\<§Ë»€b›ŒJ7?ö®…~0’¨tÆ\ŒÿÏ¥º–lΩó7≤Î∞5 1æ	\4g8∑–'tj¢«£FÒ∏®≈ƒrÊZË@~Ï£¢≥‹´Ü≥´Ô‰¨?_S„–mÚ⁄ÉﬁŸŒ‚v¬éìxú+d‡í∂eãπe«˘M*/‡®2O·Üï÷¡R§Á«É4‘≤7»Eî¨√úêÕ®é‚„:7y°≥+¿m_·|µ≈J¿É$–∏∆ª?7˘I≥Ã	ï∞±lÖ¥≤˙¬ !h6âJ.GSLKÈ‡*$7—2√0-nòÜ-bv6œÕ2(ÄfV&ãQñ˙V•†ˆ¡|ïYåH<≠tº¨äƒwØÂ9üÖ	ZIPà‚øw€†w '˚
+òñp’¡8»ÆK˚œ´ﬁ∆vSjƒ¥Gó≥yO\~&^"ºc^i9Ez:K√Ñ®l∫;GDb•î,o?LbÃˇ•hÆ||ã:eõË†¿ÊäÄä.wb,;‹L%i5»≤ˆ∆-ˆ8ˇ¡>•ôÊº›¡8∫ôÜŸΩÙ‰ò;x+VÑÕFC„ ”~èFè¬cﬁæ\≈Ú◊7£g¢¯ıµ&ˆ≠=q•◊„Ïò‘˚˘Àxï“:ä%8RzÏz˛[™∑kÕNÍ"?N√Q?V⁄avpÌÉp4äﬂfwX0f˜ÇIÄŸ•:Ïœ‚Î:ÈSXz6`≤‡Ã≥!\öNGànà¿e?ãF#¨∫4≤†#^ÄV≥-≤–u&ÒiS$õ—P`6¢Æ…}™:”êÔGJw~XÄÿ]. Â@úp„´}Î¯p≥©Î{‘zÂÈÙ¯•;ì,˛0
+Oõ ¥Ö√‡Y„Òîé„86DµËÛ%¿
+µ
+⁄íÚW
+î'SêûM˙L7’0∏w 5«ÕñîiﬁS7E≈ÒªÒI4ŸÖI÷DhUKÖCy5m˛r|ÄJ;n≥¸MR„ƒëY"∞˘êòä±Û†ì¸®ƒÖÀW≥ì≈{¥√öZ9¬)9Ç¸≤6‡¯¶]VH°mŸUïâ1¿˜e•&¿YuDjÛ’ˆâ≥î∏6ıCN:Ü5≥d&êä¶ìúi`·L¬t
+_b¡ie∏uüõ
+¨ÅÎ ÉàIaπ,ö∞≈∆y£6ˇ¸àZl´€—µÖ¸Mˇƒ£æ3>÷^øΩÕ.q“w	xu}ã*≥”˜ùû?¢Œö›{é”~D‡®–Ã◊ƒ‰Æ!JËc∆˜ﬁÅ∑ÕÄYõ¿4ßI‹á€é≤Ñ·”¨c$Fµ—_ßﬂ∑IäçCa±0§é‰@…Q‰d÷≤fò$zE˚\|+IÄ2bH˘lB§Vú"’q§Z?«Ë/6“Q Fø¸0†'ƒ_ùx+∑éôÉõqø	‹“Hú“É#@ED¡FkI{'vØ}√‚è“M˚0N∞f,ÓµxÁ^rÂÜ˘ê™Eﬁ∫ô˜ÿ±≈{0yùË}ÿ%ùè›Ÿø•Ê.ﬂaØo¨‹)_˘!ã¢ÌÉpfaæ+ëË›<áFÒ≥bí˚‚RÒÆqµ¯üZ¶%FΩ∑Cñ„‡è ·î?v;Ä’!”PÓœ‚§MÅ¥Ë´xçp}0¨õŸŒÑKâUÈ]Y1ÜXtô|#Ï≤í.Ω)ïsÑM<KFÕK√,õ¶[ÀÀß òxêvÚc˚4<ÍL¬lÚBÆ.cAê®øåëª¡2™h†9ﬁ£êk~;W6WV.˙ù)ê…ä£Íu{ l±K∞⁄YM.È∑Ö”0 ÓÚRB_.Å‘™TÂÖ|
+k‹≥ry=\_;‘≈ƒÍ|π ˘	
+¥ô‹ˆë¸ÔX_ÎØ≠jÊÅBä%ª@WMØÅV7¢§Ã±0á¨Õ!4ÀRîÉL∑≈π‚\P‘¶√éà¢¢—(ªO≈∆πm’∞≠ì†•£–Ÿm‹óíá“•D]Pu¯Q=G«˘3C¡]Æ
+¢©?ªÍ;&î\∆EFâ3°(8¯F∑∑ŸøH§T–|¨]È9áåÅW˘ÚÎôŸÉï ≤A&K:µ≤3DæJ◊ç>∂A…¥9“|¥ª˘ñ?k3xïiWV‹ÅÆÕ9Ú£@7y]›ùDc8ëù'˝∏' w0í•Yçi5ıyi|:SºH⁄‚YG«é‘Íöåm\Â¨«ùh`õl’`ÊR†ﬁb+Kö‚lâ¡ÿÃco¿ße<ŸUOvÈ9«cEôTmçÒd&>O‹˙k+io¥¶Ú7≈™ÚU’ ŸíÁ.
+û∑O€õ+ﬂ<d„¡ñ¯π±˛ÕCá…RmcÄ>è◊zu‡Q!H%ÜÏ‰qíw$øR`BÒÍuE
+∏´)Èã•j*ãË@ (-y>íŒÉk8«¸•mœ7
+0•<éÖJ'≥ˇ ëÙè7˚á∂wπ:ZxYIr4r‰h;‚m]9ŒúÆù∂€r“ﬁdGI<mü¬ññ§
+Îïof¿ì|ñƒÚóîÖ. hÂaÙ/BT|¡˘	ÊE8ËÚtÀ .ø8‰óRë?HÛ÷„33øyyv¡´p∞ı≥{AÚì•ó5ÜØG3˚”Ì˘ˇ}Aîû_ÉÖSÁjO] ‰å‘∂‘ô”óÿü¨™$ª∂Â”•ÒhñarbÃRŒœI‰π–cÿ} ˙V}ûí#FyÃªËÉMKB‘lÑìˆù˚¿¿Õ·Dú%¿õMf„0â˙¿∏ÀÅKΩˆ :â2∏Ñm∫Ω-¨«Çú·v®vÓ#@<7¥˙ø2 ˆ⁄oÚ_‡ˇÇl,BQú≈ÊB~¿1ºmlO¨?î}u,ñ3ÏÀlöxµéøπZÓvcQ[ÆµJ·oXH∞ÄS˘lÂ’ÆÈà$.kÏ±Q.†§ÿπ®pìK; íOÒÀËÃ›ﬁª≥ˆì ÍYÎΩ±e˛ u√ÀúéÓ9_¢ﬂ1ÛlœueiK¸ºÕó»¬4cgIæ(~‰ïy)πxÉ¨±j¿*ˆ∏V}¯◊=íùƒQ!LzÓÙtbÈ⁄ÈåIÀùπÍ^WuÈ¡‚Ë-˘5	è∑ÁJ]Øm∂R1CƒC|„xˇw»OÂhú=vG∫Tù‚` §j.—∏Õj„5.5ï«–∂F]rGêí7BÆ¿∏Ó
++BZi Q<˘„”e™ß¬»9ú≈∫EéáHFP1÷¥5J%†íçRæ*TBp∫ÙÈF©
+*2ÇéƒéXá°w®·f•@sUlÏ°qFÍª\öúß[‡∆ßOs”Âs©*h,Y©˘õ“√¨m`0–Ñfñ€≥ yÂtı’≤Î¢É‡Õ0¢ôußÛŒÄª—\∏M≥.‹çP∞J˘≥LèﬂPSã¶xrëﬁ £˝Çáp ‰Rw®å√|∫WåÌ}#ˆöm√˘Tå˚‹8ÕgùO∑tF◊∆d∑0”ª¨&“Äﬁ«Q¢,—xœÄCÓ-$°±√˚∆7öÜÍ4í˛aêcnﬁ”.HÛ®v©©€V™Ùˆmòí…ùóOøhƒi÷Xó!VòÃÚ1„”ª—”0Ê5ÒQó Õﬂ¯8Zg≠«ÛKÂèáYÖ∏ùËÈ€˙ï¬¥…tnu£Ù¡ÈÑjh^ÁX≈Ÿ™f0ÀÜ“îL> ïR%6ÿîpÅ≠Gã}˙)ı%ño∆∑|lÚgMÔpf-Äâ¨ÃÉwfìtv§oh!û>La∞N	‡˛ ÏÉ@Ò¯—ù¿…ùdMæ’Z |Lr[á"S÷ı≥=]$˚»e7˘IìÔ1i~pYM'q2ﬁßˆ8~D°îw&7`G4sõ+¸eÃ'z„˙—¨Ç#d·Û©∞.äbÄ@>Uœêˇ∞ºÉk!ækÂ`ZÜaSòX¬ç€I<Ü]>E3è|8ÇS∞9uê‡ª¶±∂|. i9_#≥u
+p#Ñ°oÊ‘©ü@%}	ØËGL´Ä´>Ìêÿ#Ωb)s¡Ô§ﬂñ~Å6ÃÌÅö]#/`æk±Åˆq˜Tå≤b@zu_.ni–Ôú˝cÔ÷Ú∑¨Ö§≤–Ï=ªï€|´è∆«[˘7È{ˆ'≥6è≤p≤£3ZvÖ£Åµ•æá{ ˚=|¶`˜≈]ì¢·˜t&a≥Å›`L”ˆ6¸+êvâç¢qî5ª≠Çw@:	¶¢n≥<¡,˝˝¥Io’öì›S∂ÓÑ„ivÊ⁄h«»2Ag™Â :;X9‘·"¡='ØzvŸñ„?–Á∂À9–'~ˆZO˚ó¡^´v;@+rDÏ‡Å>q™DO–+T[î π/:dÌ·gLıö∞Ø¨∏Ø∫±@œØAP
+–Ú\nÙp£©ßî:6h#ÿùè.B_-|Éîı—¡◊@/F›\_cç¸ô˚’"zu˜ÿ9·B3ˇ““ºúπi~ıÚ≈ˇ‘“≤»|◊ø¸K÷$ˆÙ~ú±€HZç⁄czKéÕÌ¡ÉÎ^'$G·B˚jƒwH7h›∂Äzb/&tŒíw'∏gÍM∏wÿ|–7µŸπ™r·TeIÒy™'‚°e<Ÿ“ |uñ+y7π[O3Mú˚[ﬁÏp6›'%ß3™π 7Íw)Ø<Iu^∏x∏Òè˘◊§tdAﬂœ,p‘ÔRvXp’…ÅWØ3Å“CáÜDk€TÆ™BjW‹Îaô\AG∂bñÅŸÃ2Rô€›Ù{µèµ^~™©£H‹0ú4	ì,ò±_":Y•˘ˆjuhöBÊ§r”Í\ Ì¸ñZ˜˙ûíÆ@ÁCÑC.	n∂ËH2•ﬁÃøÌI∏å$ùÊ≠üÅ∞ˆ¬4çHÁœ=I˘Øè±˝«R¯|Ã€}¸Œ\tr˛DÔe§RÉ;—.ˇ∂«5å…»¬q”~cKÛ`~ªÿQé\V©ß?ò0r9PN„Y“˘4¸««*‘⁄0ùüìñôD{ „}ˆ;Úö˚ÊÆ⁄¢E4ÈèfÉ0m6§SZ°ÎÌÍæÏáhìß≥c`Mé‚¯i’Ã’‡»˜ıhù˜dù~Ï}Gve®ˇıºHﬁˆæ«˝Xõ2VÅ'6Ω	;òÙ^Ëpú[0q›”-êÛ˚	≈TÄlíS„ıéC≥â‹€˙≤	•Ã€Õ›$	Œ:QJIﬂ—·ÿu$ïf\»!BÍö-~Œ«]>|ın`Ï¸Òi‚,Xáπzà{|‚¡´uc$/{Ç[Ω©Å ©π3∫ájë=*aÖƒ€qb•”Dcó%T.›∑q%°îÁñZÏ7“"lÊL>ºe∂Ç~4W–·π·$±Çn„‰Õó„2¸a=fHKsÔNﬁ1=kØˆÚÍY∫ïI⁄ÎJ≠t“‡-˛k+¶¬ﬂù›Yïf m|◊®Tç ‹¯π i‘—µ
+5®ä"i"æ¶ÒS30pfDÇSxµÄ©eæ∞¿µQbî;m˜Vÿˇ—„'´ls∂µÂ9wN‘Äe◊°∫JÒ9˚IPë8æ´ΩÛ2√îùßnÿ+Ã◊Laa,ıµWêÆ.{∆ÎãUêúïè\%˘d“–ˇM9Ì¨ôKpˇØ›πF˝√µä}NexÓ—¶Äiˇ(Îyâ‰€zI>*E‰É|©Iëócv;N£ 74˘ÕÇbç£‡Ûˆ‚mœÙÓÀw¢·ºÇΩ£	Y=}9zska—íhF={Ñ@ó„”ªvöª,_Xˇ¥N¢$ƒˇ ¿ˇÃJæ˙9ÅùÁà˝øxÍTXïøz˘‚—Í˛J≠Ω∂^£cN¯ŸèD·qÇ‹äÁ›ÉŸ_éÆ5[ÁÀ;\éŸ∂R°ÏâÜ:	'AÁ›ûºﬁ‰.ÒÕ(<fìªHScï© Œ0’Bh•4°uÀ•juƒb‰åué£¨ëTöëíÏmiÇ≥¨ì ÖÕï%∂°€ü∆A4πs;â‰,®uüˇé¬tßs∞ràLú~˝å‘I¥v@®¬˜ïÉ⁄7™C=∏Õe¿_IÖøêHrt¢%í<Ë'Øˆ»ïëxÉ)Á≠RÜ¢-.ﬂ$èWR¡…„Éd{πSm„M«[‹é?lMMßULœõ]W@C%„∆nDA◊∑ÃùàIH˜„)ª$[â
+{óRÃk)H/êI1lz§eü4«ÿ5YJ…!Í¬ƒ–ı`ú«>@™¯
+=E≠v6]VÈÙ≥—Œò–3e@Ü…¡r¬öÀ2∫∞Ç®T''˙≈®©©¨íq∆U#ÛjÓÁ»›_hƒ‰XÊ»Qf◊¿(fÆ)z>n[xhÚtŸ∏Ô?£ä∏|-°VóÊ“⁄mgup‰‹”Qá©úÈ˙cπúrg	¢À-/úJÒH8›ZX§2Æ˙ëH%ÒP£Z_ 1•êlgºj\Ú·ä[*íŸù,€ÏZù*ï»3‚8Õ\¬∂+kûÒ¬Hátm7…"å˚ D	¶Ñ¢πäa$s»8◊aUÿ2ªé¿ø≤?ª)*>Û¢‚F∫Êa∑¿«¬rÀ•¬#k¿øˆÃµBàAê<›2=∫ç +Öá#√`ëÁº45ÓÆΩ•Éôå¶∑.óä√ÑiEo][ê√Ã–:-›4ôNÕ1}Uuvuú÷„Ú-©]0äN&Ìq4åä•∆x≠ö“ˇWˇL—”fñzÊÎ›Û'b˙Ô∏:#E@ñÜzëIŒ(]#èkQiPœﬂ$–*b©c_ ê ≈uØô9Õ˜fGm±ÂÓÖYÄZpd/JìöÁ”IT…]teÂ*w°\"∂ÇüXo›jNáã>j†vJr‘ı3¯í%Ò‰ƒ#–nö·|å∞˚A0DDj≤0S§)ıxÕôH”È2ÆÈ	~˚ˇØ˜πkTUà´∑ø,ûÜ„H^Ö≈Ä†Ù!†/@ái"É¥ô«{"3ÜÆ0W:åå+gòÅãGÃ¿Ô≥0H¥!ÛÊ‡P„∞o\ªzÎ,‘‚-‹ØæÍñ◊PÑ$ˇU~fêè†êe(~Ÿºä’∑
+„uK¸ø†(Jœ.vúÑ'áh‚-‹=◊¿sc∏ŒòhÛ\NRrö#O˚Ã†|7dÿB∏.“]Óu‰ˆ*°%¥tX…ô
+≥ôì»ª'C|É5qD‡∫OChÙ  ÉÑÎ•Q¨,kí∫kãïØ†w}<Ç÷Nsc1B¡Ø#¨‚L2 ˝ä#}w8êYáŸÄV¨äQ‹dfTêùæÃ*ãq;Ñcﬁ¬(€Ç?(ïÍh*paLùŒu[ºrü&bÀªR°‘ÜÇ¡;R§EŸ∞ŸxÀÉñ¨b<ËU∫UÄyöÙ∑Õ…9
+"âGi¬	ŸU$√ˆ¡ö»lqÙ]¨†%“H„Ã@B”Ñ
+πò≥f(Ì¬#6Hf˚/râµ:î C¶Qa€Ï∆H\zØ\eI hb)É^4¶¸x.ß”¸ÓÙ‰”ÔN√ìOßììOO¢„OO√£ÈßG„iÎùÂ®ú/ﬂr¥‡éK¯«yC≥) 79÷io‚ËX‡±2qç¯Ës«"(∞?C-æX“?¢ô™ Ã∞`©sú˛öm´Æ ≥¢û›[Ò´¢,O|ô%≥	™¯ú·^–w≥ãSaªYÙáàFé(wC{Æ.úk!7FqÍ•FGËcH¡4ä2<¬ÿ^‹Gw“™
+>U/¶2Æ∑ãLÑQÿ“≈€Ã~WcNCäX{¢r‘úûv§)æ”è«À§™NƒüŒt8›ômø3'NÔ{‘U€ˆ‹èrªÒ1‡Õ‰©IT‘øLbiy˜∆^â†5Otyù«[tYËZ˝ÜÀL∆Ozµy˘ÚqÔPè{ÍnláÎáeó%êE‚'v7?î}¡R¿˘µ,È≥!WŸ˛;éF£∂ Æ≤"_èüo7VÄµÈ≠¡ˇÅœú¿Î∂˜‡B∑◊Yπº⁄_iot6zó€Îù’À´Ìnèˇ?≈BÚ4ÌØ¿Ø+WÿZgusìuW:W÷◊O∑∑Œ∫›ŒÊ˙⁄≥ˆ&‹[ˇ‡2Ù∫˘¨Ω⁄Yª<\Ì¨¨]˛Jg_?V.≥nÁÚï^{≠≥±Åù≠ØÆäÔ›Œ*ºF⁄Ÿÿ‹ËÙV◊Ûoœz∂’∫ÎùÕ’>êÜµ+]∂Ø¨otÆÙ÷˘7Ë`ÛÚ4Ì≠√kW{õ£6Ùﬁc4 ¸Â+œhÄ7∫W:™åßw!”›Ï¨lÙò…'çe‰óüùò`ß≠aÏ„¿`üqa]ßtw:Ω¿>
+¶QG∫Œ}N;à@Ó›£,B_•˝”[¨nl˚ß◊;:^?˙™ÌüŒ :‚Œ®HzvPwÉPse≠ˇnÆ¨·	∂π	8øπvÖæ„ª≤∂{`öØ¬¬ÓZ›l„Ê|¶?´Ú◊jßª	ù≠tˆåõ∞ŸYÎÆ">√4_[ß7ÈJzÎ≠n–wj∏÷∆71|mÌ’M˛ä≈™˙õõva®W÷ª∞g†ıå∂ŸÏ°çŒÍ
+ÏŒ∆˙⁄'cËÌ eú” Â>\∫€Ô :º≥w∑ﬂ˙≈Íï}GÍ= ÏÆt677`óØ≠Æ—˜+m¸w^⁄Éw≠m 5XÎÆ„U~´K_ÈÊ:ê∫vôQÙ˝
+uC3Ï"z0‚u≤syaª±∫‡
+ê¨’ŒAÈÚZ.lv_a{Ôá££…ﬂﬁ»U3qyñåv‡øäCÒ]ˇ÷◊ï¨_ùΩø≤≤πŸÔ{ÑÀG´_Ëﬁ◊√áªÖ‘uê‡!AêQÖo·¿T>IÙ~-˜©¶0>,◊¡
+‚MK–¬íHŒﬂñ∫üDTò˘	õ¬†´6ı˚@éøPlB"”√hRÅJ ñŸ>˜.%{‚bÖ?H∏QÈ≠eTdgˇ˙hó/-„¯fπ÷ÚµÛ.Wƒ4L¢„ÇÃﬂ›∏ˆªˇˆŸﬂπTZV’"‚ºO.@#˜9‰∞^W‘Ñ„πe©≥b≤•#à¶‹jÜ—”Ä[¿ó
+ÌcZº%∞xÉ+∫MûÇ$<ç¬¡€çñª#EÍ n£¬√æoE÷X:•7O∫Vè6{«ºæ±æ&∏æÂûø∑»…h[Ãmç|Æ’–≤=tÇAJˇÑì4º5°¢cb®ö‡MŸ êı¯ﬁ˚{£8ª3ëˆxh÷&ò/awê6Û'ZmÓ.¸1¨!¨7æc{^6Çsñ¬õ|måQ∏‘uc,ﬂVUàƒP(iJÌ"ÙxˆPòÉ~≤	ñ¯∫ÄnàÁ	B<∞ﬁK[$/ÜßG*Œwü[J™5{∫ÜL¯z<8c˜:À¥^F C;”°e!ïÓË¢˜\ZΩ1¨6≥+˚$÷ l‰'¥N¡≤áV”!ê&Ω)˛~úZÌ˙ÚdÜF6Ÿé∆'òã%âß©”∏‰2ÈQ·ÓÒY°ÏµhüÎ¶w•1_ÿÅØú«tÁœ„Zlj	_y“aú≈ûÊ≈M3‰òBªΩ·≤7µë*L.„Ån$seƒs¶sÂ:+úG√’-”õP≠ì˛0ípB¡z vÓ)ƒ ]^3Ó’+ÏÿÚqGÌUå,¿∆öï¡¨%ﬁ(Ñ¶ÚèÅ`Õqh;l©·U{,‰ûDh√◊\÷d∞^—)<gÑ¸b¥`]J*uÍqSé‚ætàsπ nîÛÂ?úÀ%p?vuy∏ÍÃxX\∞bé%4ãXIK(≤‹{Ë.°*P¯≤Ñv	Â/iU—H¶äKæ—eÃÎW~◊±d1|KQ#äIŸÙs®πaR
+O™‡2h∏aQ,¬mü]≥Qù≥À¡YÃFNWW6æ¡º7⁄ù&\ˇtÆ.œFïßÓ(∫‡»Gëc4ÓMFñrw‡rX°cy¢lãªt≠}… ◊œJ-˝≤∆òÖXØ~gD j\È0¡íßÓtß“g/_oñ◊ÂQT±2Ü<ÌÚlÈÛBÒ¶M‹ìÙ€ÂÊµ;ê¥{nÏOóoG£∞¬˝+»õ+/0Ì⁄Œ`¥ªß÷?q¶TÌºzÆ◊KBUMlzJXÆYDSÆQ¥ÍO)⁄·«2àÌ™ˆ}Ó˙NW( µ©A	√#◊≠ÅYS+ƒ:•c-÷©Á®§‚0w}ÉËæR‰sÙÖ¿3√∑1brW∏¡sÕ„
+QxEgÊÚj*◊XÚO©ﬁí!1>öøi¢ºM ¸Ltç˜|Âõ‚§ﬁ6Ånâ¡Û/ÆæùÈ…+9ÇU&+Ø¿b±UØƒ§Ái.®ñ™B¯ßNÅÑS,˙3ƒTu#X˜Ø´TØ)ÚÊIUéƒÅ¬'Û2?n:Ë-‡Œä,√ﬂ<Ø-Òâ≤¢‘I]≠<ûLT√¡~MN7&zaYñoã¨ﬁÍ
+˚∑<Ê]Ré<0˛«22YDø˙˚˚·'±ﬁù†€õ/˛´àêûÙ›A·ê≤6Ra†nYî¡uâëóı€•@’ÓXÜ“Oxƒœø8≈‹'J!_∂ÎU∏˜mÕéÀ†—ßb˝N˝ìŒºSë™GˇP˛ê[“”°˝=aG±_Ûòk8»˛Ün¸î«“ˇè∆ÊË©5¸à"ªJ6Lø+ˇ$ˇ8]`a¢#Xeû”ƒëÂC‹TI>d„-vpËÜÅh°e·0Ò ÖA‹Ÿéñúè3Ωë?¶›uÿNdÀ<√»# à"Áz‚‹%RπíéΩ©ô‘õàHï≤‡<l©™ÄÉWâ"hT~úπD»fQØ s¿©aE•àBêT
+sSy“ã¯ûáõ9‡‰Jr„AˇπùƒA∫LÀ‘7ŒU‹¡Ù‡£ëmRZÏdãôr–E#Hi¡≠+E«^gêÜÕ·π‡»Û#™∫6
+ni1's˛	;iO1ŸnpBu=Ì‹¿ÚSH.ûß#Øö£Õ≠bk∂bcLı¸<S¡‰¿G¨N–$jÛà∏débZ≈√{Æu»≥R'
+ƒ«˘bïñìÑGi¿ŸÀÕ∑çkCgW1lú.ó™Â«È@ãÿ¢|Uq\Ó”E[£GB≠BÊx7nT‹ÛQª<¬»*úŒ'i)üÅc’Ä1qœHå‡@?qi≥QçjÄZTﬁ¶C^§ü“˜L£nîﬁÎ«hzS9FÎ◊
+¡Äã{ë N6O£	Ã’R´Ch†eÅ ‚/˛	È´˘(è-‡±_Uˇ ó°‘Vˆ´©l%P?èø∂–\ﬁË’8˜É—»>Ù
+¢2Á¥⁄NáhÌˆ‚kùä(#”Ê¸îxÎ_”˜‡˜gZ>
+]Ò§áÜë%:ºaVR«˘≥(ÄL¥YK&¢í≤Cmdà0<≤GG)ÇÄ$æÈwµ:)€sÌáﬁFÏﬂmI≤åﬁEË]|”Ô•R∂Á∆œºù]	JÉùHíŒì4ÌÒ|¥ÁVv&Øb”°÷ÏˆX9ƒ1˜ë(dΩXêª-ìë¿VíÆ∫¨,2ÀÖ+µEnqÒÏÌÇn¶∞d ÄOw.|º∏ÔÑLR8ù;€påc&í"±õ¶ëu‰'·ﬂYS_OìE.⁄u*Xèb⁄"¸T´°ÍI/Ó™–ñyW4Øüø?E˛@K¡¯r7©∏"@®ÿoˇÍ?_‰‘[Pn§[ÂÍjÉY¿Ï∞^{SíÇ<qYQI÷¶<Ltæû›òmÃ0Øàä<À,Ω°fºkÄÍh·J_Ωë≠≠jiƒ^≥™ßf0È˜ì©£÷4~*j¸Xï†ösUBã˙u
+˝¯·¸Fá◊ﬁ€è·9ª(Ì⁄Q8ûE1fâH«qúûNBT1±Q±t^µªÏO!Ã*˜%ã]∞CŒmˆ¡(94 µÂ€t’%_◊Q´wA:Eè¨ÉÓ∆rwÂêÂ5Ôrë¿©ØÆDˆíJ«ﬁi¯!5—ïØ≤´NKD9ä≤f#ØOÜŸQ¸\V`˜∂v˘∞√µöäïuwR¥¡,!˘ﬂΩL¸„©ÕJ5ê}`,bÙ¡VöZåµuŸ´&D-≈mIµhµ.7s‘À @{úFÏ”_˜Âµ}±Bw^Ÿ◊ }RûÒDÁMŒ|b¬ëÛ2øZ;„•œmfqÎM±¸(L€§1¬"ÊJ´T‰¡D∑√µ¢hÏ7ê© à'Éß«∏jå ¿^BÄ[ÛÃbaŒ◊ìb ≤ !ﬁ´Ì_†çá˚r∏3(ø·Œüùä„Àü‰A)5†Zâêºƒ¡ êÑ	b\äïd™©Uº$√?Vˇpﬂp^∂„K 2‘?sõ„‹¨#i	m$O"I7µŒEp|p¿Æuøg— ›ûv+ "áıÖV‰≈‚4îºXQ˘Ã¸˘U]õõı-ú/£·üó™HZ&¶iNÌâaﬁxr6égÈ,I∞=ødC‡Áüc>„fµ%Íµ[¨ÕÃÚ;RNß€•ê4OÎö €xN¥Ò^∞gŒQPñ§R∞è …ò‰ú'2…NrÑ’¨‚uï%©d*∏`Y2X ÷ª=¯∆J¨áWÃ¬≈J˚V≈£†.œa]†Gèn›∏uü=|∞∑o	ó≈ ‡Ösç\å¬(@UÂ…^kïJåØOf¸"≈≈r?\∑»X%4÷/.8æ——#<µ’‹ü´⁄$Ã?¬U!i˛)äõ¥;(¸ÜÚ∆!ÍJO´RO%@/;“£Òâ)ÆYbŸ≈*èÈ◊®|¢”ÖÑ
+oÆ@‹Èí˝3”¿˙p0√›U3a_MÜxıu0ƒï,qS\ﬂmùª1wΩÈS≠1)æñ«]‰wgü6›ÃÌ%JzIcn/s{I0∑ó/{I2∑ÍÇ≈Ωôs}|d—ûıäÓjªÉ=Me±ˆÁ0«ä†|≥1πíÎ¯2#r≈\T§J≈·≈≈Ùl›
+] ¥Ï.ΩB∏n ªX(V˜5¨è∏ˆá #Ó?∫uˇÊù˚Ô\‚⁄€¸öKîüØπƒπƒØŸƒØŸƒØŸƒ?p6±p]}Öﬁ·Ë>ûM∏;â§yè¬Î¡‡$l"ÅÏÛãè£∫W}ñhâW(√ø)UmKoùo1ÛŸù-ñ»ﬂ+t∑é‚ãæøówg¥ó˝Óêm]Ôœ[¢´p3Óc∞Çl(é¨/ç4ãh‰√— öEÈÉ„„Ôr/ƒmë9Dƒ§¸a^ê„èﬂﬂÔ%ÒÌ+G˜Ô?∫”?8˘(˝7∑&∑&¨61¨ùúºî}#¿>˙ªÒ<ﬂùeÄsLüÙ∑_≠wã;z?˜ÄùF›8^<ñ∑kîD+≠÷◊F ≥h≈‹¢©ÊuTPÂijõ⁄– ^«⁄Ê∑±nÏñΩaé7Ü!Ù©“‘SÒ¿pø7YíQö\õ´)Ûı≠ûkΩçÖ≠ÜÓ_¯e√˜è/®¨Â?(>8–‘Í "«L¨•ª0¢»¨_>d8¶X`˘ÖöC3Ï)<˜·âöuà|§Xwl$2LÊÑ∑r'F¸Æy)j¥Ÿ§ƒñÎ°"ÕÿﬂΩÊ=≠◊-÷L%Â%⁄˘,ÊtF{’{úˇ`üR∂sç™‘\é√xÜ«N√BWÌQ<èÇ$Íâ—!IàÒıãÿZò.!õ.At»…
+Ø“q≠yp®Q˘É¡—˝¡õGıçß¿MÄ»ıç..Ww%O•ê∆¯%ΩaÖ“N?{ÄB1=π'Ôm U‚Î4ûŒ ∏çkMŸ¿ËòT∞z&£≥%iSW G˝I~ üºØ~è5ÃŒé∆QñöÈèÓŸWÀ_bV ’ˆáÁ-Î¢éŸiØ5Ò_ªCÒ •3î˝i◊jÕ	ü±&Ñó*◊∞≠ﬁéì•¢≈ÆÛ·l4–π%n!ïW¯f;˜N9	ß£3h∑¯=“.,;ÍHAÌë¸U^‘⁄]´^j¶-Ω¯mBI2Pwr@±Ñ7îJ@§^c‡ƒfË@uΩ|¶8x8˛d&N˜¥÷\øá◊Úy#™<Ôâ	@oi˛Dp% M0,]'Z¯€x˚Ì¸H(t2õb08∂∏3ôŒ ~«¸I¯rÎ¡–UQF=¨ûÊŸ\7‡;)≤öpQëøtÎ<ZÏK”ıæûXí9ÏpXt‡Á,‰;G«‹&\‚óÜÚ£8<
+OÄqÿfÀ‘<⁄üÏ∂ˇ|•}Â„ÔÃVn¨¨¥ÒœÂ€áﬂjΩ≥¨?;≤˛ûÅ>;ÙΩiÙ&ﬁÉÒ4t7èñ±÷∫©÷ó⁄tó‰
+”Ö˝†∫À»Åÿéqè‘Q6H]î‚kø]-)èø9/,ê@å7ªD˘	ÛØcçÚ˙öVI¥ﬁGa3R 5&ü0xøπöÔ€:˝i1ˆÌÆX1.vr‰ ≈« ¸¬>œÄ®ŒåPJ˛fÙ{0˙#Ä¥ÿ∑Ÿì?zg.«yŒû¿◊„≈g°°që÷Fö%æÕ∫J≈bl~1H7¿Ìy‰–≈&‚|˛’f¢Ìk*oï¢åé,(#Ëd:ƒÉﬂ∑éèyö∫&]¥ó·¢ö;ı∫ƒ˚aë§ÔuTﬂƒÖ√⁄∆∆|›·ˆ∏IfÜ∑ÌXtMãáÆõ%g÷⁄$ﬂR°©m)Ÿ(Iná5ËBÆgﬂ*‰…x[÷2≈™4I≤ÿ4—hßÌ£¨Ÿ¯£Fã; kœ4∞!Wﬁ(Aóõ2êÃµûù,™Nƒ<rZK ÏÒXøµ∫—“Æ∑ƒ6¥T
+(koÂ[Mª!Ω»_ïﬂô·ä≥úq-°h#™îni†ŒÔöÍ∑-]¥%∂ ¡iéT÷)Eö¥\ı	Å˙ñŒ@Ì ®˜±”â“ª·I–?”„V˘ÀƒúT„∂ç˜;˘~Óó¯û’Å(ë™u`u…Ìy®ô»Éyt[ïP˙¡˝8%˙÷·âË+ÆÃé∂Ú∫ô¬»Âì0,sò1YD≥(LYRËu	øâi"Ùﬂé,)BÔ8«î}ÿtââ∂–.ô/[R¯}àû˜¢+¿EèÿYﬁD7¨]01â\¡-{µñäç»#‘ó∫$K!{J›°-) /ÊféXARÀã"Ëœ´¬¶Ó¥ÂV]^fÔè‚#`Ï&qG}≤∏±„8·‘Â-}P¡`Ä#Í«£èuÂ”üL∆∏àË4Ç—®°ì®ıUåf∆¸BüÛX	&´√ˇ˝˛’À_˛5k¬Å…8∞¥∆aö'–≈ìwÊ9ù:◊É/0Ò?√T»Ù/ä†Ìz„À?‰ô¸H≥*:Î<—F6sÓÔcŒLÂ∑ì0à+uà≤4aK§R7∞ÍXò<Æ§ŸÁ-ãÍNçh]êÍö}†’Cø@Èdúëyvé∂Uÿ`ã£í@¶¬[ıΩˇ ®UÜ\ÄBQÖOÁG´JƒÚ†Vrï†◊yÉò@ò‚ú"¢N<
+;!Vâm6n„É-bBCÉ24Z—tü‡rcF∂gQv÷lÉz	§ì	%:ÃI»[ä.]d≤ÅFC… 4iÈTñìß6Àg◊òê~‰”∞+Ä:ùÈRõÕíÊzü‰vD∂,¨bò˘πzfs¬àŒq ΩSêuQ’ﬁî£íxÕ_ƒ—vG!gªI»Œ‚Kg‚Ài ái¯SŸ0J˘ÚG#x;<z$°∫åZœ¡§éx¡”-Ãâ®∞Æè÷ÅdÃoÌÛóˇ≤‚EQ∆ysM8Ò Â4òÇ@ë’ˇöy¸j0èÜÃ√˚3_ 6¬t1Õ$üy“áac'¥ÃNK8RÌM_-ˆ≥]ìˇãƒ{4\@Âã£⁄¥QÚé;·ÛzhZYEj¨ Ú]á≠Òäâwt¬Ü
+a¨›ÚFÂırÏÃÖk˙ü_ËÂÖ∑‘¬Ûm«œ≠ì/ILe^~í„-˘ºÎ@€<ùGú2Æ”qΩêa®—uCö°®J-Ño/W}}^¸°ú‹mZM€xöqRÄ£÷∞ß#¨Üv:2í%¡Y6B¸8/€gã%FÁ0á–ów∫ºÌ<^ÏÏøuèò0ØÇ^oµ.∞‰Íñ\Á‘yAL3MÒŸ ∞ûª‰´ãü2ú≈Â.¢˘nŸÀmË DÓ‡Æ1∞Œ@{BFÑx¶Í°dcÊlíŒé4 Oˆ&¡$¶¨©†£ﬁ#§ôBãäãm˜±ºﬂ¡ÔAº6Éæ‹®¸tL}`‰@l}È5î3º™·RÛ¶ÈËd&'UEj¯‚Øin·v™†€Ü:˝Rö- ¨é&uﬂ]Ñ<•+tA›O?Â,†≈^qmƒùRñXê[J)¿Ió|™»cüV{≈ÿßl—>Gî∆∫ºT$¸ÖûU¡Tz⁄—]ﬂ¡uÓ]˚Ú«·"@‘äì
+YçY,øæ¶“›ŸXcsÂ0U+//ùÎˆKXda¬t„¯cCŒiU^ƒ˝y¥áºxNëøSTÊùÓSnÑf≠)ï\fß “≠ ’p˝"ü'∫#˛Æ/òª~Å≥√´¢ü6$LÁ⁄Ï#y#,Î/]°íﬂïßòµzÓ¨Y1lÎeDL˚voEˇÕºW∏Á˘cÑÈ£ê\Q¥!•ÒX+öî†Ô:„·2i™Òòá∑U∂’ÄWÇ-Ëá—Ñ†•M3£<ô'°'·jã]e´+ë€…8ﬁ÷fcJ&±7"¸µéıÛØrÃ”PñÛÍ«	 Üﬁ)yÓ ù„Ω©„”8mñTﬂ÷%%∂;0BQP-ÑÀeho¶`¯´d32‰‘I–â~«˝°÷≤F‡G1‰£p9ùMa<ûõz¥ÜX≈òºÂÇRÉeÓ«%v‰CÈ —áÁœ±)‡∏Ùû—Ú»’Ú»lIÀ(}ê˘»Ö√±éa®¸’mﬁ±%48:íÓ Eâ8 w24⁄”eõ=††?âi»∞ã8⁄˘y.f}£Œy3ùç•O‰íóï É[Ï€v=lÇ2'˛ï7[∞ui≈≈àpV˙Ë˜q–˘£{òŸm¿Sıcœ‚´ﬁ9√Z¢0<˝Â˝9˚=Úıã$Fã∫;˛…óÀ˜µ≈Ñ
+˚˝H†f‡@ÕªõRc8õˆVïmÑ.	éø™≈LÍìÃÕ-0°Ù˚˘Ú{Oq!´©ﬁî¸˙Óªñ>•Ø+S‘Êrzr˜˚Ëe&Ô‰;aZÇ%2¶¶‘LbEéÜﬂ⁄Ÿ±9>Ä‹†cÙÑÎ[Ñöó„‚ò‚Sxòm·π‹∞gŒœuôq…4qEé(°o™3wKLèÌ0£1‰AÊpû€èON–+öoãRã`8éø94ß‚¿å*ä=ÒO:x+*:’+‚ƒöG!ï—åO¢	»ÍIöµÚ N∫d}ÆÔõW“¡“\å.ræà¡äË†'s?NW%HeÑ≈5Å—ùMÕu¶ù?xÏ±§°kèƒ£¥báE∂§‘(ƒ%”ª”™N)æF©©∞¥œ ﬁ1ªêÃUƒı¬Ç˝âˆ‹UKÜŒ¢CtBTs—<u?/qWn-1„-9‹%)Ä)æSÙ+ìûôK†ŒÆ„÷°¶2FÑ†wsÊ„∑ˇÌÛˇˇ◊◊∞)âzmÜEΩM5%Qh€æøÎ=pò∂∂O?Wö”$|¶â¯ì+t˙Ü R‹⁄·ø£D≥$Gr{Ìñdm.
+∫§:)sH±õ˛Í∂ìÇ’„k£áKÌøË*|µlØ[+Ìáñ÷†Îÿ‹Ñ˚Nê:√°nŒ«‡4ﬂŒ˜øK{áù˙<«ÒSÙ«œB‰Àxë„GzíÁW–Û
+Á~_sæ2s¡ú∫4T∏c]679È4(˜OY+U5Æ¥ëßñ4	≥ıÃ†Z˝r-#∑Â‡Â‘Gf»z°>R¢°•wvô'8¢ÂOî⁄¡wÉú¡)÷Ï$L‘GÑπÉÏ≈ `®]1X'	ø7ãí.Ú[ª£0…lªI„v ÆõA‚˜
+A0:ÁÅﬂ˚Òcä˝£Ù+9∑Ü„”õñƒ\ÿ{fÅ›≤¯>1b-øéßTµÅﬂ>Fó¬‹~4ËR›äÀf»BÂ!ﬂp=	¬ß≥ˆ¯—›N'πÊ ~7Ì∞ «◊˙/!3ÜY>7”√O[Yu√„¸YÏQÍQË!Ù¡°ºê«®K“ j∏´ g[6xÛÁÒ˚∫œ·y.√¸sÆÀë`âl)pˇP,ØÖ•Ïúf¯¨Ëjô&ÂÉgŒè»†EY≤8Ó»lr';pD;èç‚êú•Äe·Ì*0Ω∆Æ˛r9Äi˜√4)¨◊Öπ6cTh–Ag‰%¿J?ä≤°H∑‹(îÃÕ±Yl<ﬂã>	Ô]ﬂb›%¸ıQ4»ÜíBLâØÙVñ˝>
+è>ä8ƒJ≥heQ0˙ìY 4‡lã≠t6M^J#q∞§8√Î£¯H˘0–oà{x\Êµ$Gj˘zÿCÄ‡¿|’·Ròy}pzgä~¥ ÓœÌÌÖƒﬁãp¥áFhòÂ^¶ÂpîìOÉ„Pêc«¬…¡\RÉπ‘"%R–õÀˇVÖ›væ”˛¯p‰ÂK_r∏ıÕ&—˜f!¬`¬ﬂı‰ùy> Ûˆ;<◊:%wi$ñ}ãu√+‘Dı¸â˛˘åî#ú‘≤é∏Ò-ãüÜµÓE	0(w`A#ªf´8ˇ‚d,å∏¥‘‚ß›X6Î”)∞cÕKÔKK&∫8_ (3ç1Ò´#JõóñÉi¥Ã	ƒ•b—Âqî–·Ê¨ºdNÜ@U0kÀú]‚ô~¢Oà-º¥≈û\Z	{gN†9ípÂÁ(¿ûíS2n⁄9>~9°Œw”b!\È‡Õ[ƒO[,&Ò)¡ñ¯≤&˘ÏßF»˘®'®$ú»Ü]≤:têPÍañ¥ÀY˙ZÏéU<P6	è%ö-±'ºÛtY
+3ÀÔÃMl?bGJH¯‹ı≥,Lõy˜Âÿ‡òàÊou:¡ª»4‰˝Y€?ˇÆ}ÕOà=u.®W±t÷«Ò`Í≈≥∑ı≥¬+aÙ˘DÁåiçÚ√g,ÏàŒÚOûEò0Z€Ü9ãE/V<,∫ÒX’)OZ©ÃâÈR,=Ñ9ﬂ‘≤˚+‡∫gˇÿnjπ$"Öá≤»•2˜!}ß{Yπ/5v◊¡‘9Ÿ:cß≥v6 K(Êª…≥|1ÒéN7∂C1 ¶ŸÄŒFÓî˜'ﬂ·Eñ4y^6#‡∏u>’ÖxáÔƒó¿dI÷ÆEøÙ)ÏKŒ‹å…≥!¿ˇƒk_ú‹Odj∂ﬂ–’ø|Òè⁄œø'„Éîà:=”¨û∞3Ò0<Áå5Ûòâ|î—rttËË|„Ôh§Q»ôa+'FØè∞9(_—¨$ò˛ÅÇr§V|¿çÈÖ §$"‡Î`Ä◊®◊T“’∏¡…ÏË*Ò‹Z[9€⁄x|Î[ÎÌà÷@M/m=Wû”U[{ÕÉa…+[Ãß¶_vâKviÚ⁄t
+“g˚¨Ω©rwñg‡N«T´ç2Ñ]≥èß%’’L∑3ÖÆŸı¨]µ¨]¨ß@w %Ó§´f⁄—{úŒﬂàí˛»,Ç 3ëˆ÷LÙ∑Ù±o”ÿêfgXÂÛ‚çËH˘∆Ò——qo≠aÊû7Ú†#Äíù©
+ÓÛ3ÍM∫“∑:ÎÜ™lÆÈòäKÛ2”z}iªê≤‹‹›UÍ:«‰N+πøãYu=W∞vÍ‘Âöb8i®Á‡∆äU„œL˘m÷Æ.I%3âïÈi^∆ö±*ÿ	;õoõ˛ï>ô?Òßyv’˛d6ãâógÿµ
+Áı;DÖèwÊ∆0a]/yrCãZ Ú÷%X∞K
+Ω÷ÿU(¢*õ´KóŒüËP±™t‹&ˆE÷ü\;∑k∏”C”1ÍÂ¶8™í◊ƒ}¬æ)ûUÛ‰4ﬁñÚÙÒı⁄\Z%\≠“ÓD˛≈BÛ˘Û◊»˜Á9	}F@zA ¸˛V1i˛’î“”`'w…ÌπÚï:∑7%Ñ]™m!õ6ÕdÇ¿4çO 6°/œ‚B{ÉñãÖòƒìê≈≥åR®”≥@G√èr\_,¶(ìÙ^≥Úã¸~√SÑ¸I1?•¸"–ñ›&Á©´Àº£“ﬁÖüÓ5DUîù‹˝>†VãÙ´≤”˛‡c˛'í∑>gr[º‡åÈ%˝øÛ£§2‹K|4Õ{AÒê˜È `!âßº™ı”¸Q,§6÷¡îõÁ†∑Üy∆=˚M?˝G¡Q82∫≈MTç„"Ê a˘ªÉ&’HPU™µ=µ	—kÚˆs[^'∞}ù§dS´ﬁz}âWúÒTpquÉµ;
+µçz˛0s<feN¬#ï§d›ÖjÏó´
+ﬂGqÜÂ∞®8 ∫Àã}Ø∞”ˆ∆´,8%q`t¢äxè–Œ‘∂◊¥“6gm wÃ>‘q÷'ôk°\*ûÂJs÷ë… ) 7Ú4x…í”0πgkS+û§ÉIdÅ4Z∂Zy—uQJ•cåäœpﬁ•ïfﬁ Jéƒëh‘?S2∏{Î©´˝–˛¡ïT«]Om3Î§á›Ïc≥ùØÛ≠)A⁄`C¯œ‡qu∂≤Ñö˚î\£:gºíRY±õ`íC ƒcdÀ8B¯K’xπé˜d6¡ÇÙ˙x/À
+Ê8ë∆µπkX•≈¬]ë¸¥w‡∂€IâÅ¨¨µHF%”ÖL‘KÁ˙\} 7<ä¶‡®¸†Ïáˆ4ØŸ$VÑS[Äø6Ô*ÿK¡¢(K¸ä3¿™QÎënæÂ¯E	!˙^›OÇtÿÛÛ÷rù}xQúÎ[R}ÏjÑ	©<gÓﬁ‰⁄L9ÎÈ»ÉÌ~‡è√3‰ª≥
+j?KFpw*x≥ ~êKWÿ˙À¬[º¸"Ú/-ºj;èπ7<y§YŒ)€ˆa˛…’})e„F¨>äÉdÄv›“–•Ô9ü$}+›/&e–?∫€DOí^∞Ú¸π ﬂ'£@XÙÌo€ñyÛ5‘¸ :‰û$î(˘¡qì{%\jë÷π›ıw°;™	ç&ıú«nJ;†Â∫|ˇ1πŸYªÊ∏h†’?GI<ı›vk◊Ug•¿i^•tª±0·Ã§¥±√$Dœ«ìEÓç∂:ña…y%‘{Mìv∑ßãóÇsÍ…/∫‰t˜gÈñ∏¡µQ¶Ñî´,}ÅyÃGÏ†~&∆¢r≈jö∫˜çã«L–€ÿê,b∏‹c|ˆ4Ï3∫0UÏâ:‚µ˙{R(‘ﬂÀaÆ9é1Q æÌ∆.UÏdπÈªÿ∂÷y’[qR‰zÏ£ú∏!ï ∆Æa#*L≥m·Ôı-Wì$<¶≥∞R√+M∫˙+( »û JmÄø”ùV~í∑(-∞t@ﬁÆÜé}^X!W≠Y«%Á˛í(hì\π›†¨b¯6QJÂå∑Á≈£KΩ÷G∂g¢∂•}nŸMQ]m≠ûÔR¶ÁÌMù0’—R Ym≈”†eg»¬(ñF^ª‚í#,Üû3ån•Áx¿í‰E)“+Î&p¢p¬;..ñ4‚â‚¶6N-ò îÄ‚§S3/†©Ωã]Ó°I>ÔØ¯òΩ4à2‚9îúV]JÎ›6ªF+‡ä+kk¶Eûz\¢w¥G¨ÇË˛›ˇC‹˙∞)OM‰Æ	k~”Kn˙-U˙ÃîùCê„[©™õmÅ™€+«`∏√Å©ﬂ–ÂUÆ„≤AlXûB¨≠6~ŒU∏Qo2>ÇiŸà„X2‚,¨ìQ&≠EªÁŸ~Œ¬Ú%Òaà˘≤¬+ÆáÑÜJIâ…¯g#∆€A‘∂ÛÌ¯0	”p“•ÚˆúùÁ.<»#˙L«8êé]õ¥4˝Çñf hnQıÓ9$éjŒ¿ø›ı%F4
+›¢Øl⁄áè†)∆É]zpE=◊µ
+üGô„UÌäwÂ§ñEö±mƒ-º≈¯Á¡,kÿÎV.ç{ÕÕ"=≈∏≤whZD úË&ß’*kMﬂ◊Wñ{ ∑o©j?5ŒÌı‹L¨í•Zf|*®ö∫p ·?0Ñì$DÄÌ,n%Û≠ËF÷ÿ°ΩT⁄®ºDwÂQÊ‹îtåö∫R’|÷XØπ®÷mˆ≠Ë≠Jïãuq*ò/Û´≥˝6~1ie‰G∫ÑÚ	≤ûKWJ]’ãßˆz^Ÿª`-ÈT»Üäj‘˝8e¿Àœ¢R¯sÆ¸5ÈÇ\dÃÑõN~U”1c`ÂÖPOl	EÌπ H∞≠4€Á“Õs{.æx’:^uî‡sT˘iIÌkS1ùKâ÷WŒeq‰Ì9ôÓÈ!◊pùÉ≥©ÄSqË\:U©Vπ:üóÂO^≠6gP\uki£Jûm:É3¡´FññyèR’Â∫’∫H^‹ÄN¯8Ùó∆aoÿ∂›5}=∞»Àæπä˙ÓÇÔ™‡Z1$B~D!¯Çoÿ±ÚCÂ·¢º∑’0û°{MØ=àN"gÄø≥,¨lË.9Ô_Îy”ô–#œ}E~{|ˇ¥JêΩ&µèúƒRå•j(ﬁ◊”JmS¯±‘;~m~\Æo˝brxœc∫CO·V˙úSI'?n√Ä•!láC&?~C¿«º*∫ûáÙâ∂%∆¸¯I§ñß»Ï˛\†VÖÙ†ΩPµäæ˝ÔIΩ
+˜«é≈Ù√œì™<·ì˚CπòúÓ…eCp;-{ïÀ∫™v_VyWfÈ•¸ˆ6OoY±Õ_!’æ{ÏïŒ√è3˜7Ì,\≠VUov‰]·æ+¬≠¯·†·Ëå†©úCMog=}ÆÔÛ•¨€kæ;ƒ€æÙnuÏÀÁ‰Pı+ô´*¸Ö/Á†’(?»¸2‹ÓÓ™yÒ4,-…≥å}IWÙtﬂ*ø˜^…]ÎÄ∆pˇ˘,L4ÊAÂk^r<õ¶Û≤≥º¸$˜˙}‘úÁ°≈T	ˆ.∏u◊_9Œ<¸„UrêÑÅs.¬>oED∏W‘Â!j≥t¶M∆√Òx|ílSÈjôë4◊‘&R‚ˆ¡.b$EQ¢=llÆ†B◊1t∑P^ó√˜≠PË2!‹UuñbX÷B~f⁄rFæÜ/ô√£◊„|ÚËw2”ïÖàû@–;ÏHã˘òŸ¿ŸaçΩ‡ÛI·ø¬Ü{j˚˝B´Ss	¸á@eàë˜g–QÒ„%‹ïÎÏLŸ‡Ù%ãùÔŸW^m.E,ºò>mç”) m‡ÛX¢V›ƒ◊aGQ‘fR“ò6jµüáF˚Ö˜7MBR}≤S kmrxÒip∏Ì^J∏…⁄PA‡”ò"±≥UK®ç  ¶6Æ5y-°+q´Q¶ï†8ØØ!—àærÊ^	5¸»≠Æ˜∆AíQÑ;Kì˛∂6Tlf“Ô#‘ì'4åc5xﬁgw]>X]!Ä≈îH™\ZDCóO¿„†¯Xàz{JÖÓ9èVŸ4”¸é
+6ŒkÔ1Ä¶\??h¸ÓßˇÈG V»§ÇÌw?˝øø/˛˛Çˇ˝˛Æq»ÌxîÖ∞“ÔDfá+&àÕ” Ót¥Ï∞ÆÏÜédœ*!™¯J˘O=îU&?‚j}DFvf˜ch0¯@œQÎV˝Ìò˝*√C!tÅ≤ã4Ó˜:/ÚÑ4iE€ö ÆÂL≥?F¥iÒS•˜"É,≠è_ƒpr4ffgQ⁄Ç#Pae˛D{®L«h>å≥4Çy∞ﬂf3ﬂ)ıL∞ñ xhXï∂∆&~Øö∂ìM√@¿›f∫+ÎZ,[Èõ∂X£0ß‡÷πoÒ›2qŒ4?\‘õ?ygN»«≠oMrÉ%Ëx-˚Ë–hTÊKØ‰Õ≤$Ú„í\≈q|Â˝ï≥ïNÍÅVä2Ü4Ñ≥¿J7Å≠⁄^Âˆ•u∑õ•¡˚9¯:Ô~©±QÑﬂfÓ¬‚∏Ùÿò‹·F£Ïç#Âì”]-∫ÁÀÊ0†N<‹Tó–ÉGÆRÄ†
+Ã#=“/ˇí5i‘≠ãÜu‘å◊°Z∂%∏'¬ï6_5ﬂzh‚w◊6Æ˙ΩÚËÆO‡∑ﬂà•ü¯ˇ  ˇˇ‘]Ìkú«ˇÓø‚±[b)H:Îd)ä,K8Ævl”ÑâO∫GÚ—ìÓrwä-AúB]Z•P¸°ÖR≠	≠_L˚)˘W¸ßtgˆmvwˆÂN™k?`˘Óû∑›ŸŸŸôﬂŒÀx+˛qˆ∂Jëì\F\oZ$∂íæÕE Ó¯“ºaà@Ã¨2bﬁâÌOÌkH·ôÈkj∑+wová+Bó®∫õ∂«Çﬂµˆ%‘ë-∑ …ZËÍgûñ‡w‹#›R	0≈ıç^ª’Ω⁄L ä\»≤úånn IŒ>-ãà9r+ÚÄF‹<«/|7ß]äU:_∆öÉ@„∫Á	n)+1`õ(∆KN
+ù˛vÔZ{j@æP¥4“Jé◊‚å|.øò¯Ë‹i<ŸÊ]qÎªl§¥Ã¿,:¿Œ-Œ5
+{áŸ`°Ù)q~÷6ﬁ≠tï◊Îa·º€„iùù`o5:µ|°2ÄL’ÔŒ.j⁄u≠ô€Ÿkwvz“Ö7—F[•ä—5≤q¿–$\rtÙ£¿Zñë‡ú_c’ﬂå¯·≥/˜{ı ‚ﬁnB‘"i¥åÒù]íë5íáU◊“öM<XW›d–†$+ä7Ä†Ã∑I„z…g‚∆Mé‘∏NìÑ …∏^>RﬂMÄ`w.FÙî’_7ΩØ]ÍGxòóÙñ≈cíéöª)√GFT€&ÁZ)[ã÷ÊÑHy1Ôà©Ü”u∆‰∆¯ÿ˛ï§)IJ“"ﬂßRM˚Ù´4M ÿÆ≈;QπQ‡áˇ}&∂Kd,>(Û.ÍÅ()I`4mz’I]ÌQÊîh◊=1s9ÔWhè¸∞•}Øï˘íü77Ø®MÿÆ¨…fè±Ì·’P?¥˘ µ∆ÆÍ≈ØTzôŒ∫¯O«=6≈π9_F{$ΩÌ¡o-˛ç°ö„\8ÚÉzAœ	>ƒïπ+c-⁄#3Öa≈\√öÚ“yáläp@¡ãáAßtò`ähÈ:ØîAÈ $y$	ïπ?sùO‘T]üSì»ñày>„
+cÌÆfuüÀä<$áM‚-cféÉb^3V|˘Ãÿ#íh ZÆI¿ªÓN∫+ùq∑2r‹|ô9¨S
+íH¶5M;¶»#ß“Iê®áÃòç·C!éÔéaÉåÁé>‹∞+¸áõ â°`Å÷(v¬–GVó„:∫^ù)¿—Gô»öh(=•@¶Ê)ßv:Øˆ>éGøÑSã>JËìë∑º_π=ÙYŸò_¥∆%#`≠ñî¶∫∫0Î∏¬$ y
+∂óû+r®¿·c∑»ã≈êıfQ‰õ 6àª{å·Ô¡’*ÃÏQ}–{¿Ak<F*® e>,Ñÿ»⁄⁄ÔŒûg06Öã6ö9å-û≥…X»µ,ìµºPŒ/ø∂¨Öÿπ∑"s!“≤l-ï¡éˇ]C8∆»d(ƒti&√Ñ»jπ?ªX›∏˘ˇì—é jàΩÀ—ÏÜì$1îo<·ùE>⁄3Æ‰+’~êVÎ˝Lu(Ä„yÍº|bü@Ú¥î]√ßÀË˜dûD≈◊ryq%ˇƒT˚KÌ∂5ƒŸq‚˝ÏB*™k£û=(“±YÈïokIr%Œ+:Lª3y*%K^º’i=HÖt>ô
+	ï˘zØÕ*Û„Áû<ïºhµaÛµê‘047L√Kc“—ga∫|gﬂU.Vq≠Ü-J<OZ†<ét¿<£]}p@	 √7 0:§DbPrX∞7¨Ω¬ÆﬂÅg∑ò©¢~3]ûæpJPv[àeL«tkgß¬«ÀÇP;ΩAG<≥µ◊⁄z	¿™[ÊW¿«u0ŸÃ©£ï =mΩj/êÖI1t*}—Î¥Edîõtm›Œ`Ç7Òúr≈Bqk$ûº™π6e_ÑX™∫R£µF3∫*lkDÔû:{ñ^´„®‘ıWÃWÁçáb∆Èœ@D˝Â®˙÷HqYq◊ïÌm–_(≠:‚7˘h{™~∫3MÍ/Ö|ª˜≥M[vIv, -yçV÷ÀFN|¶¯=ÑÕ3C3ÃüŸ6∏ïÌ†B„JÂºòTßìQ∂óF¥¿ù:krkhü°ouÍÄçQÒFF-1d«a7[4ªrEø°⁄*WÁª≈¨B7g1ÜV«v/Ê™∫| ÊÚ@X¿êü	duË‰§t"∞E7ƒ‚/'ÉÛ∫;æR◊ªë[#ÕÓïa'Á ê,*pÚ"vıvÔfΩ+¶ÃóﬂJ$å6]T1.n3ùlrY˚ B®à;;ô›ÅSƒŸÑ}/Ëπ&Õ•sÇ™ä§$SÄΩÿ}˛i4™À˜Í≠_¬•Ì˝~ÍË’Ê^ÚË?y¨€‡≥‚yâÚÉÉ
+Xﬂﬁñóãaª÷)}V™≠ÙXQII„ÃÉò,&‰_›X@(—›YÈCJÆ†¶M4 %¿!6Iï™ä-≈‘é 9+∏õ°⁄ÅÍ÷Á˚≠Am+Fo“È•\ΩUÆÆd·≠¨∞$™ãSÎàÉﬁ“ûÄëçw¡+Aº)àG!b8qâà≈<“ê¶œ6uXΩS]≠Îˆ&êúTIÉ˚¨v'/I∫>yÉwhx‘L’i?
+À⁄Î»€•
+wÜ¨ñxLË{≈Á®W0∫«Ö¯kº,PhéKÛí	®!˚FVB1∫≥5/kÇX´9y(™€†Œ‚Ó±æ‹ú‘I¢Ês8òg&¶RÖ.≥AìZçg—j<k≠FΩJ∞ÊÄqW¡–ıOÖñdê∏ﬂ}|8ªÕãøÈ˛ûÃ‡œ¡2´r1Q∆‘∑[5ì‚ï|+ç‡yì‹Hk?ù§•Å°∆l,L4K tyˆ¥êı›‡^)Ûô>`Åk‰∑bú˘‘◊@j≈`-V
+J'`m«üs¬1ÙØÛÆÅ˙9ö,â$πG?[Fä@Wxpc¨[ÖŒ úÜˆ0ÁY»¬M√©zë¿À	EUfXééAñÒ\Bú,'≈t)*5 Nksq]ΩÀ<ÕhÑ|∏RíB!≠ëáâ˛ J8NÑÀNbiäëª™8®-hœFcá“¡!Ω÷Ri°|ì	B‹È˙√j})¥ãôJÓœn4›T%dÙCñ≥≈Ò=·QLEÍÜΩèíxIˆ9Hè≠Â≤≠ÏÊwb-¸„Ó˛–YüPë’#BSó…	Á1±´B≈EÃ_H/‹êüÒ‡1âe†/{ˇä2kıÔ<ñÊBe∞i"·.Ò¡ªTBu›ùnWXxÈ/‰Áƒ’ªΩÕNW^|?&ÆU≠<–Ä~qÆ∑˝ÿ8á±Ùg>¨˜ÍA´KÎ<“ÇS3≤`±˛öhFghÎ„]◊»Œ}∂‡±y^>¬∂<r›foäÇ|
+!RıBRNì3∆˙◊Ñ#∂?°†K5
+g9∞·åÊí@T∫*v≈Çà^sıÁ˚ùA}ÚÛ_Í÷Éázù÷tßÌ®phFØ>√–’GXyÙGYrÚΩxàE/UË–3˘˝?Ø^»îiO*¨F)C_e$,§PãeÜ†´/ÅP—J B≈¢
+{À¢)ÒPk∆∫»'N*Ûv)ØÏ∂:b~ÜÓÕ5úê€ÒÓ‡3Ã{C{´ôπ¢?‡˘èz£
+™Rv∂;uõ\,'Êä˙?y©ôóÊ€ﬂÚŸûóô<π3C1ˆbÌ◊{mö®‘ë›öb¿§É:ÑàıiÇßÜhØ7˝⁄j1É¥aïg`í6FÊ*ıÍπ∫Ã6Eêd˚iJ`	Â¨Twzà“ñI˝¡pÒƒ≥´‘Û»˝Oud˜3¨Z,˘]NÔm2™gØ@°f”≤9!î§ÃG'çs”GwI7˙–À∏¯÷Ç.ê R®ÚxƒG…åÇ…òxqÕM$H*À„ T¯∫36˚ü3~›ﬁp¯%®æ",ë©ªFå!]‘lyt◊<à
+]:ë]ÒÚÙ’ãØ|©Ò…¯g§ÚKYˇ>T≠¥,˘.L x:‹o¨Tì“Û™êç√QoP_—ôg™ü˜kYJ~Õ}rÛ⁄Ì+æ 	€Æv,å∞"SÃ∂cª≥'x˘Ä.éÄ≥´›’ 	mñ/›/õäØu#¢JÀôËH»•∞VP≥ÑØâAÍ\ËBnÏ©g¡WØ` ù‹*pu˛`EÜ∫ﬁ≥ôƒ‰◊•±}gê‹Ÿ€£U¢5€$ıX®∆Ãn4Ø
+Û 7˜öIlŸ ±#à“Ùb†é¡‹§°˜öI–ÿ∆*Ûa¯Y˜T6‡oØ^¸Í’Û£<˚6‡èr’âZ¿7xΩm÷ú8ÛwY¬]wIñß˛√àŒëf˜It∞œæv+˜G^Ì"Œéßı∑∞˙RK∂{¿v::7dÇä±Eßßs	4öKÆgı»Y©xGN-1™J-’ß√'FK∫ÄÅ∑Òì÷Ú‚‚ˆ{wÇ*`¥¬ãÉãSÃ‰Û≥)Ò≤Ïze¸ùœjﬂy:!bÆ¸Ufÿ?ÏU∞Sfmá•»œhò Iò 'Eäoq÷HU˘±ûQêy¯{ú:ﬂó#Vì]nÀewÂ˙≥ÁÇ¨z~±vµXD˜ﬁÓÈœ.Sbº}KhJb~‹åƒD0€QÔ–}™rôàÌk,3`
+/•ò	Ü„Ù…∏ñã1C¥RÈ$BR˛Ufê˛5ûG´H»z0óûÖÏ8öáLNYÉàH√]9 nIvÁ¸§!/¿í™øπT)Ï]R©È≠ø
+$Ø\H¬õŒ˛î/ë¡m¢JŒ≤—k)ì˘´…@Xd⁄4úùáÚDˆkS÷ñróñHbœ˘πEz_≈!âe“ÃM«Ö0l!¿˜'Zk€mF€·µçÛp’ÿ*ÿ=ﬁ)]Ö•-îÊ §àß–(°œ6îÙ*Ÿ„°"7éë9ƒ°§|Ì[ ùﬂH.¯-hÉ Ç˛%3‘?AQÚiuVSØûˇ^´f“
+€◊”«câDî∞ãRh2≥€zp±3å^Mqì|^ı—>‰øzÀ OâS ^ØÖπ»˜©o™ÜTŸ‰:%÷ØØùÆ,ƒ0êbzπÕqèVñìÏ„á∫C¥ıÜ∞Á[û∑˙« ç∑å˛âñ€„¸ÿ1¢á|ç≈ˆÚ\aÏ†$[ºc]µ—[Pπq‡êﬂGX'B±í•H^?Y¶Ù»˚hM¸[m»≥ÓßπXO˝y?7>k·oëÁ9<"9‚≠·˜ …0<[HCçÇUÃÛÃMlˆr©«47j~ºƒ/œq"[´#8z≠”Gï÷òoûã∫3N.8IπÿæÔıòÖå‰f⁄≠Xd#ãËNd0»é+^U6cÿ	b0lê∑˝ÓîPﬂÄí¡w¬ävÇ¯	hÛ£ﬁ˘≠c	˝=—µîöpˇÄ≤Æ∏(Ö68ı
+wÚˇ  ˇˇ b/ì
