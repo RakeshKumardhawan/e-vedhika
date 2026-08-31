@@ -848,7 +848,7 @@ app.get('/api/remote-commands', (req, res) => {
   app.post("/api/upload", verifyToken, (req, res) => {
     console.log("POST /api/upload hit. Content-Type:", req.headers['content-type']);
     
-    upload.single('file')(req, res, async (err) => {
+    upload.single('file')(req as any, res as any, async (err) => {
       try {
         if (err) {
           console.error("Multer upload error:", err);
@@ -1970,7 +1970,7 @@ app.get('/api/remote-commands', (req, res) => {
   app.post("/api/farmer-registry/upload", farmerUpload.fields([
     { name: "file1", maxCount: 1 },
     { name: "file2", maxCount: 1 }
-  ]), async (req, res) => {
+  ]) as any, async (req, res) => {
     try {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
       const f1 = files && files["file1"] ? files["file1"][0] : null;
