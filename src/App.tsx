@@ -4408,10 +4408,7 @@ export default function App() {
 
       <>
       <header className="sticky top-0 z-[1001] shadow-lg bg-[#0d2a4a] border-b border-[#fbe947]/40 backdrop-blur-md">
-        <div
-          className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full"
-          style={{ marginLeft: "-4px", marginRight: "62px" }}
-        >
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
           {/* Left Brand Area */}
           <div
             className="brand-wrapper cursor-pointer flex items-center gap-2 sm:gap-3 shrink-0"
@@ -4549,7 +4546,6 @@ export default function App() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="పోస్ట్స్, డాక్యుమెంట్స్ వెతకండి..."
                 className="w-full bg-[#071a30] text-white placeholder-slate-400 text-xs font-bold pl-9 pr-7 py-2 rounded-full border border-white/15 focus:outline-none focus:border-[#fbe947] focus:ring-1 focus:ring-[#fbe947] transition-all shadow-inner"
-                style={{ marginBottom: "6px", marginLeft: "-6px", marginRight: "-13px" }}
               />
               {searchQuery && (
                 <button
