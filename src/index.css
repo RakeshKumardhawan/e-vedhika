@@ -201,7 +201,7 @@ header {
   display: inline-block; 
   white-space: nowrap; 
   padding-left: 100%;
-  animation: scrollLeft 10s linear infinite; 
+  animation: scrollLeft 25s linear infinite; 
 }
 @keyframes scrollLeft { 
   0% { transform: translateX(0); } 
@@ -306,7 +306,7 @@ header {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
   position: relative;
 }
 

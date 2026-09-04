@@ -4408,7 +4408,10 @@ export default function App() {
 
       <>
       <header className="sticky top-0 z-[1001] shadow-lg bg-[#0d2a4a] border-b border-[#fbe947]/40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
+        <div
+          className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full"
+          style={{ marginLeft: "-4px", marginRight: "62px" }}
+        >
           {/* Left Brand Area */}
           <div
             className="brand-wrapper cursor-pointer flex items-center gap-2 sm:gap-3 shrink-0"
@@ -4546,6 +4549,7 @@ export default function App() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="పోస్ట్స్, డాక్యుమెంట్స్ వెతకండి..."
                 className="w-full bg-[#071a30] text-white placeholder-slate-400 text-xs font-bold pl-9 pr-7 py-2 rounded-full border border-white/15 focus:outline-none focus:border-[#fbe947] focus:ring-1 focus:ring-[#fbe947] transition-all shadow-inner"
+                style={{ marginBottom: "6px", marginLeft: "-6px", marginRight: "-13px" }}
               />
               {searchQuery && (
                 <button
@@ -4970,8 +4974,8 @@ export default function App() {
           <div className="flex-1 w-full min-w-0 relative">
             <div
               ref={navScrollRef}
-              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap gap-2 sm:gap-3 py-1.5 w-full scroll-smooth"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', justifyContent: 'safe center' }}
+              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap gap-2 sm:gap-3 py-1.5 w-full scroll-smooth justify-start px-3 sm:px-6"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               <style dangerouslySetInnerHTML={{__html: `
                 .nav-trigger-bar div::-webkit-scrollbar { display: none; }
@@ -5646,8 +5650,8 @@ export default function App() {
         </aside>
 
         <main
-          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar p-1.5 sm:p-2.5 lg:p-3"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar px-3 sm:px-6 lg:px-8 py-3 sm:py-5"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
         >
           {(isEvdkaPath || currentTab === "admin" || currentTab === "editor") &&
             (isAdmin || isEditor || isDevEmail) && (
