@@ -1303,9 +1303,13 @@ try {
 app.get(['/api/version', '/exe/api/version'], (req, res) => {
   res.json({
     success: true,
-    name: "E-VEDHIKA Digital Governance Portal & UBD Deployment Tool",
+    status: "ok",
+    name: "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
     portal: "e-vedhika.in",
-    ...otaVersionConfig
+    latestVersion: otaVersionConfig.latestVersion || "v1.6.3 Enterprise",
+    versionCode: otaVersionConfig.versionCode || 163,
+    downloadUrl: otaVersionConfig.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+    releaseNotes: otaVersionConfig.releaseNotes || "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి."
   });
 });
 
@@ -1348,6 +1352,9 @@ if (\$_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 \$defaultConfig = [
     "success" => true,
+    "status" => "ok",
+    "name" => "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+    "portal" => "e-vedhika.in",
     "latestVersion" => "v1.6.3 Enterprise",
     "versionCode" => 163, // పాత కోడ్ 162 కంటే ఎక్కువ సంఖ్య ఉండాలి
     "downloadUrl" => "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",

@@ -20,6 +20,9 @@ $dataFile = __DIR__ . '/ota_version.json';
 // డీఫాల్ట్ OTA వెర్షన్ కాన్ఫిగ్
 $defaultConfig = [
     "success" => true,
+    "status" => "ok",
+    "name" => "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+    "portal" => "e-vedhika.in",
     "latestVersion" => "v1.6.3 Enterprise",
     "versionCode" => 163, // పాత కోడ్ 162 కంటే ఎక్కువ సంఖ్య ఉండాలి
     "downloadUrl" => "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",

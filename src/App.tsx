@@ -591,6 +591,7 @@ interface Post {
   mediaType?: string;
   mediaName?: string;
   likes: number;
+  reactions?: Record<string, string[]>;
   views: number;
   comments: Comment[];
   commentCount?: number;
@@ -3242,8 +3243,9 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newPost = addedChanges[0].doc.data() as any;
+            const isApproved = ["approved", "active"].includes((newPost.status || "").toLowerCase());
             const isRecent = !newPost.time || (Date.now() - newPost.time < 60000);
-            if (isRecent) {
+            if (isRecent && isApproved) {
               triggerNotification(
                 `New Post: ${newPost.title || "Platform Update"}`,
                 newPost.content || "A new post has been published on E-Vedhika.",
@@ -3634,12 +3636,14 @@ export default function App() {
     if (p.status === "Deleted") return false;
 
     const pStatus = (p.status || "").toLowerCase();
-    if (
-      !isAdmin &&
-      !["approved", "active"].includes(pStatus) &&
-      p.uid !== user?.uid
-    )
+    const isApproved = ["approved", "active"].includes(pStatus);
+    const isAuthor = Boolean(user?.uid && p.uid === user.uid);
+    const canSeePending = isAdmin || isEditor || isDevEmail;
+
+    // A post that is not approved can ONLY be seen by its author or admins/staff
+    if (!canSeePending && !isApproved && !isAuthor) {
       return false;
+    }
 
     const q = "";
     const tMatch = (p.title || "").toLowerCase().includes(q);
@@ -9390,9 +9394,28 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
                     <span className="text-xs font-black uppercase text-slate-400 tracking-widest">
                       {p.category || "General"}
                     </span>
-                    <span className={`px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full ${p.status === "Published" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                      {p.status || "Published"}
-                    </span>
+                    {(() => {
+                      const st = (p.status || "pending").toLowerCase();
+                      if (st === "approved" || st === "active" || st === "published") {
+                        return (
+                          <span className="px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-250 flex items-center gap-1">
+                            <CheckCircle2 size={12} /> ఆమోదించబడింది (Live)
+                          </span>
+                        );
+                      }
+                      if (st === "rejected") {
+                        return (
+                          <span className="px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
+                            <XCircle size={12} /> తిరస్కరించబడింది (Rejected)
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 animate-pulse">
+                          <Clock size={12} /> పెండింగ్ (Pending Approval)
+                        </span>
+                      );
+                    })()}
                   </div>
                   <h3 className="font-bold text-slate-800 mt-2">
                     {p.title || "Untitled Post"}
@@ -11422,18 +11445,27 @@ function AdminPanel({
                 )}
                 {activeSubTab === "reports" && (
                   <div className="flex bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200 mb-6">
-                    {["posts", "issues"].map((type) => (
-                      <button
-                        aria-label={type}
-                        key={type}
-                        onClick={() => setReportsType(type as any)}
-                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${reportsType === type ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-700"}`}
-                      >
-                        {type === "posts"
-                          ? " Community Posts"
-                          : "⚠️ Citizen Issues"}
-                      </button>
-                    ))}
+                    {["posts", "issues"].map((type) => {
+                      const pendingCount = type === "posts" 
+                        ? posts.filter((p) => (p.status || "").toLowerCase() === "pending").length 
+                        : allProblems.filter((p) => (p.status || "").toLowerCase() === "pending" || (p.status || "").toLowerCase() === "new").length;
+
+                      return (
+                        <button
+                          aria-label={type}
+                          key={type}
+                          onClick={() => setReportsType(type as any)}
+                          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${reportsType === type ? "bg-white text-blue-600 shadow-sm scale-105" : "text-slate-500 hover:text-slate-700"}`}
+                        >
+                          <span>{type === "posts" ? " Community Posts" : "⚠️ Citizen Issues"}</span>
+                          {pendingCount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white animate-pulse">
+                              {pendingCount} Pending
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -11477,7 +11509,7 @@ function AdminPanel({
                     >
                       <Download size={14} /> Export XLS
                     </button>
-                    {["All", "New", "In-Progress", "Pending", "Approved", "Resolved", "Deleted"].map(
+                    {["All", "Pending", "Approved", "New", "In-Progress", "Resolved", "Deleted"].map(
                       (f) => {
                         const rawList =
                           activeSubTab === "reports"
@@ -11764,7 +11796,87 @@ function AdminPanel({
                               </div>
                             </td>
                             <td className="p-4 sm:px-6 py-4 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0 bg-slate-50/50 md:bg-transparent">
-                              <div className="flex justify-end items-center gap-2 w-full md:w-auto">
+                              <div className="flex justify-end items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
+                                {reportsType === "posts" && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
+                                  <button
+                                    type="button"
+                                    title="Approve Post (ఆమోదించు)"
+                                    onClick={async () => {
+                                      const tabId = "reports";
+                                      if (!hasEditPermission(tabId)) {
+                                        addToast("క్షమించండి, ఈ సమాచారాన్ని మార్చే అనుమతి మీకు లేదు.");
+                                        return;
+                                      }
+                                      try {
+                                        await updateDoc(doc(db, "posts", item.id), { status: "Approved" });
+                                        const postAuthor = item.userName || "User";
+                                        const title = item.title || item.problem || item.content || "కొత్త పోస్ట్";
+                                        await addDoc(collection(db, "notifications"), {
+                                          uid: "all",
+                                          title: "📢 కొత్త పోస్ట్ (New Post Approved)",
+                                          message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
+                                          type: "post",
+                                          read: false,
+                                          time: Date.now(),
+                                          postId: item.id
+                                        }).catch(() => {});
+                                        if (item.uid) {
+                                          await addDoc(collection(db, "notifications"), {
+                                            uid: item.uid,
+                                            title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
+                                            message: `మీరు సమర్పించిన '${title.substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ అందుబాటులో ఉంది.`,
+                                            type: "post_approved",
+                                            read: false,
+                                            time: Date.now(),
+                                            postId: item.id
+                                          }).catch(() => {});
+                                        }
+                                        addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
+                                      } catch (err: any) {
+                                        addToast(getFriendlyError(err));
+                                      }
+                                    }}
+                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
+                                  >
+                                    <Check size={13} /> ఆమోదించు
+                                  </button>
+                                )}
+
+                                {reportsType === "posts" && normalizeReportStatus(item.status) === "pending" && (
+                                  <button
+                                    type="button"
+                                    title="Reject Post (తిరస్కరించు)"
+                                    onClick={async () => {
+                                      const tabId = "reports";
+                                      if (!hasEditPermission(tabId)) {
+                                        addToast("క్షమించండి, ఈ సమాచారాన్ని మార్చే అనుమతి మీకు లేదు.");
+                                        return;
+                                      }
+                                      try {
+                                        await updateDoc(doc(db, "posts", item.id), { status: "Rejected" });
+                                        const title = item.title || item.problem || item.content || "పోస్ట్";
+                                        if (item.uid) {
+                                          await addDoc(collection(db, "notifications"), {
+                                            uid: item.uid,
+                                            title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
+                                            message: `మీరు సమర్పించిన '${title.substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు.`,
+                                            type: "post_rejected",
+                                            read: false,
+                                            time: Date.now(),
+                                            postId: item.id
+                                          }).catch(() => {});
+                                        }
+                                        addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
+                                      } catch (err: any) {
+                                        addToast(getFriendlyError(err));
+                                      }
+                                    }}
+                                    className="px-3 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
+                                  >
+                                    <X size={13} /> తిరస్కరించు
+                                  </button>
+                                )}
+
                                 <select
                                   value={normalizeReportStatus(item.status)}
                                   onChange={async (e) => {
@@ -16659,18 +16771,91 @@ function SmartAssistant({
   );
 }
 
+const POST_REACTIONS = [
+  { emoji: "❤️", label: "ఇష్టం", color: "text-rose-500", bg: "hover:bg-rose-50", fill: "fill-rose-500" },
+  { emoji: "👍", label: "లైక్", color: "text-blue-600", bg: "hover:bg-blue-50", fill: "fill-blue-600" },
+  { emoji: "👏", label: "అభినందనలు", color: "text-amber-500", bg: "hover:bg-amber-50", fill: "fill-amber-500" },
+  { emoji: "🔥", label: "సూపర్", color: "text-orange-500", bg: "hover:bg-orange-50", fill: "fill-orange-500" },
+  { emoji: "💡", label: "ఉపయోగకరం", color: "text-yellow-600", bg: "hover:bg-yellow-50", fill: "fill-yellow-600" },
+  { emoji: "🙏", label: "ధన్యవాదాలు", color: "text-emerald-600", bg: "hover:bg-emerald-50", fill: "fill-emerald-600" },
+];
+
+function playInteractionSound(type: "like" | "comment" | "pop" | "reaction" = "like") {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    
+    if (type === "like" || type === "reaction") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (type === "comment") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.09);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } else {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    }
+  } catch (e) {
+    // AudioContext blocked or unsupported; safe fallback
+  }
+}
+
+function FloatingReactionBursts({ bursts }: { bursts: { id: number; emoji: string; x: number }[] }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-visible z-40">
+      <AnimatePresence>
+        {bursts.map((b) => (
+          <motion.div
+            key={b.id}
+            initial={{ opacity: 1, y: 0, x: b.x, scale: 0.6 }}
+            animate={{ opacity: 0, y: -90, x: b.x + (b.x > 0 ? 18 : -18), scale: [0.6, 1.35, 1] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.95, ease: "easeOut" }}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 text-2xl filter drop-shadow-md select-none"
+          >
+            {b.emoji}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function UsersListModal({
   title,
   uids,
   allUsers,
   onClose,
   anonymousCount = 0,
+  reactions,
 }: {
   title: string;
   uids: string[];
   allUsers: UserProfile[];
   onClose: () => void;
   anonymousCount?: number;
+  reactions?: Record<string, string[]>;
 }) {
   const usersList = uids.map(
     (uid) =>
@@ -16697,7 +16882,7 @@ function UsersListModal({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-all"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-all cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -16728,30 +16913,44 @@ function UsersListModal({
                </span>
             </div>
           )}
-          {usersList.map((u, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-100/50"
-            >
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-10 h-10 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-sm border border-blue-200">
-                  {(u as any).photoURL ? (
-                    <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
-                  )}
+          {usersList.map((u, i) => {
+            const userReactionEmojis = reactions
+              ? Object.entries(reactions)
+                  .filter(([_, list]) => Array.isArray(list) && list.includes(u.id))
+                  .map(([em]) => em)
+              : [];
+            return (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-100/50"
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-sm border border-blue-200">
+                    {(u as any).photoURL ? (
+                      <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-black text-slate-800 leading-tight truncate">
+                      {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
+                    </h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">
+                      {u.designation || "User"}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h4 className="text-sm font-black text-slate-800 leading-tight truncate">
-                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
-                  </h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">
-                    {u.designation || "User"}
-                  </p>
-                </div>
+                {userReactionEmojis.length > 0 && (
+                  <div className="flex items-center gap-1 text-base shrink-0 ml-2">
+                    {userReactionEmojis.map((em, idx) => (
+                      <span key={idx} className="filter drop-shadow-2xs">{em}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -19742,6 +19941,114 @@ function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [showViewsModal, setShowViewsModal] = useState(false);
   const [showLikesModal, setShowLikesModal] = useState(false);
+  const [showReactionsBar, setShowReactionsBar] = useState(false);
+  const [floatingBursts, setFloatingBursts] = useState<{ id: number; emoji: string; x: number }[]>([]);
+  const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
+  const lastTapRef = useRef<number>(0);
+
+  const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
+  const currentUserId = auth.currentUser?.uid;
+  const currentReactions: Record<string, string[]> = post.reactions || {};
+
+  let userReactionEmoji: string | null = null;
+  Object.entries(currentReactions).forEach(([em, uids]) => {
+    if (Array.isArray(uids) && currentUserId && uids.includes(currentUserId)) {
+      userReactionEmoji = em;
+    }
+  });
+  if (!userReactionEmoji && currentUserId && likedBy.includes(currentUserId)) {
+    userReactionEmoji = "❤️";
+  }
+
+  const handleReactionSelect = async (emoji: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setShowReactionsBar(false);
+    const userId = auth.currentUser?.uid;
+    if (requireLoginAlert()) return;
+    if (!userId) return;
+
+    playInteractionSound("like");
+
+    const newBurst = { id: Date.now() + Math.random(), emoji, x: Math.random() * 40 - 20 };
+    setFloatingBursts((prev) => [...prev.slice(-6), newBurst]);
+    setTimeout(() => {
+      setFloatingBursts((prev) => prev.filter((b) => b.id !== newBurst.id));
+    }, 1000);
+
+    const existingForThisEmoji = currentReactions[emoji] || [];
+    const hasReactedWithThisEmoji = existingForThisEmoji.includes(userId);
+    const updatedReactions: Record<string, string[]> = { ...currentReactions };
+
+    if (hasReactedWithThisEmoji) {
+      updatedReactions[emoji] = existingForThisEmoji.filter((id) => id !== userId);
+      if (updatedReactions[emoji].length === 0) delete updatedReactions[emoji];
+      try {
+        await updateDoc(doc(db, "posts", post.id), {
+          likes: increment(-1),
+          likedBy: arrayRemove(userId),
+          reactions: updatedReactions,
+        });
+      } catch (err: any) {
+        addToast(getFriendlyError(err));
+      }
+    } else {
+      Object.entries(updatedReactions).forEach(([em, uids]) => {
+        if (Array.isArray(uids) && uids.includes(userId)) {
+          updatedReactions[em] = uids.filter((id) => id !== userId);
+          if (updatedReactions[em].length === 0) delete updatedReactions[em];
+        }
+      });
+      updatedReactions[emoji] = [...new Set([...(updatedReactions[emoji] || []), userId])];
+
+      const isFirstTimeLiking = !likedBy.includes(userId);
+      try {
+        await updateDoc(doc(db, "posts", post.id), {
+          ...(isFirstTimeLiking ? { likes: increment(1), likedBy: arrayUnion(userId) } : {}),
+          reactions: updatedReactions,
+        });
+
+        if (isFirstTimeLiking) {
+          const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+          const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
+          const snapLike = await getDocs(qLike);
+          if (!snapLike.empty) {
+            await updateDoc(snapLike.docs[0].ref, {
+              message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను స్పందించారు (${emoji}).`,
+              time: Date.now(),
+              read: false
+            }).catch(() => {});
+          } else {
+            await addDoc(collection(db, "notifications"), {
+              uid: "all",
+              title: "కొత్త స్పందన (New Reaction)",
+              message: `${likerName} వారు ఒక పోస్ట్‌కు ${emoji} తో స్పందించారు.`,
+              type: "like",
+              read: false,
+              time: Date.now(),
+              postId: post.id
+            }).catch(() => {});
+          }
+        }
+      } catch (err: any) {
+        addToast(getFriendlyError(err));
+      }
+    }
+  };
+
+  const handleDoubleTap = (e: React.MouseEvent) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 320) {
+      setShowDoubleTapHeart(true);
+      setTimeout(() => setShowDoubleTapHeart(false), 900);
+      const userId = auth.currentUser?.uid;
+      if (userId && !likedBy.includes(userId)) {
+        handleReactionSelect("❤️");
+      } else {
+        playInteractionSound("like");
+      }
+    }
+    lastTapRef.current = now;
+  };
 
   // Automatic view count tracking for registered and unregistered (anonymous) visitors
   useEffect(() => {
@@ -19782,11 +20089,150 @@ function PostCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       layout 
-      className={`post-card ${commentPulse ? 'ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20' : ''}`}
+      className={`post-card relative ${commentPulse ? 'ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20' : ''}`}
       whileHover={{ scale: 1.005, y: -2 }}
       animate={commentPulse ? { scale: [1, 1.02, 1] } : { scale: 1 }}
       transition={{ duration: 0.3 }}
+      onClick={handleDoubleTap}
     >
+      {/* Big Animated Double-Tap Heart */}
+      <AnimatePresence>
+        {showDoubleTapHeart && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: [0, 1.4, 1], opacity: [0, 1, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.85, ease: "easeOut" }}
+            className="absolute inset-0 m-auto w-24 h-24 flex items-center justify-center pointer-events-none z-30"
+          >
+            <Heart size={84} className="fill-rose-500 text-rose-500 filter drop-shadow-2xl animate-pulse" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Moderation Status Banner (Only for non-approved posts) */}
+      {post.status && post.status.toLowerCase() !== "approved" && post.status.toLowerCase() !== "active" && (
+        <div className="mb-4">
+          {isAdmin ? (
+            <div className="p-3.5 bg-indigo-50/90 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-indigo-950 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
+                  <ShieldCheck size={16} />
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
+                    <span>అడ్మిన్ రివ్యూ (Admin Review)</span>
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-black border border-amber-200">
+                      {post.status || "Pending"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-indigo-700 font-medium leading-tight mt-0.5">
+                    ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే అందరికీ కనిపిస్తుంది.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
+                      await addDoc(collection(db, "notifications"), {
+                        uid: "all",
+                        title: "📢 కొత్త పోస్ట్ (New Post Approved)",
+                        message: `${post.userName || "User"} వారి పోస్ట్ ఆమోదించబడింది: ${(post.title || post.content || "").substring(0, 50)}`,
+                        type: "post",
+                        read: false,
+                        time: Date.now(),
+                        postId: post.id
+                      }).catch(() => {});
+                      if (post.uid) {
+                        await addDoc(collection(db, "notifications"), {
+                          uid: post.uid,
+                          title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
+                          message: `మీరు సమర్పించిన '${(post.title || "").substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ కనిపిస్తుంది.`,
+                          type: "post_approved",
+                          read: false,
+                          time: Date.now(),
+                          postId: post.id
+                        }).catch(() => {});
+                      }
+                      addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
+                    } catch (err) {
+                      console.error("Approval error:", err);
+                      addToast("Approval failed");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Check size={14} /> ఆమోదించు
+                </button>
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await updateDoc(doc(db, "posts", post.id), { status: "Rejected" });
+                      if (post.uid) {
+                        await addDoc(collection(db, "notifications"), {
+                          uid: post.uid,
+                          title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
+                          message: `మీ పోస్ట్ "${(post.title || "").substring(0, 40)}" అడ్మిన్ ద్వారా తిరస్కరించబడింది.`,
+                          type: "post_rejected",
+                          read: false,
+                          time: Date.now(),
+                          postId: post.id
+                        }).catch(() => {});
+                      }
+                      addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
+                    } catch (err) {
+                      console.error("Reject error:", err);
+                      addToast("Reject failed");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <X size={14} /> తిరస్కరించు
+                </button>
+              </div>
+            </div>
+          ) : post.status.toLowerCase() === "rejected" ? (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-rose-900 shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shrink-0">
+                <XCircle size={16} />
+              </div>
+              <div>
+                <div className="text-xs font-black uppercase tracking-wider text-rose-800">
+                  ❌ తిరస్కరించబడింది (Rejected by Admin)
+                </div>
+                <p className="text-[11px] text-rose-700 font-medium leading-tight mt-0.5">
+                  ఈ పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు. ఇది ఇతరులకు కనిపించదు.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-amber-50/90 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-3 text-amber-900 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0 animate-pulse">
+                  <Clock size={16} />
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                    <span>⏳ అడ్మిన్ ఆమోదం కోసం వేచి ఉంది (Pending Admin Approval)</span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 font-medium leading-tight mt-0.5">
+                    మీ పోస్ట్ సమర్పించబడింది. అడ్మిన్ ఆమోదించిన తర్వాత మాత్రమే అందరికీ కనిపిస్తుంది. ప్రస్తుతానికి మీకు మాత్రమే కనిపిస్తోంది.
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-block px-2.5 py-1 bg-amber-200/70 border border-amber-300 text-amber-900 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap">
+                🔒 మీకు మాత్రమే (Only You)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mb-3 sm:mb-4">
         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-primary font-black overflow-hidden border shadow-sm">
           {post.userPhoto ? (
@@ -20510,73 +20956,113 @@ function PostCard({
 
 <div className="flex flex-wrap gap-4 justify-between items-center pt-6 border-t border-slate-100 mt-auto">
   <div className="flex items-center gap-6">
-    <div className="flex items-center gap-2">
-      <motion.button whileTap={{ scale: 0.85 }}
-        aria-label="Like Post"
-        onClick={async (e) => {
-          e.stopPropagation();
-          const userId = auth.currentUser?.uid;
-          if (requireLoginAlert()) return;
-          const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
-          try {
-            if (likedBy.includes(userId)) {
-              await updateDoc(doc(db, "posts", post.id), {
-                likes: increment(-1),
-                likedBy: arrayRemove(userId),
-              });
-            } else {
-              await updateDoc(doc(db, "posts", post.id), {
-                likes: increment(1),
-                likedBy: arrayUnion(userId),
-              });
-              const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
-              const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
-              const snapLike = await getDocs(qLike);
-              if (!snapLike.empty) {
-                await updateDoc(snapLike.docs[0].ref, {
-                  message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
-                  time: Date.now(),
-                  read: false
-                }).catch(()=>console.error("Failed to update like notif"));
-              } else {
-                await addDoc(collection(db, "notifications"), {
-                  uid: "all",
-                  title: "కొత్త లైక్ (New Like)",
-                  message: `${likerName} వారు ఒక పోస్ట్‌ను ఇష్టపడ్డారు.`,
-                  type: "like",
-                  read: false,
-                  time: Date.now(),
-                  postId: post.id
-                }).catch(()=>console.error("Failed to add like notif"));
-              }
-            }
-          } catch (err: any) {
-            addToast(getFriendlyError(err));
-          }
-        }}
-              className={`flex items-center gap-2 p-2 rounded-xl transition-all ${(Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false) ? "bg-rose-50 text-rose-500" : "hover:bg-slate-50 text-slate-400"}`}
-            >
-              <Heart
-                size={18}
-                fill={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
-                    ? "currentColor"
-                    : "none"
-                }
-              />
-              <span
-                onClick={(e) => {
-                  if (isAdmin && post.likes > 0) {
-                    e.stopPropagation();
-                    setShowLikesModal(true);
-                  }
-                }}
-                className={`text-sm font-black ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
+    <div className="relative flex items-center gap-2" onMouseLeave={() => setShowReactionsBar(false)}>
+      {/* Floating Reaction Bursts */}
+      <FloatingReactionBursts bursts={floatingBursts} />
+
+      {/* Reaction Dock Popover */}
+      <AnimatePresence>
+        {showReactionsBar && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.85 }}
+            animate={{ opacity: 1, y: -48, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.85 }}
+            transition={{ duration: 0.18 }}
+            className="absolute left-0 bottom-full mb-1 z-50 flex items-center gap-1 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-full shadow-2xl border border-slate-200"
+          >
+            {POST_REACTIONS.map((item) => (
+              <motion.button
+                key={item.emoji}
+                type="button"
+                whileHover={{ scale: 1.35, y: -4 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => handleReactionSelect(item.emoji, e)}
+                title={item.label}
+                className="w-8 h-8 flex items-center justify-center text-xl rounded-full hover:bg-slate-100 transition-all cursor-pointer select-none"
               >
-                {post.likes || 0}
-              </span>
-            </motion.button>
-          </div>
+                {item.emoji}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Like / Reaction Button */}
+      <div className="flex items-center">
+        <motion.button
+          whileTap={{ scale: 0.85 }}
+          aria-label="Like or React to Post"
+          onMouseEnter={() => setShowReactionsBar(true)}
+          onClick={(e) => handleReactionSelect(userReactionEmoji || "❤️", e)}
+          className={`flex items-center gap-1.5 p-2 rounded-xl transition-all cursor-pointer ${
+            userReactionEmoji
+              ? "bg-rose-50 text-rose-600 font-bold"
+              : "hover:bg-slate-50 text-slate-400"
+          }`}
+        >
+          {userReactionEmoji ? (
+            <span className="text-base select-none">{userReactionEmoji}</span>
+          ) : (
+            <Heart size={18} />
+          )}
+          <span
+            onClick={(e) => {
+              if (post.likes > 0) {
+                e.stopPropagation();
+                setShowLikesModal(true);
+              }
+            }}
+            className={`text-sm font-black ${post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
+          >
+            {post.likes || 0}
+          </span>
+        </motion.button>
+
+        {/* Reactions Dock Trigger for Mobile/Touch */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowReactionsBar(!showReactionsBar);
+          }}
+          title="ఎమోజి స్పందనలు (Emoji Reactions)"
+          className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer text-xs"
+        >
+          <Smile size={14} />
+        </button>
+      </div>
+
+      {/* Recent Likers Avatar Stack */}
+      {post.likes > 0 && likedBy.length > 0 && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowLikesModal(true);
+          }}
+          className="hidden sm:flex items-center -space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity pl-0.5"
+          title="లైక్ చేసిన వారి జాబితా (View Likers)"
+        >
+          {likedBy.slice(0, 3).map((uid, idx) => {
+            const u = allUsers.find((usr) => usr.id === uid);
+            return (
+              <div
+                key={idx}
+                className="w-5 h-5 rounded-full border border-white bg-blue-100 text-blue-700 flex items-center justify-center text-[9px] font-bold overflow-hidden shadow-2xs"
+              >
+                {(u as any)?.photoURL ? (
+                  <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  (u?.username || u?.name || "U")[0].toUpperCase()
+                )}
+              </div>
+            );
+          })}
+          {post.likes > 3 && (
+            <span className="text-[10px] font-black text-slate-400 pl-2">+{post.likes - 3}</span>
+          )}
+        </div>
+      )}
+    </div>
 
           <div className="flex items-center gap-2">
             <motion.div
@@ -20717,17 +21203,44 @@ function PostCard({
         </div>
       )}
 
+      {/* Reaction breakdown tags */}
+      {post.reactions && Object.keys(post.reactions).length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap pt-3 border-t border-slate-100/60 mt-3">
+          {Object.entries(post.reactions).map(([emoji, uids]) => {
+            if (!Array.isArray(uids) || uids.length === 0) return null;
+            const hasUserReacted = currentUserId && uids.includes(currentUserId);
+            return (
+              <button
+                key={emoji}
+                type="button"
+                onClick={(e) => handleReactionSelect(emoji, e)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black border transition-all cursor-pointer ${
+                  hasUserReacted
+                    ? "bg-rose-50 border-rose-200 text-rose-700 shadow-2xs scale-105"
+                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                }`}
+                title={`${uids.length} మంది స్పందించారు`}
+              >
+                <span>{emoji}</span>
+                <span className="text-[11px]">{uids.length}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {showLikesModal && (
         <UsersListModal
-          title="Liked By"
+          title="స్పందించిన వారు (Liked / Reacted By)"
           uids={post.likedBy || []}
           allUsers={allUsers}
           onClose={() => setShowLikesModal(false)}
+          reactions={post.reactions}
         />
       )}
       {showViewsModal && (
         <UsersListModal
-          title="Viewed By"
+          title="వీక్షించిన వారు (Viewed By)"
           uids={post.viewedBy || []}
           allUsers={allUsers}
           onClose={() => setShowViewsModal(false)}
@@ -21265,19 +21778,25 @@ function PostForm({
           }
         }
 
+        if (!isAdmin && !isEditor && editingPost.status !== "Approved") {
+          updatePayload.status = "Pending";
+        }
+
         await updateDoc(doc(db, "posts", editingPost.id), updatePayload);
         addToast("Update Saved!");
         
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
-        await addDoc(collection(db, "notifications"), {
-          uid: "all",
-          type: "post_update",
-          title: " పోస్ట్ అప్డేట్ చేయబడింది (Post Updated)",
-          message: `${postAuthor} వారు ఒక పోస్ట్‌ను అప్డేట్ చేశారు: ${title.substring(0, 50)}`,
-          time: Date.now(),
-          read: false,
-          postId: editingPost.id
-        }).catch(()=>console.error("Failed to add post update notif"));
+        if (isAdmin || isEditor || editingPost.status === "Approved") {
+          await addDoc(collection(db, "notifications"), {
+            uid: "all",
+            type: "post_update",
+            title: "📢 పోస్ట్ అప్డేట్ చేయబడింది (Post Updated)",
+            message: `${postAuthor} వారు ఒక పోస్ట్‌ను అప్డేట్ చేశారు: ${title.substring(0, 50)}`,
+            time: Date.now(),
+            read: false,
+            postId: editingPost.id
+          }).catch(()=>console.error("Failed to add post update notif"));
+        }
       } else {
         let postTime = Date.now();
         if (overrideCreatedTime && customCreatedTime) {
@@ -21321,43 +21840,51 @@ function PostForm({
 
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
 
-        if (hasUpdateTag) {
+        if (isEditor || isAdmin) {
+          if (hasUpdateTag) {
+            await addDoc(collection(db, "notifications"), {
+              uid: "all",
+              type: "post",
+              title: "📢 కొత్త అప్డేట్ (New Update)",
+              message: `పోర్టల్ లో కొత్త అప్డేట్: ${title}`,
+              time: Date.now(),
+              read: false,
+              readBy: [],
+              postId: docRef.id,
+            }).catch(() => {});
+          } else {
+            await addDoc(collection(db, "notifications"), {
+              uid: "all",
+              type: "post",
+              title: "📢 కొత్త పోస్ట్ (New Post)",
+              message: `${postAuthor} కొత్త పోస్ట్ ని డిజిటల్ బోర్డ్ లో ఉంచారు: ${title.substring(0, 50)}`,
+              time: Date.now(),
+              read: false,
+              readBy: [],
+              postId: docRef.id,
+            }).catch(() => {});
+          }
+          addToast("పోస్ట్ ప్రచురించబడింది (Post Published)!");
+        } else {
+          // Regular user post: Send notification for Admin Review only
           await addDoc(collection(db, "notifications"), {
             uid: "all",
-            type: "post",
-            title: " కొత్త అప్డేట్ (New Update)",
-            message: `పోర్టల్ లో కొత్త అప్డేట్: ${title}`,
-            time: Date.now(),
+            title: "📢 కొత్త పోస్ట్ ఆమోదం కోసం వచ్చింది (Post Pending Approval)",
+            message: `${postAuthor} వారు కొత్త పోస్ట్ సమర్పించారు: ${title.substring(0, 50)}. దయచేసి అడ్మిన్ ప్యానెల్‌లో పరిశీలించి ఆమోదించండి.`,
+            type: "admin_alert",
             read: false,
-            readBy: [],
-            postId: docRef.id,
-          });
-        } else if (isEditor || isAdmin) {
-          await addDoc(collection(db, "notifications"), {
-            uid: "all",
-            type: "post",
-            title: " కొత్త పోస్ట్ (New Post)",
-            message: `${postAuthor} కొత్త పోస్ట్ ని డిజిటల్ బోర్డ్ లో ఉంచారు: ${title.substring(0, 50)}`,
             time: Date.now(),
-            read: false,
-            readBy: [],
-            postId: docRef.id,
+            postId: docRef.id
+          }).catch(() => {});
+
+          await Swal.fire({
+            icon: "info",
+            title: "పోస్ట్ సమర్పించబడింది!",
+            html: `మీ పోస్ట్ విజయవంతంగా సమర్పించబడింది.<br/><br/><strong>గమనిక:</strong> అడ్మిన్ పరిశీలించి ఆమోదించిన (Approve) తర్వాత మాత్రమే ఇది పబ్లిక్‌గా అందరికీ కనిపిస్తుంది. ప్రస్తుతానికి ఈ పోస్ట్ 'పెండింగ్' స్థితిలో మీకు మాత్రమే కనిపిస్తుంది.`,
+            confirmButtonText: "సరే (OK)",
+            confirmButtonColor: "#2563eb"
           });
         }
-
-        await addDoc(collection(db, "notifications"), {
-          uid: "all",
-          title: "కొత్త పోస్ట్ సమర్పణ (New Post Submission)",
-          message: `${postAuthor} వారు కొత్త పోస్ట్‌ను సమర్పించారు: ${title.substring(0, 50)}`,
-          type: "admin_alert",
-          read: false,
-          time: Date.now(),
-          postId: docRef.id
-        }).catch(()=>console.error("Failed to notify admin"));
-
-        addToast(
-          "Post Published! " + (!isAdmin ? "Waiting for admin approval." : ""),
-        );
       }
       onCancel();
     } catch (err: any) {
@@ -23003,6 +23530,94 @@ function PostDetail({
   const [showLikesModal, setShowLikesModal] = useState(false);
   const [showViewsModal, setShowViewsModal] = useState(false);
   const [fetchedRecent, setFetchedRecent] = useState<Post[]>([]);
+  const [showReactionsBar, setShowReactionsBar] = useState(false);
+  const [floatingBursts, setFloatingBursts] = useState<{ id: number; emoji: string; x: number }[]>([]);
+  const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
+  const lastTapRef = useRef<number>(0);
+
+  const likedBy = Array.isArray(post?.likedBy) ? post.likedBy : [];
+  const currentUserId = auth.currentUser?.uid;
+  const currentReactions: Record<string, string[]> = post?.reactions || {};
+
+  let userReactionEmoji: string | null = null;
+  Object.entries(currentReactions).forEach(([em, uids]) => {
+    if (Array.isArray(uids) && currentUserId && uids.includes(currentUserId)) {
+      userReactionEmoji = em;
+    }
+  });
+  if (!userReactionEmoji && currentUserId && likedBy.includes(currentUserId)) {
+    userReactionEmoji = "❤️";
+  }
+
+  const handleReactionSelect = async (emoji: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!post) return;
+    setShowReactionsBar(false);
+    const userId = auth.currentUser?.uid;
+    if (!userId) {
+      addToast("దయచేసి మొదట లాగిన్ అవ్వండి");
+      return;
+    }
+
+    playInteractionSound("like");
+
+    const newBurst = { id: Date.now() + Math.random(), emoji, x: Math.random() * 40 - 20 };
+    setFloatingBursts((prev) => [...prev.slice(-6), newBurst]);
+    setTimeout(() => {
+      setFloatingBursts((prev) => prev.filter((b) => b.id !== newBurst.id));
+    }, 1000);
+
+    const existingForThisEmoji = currentReactions[emoji] || [];
+    const hasReactedWithThisEmoji = existingForThisEmoji.includes(userId);
+    const updatedReactions: Record<string, string[]> = { ...currentReactions };
+
+    if (hasReactedWithThisEmoji) {
+      updatedReactions[emoji] = existingForThisEmoji.filter((id) => id !== userId);
+      if (updatedReactions[emoji].length === 0) delete updatedReactions[emoji];
+      try {
+        await updateDoc(doc(db, "posts", post.id), {
+          likes: increment(-1),
+          likedBy: arrayRemove(userId),
+          reactions: updatedReactions,
+        });
+      } catch (err: any) {
+        addToast(getFriendlyError(err));
+      }
+    } else {
+      Object.entries(updatedReactions).forEach(([em, uids]) => {
+        if (Array.isArray(uids) && uids.includes(userId)) {
+          updatedReactions[em] = uids.filter((id) => id !== userId);
+          if (updatedReactions[em].length === 0) delete updatedReactions[em];
+        }
+      });
+      updatedReactions[emoji] = [...new Set([...(updatedReactions[emoji] || []), userId])];
+
+      const isFirstTimeLiking = !likedBy.includes(userId);
+      try {
+        await updateDoc(doc(db, "posts", post.id), {
+          ...(isFirstTimeLiking ? { likes: increment(1), likedBy: arrayUnion(userId) } : {}),
+          reactions: updatedReactions,
+        });
+      } catch (err: any) {
+        addToast(getFriendlyError(err));
+      }
+    }
+  };
+
+  const handleDoubleTap = (e: React.MouseEvent) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 320) {
+      setShowDoubleTapHeart(true);
+      setTimeout(() => setShowDoubleTapHeart(false), 900);
+      const userId = auth.currentUser?.uid;
+      if (userId && !likedBy.includes(userId)) {
+        handleReactionSelect("❤️");
+      } else {
+        playInteractionSound("like");
+      }
+    }
+    lastTapRef.current = now;
+  };
 
   const isOwner = Boolean(
     (auth.currentUser && post?.uid && auth.currentUser.uid === post.uid) ||
@@ -23175,6 +23790,35 @@ function PostDetail({
     );
   }
 
+  const pStatus = (post.status || "").toLowerCase();
+  const isApproved = pStatus === "approved" || pStatus === "active";
+  const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
+  const canViewPending = isAdmin || isAuthor;
+
+  if (!isApproved && !canViewPending) {
+    return (
+      <div className="max-w-xl mx-auto my-20 p-8 bg-white rounded-3xl border border-amber-200 text-center shadow-lg space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto">
+          <Clock size={32} />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-slate-800">
+            ఈ పోస్ట్ ఇంకా అడ్మిన్ ఆమోదం పొందలేదు
+          </h2>
+          <p className="text-sm text-slate-500 font-medium mt-2 leading-relaxed">
+            ఈ పోస్ట్ ప్రస్తుతం అడ్మిన్ పరిశీలనలో (Pending Review) ఉంది. అడ్మిన్ ఆమోదించిన తర్వాత మాత్రమే అందరికీ కనిపిస్తుంది.
+          </p>
+        </div>
+        <button
+          onClick={onBack}
+          className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl text-sm shadow-sm hover:opacity-90 inline-flex items-center gap-2 cursor-pointer transition-all"
+        >
+          <ArrowLeft size={16} /> హోమ్ పేజీకి తిరిగి వెళ్లండి
+        </button>
+      </div>
+    );
+  }
+
   const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
   const shareText = generatePostShareText(post, postUrl);
   const availablePosts = (allPosts && allPosts.length > 0 ? allPosts : fetchedRecent);
@@ -23187,8 +23831,23 @@ function PostDetail({
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl shadow-xs border border-slate-200 w-full space-y-2.5 min-w-0"
+        className="bg-white p-2.5 sm:p-3.5 md:p-4 rounded-xl shadow-xs border border-slate-200 w-full space-y-2.5 min-w-0 relative"
+        onClick={handleDoubleTap}
       >
+        {/* Big Animated Double-Tap Heart */}
+        <AnimatePresence>
+          {showDoubleTapHeart && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.4, 1], opacity: [0, 1, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.85, ease: "easeOut" }}
+              className="absolute inset-0 m-auto w-28 h-28 flex items-center justify-center pointer-events-none z-30"
+            >
+              <Heart size={96} className="fill-rose-500 text-rose-500 filter drop-shadow-2xl animate-pulse" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       {/* Top Bar: Back & Edit */}
       <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100">
         <button
@@ -23217,6 +23876,130 @@ function PostDetail({
           </button>
         )}
       </div>
+
+      {/* Moderation Status Banner (Only for non-approved posts) */}
+      {!isApproved && (
+        <div className="mb-6">
+          {isAdmin ? (
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-indigo-950 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <div className="text-sm font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
+                    <span>అడ్మిన్ రివ్యూ (Admin Review)</span>
+                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-xs font-black border border-amber-200">
+                      {post.status || "Pending"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-700 font-medium mt-0.5">
+                    ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే సాధారణ యూజర్లకు కనిపిస్తుంది.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
+                      setPost((prev) => prev ? { ...prev, status: "Approved" } : null);
+                      await addDoc(collection(db, "notifications"), {
+                        uid: "all",
+                        title: "📢 కొత్త పోస్ట్ (New Post Approved)",
+                        message: `${post.userName || "User"} వారి పోస్ట్ ఆమోదించబడింది: ${(post.title || post.content || "").substring(0, 50)}`,
+                        type: "post",
+                        read: false,
+                        time: Date.now(),
+                        postId: post.id
+                      }).catch(() => {});
+                      if (post.uid) {
+                        await addDoc(collection(db, "notifications"), {
+                          uid: post.uid,
+                          title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
+                          message: `మీరు సమర్పించిన '${(post.title || "").substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ కనిపిస్తుంది.`,
+                          type: "post_approved",
+                          read: false,
+                          time: Date.now(),
+                          postId: post.id
+                        }).catch(() => {});
+                      }
+                      addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
+                    } catch (err) {
+                      console.error("Approval error:", err);
+                      addToast("Approval failed");
+                    }
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Check size={14} /> ఆమోదించు (Approve)
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await updateDoc(doc(db, "posts", post.id), { status: "Rejected" });
+                      setPost((prev) => prev ? { ...prev, status: "Rejected" } : null);
+                      if (post.uid) {
+                        await addDoc(collection(db, "notifications"), {
+                          uid: post.uid,
+                          title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
+                          message: `మీ పోస్ట్ "${(post.title || "").substring(0, 40)}" అడ్మిన్ ద్వారా తిరస్కరించబడింది.`,
+                          type: "post_rejected",
+                          read: false,
+                          time: Date.now(),
+                          postId: post.id
+                        }).catch(() => {});
+                      }
+                      addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
+                    } catch (err) {
+                      console.error("Reject error:", err);
+                      addToast("Reject failed");
+                    }
+                  }}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <X size={14} /> తిరస్కరించు (Reject)
+                </button>
+              </div>
+            </div>
+          ) : pStatus === "rejected" ? (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-900 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-700 shrink-0">
+                <XCircle size={20} />
+              </div>
+              <div>
+                <div className="text-sm font-black uppercase tracking-wider text-rose-800">
+                  ❌ తిరస్కరించబడింది (Rejected by Admin)
+                </div>
+                <p className="text-xs text-rose-700 font-medium mt-0.5">
+                  ఈ పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు. ఇది ఇతరులకు ఎవరికీ కనిపించదు.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl flex items-center justify-between gap-4 text-amber-900 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0 animate-pulse">
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <div className="text-sm font-black uppercase tracking-wider text-amber-900 flex items-center gap-2">
+                    <span>⏳ అడ్మిన్ ఆమోదం కోసం వేచి ఉంది (Pending Admin Approval)</span>
+                  </div>
+                  <p className="text-xs text-amber-700 font-medium mt-0.5">
+                    మీ పోస్ట్ సమర్పించబడింది. అడ్మిన్ ఆమోదించిన తర్వాత మాత్రమే ఇది పబ్లిక్‌గా అందరికీ కనిపిస్తుంది. ప్రస్తుతానికి మీకు మాత్రమే కనిపిస్తోంది.
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-block px-3 py-1.5 bg-amber-200/80 border border-amber-300 text-amber-900 rounded-xl text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
+                🔒 మీకు మాత్రమే (Only You)
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Article Header */}
       <div className="space-y-2">
@@ -23478,52 +24261,118 @@ function PostDetail({
           </div>
         )}
 
-        {/* Likes, Views, Actions Bar */}
-        <div className="flex justify-between items-center sm:mt-10 mt-6 pt-6 border-t border-slate-200">
-          <div className="flex gap-4">
-            <button
-              onClick={async () => {
-                const userId = auth.currentUser?.uid;
-                if (!userId) {
-                  addToast("దయచేసి మొదట లాగిన్ అవ్వండి");
-                  return;
-                }
-                const likedBy = Array.isArray(post.likedBy) ? post.likedBy : [];
-                if (likedBy.includes(userId)) {
-                  await updateDoc(doc(db, "posts", post.id), {
-                    likes: increment(-1),
-                    likedBy: arrayRemove(userId),
-                  });
-                } else {
-                  await updateDoc(doc(db, "posts", post.id), {
-                    likes: increment(1),
-                    likedBy: arrayUnion(userId),
-                  });
-                }
-              }}
-              className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-colors cursor-pointer group"
-            >
-              <Heart
-                size={18}
-                className={
-                  (Array.isArray(post.likedBy) ? post.likedBy.includes(auth.currentUser?.uid || "") : false)
-                    ? "fill-red-600 text-red-600"
-                    : "text-red-600 group-hover:scale-110 transition-transform"
-                }
-              />
-              <span
-                onClick={(e) => {
-                  if (isAdmin && post.likes > 0) {
+        {/* Likes, Reactions, Views, Actions Bar */}
+        <div className="flex flex-wrap justify-between items-center sm:mt-10 mt-6 pt-6 border-t border-slate-200 gap-3">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="relative flex items-center gap-2" onMouseLeave={() => setShowReactionsBar(false)}>
+              {/* Floating Reaction Bursts */}
+              <FloatingReactionBursts bursts={floatingBursts} />
+
+              {/* Reaction Dock Popover */}
+              <AnimatePresence>
+                {showReactionsBar && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                    animate={{ opacity: 1, y: -48, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.85 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute left-0 bottom-full mb-1 z-50 flex items-center gap-1 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-full shadow-2xl border border-slate-200"
+                  >
+                    {POST_REACTIONS.map((item) => (
+                      <motion.button
+                        key={item.emoji}
+                        type="button"
+                        whileHover={{ scale: 1.35, y: -4 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => handleReactionSelect(item.emoji, e)}
+                        title={item.label}
+                        className="w-8 h-8 flex items-center justify-center text-xl rounded-full hover:bg-slate-100 transition-all cursor-pointer select-none"
+                      >
+                        {item.emoji}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Main Like / Reaction Button */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onMouseEnter={() => setShowReactionsBar(true)}
+                  onClick={(e) => handleReactionSelect(userReactionEmoji || "❤️", e)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all cursor-pointer group font-bold text-sm ${
+                    userReactionEmoji
+                      ? "bg-rose-50 text-rose-600 border border-rose-200"
+                      : "text-red-600 bg-red-50 hover:bg-red-100"
+                  }`}
+                >
+                  {userReactionEmoji ? (
+                    <span className="text-lg select-none">{userReactionEmoji}</span>
+                  ) : (
+                    <Heart size={18} className="text-red-600 group-hover:scale-110 transition-transform" />
+                  )}
+                  <span
+                    onClick={(e) => {
+                      if (post.likes > 0) {
+                        e.stopPropagation();
+                        setShowLikesModal(true);
+                      }
+                    }}
+                    className={`font-black text-sm ${post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
+                  >
+                    {post.likes || 0}
+                  </span>
+                  <span className="text-xs uppercase font-bold hidden sm:inline">
+                    {userReactionEmoji ? "స్పందన" : "Likes"}
+                  </span>
+                </button>
+
+                {/* Mobile / Direct Reaction smile button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowReactionsBar(!showReactionsBar);
+                  }}
+                  title="ఎమోజి స్పందనలు (Emoji Reactions)"
+                  className="p-1.5 ml-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer text-xs"
+                >
+                  <Smile size={16} />
+                </button>
+              </div>
+
+              {/* Recent Likers Avatar Stack */}
+              {post.likes > 0 && likedBy.length > 0 && (
+                <div
+                  onClick={(e) => {
                     e.stopPropagation();
                     setShowLikesModal(true);
-                  }
-                }}
-                className={`font-black text-sm ${isAdmin && post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
-              >
-                {post.likes || 0}
-              </span>
-              <span className="text-xs uppercase font-bold hidden sm:inline">Likes</span>
-            </button>
+                  }}
+                  className="hidden sm:flex items-center -space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity pl-1"
+                  title="స్పందించిన వారి జాబితా (View Likers)"
+                >
+                  {likedBy.slice(0, 3).map((uid, idx) => {
+                    const u = allUsers.find((usr) => usr.id === uid);
+                    return (
+                      <div
+                        key={idx}
+                        className="w-6 h-6 rounded-full border border-white bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold overflow-hidden shadow-2xs"
+                      >
+                        {(u as any)?.photoURL ? (
+                          <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          (u?.username || u?.name || "U")[0].toUpperCase()
+                        )}
+                      </div>
+                    );
+                  })}
+                  {post.likes > 3 && (
+                    <span className="text-[10px] font-black text-slate-400 pl-2">+{post.likes - 3}</span>
+                  )}
+                </div>
+              )}
+            </div>
 
             <button
               onClick={() => {
@@ -23627,17 +24476,44 @@ function PostDetail({
         </div>
       )}
 
+      {/* Reaction breakdown tags */}
+      {post.reactions && Object.keys(post.reactions).length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap pt-3 border-t border-slate-100/60 mt-3">
+          {Object.entries(post.reactions).map(([emoji, uids]) => {
+            if (!Array.isArray(uids) || uids.length === 0) return null;
+            const hasUserReacted = currentUserId && uids.includes(currentUserId);
+            return (
+              <button
+                key={emoji}
+                type="button"
+                onClick={(e) => handleReactionSelect(emoji, e)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black border transition-all cursor-pointer ${
+                  hasUserReacted
+                    ? "bg-rose-50 border-rose-200 text-rose-700 shadow-2xs scale-105"
+                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                }`}
+                title={`${uids.length} మంది స్పందించారు`}
+              >
+                <span>{emoji}</span>
+                <span className="text-[11px]">{uids.length}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {showLikesModal && (
         <UsersListModal
-          title="Liked By"
+          title="స్పందించిన వారు (Liked / Reacted By)"
           uids={post.likedBy || []}
           allUsers={allUsers}
           onClose={() => setShowLikesModal(false)}
+          reactions={post.reactions}
         />
       )}
       {showViewsModal && (
         <UsersListModal
-          title="Viewed By"
+          title="వీక్షించిన వారు (Viewed By)"
           uids={post.viewedBy || []}
           allUsers={allUsers}
           onClose={() => setShowViewsModal(false)}
@@ -23858,6 +24734,7 @@ function PostComments({
 
   const handleAddReply = async (commentId: string) => {
     if (!replyText.trim() || !auth.currentUser) return;
+    playInteractionSound("comment");
     setSubmittingReply(true);
     try {
       const authorName = isAdmin
@@ -24140,6 +25017,7 @@ function PostComments({
     }
     const targetComment = comments.find((c) => c.id === commentId);
     if (!targetComment) return;
+    playInteractionSound("reaction");
 
     const currentReactions: Record<string, string[]> = targetComment.reactions || {};
     const existingUids: string[] = currentReactions[emoji] || [];
@@ -24214,6 +25092,8 @@ function PostComments({
     if (!newComment.trim() && !commentFile) return;
     if (requireLoginAlert()) return;
     if (submittingComment) return;
+
+    playInteractionSound("comment");
 
     const commentText = newComment;
     const fileToUploadLocal = commentFile;
@@ -24365,17 +25245,22 @@ function PostComments({
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h3 className="text-2xl font-black text-primary flex items-center gap-3">
-          <MessageCircle
-            size={24}
-            className="text-accent"
-            style={{ color: "#fbbf24" }}
-          />
-          Community Comments{" "}
-          <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full">
-            {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="text-2xl font-black text-primary flex items-center gap-2.5">
+            <MessageCircle
+              size={24}
+              className="text-amber-500"
+            />
+            కామెంట్స్ (Comments){" "}
+            <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full font-black">
+              {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
+            </span>
+          </h3>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            లైవ్ అప్‌డేట్స్ (Live)
           </span>
-        </h3>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button 
             onClick={() => setShowAdminOnly(!showAdminOnly)}
@@ -24400,9 +25285,28 @@ function PostComments({
         </div>
       </div>
       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
-        <label className="block text-sm font-black text-primary mb-3">
-          Add your perspective
-        </label>
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <label className="block text-sm font-black text-primary">
+            మీ అభిప్రాయాన్ని తెలపండి (Add your perspective)
+          </label>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[11px] font-medium text-slate-400 mr-1 hidden sm:inline">త్వరిత ఎమోజీలు:</span>
+            {["❤️", "👍", "👏", "🔥", "💡", "🙏", "🎉", "✨"].map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => {
+                  setNewComment((prev) => prev ? `${prev} ${emoji}` : emoji);
+                  playInteractionSound("like");
+                }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-200 text-base transition-transform active:scale-90 cursor-pointer select-none"
+                title={`Add ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
         {auth.currentUser && !auth.currentUser.isAnonymous ? (
           <div className="flex flex-col sm:flex-row gap-3 relative">
             <div className="flex-1 flex flex-col gap-2 relative">

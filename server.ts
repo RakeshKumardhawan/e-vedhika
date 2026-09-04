@@ -924,12 +924,12 @@ app.get('/api/remote-commands', (req, res) => {
     res.json({
       success: true,
       status: "ok",
-      name: "E-VEDHIKA Digital Governance Portal & UBD Deployment Tool",
+      name: "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
       portal: "e-vedhika.in",
-      environment: process.env.NODE_ENV || "production",
-      uptime: Math.floor(process.uptime()),
-      timestamp: new Date().toISOString(),
-      ...otaVersionConfig
+      latestVersion: otaVersionConfig.latestVersion || "v1.6.3 Enterprise",
+      versionCode: otaVersionConfig.versionCode || 163,
+      downloadUrl: otaVersionConfig.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+      releaseNotes: otaVersionConfig.releaseNotes || "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి."
     });
   });
 
