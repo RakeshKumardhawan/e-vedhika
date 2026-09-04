@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          # We remove the hard requirement for cache: 'npm' so it doesn't fail if package-lock is missing
       - name: Install dependencies
         run: npm install
       - name: Build

@@ -1,0 +1,17 @@
+--- src/App.tsx
++++ src/App.tsx
+@@ -5682,10 +5682,10 @@
+                   window.scrollTo({ top: 0, behavior: "smooth" });
+                 }}
+-            setShowDirectMessages={setShowDirectMessages}
+-            setActiveDmUser={setActiveDmUser}
+-          setShowDirectMessages={setShowDirectMessages}
+-          setActiveDmUser={setActiveDmUser}
++                isAdmin={isAdmin}
++                addToast={addToast}
++                userProfile={userProfile}
++                allUsers={allUsers}
++                setShowDirectMessages={setShowDirectMessages}
++                setActiveDmUser={setActiveDmUser}
+                 storageConfig={storageConfig}
+                 siteConfig={siteConfig}

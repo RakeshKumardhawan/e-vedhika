@@ -102,6 +102,7 @@ async function startServer() {
   app.use('/proxy/epanchayat', createProxyMiddleware(proxyOptions('https://epanchayat.telangana.gov.in')));
   app.use('/proxy/ubd', createProxyMiddleware(proxyOptions('https://ubd.telangana.gov.in')));
   app.use('/proxy/meetingonline', createProxyMiddleware(proxyOptions('https://meetingonline.gov.in')));
+  app.use('/__/auth', createProxyMiddleware(proxyOptions('https://e-vedhika-258f2.firebaseapp.com')));
 
   // Google AdSense ads.txt explicit route
   app.get('/ads.txt', (req, res) => {
@@ -840,6 +841,45 @@ app.get('/api/remote-commands', (req, res) => {
   }
   return res.json({ success: true, commands: [] });
 });
+
+  // Telegram Bot Notification API
+  app.post("/api/telegram/notify", async (req, res) => {
+    try {
+      const { message, type } = req.body;
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const chatId = process.env.TELEGRAM_CHAT_ID;
+
+      if (!botToken || !chatId) {
+        return res.status(500).json({ error: "Telegram config (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID) is missing" });
+      }
+
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      const response = await fetch(telegramUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: 'HTML'
+        })
+      });
+
+      const data = await response.json();
+      if (!data.ok) {
+        console.error("Telegram API Error:", data);
+        return res.status(500).json({ error: data.description || "Failed to send Telegram message" });
+      }
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error sending Telegram message:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // Gemini Proxy for E-Vedhika AI Assistant (Free Tier Only)
   app.post("/api/chat", async (req, res) => {

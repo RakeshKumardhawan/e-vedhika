@@ -1,4 +1,5 @@
 import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmuteAdsLocally, recordAdImpression } from "./adManager";
+import { StaticPagesAdmin } from "./components/StaticPagesAdmin";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
 /**
@@ -152,8 +153,7 @@ import {  DollarSign,
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp, ImageOff, CheckCheck,
- } from "lucide-react";
+  ThumbsUp, ImageOff, CheckCheck, } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -194,6 +194,18 @@ import "react-quill-new/dist/quill.snow.css";
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
   return title.trim();
+};
+
+const sendTelegramNotification = async (message: string, type: "system" | "post" = "system") => {
+  try {
+    await fetch("/api/telegram/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, type })
+    });
+  } catch (err) {
+    console.error("Failed to send Telegram notification:", err);
+  }
 };
 
 let XLSX: any = null;
@@ -2386,6 +2398,7 @@ export default function App() {
     null,
   );
   const [currentFilter, setCurrentFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [sharingPostForPoster, setSharingPostForPoster] = useState<Post | null>(null);
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [lightboxImage, setLightboxImage] = useState<{
@@ -2481,20 +2494,12 @@ export default function App() {
 
   const fetchAboutContent = async () => {
     try {
-      const res = await fetch("/api/about");
-      if (res.ok) {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const data = await res.json();
-          if (data && data.title && data.content) {
-            setAboutContent(data);
-          }
-        } else {
-          console.warn("About content response was not JSON");
-        }
+      const snap = await getDoc(doc(db, "settings", "static_pages"));
+      if (snap.exists() && snap.data().about) {
+        setAboutContent(snap.data().about);
       }
     } catch (err) {
-      console.warn("Could not fetch latest about content, using default local content instead:", err);
+      console.warn("Could not fetch latest about content:", err);
     }
   };
 
@@ -3645,10 +3650,14 @@ export default function App() {
       return false;
     }
 
-    const q = "";
+    const q = (searchQuery || "").toLowerCase().trim();
     const tMatch = (p.title || "").toLowerCase().includes(q);
     const cMatch = (p.content || "").toLowerCase().includes(q);
-    const searchOk = !q || tMatch || cMatch;
+    const catMatch = (p.category || "").toLowerCase().includes(q);
+    const subCatMatch = (p.subCategory || "").toLowerCase().includes(q);
+    const tagMatch = (p.tags || []).some((t: string) => t.toLowerCase().includes(q));
+    const docMatch = (p.fileUrl || p.mediaUrl || "").toLowerCase().includes(q) || (p.fileName || "").toLowerCase().includes(q);
+    const searchOk = !q || tMatch || cMatch || catMatch || subCatMatch || tagMatch || docMatch;
     if (currentFilter === "All") return searchOk;
     if (currentFilter === "Following") {
       const followingIds = userProfile?.following || [];
@@ -4171,7 +4180,7 @@ export default function App() {
         message={siteConfig?.maintenanceMessage}
         estimatedTime={siteConfig?.maintenanceEstimatedTime || "దాదాపు 2 గంటలు (Approx. 2 Hours)"}
         reason={siteConfig?.maintenanceReason || "షెడ్యూల్డ్ సిస్టమ్ అప్‌గ్రేడ్ & గవర్నెన్స్ క్లౌడ్ సెక్యూరిటీ అప్‌డేట్"}
-        contactEmail={siteConfig?.supportEmail || "support@evedhika.gov.in"}
+        contactEmail={siteConfig?.supportEmail || "evedhikasupport@gmail.com"}
         contactPhone={siteConfig?.supportPhone || "+91 1800-425-2244"}
         version={siteConfig?.portalVersion || "V1.4.8 Enterprise"}
         onRefreshCheck={() => {
@@ -4277,21 +4286,41 @@ export default function App() {
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <a
+                          href="mailto:evedhikasupport@gmail.com"
+                          className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-rose-50 transition-colors border-l-4 border-l-rose-500 flex flex-col items-center justify-center gap-2"
+                        >
+                          <Mail size={28} className="text-rose-500" />
+                          <span className="font-bold text-slate-800 text-sm">
+                            Email Support
+                          </span>
+                        </a>
+                        <a
                           href="https://wa.me/919985402310"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-green-50 transition-colors border-l-4 border-l-green-500 flex flex-col items-center justify-center gap-2"
+                          className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-green-50 transition-colors border-l-4 border-l-green-500 flex flex-col items-center justify-center gap-2"
                         >
-                          <MessageCircle size={32} className="text-green-500" />
+                          <MessageCircle size={28} className="text-green-500" />
                           <span className="font-bold text-slate-800 text-sm">
-                            Chat on WhatsApp
+                            WhatsApp
                           </span>
                         </a>
-                        <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                        <a
+                          href="https://t.me/e_vedhika_alerts_bot"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-blue-50 transition-colors border-l-4 border-l-blue-500 flex flex-col items-center justify-center gap-2"
+                        >
+                          <Send size={28} className="text-blue-500" />
+                          <span className="font-bold text-slate-800 text-sm">
+                            Telegram
+                          </span>
+                        </a>
+                        <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm border-l-4 border-l-slate-400 flex flex-col items-center justify-center">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                             Office Hours
                           </p>
-                          <p className="font-bold text-slate-800 text-sm md:text-base">
+                          <p className="font-bold text-slate-800 text-sm md:text-base text-center">
                             Mon - Sat: 10AM - 5PM
                           </p>
                         </div>
@@ -4502,6 +4531,31 @@ export default function App() {
               >
                 మహా పెద్దది (A++)
               </button>
+            </div>
+          </div>
+
+          {/* Header Search Bar (Desktop/Tablet) */}
+          <div className="hidden lg:flex items-center justify-center shrink-0">
+            <div className="relative flex items-center w-44 xl:w-60">
+              <span className="absolute left-3 text-slate-400 pointer-events-none">
+                <Search size={14} />
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="పోస్ట్స్, డాక్యుమెంట్స్ వెతకండి..."
+                className="w-full bg-[#071a30] text-white placeholder-slate-400 text-xs font-bold pl-9 pr-7 py-2 rounded-full border border-white/15 focus:outline-none focus:border-[#fbe947] focus:ring-1 focus:ring-[#fbe947] transition-all shadow-inner"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 text-slate-400 hover:text-white cursor-pointer"
+                  title="Clear search"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
           </div>
         
@@ -5347,7 +5401,7 @@ export default function App() {
                           icon: Database,
                         },
                         {
-                          id: "edit_about",
+                          id: "static_pages_admin",
                           label: "About E-Vedhika",
                           icon: Info,
                         },
@@ -6275,9 +6329,47 @@ export default function App() {
                                           }}
                                           className="px-6 py-3 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all text-xs sm:text-sm w-max flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                                         >
-                                          <PlusCircle size={18} /> Public Post
-                                        </button>
-                                      </div>
+                                                                                     <PlusCircle size={18} /> Public Post
+                                         </button>
+                                       </div>
+
+                                       {/* Main Dashboard Search Bar Component */}
+                                       <div className="bg-gradient-to-r from-blue-900/5 via-sky-900/5 to-emerald-900/5 p-3.5 sm:p-5 rounded-3xl border border-blue-100 shadow-sm mb-5">
+                                         <div className="relative flex items-center">
+                                           <div className="absolute left-4 text-blue-600 pointer-events-none">
+                                             <Search size={18} />
+                                           </div>
+                                           <input
+                                             type="text"
+                                             value={searchQuery}
+                                             onChange={(e) => setSearchQuery(e.target.value)}
+                                             placeholder="పోస్ట్ లేదా డాక్యుమెంట్ పేరు, కీవర్డ్ ద్వారా వెతకండి (Search posts, documents by title or keyword)..."
+                                             className="w-full bg-white text-slate-800 placeholder-slate-400 text-xs sm:text-sm font-bold pl-11 pr-10 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-inner transition-all"
+                                           />
+                                           {searchQuery && (
+                                             <button
+                                               onClick={() => setSearchQuery("")}
+                                               className="absolute right-3.5 p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                                               title="Clear Search"
+                                             >
+                                               <X size={16} />
+                                             </button>
+                                           )}
+                                         </div>
+                                         {searchQuery && (
+                                           <div className="flex items-center justify-between mt-2.5 px-2 text-[11px] font-bold text-slate-500">
+                                             <span>శోధన ఫలితాలు (Results for &quot;{searchQuery}&quot;): <strong className="text-primary">{filteredPosts.length}</strong> కనుగొనబడ్డాయి</span>
+                                             <button
+                                               onClick={() => setSearchQuery("")}
+                                               className="text-blue-600 hover:underline cursor-pointer"
+                                             >
+                                               అన్నీ చూపించు (Reset)
+                                             </button>
+                                           </div>
+                                         )}
+                                       </div>
+
+
 
                                       <div className="border-t border-slate-100 pt-4">
                                         <div className="flex items-center gap-2 mb-3">
@@ -6416,18 +6508,28 @@ export default function App() {
                           )}
 
                         {/* Entry Page / Landing Page Content integrated at the bottom of Main Home Tab */}
-                        <div className="mt-16 border-t border-slate-200/60 pt-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-                          <div className="text-center space-y-5 w-full mx-auto flex flex-col items-center">
-                            <div className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-50 border border-blue-100 rounded-full text-blue-700 text-[10px] sm:text-sm font-black uppercase tracking-wider sm:tracking-widest shadow-sm text-center max-w-full whitespace-normal">
+                        <div className="mt-20 border-t border-slate-200/60 pt-16 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                          <div className="bg-white rounded-[2.5rem] p-8 sm:p-14 shadow-sm border border-slate-100 text-center space-y-8 w-full mx-auto flex flex-col items-center relative overflow-hidden">
+                            {/* Decorative background blurs */}
+                            <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-[2.5rem]">
+                              <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-50/60 blur-3xl rounded-full" />
+                              <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] bg-indigo-50/60 blur-3xl rounded-full" />
+                            </div>
+
+                            <div className="relative z-10 inline-flex items-center justify-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50 rounded-full text-blue-700 text-xs sm:text-sm font-black uppercase tracking-[0.15em] shadow-sm">
+                              <Sparkles size={14} className="text-blue-500" />
                               E-VEDHIKA OVERVIEW
                             </div>
-                            <h2 
-                              className="text-xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-snug max-w-4xl break-words w-full"
-                            >
-                              {landingPageData.heroTitle} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{landingPageData.heroHighlight}</span>
+
+                            <h2 className="relative z-10 text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight max-w-4xl w-full">
+                              {landingPageData.heroTitle}{" "}
+                              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                                {landingPageData.heroHighlight}
+                              </span>
                             </h2>
+
                             <div 
-                              className="text-base sm:text-lg text-slate-600 leading-relaxed font-medium ql-editor px-0 sm:px-4 w-full max-w-full sm:max-w-5xl break-words overflow-x-hidden"
+                              className="relative z-10 text-base sm:text-lg text-slate-600 leading-relaxed font-medium ql-editor px-0 max-w-4xl mx-auto w-full"
                               style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                               dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
                             />
@@ -7234,6 +7336,10 @@ export default function App() {
                                     status: "pending",
                                     uid: user?.uid || "anonymous",
                                   });
+                                  
+                                  // Send Telegram notification
+                                  sendTelegramNotification(`💡 <b>New Suggestion/Issue Submitted</b>\n\n<b>From:</b> ${name} (${village})\n<b>Mobile:</b> ${mobile || "N/A"}\n<b>Category:</b> ${category}\n<b>Message:</b> ${suggestion.substring(0, 150)}\n\n<i>Please review in the Suggestions panel.</i>`, "system");
+
                                   await addDoc(collection(db, "notifications"), {
                                     uid: "all",
                                     title: "కొత్త సూచన (Suggestion Alert)",
@@ -9833,7 +9939,7 @@ const DEFAULT_PERMISSIONS: any = {
     custom_menus: { view: true, edit: true, delete: true },
     landing_page_config: { view: true, edit: true, delete: true },
     page_descriptions: { view: true, edit: true, delete: true },
-    edit_about: { view: true, edit: true, delete: true },
+    static_pages_admin: { view: true, edit: true, delete: true },
     rbac: { view: true, edit: true, delete: true },
   },
   "super admin": {
@@ -9857,7 +9963,7 @@ const DEFAULT_PERMISSIONS: any = {
     custom_menus: { view: true, edit: true, delete: true },
     landing_page_config: { view: true, edit: true, delete: true },
     page_descriptions: { view: true, edit: true, delete: true },
-    edit_about: { view: true, edit: true, delete: true },
+    static_pages_admin: { view: true, edit: true, delete: true },
     rbac: { view: true, edit: true, delete: true },
   },
   editor: {
@@ -10385,6 +10491,8 @@ function AdminPanel({
   currentTab,
   userProfile,
   storageConfig,
+  setShowDirectMessages,
+  setActiveDmUser,
   hasPostsOnly,
   isEditorMode,
   rbacPermissions,
@@ -10604,7 +10712,7 @@ function AdminPanel({
               ...(isEditor
                 ? [
                     {
-                      id: "edit_about",
+                      id: "static_pages_admin",
                       label: " About E-Vedhika",
                       icon: <Info size={18} />,
                     },
@@ -11110,6 +11218,10 @@ function AdminPanel({
           if (match && match.status !== "Approved") {
             const postAuthor = match.userName || "User";
             const title = match.title || match.problem || match.content || "కొత్త పోస్ట్";
+            
+            // Send telegram notification
+            sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${title}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
+
             await addDoc(collection(db, "notifications"), {
               uid: "all",
               title: " కొత్త పోస్ట్ (New Post Approved)",
@@ -11798,6 +11910,7 @@ function AdminPanel({
                             <td className="p-4 sm:px-6 py-4 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0 bg-slate-50/50 md:bg-transparent">
                               <div className="flex justify-end items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
                                 {reportsType === "posts" && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
+                                  <>
                                   <button
                                     type="button"
                                     title="Approve Post (ఆమోదించు)"
@@ -11840,6 +11953,25 @@ function AdminPanel({
                                   >
                                     <Check size={13} /> ఆమోదించు
                                   </button>
+                                  <button
+                                    type="button"
+                                    title="Message User (యూజర్‌తో చాట్ చేయండి)"
+                                    onClick={() => {
+                                      if (item.uid) {
+                                        const u = users.find((user: any) => user.id === item.uid);
+                                        if (u) {
+                                          setShowDirectMessages(true);
+                                          setActiveDmUser(u);
+                                        } else {
+                                          addToast("User not found.");
+                                        }
+                                      }
+                                    }}
+                                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
+                                  >
+                                    <MessageCircle size={13} /> మెసేజ్ పంపండి
+                                  </button>
+                                  </>
                                 )}
 
                                 {reportsType === "posts" && normalizeReportStatus(item.status) === "pending" && (
@@ -11906,6 +12038,10 @@ function AdminPanel({
                                       if (col === "posts" && newStatus === "Approved" && item.status !== "Approved") {
                                         const postAuthor = item.userName || "User";
                                         const title = item.title || item.problem || item.content || "కొత్త పోస్ట్";
+                                        
+                                        // Send telegram notification
+                                        sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${title}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
+
                                         await addDoc(collection(db, "notifications"), {
                                           uid: "all",
                                           title: " కొత్త పోస్ట్ (New Post Approved)",
@@ -12321,6 +12457,11 @@ function AdminPanel({
                                       await updateDoc(doc(db, "users", u.id), {
                                         role: nextRole,
                                       });
+
+                                      // Send telegram if suspended
+                                      if (nextRole === "suspended") {
+                                        sendTelegramNotification(`🚨 <b>User Suspended</b>\n\n<b>User:</b> ${u.name || u.email}\n<b>Email:</b> ${u.email}\n<b>ID:</b> ${u.id}\n\n<i>This user has been blocked by an administrator.</i>`, "system");
+                                      }
 
                                       // Send Notification to user
                                       await addDoc(
@@ -15369,117 +15510,11 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                 </div>
               </div>
             )}
-
-            {/* Edit About Page (అబౌట్ పేజీ ఎడిటర్) */}
-            {activeSubTab === "edit_about" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-[22px] flex items-center justify-center shadow-sm border border-indigo-100/50">
-                    <Edit3 size={28} />
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                      About Us (అబౌట్ విషయం)
-                    </h4>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                      Adjust global platform description and journey
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl p-8 max-w-3xl">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Page Title (శీర్షిక)
-                      </label>
-                      <input
-                        type="text"
-                        value={aboutContent?.title || ""}
-                        onChange={(e) =>
-                          setAboutContent((prev) =>
-                            prev ? { ...prev, title: e.target.value } : null,
-                          )
-                        }
-                        placeholder="e.g. e-Vedhika గురించి"
-                        className="w-full bg-slate-50 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-indigo-500 transition-all"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                        Content (విషయం - HTML/Markdown Supported)
-                      </label>
-                      <textarea
-                        rows={10}
-                        value={aboutContent?.content || ""}
-                        onChange={(e) =>
-                          setAboutContent((prev) =>
-                            prev ? { ...prev, content: e.target.value } : null,
-                          )
-                        }
-                        placeholder="అబౌట్ కంటెంట్ ఇక్కడ రాయండి..."
-                        className="w-full bg-slate-50 border-slate-100 rounded-3xl p-6 font-medium text-sm outline-none focus:border-indigo-500 transition-all leading-relaxed custom-scrollbar"
-                      />
-                    </div>
-
-                    <div className="pt-4">
-                      <button
-                        onClick={async () => {
-                          if (!aboutContent) return;
-                          try {
-                            const token = auth.currentUser
-                              ? await auth.currentUser.getIdToken()
-                              : "";
-                            const res = await fetch("/api/about", {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                              },
-                              body: JSON.stringify({
-                                title: aboutContent.title,
-                                content: aboutContent.content,
-                              }),
-                            });
-                            if (res.ok) {
-                              addToast(
-                                "అబౌట్ పేజీ సేవ్ చేయబడింది! (Saved successfully)",
-                              );
-                              fetchAboutContent();
-                            } else {
-                              throw new Error("Failed to save");
-                            }
-                          } catch (err) {
-                            addToast("Error saving content");
-                          }
-                        }}
-                        className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2"
-                      >
-                        <Save size={18} /> సేవ్ చేయండి (Save Content)
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex gap-4 max-w-3xl">
-                  <div className="w-10 h-10 bg-amber-400 text-amber-900 rounded-xl flex items-center justify-center shrink-0">
-                    <Info size={20} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-amber-900/60 uppercase tracking-widest mb-1">
-                      Admin Tip
-                    </p>
-                    <p className="text-xs font-black text-amber-900 leading-relaxed">
-                      మీరు ఇక్కడ చేసే మార్పులు వెంటనే వెబ్‌సైట్ లోని Footer లో
-                      ఉండే 'About Us' విభాగంలో కనిపిస్తాయి.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            {/* Edit Static Pages (స్టాటిక్ పేజీల ఎడిటర్) */}
+            {activeSubTab === "static_pages_admin" && (
+              <StaticPagesAdmin addToast={addToast} />
             )}
-
-            {activeSubTab === "settings" && (
+                          {activeSubTab === "settings" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div className="space-y-8">
                   <div>
@@ -19898,6 +19933,8 @@ function PostCard({
   allUsers,
   userProfile,
   storageConfig,
+  setShowDirectMessages,
+  setActiveDmUser,
 }: {
   post: Post;
   isExpanded: boolean;
@@ -19908,6 +19945,8 @@ function PostCard({
   allUsers: UserProfile[];
   userProfile?: UserProfile | null;
   storageConfig?: "cloudflare" | "firebase";
+  setShowDirectMessages?: (show: boolean) => void;
+  setActiveDmUser?: (user: any) => void;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
@@ -20137,10 +20176,16 @@ function PostCard({
                     e.stopPropagation();
                     try {
                       await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
+                      
+                      // Send Telegram notification
+                      const postTitle = post.title || post.content || "కొత్త పోస్ట్";
+                      const postAuthor = post.userName || "User";
+                      sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${postTitle}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
+
                       await addDoc(collection(db, "notifications"), {
                         uid: "all",
                         title: "📢 కొత్త పోస్ట్ (New Post Approved)",
-                        message: `${post.userName || "User"} వారి పోస్ట్ ఆమోదించబడింది: ${(post.title || post.content || "").substring(0, 50)}`,
+                        message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
                         type: "post",
                         read: false,
                         time: Date.now(),
@@ -21199,6 +21244,8 @@ function PostCard({
             isAdmin={isAdmin}
             allUsers={allUsers}
             storageConfig={storageConfig || "firebase"}
+            setShowDirectMessages={setShowDirectMessages}
+            setActiveDmUser={setActiveDmUser}
           />
         </div>
       )}
@@ -21268,6 +21315,8 @@ function PostForm({
   isAdmin,
   isEditor,
   storageConfig,
+  setShowDirectMessages,
+  setActiveDmUser,
 }: {
   addToast: (s: string) => void;
   onCancel: () => void;
@@ -21276,6 +21325,8 @@ function PostForm({
   isAdmin: boolean;
   isEditor: boolean;
   storageConfig: "cloudflare" | "firebase";
+  setShowDirectMessages?: (show: boolean) => void;
+  setActiveDmUser?: (user: any) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState("");
@@ -21867,6 +21918,7 @@ function PostForm({
           addToast("పోస్ట్ ప్రచురించబడింది (Post Published)!");
         } else {
           // Regular user post: Send notification for Admin Review only
+          sendTelegramNotification(`⚠️ <b>New Post Pending Approval</b>\n\n<b>Title:</b> ${title}\n<b>Author:</b> ${postAuthor}\n\n<i>Please review and approve in the Admin Panel.</i>`, "system");
           await addDoc(collection(db, "notifications"), {
             uid: "all",
             title: "📢 కొత్త పోస్ట్ ఆమోదం కోసం వచ్చింది (Post Pending Approval)",
@@ -23510,6 +23562,8 @@ function PostDetail({
   allUsers,
   onEdit,
   storageConfig,
+  setShowDirectMessages,
+  setActiveDmUser,
   siteConfig,
   allPosts = [],
 }: {
@@ -23521,6 +23575,8 @@ function PostDetail({
   allUsers: UserProfile[];
   onEdit: (p: Post) => void;
   storageConfig: "cloudflare" | "firebase";
+  setShowDirectMessages?: (show: boolean) => void;
+  setActiveDmUser?: (user: any) => void;
   siteConfig?: any;
   allPosts?: Post[];
 }) {
@@ -23905,10 +23961,16 @@ function PostDetail({
                     try {
                       await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
                       setPost((prev) => prev ? { ...prev, status: "Approved" } : null);
+                      
+                      // Send Telegram notification
+                      const postTitle = post.title || post.content || "కొత్త పోస్ట్";
+                      const postAuthor = post.userName || "User";
+                      sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${postTitle}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
+
                       await addDoc(collection(db, "notifications"), {
                         uid: "all",
                         title: "📢 కొత్త పోస్ట్ (New Post Approved)",
-                        message: `${post.userName || "User"} వారి పోస్ట్ ఆమోదించబడింది: ${(post.title || post.content || "").substring(0, 50)}`,
+                        message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
                         type: "post",
                         read: false,
                         time: Date.now(),
@@ -23934,6 +23996,24 @@ function PostDetail({
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 >
                   <Check size={14} /> ఆమోదించు (Approve)
+                </button>
+                <button
+                  type="button"
+                  title="Message User (యూజర్‌తో చాట్ చేయండి)"
+                  onClick={() => {
+                    if (post.uid) {
+                      const u = allUsers.find((user: any) => user.id === post.uid);
+                      if (u) {
+                        setShowDirectMessages(true);
+                        setActiveDmUser(u);
+                      } else {
+                        addToast("User not found.");
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <MessageCircle size={14} /> మెసేజ్ పంపండి (Message)
                 </button>
                 <button
                   type="button"
@@ -24023,7 +24103,23 @@ function PostDetail({
         {/* Sub-Header Metadata Bar */}
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] text-slate-500 py-1 border-y border-slate-100 font-medium">
           <div className="flex items-center gap-2 flex-wrap">
-            <span>By <strong className="text-slate-800 font-bold">{post.userName || "Naandi Newsteam"}</strong></span>
+            <span className="flex items-center">By <strong className="text-slate-800 font-bold ml-1">{post.userName || "Naandi Newsteam"}</strong>
+              {auth.currentUser && post.uid && post.uid !== auth.currentUser.uid && (
+                <button
+                  onClick={() => {
+                    const targetUser = allUsers.find(u => u.id === post.uid);
+                    if (targetUser) {
+                      setShowDirectMessages(true);
+                      setActiveDmUser(targetUser);
+                    }
+                  }}
+                  className="ml-2 text-blue-600 hover:bg-blue-50 p-1 rounded-full transition-colors inline-flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-blue-200"
+                  title="మెసేజ్ పంపండి (Direct Message)"
+                >
+                  <MessageCircle size={12} /> <span className="hidden sm:inline">Message</span>
+                </button>
+              )}
+            </span>
             <span className="text-slate-300">•</span>
             <span>Last updated <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</strong></span>
             <span className="text-slate-300">•</span>
@@ -24658,6 +24754,8 @@ function PostComments({
   isAdmin,
   allUsers,
   storageConfig,
+  setShowDirectMessages,
+  setActiveDmUser,
 }: {
   post: Post;
   addToast: (s: string) => void;
@@ -24665,6 +24763,8 @@ function PostComments({
   isAdmin: boolean;
   allUsers: UserProfile[];
   storageConfig: "cloudflare" | "firebase";
+  setShowDirectMessages?: (show: boolean) => void;
+  setActiveDmUser?: (user: any) => void;
 }) {
   const [comments, setComments] = useState<any[]>([]);
   const [dbComments, setDbComments] = useState<any[]>([]);
@@ -24728,8 +24828,10 @@ function PostComments({
   };
 
   const postRef = useRef(post);
+  const [liveLegacyComments, setLiveLegacyComments] = useState(post.comments || []);
   useEffect(() => {
     postRef.current = post;
+    setLiveLegacyComments(post.comments || []);
   }, [post]);
 
   const handleAddReply = async (commentId: string) => {
@@ -24925,6 +25027,7 @@ function PostComments({
           const updatedPostData = docSnap.data();
           if (updatedPostData.comments) {
             postRef.current = { ...postRef.current, comments: updatedPostData.comments, commentCount: updatedPostData.commentCount };
+            setLiveLegacyComments(updatedPostData.comments);
           }
         }
       },
@@ -24938,7 +25041,7 @@ function PostComments({
 
   useEffect(() => {
     const currentPost = postRef.current || post;
-    const legacyComments = currentPost.comments || [];
+    const legacyComments = liveLegacyComments || [];
     const combinedMap = new Map();
 
     legacyComments.forEach((c: any) => {
@@ -25007,7 +25110,7 @@ function PostComments({
         commentCount: trueCombinedCount,
       }).catch(() => {});
     }
-  }, [dbComments, optimisticComments, post.id, post.comments, sortOrder, showAdminOnly, allUsers]);
+  }, [dbComments, optimisticComments, post.id, liveLegacyComments, sortOrder, showAdminOnly, allUsers]);
 
   const handleToggleReaction = async (commentId: string, emoji: string) => {
     const uid = auth.currentUser?.uid;
@@ -25429,6 +25532,21 @@ function PostComments({
                     <AdminUserTooltip uid={c.uid} userName={c.userName && !String(c.userName).includes("@") ? c.userName : "User"} allUsers={allUsers} isAdmin={isAdmin} />
                   </span>
                   <CommentRoleBadge commentUid={c.uid} isAdminComment={c.isAdminComment} postUid={post.uid} allUsers={allUsers} />
+                  {auth.currentUser && c.uid !== auth.currentUser.uid && (
+                    <button
+                      onClick={() => {
+                        const targetUser = allUsers.find(u => u.id === c.uid);
+                        if (targetUser) {
+                          setShowDirectMessages(true);
+                          setActiveDmUser(targetUser);
+                        }
+                      }}
+                      className="text-blue-500 hover:bg-blue-50 p-1 rounded-full transition-colors flex items-center gap-1 text-[10px] font-bold"
+                      title="మెసేజ్ పంపండి (Direct Message)"
+                    >
+                      <MessageCircle size={12} /> <span className="hidden sm:inline">Message</span>
+                    </button>
+                  )}
                   {c.isOptimistic && (
                     <span className="bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
                       Posting...
@@ -25624,6 +25742,21 @@ function PostComments({
                           <span className="text-[12px] font-black text-slate-800 flex items-center gap-1.5 flex-wrap">
                             <AdminUserTooltip uid={reply.uid} userName={reply.userName || "User"} allUsers={allUsers} isAdmin={isAdmin} />
                             <CommentRoleBadge commentUid={reply.uid} isAdminComment={reply.isAdminComment} postUid={post.uid} allUsers={allUsers} />
+                            {auth.currentUser && reply.uid !== auth.currentUser.uid && (
+                              <button
+                                onClick={() => {
+                                  const targetUser = allUsers.find(u => u.id === reply.uid);
+                                  if (targetUser) {
+                                    setShowDirectMessages(true);
+                                    setActiveDmUser(targetUser);
+                                  }
+                                }}
+                                className="text-blue-500 hover:bg-blue-50 p-0.5 rounded-full transition-colors inline-flex items-center"
+                                title="మెసేజ్ పంపండి (Direct Message)"
+                              >
+                                <MessageCircle size={10} />
+                              </button>
+                            )}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
@@ -25921,6 +26054,10 @@ function SuggestionForm({
         time: Date.now(),
         createdAt: Date.now(),
       });
+      
+      // Send Telegram notification
+      sendTelegramNotification(`💡 <b>New Suggestion/Issue Submitted</b>\n\n<b>From:</b> ${name} (${village})\n<b>Mobile:</b> ${mobile || "N/A"}\n<b>Category:</b> ${category}\n<b>Message:</b> ${suggestion.substring(0, 150)}\n\n<i>Please review in the Suggestions panel.</i>`, "system");
+
       await addDoc(collection(db, "notifications"), {
         uid: "all",
         title: "కొత్త సూచన (Suggestion Alert)",
