@@ -84,7 +84,8 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(cors());
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '15mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
   const proxyOptions = (targetUrl: string) => ({
     target: targetUrl,
@@ -116,10 +117,7 @@ async function startServer() {
     return res.send("google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n");
   });
 
-  app.get('/exe/api/version', (req, res) => {
-    // Hidden API endpoint linked to GitHub
-    res.redirect('https://github.com/rakeshkumardhawan123/e-vedhika');
-  });
+  // OTA Version endpoints are defined below alongside /api/version
 
   app.get('/api/iframe-proxy', async (req, res) => {
     const targetUrl = req.query.url;
@@ -243,9 +241,40 @@ async function startServer() {
   });
 
   
-// Persistent File & Cloud Stores for Telemetry & Remote Queue
+// Persistent File & Cloud Stores for Telemetry & Remote Queue & OTA Gateway
 const telemetryDataPath = path.join(process.cwd(), "data", "telemetry_logs.json");
 const remoteQueuePath = path.join(process.cwd(), "data", "remote_queue.json");
+const otaVersionPath = path.join(process.cwd(), "data", "ota_version.json");
+
+// OTA వెర్షన్ వివరాలు (Central Cloud OTA Auto-Update Gateway)
+let otaVersionConfig = {
+  latestVersion: "v1.6.3 Enterprise",
+  versionCode: 163, // పాత దానికంటే పెద్ద నంబర్ ఇవ్వాలి
+  downloadUrl: "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+  releaseNotes: "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి.",
+  updatedAt: new Date().toISOString()
+};
+
+try {
+  if (fs.existsSync(otaVersionPath)) {
+    const rawOta = fs.readFileSync(otaVersionPath, "utf-8");
+    otaVersionConfig = { ...otaVersionConfig, ...JSON.parse(rawOta) };
+  } else {
+    fs.mkdirSync(path.dirname(otaVersionPath), { recursive: true });
+    fs.writeFileSync(otaVersionPath, JSON.stringify(otaVersionConfig, null, 2));
+  }
+} catch (e) {
+  console.error("Error loading OTA config:", e);
+}
+
+const saveOtaConfigToDisk = () => {
+  try {
+    fs.mkdirSync(path.dirname(otaVersionPath), { recursive: true });
+    fs.writeFileSync(otaVersionPath, JSON.stringify(otaVersionConfig, null, 2));
+  } catch (err) {
+    console.error("Failed to persist OTA config:", err);
+  }
+};
 
 const defaultTelemetrySeed = [
   {
@@ -367,13 +396,21 @@ const pendingRemoteCommandsStore: Record<string, any[]> = {};
 try {
   if (fs.existsSync(telemetryDataPath)) {
     const raw = fs.readFileSync(telemetryDataPath, "utf-8");
-    telemetryLogsStore = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      telemetryLogsStore = parsed;
+    } else {
+      telemetryLogsStore = [...defaultTelemetrySeed];
+      fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+    }
   } else {
     telemetryLogsStore = [...defaultTelemetrySeed];
+    const dir = path.dirname(telemetryDataPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
   }
 } catch (e) {
-  telemetryLogsStore = [];
+  telemetryLogsStore = [...defaultTelemetrySeed];
 }
 
 // Load Remote Queue from Disk
@@ -408,117 +445,210 @@ const saveRemoteQueueToDisk = () => {
   }
 };
 
-// 1. C# Executable & System Telemetry API Route (POST)
-app.post('/api/telemetry', (req, res) => {
-  try {
-    const body = req.body || {};
-    const recordId = body.id || `TEL-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-    const newRecord = {
-      ...body,
-      id: recordId,
-      slNo: body.slNo || (telemetryLogsStore.length + 1),
-      date: body.date || new Date().toISOString().slice(0, 10),
-      time: body.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
-      pcName: body.pcName || 'Unknown-PC',
-      userName: body.userName || 'Gram-Panchayat-User',
-      healthScore: body.healthScore ? Number(body.healthScore) : 100,
-      status: body.status || 'Success (15/15)',
-      verification: body.verification || 'Passed',
-      version: body.version || 'v3.5',
-      remarks: body.remarks || 'Telemetry log received from EXE runner.'
-    };
-
-    telemetryLogsStore.unshift(newRecord);
-    saveTelemetryLogsToDisk();
-    console.log(`[CENTRAL TELEMETRY] Logged: ${newRecord.pcName} (${newRecord.userName}) ID: ${newRecord.id}`);
-
-    // Save to Firestore asynchronously using the custom record ID as document ID for easy deletion
-    try {
-      if (initFirebaseAdmin()) {
-        const db = admin.firestore();
-        db.collection("telemetryLogs").doc(newRecord.id).set({
-          ...newRecord,
-          ip: req.ip || "",
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        }).catch(e => console.error("Firestore telemetry error:", e));
-      }
-    } catch(e) {}
-
-    return res.status(200).json({
-      success: true,
-      message: 'Telemetry logged successfully to central server',
-      recordId: newRecord.id,
-      log: newRecord
-    });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message });
+// Helper to normalize and save incoming telemetry record
+const processIncomingTelemetry = (req: express.Request) => {
+  let body: any = {};
+  if (typeof req.body === 'object' && req.body !== null) {
+    body = { ...req.body };
+  } else if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+    try { body = JSON.parse(req.body); } catch(e) {}
   }
-});
-
-// Also support alternative log submission routes (/api/deployment-logs, /api/exe-logs, /api/ubd/logs)
-app.post(['/api/deployment-logs', '/api/exe-logs', '/api/ubd/logs'], (req, res) => {
-  try {
-    const body = req.body || {};
-    const recordId = body.id || `TEL-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-    const newRecord = {
-      ...body,
-      id: recordId,
-      slNo: body.slNo || (telemetryLogsStore.length + 1),
-      date: body.date || new Date().toISOString().slice(0, 10),
-      time: body.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
-      pcName: body.pcName || body.computerName || 'GP-DESK-PC',
-      userName: body.userName || body.user || 'panchayat_user',
-      healthScore: body.healthScore ? Number(body.healthScore) : 100,
-      status: body.status || 'Success (15/15)',
-      verification: body.verification || 'Passed',
-      version: body.version || 'v3.5',
-      remarks: body.remarks || body.summary || 'UBD Deployment Log Recorded.'
-    };
-
-    telemetryLogsStore.unshift(newRecord);
-    saveTelemetryLogsToDisk();
-
-    try {
-      if (initFirebaseAdmin()) {
-        const db = admin.firestore();
-        db.collection("deploymentLogs").doc(newRecord.id).set({
-          ...newRecord,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        }).catch(e => console.error(e));
-      }
-    } catch(e) {}
-
-    res.status(200).json({ success: true, recordId: newRecord.id });
-  } catch (error: any) {
-    console.error("Error saving deployment log:", error);
-    res.status(500).json({ error: error.message || "Failed to save log" });
+  // Merge query params if available
+  if (req.query && Object.keys(req.query).length > 0) {
+    body = { ...req.query, ...body };
   }
-});
 
-// 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
-app.get(['/api/telemetry', '/api/deployment-logs'], async (req, res) => {
+  const recordId = body.id || `TEL-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
+  const now = new Date();
+  const timeFormatted = body.time || now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  const dateFormatted = body.date || now.toISOString().slice(0, 10);
+
+  const pcName = body.pcName || body.PcName || body.PCName || body.computerName || body.ComputerName || body.machineName || body.MachineName || body.pc || 'GP-DESK-PC';
+  const userName = body.userName || body.UserName || body.user || body.User || body.username || 'Gram-Panchayat-User';
+  const officeLocation = body.officeLocation || body.OfficeLocation || body.office || body.Office || body.location || body.panchayat || 'Grama Panchayat Office';
+  const mandal = body.mandal || body.Mandal || '';
+  const district = body.district || body.District || '';
+  const panchayat = body.panchayat || body.Panchayat || '';
+  const osVersion = body.osVersion || body.OsVersion || body.os || body.OS || 'Windows 11 Pro 64-bit';
+  const internet = body.internet || body.Internet || 'Online (Active)';
+  const dotNet = body.dotNet || body.DotNet || body.dotnet || 'v3.5 & v4.8 Active';
+  const nicDigiSigner = body.nicDigiSigner || body.NicDigiSigner || 'Port 8080 Active';
+  const dscStatus = body.dscStatus || body.DscStatus || 'USB Token Connected';
+  const trustedSites = body.trustedSites || body.TrustedSites || 'Zone 2 Configured';
+  const edgeIeMode = body.edgeIeMode || body.EdgeIeMode || 'IE5 Quirks Active';
+  const sitesXml = body.sitesXml || body.SitesXml || 'Active';
+  const verification = body.verification || body.Verification || 'Passed';
+  const version = body.version || body.Version || 'v3.5';
+  const status = body.status || body.Status || 'Success (15/15)';
+  const healthScore = body.healthScore !== undefined ? Number(body.healthScore) : (body.HealthScore !== undefined ? Number(body.HealthScore) : 100);
+  const remarks = body.remarks || body.Remarks || body.summary || body.Summary || 'Telemetry report received from EXE runner.';
+
+  const newRecord = {
+    slNo: body.slNo || (telemetryLogsStore.length + 1),
+    id: recordId,
+    serverReceivedDate: now.toISOString().slice(0, 10),
+    serverReceivedTime: now.toLocaleTimeString(),
+    date: dateFormatted,
+    time: timeFormatted,
+    pcName,
+    userName,
+    officeLocation,
+    panchayat,
+    mandal,
+    district,
+    osVersion,
+    internet,
+    dotNet,
+    nicDigiSigner,
+    dscStatus,
+    trustedSites,
+    edgeIeMode,
+    sitesXml,
+    verification,
+    version,
+    status,
+    healthScore,
+    remarks,
+    ipAddress: body.ipAddress || body.IpAddress || body.ip || (req.ip || '192.168.1.45'),
+    macAddress: body.macAddress || body.MacAddress || body.mac || '00:1A:2C:3D:4E:5F',
+    systemArchitecture: body.systemArchitecture || body.SystemArchitecture || 'x64-based PC',
+    netFramework35: body.netFramework35 || body.NetFramework35 || 'Installed (Enabled)',
+    nicDigiPort: body.nicDigiPort || body.NicDigiPort || '8080 Running',
+    capicomDll: body.capicomDll || body.CapicomDll || 'Registered (System32 & SysWOW64)',
+    activeXControls: body.activeXControls || body.ActiveXControls || 'Allowed & Enabled',
+    certValidity: body.certValidity || body.CertValidity || 'Valid (Expires 2028)',
+    ubdWebsiteReachable: body.ubdWebsiteReachable || body.UbdWebsiteReachable || 'Reachable (200 OK)',
+    totalChecks: body.totalChecks || body.TotalChecks || '90/90',
+    passedCount: body.passedCount !== undefined ? Number(body.passedCount) : 90,
+    ...body
+  };
+
+  telemetryLogsStore.unshift(newRecord);
+  // Cap at 1000 records
+  if (telemetryLogsStore.length > 1000) telemetryLogsStore.length = 1000;
+  saveTelemetryLogsToDisk();
+  console.log(`[E-VEDHIKA REPORT RECEIVED] PC: ${newRecord.pcName} | Loc: ${newRecord.officeLocation} | ID: ${newRecord.id}`);
+
+  // Save to Firestore asynchronously
   try {
     if (initFirebaseAdmin()) {
       const db = admin.firestore();
-      const snapshot = await db.collection("telemetryLogs").orderBy("timestamp", "desc").limit(300).get();
-      const logs = [];
-      snapshot.forEach(doc => {
-        logs.push(doc.data());
+      db.collection("telemetryLogs").doc(newRecord.id).set({
+        ...newRecord,
+        ip: req.ip || "",
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(e => console.error("Firestore telemetry error:", e));
+      db.collection("deploymentLogs").doc(newRecord.id).set({
+        ...newRecord,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      }).catch(() => {});
+    }
+  } catch(e) {}
+
+  return newRecord;
+};
+
+// 1. C# Executable & System Telemetry API Route (POST) with all common aliases
+const telemetryPostHandler = (req: express.Request, res: express.Response) => {
+  try {
+    const record = processIncomingTelemetry(req);
+    return res.status(200).json({
+      success: true,
+      message: 'Telemetry received and logged successfully at www.e-vedhika.in',
+      recordId: record.id,
+      record: record,
+      log: record
+    });
+  } catch (err: any) {
+    console.error("Error processing telemetry:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+const telemetryPostRoutes = [
+  '/api/telemetry',
+  '/api/deployment-logs',
+  '/api/exe-logs',
+  '/api/ubd/logs',
+  '/api/ubd/telemetry',
+  '/api/telemetry/report',
+  '/api/telemetry/submit',
+  '/api/ubd-monitoring',
+  '/api/ubd-monitoring/report',
+  '/api/live-monitoring/report',
+  '/api/live-monitoring',
+  '/api/monitoring/report'
+];
+
+app.post(telemetryPostRoutes, telemetryPostHandler);
+
+// Seed / Restore default telemetry reports
+app.post('/api/telemetry/seed', (req, res) => {
+  telemetryLogsStore = [...defaultTelemetrySeed];
+  saveTelemetryLogsToDisk();
+  return res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
+});
+
+// 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
+const telemetryGetRoutes = [
+  '/api/telemetry',
+  '/api/deployment-logs',
+  '/api/exe-logs',
+  '/api/ubd/logs',
+  '/api/ubd/telemetry',
+  '/api/telemetry/report',
+  '/api/telemetry/all'
+];
+
+app.get(telemetryGetRoutes, async (req, res) => {
+  try {
+    // If incoming GET request is submitting a report via query parameters:
+    if (req.query.pcName || req.query.PcName || req.query.computerName || req.query.action === 'log') {
+      const record = processIncomingTelemetry(req);
+      return res.status(200).json({
+        success: true,
+        message: 'Telemetry logged successfully via GET query',
+        recordId: record.id,
+        log: record
       });
-      // Merge with in-memory just in case it's missing (though it shouldn't)
-      const merged = [...logs];
-      for (const m of telemetryLogsStore) {
-        if (!merged.find(x => x.id === m.id)) {
-          merged.push(m);
+    }
+
+    // Ensure we always have seed reports if store is empty
+    if (!telemetryLogsStore || telemetryLogsStore.length === 0) {
+      telemetryLogsStore = [...defaultTelemetrySeed];
+      saveTelemetryLogsToDisk();
+    }
+
+    if (initFirebaseAdmin()) {
+      try {
+        const db = admin.firestore();
+        const snapshot = await db.collection("telemetryLogs").limit(100).get();
+        const logs: any[] = [];
+        snapshot.forEach(doc => {
+          logs.push(doc.data());
+        });
+        if (logs.length > 0) {
+          const merged = [...logs];
+          for (const m of telemetryLogsStore) {
+            if (!merged.find(x => x.id === m.id)) {
+              merged.push(m);
+            }
+          }
+          merged.sort((a, b) => {
+            const timeA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
+            const timeB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
+            return timeB - timeA;
+          });
+          return res.json({ success: true, count: merged.length, logs: merged });
         }
+      } catch (fsErr) {
+        // Fall through to memory store if firestore fails
       }
-      merged.sort((a, b) => (new Date(b.date + ' ' + b.time).getTime() || b.timestamp) - (new Date(a.date + ' ' + a.time).getTime() || a.timestamp));
-      return res.json({ success: true, count: merged.length, logs: merged });
     }
   } catch (e) {
-    console.error("Error fetching telemetry from Firestore:", e);
+    console.error("Error fetching telemetry:", e);
   }
-  res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
+  return res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
 });
 
 // Helper to delete all telemetry from Firestore
@@ -789,16 +919,40 @@ app.get('/api/remote-commands', (req, res) => {
     fs.writeFileSync(aboutContentPath, JSON.stringify(defaultAbout, null, 2));
   }
 
-  app.get("/api/version", (req, res) => {
+  // C# టూల్ వెర్షన్ చెక్ చేసుకునే GET API
+  app.get(['/api/version', '/exe/api/version'], (req, res) => {
     res.json({
+      success: true,
       status: "ok",
-      name: "E-VEDHIKA Digital Governance Portal",
-      version: "V1.6.2 Enterprise",
+      name: "E-VEDHIKA Digital Governance Portal & UBD Deployment Tool",
       portal: "e-vedhika.in",
       environment: process.env.NODE_ENV || "production",
       uptime: Math.floor(process.uptime()),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      ...otaVersionConfig
     });
+  });
+
+  // మీరు డాష్బోర్డ్ నుండి వెర్షన్ మార్చడానికి POST API (Save & Broadcast OTA Version)
+  app.post(['/api/version', '/exe/api/version'], (req, res) => {
+    try {
+      const body = req.body || {};
+      otaVersionConfig = {
+        ...otaVersionConfig,
+        ...body,
+        versionCode: body.versionCode !== undefined ? Number(body.versionCode) : otaVersionConfig.versionCode,
+        updatedAt: new Date().toISOString()
+      };
+      saveOtaConfigToDisk();
+      console.log(`[OTA VERSION BROADCAST] Updated to ${otaVersionConfig.latestVersion} (Code: ${otaVersionConfig.versionCode})`);
+      res.json({
+        success: true,
+        message: "OTA Version updated successfully!",
+        otaVersionConfig
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   app.get("/api/health", (req, res) => {

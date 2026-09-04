@@ -63,11 +63,14 @@ export function AuthModal({
   };
 
   const getFriendlyError = (err: any) => {
-    const code = err.code;
+    const code = err.code || err.message || "";
     if (code === "auth/user-not-found") return "User not found";
     if (code === "auth/wrong-password") return "Wrong password";
     if (code === "auth/invalid-email") return "Invalid email address";
     if (code === "auth/email-already-in-use") return "Email already in use";
+    if (code.includes("auth/unauthorized-domain") || code.includes("unauthorized-domain")) {
+      return "ఈ డొమైన్ Firebase Authentication లో ఇంకా అనుమతించబడలేదు. Firebase Console లో Authorized domains లో డొమైన్‌ను జోడించండి.";
+    }
     return err.message;
   };
 
