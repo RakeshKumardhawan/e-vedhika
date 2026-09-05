@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, X, Users, FileText, Lightbulb, AlertTriangle, Settings, 
   Code, Shield, Layers, ArrowRight, CornerDownLeft, Sparkles, Command,
-  Compass, FileCode2, Sliders, Database, ExternalLink
+  Compass, FileCode2, Sliders, Database, ExternalLink,
+  DollarSign, LayoutDashboard, Terminal, ShieldAlert, Globe, Palette, Rss, Bot, Megaphone, ShieldCheck, Languages, Package
 } from 'lucide-react';
 import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -21,7 +22,23 @@ export interface SearchResultItem {
 // System Menus & Admin Settings pages index for instant search navigation
 const SYSTEM_MENUS: SearchResultItem[] = [
   { id: 'm_overview', category: 'Menu', title: 'Live Admin Overview Dashboard', subtitle: 'Main analytics, quick metrics & system status', icon: Compass, actionKey: 'overview' },
+  { id: 'm_adsense', category: 'Menu', title: 'Google AdSense & Revenue Analytics', subtitle: 'Live monetization tracking, CTR & page-level ad performance', icon: DollarSign, actionKey: 'adsense' },
+  { id: 'm_cms', category: 'Menu', title: 'Visual Public Page & Content Manager (CMS)', subtitle: 'Manage public-facing pages, navbar items, and URL routes visually', icon: LayoutDashboard, actionKey: 'cms' },
+  { id: 'm_ci_cd', category: 'Menu', title: 'Zero-Touch Deployment & Server Logs', subtitle: 'GitHub/Render webhooks, live logs, one-click re-deploy & rollback', icon: Terminal, actionKey: 'ci_cd' },
+  { id: 'm_ai_copilot', category: 'Menu', title: 'AI Content Copilot & Auto-Generator', subtitle: 'Generate tech articles, explanations & code snippets instantly', icon: FileText, actionKey: 'ai_copilot' },
+  { id: 'm_seo', category: 'Menu', title: 'Automated Sitemap & SEO Generator', subtitle: 'Manage search engine indexing, crawler rules, and XML sitemaps', icon: Globe, actionKey: 'seo' },
+  { id: 'm_theme', category: 'Menu', title: 'Multi-Theme & CSS Injector', subtitle: 'Inject custom styles, theme variables, and scripts safely', icon: Palette, actionKey: 'theme' },
+  { id: 'm_db_backup', category: 'Menu', title: 'Multi-Database Backup & Restore Hub', subtitle: 'Manage Firestore backups, upload snapshots, and restore', icon: Database, actionKey: 'db_backup' },
+  { id: 'm_newsletter', category: 'Menu', title: 'Automated Newsletter & RSS Distributor', subtitle: 'Broadcast articles to Telegram, Twitter, Email, and RSS', icon: Rss, actionKey: 'newsletter' },
+  { id: 'm_moderation', category: 'Menu', title: 'Community Moderation & AI Spam Blocker', subtitle: 'Review user comments and forum posts automatically', icon: Bot, actionKey: 'moderation' },
+  { id: 'm_broadcast', category: 'Menu', title: 'Emergency Broadcast Alert System', subtitle: 'Trigger site-wide alert banners instantly', icon: Megaphone, actionKey: 'broadcast' },
+  { id: 'm_ai_seo', category: 'Menu', title: 'AI-Powered SEO Meta & Keyword Optimizer', subtitle: 'Intelligent tool generating meta titles, descriptions, and keywords', icon: Sparkles, actionKey: 'ai_seo' },
+  { id: 'm_ssl', category: 'Menu', title: 'SSL Expiry & Global Uptime Watchdog', subtitle: 'Automated monitoring tracking domain health and certificates', icon: ShieldCheck, actionKey: 'ssl' },
+  { id: 'm_localization', category: 'Menu', title: 'Multi-Language & Telugu Localization', subtitle: 'Manage dictionary strings, UI translations, and fallback languages', icon: Languages, actionKey: 'localization' },
+  { id: 'm_exe_release', category: 'Menu', title: 'Deployment (.exe Manager)', subtitle: 'Upload and manage EVedhikaUBDDeploymentTool.exe releases', icon: Package, actionKey: 'exe_release' },
   { id: 'm_health', category: 'Menu', title: 'Live System Health Center', subtitle: 'Database, Auth, API, Latency & Storage status', icon: Shield, actionKey: 'health' },
+  { id: 'm_ddos', category: 'Menu', title: 'API Rate Limiting & DDoS Protection (WAF)', subtitle: 'Automated IP blocking rules, rate limits & brute-force protection', icon: ShieldAlert, actionKey: 'ddos' },
+  { id: 'm_cdn', category: 'Menu', title: 'Global CDN & Cache Invalidation Control', subtitle: 'Manage edge cache, invalidate stale assets globally', icon: Globe, actionKey: 'cdn' },
   { id: 'm_errors', category: 'Menu', title: 'Live System Error Center', subtitle: 'Track exceptions, reasons, user IP, possible fixes, retry & resolve', icon: AlertTriangle, actionKey: 'errors' },
   { id: 'm_users', category: 'Menu', title: 'User Management & Directory', subtitle: 'Manage employee, citizen & admin accounts', icon: Users, actionKey: 'users' },
   { id: 'm_codemanager', category: 'Menu', title: 'Enterprise Code Manager & IDE', subtitle: 'Live CSS, HTML, JS & JSON editor with rollback', icon: Code, actionKey: 'codemanager' },
