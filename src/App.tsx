@@ -5646,8 +5646,8 @@ export default function App() {
         </aside>
 
         <main
-          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar px-3 sm:px-6 lg:px-8 py-3 sm:py-5"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
+          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar px-3 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-10"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}
         >
           {(isEvdkaPath || currentTab === "admin" || currentTab === "editor") &&
             (isAdmin || isEditor || isDevEmail) && (
