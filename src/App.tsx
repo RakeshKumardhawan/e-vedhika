@@ -4650,7 +4650,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-12 right-0 w-[300px] sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[2000] overflow-hidden"
+                  className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-12 max-w-[360px] mx-auto sm:mx-0 sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[2000] overflow-hidden"
                 >
                   <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                     <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
