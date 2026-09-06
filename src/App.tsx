@@ -3301,22 +3301,60 @@ export default function App() {
           const p = { id: snap.id, ...snap.data() } as UserProfile & { welcomeMessageSent?: boolean };
           setUserProfile(p);
           
-          if (!p.welcomeMessageSent) {
-            // Send welcome message and mark as sent
-            
-            updateDoc(doc(db, "users", user.uid), { welcomeMessageSent: true }).then(async () => {
-              const ticketRef = await addDoc(collection(db, "support_tickets"), {
+          if (!p.welcomeNotificationSent) {
+            // Send detailed welcome notification to existing & new users on login
+            updateDoc(doc(db, "users", user.uid), { welcomeNotificationSent: true }).then(async () => {
+              const WELCOME_MESSAGE = `నమస్కారం! 🙏
+
+మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Latest Intelligence Hub / Popular Pulse
+అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
+
+🔹 Latest Updates
+వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
+
+🔹 మన పేజీ
+Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Pre-Ad Service
+State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
+
+🔹 Live Chat
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot సహాయం కూడా అందుబాటులో ఉంది.
+
+🔹 Union Corner & Pulse
+Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
+
+🔹 Public Suggestions & Feedback
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా E-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+
+🔹 Application Formats & GOs
+కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
+
+🔹 Useful Information
+Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
+
+🔹 Excel → A4 Print
+Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
+
+🔹 PDF Compressor
+అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
+
+🔹 Farmer Registry Live Verification
+ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
+
+మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
+
+ధన్యవాదాలు 🙏
+E-Vedhika Team`;
+
+              await addDoc(collection(db, "notifications"), {
                 uid: user.uid,
-                userName: p.username || p.name || "User",
-                subject: "Welcome to E-VEDHIKA / ఈ వేదిక కు స్వాగతం",
-                status: "read",
-                createdAt: Date.now(),
-                updatedAt: Date.now()
-              });
-              await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
-                senderId: "admin",
-                senderName: "e-Vedika Team",
-                text: "ఈ వేదిక కు స్వాగతం! మీకు ఏమైనా సందేహాలు లేదా సమస్యలు ఉంటే ఇక్కడ మెసేజ్ చేయవచ్చు.\n\nWelcome to E-VEDHIKA! If you have any questions or issues, you can message us here.",
+                title: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)",
+                message: WELCOME_MESSAGE,
+                type: "system",
+                read: false,
                 time: Date.now()
               });
             }).catch(console.error);
@@ -3561,6 +3599,60 @@ export default function App() {
             designation: "",
             time: Date.now(),
           });
+
+          const WELCOME_MESSAGE = `నమస్కారం! 🙏
+
+మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Latest Intelligence Hub / Popular Pulse
+అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
+
+🔹 Latest Updates
+వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
+
+🔹 మన పేజీ
+Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Pre-Ad Service
+State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
+
+🔹 Live Chat
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot సహాయం కూడా అందుబాటులో ఉంది.
+
+🔹 Union Corner & Pulse
+Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
+
+🔹 Public Suggestions & Feedback
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా E-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+
+🔹 Application Formats & GOs
+కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
+
+🔹 Useful Information
+Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
+
+🔹 Excel → A4 Print
+Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
+
+🔹 PDF Compressor
+అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
+
+🔹 Farmer Registry Live Verification
+ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
+
+మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
+
+ధన్యవాదాలు 🙏
+E-Vedhika Team`;
+
+          await addDoc(collection(db, "notifications"), {
+            uid: result.user.uid,
+            title: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)",
+            message: WELCOME_MESSAGE,
+            type: "system",
+            read: false,
+            time: Date.now()
+          }).catch(() => {});
         }
         
         const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
