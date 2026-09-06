@@ -74,10 +74,10 @@ export function DeploymentTerminal() {
               {new Date().toLocaleTimeString([], { hour12: false })}
             </span>
             <span className={`
-              ${log.includes('[SYSTEM]') ? 'text-blue-400' : ''}
-              ${log.includes('[GITHUB]') ? 'text-purple-400' : ''}
-              ${log.includes('✔') || log.includes('🚀') ? 'text-emerald-400 font-bold' : ''}
-              ${log.includes('Error') ? 'text-rose-400' : 'text-slate-300'}
+              ${log?.includes('[SYSTEM]') ? 'text-blue-400' : ''}
+              ${log?.includes('[GITHUB]') ? 'text-purple-400' : ''}
+              ${log?.includes('✔') || log?.includes('🚀') ? 'text-emerald-400 font-bold' : ''}
+              ${log?.includes('Error') ? 'text-rose-400' : 'text-slate-300'}
             `}>
               {log}
             </span>

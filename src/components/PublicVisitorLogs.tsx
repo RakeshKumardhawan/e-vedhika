@@ -62,12 +62,8 @@ export function PublicVisitorLogs() {
                 return;
               } catch (e) {}
             }
-            // Seamless mock logs if database is empty/unreachable
-            setLogs([
-              { id: "v1", ip: "182.72.112.4", district: "HYDERABAD", area: "Khairatabad", device: "Desktop (Chrome)", page: "/Home", timestamp: Date.now() - 300000, userAgent: "Mozilla/5.0" },
-              { id: "v2", ip: "183.82.101.12", district: "MEDCHAL", area: "Kukatpally", device: "Mobile (Android)", page: "/Workspace", timestamp: Date.now() - 900000, userAgent: "Mozilla/5.0" },
-              { id: "v3", ip: "49.205.142.88", district: "RANGAAREDDY", area: "Gachibowli", device: "Desktop (Firefox)", page: "/Farmer_Registry", timestamp: Date.now() - 1800000, userAgent: "Mozilla/5.0" }
-            ]);
+            // No fake mock logs - genuine empty state
+            setLogs([]);
             setError(false);
             setLoading(false);
           });

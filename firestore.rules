@@ -8,7 +8,7 @@ match /posts/{postId} {
   
   // Allow updates to post counters like views, commentCount, likes, etc. for anyone, or full updates for admins/owners:
   allow update: if true;
-  allow create: if isSignedIn();
+  allow create: if isSignedIn() && (incoming().uid != 'all' || isAdmin());
   allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   
   match /comments/{commentId} {
@@ -93,12 +93,13 @@ match /suggestions/{suggestionId} {
 
 match /users/{userId} {
   allow read: if isSignedIn(); 
-  allow create, update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+  allow create: if isAdmin() || (isSignedIn() && request.auth.uid == userId && (!('role' in incoming()) || incoming().role == 'user'));
+  allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && (!('role' in incoming()) || incoming().role == (resource == null ? null : resource.data.role)));
   allow delete: if isSuperAdmin(); // అకౌంట్స్ డిలీట్ చేసే పవర్ కేవలం సూపర్ అడ్మిన్ కి మాత్రమే
 }
 
 match /chat/{msgId} {
-  allow read: if true;
+  allow read: if isAdmin() || (isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.receiverId == request.auth.uid));
   allow create: if isSignedIn() && isOwner('uid');
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
@@ -128,103 +129,52 @@ match /forms/{formId} {
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
 
-match /notifications/{document=**} {
-  allow read, write: if true;
+
+match /support_tickets/{ticketId} {
+  allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+  allow create: if isSignedIn() && incoming().uid == request.auth.uid;
+  allow update, delete: if isAdmin();
+  
+  match /messages/{messageId} {
+    allow read: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.uid == request.auth.uid);
+    allow create: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.uid == request.auth.uid && (incoming().senderId == request.auth.uid || incoming().senderId == 'admin'));
+    allow update, delete: if isAdmin();
+  }
 }
 
-match /users/{document=**} {
-  allow read, write: if true;
+match /notifications/{notifId} {
+  allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.uid == 'all');
+  allow create: if isSignedIn();
+  allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
 }
-
-match /chat/{document=**} {
-  allow read, write: if true;
+match /security_logs/{logId} {
+  allow read: if isAdmin();
+  allow create: if true;
+  allow update, delete: if false;
 }
-
-match /problems/{document=**} {
-  allow read, write: if true;
+match /audit_logs/{logId} {
+  allow read: if isAdmin();
+  allow create: if true;
+  allow update, delete: if false;
 }
-
-match /requests/{document=**} {
-  allow read, write: if true;
-}
-
-match /suggestions/{document=**} {
-  allow read, write: if true;
-}
-
-match /usernames/{username} {
-  allow read, write: if true;
-}
-
-match /settings/{document=**} {
-  allow read, write: if true;
-}
-
-match /site_settings/{document=**} {
-  allow read, write: if true;
-}
-
-match /system_errors/{document=**} {
-  allow read, write: if true;
-}
-
-match /app_errors/{document=**} {
-  allow read, write: if true;
-}
-
-match /security_logs/{document=**} {
-  allow read, write: if true;
-}
-
-match /polls/{document=**} {
-  allow read, write: if true;
-}
-
-match /home_sections/{document=**} {
-  allow read, write: if true;
-}
-
-match /deploymentLogs/{document=**} {
-  allow read, write: if true;
-}
-
-match /telemetryLogs/{document=**} {
-  allow read, write: if true;
-}
-
-match /remoteQueue/{document=**} {
-  allow read, write: if true;
-}
-
-match /gpdp_plans/{document=**} {
-  allow read, write: if true;
-}
-match /ubdDataChunks/{document=**} {
-  allow read, write: if true;
-}
-match /custom_code/{document=**} {
-  allow read, write: if true;
-}
-
-
-match /daily_traffic/{document=**} {
-  allow read, write: if true;
-}
-match /visitor_logs/{document=**} {
-  allow read, write: if true;
-}
-
-match /user_tracking/{document=**} {
-  allow read, write: if true;
-}
-
-match /direct_messages/{document=**} {
-  allow read, write: if true;
-}
-
-match /typing_status/{document=**} {
-  allow read, write: if true;
-}
+match /usernames/{username} { allow read: if true; allow write: if isSignedIn(); }
+match /settings/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /site_settings/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /system_errors/{document=**} { allow read: if isAdmin(); allow create: if true; }
+match /app_errors/{document=**} { allow read: if isAdmin(); allow create: if true; }
+match /polls/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /home_sections/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /deploymentLogs/{document=**} { allow read: if true; allow write: if true; }
+match /telemetryLogs/{document=**} { allow read: if true; allow write: if true; }
+match /system_alerts/{document=**} { allow read: if true; allow write: if true; }
+match /remoteQueue/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
+match /gpdp_plans/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /ubdDataChunks/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
+match /custom_code/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /daily_traffic/{document=**} { allow read: if isAdmin(); allow create: if true; allow update: if true; }
+match /visitor_logs/{document=**} { allow read: if isAdmin(); allow create: if true; }
+match /user_tracking/{document=**} { allow read: if isAdmin(); allow create: if true; }
+match /typing_status/{document=**} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
 
 // Default deny (fallback) - పైన పేర్కొనని కలెక్షన్స్ ఏవైనా ఉంటే వాటిని బ్లాక్ చేస్తుంది
 match /{document=**} {

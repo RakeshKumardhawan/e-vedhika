@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+const fs = require('fs');
+let content = fs.readFileSync('src/components/admin/EmergencyBroadcast.tsx', 'utf8');
+
+const replacement = `import React, { useState } from 'react';
 import { Megaphone, AlertOctagon, Send, X, Activity, Users, User } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -31,8 +34,11 @@ export function EmergencyBroadcast() {
       });
 
       // Audit Log
-      await addDoc(collection(db, "security_logs"), {
-        category: "SETTINGS_CHANGE", title: "Broadcast Message Sent", description: "Broadcast sent to " + (targetType === "all" ? "All Users" : targetUid), admin: "Admin", time: Date.now()
+      await addDoc(collection(db, "audit_logs"), {
+        action: "Broadcast Message Sent",
+        target: targetType === 'all' ? 'All Users' : targetUid,
+        timestamp: Date.now(),
+        actor: "Admin"
       });
 
       Swal.fire("Success", "Broadcast message sent successfully", "success");
@@ -65,13 +71,13 @@ export function EmergencyBroadcast() {
             <div className="flex gap-2">
               <button 
                 onClick={() => setTargetType('all')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${targetType === 'all' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                className={\`flex-1 py-2 rounded-xl text-xs font-bold transition-all border \${targetType === 'all' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600'}\`}
               >
                 <Users size={14} className="inline mr-1" /> All Users
               </button>
               <button 
                 onClick={() => setTargetType('individual')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border ${targetType === 'individual' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                className={\`flex-1 py-2 rounded-xl text-xs font-bold transition-all border \${targetType === 'individual' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600'}\`}
               >
                 <User size={14} className="inline mr-1" /> Specific User
               </button>
@@ -130,4 +136,7 @@ export function EmergencyBroadcast() {
       </div>
     </div>
   );
-}
+}`;
+
+content = replacement;
+fs.writeFileSync('src/components/admin/EmergencyBroadcast.tsx', content, 'utf8');

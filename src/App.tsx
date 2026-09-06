@@ -153,7 +153,7 @@ import {  DollarSign,
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp, ImageOff, CheckCheck, } from "lucide-react";
+  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -266,6 +266,7 @@ import {
   setDoc,
   deleteField,
   serverTimestamp,
+  or,
 } from "firebase/firestore";
 import {
   ref,
@@ -602,6 +603,8 @@ interface Post {
   mediaUrl?: string;
   mediaType?: string;
   mediaName?: string;
+  fileUrl?: string;
+  fileName?: string;
   likes: number;
   reactions?: Record<string, string[]>;
   views: number;
@@ -2523,6 +2526,7 @@ export default function App() {
   const [problemMessage, setProblemMessage] = useState("");
   const [isRecordingProblem, setIsRecordingProblem] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showContactAdmin, setShowContactAdmin] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isSuggestionsHovered, setIsSuggestionsHovered] = useState(false);
@@ -2739,9 +2743,11 @@ export default function App() {
   const [typingUsers, setTypingUsers] = useState<{ [uid: string]: boolean }>({});
 
   // Global listener for all direct messages to compute unread badge
+    
+
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(collection(db, "chat"), (snapshot) => {
+    const unsub = onSnapshot(query(collection(db, "chat"), or(where("uid", "==", user.uid), where("receiverId", "==", user.uid))), (snapshot) => {
       const msgs = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
         .filter((m: any) => m.receiverId); // Only get DMs
@@ -2795,7 +2801,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user || !showDirectMessages) return;
-    const unsub = onSnapshot(collection(db, "chat"), async (snapshot) => {
+    const unsub = onSnapshot(query(collection(db, "chat"), or(where("uid", "==", user.uid), where("receiverId", "==", user.uid))), async (snapshot) => {
       const msgs = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() }))
         .filter((m: any) => m.receiverId) // Ensure it's a DM
@@ -3292,11 +3298,32 @@ export default function App() {
       doc(db, "users", user.uid),
       (snap) => {
         if (snap.exists()) {
-          const p = { id: snap.id, ...snap.data() } as UserProfile;
+          const p = { id: snap.id, ...snap.data() } as UserProfile & { welcomeMessageSent?: boolean };
           setUserProfile(p);
+          
+          if (!p.welcomeMessageSent) {
+            // Send welcome message and mark as sent
+            
+            updateDoc(doc(db, "users", user.uid), { welcomeMessageSent: true }).then(async () => {
+              const ticketRef = await addDoc(collection(db, "support_tickets"), {
+                uid: user.uid,
+                userName: p.username || p.name || "User",
+                subject: "Welcome to E-VEDHIKA / ఈ వేదిక కు స్వాగతం",
+                status: "read",
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+              });
+              await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
+                senderId: "admin",
+                senderName: "e-Vedika Team",
+                text: "ఈ వేదిక కు స్వాగతం! మీకు ఏమైనా సందేహాలు లేదా సమస్యలు ఉంటే ఇక్కడ మెసేజ్ చేయవచ్చు.\n\nWelcome to E-VEDHIKA! If you have any questions or issues, you can message us here.",
+                time: Date.now()
+              });
+            }).catch(console.error);
+          }
 
           if (p.name || p.username) {
-            if (p.status === "Approved" && !hasGreetedRef.current) {
+            if (p.status === "published" && !hasGreetedRef.current) {
               hasGreetedRef.current = true;
               const honorific = p.gender === "Female" ? "Madam" : "Sir";
               addToast(`Welcome to E-vedhika website, ${honorific}!`);
@@ -3641,7 +3668,7 @@ export default function App() {
     if (p.status === "Deleted") return false;
 
     const pStatus = (p.status || "").toLowerCase();
-    const isApproved = ["approved", "active"].includes(pStatus);
+    const isApproved = ["approved", "active", "published"].includes(pStatus);
     const isAuthor = Boolean(user?.uid && p.uid === user.uid);
     const canSeePending = isAdmin || isEditor || isDevEmail;
 
@@ -3729,6 +3756,18 @@ export default function App() {
       }
     });
 
+    const officialConv = conversations.get("e-vedika-official");
+    const officialUser = {
+      id: "e-vedika-official",
+      name: "e-Vedika Team",
+      role: "system",
+      lastMessageAt: officialConv ? officialConv.lastMessageAt : 0,
+      lastMessageText: officialConv ? officialConv.lastMessageText : "",
+      lastMessageSender: officialConv ? officialConv.lastMessageSender : "",
+      lastMessageRead: officialConv ? officialConv.lastMessageRead : false,
+      unreadCount: officialConv ? officialConv.unread : 0
+    } as any;
+
     const filteredUsers = allUsers
       .filter(u => u.id !== user.uid)
       .map(u => {
@@ -3742,6 +3781,11 @@ export default function App() {
           unreadCount: conv ? conv.unread : 0
         };
       });
+      
+    if (officialConv) {
+      filteredUsers.unshift(officialUser);
+    }
+
 
     const q = dmSearchQuery.toLowerCase();
     if (q) {
@@ -5366,47 +5410,67 @@ export default function App() {
             )}
             {isEvdkaPath || currentTab === "admin" || currentTab === "editor" ? (
               <>
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-4">
-                  Admin Control Center
+                <div className="px-3 pb-2 mb-2 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">
+                    Admin Control Center
+                  </span>
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-md text-[9px] font-black">
+                    Live
+                  </span>
+                </div>
+
+                {/* 1. DASHBOARD */}
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-2 mb-2">
+                  Dashboard
+                </h3>
+                <MenuButton
+                  label="Analytics Hub / Overview"
+                  icon={LayoutGrid}
+                  active={activeAdminSubTab === "dash" || activeAdminSubTab === "overview" || activeAdminSubTab === "super_admin"}
+                  onClick={() => {
+                    setActiveAdminSubTab("dash");
+                    if (window.innerWidth < 1024) setSidebarOpen(false);
+                  }}
+                />
+
+                {/* 2. CONTENT */}
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-5 mb-2">
+                  Content
                 </h3>
                 {[
-                  { id: "dash", label: "Analytics Hub", icon: BarChart3 },
-                  { id: "exe_ubd_live", label: "EXE & UBD Live Monitoring", icon: Radio },
                   { id: "reports", label: "Posts & Issues", icon: FileText },
-                  { id: "gos_formats", label: "GOs & Formats", icon: FileText },
+                  { id: "moderation", label: "Pending Submissions", icon: CheckSquare },
+                  { id: "gos_formats", label: "GOs & Formats", icon: FileSpreadsheet },
+                  ...(isAdmin || isDevEmail ? [
+                    { id: "cms", label: "Content CMS", icon: LayoutDashboard },
+                    { id: "builder", label: "Page Builder", icon: Wrench },
+                    { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
+                    { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
+                    { id: "locations", label: "Manage Locations", icon: MapPin },
+                  ] : []),
+                ].map((item) => (
+                  <MenuButton
+                    key={item.id}
+                    label={item.label}
+                    icon={item.icon}
+                    active={activeAdminSubTab === item.id || (item.id === "landing_page_config" && ["landing_page_config", "seo_meta", "page_descriptions"].includes(activeAdminSubTab))}
+                    onClick={() => {
+                      setActiveAdminSubTab(item.id);
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
+                    }}
+                  />
+                ))}
+
+                {/* 3. COMMUNICATION */}
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-5 mb-2">
+                  Communication
+                </h3>
+                {[
+                  { id: "admin_inbox", label: "Admin Inbox", icon: Inbox },
+                  { id: "support", label: "Support System", icon: MessageCircle },
+                  { id: "chat_mgmt", label: "User Chat Management", icon: MessageSquare },
+                  { id: "broadcast", label: "Broadcast Messages", icon: Megaphone },
                   { id: "updates", label: "Flash News", icon: Zap },
-                  { id: "users", label: "User Access", icon: Users },
-                  ...(isAdmin || isDevEmail
-                    ? [
-                        {
-                          id: "staff_management",
-                          label: "Staff Management",
-                          icon: Shield,
-                        },
-                        {
-                          id: "rbac",
-                          label: "Role Matrix (RBAC)",
-                          icon: Lock,
-                        },
-                        { id: "logs", label: "Security Logs", icon: ShieldAlert },
-                        { id: "visitor_logs", label: "Visitor Logs (పబ్లిక్)", icon: Globe },
-                        {
-                          id: "farmer_registry_logs",
-                          label: "Farmer Registry Logs",
-                          icon: FileText,
-                        },
-                        {
-                          id: "survey_reports",
-                          label: "Survey Reports",
-                          icon: Database,
-                        },
-                        {
-                          id: "static_pages_admin",
-                          label: "About E-Vedhika",
-                          icon: Info,
-                        },
-                      ]
-                    : []),
                 ].map((item) => (
                   <MenuButton
                     key={item.id}
@@ -5420,46 +5484,49 @@ export default function App() {
                   />
                 ))}
 
+                {/* 4. USERS */}
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-5 mb-2">
+                  Users
+                </h3>
+                {[
+                  { id: "users", label: "User Access", icon: Users },
+                  ...(isAdmin || isDevEmail ? [
+                    { id: "roles", label: "Roles & Permissions", icon: Fingerprint },
+                  ] : []),
+                ].map((item) => (
+                  <MenuButton
+                    key={item.id}
+                    label={item.label}
+                    icon={item.icon}
+                    active={activeAdminSubTab === item.id}
+                    onClick={() => {
+                      setActiveAdminSubTab(item.id);
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
+                    }}
+                  />
+                ))}
+
+                {/* 5. MONITORING / LOGS */}
                 {(isAdmin || isDevEmail) && (
                   <>
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-6 mb-4">
-                      Operations & Content
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-5 mb-2">
+                      Monitoring & Logs
                     </h3>
                     {[
-                      { id: "builder", label: "Page Builder", icon: Wrench },
-                      { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
+                      { id: "exe_ubd_live", label: "EXE & UBD Live Monitoring", icon: Radio },
+                      { id: "logs", label: "Security Logs", icon: ShieldAlert },
+                      { id: "visitor_logs", label: "Visitor Logs (పబ్లిక్)", icon: Globe },
+                      { id: "farmer_registry_logs", label: "Farmer Registry Logs", icon: FileText },
+                      { id: "survey_reports", label: "Survey Reports", icon: Database },
+                      { id: "health", label: "Live System Health", icon: HeartPulse },
+                      { id: "ddos", label: "DDoS Protection", icon: ShieldCheck },
+                      { id: "ssl", label: "SSL & Uptime Watchdog", icon: ShieldCheck },
                     ].map((item) => (
                       <MenuButton
                         key={item.id}
                         label={item.label}
                         icon={item.icon}
-                        active={activeAdminSubTab === item.id}
-                        onClick={() => {
-                          setActiveAdminSubTab(item.id);
-                          if (window.innerWidth < 1024) setSidebarOpen(false);
-                        }}
-                      />
-                    ))}
-                    <MenuButton
-                      label="Landing Page Config"
-                      icon={Globe}
-                      active={["landing_page_config", "seo_meta", "page_descriptions"].includes(activeAdminSubTab)}
-                      onClick={() => {
-                        setActiveAdminSubTab("landing_page_config");
-                        if (window.innerWidth < 1024) setSidebarOpen(false);
-                      }}
-                    />
-                    {[
-                      { id: "locations", label: "Locations", icon: MapPin },
-                      { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
-                      { id: "changelog", label: "Version History", icon: Sparkles },
-                      { id: "trash", label: "Trash / Bin", icon: Trash2 },
-                    ].map((item) => (
-                      <MenuButton
-                        key={item.id}
-                        label={item.label}
-                        icon={item.icon}
-                        active={activeAdminSubTab === item.id}
+                        active={activeAdminSubTab === item.id || (item.id === "logs" && activeAdminSubTab === "security")}
                         onClick={() => {
                           setActiveAdminSubTab(item.id);
                           if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -5469,18 +5536,36 @@ export default function App() {
                   </>
                 )}
 
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-6 mb-4">
-                  System & AI Control
+                {/* 6. SYSTEM */}
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-5 mb-2">
+                  System
                 </h3>
-                <MenuButton
-                  label="System Config"
-                  icon={Settings}
-                  active={["settings", "ads", "code_manager", "ai", "cloud_dns"].includes(activeAdminSubTab)}
-                  onClick={() => {
-                    setActiveAdminSubTab("settings");
-                    if (window.innerWidth < 1024) setSidebarOpen(false);
-                  }}
-                />
+                {[
+                  { id: "notifications", label: "Notifications", icon: Bell },
+                  ...(isAdmin || isDevEmail ? [
+                    { id: "db_backup", label: "Database Backups", icon: Database },
+                    { id: "settings", label: "System Config", icon: Settings },
+                    { id: "ai", label: "Gemini AI Node", icon: Bot },
+                    { id: "cloud_dns", label: "Cloud & DNS", icon: Cloud },
+                    { id: "static_pages_admin", label: "About E-Vedhika", icon: Info },
+                  ] : []),
+                  { id: "suggestions", label: "Public Suggestions", icon: Lightbulb },
+                  { id: "changelog", label: "Version History", icon: Rocket },
+                  ...(isAdmin || isDevEmail ? [
+                    { id: "trash", label: "Recycle Bin", icon: Trash2 },
+                  ] : []),
+                ].map((item) => (
+                  <MenuButton
+                    key={item.id}
+                    label={item.label}
+                    icon={item.icon}
+                    active={activeAdminSubTab === item.id || (item.id === "settings" && ["settings", "ads", "code_manager"].includes(activeAdminSubTab))}
+                    onClick={() => {
+                      setActiveAdminSubTab(item.id);
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
+                    }}
+                  />
+                ))}
 
                 <div className="h-px bg-slate-100 my-4 mx-2" />
 
@@ -9392,8 +9477,50 @@ function LocationManager({
   );
 }
 
+
 function MyActivity({ user, userProfile, problems, suggestions, posts, setShowProfileModal }: any) {
-  const [activeTab, setActiveTab] = useState<"posts" | "problems" | "suggestions">("posts");
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportSubject, setSupportSubject] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "support_tickets"), where("uid", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      setSupportTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a:any, b:any) => b.updatedAt - a.updatedAt));
+    });
+    return () => unsub();
+  }, [user]);
+
+  const handleSubmitSupport = async () => {
+    if(!supportSubject.trim() || !supportMessage.trim()) return;
+    try {
+      const docRef = await addDoc(collection(db, "support_tickets"), {
+        uid: user.uid,
+        userName: userProfile?.username || user.displayName || "User",
+        subject: supportSubject,
+        status: "new",
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+      await addDoc(collection(db, "support_tickets", docRef.id, "messages"), {
+        senderId: user.uid,
+        senderName: userProfile?.username || user.displayName || "User",
+        text: supportMessage,
+        time: Date.now()
+      });
+      setShowSupportModal(false);
+      setSupportSubject("");
+      setSupportMessage("");
+      Swal.fire("Success", "Your message has been sent to the Admin.", "success");
+    } catch(e) {
+      console.error(e);
+      Swal.fire("Error", "Could not send message.", "error");
+    }
+  };
+
+  const [activeTab, setActiveTab] = useState<"posts" | "problems" | "suggestions" | "support">("posts");
 
   const myPosts = posts?.filter(
     (p: any) => p.uid === user?.uid || p.authorId === user?.uid || p.author === userProfile?.username
@@ -9471,8 +9598,15 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
         >
           My Posts ({myPosts.length})
         </button>
+        
         <button
-          aria-label="My Problems"
+          aria-label="Support Tickets"
+          onClick={() => setActiveTab("support")}
+          className={`py-2 px-4 font-black text-sm uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === "support" ? "text-primary border-b-2 border-primary" : "text-slate-400 hover:text-slate-600"}`}
+        >
+          Message Admin (${supportTickets.length})
+        </button>
+        <button aria-label="My Problems"
           onClick={() => setActiveTab("problems")}
           className={`py-2 px-4 font-black text-sm uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === "problems" ? "text-primary border-b-2 border-primary" : "text-slate-400 hover:text-slate-600"}`}
         >
@@ -9544,6 +9678,63 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
               No posts published yet.
             </div>
           ))}
+
+        
+        {activeTab === "support" && (
+          <div className="space-y-4">
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setShowSupportModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-blue-500 transition-colors flex items-center gap-2">
+                <MessageSquare size={16} /> Contact Admin
+              </button>
+            </div>
+            {supportTickets.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-slate-500 font-medium">You have no support tickets.</p>
+              </div>
+            ) : (
+              supportTickets.map(t => (
+                <div key={t.id} className="p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between items-start gap-4 hover:border-slate-300 transition-all">
+                  <div className="w-full flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">{t.subject}</h4>
+                      <p className="text-xs text-slate-400 mt-1">{new Date(t.createdAt).toLocaleString()}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${t.status === 'new' ? 'bg-blue-100 text-blue-800' : t.status === 'read' ? 'bg-slate-100 text-slate-800' : t.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {showSupportModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="font-black text-lg text-slate-800">Message Admin</h3>
+                <button onClick={() => setShowSupportModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4 overflow-y-auto">
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Subject</label>
+                  <input type="text" value={supportSubject} onChange={e => setSupportSubject(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Brief subject" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Message</label>
+                  <textarea value={supportMessage} onChange={e => setSupportMessage(e.target.value)} rows={5} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Describe your issue or request here..."></textarea>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button onClick={() => setShowSupportModal(false)} className="px-4 py-2 text-slate-600 font-bold text-sm hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
+                <button onClick={handleSubmitSupport} className="px-4 py-2 bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 rounded-xl transition-colors">Send Message</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {activeTab === "problems" &&
           (myProblems.length > 0 ? (
@@ -10664,7 +10855,7 @@ function AdminPanel({
 
   const menuCategories = [
     {
-      title: isEditorMode ? "Content Hub" : "Core Hub",
+      title: "Dashboard",
       items: [
         ...(hasViewPermission("dash") && !(hasPostsOnly || isEditorMode)
           ? [
@@ -10673,19 +10864,28 @@ function AdminPanel({
                 label: isEditorMode ? "My Panel" : "Analytics Hub",
                 icon: <LayoutGrid size={18} />,
               },
-              {
-                id: "exe_ubd_live",
-                label: "EXE & UBD Live Monitoring",
-                icon: <Radio size={18} />,
-              },
             ]
           : []),
+      ],
+    },
+    {
+      title: "Content",
+      items: [
         ...(hasViewPermission("reports")
           ? [
               {
                 id: "reports",
                 label: isEditorMode ? "My Posts & Issues" : "Posts & Issues",
                 icon: <Flag size={18} />,
+              },
+            ]
+          : []),
+        ...(isEffectiveAdmin
+          ? [
+              {
+                id: "moderation",
+                label: "Pending Submissions",
+                icon: <CheckSquare size={18} />,
               },
             ]
           : []),
@@ -10700,94 +10900,15 @@ function AdminPanel({
                     },
                   ]
                 : []),
-              ...(hasViewPermission("updates")
+              ...(isEffectiveAdmin
                 ? [
                     {
-                      id: "updates",
-                      label: "Flash News",
-                      icon: <Zap size={18} />,
+                      id: "cms",
+                      label: "Content CMS",
+                      icon: <LayoutDashboard size={18} />,
                     },
                   ]
                 : []),
-              ...(isEditor
-                ? [
-                    {
-                      id: "static_pages_admin",
-                      label: " About E-Vedhika",
-                      icon: <Info size={18} />,
-                    },
-                  ]
-                : []),
-            ]
-          : []),
-      ],
-    },
-    ...(!(hasPostsOnly || isEditorMode)
-      ? [
-          {
-            title: "Security & Staff",
-            items: [
-              ...(hasViewPermission("users")
-                ? [
-                    {
-                      id: "users",
-                      label: "User Access",
-                      icon: <Fingerprint size={18} />,
-                    },
-                  ]
-                : []),
-              ...(isSuperAdmin || isAdmin
-                ? [
-                    {
-                      id: "staff_management",
-                      label: "Staff & Permissions",
-                      icon: <Shield size={18} />,
-                    },
-                    {
-                      id: "rbac",
-                      label: "Role Matrix (RBAC)",
-                      icon: <Lock size={18} />,
-                    },
-                  ]
-                : []),
-              ...(hasViewPermission("logs") && isEffectiveAdmin
-                ? [
-                    {
-                      id: "logs",
-                      label: "Security Logs",
-                      icon: <ShieldCheck size={18} />,
-                    },
-                    {
-                      id: "visitor_logs",
-                      label: "Visitor Logs (పబ్లిక్)",
-                      icon: <Globe size={18} />,
-                    },
-                    {
-                      id: "farmer_registry_logs",
-                      label: "Farmer Registry Logs",
-                      icon: <Database size={18} />,
-                    },
-                    {
-                      id: "survey_reports",
-                      label: "Survey Reports",
-                      icon: <BarChart3 size={18} />,
-                    },
-                  ]
-                : []),
-              ...(hasViewPermission("cloud_dns") && isEffectiveAdmin
-                ? [
-                    {
-                      id: "cloud_dns",
-                      label: "Cloud & DNA",
-                      icon: <Cloud size={18} />,
-                    },
-                  ]
-                : []),
-            ],
-          },
-          {
-            title: "Operations",
-            items: [
               ...(hasViewPermission("builder")
                 ? [
                     {
@@ -10825,35 +10946,136 @@ function AdminPanel({
                     },
                   ]
                 : []),
-              ...(hasViewPermission("suggestions")
+            ]
+          : []),
+      ],
+    },
+    ...(!(hasPostsOnly || isEditorMode)
+      ? [
+          {
+            title: "Communication",
+            items: [
+              ...(isEffectiveAdmin
                 ? [
                     {
-                      id: "suggestions",
-                      label: "Public Suggestions and Feedback",
+                      id: "admin_inbox",
+                      label: "Admin Inbox",
+                      icon: <Inbox size={18} />,
+                    },
+                    {
+                      id: "support",
+                      label: "Support System",
+                      icon: <MessageCircle size={18} />,
+                    },
+                    {
+                      id: "chat_mgmt",
+                      label: "User Chat Management",
                       icon: <MessageSquare size={18} />,
+                    },
+                    {
+                      id: "broadcast",
+                      label: "Broadcast Messages",
+                      icon: <Megaphone size={18} />,
                     },
                   ]
                 : []),
-              ...(hasViewPermission("trash")
+              ...(hasViewPermission("updates")
                 ? [
                     {
-                      id: "trash",
-                      label: "Recycle Bin",
-                      icon: <Trash2 size={18} />,
+                      id: "updates",
+                      label: "Flash News",
+                      icon: <Zap size={18} />,
                     },
                   ]
                 : []),
             ],
           },
           {
-            title: "Metadata",
+            title: "Users",
             items: [
-              ...(hasViewPermission("changelog")
+              ...(hasViewPermission("users")
                 ? [
                     {
-                      id: "changelog",
-                      label: "What's New",
-                      icon: <Rocket size={18} />,
+                      id: "users",
+                      label: "User Access",
+                      icon: <Fingerprint size={18} />,
+                    },
+                  ]
+                : []),
+              ...(isSuperAdmin || isAdmin
+                ? [
+                    {
+                      id: "roles",
+                      label: "Roles & Permissions",
+                      icon: <UserCheck size={18} />,
+                    },
+                  ]
+                : []),
+            ],
+          },
+          {
+            title: "Monitoring & Logs",
+            items: [
+              {
+                id: "exe_ubd_live",
+                label: "EXE & UBD Live Monitoring",
+                icon: <Radio size={18} />,
+              },
+              ...(hasViewPermission("logs") && isEffectiveAdmin
+                ? [
+                    {
+                      id: "logs",
+                      label: "Security Logs",
+                      icon: <ShieldCheck size={18} />,
+                    },
+                    {
+                      id: "visitor_logs",
+                      label: "Visitor Logs (పబ్లిక్)",
+                      icon: <Globe size={18} />,
+                    },
+                    {
+                      id: "farmer_registry_logs",
+                      label: "Farmer Registry Logs",
+                      icon: <Database size={18} />,
+                    },
+                    {
+                      id: "survey_reports",
+                      label: "Survey Reports",
+                      icon: <BarChart3 size={18} />,
+                    },
+                    {
+                      id: "health",
+                      label: "Live System Health",
+                      icon: <HeartPulse size={18} />,
+                    },
+                    {
+                      id: "ddos",
+                      label: "DDoS Protection",
+                      icon: <ShieldAlert size={18} />,
+                    },
+                    {
+                      id: "ssl",
+                      label: "SSL & Uptime Watchdog",
+                      icon: <Radio size={18} />,
+                    },
+                  ]
+                : []),
+            ],
+          },
+          {
+            title: "System",
+            items: [
+              ...(isEffectiveAdmin
+                ? [
+                    {
+                      id: "notifications",
+                      label: "Notifications",
+                      icon: <Bell size={18} />,
+                    },
+                    {
+                      id: "db_backup",
+                      label: "Database Backups",
+                      icon: <Database size={18} />,
                     },
                   ]
                 : []),
@@ -10873,6 +11095,51 @@ function AdminPanel({
                 : []),
               ...(hasViewPermission("ai")
                 ? [{ id: "ai", label: "Gemini AI", icon: <Bot size={18} /> }]
+                : []),
+              ...(hasViewPermission("cloud_dns") && isEffectiveAdmin
+                ? [
+                    {
+                      id: "cloud_dns",
+                      label: "Cloud & DNS",
+                      icon: <Cloud size={18} />,
+                    },
+                  ]
+                : []),
+              ...(isEditor
+                ? [
+                    {
+                      id: "static_pages_admin",
+                      label: " About E-Vedhika",
+                      icon: <Info size={18} />,
+                    },
+                  ]
+                : []),
+              ...(hasViewPermission("suggestions")
+                ? [
+                    {
+                      id: "suggestions",
+                      label: "Public Suggestions",
+                      icon: <MessageSquare size={18} />,
+                    },
+                  ]
+                : []),
+              ...(hasViewPermission("changelog")
+                ? [
+                    {
+                      id: "changelog",
+                      label: "What's New",
+                      icon: <Rocket size={18} />,
+                    },
+                  ]
+                : []),
+              ...(hasViewPermission("trash")
+                ? [
+                    {
+                      id: "trash",
+                      label: "Recycle Bin",
+                      icon: <Trash2 size={18} />,
+                    },
+                  ]
                 : []),
             ],
           },
@@ -11546,8 +11813,11 @@ function AdminPanel({
                 </div>
               </div>
             )}
-            {activeSubTab === "dash" && (
-              <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} />
+            
+            
+            
+            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles"].includes(activeSubTab) && (
+              <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} activeTab={activeSubTab} />
             )}
 
             {(activeSubTab === "reports" || activeSubTab === "suggestions") && (
@@ -14224,7 +14494,7 @@ function AdminPanel({
                   {updates
                     .filter(
                       (u) =>
-                        (u.type === "changelog" || u.status === "Approved") &&
+                        (u.type === "changelog" || u.status === "published") &&
                         u.status?.toLowerCase() !== "deleted",
                     )
                     .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
@@ -14460,423 +14730,6 @@ function AdminPanel({
                       </p>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {activeSubTab === "staff_management" && (isSuperAdmin || isAdmin) && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 max-w-6xl mx-auto">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm text-left">
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[22px] flex items-center justify-center shadow-sm border border-blue-100/50">
-                      <Shield size={28} />
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                        సిబ్బంది & అనుమతుల నిర్వహణ (Staff & Permissions)
-                      </h4>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                        User IDలు, సెక్యూరిటీ పిన్స్ మరియు కార్యాచరణ అనుమతుల
-                        నిర్వహణ
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <a
-                      href="#rbac-matrix"
-                      className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white hover:bg-black shadow-lg transition-all flex items-center gap-2"
-                    >
-                      <Lock size={14} /> Permissions Matrix
-                    </a>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {users
-                    .filter((u: any) =>
-                      ["admin", "editor", "moderator"].includes(
-                        (u.role || "").toLowerCase(),
-                      ),
-                    )
-                    .map((u: any) => {
-                      const userPinData = allUserPins.find(
-                        (p) => p.id === u.id,
-                      );
-                      return (
-                        <motion.div
-                          layout
-                          key={u.id}
-                          className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group text-left"
-                        >
-                          <div className="absolute top-0 right-0 p-4">
-                            <span
-                              className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                u.role === "admin"
-                                  ? "bg-red-50 text-red-600 border border-red-100"
-                                  : u.role === "editor"
-                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                    : "bg-amber-50 text-amber-600 border border-amber-100"
-                              }`}
-                            >
-                              {u.role || "Staff"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4 mb-6">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-50 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
-                              {u.photoURL ? (
-                                <img
-                                  src={u.photoURL}
-                                  alt={u.name}
-                                  className="w-full h-full object-cover"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <User size={30} className="text-slate-300" />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <h3 className="text-lg font-black text-slate-800 truncate leading-tight">
-                                {u.name || "Anonymous Staff"}
-                              </h3>
-                              <p className="text-xs font-bold text-slate-400 truncate">
-                                {u.email}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4 pt-4 border-t border-slate-50">
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                User Unique ID
-                              </p>
-                              <code className="text-[10px] font-mono text-blue-600 bg-blue-50 px-2 py-1 rounded-lg block truncate">
-                                {u.id}
-                              </code>
-                            </div>
-
-                            <div className="space-y-1">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                                Access Security PIN
-                                <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1.5 rounded uppercase">
-                                  Verified
-                                </span>
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-900 text-white font-mono text-xl tracking-[0.5em] py-2 px-4 rounded-xl text-center shadow-inner border border-slate-800">
-                                  {userPinData?.pin || "NOT SET"}
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    Swal.fire({
-                                      title: `Reset PIN for ${u.name}`,
-                                      input: "text",
-                                      inputLabel: "Enter New 4-Digit PIN",
-                                      inputAttributes: {
-                                        maxlength: "4",
-                                        autocapitalize: "off",
-                                        autocorrect: "off",
-                                      },
-                                      showCancelButton: true,
-                                      confirmButtonText: "Update PIN",
-                                      confirmButtonColor: "#2563eb",
-                                    }).then(async (result) => {
-                                      if (result.isConfirmed && result.value) {
-                                        if (result.value.length === 4) {
-                                          await setDoc(
-                                            doc(db, "user_pins", u.id),
-                                            { pin: result.value },
-                                            { merge: true },
-                                          );
-                                          addToast("PIN Updated Successfully");
-                                        } else {
-                                          addToast("PIN must be 4 digits");
-                                        }
-                                      }
-                                    });
-                                  }}
-                                  className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                >
-                                  <Settings2 size={18} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="pt-2">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                Role Assignment
-                              </p>
-                              <div className="flex gap-2">
-                                {["admin", "editor", "moderator"].map(
-                                  (role) => (
-                                    <button
-                                      key={role}
-                                      onClick={async () => {
-                                        try {
-                                          await updateDoc(
-                                            doc(db, "users", u.id),
-                                            { role },
-                                          );
-                                          addToast(`Role changed to ${role}`);
-                                        } catch (e: any) {
-                                          addToast(e.message);
-                                        }
-                                      }}
-                                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border ${
-                                        u.role === role
-                                          ? "bg-slate-900 border-slate-900 text-white"
-                                          : "bg-white border-slate-200 text-slate-400 hover:border-blue-300 hover:text-blue-500"
-                                      }`}
-                                    >
-                                      {role}
-                                    </button>
-                                  ),
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-
-                  {users.filter((u: any) =>
-                    ["admin", "editor", "moderator"].includes(
-                      (u.role || "").toLowerCase(),
-                    ),
-                  ).length === 0 && (
-                    <div className="col-span-full p-20 text-center bg-white border-2 border-dashed border-slate-100 rounded-[48px]">
-                      <ShieldOff
-                        size={40}
-                        className="mx-auto text-slate-200 mb-4"
-                      />
-                      <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest">
-                        No Staff Members Found
-                      </h3>
-                      <p className="text-xs font-bold text-slate-350 mt-2">
-                        Promote users from local directory to see them here.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Permissions Matrix Section */}
-                <div
-                  id="rbac-matrix"
-                  className="bg-white p-10 rounded-[44px] border border-slate-100 shadow-xl space-y-8 mt-12 animate-in fade-in duration-700 text-left"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-50">
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                        <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                          <Lock size={22} />
-                        </span>
-                        కార్యాచరణ అనుమతుల నియంత్రణ (Permissions Matrix)
-                      </h3>
-                      <p className="text-slate-400 font-bold mt-1 text-xs uppercase tracking-widest pl-14">
-                        Set permissions for staff roles globally
-                      </p>
-                    </div>
-
-                    <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-fit">
-                      {["editor", "moderator"].map((role) => (
-                        <button
-                          key={role}
-                          onClick={() => setSelectedRbacRole(role)}
-                          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                            selectedRbacRole === role
-                              ? "bg-white text-blue-600 shadow-sm scale-105"
-                              : "text-slate-500 hover:text-slate-700"
-                          }`}
-                        >
-                           {role}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-[32px] border border-slate-50">
-                    <table className="w-full text-left border-collapse bg-white">
-                      <thead>
-                        <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          <th className="py-5 pl-8 text-left">Module NAME</th>
-                          <th className="py-5 text-center">VIEW (చూడవచ్చు)</th>
-                          <th className="py-5 text-center">
-                            EDIT (మార్చవచ్చు)
-                          </th>
-                          <th className="py-5 text-center">
-                            DELETE (తొలగింపు)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 text-left">
-                        {Object.entries({
-                          dash: {
-                            name: "Analytics Hub",
-                            desc: "ముఖ్యమైన గణాంకాలు & గ్రాఫ్‌ల వీక్షణ",
-                          },
-                          reports: {
-                            name: "Posts & Issues ( సమస్యలు )",
-                            desc: "పౌరుల సమస్యల పరిష్కారం, మరియు పోస్టుల అనుమతి",
-                          },
-                          gos_formats: {
-                            name: "GOs & Formats ( జీవోలు )",
-                            desc: "సర్కారు కొత్త జీవోలు, దరఖాస్తు ఫార్మాట్ల నియంత్రణ",
-                          },
-                          updates: {
-                            name: "Flash News ( ఫ్లాష్ న్యూస్ )",
-                            desc: "ముఖ్యమైన ప్రకటనలు, స్క్రోలింగ్ తాజా వార్తలు",
-                          },
-                          users: {
-                            name: "User Access ( యూజర్ల అడ్మిన్ )",
-                            desc: "మెంబర్ల సమాచారం మరియు సిబ్బంది నియామక బాధ్యతలు",
-                          },
-                          builder: {
-                            name: "Page Builder ( డిజైన్ బిల్డర్ )",
-                            desc: "వెబ్ సైట్ ప్రధాన పేజీ లేఅవుట్ మార్చుకునే సదుపాయం",
-                          },
-                          locations: {
-                            name: "Manage Locations ( లొకేషన్లు )",
-                            desc: "మండలాలు, గ్రామ పంచాయతీల జాబితా ఎడిట్ చెయ్",
-                          },
-                          suggestions: {
-                            name: "Suggestion & Feedback ( సలహాలు )",
-                            desc: "పౌరుల సలహాల స్వీకరణ మరియు వారి ఫీడ్ బ్యాక్ సమాధానాలు",
-                          },
-                          trash: {
-                            name: "Recycle Bin ( డస్ట్ బిన్ )",
-                            desc: "డిలీట్ చేసిన రికార్డుల రీసైకిల్ వీక్షణ మరియు పునరుద్ధరణ",
-                          },
-                          logs: {
-                            name: "Security Logs ( లాగ్లు )",
-                            desc: "అడ్మిన్ల లాగిన్ మరియు ఎడిట్ లాగ్ వివరాల డేటాబేస్",
-                          },
-                          settings: {
-                            name: "System Config ( కాన్ఫిగరేషన్ )",
-                            desc: "అడ్మిన్ యాక్సెస్ పిన్ మార్చుకునే సమగ్ర సిస్టమ్ సెట్టింగ్స్",
-                          },
-                          ai: {
-                            name: "Gemini AI Node ( అసిస్టెంట్ )",
-                            desc: "జెమినీ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అసిస్టెంట్ యాక్సెస్",
-                          },
-                        }).map(([key, item]) => {
-                          const currentPerm = rbacPermissions?.[
-                            selectedRbacRole
-                          ]?.[key] ||
-                            DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || {
-                              view: false,
-                              edit: false,
-                              delete: false,
-                            };
-                          return (
-                            <tr
-                              key={key}
-                              className="hover:bg-slate-50/50 transition-colors"
-                            >
-                              <td className="py-5 pl-8 text-left pr-4">
-                                <p className="font-bold text-slate-800 text-sm leading-tight">
-                                  {item.name}
-                                </p>
-                                <p className="text-[10px] text-slate-400 mt-1 font-bold">
-                                  {item.desc}
-                                </p>
-                              </td>
-                              <td className="py-5 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={!!currentPerm.view}
-                                  onChange={(e) => {
-                                    const updated = { ...rbacPermissions };
-                                    if (!updated[selectedRbacRole])
-                                      updated[selectedRbacRole] = {};
-                                    if (!updated[selectedRbacRole][key])
-                                      updated[selectedRbacRole][key] = {};
-                                    updated[selectedRbacRole][key].view =
-                                      e.target.checked;
-                                    if (!e.target.checked) {
-                                      updated[selectedRbacRole][key].edit =
-                                        false;
-                                      updated[selectedRbacRole][key].delete =
-                                        false;
-                                    }
-                                    setRbacPermissions(updated);
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                                />
-                              </td>
-                              <td className="py-5 text-center">
-                                <input
-                                  type="checkbox"
-                                  disabled={!currentPerm.view}
-                                  checked={!!currentPerm.edit}
-                                  onChange={(e) => {
-                                    const updated = { ...rbacPermissions };
-                                    if (!updated[selectedRbacRole])
-                                      updated[selectedRbacRole] = {};
-                                    if (!updated[selectedRbacRole][key])
-                                      updated[selectedRbacRole][key] = {};
-                                    updated[selectedRbacRole][key].edit =
-                                      e.target.checked;
-                                    setRbacPermissions(updated);
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                />
-                              </td>
-                              <td className="py-5 text-center">
-                                <input
-                                  type="checkbox"
-                                  disabled={!currentPerm.view}
-                                  checked={!!currentPerm.delete}
-                                  onChange={(e) => {
-                                    const updated = { ...rbacPermissions };
-                                    if (!updated[selectedRbacRole])
-                                      updated[selectedRbacRole] = {};
-                                    if (!updated[selectedRbacRole][key])
-                                      updated[selectedRbacRole][key] = {};
-                                    updated[selectedRbacRole][key].delete =
-                                      e.target.checked;
-                                    setRbacPermissions(updated);
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-6 border-t border-slate-50">
-                    <button
-                      onClick={() =>
-                        setRbacPermissions({ ...DEFAULT_PERMISSIONS })
-                      }
-                      className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all border border-slate-100"
-                    >
-                      Reset To Defaults
-                    </button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          await setDoc(
-                            doc(db, "settings", "rbac_permissions"),
-                            {
-                              roles: rbacPermissions,
-                              lastUpdated: Date.now(),
-                              updatedBy:
-                                auth.currentUser?.email || "Super Admin",
-                            },
-                          );
-                          addToast(" permissions updated successfully!");
-                        } catch (err: any) {
-                          addToast(err.message);
-                        }
-                      }}
-                      className="px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-600/25 transition-all"
-                    >
-                      Save Global Config
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
@@ -15152,369 +15005,7 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
               </div>
             )}
 
-            {activeSubTab === "rbac" && (isSuperAdmin || isAdmin) && (
-              <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl hover:shadow-2xl transition-all pb-12 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
-                  <div className="text-left">
-                    <h3 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                      <span className="p-3 bg-blue-100 text-blue-600 rounded-3xl">
-                        <Lock size={26} />
-                      </span>
-                      కార్యాచరణ అనుమతుల నియంత్రణ (Permissions Matrix)
-                    </h3>
-                    <p className="text-slate-500 font-bold mt-2 text-sm">
-                      విభిన్న సిబ్బంది పాత్రలు (Roles) కోసం ఖచ్చితమైన
-                      వ్యూ/ఎడిట్/డిలీట్ అనుమతులను ఇక్కడ డైనమిక్గా సెట్ చేయండి.
-                    </p>
-                  </div>
-
-                  <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
-                    {["editor", "moderator"].map((role) => (
-                      <button
-                        key={role}
-                        aria-label={`Select ${role}`}
-                        onClick={() => setSelectedRbacRole(role)}
-                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                          selectedRbacRole === role
-                            ? "bg-white text-blue-600 shadow-sm scale-105"
-                            : "text-slate-500 hover:text-slate-705"
-                        }`}
-                      >
-                         {role.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto rounded-[32px] border border-slate-100 shadow-sm">
-                  <table className="w-full text-left border-collapse bg-white">
-                    <thead>
-                      <tr className="bg-slate-50/75 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <th className="py-5 pl-8 text-left">
-                          మాడ్యూల్ పేరు (Module)
-                        </th>
-                        <th className="py-5 text-center">చూడవచ్చు (View)</th>
-                        <th className="py-5 text-center">మార్చవచ్చు (Edit)</th>
-                        <th className="py-5 text-center">
-                          తొలగించవచ్చు (Delete)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {Object.entries({
-                        dash: {
-                          name: "Analytics Hub",
-                          desc: "ముఖ్యమైన గణాంకాలు & గ్రాఫ్‌ల వీక్షణ",
-                        },
-                        reports: {
-                          name: "Posts & Issues ( సమస్యలు )",
-                          desc: "పౌరుల సమస్యల పరిష్కారం, మరియు పోస్టుల అనుమతి",
-                        },
-                        gos_formats: {
-                          name: "GOs & Formats ( జీవోలు )",
-                          desc: "సర్కారు కొత్త జీవోలు, దరఖాస్తు ఫార్మాట్ల నియంత్రణ",
-                        },
-                        updates: {
-                          name: "Flash News ( ఫ్లాష్ న్యూస్ )",
-                          desc: "ముఖ్యమైన ప్రకటనలు, స్క్రోలింగ్ తాజా వార్తలు",
-                        },
-                        users: {
-                          name: "User Access ( యూజర్ల అడ్మిన్ )",
-                          desc: "మెంబర్ల సమాచారం మరియు సిబ్బంది నియామక బాధ్యతలు",
-                        },
-                        builder: {
-                          name: "Page Builder ( డిజైన్ బిల్డర్ )",
-                          desc: "వెబ్ సైట్ ప్రధాన పేజీ లేఅవుట్ మార్చుకునే సదుపాయం",
-                        },
-                        locations: {
-                          name: "Manage Locations ( లొకేషన్లు )",
-                          desc: "మండలాలు, గ్రామ పంచాయతీల జాబితా ఎడిట్ చెయ్",
-                        },
-                        suggestions: {
-                          name: "Suggestion & Feedback ( సలహాలు )",
-                          desc: "పౌరుల సలహాల స్వీకరణ మరియు వారి ఫీడ్ బ్యాక్ సమాధానాలు",
-                        },
-                        trash: {
-                          name: "Recycle Bin ( డస్ట్ బిన్ )",
-                          desc: "డిలీట్ చేసిన రికార్డుల రీసైకిల్ వీక్షణ మరియు పునరుద్ధరణ",
-                        },
-                        logs: {
-                          name: "Security Logs ( లాగ్లు )",
-                          desc: "అడ్మిన్ల లాగిన్ మరియు ఎడిట్ లాగ్ వివరాల డేటాబేస్",
-                        },
-                        settings: {
-                          name: "System Config ( కాన్ఫిగరేషన్ )",
-                          desc: "అడ్మిన్ యాక్సెస్ పిన్ మార్చుకునే సమగ్ర సిస్టమ్ సెట్టింగ్స్",
-                        },
-                        ai: {
-                          name: "Gemini AI Node ( అసిస్టెంట్ )",
-                          desc: "జెమినీ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ అసిస్టెంట్ యాక్సెస్",
-                        },
-                      }).map(([key, item]) => {
-                        const currentPerm = rbacPermissions?.[
-                          selectedRbacRole
-                        ]?.[key] ||
-                          DEFAULT_PERMISSIONS[selectedRbacRole]?.[key] || {
-                            view: false,
-                            edit: false,
-                            delete: false,
-                          };
-                        return (
-                          <tr
-                            key={key}
-                            className="hover:bg-slate-50/50 transition-colors"
-                          >
-                            <td className="py-5 pl-8 text-left pr-4">
-                              <p className="font-bold text-slate-850 text-sm">
-                                {item.name}
-                              </p>
-                              <p className="text-[11px] text-slate-400 mt-0.5 font-semibold">
-                                {item.desc}
-                              </p>
-                            </td>
-                            <td className="py-5 text-center">
-                              <input
-                                type="checkbox"
-                                checked={!!currentPerm.view}
-                                onChange={(e) => {
-                                  const updated = { ...rbacPermissions };
-                                  if (!updated[selectedRbacRole])
-                                    updated[selectedRbacRole] = {};
-                                  if (!updated[selectedRbacRole][key])
-                                    updated[selectedRbacRole][key] = {};
-                                  updated[selectedRbacRole][key].view =
-                                    e.target.checked;
-                                  if (!e.target.checked) {
-                                    updated[selectedRbacRole][key].edit = false;
-                                    updated[selectedRbacRole][key].delete =
-                                      false;
-                                  }
-                                  setRbacPermissions(updated);
-                                }}
-                                className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                              />
-                            </td>
-                            <td className="py-5 text-center">
-                              <input
-                                type="checkbox"
-                                disabled={!currentPerm.view}
-                                checked={!!currentPerm.edit}
-                                onChange={(e) => {
-                                  const updated = { ...rbacPermissions };
-                                  if (!updated[selectedRbacRole])
-                                    updated[selectedRbacRole] = {};
-                                  if (!updated[selectedRbacRole][key])
-                                    updated[selectedRbacRole][key] = {};
-                                  updated[selectedRbacRole][key].edit =
-                                    e.target.checked;
-                                  setRbacPermissions(updated);
-                                }}
-                                className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                              />
-                            </td>
-                            <td className="py-5 text-center">
-                              <input
-                                type="checkbox"
-                                disabled={!currentPerm.view}
-                                checked={!!currentPerm.delete}
-                                onChange={(e) => {
-                                  const updated = { ...rbacPermissions };
-                                  if (!updated[selectedRbacRole])
-                                    updated[selectedRbacRole] = {};
-                                  if (!updated[selectedRbacRole][key])
-                                    updated[selectedRbacRole][key] = {};
-                                  updated[selectedRbacRole][key].delete =
-                                    e.target.checked;
-                                  setRbacPermissions(updated);
-                                }}
-                                className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                  <button
-                    onClick={() =>
-                      setRbacPermissions({ ...DEFAULT_PERMISSIONS })
-                    }
-                    className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-650 hover:bg-slate-200 transition-all"
-                  >
-                    Reset to Defaults
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await setDoc(doc(db, "settings", "rbac_permissions"), {
-                          roles: rbacPermissions,
-                          lastUpdated: Date.now(),
-                          updatedBy: auth.currentUser?.email || "Super Admin",
-                        });
-                        addToast(
-                          " కార్యాచరణ అనుమతులు డైనమిక్గా అప్‌డేట్ అయ్యాయి!",
-                        );
-                      } catch (err: any) {
-                        addToast("మార్పులు చేయడంలో విఫలమైంది: " + err.message);
-                      }
-                    }}
-                    className="px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-500 shadow-xl shadow-blue-600/25 cursor-pointer transition-all"
-                  >
-                    Save Permissions • కాన్ఫిగ్ సేవ్‌చెయ్
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {(activeSubTab === "exe_ubd_live" || activeSubTab === "exe_ubd") && (
-              <ExeUbdLiveMonitoring />
-            )}
-
-            {activeSubTab === "logs" && (
-              <SecurityLogsSection />
-            )}
-
-            {activeSubTab === "visitor_logs" && (
-              <PublicVisitorLogs />
-            )}
-
-            {/* Survey Reports (సర్వే రిపోర్ట్స్) */}
-            {activeSubTab === "survey_reports" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[22px] flex items-center justify-center shadow-sm border border-blue-100/50">
-                    <BarChart3 size={28} />
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">
-                      సర్వే రిపోర్ట్స్ (Survey Data Index)
-                    </h4>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                      Analytics based on processed farmer records
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                  {Object.keys(farmerRegistryJobs).length === 0 ? (
-                    <div className="p-20 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[40px]">
-                      <p className="text-sm text-slate-400 font-bold italic">
-                        ప్రస్తుతానికి ఎటువంటి రిపోర్ట్స్ లేవు. (No reports
-                        generated yet)
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-[40px] border border-slate-100 shadow-xl overflow-hidden">
-                      <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-100">
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Village/GP
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Status
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Records
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Date
-                              </th>
-                              <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-50">
-                            {Object.values(farmerRegistryJobs)
-                              .reverse()
-                              .map((job: any) => (
-                                <tr
-                                  key={job.id}
-                                  className="hover:bg-slate-50/50 transition-colors group"
-                                >
-                                  <td className="p-6">
-                                    <p className="text-sm font-black text-slate-800">
-                                      {job.gpName}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                      ID: {job.id}
-                                    </p>
-                                  </td>
-                                  <td className="p-6">
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                        job.status === "completed"
-                                          ? "bg-emerald-50 text-emerald-600"
-                                          : job.status === "failed"
-                                            ? "bg-rose-50 text-rose-600"
-                                            : "bg-amber-50 text-amber-600"
-                                      }`}
-                                    >
-                                      {job.status}
-                                    </span>
-                                  </td>
-                                  <td className="p-6">
-                                    <p className="text-sm font-black text-slate-600">
-                                      {job.totalRecords || 0}
-                                    </p>
-                                  </td>
-                                  <td className="p-6">
-                                    <p className="text-xs font-bold text-slate-500">
-                                      {new Date(
-                                        job.createdAt,
-                                      ).toLocaleDateString()}
-                                    </p>
-                                  </td>
-                                  <td className="p-6 text-right">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      {job.outputPath &&
-                                        job.status === "completed" && (
-                                          <button
-                                            onClick={(e) =>
-                                              handleForceDownload(
-                                                e,
-                                                "/api/reports/" +
-                                                  job.outputPath,
-                                                `${job.gpName}_Status_Report.xlsx`,
-                                              )
-                                            }
-                                            className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                            title="Download Report"
-                                          >
-                                            <Download size={16} />
-                                          </button>
-                                        )}
-                                      <button
-                                        onClick={() =>
-                                          handleDeleteFarmerJob(job.id)
-                                        }
-                                        className="p-2.5 bg-slate-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                                        title="Delete"
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Edit Static Pages (స్టాటిక్ పేజీల ఎడిటర్) */}
-            {activeSubTab === "static_pages_admin" && (
-              <StaticPagesAdmin addToast={addToast} />
-            )}
-                          {activeSubTab === "settings" && (
+            {activeSubTab === "settings" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div className="space-y-8">
                   <div>
@@ -21837,7 +21328,7 @@ function PostForm({
         addToast("Update Saved!");
         
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
-        if (isAdmin || isEditor || editingPost.status === "Approved") {
+        if (isAdmin || isEditor || editingPost.status === "published") {
           await addDoc(collection(db, "notifications"), {
             uid: "all",
             type: "post_update",
@@ -21876,7 +21367,7 @@ function PostForm({
           userPhoto:
             isEditor || isAdmin ? "" : currentUserProfile?.photoURL || "",
           isAdminPost: isEditor || isAdmin,
-          status: isEditor || isAdmin ? "Approved" : "Pending",
+          status: isEditor || isAdmin ? "published" : "pending",
         });
 
         const hasUpdateTag =
@@ -23327,6 +22818,7 @@ function MenuButton({
   emoji,
   icon: Icon,
   tourId,
+  customClasses,
 }: {
   label: string;
   active: boolean;
@@ -23334,6 +22826,7 @@ function MenuButton({
   emoji?: string;
   icon?: any;
   tourId?: string;
+  customClasses?: string;
 }) {
   return (
     <motion.button
@@ -23343,7 +22836,7 @@ function MenuButton({
       onClick={() => { onClick(); }}
       style={{ width: "100%", border: "none" }}
       className={`flex items-center p-2.5 mb-1.5 rounded-2xl font-bold cursor-pointer transition-all group ${
-        active
+        customClasses ? customClasses : active
           ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
           : "bg-transparent text-slate-600 hover:bg-slate-100/80"
       }`}

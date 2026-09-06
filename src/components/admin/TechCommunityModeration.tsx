@@ -1,15 +1,53 @@
 import React, { useState } from 'react';
-import { MessageSquare, Shield, CheckCircle, Trash2, Bot, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Shield, CheckCircle, Trash2, Bot, AlertTriangle, MessageCircle } from 'lucide-react';
+import { collection, onSnapshot, query, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { db } from '../../../firebase';
 
 export function TechCommunityModeration() {
-  const [comments, setComments] = useState([
-    { id: 1, user: 'Pavan', content: 'This React tutorial is very helpful!', spamScore: 2, status: 'pending' },
-    { id: 2, user: 'CryptoBot', content: 'Earn $1000 daily! Click here: http://spam.link', spamScore: 98, status: 'pending' },
-    { id: 3, user: 'Anusha', content: 'Can you explain the useMemo hook?', spamScore: 5, status: 'pending' },
-  ]);
+  const [pendingPosts, setPendingPosts] = useState<any[]>([]);
 
-  const handleAction = (id: number, action: 'approve' | 'reject') => {
-    setComments(prev => prev.map(c => c.id === id ? { ...c, status: action } : c));
+  React.useEffect(() => {
+    // Fetch posts that are pending
+    const unsubscribe = onSnapshot(
+      query(collection(db, "posts")),
+      (snap) => {
+        const posts: any[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          if (data.status === "Pending" || data.status === "pending") {
+            posts.push({ id: d.id, ...data });
+          }
+        });
+        setPendingPosts(posts);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  const handleAction = async (id: string, action: 'approve' | 'reject' | 'private_support') => {
+    if (action === 'approve') {
+      await updateDoc(doc(db, "posts", id), { status: "published" });
+      
+      // Audit log
+      await addDoc(collection(db, "security_logs"), {
+        category: "PERMISSION_CHANGE", title: "Post Published", description: "Post " + id + " was published", admin: "Admin", time: Date.now()
+      });
+    } else if (action === 'reject') {
+      await updateDoc(doc(db, "posts", id), { status: "rejected" });
+      
+      // Audit log
+      await addDoc(collection(db, "security_logs"), {
+        category: "DELETE", title: "Post Rejected", description: "Post " + id + " was rejected", admin: "Admin", time: Date.now()
+      });
+    } else if (action === 'private_support') {
+      await updateDoc(doc(db, "posts", id), { status: "private_support" });
+      
+      // Audit log
+      await addDoc(collection(db, "security_logs"), {
+        category: "SETTINGS_CHANGE", title: "Post Moved to Private Support", description: "Post " + id + " was moved to private support", admin: "Admin", time: Date.now()
+      });
+      alert("Post moved to private support. It will not be visible publicly.");
+    }
   };
 
   return (
@@ -40,7 +78,7 @@ export function TechCommunityModeration() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {comments.filter(c => c.status === 'pending').map((item) => (
+              {pendingPosts.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-3 font-bold text-slate-800">{item.user}</td>
                   <td className="p-3 text-slate-600 max-w-xs truncate">{item.content}</td>
@@ -67,7 +105,7 @@ export function TechCommunityModeration() {
                   </td>
                 </tr>
               ))}
-              {comments.filter(c => c.status === 'pending').length === 0 && (
+              {pendingPosts.length === 0 && (
                  <tr>
                    <td colSpan={4} className="p-8 text-center text-slate-400">
                      <CheckCircle size={24} className="mx-auto mb-2 opacity-20" />
