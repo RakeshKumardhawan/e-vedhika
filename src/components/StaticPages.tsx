@@ -33,7 +33,7 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-800 p-8 sm:p-12 font-sans flex justify-center items-center overflow-y-auto">
+      <div className="fixed inset-0 z-[9999] bg-slate-50 text-slate-800 p-8 sm:p-12 font-sans flex justify-center items-center overflow-y-auto">
         <div className="text-slate-500 font-bold animate-pulse">Loading...</div>
       </div>
     );
@@ -44,7 +44,7 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
   const content = (!rawContent || rawContent.includes("not set yet") || rawContent.trim() === "") ? defaultContent : rawContent;
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-800 p-4 sm:p-12 font-sans overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] w-full h-screen h-[100dvh] bg-slate-50 text-slate-800 p-4 sm:p-12 font-sans overflow-y-auto custom-scrollbar">
       <div className="max-w-4xl mx-auto space-y-8 bg-white p-6 sm:p-8 rounded-3xl shadow-xl my-6">
         <Link to="/" className="text-primary font-bold hover:underline mb-4 inline-block">&larr; Back to Home</Link>
         
@@ -55,7 +55,7 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
 
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-6 border-b pb-4">{title}</h1>
         
-        <div className="prose prose-slate max-w-none space-y-6 markdown-body overflow-y-auto">
+        <div className="prose prose-slate max-w-none space-y-6 markdown-body">
           <ReactMarkdown rehypePlugins={[rehypeRaw]}>
             {content}
           </ReactMarkdown>
