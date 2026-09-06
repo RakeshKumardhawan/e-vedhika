@@ -4259,7 +4259,7 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl overflow-hidden border border-slate-100"
+            className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl max-h-[85vh] flex flex-col overflow-y-auto custom-scrollbar border border-slate-100"
           >
             <div className="p-8 sm:p-12">
               <div className="flex justify-between items-start mb-8">

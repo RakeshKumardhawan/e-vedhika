@@ -33,7 +33,7 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-800 p-8 sm:p-12 font-sans flex justify-center items-center">
+      <div className="min-h-screen bg-slate-50 text-slate-800 p-8 sm:p-12 font-sans flex justify-center items-center overflow-y-auto">
         <div className="text-slate-500 font-bold animate-pulse">Loading...</div>
       </div>
     );
@@ -44,8 +44,8 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
   const content = (!rawContent || rawContent.includes("not set yet") || rawContent.trim() === "") ? defaultContent : rawContent;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 p-8 sm:p-12 font-sans">
-      <div className="max-w-4xl mx-auto space-y-8 bg-white p-8 rounded-3xl shadow-xl">
+    <div className="min-h-screen w-full bg-slate-50 text-slate-800 p-4 sm:p-12 font-sans overflow-y-auto">
+      <div className="max-w-4xl mx-auto space-y-8 bg-white p-6 sm:p-8 rounded-3xl shadow-xl my-6">
         <Link to="/" className="text-primary font-bold hover:underline mb-4 inline-block">&larr; Back to Home</Link>
         
         {/* Disclaimer Banner */}
@@ -53,9 +53,9 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
           <strong>Disclaimer:</strong> E-VEDHIKA (e-vedhika.in) is an independent private technical utility platform created for automation, deployment assistance, code management, and system monitoring. <strong>This website has no connection, affiliation, partnership, or authorization with any government department or external public entity.</strong>
         </div>
 
-        <h1 className="text-4xl font-black text-slate-900 mb-6 border-b pb-4">{title}</h1>
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-6 border-b pb-4">{title}</h1>
         
-        <div className="prose prose-slate max-w-none space-y-6 markdown-body">
+        <div className="prose prose-slate max-w-none space-y-6 markdown-body overflow-y-auto">
           <ReactMarkdown rehypePlugins={[rehypeRaw]}>
             {content}
           </ReactMarkdown>
@@ -126,7 +126,7 @@ export function AboutPage() {
 export function ContactPage() {
   return <PageTemplate pageId="contact" defaultTitle="Contact Us" defaultContent={`
 ### 📞 Get in Touch
-Have questions, suggestions, or technical support requests regarding **E-Vedhika**? We are here to help!
+Have questions, suggestions, or technical support requests regarding **E-VEDHIKA**? We are here to help!
 
 - **Official Website**: [https://e-vedhika.in](https://e-vedhika.in)
 - **Support Channels**: Use the **Suggestions / Support** panel inside the app or the Direct Message system to reach out to administrators.
