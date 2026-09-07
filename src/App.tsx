@@ -567,8 +567,9 @@ export function requireLoginAlert(userObj?: any): boolean {
   const account = userObj || auth.currentUser;
   if (!account || account.isAnonymous) {
     Swal.fire({
-      text: "లాగిన్ అయ్యాక మీకు యాక్సెస్ ఉంటుంది",
-      icon: "info",
+      title: "లాగిన్ అవసరం",
+      text: "ఏదైనా ఫైల్ డౌన్లోడ్ చేయాలన్నా, పోస్ట్ చేయాలన్నా లాగిన్ తప్పనిసరి. దయచేసి ముందుగా లాగిన్ అవ్వండి.",
+      icon: "warning",
       confirmButtonText: "సరే (OK)",
       confirmButtonColor: "#0d3b66",
     });
@@ -20324,7 +20325,6 @@ function PostCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => {
-                      if (requireLoginAlert()) { e.preventDefault(); return; }
                       handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document");
                     }}
                     className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
