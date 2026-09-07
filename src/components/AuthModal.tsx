@@ -90,7 +90,7 @@ export function AuthModal({
           type: "admin_alert",
           read: false,
           time: Date.now()
-        }).catch(()=>console.error("Failed to notify admin"));
+        }).catch(() => {});
         onClose();
       } else {
         if (
@@ -168,7 +168,7 @@ export function AuthModal({
           type: "admin_alert",
           read: false,
           time: Date.now()
-        }).catch(()=>console.error("Failed to notify admin"));
+        }).catch(() => {});
 
         const WELCOME_MESSAGE = `నమస్కారం! 🙏
 

@@ -144,7 +144,7 @@ match /support_tickets/{ticketId} {
 
 match /notifications/{notifId} {
   allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.uid == 'all');
-  allow create: if isSignedIn();
+  allow create: if true;
   allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
 }
 match /security_logs/{logId} {

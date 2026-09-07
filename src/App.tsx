@@ -2,6 +2,7 @@ import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmute
 import { StaticPagesAdmin } from "./components/StaticPagesAdmin";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
+import { ComplaintFormModal } from "./components/ComplaintFormModal";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -466,7 +467,7 @@ export async function sendCommentNotifications(
       read: false,
       time: time,
       postId: postId
-    }).catch(()=>console.error("Failed to notify admin"));
+    }).catch(() => {});
 
   } catch (err) {
     console.error("Error sending notifications", err);
@@ -634,6 +635,8 @@ interface Post {
     isDirect?: boolean;
   }[];
   downloadStyle?: "classic" | "techspot";
+  submissionType?: "post" | "complaint";
+  userPhone?: string;
 }
 
 interface Comment {
@@ -655,7 +658,9 @@ interface UserProfile {
   mandal?: string;
   village?: string;
   mobile?: string;
+  phone?: string;
   email?: string;
+  welcomeNotificationSent?: boolean;
   photoURL?: string;
   coverPhotoURL?: string;
   following?: string[];
@@ -2876,6 +2881,7 @@ export default function App() {
   };
 
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showComplaintFormModal, setShowComplaintFormModal] = useState(false);
   const [selectedIframeUrl, setSelectedIframeUrl] = useState<string | null>(
     null,
   );
@@ -3666,7 +3672,7 @@ E-Vedhika Team`;
           type: "admin_alert",
           read: false,
           time: Date.now()
-        }).catch(()=>console.error("Failed to notify admin"));
+        }).catch(() => {});
       } catch (e) {}
 
       setShowAuthModal(false);
@@ -4698,6 +4704,17 @@ E-Vedhika Team`;
         
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Complaint / Report Button */}
+            <button
+              onClick={() => setShowComplaintFormModal(true)}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-black text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1 shrink-0 border border-rose-400/50 cursor-pointer animate-pulse"
+              title="🚨 కంప్లైంట్ / రిపోర్ట్ చేయండి"
+            >
+              <span>🚨</span>
+              <span className="hidden sm:inline">కంప్లైంట్ / రిపోర్ట్</span>
+              <span className="sm:hidden">ఫిర్యాదు</span>
+            </button>
+
             {/* Direct Messages Button */}
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
@@ -7525,7 +7542,7 @@ E-Vedhika Team`;
                                     type: "admin_alert",
                                     read: false,
                                     time: Date.now()
-                                  }).catch(()=>console.error("Failed to notify admin"));
+                                  }).catch(() => {});
                                   await logUserActivity(
                                     `Submitted Suggestion: ${category}`,
                                   );
@@ -8467,6 +8484,15 @@ E-Vedhika Team`;
           addToast={addToast}
           handleGoogleLogin={handleGoogleLogin}
           districtsData={districtsData}
+        />
+      )}
+
+      {showComplaintFormModal && (
+        <ComplaintFormModal
+          user={user}
+          userProfile={userProfile}
+          onClose={() => setShowComplaintFormModal(false)}
+          addToast={addToast}
         />
       )}
 
@@ -19534,6 +19560,7 @@ function PostCard({
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
+  const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
   
   const [commentPulse, setCommentPulse] = useState(false);
   const prevCommentCount = useRef(post?.commentCount || 0);
@@ -19887,6 +19914,25 @@ function PostCard({
               <span className="bg-blue-600 text-white text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1 shadow-sm">
                 <ShieldCheck size={10} /> Official
               </span>
+            )}
+            {post.submissionType === "complaint" ? (
+              <span className="bg-rose-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-xs border border-rose-700">
+                🚨 కంప్లైంట్ / రిపోర్ట్
+              </span>
+            ) : (
+              <span className="bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                📢 పోస్ట్ / అప్‌డేట్
+              </span>
+            )}
+            {post.userPhone && (isAdmin || isAuthor) && (
+              <a
+                href={`tel:${post.userPhone}`}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-amber-100 text-amber-900 text-[10px] px-2.5 py-0.5 rounded-md font-black tracking-wide flex items-center gap-1 border border-amber-300 hover:bg-amber-200 transition-all"
+                title="Click to call user"
+              >
+                📞 {post.userPhone}
+              </a>
             )}
             {post.pinned && (
               <span className="text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1 text-[10px] uppercase font-black tracking-widest border border-amber-100">
@@ -20912,6 +20958,8 @@ function PostForm({
   setActiveDmUser?: (user: any) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [submissionType, setSubmissionType] = useState<"post" | "complaint">(editingPost?.submissionType || "post");
+  const [userPhone, setUserPhone] = useState<string>(editingPost?.userPhone || currentUserProfile?.phone || "");
   const [isAiLoading, setIsAiLoading] = useState("");
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
   const [title, setTitle] = useState(editingPost?.title || "");
@@ -21333,6 +21381,10 @@ function PostForm({
       addToast("Please select at least one category.");
       return;
     }
+    if (submissionType === "complaint" && (!userPhone || userPhone.trim().length < 10)) {
+      addToast("దయచేసి మీ సరైన మొబైల్ నంబర్ ఇవ్వండి (Please enter your valid mobile number for complaints).");
+      return;
+    }
     setLoading(true);
     try {
       const extractedHashtags =
@@ -21366,6 +21418,8 @@ function PostForm({
         version: version.trim(),
         attachments: cleanAttachments,
         downloadStyle: downloadStyle,
+        submissionType,
+        userPhone,
       };
 
       if (versionStatus) {
@@ -21557,6 +21611,50 @@ function PostForm({
       </div>
 
       <div className="space-y-4 text-left">
+        <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-200">
+          <label className="text-[11px] font-black text-slate-700 uppercase tracking-widest block mb-2">
+            సమర్పణ రకం (Submission Type) *
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setSubmissionType("post")}
+              className={`p-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
+                submissionType === "post"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <span>📢 సాధారణ పోస్ట్ / అప్‌డేట్</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubmissionType("complaint")}
+              className={`p-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
+                submissionType === "complaint"
+                  ? "bg-rose-600 text-white border-rose-600 shadow-md"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <span>🚨 కంప్లైంట్ / రిపోర్ట్</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">
+            మొబైల్ నంబర్ (Mobile Number) {submissionType === "complaint" ? <span className="text-rose-500">* (తప్పనిసరి - అడ్మిన్ సంప్రదించడానికి)</span> : "(Optional)"}
+          </label>
+          <input
+            name="userPhone"
+            required={submissionType === "complaint"}
+            value={userPhone}
+            onChange={(e) => setUserPhone(e.target.value)}
+            placeholder="Enter your 10-digit mobile number"
+            className="w-full text-sm font-bold text-slate-800 p-3 bg-slate-50 rounded-xl border-2 border-transparent focus:border-primary/20 outline-none transition-all"
+          />
+        </div>
+
         <div>
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">
             Title / Header
@@ -25650,7 +25748,7 @@ function SuggestionForm({
         type: "admin_alert",
         read: false,
         time: Date.now()
-      }).catch(()=>console.error("Failed to notify admin"));
+      }).catch(() => {});
       
       await logUserActivity(`Submitted Suggestion: ${category}`);
       setSubmitted(true);
