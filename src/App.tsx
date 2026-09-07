@@ -9605,7 +9605,7 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "support_tickets"), where("uid", "==", user.uid));
+    const q = query(collection(db, "support_tickets"), where("userId", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
       setSupportTickets(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a:any, b:any) => b.updatedAt - a.updatedAt));
     });
@@ -9829,30 +9829,11 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
         )}
 
         {showSupportModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="font-black text-lg text-slate-800">Message Admin</h3>
-                <button onClick={() => setShowSupportModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-6 space-y-4 overflow-y-auto">
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Subject</label>
-                  <input type="text" value={supportSubject} onChange={e => setSupportSubject(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Brief subject" />
-                </div>
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Message</label>
-                  <textarea value={supportMessage} onChange={e => setSupportMessage(e.target.value)} rows={5} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Describe your issue or request here..."></textarea>
-                </div>
-              </div>
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                <button onClick={() => setShowSupportModal(false)} className="px-4 py-2 text-slate-600 font-bold text-sm hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
-                <button onClick={handleSubmitSupport} className="px-4 py-2 bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 rounded-xl transition-colors">Send Message</button>
-              </div>
-            </div>
-          </div>
+          <ComplaintFormModal
+            user={user}
+            userProfile={userProfile}
+            onClose={() => setShowSupportModal(false)}
+          />
         )}
 
         {activeTab === "problems" &&
