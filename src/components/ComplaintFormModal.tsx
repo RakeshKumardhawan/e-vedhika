@@ -1,111 +1,77 @@
-import React, { useState } from 'react';
-import { AlertTriangle, X, Send, User, Phone, FileText, Mail, HelpCircle, ShieldAlert } from 'lucide-react';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import React, { useState, useRef } from 'react';
+import { X, Plus } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Swal from 'sweetalert2';
 
 export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any) {
-  const [fullName, setFullName] = useState(userProfile?.name || userProfile?.username || user?.displayName || "");
-  const [phone, setPhone] = useState(userProfile?.phone || "");
-  const [category, setCategory] = useState("Website");
-  const [otherCategoryDetails, setOtherCategoryDetails] = useState("");
+  const [ticketType, setTicketType] = useState("New Task");
+  const [moduleName, setModuleName] = useState("");
+  const [subModule, setSubModule] = useState("");
+  const [contactNo, setContactNo] = useState(userProfile?.phone || "");
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [successTicketId, setSuccessTicketId] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !phone.trim() || !message.trim()) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'దయచేసి అన్ని వివరాలు పూరించండి',
-        text: 'పూర్తి పేరు, ఫోన్ నంబర్ మరియు మీ సమస్య/సందేహం తప్పనిసరి.',
-        confirmButtonColor: '#2563eb'
-      });
-      return;
-    }
 
-    if (phone.trim().length < 10) {
+    if (!moduleName || !subModule || !contactNo || !subject || !message) {
       Swal.fire({
         icon: 'warning',
-        title: 'సరైన మొబైల్ నంబర్ ఇవ్వండి',
-        text: 'దయచేసి 10 అంకెల సరైన మొబైల్ నంబర్ ఇవ్వండి.',
-        confirmButtonColor: '#2563eb'
-      });
-      return;
-    }
-
-    if (category === "Other" && !otherCategoryDetails.trim()) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'వివరాలు తెలుపగలరు',
-        text: 'దయచేసి "ఇతర (Other)" సమస్య ఏమిటో కింద బాక్స్‌లో రాయండి.',
-        confirmButtonColor: '#2563eb'
+        title: 'అన్ని వివరాలు తప్పనిసరి',
+        text: 'దయచేసి గుర్తు (*) ఉన్న అన్ని ఫీల్డ్స్ పూరించండి.',
+        confirmButtonColor: '#005bb5'
       });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const finalName = fullName.trim();
-      
-      // Update user profile name if changed
-      const currentProfileName = userProfile?.name || userProfile?.username || user?.displayName || "";
-      if (finalName !== currentProfileName) {
-        try {
-          await updateDoc(doc(db, "users", user.uid), {
-            name: finalName
-          });
-        } catch (err) {
-          console.error("Failed to update profile name", err);
-        }
-      }
+      // Backend mapping for user details despite not showing them in UI
+      const userName = userProfile?.name || userProfile?.username || user?.displayName || "Unknown User";
 
-      // 1. Create main support ticket
-      const finalCategory = category === "Other" ? `Other: ${otherCategoryDetails.trim()}` : category;
-      
       const ticketRef = await addDoc(collection(db, "support_tickets"), {
         userId: user.uid,
         userEmail: user.email,
-        userName: finalName,
-        phone: phone.trim(),
-        subject: finalCategory,
-        category: category,
+        userName: userName,
+        phone: contactNo.trim(),
+        ticketType,
+        moduleName,
+        subModule,
+        subject: subject.trim(),
         status: "new",
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        attachedFile: fileName || null
       });
 
-      // 2. Add the main message to the subcollection
       await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
         senderId: user.uid,
-        senderName: finalName,
+        senderName: userName,
         text: message.trim(),
         time: Date.now()
       });
 
-      // Create admin alert notification for faster response
       await addDoc(collection(db, "notifications"), {
         type: "admin_alert",
-        title: "🚨 కొత్త సపోర్ట్ రిక్వెస్ట్ / కంప్లైంట్",
-        message: `${finalName} (${phone.trim()}): ${message.substring(0, 60)}...`,
+        title: "🚨 కొత్త సపోర్ట్ టికెట్",
+        message: `${userName} - ${subject.substring(0, 40)}...`,
         read: false,
         time: Date.now(),
         complaintId: ticketRef.id
       }).catch(() => {});
 
-      Swal.fire({
-        icon: 'success',
-        title: 'ఫిర్యాదు విజయవంతంగా నమోదయింది!',
-        text: `మీ సపోర్ట్ టికెట్ ఐడీ: #${ticketRef.id.substring(0, 8).toUpperCase()}. అడ్మిన్ ప్యానెల్ ద్వారా మా టీమ్ దీనిని పరిశీలించి మీకు సమాధానం ఇస్తుంది.`,
-        confirmButtonColor: '#16a34a'
-      });
-
       if (addToast) {
-        addToast("🚨 మీ సపోర్ట్ రిక్వెస్ట్ అడ్మిన్‌కు విజయవంతంగా పంపబడింది.");
+        addToast("టికెట్ విజయవంతంగా సమర్పించబడింది.");
       }
 
-      onClose();
-    } catch (err: any) {
+      setSuccessTicketId(ticketRef.id.substring(0, 8).toUpperCase());
+    } catch (err) {
       console.error("Error submitting support request:", err);
       Swal.fire({
         icon: 'error',
@@ -119,160 +85,201 @@ export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[10000] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden relative animate-in fade-in zoom-in-95 duration-200 my-auto border border-slate-200">
+    <div className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-3 sm:p-4">
+      {/* Main Container */}
+      <div className="bg-[#f4f5f7] w-full max-w-5xl max-h-[95vh] overflow-y-auto shadow-2xl relative font-sans animate-in fade-in zoom-in-95 duration-200 custom-scrollbar">
         
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-5 sm:p-6 flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner">
-              <HelpCircle className="text-white animate-pulse" size={26} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="bg-blue-400/30 text-blue-50 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border border-blue-400/40">సపోర్ట్ & కంప్లైంట్</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-0.5">
-                సపోర్ట్ రిక్వెస్ట్ ఫారం
-              </h2>
-              <p className="text-xs text-blue-100 font-medium">
-                మీ సందేహం లేదా సమస్యను అడ్మిన్‌కు పంపండి
-              </p>
-            </div>
-          </div>
+        {/* Header Banner */}
+        <div className="bg-[#cbf5f3] py-2.5 text-center border-b border-slate-300 relative">
+          <h2 className="text-[14px] font-bold text-slate-800">Ticket submission form</h2>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer shrink-0 shadow-sm"
-            title="మూసివేయి (Close)"
+            className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-800 transition-colors"
+            title="Close"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-4 sm:space-y-5 max-h-[80vh] overflow-y-auto">
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* 1. Full Name */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 ml-1">
-                <User size={14} className="text-blue-600" /> పూర్తి పేరు (Name) *
-              </label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="మీ పేరు రాయండి..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold text-slate-800 transition-all"
-              />
+        {successTicketId ? (
+          <div className="p-8 sm:p-12 flex flex-col items-center justify-center text-center space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center shadow-inner">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-
-            {/* 2. Email (Locked) */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 ml-1">
-                <Mail size={14} className="text-slate-400" /> ఈమెయిల్ (Email) 🔒
-              </label>
-              <input
-                type="email"
-                readOnly
-                value={user?.email || "No Email Found"}
-                className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 cursor-not-allowed select-none opacity-80"
-                title="ఈమెయిల్ మార్చడం కుదరదు"
-              />
-            </div>
-          </div>
-
-          {/* 3. Mobile Number */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 ml-1">
-              <Phone size={14} className="text-blue-600" /> మొబైల్ నంబర్ (Phone Number) *
-            </label>
-            <input
-              type="tel"
-              required
-              maxLength={10}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              placeholder="10 అంకెల మొబైల్ నంబర్..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold text-slate-800 transition-all"
-            />
-          </div>
-
-          {/* 4. Support Category */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 ml-1">
-              <AlertTriangle size={14} className="text-blue-600" /> సమస్య రకం (Category) *
-            </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold text-slate-800 transition-all"
-            >
-              <option value="Website">వెబ్‌సైట్ సమస్య (Website Issue)</option>
-              <option value="Application">అప్లికేషన్ / యాప్ సమస్య (Application Issue)</option>
-              <option value="Other">ఇతర (Other)</option>
-            </select>
-          </div>
-
-          {/* Conditionally render Other Category Details */}
-          {category === "Other" && (
-            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 ml-1">
-                ఇతర సమస్య వివరాలు (Specify Other) *
-              </label>
-              <input
-                type="text"
-                required
-                value={otherCategoryDetails}
-                onChange={(e) => setOtherCategoryDetails(e.target.value)}
-                placeholder="ఏమి సమస్య? దయచేసి వివరంగా పేర్కొనండి..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold text-slate-800 transition-all"
-              />
-            </div>
-          )}
-
-          {/* 5. Detailed Message / Comment */}
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5 ml-1">
-              <FileText size={14} className="text-blue-600" /> మీ సందేశం / సమస్య (Message / Comment) *
-            </label>
-            <textarea
-              required
-              rows={5}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="మీ పూర్తి సమస్య లేదా సందేహాన్ని ఇక్కడ స్పష్టంగా రాయండి..."
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-slate-800 transition-all resize-y min-h-[120px]"
-            ></textarea>
-          </div>
-
-          {/* 6. Submit Button */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black py-3.5 px-6 rounded-2xl shadow-xl shadow-blue-600/30 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm tracking-wide"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  సమర్పిస్తోంది... (Submitting)
-                </>
-              ) : (
-                <>
-                  <Send size={18} /> రిక్వెస్ట్ పంపండి (Submit Request)
-                </>
-              )}
-            </button>
-            <p className="text-center text-[11px] text-slate-500 font-medium mt-3 flex items-center justify-center gap-1">
-              <ShieldAlert size={12} className="text-slate-400" />
-              ఈ సపోర్ట్ టికెట్ ప్రైవేట్, మీరు మరియు అడ్మిన్ మాత్రమే చూడగలరు.
+            <h3 className="text-2xl font-bold text-slate-800">విజయవంతంగా సమర్పించబడింది! (Submitted Successfully!)</h3>
+            <p className="text-slate-600 text-[15px] max-w-md">
+              మీ సమస్య/విజ్ఞప్తి మా బృందానికి చేరింది. దయచేసి భవిష్యత్తు సూచన కోసం మీ టికెట్ నంబరును సేవ్ చేసుకోండి.
             </p>
+            <div className="bg-white border-2 border-dashed border-slate-300 px-6 py-4 rounded-lg">
+              <p className="text-slate-500 text-[13px] font-medium mb-1 uppercase tracking-wider">Ticket Reference Number</p>
+              <p className="text-3xl font-black text-[#005bb5]">#{successTicketId}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-4 bg-[#005bb5] hover:bg-[#004a94] text-white px-8 py-2.5 rounded text-[14px] font-bold shadow-md transition-all hover:shadow-lg"
+            >
+              Close Window
+            </button>
+          </div>
+        ) : (
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8 space-y-6">
+          
+          {/* Top Radios Card */}
+          <div className="bg-white border border-slate-200 p-4 sm:px-6 rounded-[2px] flex flex-wrap items-center gap-8 sm:gap-16 shadow-sm">
+            <label className="flex items-center gap-2 text-[13px] text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="ticketType"
+                value="New Task"
+                checked={ticketType === "New Task"}
+                onChange={(e) => setTicketType(e.target.value)}
+                className="w-3.5 h-3.5 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span>New Task:<span className="text-red-500">*</span></span>
+            </label>
+
+            <label className="flex items-center gap-2 text-[13px] text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="ticketType"
+                value="Modification"
+                checked={ticketType === "Modification"}
+                onChange={(e) => setTicketType(e.target.value)}
+                className="w-3.5 h-3.5 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span>Modification:<span className="text-red-500">*</span></span>
+            </label>
+
+            <label className="flex items-center gap-2 text-[13px] text-slate-700 cursor-pointer">
+              <input
+                type="radio"
+                name="ticketType"
+                value="Issues/Errors"
+                checked={ticketType === "Issues/Errors"}
+                onChange={(e) => setTicketType(e.target.value)}
+                className="w-3.5 h-3.5 text-blue-600 border-gray-300 focus:ring-blue-500"
+              />
+              <span>Issues/Errors:<span className="text-red-500">*</span></span>
+            </label>
+          </div>
+
+          {/* Main Form Card */}
+          <div className="bg-white border border-slate-200 p-5 sm:p-6 rounded-[2px] shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+              
+              {/* Left Column */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[13px] text-slate-800 mb-1 font-medium">
+                    Module Name:<span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={moduleName}
+                    onChange={(e) => setModuleName(e.target.value)}
+                    className="w-full border border-slate-300 p-2 text-[16px] sm:text-[13px] rounded-[2px] focus:outline-none focus:border-[#005bb5] bg-white"
+                  >
+                    <option value="">--Select Module Name--</option>
+                    <option value="Website">Website</option>
+                    <option value="Application">Application</option>
+                    <option value="Database">Database</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[13px] text-slate-800 mb-1 font-medium">
+                    Sub Module:<span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={subModule}
+                    onChange={(e) => setSubModule(e.target.value)}
+                    className="w-full border-[1.5px] border-slate-800 p-2 text-[16px] sm:text-[13px] rounded-[2px] focus:outline-none focus:border-[#005bb5] bg-white font-medium"
+                  >
+                    <option value="">Select sub-module</option>
+                    <option value="Authentication">Authentication / Login</option>
+                    <option value="UI/UX">UI / Layout</option>
+                    <option value="Functionality">Functionality</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[13px] text-slate-800 mb-1 font-medium">
+                    Contact No:
+                  </label>
+                  <input
+                    type="text"
+                    value={contactNo}
+                    onChange={(e) => setContactNo(e.target.value)}
+                    placeholder="Enter Mobile No here..."
+                    className="w-full border border-slate-300 p-2 text-[16px] sm:text-[13px] rounded-[2px] focus:outline-none focus:border-[#005bb5] bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-4 flex flex-col">
+                <div>
+                  <label className="block text-[13px] text-slate-800 mb-1 font-medium">
+                    Subject:<span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="Enter Subject here..."
+                    className="w-full border border-slate-300 p-2 text-[16px] sm:text-[13px] rounded-[2px] focus:outline-none focus:border-[#005bb5] bg-white"
+                  />
+                </div>
+
+                <div className="flex-1 flex flex-col">
+                  <label className="block text-[13px] text-slate-800 mb-1 font-medium">
+                    Message:<span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Enter Message *"
+                    className="w-full border border-slate-300 p-2 text-[16px] sm:text-[13px] rounded-[2px] focus:outline-none focus:border-[#005bb5] bg-white flex-1 min-h-[140px] resize-y"
+                  />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="mt-8 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => setFileName(e.target.files?.[0]?.name || "")}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-[#005bb5] hover:bg-[#004a94] text-white px-3 py-1.5 text-[12px] font-bold rounded-[3px] flex items-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <Plus size={14} strokeWidth={3} /> Add Files
+                </button>
+                {fileName && <span className="text-[11px] text-slate-600 font-medium truncate max-w-[150px]">{fileName}</span>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-[#005bb5] hover:bg-[#004a94] text-white px-6 py-1.5 text-[13px] font-bold rounded-[3px] transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </div>
           </div>
 
         </form>
-
+        )}
       </div>
     </div>
   );

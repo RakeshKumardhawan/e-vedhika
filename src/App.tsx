@@ -154,7 +154,7 @@ import {  DollarSign,
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare } from "lucide-react";
+  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -594,6 +594,7 @@ function formatDistanceToNow(timestamp: number): string {
 
 interface Post {
   id: string;
+  status?: "draft" | "published";
   slug?: string;
   title: string;
   content: string;
@@ -1231,7 +1232,7 @@ export const getSiteDisplayHost = () => {
 };
 
 export const generatePostShareText = (post: any, postUrl?: string) => {
-  const finalUrl = postUrl || (post?.id ? `${getSiteBaseUrl()}/?postId=${post.id}` : getSiteBaseUrl());
+  const finalUrl = postUrl || (post?.id ? `${getSiteBaseUrl()}/?postId=${post.slug || post.id}` : getSiteBaseUrl());
   if (!post) return `E-Vedhika: ${finalUrl}`;
   
   const rawContent = post.content || "";
@@ -1312,7 +1313,7 @@ export function PosterShareModal({
     };
   }, [post.mediaUrl, post.mediaType]);
 
-  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
+  const postUrl = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
   const plainContent = post.content
     ? post.content
         .replace(/<[^>]*>?/gm, "")
@@ -1476,7 +1477,7 @@ export function PosterShareModal({
                   పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
                 </p>
                 <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
-                  {getSiteDisplayHost()}/?postId={post.id}
+                  {getSiteDisplayHost()}/?postId={post.slug || post.id}
                 </div>
               </div>
               {/* QR Code */}
@@ -1947,11 +1948,7 @@ function LandingPage({
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 space-y-16">
         <section className="text-center space-y-6 max-w-4xl mx-auto">
           <h2 
-            className="text-4xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight"
-            style={{
-              fontSize: "20px",
-              lineHeight: "34px"
-            }}
+            className="text-[20px] md:text-3xl lg:text-5xl font-black text-slate-900 tracking-tight leading-snug md:leading-tight"
           >
             {landingPageData.heroTitle} <span className="text-blue-600">{landingPageData.heroHighlight}</span>
           </h2>
@@ -3003,7 +3000,7 @@ export default function App() {
           .replace(/[#*`]/g, "")
           .trim()
           .substring(0, 160) || "ఈ-వేదిక పోర్టల్ ద్వారా పంచాయతీ ముఖ్యాంశాలు మరియు డిజిటల్ సేవలను పొందండి.";
-        const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
+        const postUrl = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
         const imageUrl = post.mediaUrl || "https://www.e-vedhika.in/banner.jpg";
 
         updateDOMMetaTags({
@@ -3241,7 +3238,13 @@ export default function App() {
         const pArr: Post[] = [];
         snap.forEach((d) => {
           const data = d.data() as any;
-          pArr.push({ id: d.id, ...data } as Post);
+          if (data.status === "draft") {
+            if (userRole === "admin" || userRole === "editor") {
+              pArr.push({ id: d.id, ...data } as Post);
+            }
+          } else {
+             pArr.push({ id: d.id, ...data } as Post);
+          }
         });
 
         setPosts(
@@ -8047,8 +8050,13 @@ E-Vedhika Team`;
             )}
 
             {(showPostForm || editingPost) && (
-              <div className="fixed inset-0 z-[3000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-                <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl custom-scrollbar">
+              <div className="fixed inset-0 z-[3000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
+                <div className="w-full h-full sm:h-auto sm:max-h-[95vh] sm:rounded-[3px] bg-[#f0f0f1] sm:max-w-[1200px] overflow-hidden flex flex-col shadow-2xl z-[3000]">
+                  <div className="bg-[#1d2327] text-white p-3 flex justify-between items-center shrink-0">
+                    <h2 className="text-[13px] font-semibold">{editingPost ? "Edit Post" : "Add New Post"}</h2>
+                    <button type="button" onClick={() => { setShowPostForm(false); setEditingPost(null); }} className="text-slate-300 hover:text-white transition-colors"><X size={18} /></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-0 sm:p-4 bg-[#f0f0f1]">
                   <PostForm
                     key={editingPost?.id || "new"}
                     addToast={addToast}
@@ -8062,6 +8070,7 @@ E-Vedhika Team`;
                     isAdmin={isAdmin}
                     isEditor={isEditor}
                   />
+                </div>
                 </div>
               </div>
             )}
@@ -12152,7 +12161,8 @@ function AdminPanel({
                                   )}
                                 </div>
                                 <div className="ml-2">
-                                  <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
+                                  <h4 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight flex items-center gap-2">
+                                    {item.status === "draft" && <span className="bg-amber-100 text-amber-800 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Draft</span>}
                                     {item.title ||
                                       item.name ||
                                       item.type ||
@@ -20017,7 +20027,7 @@ function PostCard({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setSearchParams({ postId: post.id });
+          setSearchParams({ postId: post.slug || post.id });
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         className="post-title !mt-0 flex flex-wrap items-center gap-2 cursor-pointer hover:text-red-600 transition-colors group"
@@ -20134,7 +20144,7 @@ function PostCard({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setSearchParams({ postId: post.id });
+                  setSearchParams({ postId: post.slug || post.id });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
@@ -20762,7 +20772,7 @@ function PostCard({
             aria-label="Share Post"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
+              const url = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
               const shareText = generatePostShareText(post, url);
               handleShare(
                 post.title || "E-Vedhika Post",
@@ -20821,7 +20831,7 @@ function PostCard({
             aria-label="Read Post"
             onClick={(e) => {
               e.stopPropagation();
-              setSearchParams({ postId: post.id });
+              setSearchParams({ postId: post.slug || post.id });
             }}
             className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
           >
@@ -20833,7 +20843,7 @@ function PostCard({
             aria-label="Copy Post Link"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${window.location.origin}${window.location.pathname}?postId=${post.id}`;
+              const url = `${window.location.origin}${window.location.pathname}?postId=${post.slug || post.id}`;
               navigator.clipboard.writeText(url);
               addToast("పోస్ట్ లింక్ కాపీ చేయబడింది! (URL Copied!)");
             }}
@@ -20939,11 +20949,18 @@ function PostForm({
   setActiveDmUser?: (user: any) => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [submissionType, setSubmissionType] = useState<"post" | "complaint">(editingPost?.submissionType || "post");
+  const [draftStatus, setDraftStatus] = useState<"draft" | "published">(editingPost?.status || "published");
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [submissionType, setSubmissionType] = useState<"post" | "complaint">(editingPost?.submissionType || (isAdmin || isEditor ? "post" : "complaint"));
   const [userPhone, setUserPhone] = useState<string>(editingPost?.userPhone || currentUserProfile?.phone || "");
   const [isAiLoading, setIsAiLoading] = useState("");
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
   const [title, setTitle] = useState(editingPost?.title || "");
+  const [customSlug, setCustomSlug] = useState(editingPost?.slug || "");
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const derivedSlug = title.trim().replace(/\s+/g, '-').toLowerCase();
+  const displaySlug = customSlug || derivedSlug;
   const [content, setContent] = useState(editingPost?.content || "");
   const [version, setVersion] = useState(editingPost?.version || "");
   const [versionStatus, setVersionStatus] = useState<"New" | "Old" | undefined>(
@@ -20975,6 +20992,27 @@ function PostForm({
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const insertFormatting = (prefix: string, suffix: string) => {
+    const textarea = document.getElementById("post-content-textarea") as HTMLTextAreaElement;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const beforeText = content.substring(0, start);
+    const afterText = content.substring(end);
+    
+    let replacement = prefix + selectedText + suffix;
+    if (!selectedText && prefix === "[") replacement = "[link text](url)";
+    
+    setContent(beforeText + replacement + afterText);
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+    }, 0);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -21387,6 +21425,8 @@ function PostForm({
       });
 
       const postData: any = {
+        status: draftStatus,
+        slug: displaySlug,
         title,
         content,
         category: selectedCategories[0],
@@ -21569,6 +21609,329 @@ function PostForm({
     }
   };
 
+  const handleAiRewrite = async () => {
+    if (!content) {
+      addToast("AI సాయం పొందడానికి ముందుగా కొంత టెక్స్ట్ రాయండి. (Please write some text first)");
+      return;
+    }
+    setIsAiLoading("మెరుగుపరుస్తోంది (Enhancing)...");
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          message: `Please rewrite and enhance the following text to make it more professional and grammatically correct. Keep the original meaning intact. The language is Telugu (or English if written in English):\n\n${content}`
+        })
+      });
+      const data = await res.json();
+      if (data.response) {
+        setContent(data.response);
+        addToast("AI ద్వారా మెరుగుపరచబడింది! (Enhanced successfully)");
+      }
+    } catch (e) {
+      addToast("AI మెరుగుదల సమయంలో లోపం ఏర్పడింది. (Error occurred!)");
+    } finally {
+      setIsAiLoading("");
+    }
+  };
+
+  if (submissionType === "post") {
+    return (
+      <form
+        onSubmit={onSubmit}
+        className="bg-[#f1f1f1] w-full text-[#3c434a] font-sans"
+      >
+        <div className="max-w-[1200px] mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#c3c4c7]">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[23px] font-normal leading-[1.3]">
+                {editingPost ? "Edit Post" : "Add New Post"}
+              </h2>
+              {!editingPost && (
+                <button type="button" onClick={() => {
+                  setTitle(""); setContent(""); setMedia(null); setAttachments([]);
+                }} className="border border-[#2271b1] text-[#2271b1] px-2.5 py-0.5 rounded-[3px] text-[13px] hover:bg-[#f0f0f1] font-medium bg-[#f6f7f7] transition-colors">
+                  Add New
+                </button>
+              )}
+            </div>
+            <button type="button" onClick={onCancel} className="text-[#d63638] text-[13px] hover:underline font-medium flex items-center gap-1">
+              <X size={14} /> Close Editor
+            </button>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-5">
+            {/* LEFT COLUMN */}
+            <div className="flex-1 space-y-4">
+              <div>
+                <input
+                  name="title"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Add title"
+                  className="w-full text-xl py-2 px-3 bg-white border border-[#8c8f94] shadow-[inset_0_1px_2px_rgba(0,0,0,0.07)] focus:border-[#2271b1] focus:shadow-[0_0_0_1px_#2271b1] outline-none rounded-none text-[#3c434a]"
+                />
+              </div>
+
+              {/* Permalink area */}
+              {title && (
+                <div className="text-[13px] text-[#646970] flex items-center gap-1 flex-wrap">
+                  <strong>Permalink:</strong>
+                  {isEditingSlug ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#646970]">https://evedhika.in/</span>
+                      <input 
+                        type="text" 
+                        value={customSlug}
+                        onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                        placeholder={derivedSlug}
+                        className="border border-[#8c8f94] px-1 py-0.5 text-[13px] outline-none focus:border-[#2271b1] focus:shadow-[0_0_0_1px_#2271b1] text-black w-[200px]"
+                      />
+                      <button type="button" onClick={() => {
+                        if (!customSlug.trim()) { setCustomSlug(derivedSlug); }
+                        setIsEditingSlug(false);
+                      }} className="border border-[#8c8f94] bg-[#f6f7f7] px-2 py-0.5 rounded-[3px] text-[12px] hover:bg-[#f0f0f1] text-[#3c434a]">OK</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#2271b1] underline truncate max-w-[300px] sm:max-w-md">
+                        https://evedhika.in/{displaySlug}
+                      </span>
+                      <button type="button" onClick={() => {
+                        if (!customSlug) { setCustomSlug(derivedSlug); }
+                        setIsEditingSlug(true);
+                      }} className="border border-[#8c8f94] bg-[#f6f7f7] px-2 py-0.5 rounded-[3px] text-[12px] hover:bg-[#f0f0f1] text-[#3c434a]">Edit</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Editor Area */}
+              <div className="bg-white border border-[#c3c4c7]">
+                {/* Media Button Bar */}
+                <div className="p-2 border-b border-[#c3c4c7] bg-[#f0f0f1] flex justify-between items-center">
+                  <button type="button" onClick={() => contentImageInputRef.current?.click()} className="flex items-center gap-1.5 text-[13px] text-[#3c434a] hover:text-[#2271b1] border border-[#8c8f94] bg-[#f6f7f7] px-2 py-1 rounded-[3px] transition-colors">
+                    <ImageIcon size={14} /> Add Media
+                  </button>
+                  <div className="flex text-[13px] border border-[#c3c4c7] rounded-[3px] overflow-hidden">
+                    <button type="button" onClick={() => setShowMarkdownPreview(false)} className={`px-3 py-1 font-medium ${!showMarkdownPreview ? "bg-white text-[#3c434a] border-b-white shadow-sm" : "bg-[#f0f0f1] text-[#50575e] hover:bg-[#f6f7f7]"}`}>Visual</button>
+                    <button type="button" onClick={() => setShowMarkdownPreview(true)} className={`px-3 py-1 font-medium border-l border-[#c3c4c7] ${showMarkdownPreview ? "bg-white text-[#3c434a] border-b-white shadow-sm" : "bg-[#f0f0f1] text-[#50575e] hover:bg-[#f6f7f7]"}`}>Text</button>
+                  </div>
+                </div>
+
+                {/* Toolbar */}
+                {!showMarkdownPreview && (
+                  <div className="flex flex-wrap gap-1 p-1.5 border-b border-[#c3c4c7] bg-[#f0f0f1]">
+                    <button type="button" onClick={() => insertFormatting("**", "**")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Bold size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("*", "*")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Italic size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("[", "](url)")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Link2 size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("> ", "")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Quote size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("- ", "")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><List size={14} strokeWidth={2.5} /></button>
+                    
+                    {/* AI Assistant tool */}
+                    <button type="button" onClick={handleAiRewrite} title="Rewrite with AI" className="p-1.5 text-purple-600 hover:text-purple-700 hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors ml-auto flex items-center gap-1">
+                      <Sparkles size={14} /> <span className="text-[11px] font-bold">AI Helper</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Textarea */}
+                {showMarkdownPreview ? (
+                   <div className="w-full p-4 text-[14px] leading-relaxed outline-none min-h-[400px] bg-slate-50 font-mono text-[#3c434a] overflow-y-auto whitespace-pre-wrap">
+                     <ReactMarkdown remarkPlugins={[remarkBreaks]} rehypePlugins={[rehypeRaw]}>{content || "*No content*"}</ReactMarkdown>
+                   </div>
+                ) : (
+                  <textarea
+                    id="post-content-textarea"
+                    required
+                    rows={16}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Write your post here..."
+                    className="w-full p-4 text-[14px] leading-relaxed outline-none min-h-[400px] resize-y bg-white font-sans text-[#3c434a]"
+                  />
+                )}
+                
+                {/* Image Input (Hidden) */}
+                <input
+                  type="file"
+                  ref={contentImageInputRef}
+                  onChange={handleContentImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+              
+              {/* Attachments Meta Box */}
+              <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                <div className="px-3 py-2 border-b border-[#c3c4c7] bg-white font-semibold text-[14px] flex items-center gap-2">
+                  <Paperclip size={14} /> Attachments & Downloads
+                </div>
+                <div className="p-3">
+                  <input
+                    type="file"
+                    multiple
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="border border-[#2271b1] text-[#2271b1] bg-[#f6f7f7] px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-[#f0f0f1] font-medium transition-colors">
+                    Upload Files
+                  </button>
+                  {/* Render Attachments */}
+                  {attachments.length > 0 && (
+                    <div className="mt-3 space-y-2 border-t border-[#c3c4c7] pt-3">
+                      {attachments.map((att, i) => (
+                        <div key={i} className="flex justify-between items-center text-[13px] bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-sm">
+                          <span className="truncate max-w-[200px] sm:max-w-[400px] font-medium text-slate-700">{att.name}</span>
+                          <button type="button" onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))} className="text-[#d63638] hover:underline font-medium">Remove</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className="w-full lg:w-[280px] shrink-0 space-y-5">
+              
+              {/* Publish Meta Box */}
+              <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                <div className="px-3 py-2 border-b border-[#c3c4c7] font-semibold text-[14px] bg-[#f0f0f1]">
+                  Publish
+                </div>
+                <div className="p-3 text-[13px] text-[#50575e] space-y-3">
+                  <div className="flex justify-between items-center">
+                    <button type="button" onClick={(e) => { 
+                      e.preventDefault(); 
+                      setDraftStatus("draft"); 
+                      setTimeout(() => document.getElementById("post-form-submit")?.click(), 0); 
+                    }} className="border border-[#8c8f94] bg-[#f6f7f7] px-3 py-1 rounded-[3px] hover:bg-[#f0f0f1] transition-colors text-[13px] text-[#2271b1]">Save Draft</button>
+                    <button type="button" onClick={() => setShowMarkdownPreview(true)} className="border border-[#8c8f94] bg-[#f6f7f7] px-3 py-1 rounded-[3px] hover:bg-[#f0f0f1] transition-colors">Preview</button>
+                  </div>
+                  <div className="space-y-2 mt-3 text-[#3c434a]">
+                    <div className="flex items-center gap-2">
+                      <Key size={14} className="text-[#8c8f94]" />
+                      <span>Status: <strong>{draftStatus === "published" ? "Published" : "Draft"}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Eye size={14} className="text-[#8c8f94]" />
+                      <span>Visibility: <strong>Public</strong></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-[#8c8f94]" />
+                      <span>Publish <strong>immediately</strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-[#f6f7f7] border-t border-[#c3c4c7] p-3 flex justify-between items-center">
+                  <button type="button" onClick={onCancel} className="text-[#d63638] text-[13px] hover:underline font-medium">Move to Trash</button>
+                  <button id="post-form-submit" type="submit" disabled={loading || uploadingFile} onClick={() => setDraftStatus("published")} className="bg-[#2271b1] border border-[#2271b1] hover:bg-[#135e96] text-white px-4 py-1.5 rounded-[3px] font-semibold text-[13px] shadow-[0_1px_0_#135e96] disabled:opacity-50 transition-colors">
+                    {loading ? "Publishing..." : (editingPost ? "Update" : "Publish")}
+                  </button>
+                </div>
+              </div>
+
+              {/* Categories Meta Box */}
+              <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                <div className="px-3 py-2 border-b border-[#c3c4c7] font-semibold text-[14px]">
+                  Categories
+                </div>
+                <div className="p-3">
+                  <div className="flex gap-3 text-[13px] mb-3 border-b border-[#c3c4c7] pb-1.5">
+                    <span className="font-semibold text-[#3c434a]">All Categories</span>
+                    <span className="text-[#2271b1] hover:underline cursor-pointer">Most Used</span>
+                  </div>
+                  
+                  <div className="max-h-[180px] overflow-y-auto space-y-2 p-2 border border-[#dcdcde] bg-white custom-scrollbar">
+                    {CATEGORIES.map(cat => (
+                      <label key={cat} className="flex items-center gap-2 text-[13px] text-[#3c434a] cursor-pointer hover:bg-slate-50 p-0.5 rounded">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedCategories.includes(cat)} 
+                          onChange={() => toggleCategory(cat)}
+                          className="w-3.5 h-3.5 border-[#8c8f94] text-[#2271b1] focus:ring-[#2271b1] rounded-sm cursor-pointer" 
+                        />
+                        {cat}
+                      </label>
+                    ))}
+                  </div>
+                  {showAddCategory ? (
+                    <div className="mt-3 flex gap-2">
+                      <input 
+                        type="text" 
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        placeholder="New category name"
+                        className="flex-1 border border-[#8c8f94] px-2 py-1 text-[13px] outline-none focus:border-[#2271b1] focus:shadow-[0_0_0_1px_#2271b1]"
+                      />
+                      <button type="button" onClick={() => {
+                        if (newCategoryName.trim()) {
+                           if (!CATEGORIES.includes(newCategoryName.trim())) {
+                              CATEGORIES.push(newCategoryName.trim());
+                           }
+                           toggleCategory(newCategoryName.trim());
+                           setNewCategoryName("");
+                           setShowAddCategory(false);
+                        }
+                      }} className="border border-[#8c8f94] bg-[#f6f7f7] px-3 py-1 rounded-[3px] text-[13px] hover:bg-[#f0f0f1]">Add</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setShowAddCategory(true)} className="text-[#2271b1] text-[13px] hover:underline mt-3 font-medium">+ Add New Category</button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tags Meta Box */}
+              <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                <div className="px-3 py-2 border-b border-[#c3c4c7] font-semibold text-[14px]">
+                  Tags
+                </div>
+                <div className="p-3">
+                  <div className="flex gap-2">
+                    <input value={tags} onChange={e => setTags(e.target.value)} className="flex-1 border border-[#8c8f94] px-2 py-1 text-[13px] outline-none focus:border-[#2271b1] focus:shadow-[0_0_0_1px_#2271b1]" />
+                    <button type="button" className="border border-[#8c8f94] bg-[#f6f7f7] px-3 py-1 text-[13px] rounded-[3px] hover:bg-[#f0f0f1] transition-colors">Add</button>
+                  </div>
+                  <p className="text-[12px] text-[#646970] mt-1.5 italic">Separate tags with commas</p>
+                </div>
+              </div>
+
+              {/* Featured Image Meta Box */}
+              <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                <div className="px-3 py-2 border-b border-[#c3c4c7] font-semibold text-[14px]">
+                  Featured Image
+                </div>
+                <div className="p-3">
+                  <input
+                    type="file"
+                    ref={primaryImageInputRef}
+                    onChange={handlePrimaryImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  {media?.url ? (
+                    <div className="space-y-3">
+                      <img src={media.url} alt="Featured" className="w-full rounded-[3px] border border-[#c3c4c7]" />
+                      <button type="button" onClick={() => setMedia(null)} className="text-[#d63638] text-[13px] hover:underline font-medium block">Remove featured image</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => primaryImageInputRef.current?.click()} className="text-[#2271b1] text-[13px] hover:underline font-medium">
+                      Set featured image
+                    </button>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <motion.form
       initial={{ opacity: 0, scale: 0.95 }}
@@ -21579,7 +21942,11 @@ function PostForm({
     >
       <div className="flex justify-between items-center mb-6">
         <h3 className="font-black text-primary uppercase text-lg flex items-center gap-2">
-          {editingPost ? "✏️ Edit Update" : "✨ New Update"}
+          {editingPost 
+            ? "✏️ Edit" 
+            : submissionType === "complaint" 
+              ? "🚨 కంప్లైంట్ / రిపోర్ట్" 
+              : "✨ New Update"}
         </h3>
         <button
           aria-label="Close edit modal"
@@ -21592,36 +21959,6 @@ function PostForm({
       </div>
 
       <div className="space-y-4 text-left">
-        <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-200">
-          <label className="text-[11px] font-black text-slate-700 uppercase tracking-widest block mb-2">
-            సమర్పణ రకం (Submission Type) *
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setSubmissionType("post")}
-              className={`p-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
-                submissionType === "post"
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <span>📢 సాధారణ పోస్ట్ / అప్‌డేట్</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubmissionType("complaint")}
-              className={`p-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
-                submissionType === "complaint"
-                  ? "bg-rose-600 text-white border-rose-600 shadow-md"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <span>🚨 కంప్లైంట్ / రిపోర్ట్</span>
-            </button>
-          </div>
-        </div>
-
         <div>
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">
             మొబైల్ నంబర్ (Mobile Number) {submissionType === "complaint" ? <span className="text-rose-500">* (తప్పనిసరి - అడ్మిన్ సంప్రదించడానికి)</span> : "(Optional)"}
@@ -23539,7 +23876,7 @@ function PostDetail({
     );
   }
 
-  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
+  const postUrl = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
   const shareText = generatePostShareText(post, postUrl);
   const availablePosts = (allPosts && allPosts.length > 0 ? allPosts : fetchedRecent);
   const recentPostsList = availablePosts.filter((p) => p.id !== post.id).slice(0, 6);
@@ -24196,7 +24533,7 @@ function PostDetail({
                 <div
                   key={rp.id}
                   onClick={() => {
-                    setSearchParams({ postId: rp.id });
+                    setSearchParams({ postId: rp.slug || rp.id });
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className="group bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all overflow-hidden cursor-pointer flex flex-col h-full hover:border-red-300"
@@ -24298,7 +24635,7 @@ function PostDetail({
                   <div
                     key={rp.id}
                     onClick={() => {
-                      setSearchParams({ postId: rp.id });
+                      setSearchParams({ postId: rp.slug || rp.id });
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                     className="flex gap-3 cursor-pointer group"
@@ -24344,7 +24681,7 @@ function PostDetail({
                   <div
                     key={rp.id}
                     onClick={() => {
-                      setSearchParams({ postId: rp.id });
+                      setSearchParams({ postId: rp.slug || rp.id });
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                     className="flex gap-3 cursor-pointer group"
