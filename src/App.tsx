@@ -4707,16 +4707,7 @@ E-Vedhika Team`;
         
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {/* Complaint / Report Button */}
-            <button
-              onClick={() => setShowComplaintFormModal(true)}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-black text-[11px] sm:text-xs px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1 shrink-0 border border-rose-400/50 cursor-pointer animate-pulse"
-              title="🚨 కంప్లైంట్ / రిపోర్ట్ చేయండి"
-            >
-              <span>🚨</span>
-              <span className="hidden sm:inline">కంప్లైంట్ / రిపోర్ట్</span>
-              <span className="sm:hidden">ఫిర్యాదు</span>
-            </button>
+            
 
             {/* Direct Messages Button */}
             <div
@@ -5568,9 +5559,10 @@ E-Vedhika Team`;
                     icon={item.icon}
                     active={activeAdminSubTab === item.id || (item.id === "landing_page_config" && ["landing_page_config", "seo_meta", "page_descriptions"].includes(activeAdminSubTab))}
                     onClick={() => {
-                      setActiveAdminSubTab(item.id);
-                      if (window.innerWidth < 1024) setSidebarOpen(false);
-                    }}
+                          setActiveAdminSubTab(item.id);
+                          setCurrentTab("admin");
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
                   />
                 ))}
 
@@ -5591,9 +5583,10 @@ E-Vedhika Team`;
                     icon={item.icon}
                     active={activeAdminSubTab === item.id}
                     onClick={() => {
-                      setActiveAdminSubTab(item.id);
-                      if (window.innerWidth < 1024) setSidebarOpen(false);
-                    }}
+                          setActiveAdminSubTab(item.id);
+                          setCurrentTab("admin");
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
                   />
                 ))}
 
@@ -5613,9 +5606,10 @@ E-Vedhika Team`;
                     icon={item.icon}
                     active={activeAdminSubTab === item.id}
                     onClick={() => {
-                      setActiveAdminSubTab(item.id);
-                      if (window.innerWidth < 1024) setSidebarOpen(false);
-                    }}
+                          setActiveAdminSubTab(item.id);
+                          setCurrentTab("admin");
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
                   />
                 ))}
 
@@ -5642,6 +5636,7 @@ E-Vedhika Team`;
                         active={activeAdminSubTab === item.id || (item.id === "logs" && activeAdminSubTab === "security")}
                         onClick={() => {
                           setActiveAdminSubTab(item.id);
+                          setCurrentTab("admin");
                           if (window.innerWidth < 1024) setSidebarOpen(false);
                         }}
                       />
@@ -5674,9 +5669,10 @@ E-Vedhika Team`;
                     icon={item.icon}
                     active={activeAdminSubTab === item.id || (item.id === "settings" && ["settings", "ads", "code_manager"].includes(activeAdminSubTab))}
                     onClick={() => {
-                      setActiveAdminSubTab(item.id);
-                      if (window.innerWidth < 1024) setSidebarOpen(false);
-                    }}
+                          setActiveAdminSubTab(item.id);
+                          setCurrentTab("admin");
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
                   />
                 ))}
 
@@ -8025,25 +8021,7 @@ E-Vedhika Team`;
   </motion.div>
 )}
 
-                {currentTab === "exe_ubd_live" && (
-                  <motion.div
-                    key="exe_ubd_live"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <div className="flex justify-between items-center mb-4">
-                      <button
-                        aria-label="Back to Home"
-                        onClick={() => setCurrentTab("home")}
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
-                      >
-                        <ArrowLeft size={16} /> హోమ్ పేజీకి తిరిగి వెళ్ళు (Back to Home)
-                      </button>
-                    </div>
-                    <ExeUbdLiveMonitoring />
-                  </motion.div>
-                )}
+                
                 {/* Secondary admin block removed */}
               </AnimatePresence>
               </div>
