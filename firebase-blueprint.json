@@ -108,9 +108,35 @@
         "role": { "type": "string" },
         "updatedAt": { "type": "integer" }
       }
+    },
+    "TelemetryLog": {
+      "title": "Telemetry Log",
+      "description": "EXE and UBD live telemetry diagnostic report from client machines.",
+      "type": "object",
+      "properties": {
+        "pcName": { "type": "string" },
+        "userName": { "type": "string" },
+        "officeLocation": { "type": "string" },
+        "status": { "type": "string" },
+        "healthScore": { "type": "integer" },
+        "date": { "type": "string" },
+        "time": { "type": "string" }
+      }
     }
   },
   "firestore": {
+    "/telemetryLogs/{logId}": {
+      "schema": "TelemetryLog",
+      "description": "EXE and UBD diagnostic telemetry logs."
+    },
+    "/deploymentLogs/{logId}": {
+      "schema": "TelemetryLog",
+      "description": "UBD deployment runner logs."
+    },
+    "/system_alerts/{alertId}": {
+      "schema": "object",
+      "description": "System health and threshold alerts."
+    },
     "/user_pins/{userId}": {
       "schema": "UserPin",
       "description": "Security access PINs for Editor/Moderator staff."

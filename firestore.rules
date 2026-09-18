@@ -8,7 +8,7 @@ match /posts/{postId} {
   
   // Allow updates to post counters like views, commentCount, likes, etc. for anyone, or full updates for admins/owners:
   allow update: if true;
-  allow create: if isSignedIn() && (incoming().uid != 'all' || isAdmin());
+  allow create: if isSignedIn();
   allow delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
   
   match /comments/{commentId} {
@@ -91,8 +91,22 @@ match /suggestions/{suggestionId} {
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid') && (!('status' in incoming()) || incoming().status == (resource == null ? null : resource.data.status)));
 }
 
+match /telemetryLogs/{logId} {
+  allow read: if true;
+  allow create: if true;
+  allow update: if true;
+  allow delete: if isAdmin();
+}
+
+match /deploymentLogs/{logId} {
+  allow read: if true;
+  allow create: if true;
+  allow update: if true;
+  allow delete: if isAdmin();
+}
+
 match /users/{userId} {
-  allow read: if isSignedIn(); 
+  allow read: if true; 
   allow create: if isAdmin() || (isSignedIn() && request.auth.uid == userId && (!('role' in incoming()) || incoming().role == 'user'));
   allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && (!('role' in incoming()) || incoming().role == (resource == null ? null : resource.data.role)));
   allow delete: if isSuperAdmin(); // అకౌంట్స్ డిలీట్ చేసే పవర్ కేవలం సూపర్ అడ్మిన్ కి మాత్రమే
@@ -143,9 +157,10 @@ match /support_tickets/{ticketId} {
 }
 
 match /notifications/{notifId} {
-  allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.uid == 'all');
+  allow read: if true;
   allow create: if true;
-  allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+  allow update: if isSignedIn() || isAdmin();
+  allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
 }
 match /security_logs/{logId} {
   allow read: if isAdmin();
@@ -164,9 +179,7 @@ match /system_errors/{document=**} { allow read: if isAdmin(); allow create: if 
 match /app_errors/{document=**} { allow read: if isAdmin(); allow create: if true; }
 match /polls/{document=**} { allow read: if true; allow write: if isAdmin(); }
 match /home_sections/{document=**} { allow read: if true; allow write: if isAdmin(); }
-match /deploymentLogs/{document=**} { allow read: if true; allow write: if true; }
-match /telemetryLogs/{document=**} { allow read: if true; allow write: if true; }
-match /system_alerts/{document=**} { allow read: if true; allow write: if true; }
+match /system_alerts/{document=**} { allow read: if true; allow create: if true; allow update, delete: if true; }
 match /remoteQueue/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
 match /gpdp_plans/{document=**} { allow read: if true; allow write: if isAdmin(); }
 match /ubdDataChunks/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }

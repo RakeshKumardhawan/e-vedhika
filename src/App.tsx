@@ -3,6 +3,7 @@ import { StaticPagesAdmin } from "./components/StaticPagesAdmin";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
 import { ComplaintFormModal } from "./components/ComplaintFormModal";
+import { DsrTables } from "./components/DsrTables";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -154,7 +155,7 @@ import {  DollarSign,
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key } from "lucide-react";
+  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key, Copy, Printer } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -569,10 +570,12 @@ export function requireLoginAlert(userObj?: any): boolean {
   if (!account || account.isAnonymous) {
     Swal.fire({
       title: "లాగిన్ అవసరం",
-      text: "ఏదైనా ఫైల్ డౌన్లోడ్ చేయాలన్నా, పోస్ట్ చేయాలన్నా లాగిన్ తప్పనిసరి. దయచేసి ముందుగా లాగిన్ అవ్వండి.",
+      text: "ముందుకు సాగడానికి దయచేసి లాగిన్ అవ్వండి.",
       icon: "warning",
       confirmButtonText: "సరే (OK)",
       confirmButtonColor: "#0d3b66",
+    }).then(() => {
+      window.dispatchEvent(new Event("open-login-modal"));
     });
     return true;
   }
@@ -594,7 +597,6 @@ function formatDistanceToNow(timestamp: number): string {
 
 interface Post {
   id: string;
-  status?: "draft" | "published";
   slug?: string;
   title: string;
   content: string;
@@ -2878,6 +2880,14 @@ export default function App() {
   };
 
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  useEffect(() => {
+    const handleOpenLoginModal = () => {
+      setShowAuthModal(true);
+    };
+    window.addEventListener("open-login-modal", handleOpenLoginModal);
+    return () => window.removeEventListener("open-login-modal", handleOpenLoginModal);
+  }, []);
   const [showComplaintFormModal, setShowComplaintFormModal] = useState(false);
   const [selectedIframeUrl, setSelectedIframeUrl] = useState<string | null>(
     null,
@@ -7431,19 +7441,8 @@ E-Vedhika Team`;
                           {(!user || user?.isAnonymous) && (
                             <div
                               className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-[32px]"
-                              onClick={async () => {
-                                const res = await Swal.fire({
-                                  title: "లాగిన్ అవసరం",
-                                  text: "మీరు లాగిన్ అయ్యాక ఏదైనా Suggestion & Feedback ఇవ్వచ్చు. మీరు లాగిన్ అవుతారా?",
-                                  icon: "info",
-                                  showCancelButton: true,
-                                  confirmButtonText: "లాగిన్ అవ్వండి",
-                                  cancelButtonText: "వద్దు",
-                                  confirmButtonColor: "#4f46e5",
-                                });
-                                if (res.isConfirmed) {
-                                  setShowAuthModal(true);
-                                }
+                              onClick={() => {
+                                window.dispatchEvent(new Event("open-login-modal"));
                               }}
                             />
                           )}
@@ -17229,7 +17228,7 @@ function StatusCell({ status }: { status: string }) {
         className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black border border-emerald-200"
         title="Present (Intime: <= 9:00 AM)"
       >
-        ✅ Attendance in time
+        ✅ BEFORE 9:00 AM
       </span>
     );
   if (status === "P-L")
@@ -17238,7 +17237,7 @@ function StatusCell({ status }: { status: string }) {
         className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-black border border-orange-200"
         title="Present (Late: > 9:00 AM)"
       >
-        ⚠️ Late Attendance
+        ⚠️ AFTER 9:01 AM
       </span>
     );
   if (status === "P")
@@ -18376,20 +18375,43 @@ function DSRAnalyzer({
   const [data, setData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [rawJson, setRawJson] = useState<any[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    present: 0,
-    dsr: 0,
-    pending: 0,
-    meeting: 0,
-    training: 0,
-    leave: 0,
-    before901: 0,
-    after900: 0,
+  const [mandalSummaries, setMandalSummaries] = useState<any[]>([]);
+  const [grandTotal, setGrandTotal] = useState<any>({
+    totalGPs: 0,
+    c6_7: 0,
+    c7_8: 0,
+    c8_9: 0,
+    before9AM: 0,
+    pctBefore9AM: 0,
+    c9_11: 0,
+    after11AM: 0,
+    pctAfter11AM: 0,
+    attendedGP: 0,
+    leaveToday: 0,
+    meetingTraining: 0,
+    totalReported: 0,
+    notReported: 0,
+    dsrEntered: 0,
+    dsrBefore11: 0,
+    dsrAfter11: 0,
   });
-  const [mandalSummaries, setMandalSummaries] = useState<Record<string, any>>(
-    {},
-  );
+
+  const [reportDate, setReportDate] = useState<string>(() => {
+    const now = new Date();
+    return `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
+  });
+  const [reportTime, setReportTime] = useState<string>(() => {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${String(hours).padStart(2, "0")}.${minutes} ${ampm}`;
+  });
+
+  const [viewMode, setViewMode] = useState<"reports" | "mandal" | "gp">("reports");
+  const [expandedMandals, setExpandedMandals] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -18400,6 +18422,27 @@ function DSRAnalyzer({
     new Date().toLocaleTimeString(),
   );
 
+  const fullTimestamp = useMemo(() => {
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    let d = new Date();
+    if (reportDate && reportDate.includes(".")) {
+      const parts = reportDate.split(".");
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const monIdx = parseInt(parts[1], 10) - 1;
+        const yr = parseInt(parts[2], 10);
+        if (!isNaN(day) && !isNaN(monIdx) && !isNaN(yr)) {
+          const monName = months[monIdx] || months[d.getMonth()];
+          return `${monName} ${day}, ${yr} at ${reportTime || currentTime}`;
+        }
+      }
+    }
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} at ${reportTime || currentTime}`;
+  }, [reportDate, reportTime, currentTime]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString());
@@ -18407,9 +18450,50 @@ function DSRAnalyzer({
     return () => clearInterval(timer);
   }, []);
 
+  const DSR_REPORT_HEADERS = [
+    "S.No",
+    "Mandal Name / GARAMA PANCHAYAT",
+    "Total No. of GPs",
+    "6 AM - 7 AM",
+    "7 AM - 8 AM",
+    "8 AM - 9 AM",
+    "Before 9 AM",
+    "(%) of PS reported Before 9 AM",
+    "9 AM - 11 AM",
+    "After 11 AM",
+    "(%) of PS Reported after 11 AM",
+    "Total No. of PSs attended GP",
+    "No. of PSs on Leave Today",
+    "No. of PSs reported to Meeting/Training",
+    "No. of PS Reported",
+    "No. of PS Not reported",
+    "DSR Entered",
+    "DSR Entry Time",
+    "DSR Before 11 AM",
+    "DSR After 11 AM",
+  ];
+
   const onUpload = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Capture upload date and time immediately when user uploads
+    const uploadDateObj = new Date();
+    const dStr = String(uploadDateObj.getDate()).padStart(2, "0");
+    const mStr = String(uploadDateObj.getMonth() + 1).padStart(2, "0");
+    const yStr = uploadDateObj.getFullYear();
+    const formattedUploadDate = `${dStr}.${mStr}.${yStr}`;
+
+    let h = uploadDateObj.getHours();
+    const minStr = String(uploadDateObj.getMinutes()).padStart(2, "0");
+    const ampmStr = h >= 12 ? "pm" : "am";
+    h = h % 12;
+    h = h ? h : 12;
+    const formattedUploadTime = `${String(h).padStart(2, "0")}.${minStr} ${ampmStr}`;
+
+    setReportDate(formattedUploadDate);
+    setReportTime(formattedUploadTime);
+    setLastUpdateTime(`${formattedUploadDate} ${formattedUploadTime}`);
 
     setIsProcessing(true);
     setUploadProgress(10);
@@ -18570,28 +18654,29 @@ function DSRAnalyzer({
         const finalMandalIdx = mandalIdx !== -1 ? mandalIdx : 3;
         const finalGpIdx = gpIdx !== -1 ? gpIdx : 5;
 
-        const processed: any[] = [];
-        let present = 0,
-          dsr = 0,
-          pending = 0,
-          meeting = 0,
-          training = 0,
-          leave = 0,
-          before901 = 0,
-          after900 = 0;
-        const mandalStats = new Map<
-          string,
-          {
-            total: number;
-            onTime: number;
-            late: number;
-            pending: number;
-            meeting: number;
-            training: number;
-            leave: number;
-            dsrPending: number;
+        // Auto-detect Date and Time from header cells if present
+        for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+          for (const cell of allRows[i] || []) {
+            const cellStr = String(cell || "").trim();
+            const dateMatch = cellStr.match(/(\b\d{1,2})[./-](\d{1,2})[./-](\d{4}\b)/);
+            if (dateMatch) {
+              const d = dateMatch[1].padStart(2, "0");
+              const m = dateMatch[2].padStart(2, "0");
+              const y = dateMatch[3];
+              setReportDate(`${d}.${m}.${y}`);
+            }
+            const timeMatch = cellStr.match(/(\b\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*(am|pm)?/i);
+            if (timeMatch && timeMatch[3]) {
+              const hh = timeMatch[1].padStart(2, "0");
+              const mm = timeMatch[2];
+              const ap = timeMatch[3].toLowerCase();
+              setReportTime(`${hh}.${mm} ${ap}`);
+            }
           }
-        >();
+        }
+
+        const processed: any[] = [];
+        const mandalMap = new Map<string, any>();
 
         allRows.slice(bestHeaderIdx + 1).forEach((r) => {
           const gpRaw = String(r[finalGpIdx] || "").trim();
@@ -18610,14 +18695,16 @@ function DSRAnalyzer({
 
           const attStatusRaw = String(r[attStatusIdx] || "").toLowerCase();
           const dsrStatusRaw = String(r[dsrStatusIdx] || "").toLowerCase();
-          const dsrTimeStr = String(r[dsrTimeIdx] || "");
+          const attTimeStr = String(r[attTimeIdx] || "").trim();
+          const dsrTimeStr = String(r[dsrTimeIdx] || "").trim();
 
           const isP =
             attStatusRaw.includes("present") ||
             attStatusRaw.startsWith("p") ||
             attStatusRaw.includes("✅") ||
             attStatusRaw.includes("ప్రెసెంట్") ||
-            attStatusRaw.includes("హాజరు");
+            attStatusRaw.includes("హాజరు") ||
+            (attTimeStr.length > 3 && attTimeStr.includes(":"));
           const isM =
             attStatusRaw.includes("meeting") ||
             attStatusRaw.startsWith("m") ||
@@ -18630,126 +18717,163 @@ function DSRAnalyzer({
             attStatusRaw.includes("leave") ||
             attStatusRaw.startsWith("l") ||
             attStatusRaw.includes("సెలవు");
-          const isD =
-            (dsrStatusRaw.includes("entered") &&
-              !dsrStatusRaw.includes("not")) ||
+
+          // Parse attendance timestamp into minutes from midnight
+          let attMinutes: number | null = null;
+          const timeToParse = (attTimeStr && attTimeStr.includes(":")) ? attTimeStr : dsrTimeStr;
+          if (timeToParse) {
+            const tm = timeToParse.match(/(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*(am|pm)?/i);
+            if (tm) {
+              let h = parseInt(tm[1], 10);
+              const m = parseInt(tm[2], 10);
+              const ap = tm[3] ? tm[3].toLowerCase() : null;
+              if (ap === "pm" && h < 12) h += 12;
+              if (ap === "am" && h === 12) h = 0;
+              attMinutes = h * 60 + m;
+            }
+          }
+
+          // 16 Column Metrics:
+          // 4. 6 AM - 7 AM (360 <= min < 420)
+          const c6_7 = isP && attMinutes !== null && attMinutes >= 360 && attMinutes < 420 ? 1 : 0;
+          // 5. 7 AM - 8 AM (420 <= min < 480)
+          const c7_8 = isP && attMinutes !== null && attMinutes >= 420 && attMinutes < 480 ? 1 : 0;
+          // 6. 8 AM - 9 AM (480 <= min <= 540)
+          const c8_9 = isP && attMinutes !== null && attMinutes >= 480 && attMinutes <= 540 ? 1 : 0;
+          // 7. Before 9 AM (<= 540 or within 6-7, 7-8, 8-9)
+          const before9AM = isP && ((attMinutes !== null && attMinutes <= 540) || c6_7 === 1 || c7_8 === 1 || c8_9 === 1) ? 1 : 0;
+          // 9. 9 AM - 11 AM (541 to 660)
+          const c9_11 = isP && attMinutes !== null && attMinutes > 540 && attMinutes <= 660 ? 1 : 0;
+          // 10. After 11 AM (> 660)
+          const after11AM = isP && attMinutes !== null && attMinutes > 660 ? 1 : 0;
+
+          // 12. Total No. of PSs attended GP
+          const attendedGP = isP ? 1 : 0;
+          // 13. No. of PSs on Leave Today
+          const leaveToday = isL ? 1 : 0;
+          // 14. No. of PSs reported to Meeting/Training
+          const meetingTraining = isM || isT ? 1 : 0;
+          // 15. No. of PS Reported
+          const totalReported = attendedGP || leaveToday || meetingTraining ? 1 : 0;
+          // 16. No. of PS Not reported
+          const notReported = totalReported === 0 ? 1 : 0;
+
+          // DSR Metrics (Columns 17, 18, 19, 20):
+          // Parse DSR timestamp into minutes from midnight
+          let dsrMinutes: number | null = null;
+          if (dsrTimeStr && dsrTimeStr !== "-") {
+            const tm = dsrTimeStr.match(/(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*(am|pm)?/i);
+            if (tm) {
+              let h = parseInt(tm[1], 10);
+              const m = parseInt(tm[2], 10);
+              const ap = tm[3] ? tm[3].toLowerCase() : null;
+              if (ap === "pm" && h < 12) h += 12;
+              if (ap === "am" && h === 12) h = 0;
+              dsrMinutes = h * 60 + m;
+            }
+          }
+
+          const isDsrEntered =
             dsrStatusRaw.includes("yes") ||
-            dsrStatusRaw.includes("✅") ||
-            dsrStatusRaw.includes("uploaded") ||
-            (dsrTimeStr && dsrTimeStr.length > 3 && dsrTimeStr.includes(":"));
-          const attTimeStr = String(r[attTimeIdx] || "");
+            dsrStatusRaw.includes("enter") ||
+            dsrStatusRaw.includes("submit") ||
+            dsrStatusRaw.includes("done") ||
+            dsrStatusRaw.includes("చేసారు") ||
+            dsrStatusRaw.includes("హాజరు") ||
+            (dsrTimeStr.length > 2 && dsrTimeStr !== "-") ||
+            dsrMinutes !== null;
 
-          let isOnTime = false;
-          let isLate = false;
-          if (isD && dsrTimeStr) {
-            const timeMatch = dsrTimeStr.match(/(\d{1,2}):(\d{2})/);
-            if (timeMatch) {
-              let hour = parseInt(timeMatch[1]);
-              const min = parseInt(timeMatch[2]);
-              const isPM = dsrTimeStr.toLowerCase().includes("pm");
-              if (isPM && hour < 12) hour += 12;
-              if (!isPM && hour === 12) hour = 0;
+          // 17. DSR Entered
+          const dsrEntered = isDsrEntered ? 1 : 0;
+          // 19. DSR Before 11 AM (<= 660 min)
+          const dsrBefore11 = isDsrEntered && (dsrMinutes !== null ? dsrMinutes <= 660 : true) ? 1 : 0;
+          // 20. DSR After 11 AM (> 660 min)
+          const dsrAfter11 = isDsrEntered && (dsrMinutes !== null ? dsrMinutes > 660 : false) ? 1 : 0;
 
-              const totalMinutes = hour * 60 + min;
-              if (totalMinutes <= 10 * 60 + 30) isOnTime = true;
-              else isLate = true;
-            }
-          }
-
-          let isAttBefore901 = false;
-          let isAttAfter900 = false;
-          if (isP && attTimeStr) {
-            const attTimeMatch = attTimeStr.match(/(\d{1,2}):(\d{2})/);
-            if (attTimeMatch) {
-              let hour = parseInt(attTimeMatch[1]);
-              const min = parseInt(attTimeMatch[2]);
-              const isPM = attTimeStr.toLowerCase().includes("pm");
-              if (isPM && hour < 12) hour += 12;
-              if (!isPM && hour === 12) hour = 0;
-
-              const totalMinutes = hour * 60 + min;
-              if (totalMinutes <= 9 * 60) isAttBefore901 = true;
-              if (totalMinutes > 9 * 60) isAttAfter900 = true;
-            }
-          }
-
-          if (isP) {
-            present++;
-            if (isAttBefore901) before901++;
-            if (isAttAfter900) after900++;
-          }
-
-          if (isM) meeting++;
-          else if (isT) training++;
-          else if (isL) leave++;
-
-          if (isD) dsr++;
-          else if (!isM && !isT && !isL) pending++;
-
-          const currentM = mandalStats.get(mandalRaw) || {
-            total: 0,
-            onTime: 0,
-            late: 0,
-            pending: 0,
-            meeting: 0,
-            training: 0,
-            leave: 0,
-            dsrPending: 0,
-          };
-          currentM.total++;
-
-          if (isM) currentM.meeting++;
-          else if (isT) currentM.training++;
-          else if (isL) currentM.leave++;
-          else if (isD) {
-            if (isOnTime) currentM.onTime++;
-            else currentM.late++;
-          } else {
-            currentM.pending++;
-            if (isP) currentM.dsrPending++;
-          }
-
-          mandalStats.set(mandalRaw, currentM);
-
-          processed.push({
+          const rowItem = {
+            sNo: processed.length + 1,
             mandal: mandalRaw,
             gp: gpRaw.toUpperCase(),
-            attStatus:
-              r[attStatusIdx] ||
-              (isP
-                ? "Present"
-                : isM
-                  ? "Meeting"
-                  : isT
-                    ? "Training"
-                    : isL
-                      ? "Leave"
-                      : "Absent"),
-            attTime: r[attTimeIdx] || "-",
-            dsrStatus:
-              r[dsrStatusIdx] ||
-              (isD
-                ? isOnTime
-                  ? "Attendance in time"
-                  : "Late Attendance"
-                : isM
-                  ? "Meeting"
-                  : isT
-                    ? "Training"
-                    : isL
-                      ? "Leave"
-                      : "Pending"),
+            attStatus: isP
+              ? before9AM
+                ? "Present (BEFORE 9:00 AM)"
+                : "Present (AFTER 9:01 AM)"
+              : isM
+                ? "Meeting"
+                : isT
+                  ? "Training"
+                  : isL
+                    ? "Leave"
+                    : r[attStatusIdx] || "Absent",
+            attTime: attTimeStr || "-",
+            dsrStatus: dsrStatusRaw || "-",
             dsrTime: dsrTimeStr || "-",
             isPresent: isP,
             isMeeting: isM,
             isTraining: isT,
             isLeave: isL,
-            isEntered: isD,
-            isOnTime,
-            isLate,
-            isAttBefore901,
-            isAttAfter900,
-          });
+            totalGPs: 1,
+            c6_7,
+            c7_8,
+            c8_9,
+            before9AM,
+            pctBefore9AM: before9AM ? "100%" : "0%",
+            c9_11,
+            after11AM,
+            pctAfter11AM: after11AM ? "100%" : "0%",
+            attendedGP,
+            leaveToday,
+            meetingTraining,
+            totalReported,
+            notReported,
+            dsrEntered,
+            dsrBefore11,
+            dsrAfter11,
+          };
+          processed.push(rowItem);
+
+          // Mandal aggregation
+          if (!mandalMap.has(mandalRaw)) {
+            mandalMap.set(mandalRaw, {
+              mandal: mandalRaw,
+              totalGPs: 0,
+              c6_7: 0,
+              c7_8: 0,
+              c8_9: 0,
+              before9AM: 0,
+              pctBefore9AM: 0,
+              c9_11: 0,
+              after11AM: 0,
+              pctAfter11AM: 0,
+              attendedGP: 0,
+              leaveToday: 0,
+              meetingTraining: 0,
+              totalReported: 0,
+              notReported: 0,
+              dsrEntered: 0,
+              dsrBefore11: 0,
+              dsrAfter11: 0,
+              gps: [] as any[],
+            });
+          }
+
+          const mObj = mandalMap.get(mandalRaw);
+          mObj.totalGPs += 1;
+          mObj.c6_7 += c6_7;
+          mObj.c7_8 += c7_8;
+          mObj.c8_9 += c8_9;
+          mObj.before9AM += before9AM;
+          mObj.c9_11 += c9_11;
+          mObj.after11AM += after11AM;
+          mObj.attendedGP += attendedGP;
+          mObj.leaveToday += leaveToday;
+          mObj.meetingTraining += meetingTraining;
+          mObj.totalReported += totalReported;
+          mObj.notReported += notReported;
+          mObj.dsrEntered += dsrEntered;
+          mObj.dsrBefore11 += dsrBefore11;
+          mObj.dsrAfter11 += dsrAfter11;
+          mObj.gps.push(rowItem);
         });
 
         if (processed.length === 0) {
@@ -18761,21 +18885,61 @@ function DSRAnalyzer({
           return;
         }
 
+        // Calculate percentages for each mandal
+        const mandalsArray = Array.from(mandalMap.values()).map((m, idx) => ({
+          ...m,
+          sNo: idx + 1,
+          pctBefore9AM: m.totalGPs > 0 ? (m.before9AM / m.totalGPs) * 100 : 0,
+          pctAfter11AM: m.totalGPs > 0 ? (m.after11AM / m.totalGPs) * 100 : 0,
+        }));
+
+        // Compute Grand Total
+        const gTotal = mandalsArray.reduce(
+          (acc, m) => {
+            acc.totalGPs += m.totalGPs;
+            acc.c6_7 += m.c6_7;
+            acc.c7_8 += m.c7_8;
+            acc.c8_9 += m.c8_9;
+            acc.before9AM += m.before9AM;
+            acc.c9_11 += m.c9_11;
+            acc.after11AM += m.after11AM;
+            acc.attendedGP += m.attendedGP;
+            acc.leaveToday += m.leaveToday;
+            acc.meetingTraining += m.meetingTraining;
+            acc.totalReported += m.totalReported;
+            acc.notReported += m.notReported;
+            acc.dsrEntered += m.dsrEntered;
+            acc.dsrBefore11 += m.dsrBefore11;
+            acc.dsrAfter11 += m.dsrAfter11;
+            return acc;
+          },
+          {
+            totalGPs: 0,
+            c6_7: 0,
+            c7_8: 0,
+            c8_9: 0,
+            before9AM: 0,
+            pctBefore9AM: 0,
+            c9_11: 0,
+            after11AM: 0,
+            pctAfter11AM: 0,
+            attendedGP: 0,
+            leaveToday: 0,
+            meetingTraining: 0,
+            totalReported: 0,
+            notReported: 0,
+            dsrEntered: 0,
+            dsrBefore11: 0,
+            dsrAfter11: 0,
+          },
+        );
+        gTotal.pctBefore9AM = gTotal.totalGPs > 0 ? (gTotal.before9AM / gTotal.totalGPs) * 100 : 0;
+        gTotal.pctAfter11AM = gTotal.totalGPs > 0 ? (gTotal.after11AM / gTotal.totalGPs) * 100 : 0;
+
         setData(processed);
         setFilteredData(processed);
-        setStats({
-          total: processed.length,
-          present,
-          dsr,
-          pending,
-          meeting,
-          training,
-          leave,
-          before901,
-          after900,
-        });
-        // @ts-ignore
-        setMandalSummaries(Object.fromEntries(mandalStats));
+        setMandalSummaries(mandalsArray);
+        setGrandTotal(gTotal);
         setLastUpdateTime(
           new Date().toLocaleTimeString([], {
             hour: "2-digit",
@@ -18789,7 +18953,7 @@ function DSRAnalyzer({
           setUploadProgress(0);
         }, 500);
         addToast(
-          `విజయవంతంగా ప్రాసెస్ చేయబడింది! ${processed.length} గ్రామ పంచాయతీలు దొరికాయి. `,
+          `విజయవంతంగా ప్రాసెస్ చేయబడింది! ${processed.length} గ్రామ పంచాయతీలు దొరికాయి.`,
         );
       } catch (err) {
         console.error("DSR Processing Error:", err);
@@ -18808,67 +18972,151 @@ function DSRAnalyzer({
     reader.readAsArrayBuffer(file);
   };
 
+  const toggleMandalExpand = (mandalName: string) => {
+    setExpandedMandals((prev) => ({
+      ...prev,
+      [mandalName]: !prev[mandalName],
+    }));
+  };
+
   const downloadMandalReport = async () => {
     await loadHeavyModules();
-    if (Object.keys(mandalSummaries).length === 0) return;
+    if (mandalSummaries.length === 0) return;
 
-    const exportData = Object.entries(mandalSummaries).map(
-      ([mandal, s]: [string, any]) => ({
-        "Mandal Name": mandal,
-        "Total GPs": s.total,
-        "On Time (10:30 AM)": s.onTime,
-        Meeting: s.meeting,
-        Training: s.training,
-        Leave: s.leave,
-        "Late Submission": s.late,
-        Pending: s.pending,
-        "Success Rate (%)": Math.round(
-          ((s.onTime + s.meeting + s.training + s.leave) / s.total) * 100,
-        ),
-      }),
-    );
+    const aoa: any[][] = [];
+    aoa.push(["Telangana State"]);
+    aoa.push([
+      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+    ]);
+    aoa.push([]);
+    aoa.push(DSR_REPORT_HEADERS);
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    mandalSummaries.forEach((m, idx) => {
+      aoa.push([
+        idx + 1,
+        m.mandal,
+        m.totalGPs,
+        m.c6_7,
+        m.c7_8,
+        m.c8_9,
+        m.before9AM,
+        `${m.pctBefore9AM.toFixed(1)}%`,
+        m.c9_11,
+        m.after11AM,
+        `${m.pctAfter11AM.toFixed(1)}%`,
+        m.attendedGP,
+        m.leaveToday,
+        m.meetingTraining,
+        m.totalReported,
+        m.notReported,
+        m.dsrEntered,
+        m.dsrEntered > 0 ? `${m.dsrEntered} Entered` : "-",
+        m.dsrBefore11,
+        m.dsrAfter11,
+      ]);
+    });
+
+    aoa.push([
+      "Total",
+      "Total",
+      grandTotal.totalGPs,
+      grandTotal.c6_7,
+      grandTotal.c7_8,
+      grandTotal.c8_9,
+      grandTotal.before9AM,
+      `${grandTotal.pctBefore9AM.toFixed(1)}%`,
+      grandTotal.c9_11,
+      grandTotal.after11AM,
+      `${grandTotal.pctAfter11AM.toFixed(1)}%`,
+      grandTotal.attendedGP,
+      grandTotal.leaveToday,
+      grandTotal.meetingTraining,
+      grandTotal.totalReported,
+      grandTotal.notReported,
+      grandTotal.dsrEntered,
+      `${grandTotal.dsrEntered} / ${grandTotal.totalGPs}`,
+      grandTotal.dsrBefore11,
+      grandTotal.dsrAfter11,
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Mandal Summary");
+    XLSX.utils.book_append_sheet(wb, ws, "Mandal Attendance");
     XLSX.writeFile(
       wb,
-      `Mandal_Summary_Report_${new Date().toLocaleDateString()}.xlsx`,
+      `Report_Mandal_wise_Status_PS_Attendance_${reportDate.replace(/\./g, "-")}.xlsx`,
     );
-    addToast("మండల్ సమ్మరీ రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
+    addToast("మండల్ వారీ అటెండెన్స్ ఎక్సెల్ రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
   };
 
   const downloadFullReport = async () => {
     await loadHeavyModules();
     if (data.length === 0) return;
 
-    const exportData = data.map((r) => ({
-      Mandal: r.mandal,
-      "GP Name": r.gp,
-      "Attendance Status": r.attStatus,
-      "Attendance Time": r.attTime,
-      "DSR Status": r.isMeeting
-        ? "Meeting"
-        : r.isTraining
-          ? "Training"
-          : r.isLeave
-            ? "Leave"
-            : r.isOnTime
-              ? "Attendance in time"
-              : r.isLate
-                ? "Late Attendance"
-                : "Pending",
-      "DSR Time": r.dsrTime,
-    }));
+    const aoa: any[][] = [];
+    aoa.push(["Telangana State"]);
+    aoa.push([
+      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+    ]);
+    aoa.push([]);
+    aoa.push(DSR_REPORT_HEADERS);
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    data.forEach((r, idx) => {
+      aoa.push([
+        idx + 1,
+        `${r.gp} (${r.mandal})`,
+        1,
+        r.c6_7,
+        r.c7_8,
+        r.c8_9,
+        r.before9AM,
+        r.pctBefore9AM,
+        r.c9_11,
+        r.after11AM,
+        r.pctAfter11AM,
+        r.attendedGP,
+        r.leaveToday,
+        r.meetingTraining,
+        r.totalReported,
+        r.notReported,
+        r.dsrEntered ? "Yes" : "No",
+        r.dsrTime && r.dsrTime !== "-" ? r.dsrTime : "-",
+        r.dsrBefore11 ? 1 : 0,
+        r.dsrAfter11 ? 1 : 0,
+      ]);
+    });
+
+    aoa.push([
+      "Total",
+      "Total",
+      grandTotal.totalGPs,
+      grandTotal.c6_7,
+      grandTotal.c7_8,
+      grandTotal.c8_9,
+      grandTotal.before9AM,
+      `${grandTotal.pctBefore9AM.toFixed(1)}%`,
+      grandTotal.c9_11,
+      grandTotal.after11AM,
+      `${grandTotal.pctAfter11AM.toFixed(1)}%`,
+      grandTotal.attendedGP,
+      grandTotal.leaveToday,
+      grandTotal.meetingTraining,
+      grandTotal.totalReported,
+      grandTotal.notReported,
+      grandTotal.dsrEntered,
+      `${grandTotal.dsrEntered} / ${grandTotal.totalGPs}`,
+      grandTotal.dsrBefore11,
+      grandTotal.dsrAfter11,
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "GP Details");
+    XLSX.utils.book_append_sheet(wb, ws, "GP Attendance");
     XLSX.writeFile(
       wb,
-      `Full_Attendance_Report_${new Date().toLocaleDateString()}.xlsx`,
+      `Report_GP_wise_Status_PS_Attendance_${reportDate.replace(/\./g, "-")}.xlsx`,
     );
-    addToast("పూర్తి రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
+    addToast("గ్రామ పంచాయతీల వారీ ఎక్సెల్ రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
   };
 
   const downloadRawExcel = async () => {
@@ -18886,66 +19134,241 @@ function DSRAnalyzer({
 
   const downloadRawPdf = async () => {
     await loadHeavyModules();
-    if (rawJson.length === 0) return;
+    if (mandalSummaries.length === 0 && data.length === 0) return;
     const doc = new jsPDF("l", "mm", "a4");
 
-    let headerIdx = 0;
-    for (let i = 0; i < Math.min(rawJson.length, 10); i++) {
-      if (
-        rawJson[i].some(
-          (c: any) =>
-            String(c).toLowerCase().includes("mandal") ||
-            String(c).toLowerCase().includes("panchayat"),
-        )
-      ) {
-        headerIdx = i;
-        break;
-      }
-    }
-
-    const body = rawJson.slice(headerIdx);
-
-    autoTable(doc, {
-      body: body,
-      styles: { fontSize: 7, font: "helvetica" },
-      margin: { top: 10 },
-    });
-
-    doc.save(`Original_Raw_File_${new Date().toLocaleDateString()}.pdf`);
-    addToast("ఒరిజినల్ Raw ఫైల్ (PDF) డౌన్లోడ్ అవుతోంది...");
-  };
-
-  useEffect(() => {
-    const term = searchTerm.toLowerCase();
-    let filtered = data.filter(
-      (r) =>
-        String(r.gp || "")
-          .toLowerCase()
-          .includes(term) ||
-        String(r.mandal || "")
-          .toLowerCase()
-          .includes(term),
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Telangana State", 14, 11);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+      14,
+      16,
     );
 
-    if (activeFilter === "P") filtered = filtered.filter((r) => r.isPresent);
-    else if (activeFilter === "D")
-      filtered = filtered.filter((r) => r.isEntered);
-    else if (activeFilter === "M")
-      filtered = filtered.filter((r) => r.isMeeting);
-    else if (activeFilter === "T")
-      filtered = filtered.filter((r) => r.isTraining);
-    else if (activeFilter === "L") filtered = filtered.filter((r) => r.isLeave);
-    else if (activeFilter === "B9")
-      filtered = filtered.filter((r) => r.isAttBefore901);
-    else if (activeFilter === "A9")
-      filtered = filtered.filter((r) => r.isAttAfter900);
-    else if (activeFilter === "NE")
-      filtered = filtered.filter(
-        (r) => !r.isEntered && !r.isMeeting && !r.isTraining && !r.isLeave,
-      );
+    const tableBody = mandalSummaries.map((m, idx) => [
+      idx + 1,
+      m.mandal,
+      m.totalGPs,
+      m.c6_7,
+      m.c7_8,
+      m.c8_9,
+      m.before9AM,
+      `${m.pctBefore9AM.toFixed(1)}%`,
+      m.c9_11,
+      m.after11AM,
+      `${m.pctAfter11AM.toFixed(1)}%`,
+      m.attendedGP,
+      m.leaveToday,
+      m.meetingTraining,
+      m.totalReported,
+      m.notReported,
+      m.dsrEntered,
+      m.dsrEntered > 0 ? `${m.dsrEntered} Ent.` : "-",
+      m.dsrBefore11,
+      m.dsrAfter11,
+    ]);
 
-    setFilteredData(filtered);
-  }, [searchTerm, activeFilter, data]);
+    tableBody.push([
+      "Total",
+      "Total",
+      grandTotal.totalGPs,
+      grandTotal.c6_7,
+      grandTotal.c7_8,
+      grandTotal.c8_9,
+      grandTotal.before9AM,
+      `${grandTotal.pctBefore9AM.toFixed(1)}%`,
+      grandTotal.c9_11,
+      grandTotal.after11AM,
+      `${grandTotal.pctAfter11AM.toFixed(1)}%`,
+      grandTotal.attendedGP,
+      grandTotal.leaveToday,
+      grandTotal.meetingTraining,
+      grandTotal.totalReported,
+      grandTotal.notReported,
+      grandTotal.dsrEntered,
+      `${grandTotal.dsrEntered}/${grandTotal.totalGPs}`,
+      grandTotal.dsrBefore11,
+      grandTotal.dsrAfter11,
+    ]);
+
+    autoTable(doc, {
+      startY: 20,
+      head: [DSR_REPORT_HEADERS],
+      body: tableBody,
+      styles: { fontSize: 5.5, cellPadding: 1, halign: "center" },
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { cellWidth: 7 },
+        1: { cellWidth: 28, halign: "left" },
+      },
+      theme: "grid",
+    });
+
+    doc.save(
+      `Report_Mandal_wise_Status_PS_Attendance_${reportDate.replace(/\./g, "-")}.pdf`,
+    );
+    addToast("అధికారిక PDF రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
+  };
+
+  const copyTableToClipboard = () => {
+    if (mandalSummaries.length === 0) return;
+    const lines: string[] = [];
+    lines.push("Telangana State");
+    lines.push(
+      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+    );
+    lines.push(DSR_REPORT_HEADERS.join("\t"));
+
+    if (viewMode === "mandal") {
+      mandalSummaries.forEach((m, idx) => {
+        lines.push(
+          [
+            idx + 1,
+            m.mandal,
+            m.totalGPs,
+            m.c6_7,
+            m.c7_8,
+            m.c8_9,
+            m.before9AM,
+            `${m.pctBefore9AM.toFixed(1)}%`,
+            m.c9_11,
+            m.after11AM,
+            `${m.pctAfter11AM.toFixed(1)}%`,
+            m.attendedGP,
+            m.leaveToday,
+            m.meetingTraining,
+            m.totalReported,
+            m.notReported,
+            m.dsrEntered,
+            m.dsrEntered > 0 ? `${m.dsrEntered} Entered` : "-",
+            m.dsrBefore11,
+            m.dsrAfter11,
+          ].join("\t"),
+        );
+      });
+    } else {
+      data.forEach((r, idx) => {
+        lines.push(
+          [
+            idx + 1,
+            `${r.gp} (${r.mandal})`,
+            1,
+            r.c6_7,
+            r.c7_8,
+            r.c8_9,
+            r.before9AM,
+            r.pctBefore9AM,
+            r.c9_11,
+            r.after11AM,
+            r.pctAfter11AM,
+            r.attendedGP,
+            r.leaveToday,
+            r.meetingTraining,
+            r.totalReported,
+            r.notReported,
+            r.dsrEntered ? "Yes" : "No",
+            r.dsrTime && r.dsrTime !== "-" ? r.dsrTime : "-",
+            r.dsrBefore11 ? 1 : 0,
+            r.dsrAfter11 ? 1 : 0,
+          ].join("\t"),
+        );
+      });
+    }
+
+    lines.push(
+      [
+        "Total",
+        "Total",
+        grandTotal.totalGPs,
+        grandTotal.c6_7,
+        grandTotal.c7_8,
+        grandTotal.c8_9,
+        grandTotal.before9AM,
+        `${grandTotal.pctBefore9AM.toFixed(1)}%`,
+        grandTotal.c9_11,
+        grandTotal.after11AM,
+        `${grandTotal.pctAfter11AM.toFixed(1)}%`,
+        grandTotal.attendedGP,
+        grandTotal.leaveToday,
+        grandTotal.meetingTraining,
+        grandTotal.totalReported,
+        grandTotal.notReported,
+        grandTotal.dsrEntered,
+        `${grandTotal.dsrEntered} / ${grandTotal.totalGPs}`,
+        grandTotal.dsrBefore11,
+        grandTotal.dsrAfter11,
+      ].join("\t"),
+    );
+
+    navigator.clipboard.writeText(lines.join("\n"));
+    addToast("టేబుల్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది! Excel లేదా WhatsApp లో నేరుగా పేస్ట్ చేయవచ్చు.");
+  };
+
+  // Filtered views
+  const displayMandals = useMemo(() => {
+    let list = mandalSummaries;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      list = list.filter(
+        (m) =>
+          m.mandal.toLowerCase().includes(term) ||
+          m.gps.some((g: any) => g.gp.toLowerCase().includes(term)),
+      );
+    }
+    if (activeFilter) {
+      if (activeFilter === "before9") list = list.filter((m) => m.before9AM > 0);
+      else if (activeFilter === "c6_7") list = list.filter((m) => m.c6_7 > 0);
+      else if (activeFilter === "c7_8") list = list.filter((m) => m.c7_8 > 0);
+      else if (activeFilter === "c8_9") list = list.filter((m) => m.c8_9 > 0);
+      else if (activeFilter === "c9_11") list = list.filter((m) => m.c9_11 > 0);
+      else if (activeFilter === "after11") list = list.filter((m) => m.after11AM > 0);
+      else if (activeFilter === "leave") list = list.filter((m) => m.leaveToday > 0);
+      else if (activeFilter === "meeting") list = list.filter((m) => m.meetingTraining > 0);
+      else if (activeFilter === "notReported") list = list.filter((m) => m.notReported > 0);
+      else if (activeFilter === "dsrEntered") list = list.filter((m) => m.dsrEntered > 0);
+      else if (activeFilter === "dsrBefore11") list = list.filter((m) => m.dsrBefore11 > 0);
+      else if (activeFilter === "dsrAfter11") list = list.filter((m) => m.dsrAfter11 > 0);
+    }
+    return list;
+  }, [mandalSummaries, searchTerm, activeFilter]);
+
+  const displayGPs = useMemo(() => {
+    let list = data;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      list = list.filter(
+        (r) =>
+          r.mandal.toLowerCase().includes(term) ||
+          r.gp.toLowerCase().includes(term),
+      );
+    }
+    if (activeFilter) {
+      if (activeFilter === "before9") list = list.filter((r) => r.before9AM > 0);
+      else if (activeFilter === "c6_7") list = list.filter((r) => r.c6_7 > 0);
+      else if (activeFilter === "c7_8") list = list.filter((r) => r.c7_8 > 0);
+      else if (activeFilter === "c8_9") list = list.filter((r) => r.c8_9 > 0);
+      else if (activeFilter === "c9_11") list = list.filter((r) => r.c9_11 > 0);
+      else if (activeFilter === "after11") list = list.filter((r) => r.after11AM > 0);
+      else if (activeFilter === "leave") list = list.filter((r) => r.leaveToday > 0);
+      else if (activeFilter === "meeting") list = list.filter((r) => r.meetingTraining > 0);
+      else if (activeFilter === "notReported") list = list.filter((r) => r.notReported > 0);
+      else if (activeFilter === "dsrEntered") list = list.filter((r) => r.dsrEntered > 0);
+      else if (activeFilter === "dsrBefore11") list = list.filter((r) => r.dsrBefore11 > 0);
+      else if (activeFilter === "dsrAfter11") list = list.filter((r) => r.dsrAfter11 > 0);
+    }
+    return list;
+  }, [data, searchTerm, activeFilter]);
+
+  useEffect(() => {
+    setFilteredData(displayGPs);
+  }, [displayGPs]);
 
   return (
     <div className="space-y-6">
@@ -18991,331 +19414,252 @@ function DSRAnalyzer({
 
       {data.length > 0 && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
+          {/* Main Title & Report Header Card */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-6 sm:p-8 rounded-[32px] shadow-xl border border-slate-700/50">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-black tracking-wider uppercase">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Official Attendance Analysis
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                  Telangana State
+                </h2>
+                <p className="text-sm sm:text-base font-medium text-slate-300">
+                  Report Mandal wise Status of Panchayat Secretaries Attendance ({reportDate}) {reportTime}
+                </p>
+                {/* Date / Time Edit inputs */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-300 font-semibold bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
+                    <Clock size={13} className="text-amber-400" />
+                    <span className="text-[11px] uppercase tracking-wider text-slate-300">Report Timing:</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Date:</span>
+                    <input
+                      type="text"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      placeholder="DD.MM.YYYY"
+                      title="Report Date (e.g. 18.09.2026)"
+                      className="bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 rounded-lg px-2 py-1 text-xs text-amber-200 font-mono font-bold outline-none w-28 text-center"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Time:</span>
+                    <input
+                      type="text"
+                      value={reportTime}
+                      onChange={(e) => setReportTime(e.target.value)}
+                      placeholder="HH.MM am/pm"
+                      title="Report Time (e.g. 10.30 am)"
+                      className="bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 rounded-lg px-2 py-1 text-xs text-amber-200 font-mono font-bold outline-none w-28 text-center"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = new Date();
+                      const d = String(now.getDate()).padStart(2, "0");
+                      const m = String(now.getMonth() + 1).padStart(2, "0");
+                      const y = now.getFullYear();
+                      let hh = now.getHours();
+                      const mm = String(now.getMinutes()).padStart(2, "0");
+                      const ap = hh >= 12 ? "pm" : "am";
+                      hh = hh % 12 || 12;
+                      setReportDate(`${d}.${m}.${y}`);
+                      setReportTime(`${String(hh).padStart(2, "0")}.${mm} ${ap}`);
+                    }}
+                    title="Set to Current Time"
+                    className="text-[10px] bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white px-2 py-1 rounded-md border border-white/10 font-bold transition-all"
+                  >
+                    Current Time
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons: Exports & Copy */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  onClick={downloadMandalReport}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
+                  title="Download Mandal-wise 16 Column Excel Report"
+                >
+                  <Download size={14} /> Mandal Excel
+                </button>
+                <button
+                  onClick={downloadFullReport}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
+                  title="Download Gram Panchayat-wise 16 Column Excel Report"
+                >
+                  <Download size={14} /> GP Excel
+                </button>
+                <button
+                  onClick={downloadRawPdf}
+                  className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
+                  title="Download Official 16 Column PDF Report"
+                >
+                  <Download size={14} /> Official PDF
+                </button>
+                <button
+                  onClick={copyTableToClipboard}
+                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
+                  title="Copy formatted 16-Column TSV to clipboard for Excel or WhatsApp"
+                >
+                  <Copy size={14} /> Copy Table
+                </button>
+              </div>
+            </div>
+
+            {/* View Mode Switcher */}
+            <div className="mt-6 pt-5 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2 bg-black/30 p-1 rounded-2xl border border-white/10">
+                <button
+                  onClick={() => setViewMode("reports")}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                    viewMode === "reports"
+                      ? "bg-amber-400 text-slate-950 shadow-md ring-2 ring-amber-300"
+                      : "text-amber-300 hover:text-white"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  అధికారిక క్లియర్ రిపోర్ట్‌లు (Visual Reports)
+                </button>
+                <button
+                  onClick={() => setViewMode("mandal")}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                    viewMode === "mandal"
+                      ? "bg-white text-slate-900 shadow-md"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  Mandal 20-Col View ({mandalSummaries.length})
+                </button>
+                <button
+                  onClick={() => setViewMode("gp")}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                    viewMode === "gp"
+                      ? "bg-white text-slate-900 shadow-md"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  All GPs 20-Col ({data.length})
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-400 font-medium">
+                Last updated: <span className="text-emerald-400 font-mono font-bold">{lastUpdateTime || currentTime}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Filter Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
             <button
-              aria-label="Filter Total"
               onClick={() => setActiveFilter(null)}
-              className="text-left w-full"
+              className={`text-left w-full transition-transform active:scale-95 ${!activeFilter ? "ring-2 ring-blue-500 ring-offset-2 rounded-2xl" : ""}`}
             >
-              <StatCard label="TOTAL" val={stats.total} color="blue" />
+              <StatCard label="TOTAL GPS" val={grandTotal.totalGPs} color="blue" />
             </button>
             <button
-              aria-label="Filter Present"
-              onClick={() => setActiveFilter("P")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "P" ? "ring-2 ring-emerald-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="PRESENT" val={stats.present} color="emerald" />
-            </button>
-            <button
-              title="ఉదయం 9:00 కంటే ముందు విధులకు హాజరైన వారి (Present) సంఖ్య."
-              onClick={() => setActiveFilter("B9")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "B9" ? "ring-2 ring-indigo-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="ON TIME" val={stats.before901} color="indigo" />
-            </button>
-            <button
-              title="ఉదయం 9:01 తర్వాత విధులకు హాజరైన వారి (Present) సంఖ్య."
-              onClick={() => setActiveFilter("A9")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "A9" ? "ring-2 ring-rose-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="LATE ATT" val={stats.after900} color="rose" />
-            </button>
-            <button
-              aria-label="Filter DSR"
-              onClick={() => setActiveFilter("D")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "D" ? "ring-2 ring-blue-500 ring-offset-2 rounded-2xl" : ""}`}
-            >
-              <StatCard label="DSR REP" val={stats.dsr} color="emerald" />
-            </button>
-            <button
-              aria-label="Filter No DSR"
-              onClick={() => setActiveFilter("NE")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "NE" ? "ring-2 ring-amber-500 ring-offset-2 rounded-2xl" : ""}`}
+              onClick={() => setActiveFilter(activeFilter === "before9" ? null : "before9")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "before9" ? "ring-2 ring-indigo-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Reported Before 9 AM"
             >
               <StatCard
-                label="NO DSR"
-                val={stats.pending}
-                color="amber"
-                subText={stats.pending > 0 ? `LIVE: ${currentTime}` : undefined}
+                label="BEFORE 9 AM"
+                val={grandTotal.before9AM}
+                color="indigo"
+                subText={`${grandTotal.pctBefore9AM.toFixed(1)}%`}
               />
             </button>
             <button
-              aria-label="Filter Meeting"
-              onClick={() => setActiveFilter("M")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "M" ? "ring-2 ring-cyan-500 ring-offset-2 rounded-2xl" : ""}`}
+              onClick={() => setActiveFilter(activeFilter === "c6_7" ? null : "c6_7")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "c6_7" ? "ring-2 ring-emerald-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Attended between 6 AM - 7 AM"
             >
-              <StatCard label="MEETING" val={stats.meeting} color="cyan" />
+              <StatCard label="6 AM - 7 AM" val={grandTotal.c6_7} color="emerald" />
             </button>
             <button
-              aria-label="Filter Training"
-              onClick={() => setActiveFilter("T")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "T" ? "ring-2 ring-amber-500 ring-offset-2 rounded-2xl" : ""}`}
+              onClick={() => setActiveFilter(activeFilter === "c7_8" ? null : "c7_8")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "c7_8" ? "ring-2 ring-emerald-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Attended between 7 AM - 8 AM"
             >
-              <StatCard label="TRAINING" val={stats.training} color="amber" />
+              <StatCard label="7 AM - 8 AM" val={grandTotal.c7_8} color="emerald" />
             </button>
             <button
-              aria-label="Filter Leave"
-              onClick={() => setActiveFilter("L")}
-              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "L" ? "ring-2 ring-slate-500 ring-offset-2 rounded-2xl" : ""}`}
+              onClick={() => setActiveFilter(activeFilter === "c8_9" ? null : "c8_9")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "c8_9" ? "ring-2 ring-teal-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Attended between 8 AM - 9 AM"
             >
-              <StatCard label="LEAVE" val={stats.leave} color="slate" />
+              <StatCard label="8 AM - 9 AM" val={grandTotal.c8_9} color="teal" />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "c9_11" ? null : "c9_11")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "c9_11" ? "ring-2 ring-amber-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Attended between 9 AM - 11 AM"
+            >
+              <StatCard label="9 AM - 11 AM" val={grandTotal.c9_11} color="amber" />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "after11" ? null : "after11")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "after11" ? "ring-2 ring-rose-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Reported after 11 AM"
+            >
+              <StatCard
+                label="AFTER 11 AM"
+                val={grandTotal.after11AM}
+                color="rose"
+                subText={`${grandTotal.pctAfter11AM.toFixed(1)}%`}
+              />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "meeting" ? null : "meeting")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "meeting" ? "ring-2 ring-cyan-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Meeting / Training"
+            >
+              <StatCard label="MEET/TRAIN" val={grandTotal.meetingTraining} color="cyan" />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "notReported" ? null : "notReported")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "notReported" ? "ring-2 ring-slate-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="Not Reported"
+            >
+              <StatCard label="NOT REPORTED" val={grandTotal.notReported} color="slate" />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "dsrEntered" ? null : "dsrEntered")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "dsrEntered" ? "ring-2 ring-purple-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="DSR Entered"
+            >
+              <StatCard label="DSR ENTERED" val={grandTotal.dsrEntered} color="purple" />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "dsrBefore11" ? null : "dsrBefore11")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "dsrBefore11" ? "ring-2 ring-violet-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="DSR Entered Before 11 AM"
+            >
+              <StatCard label="DSR BEFORE 11" val={grandTotal.dsrBefore11} color="violet" />
+            </button>
+            <button
+              onClick={() => setActiveFilter(activeFilter === "dsrAfter11" ? null : "dsrAfter11")}
+              className={`text-left w-full transition-transform active:scale-95 ${activeFilter === "dsrAfter11" ? "ring-2 ring-pink-500 ring-offset-2 rounded-2xl" : ""}`}
+              title="DSR Entered After 11 AM"
+            >
+              <StatCard label="DSR AFTER 11" val={grandTotal.dsrAfter11} color="pink" />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 py-2">
-            <button
-              aria-label="Mandal Export"
-              onClick={downloadMandalReport}
-              className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-100 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-100 hover:border-blue-200 active:scale-95 transition-all"
-            >
-              <Download size={14} /> Mandal Export
-            </button>
-            <button
-              aria-label="GP Export"
-              onClick={downloadFullReport}
-              className="flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-slate-100 active:scale-95 transition-all"
-            >
-              <Download size={14} /> GP Export
-            </button>
-            <button
-              aria-label="Raw Excel Download"
-              onClick={downloadRawExcel}
-              className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-100 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-emerald-100 hover:border-emerald-200 active:scale-95 transition-all"
-            >
-              <Download size={14} /> Raw Excel
-            </button>
-            <button
-              aria-label="Raw PDF Download"
-              onClick={downloadRawPdf}
-              className="flex items-center justify-center gap-2 bg-rose-50 text-rose-700 border border-rose-100 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm hover:bg-rose-100 hover:border-rose-200 active:scale-95 transition-all"
-            >
-              <Download size={14} /> Raw PDF
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1 bg-white p-6 rounded-[32px] border shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  Overall Success
-                </h4>
-                <span className="text-sm font-black text-emerald-600">
-                  {stats.total > 0
-                    ? Math.round(
-                        ((stats.present +
-                          stats.meeting +
-                          stats.training +
-                          stats.leave) /
-                          stats.total) *
-                          100,
-                      )
-                    : 0}
-                  %
-                </span>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${stats.total > 0 ? ((stats.present + stats.meeting + stats.training + stats.leave) / stats.total) * 100 : 0}%`,
-                  }}
-                  className="h-full bg-emerald-500 rounded-full"
-                />
-              </div>
-              <div className="mt-3 flex flex-col gap-1">
-                <p className="text-[10px] text-slate-500 font-black uppercase">
-                  Total Compliance:{" "}
-                  {stats.present + stats.meeting + stats.training + stats.leave}{" "}
-                  / {stats.total}
-                </p>
-              </div>
-            </div>
-
-            <div className="lg:col-span-1 bg-white p-6 rounded-[32px] border shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  DSR Compliance
-                </h4>
-                <span className="text-sm font-black text-blue-600">
-                  {stats.total > 0
-                    ? Math.round((stats.dsr / stats.total) * 100)
-                    : 0}
-                  %
-                </span>
-              </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${stats.total > 0 ? (stats.dsr / stats.total) * 100 : 0}%`,
-                  }}
-                  className="h-full bg-blue-500 rounded-full"
-                />
-              </div>
-              <p className="mt-3 text-[10px] text-slate-500 font-medium uppercase italic">
-                {stats.dsr} Present GPs reported DSR (out of {stats.total}{" "}
-                total)
-              </p>
-            </div>
-
-            <div className="lg:col-span-2 grid grid-cols-3 gap-4">
-              <div className="bg-cyan-50/50 p-4 rounded-[24px] border border-cyan-100 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-cyan-600">
-                    <Users size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Meeting
-                    </span>
-                  </div>
-                  <div className="text-2xl font-black text-cyan-700">
-                    {stats.meeting}
-                  </div>
-                </div>
-                <p className="text-[8px] text-cyan-600 font-bold uppercase mt-2">
-                  DSR Not Required
-                </p>
-              </div>
-              <div className="bg-amber-50/50 p-4 rounded-[24px] border border-amber-100 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-amber-600">
-                    <GraduationCap size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Training
-                    </span>
-                  </div>
-                  <div className="text-2xl font-black text-amber-700">
-                    {stats.training}
-                  </div>
-                </div>
-                <p className="text-[8px] text-amber-600 font-bold uppercase mt-2">
-                  DSR Not Required
-                </p>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-[24px] border border-slate-200 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-slate-500">
-                    <Hash size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">
-                      Leave
-                    </span>
-                  </div>
-                  <div className="text-2xl font-black text-slate-700">
-                    {stats.leave}
-                  </div>
-                </div>
-                <p className="text-[8px] text-slate-500 font-bold uppercase mt-2">
-                  DSR Not Required
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-3 w-full mt-12 mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Database size={14} /> Mandal-wise Summary Hub
-              </h4>
-              <div className="bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-2">
-                <Info size={12} className="text-emerald-600" />
-                <span className="text-[9px] font-black text-emerald-700 uppercase">
-                  Note: Total OnTime = OnTime + Meeting + Training + Leave
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(mandalSummaries).map(
-                ([mandal, mStats]: [string, any], mIdx) => (
-                  <button
-                    aria-label={`View mandal ${mandal}`}
-                    key={`${mandal}_${mIdx}`}
-                    onClick={() => setSearchTerm(mandal)}
-                    className="bg-white p-5 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all text-left group"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h5 className="text-sm font-black text-primary truncate pr-2">
-                        {mandal}
-                      </h5>
-                      <span className="bg-slate-50 text-[10px] font-black text-slate-400 px-2 py-1 rounded-lg uppercase">
-                        {mStats.total} GPs
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1">
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-emerald-600 uppercase mb-0.5">
-                          OnTime
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.onTime}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-cyan-500 uppercase mb-0.5">
-                          Meet
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.meeting}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-slate-500 uppercase mb-0.5">
-                          Leave
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.leave}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-rose-500 uppercase mb-0.5">
-                          Late
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.late}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[8px] font-black text-slate-300 uppercase mb-0.5">
-                          Pend
-                        </div>
-                        <div className="text-[10px] font-black text-slate-700">
-                          {mStats.pending}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex gap-1 h-1.5 rounded-full overflow-hidden bg-slate-50">
-                      <div
-                        className="h-full bg-emerald-500 transition-all"
-                        style={{
-                          width: `${((mStats.onTime + mStats.meeting + mStats.training + mStats.leave) / mStats.total) * 100}%`,
-                        }}
-                      />
-                      <div
-                        className="h-full bg-rose-400 transition-all"
-                        style={{
-                          width: `${(mStats.late / mStats.total) * 100}%`,
-                        }}
-                      />
-                      <div
-                        className="h-full bg-slate-200 transition-all"
-                        style={{
-                          width: `${(mStats.pending / mStats.total) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-
-          <div className="relative space-y-4">
+          {/* Search Bar & Active Filter Display */}
+          <div className="relative space-y-3">
             <div className="relative">
               <Search
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                 size={18}
               />
               <input
-                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none"
-                placeholder="Search GP or Mandal..."
+                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none shadow-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                placeholder="Search Mandal Name or Grama Panchayat..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -19326,30 +19670,30 @@ function DSRAnalyzer({
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Filtering by:
                 </span>
-                <span
-                  className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 ${
-                    activeFilter === "P"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : activeFilter === "D"
-                        ? "bg-blue-100 text-blue-700"
-                        : activeFilter === "M"
-                          ? "bg-cyan-100 text-cyan-700"
-                          : activeFilter === "T"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {activeFilter === "P"
-                    ? "Present"
-                    : activeFilter === "D"
-                      ? "DSR Reported"
-                      : activeFilter === "NE"
-                        ? "DSR Not Entered"
-                        : activeFilter === "M"
-                          ? "In Meeting"
-                          : activeFilter === "T"
-                            ? "In Training"
-                            : "On Leave"}
+                <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 bg-indigo-100 text-indigo-800 border border-indigo-200">
+                  {activeFilter === "before9"
+                    ? "Before 9 AM"
+                    : activeFilter === "c6_7"
+                      ? "6 AM - 7 AM"
+                      : activeFilter === "c7_8"
+                        ? "7 AM - 8 AM"
+                        : activeFilter === "c8_9"
+                          ? "8 AM - 9 AM"
+                          : activeFilter === "c9_11"
+                            ? "9 AM - 11 AM"
+                            : activeFilter === "after11"
+                              ? "After 11 AM"
+                              : activeFilter === "meeting"
+                                ? "Meeting / Training"
+                                : activeFilter === "leave"
+                                  ? "Leave"
+                                  : activeFilter === "dsrEntered"
+                                    ? "DSR Entered"
+                                    : activeFilter === "dsrBefore11"
+                                      ? "DSR Before 11 AM"
+                                      : activeFilter === "dsrAfter11"
+                                        ? "DSR After 11 AM"
+                                        : "Not Reported"}
                   <button
                     aria-label="Clear filter"
                     onClick={() => setActiveFilter(null)}
@@ -19361,7 +19705,7 @@ function DSRAnalyzer({
                 <button
                   aria-label="Clear Filter"
                   onClick={() => setActiveFilter(null)}
-                  className="text-[9px] font-bold text-primary hover:underline uppercase"
+                  className="text-[10px] font-bold text-primary hover:underline uppercase"
                 >
                   Clear Filter
                 </button>
@@ -19369,99 +19713,224 @@ function DSRAnalyzer({
             )}
           </div>
 
-          <div className="bg-white rounded-[32px] border shadow-xl overflow-hidden">
+          {/* Official Format Visual Reports (Matches Images) */}
+          {viewMode === "reports" && (
+            <DsrTables
+              mandalSummaries={mandalSummaries}
+              data={data}
+              grandTotal={grandTotal}
+              reportDate={reportDate}
+              reportTime={reportTime}
+              fullTimestamp={fullTimestamp}
+              addToast={addToast}
+              loadHeavyModules={loadHeavyModules}
+              XLSX={XLSX}
+            />
+          )}
+
+          {/* 20-Column Report Table */}
+          {viewMode !== "reports" && (
+          <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-hidden">
+            <div className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 tracking-wide uppercase">
+                  Telangana State - {viewMode === "mandal" ? "Mandal-wise Attendance Report" : "All Grama Panchayats Attendance"}
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Showing {viewMode === "mandal" ? displayMandals.length : displayGPs.length} rows • Click any mandal row to expand its GPs
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={downloadMandalReport}
+                  className="text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <Download size={13} /> Excel
+                </button>
+                <button
+                  onClick={downloadRawPdf}
+                  className="text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <Download size={13} /> PDF
+                </button>
+              </div>
+            </div>
+
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left">
+              <table className="w-full text-center text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    <th className="p-2 sm:p-4 text-[9px] sm:text-[10px]">
-                      Mandal / GP
-                    </th>
-                    <th className="p-2 sm:p-4 text-center text-[9px] sm:text-[10px]">
-                      Attendance
-                    </th>
-                    <th className="p-2 sm:p-4 text-center text-[9px] sm:text-[10px]">
-                      DSR Status
-                    </th>
-                    <th className="p-2 sm:p-4 text-center text-[9px] sm:text-[10px]">
-                      Submitted
-                    </th>
+                  <tr className="bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider divide-x divide-slate-800">
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[45px]">1. S.No</th>
+                    <th className="py-3.5 px-3 text-left whitespace-nowrap min-w-[180px]">2. Mandal Name / GARAMA PANCHAYAT</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[70px]">3. Total No. of GPs</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[70px]">4. 6 AM - 7 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[70px]">5. 7 AM - 8 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[70px]">6. 8 AM - 9 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[75px] bg-indigo-950/70 text-indigo-200">7. Before 9 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[85px] bg-indigo-950/70 text-indigo-200">8. (%) of PS reported Before 9 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[75px]">9. 9 AM - 11 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[75px] bg-rose-950/70 text-rose-200">10. After 11 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[85px] bg-rose-950/70 text-rose-200">11. (%) of PS Reported after 11 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[80px]">12. Total No. of PSs attended GP</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[80px]">13. No. of PSs on Leave Today</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[95px]">14. No. of PSs reported to Meeting/Training</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[75px] bg-emerald-950/70 text-emerald-200">15. No. of PS Reported</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[75px] bg-slate-800 text-slate-300">16. No. of PS Not reported</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[75px] bg-purple-950/70 text-purple-200">17. DSR Entered</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[85px] bg-purple-950/70 text-purple-200">18. DSR Entry Time</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[80px] bg-violet-950/70 text-violet-200">19. DSR Before 11 AM</th>
+                    <th className="py-3.5 px-2 whitespace-nowrap min-w-[80px] bg-pink-950/70 text-pink-200">20. DSR After 11 AM</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filteredData.map((row, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-0"
-                    >
-                      <td className="p-2 sm:p-4">
-                        <div className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[80px] sm:max-w-none">
-                          {row.mandal}
-                        </div>
-                        <div className="text-xs sm:text-sm font-black text-primary uppercase truncate max-w-[120px] sm:max-w-none">
-                          {row.gp}
-                        </div>
-                      </td>
-                      <td className="p-2 sm:p-4 text-center">
-                        <StatusCell
-                          status={
-                            row.isPresent
-                              ? row.isAttBefore901
-                                ? "P-I"
-                                : row.isAttAfter900
-                                  ? "P-L"
-                                  : "P"
-                              : row.isMeeting
-                                ? "M"
-                                : row.isTraining
-                                  ? "T"
-                                  : row.isLeave
-                                    ? "L"
-                                    : "A"
-                          }
-                        />
-                        <div className="text-[8px] sm:text-[9px] text-slate-400 font-mono mt-1">
-                          {row.attTime || "-"}
-                        </div>
-                      </td>
-                      <td className="p-2 sm:p-4 text-center">
-                        {/* Logic: Green if OnTime OR Meeting/Training/Leave. Red if Late. Amber if simply Not Entered (Present but no DSR) */}
-                        <span
-                          className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase inline-block whitespace-nowrap ${
-                            row.isOnTime ||
-                            row.isMeeting ||
-                            row.isTraining ||
-                            row.isLeave
-                              ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                              : row.isLate
-                                ? "bg-rose-100 text-rose-700 border border-rose-200"
-                                : "bg-amber-100 text-amber-700 border border-amber-200"
-                          }`}
-                        >
-                          {row.isMeeting
-                            ? "Meeting"
-                            : row.isTraining
-                              ? "Training"
-                              : row.isLeave
-                                ? "Leave"
-                                : row.isOnTime
-                                  ? "DSR On Time"
-                                  : row.isLate
-                                    ? "Late DSR Entry"
-                                    : row.isEntered
-                                      ? "DSR Entered"
-                                      : "Not Entered"}
-                        </span>
-                      </td>
-                      <td className="p-2 sm:p-4 text-center text-[8px] sm:text-[10px] font-mono text-slate-500">
-                        {row.dsrTime || "-"}
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {viewMode === "mandal" ? (
+                    displayMandals.map((m, idx) => {
+                      const isExpanded = !!expandedMandals[m.mandal];
+                      return (
+                        <React.Fragment key={`mandal_${m.mandal}_${idx}`}>
+                          <tr
+                            onClick={() => toggleMandalExpand(m.mandal)}
+                            className="hover:bg-indigo-50/50 transition-colors cursor-pointer divide-x divide-slate-100"
+                          >
+                            <td className="py-2.5 px-2 font-mono text-slate-500 font-semibold">{idx + 1}</td>
+                            <td className="py-2.5 px-3 text-left font-black text-slate-900 flex items-center justify-between gap-2">
+                              <span>{m.mandal}</span>
+                              <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-mono font-bold">
+                                {isExpanded ? "▲ Hide GPs" : `▼ ${m.totalGPs} GPs`}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 font-bold text-slate-800">{m.totalGPs}</td>
+                            <td className="py-2.5 px-2 font-mono text-slate-700">{m.c6_7}</td>
+                            <td className="py-2.5 px-2 font-mono text-slate-700">{m.c7_8}</td>
+                            <td className="py-2.5 px-2 font-mono text-slate-700">{m.c8_9}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-indigo-700 bg-indigo-50/40">{m.before9AM}</td>
+                            <td className="py-2.5 px-2 font-mono font-black text-indigo-900 bg-indigo-50/60">
+                              {m.pctBefore9AM.toFixed(1)}%
+                            </td>
+                            <td className="py-2.5 px-2 font-mono text-slate-700">{m.c9_11}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-rose-700 bg-rose-50/40">{m.after11AM}</td>
+                            <td className="py-2.5 px-2 font-mono font-black text-rose-900 bg-rose-50/60">
+                              {m.pctAfter11AM.toFixed(1)}%
+                            </td>
+                            <td className="py-2.5 px-2 font-mono text-emerald-700 font-semibold">{m.attendedGP}</td>
+                            <td className="py-2.5 px-2 font-mono text-slate-600">{m.leaveToday}</td>
+                            <td className="py-2.5 px-2 font-mono text-cyan-700">{m.meetingTraining}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-emerald-700 bg-emerald-50/40">{m.totalReported}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-rose-600 bg-slate-50/60">{m.notReported}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-purple-700 bg-purple-50/40">{m.dsrEntered}</td>
+                            <td className="py-2.5 px-2 font-mono text-slate-600 bg-purple-50/20">{m.dsrEntered > 0 ? `${m.dsrEntered} Ent.` : "-"}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-violet-700 bg-violet-50/40">{m.dsrBefore11}</td>
+                            <td className="py-2.5 px-2 font-mono font-bold text-pink-700 bg-pink-50/40">{m.dsrAfter11}</td>
+                          </tr>
+
+                          {/* Expanded GP sub-rows */}
+                          {isExpanded &&
+                            m.gps.map((gpRow: any, gpIdx: number) => (
+                              <tr
+                                key={`gp_sub_${gpRow.gp}_${gpIdx}`}
+                                className="bg-slate-50/70 hover:bg-slate-100/80 transition-colors text-[11px] divide-x divide-slate-100 text-slate-600"
+                              >
+                                <td className="py-1.5 px-2 font-mono text-slate-400 text-[10px]">
+                                  {idx + 1}.{gpIdx + 1}
+                                </td>
+                                <td className="py-1.5 px-3 text-left pl-6 font-semibold text-slate-700 flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                  {gpRow.gp}
+                                  {gpRow.attTime !== "-" && (
+                                    <span className="text-[9px] font-mono text-slate-400 bg-white px-1 rounded border border-slate-200">
+                                      {gpRow.attTime}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-1.5 px-2 font-mono">1</td>
+                                <td className="py-1.5 px-2 font-mono">{gpRow.c6_7}</td>
+                                <td className="py-1.5 px-2 font-mono">{gpRow.c7_8}</td>
+                                <td className="py-1.5 px-2 font-mono">{gpRow.c8_9}</td>
+                                <td className="py-1.5 px-2 font-mono font-semibold text-indigo-700 bg-indigo-50/20">{gpRow.before9AM}</td>
+                                <td className="py-1.5 px-2 font-mono text-indigo-900 bg-indigo-50/40">{gpRow.pctBefore9AM}</td>
+                                <td className="py-1.5 px-2 font-mono">{gpRow.c9_11}</td>
+                                <td className="py-1.5 px-2 font-mono font-semibold text-rose-700 bg-rose-50/20">{gpRow.after11AM}</td>
+                                <td className="py-1.5 px-2 font-mono text-rose-900 bg-rose-50/40">{gpRow.pctAfter11AM}</td>
+                                <td className="py-1.5 px-2 font-mono text-emerald-700">{gpRow.attendedGP}</td>
+                                <td className="py-1.5 px-2 font-mono">{gpRow.leaveToday}</td>
+                                <td className="py-1.5 px-2 font-mono text-cyan-700">{gpRow.meetingTraining}</td>
+                                <td className="py-1.5 px-2 font-mono font-bold text-emerald-700 bg-emerald-50/20">{gpRow.totalReported}</td>
+                                <td className="py-1.5 px-2 font-mono text-rose-600 bg-slate-50/40">{gpRow.notReported}</td>
+                                <td className="py-1.5 px-2 font-mono font-semibold text-purple-700 bg-purple-50/20">{gpRow.dsrEntered ? "Yes" : "No"}</td>
+                                <td className="py-1.5 px-2 font-mono text-slate-500 bg-purple-50/10">{gpRow.dsrTime && gpRow.dsrTime !== "-" ? gpRow.dsrTime : "-"}</td>
+                                <td className="py-1.5 px-2 font-mono font-semibold text-violet-700 bg-violet-50/20">{gpRow.dsrBefore11}</td>
+                                <td className="py-1.5 px-2 font-mono font-semibold text-pink-700 bg-pink-50/20">{gpRow.dsrAfter11}</td>
+                              </tr>
+                            ))}
+                        </React.Fragment>
+                      );
+                    })
+                  ) : (
+                    displayGPs.map((r, idx) => (
+                      <tr
+                        key={`gp_full_${r.gp}_${idx}`}
+                        className="hover:bg-slate-50 transition-colors divide-x divide-slate-100"
+                      >
+                        <td className="py-2 px-2 font-mono text-slate-500 font-semibold">{idx + 1}</td>
+                        <td className="py-2 px-3 text-left font-bold text-slate-900">
+                          <div>{r.gp}</div>
+                          <div className="text-[10px] font-medium text-slate-400 uppercase">{r.mandal}</div>
+                        </td>
+                        <td className="py-2 px-2 font-mono">1</td>
+                        <td className="py-2 px-2 font-mono text-slate-700">{r.c6_7}</td>
+                        <td className="py-2 px-2 font-mono text-slate-700">{r.c7_8}</td>
+                        <td className="py-2 px-2 font-mono text-slate-700">{r.c8_9}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-indigo-700 bg-indigo-50/40">{r.before9AM}</td>
+                        <td className="py-2 px-2 font-mono font-black text-indigo-900 bg-indigo-50/60">{r.pctBefore9AM}</td>
+                        <td className="py-2 px-2 font-mono text-slate-700">{r.c9_11}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-rose-700 bg-rose-50/40">{r.after11AM}</td>
+                        <td className="py-2 px-2 font-mono font-black text-rose-900 bg-rose-50/60">{r.pctAfter11AM}</td>
+                        <td className="py-2 px-2 font-mono text-emerald-700 font-semibold">{r.attendedGP}</td>
+                        <td className="py-2 px-2 font-mono text-slate-600">{r.leaveToday}</td>
+                        <td className="py-2 px-2 font-mono text-cyan-700">{r.meetingTraining}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-emerald-700 bg-emerald-50/40">{r.totalReported}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-rose-600 bg-slate-50/60">{r.notReported}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-purple-700 bg-purple-50/40">{r.dsrEntered ? "Yes" : "No"}</td>
+                        <td className="py-2 px-2 font-mono text-slate-600 bg-purple-50/20">{r.dsrTime && r.dsrTime !== "-" ? r.dsrTime : "-"}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-violet-700 bg-violet-50/40">{r.dsrBefore11 ? 1 : 0}</td>
+                        <td className="py-2 px-2 font-mono font-bold text-pink-700 bg-pink-50/40">{r.dsrAfter11 ? 1 : 0}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
+                {/* Total Row */}
+                <tfoot>
+                  <tr className="bg-slate-900 text-white font-black text-xs divide-x divide-slate-800 border-t-2 border-slate-950">
+                    <td className="py-3 px-2">Total</td>
+                    <td className="py-3 px-3 text-left font-black tracking-wide">Total</td>
+                    <td className="py-3 px-2 font-mono">{grandTotal.totalGPs}</td>
+                    <td className="py-3 px-2 font-mono">{grandTotal.c6_7}</td>
+                    <td className="py-3 px-2 font-mono">{grandTotal.c7_8}</td>
+                    <td className="py-3 px-2 font-mono">{grandTotal.c8_9}</td>
+                    <td className="py-3 px-2 font-mono text-indigo-200 bg-indigo-950">{grandTotal.before9AM}</td>
+                    <td className="py-3 px-2 font-mono text-indigo-300 bg-indigo-950">
+                      {grandTotal.pctBefore9AM.toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-2 font-mono">{grandTotal.c9_11}</td>
+                    <td className="py-3 px-2 font-mono text-rose-200 bg-rose-950">{grandTotal.after11AM}</td>
+                    <td className="py-3 px-2 font-mono text-rose-300 bg-rose-950">
+                      {grandTotal.pctAfter11AM.toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-2 font-mono text-emerald-300">{grandTotal.attendedGP}</td>
+                    <td className="py-3 px-2 font-mono">{grandTotal.leaveToday}</td>
+                    <td className="py-3 px-2 font-mono text-cyan-300">{grandTotal.meetingTraining}</td>
+                    <td className="py-3 px-2 font-mono text-emerald-300 bg-emerald-950">{grandTotal.totalReported}</td>
+                    <td className="py-3 px-2 font-mono text-rose-300 bg-slate-950">{grandTotal.notReported}</td>
+                    <td className="py-3 px-2 font-mono text-purple-300 bg-purple-950">{grandTotal.dsrEntered}</td>
+                    <td className="py-3 px-2 font-mono text-purple-200 bg-purple-950">{grandTotal.dsrEntered} / {grandTotal.totalGPs}</td>
+                    <td className="py-3 px-2 font-mono text-violet-300 bg-violet-950">{grandTotal.dsrBefore11}</td>
+                    <td className="py-3 px-2 font-mono text-pink-300 bg-pink-950">{grandTotal.dsrAfter11}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>
@@ -19604,25 +20073,40 @@ function PostCard({
         });
 
         if (isFirstTimeLiking) {
-          const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
-          const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
-          const snapLike = await getDocs(qLike);
-          if (!snapLike.empty) {
-            await updateDoc(snapLike.docs[0].ref, {
-              message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను స్పందించారు (${emoji}).`,
-              time: Date.now(),
-              read: false
-            }).catch(() => {});
-          } else {
-            await addDoc(collection(db, "notifications"), {
-              uid: "all",
-              title: "కొత్త స్పందన (New Reaction)",
-              message: `${likerName} వారు ఒక పోస్ట్‌కు ${emoji} తో స్పందించారు.`,
-              type: "like",
-              read: false,
-              time: Date.now(),
-              postId: post.id
-            }).catch(() => {});
+          try {
+            const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+            const qLike = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "like"), where("postId", "==", post.id), limit(1));
+            const snapLike = await getDocs(qLike);
+            if (!snapLike.empty) {
+              await updateDoc(snapLike.docs[0].ref, {
+                message: `${likerName} మరియు ఇతరులు ఒక పోస్ట్‌ను స్పందించారు (${emoji}).`,
+                time: Date.now(),
+                read: false
+              }).catch(() => {});
+            } else {
+              await addDoc(collection(db, "notifications"), {
+                uid: "all",
+                title: "కొత్త స్పందన (New Reaction)",
+                message: `${likerName} వారు ఒక పోస్ట్‌కు ${emoji} తో స్పందించారు.`,
+                type: "like",
+                read: false,
+                time: Date.now(),
+                postId: post.id
+              }).catch(() => {});
+            }
+            if (post.uid && post.uid !== userId) {
+              await addDoc(collection(db, "notifications"), {
+                uid: post.uid,
+                title: "మీ పోస్ట్‌కి స్పందన (Reaction on your Post)",
+                message: `${likerName} మీ పోస్ట్‌కి ${emoji} తో స్పందించారు.`,
+                type: "like",
+                read: false,
+                time: Date.now(),
+                postId: post.id
+              }).catch(() => {});
+            }
+          } catch (notifErr) {
+            console.warn("Non-blocking notification error while liking post:", notifErr);
           }
         }
       } catch (err: any) {
@@ -20736,25 +21220,29 @@ function PostCard({
                 async () => {
                   addToast("Link Copied!");
                   if (auth.currentUser) {
-                    const sharerName = isAdmin ? "Admin" : auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
-                    const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
-                    const snapShare = await getDocs(qShare);
-                    if (!snapShare.empty) {
-                      await updateDoc(snapShare.docs[0].ref, {
-                        message: `${sharerName} మరియు ఇతరులు ఒక పోస్ట్‌ను షేర్ చేశారు.`,
-                        time: Date.now(),
-                        read: false
-                      }).catch(()=>console.error("Failed to update share notif"));
-                    } else {
-                      await addDoc(collection(db, "notifications"), {
-                        uid: "all",
-                        title: "పోస్ట్ షేర్ చేయబడింది (Post Shared)",
-                        message: `${sharerName} వారు ఒక పోస్ట్‌ను ఇతరులతో షేర్ చేశారు.`,
-                        type: "share",
-                        read: false,
-                        time: Date.now(),
-                        postId: post.id
-                      }).catch(()=>console.error("Failed to notif share"));
+                    try {
+                      const sharerName = isAdmin ? "Admin" : auth.currentUser.displayName || auth.currentUser.email?.split("@")[0] || "User";
+                      const qShare = query(collection(db, "notifications"), where("uid", "==", "all"), where("type", "==", "share"), where("postId", "==", post.id), limit(1));
+                      const snapShare = await getDocs(qShare);
+                      if (!snapShare.empty) {
+                        await updateDoc(snapShare.docs[0].ref, {
+                          message: `${sharerName} మరియు ఇతరులు ఒక పోస్ట్‌ను షేర్ చేశారు.`,
+                          time: Date.now(),
+                          read: false
+                        }).catch(()=>console.error("Failed to update share notif"));
+                      } else {
+                        await addDoc(collection(db, "notifications"), {
+                          uid: "all",
+                          title: "పోస్ట్ షేర్ చేయబడింది (Post Shared)",
+                          message: `${sharerName} వారు ఒక పోస్ట్‌ను ఇతరులతో షేర్ చేశారు.`,
+                          type: "share",
+                          read: false,
+                          time: Date.now(),
+                          postId: post.id
+                        }).catch(()=>console.error("Failed to notif share"));
+                      }
+                    } catch (shareErr) {
+                      console.warn("Non-blocking share notif error:", shareErr);
                     }
                   }
                 },
@@ -20904,7 +21392,7 @@ function PostForm({
   setActiveDmUser?: (user: any) => void;
 }) {
   const [loading, setLoading] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<"draft" | "published">(editingPost?.status || "published");
+  const [draftStatus, setDraftStatus] = useState<"draft" | "published">(editingPost?.status === "draft" ? "draft" : "published");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [submissionType, setSubmissionType] = useState<"post" | "complaint">(editingPost?.submissionType || (isAdmin || isEditor ? "post" : "complaint"));
@@ -23566,10 +24054,7 @@ function PostDetail({
     if (!post) return;
     setShowReactionsBar(false);
     const userId = auth.currentUser?.uid;
-    if (!userId) {
-      addToast("దయచేసి మొదట లాగిన్ అవ్వండి");
-      return;
-    }
+    if (requireLoginAlert()) return;
 
     playInteractionSound("like");
 
@@ -23610,6 +24095,22 @@ function PostDetail({
           ...(isFirstTimeLiking ? { likes: increment(1), likedBy: arrayUnion(userId) } : {}),
           reactions: updatedReactions,
         });
+        if (isFirstTimeLiking && post.uid && post.uid !== userId) {
+          try {
+            const likerName = isAdmin ? "Admin" : auth.currentUser!.displayName || auth.currentUser!.email?.split("@")[0] || "User";
+            await addDoc(collection(db, "notifications"), {
+              uid: post.uid,
+              title: "మీ పోస్ట్‌కి స్పందన (Reaction on your Post)",
+              message: `${likerName} మీ పోస్ట్‌కి ${emoji} తో స్పందించారు.`,
+              type: "like",
+              read: false,
+              time: Date.now(),
+              postId: post.id,
+            }).catch(() => {});
+          } catch (notifErr) {
+            console.warn("Non-blocking notification error:", notifErr);
+          }
+        }
       } catch (err: any) {
         addToast(getFriendlyError(err));
       }
@@ -25070,10 +25571,7 @@ function PostComments({
 
   const handleToggleReaction = async (commentId: string, emoji: string) => {
     const uid = auth.currentUser?.uid;
-    if (!uid) {
-      addToast("దయచేసి లాగిన్ అవ్వండి (Please login first)");
-      return;
-    }
+    if (requireLoginAlert()) return;
     const targetComment = comments.find((c) => c.id === commentId);
     if (!targetComment) return;
     playInteractionSound("reaction");

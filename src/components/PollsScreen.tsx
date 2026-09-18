@@ -57,7 +57,7 @@ export function PollsScreen({
 
   const handleCreatePoll = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return addToast("లాగిన్ అవసరం (Login required)");
+    if (!user) { window.dispatchEvent(new Event("open-login-modal")); return; }
     if (!newPollQuestion.trim() || newPollOptions.some((opt) => !opt.trim()))
       return addToast("అన్ని వివరాలు నింపండి (Fill all fields)");
 
@@ -82,7 +82,7 @@ export function PollsScreen({
     optionIndex: number,
     currentPoll: any,
   ) => {
-    if (!user) return addToast("లాగిన్ అవసరం (Login required)");
+    if (!user) { window.dispatchEvent(new Event("open-login-modal")); return; }
     if (currentPoll.votedBy[user.uid] !== undefined)
       return addToast("మీరు ఇప్పటికే ఓటు వేశారు (Already voted)");
 

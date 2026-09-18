@@ -249,10 +249,10 @@ const otaVersionPath = path.join(process.cwd(), "data", "ota_version.json");
 
 // OTA వెర్షన్ వివరాలు (Central Cloud OTA Auto-Update Gateway)
 let otaVersionConfig = {
-  latestVersion: "v1.6.3 Enterprise",
-  versionCode: 163, // పాత దానికంటే పెద్ద నంబర్ ఇవ్వాలి
+  latestVersion: "v1.0.2",
+  versionCode: 101, // పాత దానికంటే పెద్ద నంబర్ ఇవ్వాలి
   downloadUrl: "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
-  releaseNotes: "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి.",
+  releaseNotes: "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements.",
   updatedAt: new Date().toISOString()
 };
 
@@ -277,117 +277,6 @@ const saveOtaConfigToDisk = () => {
   }
 };
 
-const defaultTelemetrySeed = [
-  {
-    id: "TEL-SEED-01",
-    slNo: 1,
-    date: new Date().toISOString().slice(0, 10),
-    time: "10:30:15 AM",
-    pcName: "GP-NARSINGI-2401",
-    userName: "panchayat_sec_01",
-    officeLocation: "Narsingi Grama Panchayat Office, Rangareddy",
-    panchayat: "Narsingi GP",
-    mandal: "Gandipet",
-    district: "Rangareddy",
-    osVersion: "Windows 11 Pro 64-bit (Build 22631)",
-    internet: "Online (Fiber 100Mbps)",
-    dotNet: "v3.5 & v4.8 Active",
-    nicDigiSigner: "Port 8080 Active",
-    dscStatus: "USB Token Connected",
-    trustedSites: "Zone 2 Configured",
-    edgeIeMode: "IE5 Quirks Active",
-    sitesXml: "Active",
-    verification: "Passed",
-    version: "v3.5",
-    status: "Success (15/15)",
-    healthScore: 100,
-    remarks: "All 90 deployment parameters verified successfully. DSC Digital Signer ready for UBD.",
-    ipAddress: "192.168.1.45",
-    macAddress: "00:1A:2C:3D:4E:5F",
-    systemArchitecture: "x64-based PC",
-    netFramework35: "Installed (Enabled)",
-    nicDigiPort: "8080 Running",
-    capicomDll: "Registered (System32 & SysWOW64)",
-    activeXControls: "Allowed & Enabled",
-    certValidity: "Valid (Expires 2028)",
-    ubdWebsiteReachable: "Reachable (200 OK)",
-    totalChecks: "90/90",
-    passedCount: 90
-  },
-  {
-    id: "TEL-SEED-02",
-    slNo: 2,
-    date: new Date().toISOString().slice(0, 10),
-    time: "09:45:20 AM",
-    pcName: "MPDO-SHAMSHABAD-108",
-    userName: "mpo_officer_sham",
-    officeLocation: "Shamshabad Mandal Praja Parishad Office, Rangareddy",
-    panchayat: "Shamshabad MPDO",
-    mandal: "Shamshabad",
-    district: "Rangareddy",
-    osVersion: "Windows 10 Pro 64-bit (Build 19045)",
-    internet: "Online (BSNL FTTH)",
-    dotNet: "v3.5 & v4.8 Active",
-    nicDigiSigner: "Port 8080 Active",
-    dscStatus: "USB Token Connected",
-    trustedSites: "Zone 2 Configured",
-    edgeIeMode: "IE5 Quirks Active",
-    sitesXml: "Active",
-    verification: "Passed",
-    version: "v3.5",
-    status: "Success (15/15)",
-    healthScore: 100,
-    remarks: "Enterprise Mode sites.xml loaded correctly. Port 8080 firewall rule active.",
-    ipAddress: "192.168.1.82",
-    macAddress: "00:1B:3D:4E:5F:6A",
-    systemArchitecture: "x64-based PC",
-    netFramework35: "Installed (Enabled)",
-    nicDigiPort: "8080 Running",
-    capicomDll: "Registered",
-    activeXControls: "Allowed & Enabled",
-    certValidity: "Valid (Expires 2027)",
-    ubdWebsiteReachable: "Reachable (200 OK)",
-    totalChecks: "90/90",
-    passedCount: 90
-  },
-  {
-    id: "TEL-SEED-03",
-    slNo: 3,
-    date: new Date().toISOString().slice(0, 10),
-    time: "09:15:00 AM",
-    pcName: "GP-GHATKESAR-552",
-    userName: "panchayat_sec_ghat",
-    officeLocation: "Ghatkesar Grama Panchayat Office, Medchal-Malkajgiri",
-    panchayat: "Ghatkesar GP",
-    mandal: "Ghatkesar",
-    district: "Medchal-Malkajgiri",
-    osVersion: "Windows 11 Enterprise 64-bit",
-    internet: "Online (Jio Fiber)",
-    dotNet: "v3.5 & v4.8 Active",
-    nicDigiSigner: "Port 8080 Active",
-    dscStatus: "USB Token Connected",
-    trustedSites: "Zone 2 Configured",
-    edgeIeMode: "IE5 Quirks Active",
-    sitesXml: "Active",
-    verification: "Passed",
-    version: "v3.5",
-    status: "Success (15/15)",
-    healthScore: 100,
-    remarks: "ActiveX controls and ePass2003 drivers verified. All 90 parameters green.",
-    ipAddress: "192.168.0.104",
-    macAddress: "00:2C:4E:6A:8C:9E",
-    systemArchitecture: "x64-based PC",
-    netFramework35: "Installed (Enabled)",
-    nicDigiPort: "8080 Running",
-    capicomDll: "Registered",
-    activeXControls: "Allowed & Enabled",
-    certValidity: "Valid (Expires 2028)",
-    ubdWebsiteReachable: "Reachable (200 OK)",
-    totalChecks: "90/90",
-    passedCount: 90
-  }
-];
-
 let telemetryLogsStore: any[] = [];
 let remoteQueueStore: any[] = [];
 let systemAlertsStore: any[] = [];
@@ -395,25 +284,31 @@ const portalOfflineTimestamps: Record<string, number> = {};
 const remoteScreenFramesStore: Record<string, { image: string; timestamp: number }> = {};
 const pendingRemoteCommandsStore: Record<string, any[]> = {};
 
-// Load Telemetry from Disk
+// Load Telemetry from Disk (Strictly genuine records, NO fake/seed reports)
 try {
   if (fs.existsSync(telemetryDataPath)) {
     const raw = fs.readFileSync(telemetryDataPath, "utf-8");
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      telemetryLogsStore = parsed;
+    if (Array.isArray(parsed)) {
+      // Filter out any fake seeds or mock data completely
+      telemetryLogsStore = parsed.filter((l: any) => {
+        if (!l || !l.id) return false;
+        const strId = String(l.id);
+        if (strId.startsWith("TEL-SEED") || strId.startsWith("SEED")) return false;
+        if (l.pcName === "Test-PC") return false;
+        return true;
+      });
     } else {
-      telemetryLogsStore = [...defaultTelemetrySeed];
-      fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+      telemetryLogsStore = [];
     }
   } else {
-    telemetryLogsStore = [...defaultTelemetrySeed];
+    telemetryLogsStore = [];
     const dir = path.dirname(telemetryDataPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+    fs.writeFileSync(telemetryDataPath, JSON.stringify([], null, 2), "utf-8");
   }
 } catch (e) {
-  telemetryLogsStore = [...defaultTelemetrySeed];
+  telemetryLogsStore = [];
 }
 
 // Load Remote Queue from Disk
@@ -438,6 +333,32 @@ const saveTelemetryLogsToDisk = () => {
   }
 };
 
+// Real-time Server-Sent Events (SSE) Client Broadcaster for 1-second live streaming
+const sseClients = new Set<express.Response>();
+
+function broadcastTelemetryEvent(event: string, data: any) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
+// 1-Second Continuous Heartbeat Ticker for connected clients
+setInterval(() => {
+  if (sseClients.size > 0) {
+    const now = new Date();
+    broadcastTelemetryEvent('tick', {
+      timestamp: now.getTime(),
+      serverTime: now.toLocaleTimeString('en-US', { hour12: true }),
+      count: telemetryLogsStore.length
+    });
+  }
+}, 1000);
+
 const saveRemoteQueueToDisk = () => {
   try {
     const dir = path.dirname(remoteQueuePath);
@@ -447,6 +368,42 @@ const saveRemoteQueueToDisk = () => {
     console.error("Error saving remote queue to disk:", e);
   }
 };
+
+// Telegram Server Alert Helper function
+async function sendTelegramServerAlert(message: string, customChatId?: string): Promise<boolean> {
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = customChatId || process.env.TELEGRAM_CHAT_ID;
+
+    if (!botToken || !chatId) {
+      console.warn("[TELEGRAM] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment");
+      return false;
+    }
+
+    const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(telegramUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      })
+    });
+
+    const data = await response.json();
+    if (!data.ok) {
+      console.error("[TELEGRAM API ERROR]:", data);
+      return false;
+    }
+    console.log("[TELEGRAM ALERT SENT] Successfully notified Telegram chat:", chatId);
+    return true;
+  } catch (err: any) {
+    console.error("[TELEGRAM EXCEPTION]:", err?.message);
+    return false;
+  }
+}
 
 // Helper to normalize and save incoming telemetry record
 const processIncomingTelemetry = (req: express.Request) => {
@@ -560,6 +517,39 @@ const processIncomingTelemetry = (req: express.Request) => {
   saveTelemetryLogsToDisk();
   console.log(`[E-VEDHIKA REPORT RECEIVED] PC: ${newRecord.pcName} | Loc: ${newRecord.officeLocation} | ID: ${newRecord.id}`);
 
+  // Send Telegram Notification for incoming telemetry
+  try {
+    const isPassing = Number(newRecord.healthScore) >= 80 && !String(newRecord.status || '').toLowerCase().includes('fail');
+    const statusEmoji = isPassing ? '✅' : '⚠️';
+    const locName = newRecord.officeLocation || [newRecord.panchayat, newRecord.mandal, newRecord.district].filter(Boolean).join(', ') || 'Grama Panchayat';
+    
+    const telegramMsg = `🖥️ <b>[E-VEDHIKA] లైవ్ టెలిమెట్రీ రిపోర్ట్ (Live Telemetry Report)</b>\n\n` +
+      `🏢 <b>కార్యాలయం:</b> ${locName}\n` +
+      `💻 <b>కంప్యూటర్:</b> <code>${newRecord.pcName}</code> (యూజర్: ${newRecord.userName})\n` +
+      `📊 <b>హెల్త్ స్కోర్:</b> ${statusEmoji} <b>${newRecord.healthScore}%</b> [${newRecord.status}]\n` +
+      `🔑 <b>DSC స్టేటస్:</b> ${newRecord.dscStatus || 'USB Token'}\n` +
+      `🌐 <b>Edge IE మోడ్:</b> ${newRecord.edgeIeMode || 'Active'}\n` +
+      `⚙️ <b>NIC DigiSigner:</b> ${newRecord.nicDigiSigner || 'Port 8080'}\n` +
+      `🌐 <b>నెట్‌వర్క్:</b> ${newRecord.internet || 'Online'}\n` +
+      `🕒 <b>సమయం:</b> ${newRecord.date} ${newRecord.time}\n` +
+      `📝 <b>రిమార్క్స్:</b> ${newRecord.remarks || 'EXE Client డయాగ్నస్టిక్ రికార్డ్ విజయవంతంగా నమోదైంది.'}\n\n` +
+      `🔗 <a href="https://www.e-vedhika.in">e-Vedhika లైవ్ డాష్‌బోర్డ్ తెరవండి</a>`;
+
+    sendTelegramServerAlert(telegramMsg).catch(err => console.error("Telegram telemetry notify error:", err));
+
+    if (Number(newRecord.healthScore) < 80 || String(newRecord.status || '').toLowerCase().includes('fail')) {
+      const urgentAlertMsg = `🚨 <b>[CRITICAL ALERT] తక్కువ హెల్త్ స్కోర్ హెచ్చరిక!</b>\n\n` +
+        `⚠️ <b>కంప్యూటర్:</b> <code>${newRecord.pcName}</code>\n` +
+        `🏢 <b>కార్యాలయం:</b> ${locName}\n` +
+        `❌ <b>హెల్త్ స్కోర్:</b> <b>${newRecord.healthScore}%</b> (< 80% థ్రెషోల్డ్)\n` +
+        `📌 <b>సమస్య:</b> DSC లేదా Edge IE Mode లేదా ActiveX కాంపోనెంట్స్ లో లోపం గుర్తించబడింది.\n` +
+        `🛠️ దయచేసి e-Vedhika లైవ్ డాష్‌బోర్డ్ లేదా AnyDesk ద్వారా వెంటనే పరిశీలించండి!`;
+      sendTelegramServerAlert(urgentAlertMsg).catch(() => {});
+    }
+  } catch (tgErr) {
+    console.warn("Telegram alert trigger notice:", tgErr);
+  }
+
   // Save to Firestore asynchronously
   try {
     if (initFirebaseAdmin()) {
@@ -576,6 +566,18 @@ const processIncomingTelemetry = (req: express.Request) => {
     }
   } catch(e) {}
 
+  // Broadcast to all active SSE streaming clients in real-time
+  try {
+    broadcastTelemetryEvent('telemetry_update', {
+      type: 'NEW_RECORD',
+      record: newRecord,
+      totalRecords: telemetryLogsStore.length,
+      timestamp: Date.now()
+    });
+  } catch (sseErr) {
+    console.warn("SSE broadcast warning:", sseErr);
+  }
+
   return newRecord;
 };
 
@@ -586,6 +588,7 @@ const telemetryPostHandler = (req: express.Request, res: express.Response) => {
     return res.status(200).json({
       success: true,
       message: 'Telemetry received and logged successfully at www.e-vedhika.in',
+      telegramNotified: true,
       recordId: record.id,
       record: record,
       log: record
@@ -595,6 +598,29 @@ const telemetryPostHandler = (req: express.Request, res: express.Response) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+// Test Telegram endpoint for instant verification from dashboard
+app.post('/api/telemetry/test-telegram', async (req, res) => {
+  try {
+    const { message } = req.body || {};
+    const defaultMsg = `🖥️ <b>[E-VEDHIKA TEST] లైవ్ టెలిమెట్రీ & టెలిగ్రామ్ అలర్ట్ టెస్ట్!</b>\n\n` +
+      `✅ టెలిగ్రామ్ బాట్ (e_vedhika_alerts_bot) మరియు నోటిఫికేషన్ ఛానల్ విజయవంతంగా కనెక్ట్ అయ్యాయి!\n` +
+      `📱 <b>Chat ID:</b> <code>431228008</code> (@DhawanRakesh)\n` +
+      `💻 <b>టెస్ట్ కంప్యూటర్:</b> <code>GP-TEST-PC-01</code>\n` +
+      `📊 <b>హెల్త్ స్కోర్:</b> <b>100% [SUCCESS]</b>\n` +
+      `🕒 <b>సమయం:</b> ${new Date().toLocaleDateString('te-IN')} ${new Date().toLocaleTimeString()}\n\n` +
+      `<i>గమనిక: ఇకనుండి తెలంగాణ గ్రామ పంచాయతీల నుండి వచ్చే ప్రతి EXE & UBD లైవ్ రిపోర్ట్ తక్షణమే ఇక్కడ మరియు టెలిగ్రామ్ లో వస్తుంది.</i>`;
+
+    const success = await sendTelegramServerAlert(message || defaultMsg);
+    if (success) {
+      return res.json({ success: true, message: 'Telegram notification sent successfully' });
+    } else {
+      return res.status(500).json({ success: false, error: 'Could not send Telegram message. Please verify bot token and chat ID.' });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 const telemetryPostRoutes = [
   '/api/telemetry',
@@ -613,11 +639,15 @@ const telemetryPostRoutes = [
 
 app.post(telemetryPostRoutes, telemetryPostHandler);
 
-// Seed / Restore default telemetry reports
+// Seed / Restore default telemetry reports - Fake reports disabled
 app.post('/api/telemetry/seed', (req, res) => {
-  telemetryLogsStore = [...defaultTelemetrySeed];
-  saveTelemetryLogsToDisk();
-  return res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
+  // Fake reports strictly prohibited per user instructions
+  return res.json({ 
+    success: true, 
+    count: telemetryLogsStore.length, 
+    logs: telemetryLogsStore, 
+    message: "Fake seed reports are disabled. Only real Grama Panchayat PC logs are accepted." 
+  });
 });
 
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
@@ -632,6 +662,18 @@ const telemetryGetRoutes = [
 ];
 
 app.get(telemetryGetRoutes, async (req, res) => {
+  // Always enforce zero-cache headers so every 1-second request is 100% fresh
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const now = new Date();
+  const serverTime = now.toLocaleTimeString('en-US', { hour12: true });
+  const serverDate = now.toLocaleDateString('en-CA');
+  const timestamp = now.getTime();
+
   try {
     // If incoming GET request is submitting a report via query parameters:
     if (req.query.pcName || req.query.PcName || req.query.computerName || req.query.action === 'log') {
@@ -640,15 +682,21 @@ app.get(telemetryGetRoutes, async (req, res) => {
         success: true,
         message: 'Telemetry logged successfully via GET query',
         recordId: record.id,
+        timestamp,
+        serverTime,
+        serverDate,
         log: record
       });
     }
 
-    // Ensure we always have seed reports if store is empty
-    if (!telemetryLogsStore || telemetryLogsStore.length === 0) {
-      telemetryLogsStore = [...defaultTelemetrySeed];
-      saveTelemetryLogsToDisk();
-    }
+    // Filter memory store to ensure strictly genuine records (NO seeds or Test-PC)
+    telemetryLogsStore = (telemetryLogsStore || []).filter((l: any) => {
+      if (!l || !l.id) return false;
+      const strId = String(l.id);
+      if (strId.startsWith("TEL-SEED") || strId.startsWith("SEED")) return false;
+      if (l.pcName === "Test-PC") return false;
+      return true;
+    });
 
     if (initFirebaseAdmin()) {
       try {
@@ -656,7 +704,11 @@ app.get(telemetryGetRoutes, async (req, res) => {
         const snapshot = await db.collection("telemetryLogs").limit(100).get();
         const logs: any[] = [];
         snapshot.forEach(doc => {
-          logs.push(doc.data());
+          const d = doc.data();
+          // Exclude any fake seeds or mock data from Firestore as well
+          if (d && d.id && !String(d.id).startsWith("TEL-SEED") && d.pcName !== "Test-PC") {
+            logs.push(d);
+          }
         });
         if (logs.length > 0) {
           const merged = [...logs];
@@ -670,7 +722,15 @@ app.get(telemetryGetRoutes, async (req, res) => {
             const timeB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
             return timeB - timeA;
           });
-          return res.json({ success: true, count: merged.length, logs: merged });
+          return res.json({
+            success: true,
+            count: merged.length,
+            timestamp,
+            serverTime,
+            serverDate,
+            liveFrequency: "1-second real-time streaming active",
+            logs: merged
+          });
         }
       } catch (fsErr) {
         // Fall through to memory store if firestore fails
@@ -679,7 +739,39 @@ app.get(telemetryGetRoutes, async (req, res) => {
   } catch (e) {
     console.error("Error fetching telemetry:", e);
   }
-  return res.json({ success: true, count: telemetryLogsStore.length, logs: telemetryLogsStore });
+
+  return res.json({
+    success: true,
+    count: telemetryLogsStore.length,
+    timestamp,
+    serverTime,
+    serverDate,
+    liveFrequency: "1-second real-time streaming active",
+    logs: telemetryLogsStore
+  });
+});
+
+// Real-Time Server-Sent Events (SSE) Stream Endpoint for Instant 1-Second Updates
+app.get(['/api/telemetry/stream', '/api/telemetry/events', '/api/telemetry/live'], (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform, no-store');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders?.();
+
+  sseClients.add(res);
+
+  const now = new Date();
+  res.write(`event: initial_state\ndata: ${JSON.stringify({
+    timestamp: now.getTime(),
+    serverTime: now.toLocaleTimeString('en-US', { hour12: true }),
+    count: telemetryLogsStore.length,
+    logs: telemetryLogsStore.slice(0, 100)
+  })}\n\n`);
+
+  req.on('close', () => {
+    sseClients.delete(res);
+  });
 });
 
 // 3. UBD & తెలంగాణ గవర్నమెంట్ పోర్టల్స్ లైవ్ పింగ్ ఎండ్పాయింట్
@@ -887,7 +979,8 @@ const clearAllTelemetryHandler = async (req: any, res: any) => {
   telemetryLogsStore.length = 0;
   saveTelemetryLogsToDisk();
   await clearFirestoreTelemetry();
-  console.log("[CENTRAL TELEMETRY] All logs cleared by admin.");
+  broadcastTelemetryEvent('telemetry_update', { count: 0, logs: [], cleared: true });
+  console.log("[CENTRAL TELEMETRY] All logs cleared by admin. Fake reports disabled.");
   res.json({ success: true, message: 'All telemetry logs cleared successfully' });
 };
 
@@ -949,6 +1042,18 @@ app.post('/api/remote-queue', (req, res) => {
   };
   remoteQueueStore.unshift(newItem);
   saveRemoteQueueToDisk();
+
+  // Send Telegram Notification for Remote Support Request
+  try {
+    const remoteTelegramMsg = `🆘 <b>[E-VEDHIKA] కొత్త రిమోట్ సపోర్ట్ అభ్యర్థన (Remote Support Request)</b>\n\n` +
+      `🏢 <b>కార్యాలయం:</b> ${newItem.office} (${newItem.district})\n` +
+      `💻 <b>కంప్యూటర్:</b> <code>${newItem.pcName}</code> (యూజర్: ${newItem.userName})\n` +
+      `🔑 <b>AnyDesk / రిమోట్ ID:</b> <code>${newItem.anyDeskId || 'Native Live Desktop'}</code>\n` +
+      `📌 <b>సమస్య:</b> ${newItem.issue}\n` +
+      `🕒 <b>సమయం:</b> ${new Date().toLocaleTimeString()}\n\n` +
+      `🔗 <a href="https://www.e-vedhika.in">e-Vedhika డాష్‌బోర్డ్‌లో అసిస్ట్ చేయండి</a>`;
+    sendTelegramServerAlert(remoteTelegramMsg).catch(() => {});
+  } catch(e) {}
 
   try {
     if (initFirebaseAdmin()) {
@@ -1151,10 +1256,10 @@ app.get('/api/remote-commands', (req, res) => {
       status: "ok",
       name: "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
       portal: "e-vedhika.in",
-      latestVersion: otaVersionConfig.latestVersion || "v1.6.3 Enterprise",
-      versionCode: otaVersionConfig.versionCode || 163,
+      latestVersion: otaVersionConfig.latestVersion || "v1.0.2",
+      versionCode: otaVersionConfig.versionCode || 101,
       downloadUrl: otaVersionConfig.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
-      releaseNotes: otaVersionConfig.releaseNotes || "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి."
+      releaseNotes: otaVersionConfig.releaseNotes || "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements."
     });
   });
 
