@@ -2947,6 +2947,343 @@ app.get('/api/remote-commands', (req, res) => {
       }
     });
   });
+
+  // Dedicated Open Graph Image API - Converts Base64 images to real binary images for WhatsApp/Telegram/Facebook crawlers
+  app.get(["/api/og-image", "/api/og-image/:postId"], async (req, res) => {
+    const postId = req.params.postId || (req.query.postId as string);
+    if (!postId) {
+      return res.redirect("/banner.jpg");
+    }
+    try {
+      const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+      const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
+      const resp = await fetch(firestoreUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        const mediaUrl = data.fields?.mediaUrl?.stringValue || data.fields?.imageUrl?.stringValue || "";
+        if (mediaUrl.startsWith("data:image/")) {
+          const match = mediaUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
+          if (match) {
+            const mimeType = match[1];
+            const buffer = Buffer.from(match[2], "base64");
+            res.setHeader("Content-Type", mimeType);
+            res.setHeader("Content-Length", buffer.length);
+            res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+            return res.end(buffer);
+          }
+        } else if (mediaUrl.startsWith("http")) {
+          return res.redirect(mediaUrl);
+        }
+      }
+    } catch (e) {
+      console.error("[OG Image Error]:", e);
+    }
+    return res.redirect("/banner.jpg");
+  });
+
+  // Dynamic Open Graph & Meta Tags Engine
+  let cachedPageDescriptions: Record<string, { title: string; description: string }> | null = null;
+  let lastPageDescriptionsFetch = 0;
+
+  async function getDynamicDescriptions(): Promise<Record<string, { title: string; description: string }>> {
+    const now = Date.now();
+    if (cachedPageDescriptions && now - lastPageDescriptionsFetch < 5 * 60 * 1000) {
+      return cachedPageDescriptions;
+    }
+    try {
+      const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+      const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/settings/page_descriptions?key=${apiKey}`;
+      const resp = await fetch(firestoreUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        const fields = data.fields || {};
+        const result: Record<string, { title: string; description: string }> = {};
+        for (const [k, v] of Object.entries(fields)) {
+          const mv = (v as any).mapValue?.fields || {};
+          result[k] = {
+            title: mv.title?.stringValue || "",
+            description: mv.description?.stringValue || ""
+          };
+        }
+        cachedPageDescriptions = result;
+        lastPageDescriptionsFetch = now;
+        return result;
+      }
+    } catch (err) {
+      // Return cached or empty on network failure
+    }
+    return cachedPageDescriptions || {};
+  }
+
+  // Dynamic Home Page Metadata (for www.e-vedhika.in)
+  let cachedHomeMeta: { title: string; description: string; imageUrl?: string } | null = null;
+  let lastHomeMetaFetch = 0;
+
+  async function getDynamicHomeMetadata(baseUrl: string): Promise<{ title: string; description: string; imageUrl?: string }> {
+    const now = Date.now();
+    if (cachedHomeMeta && now - lastHomeMetaFetch < 3 * 60 * 1000) {
+      return cachedHomeMeta;
+    }
+    const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+    let customTitle = "";
+    let customDesc = "";
+    let customImage = "";
+    let latestPostTitle = "";
+
+    try {
+      // 0. Check settings/landing_page for metaDescription (Landing Page Admin Config)
+      const landingUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/settings/landing_page?key=${apiKey}`;
+      const landingResp = await fetch(landingUrl);
+      if (landingResp.ok) {
+        const landingData = await landingResp.json();
+        const f = landingData.fields || {};
+        const landingMetaDesc = (f.metaDescription?.stringValue || f.metaDesc?.stringValue || "").trim();
+        if (landingMetaDesc) {
+          customDesc = landingMetaDesc;
+        }
+      }
+    } catch (e) {}
+
+    try {
+      // 1. Check settings/page_descriptions for "home"
+      const dynamicDescriptions = await getDynamicDescriptions();
+      if (dynamicDescriptions["home"]?.title) {
+        customTitle = dynamicDescriptions["home"].title.trim();
+      }
+      if (dynamicDescriptions["home"]?.description) {
+        customDesc = dynamicDescriptions["home"].description.trim();
+      }
+    } catch (e) {}
+
+    try {
+      // 2. Check settings/seo_meta for custom seo config
+      const seoUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/settings/seo_meta?key=${apiKey}`;
+      const seoResp = await fetch(seoUrl);
+      if (seoResp.ok) {
+        const seoData = await seoResp.json();
+        const f = seoData.fields || {};
+        if (!customTitle) {
+          customTitle = (f.ogTitle?.stringValue || f.seoTitle?.stringValue || "").trim();
+        }
+        if (!customDesc) {
+          customDesc = (f.ogDescription?.stringValue || f.seoDescription?.stringValue || "").trim();
+        }
+        if (f.ogImage?.stringValue) {
+          customImage = f.ogImage.stringValue.trim();
+        }
+      }
+    } catch (e) {}
+
+    try {
+      // 3. Check latest active post from Firestore for dynamic live preview updates
+      const postUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=1&orderBy=createdAt%20desc&key=${apiKey}`;
+      const postResp = await fetch(postUrl);
+      if (postResp.ok) {
+        const postData = await postResp.json();
+        const doc = postData.documents?.[0];
+        if (doc && doc.fields?.title?.stringValue) {
+          latestPostTitle = doc.fields.title.stringValue.trim();
+        }
+      }
+    } catch (e) {}
+
+    const title = customTitle || "🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్";
+    let description = customDesc;
+    if (!description) {
+      if (latestPostTitle) {
+        description = `ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు & ఆపరేటర్ల సమగ్ర వేదిక. 📢 తాజా అప్‌డేట్: ${latestPostTitle}. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు.`;
+      } else {
+        description = "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు.";
+      }
+    }
+
+    cachedHomeMeta = {
+      title,
+      description,
+      imageUrl: customImage || `${baseUrl}/banner.jpg`
+    };
+    lastHomeMetaFetch = now;
+    return cachedHomeMeta;
+  }
+
+  async function renderDynamicOgTags(req: express.Request, rawHtml: string): Promise<string> {
+    let html = rawHtml;
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+    const host = req.get("host") || "www.e-vedhika.in";
+    const isPublicHost = host && !host.includes("localhost") && !host.includes("127.0.0.1") && host.includes(".");
+    const fullBaseUrl = isPublicHost ? `${protocol}://${host}` : "https://www.e-vedhika.in";
+    const canonicalUrl = `${fullBaseUrl}${req.originalUrl}`;
+
+    const postId = (req.query.postId as string) || (req.path.startsWith("/post/") ? req.path.split("/post/")[1].split("?")[0] : null);
+    const rawTab = ((req.query.tab as string) || "").toLowerCase();
+    const cleanPath = req.path.toLowerCase().replace(/\/+$/, "");
+
+    let title = "🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్";
+    let description = "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. Comprehensive Digital Portal for Panchayat Secretaries, E-Panchayat Operators, and Citizens in Telangana.";
+    let imageUrl = `${fullBaseUrl}/banner.jpg`;
+    let type = "website";
+
+    // 1. Post Preview (Individual News / Notification / Issue)
+    if (postId) {
+      try {
+        const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
+        const firestoreResp = await fetch(firestoreUrl);
+        if (firestoreResp.ok) {
+          const data = await firestoreResp.json();
+          const fields = data.fields || {};
+          const postTitle = (fields.title?.stringValue || "E-Vedhika Post").trim();
+          const rawContent = (fields.content?.stringValue || "").trim();
+          const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`\r\n]/g, " ").replace(/\s+/g, " ").trim();
+          const postDesc = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
+          const mediaUrl = fields.mediaUrl?.stringValue || fields.imageUrl?.stringValue || fields.poster?.stringValue || fields.videoThumbnailUrl?.stringValue || "";
+
+          title = `${postTitle} - E-Vedhika`;
+          if (postDesc) description = postDesc;
+          type = "article";
+
+          if (mediaUrl.startsWith("data:image/")) {
+            imageUrl = `${fullBaseUrl}/api/og-image/${postId}`;
+          } else if (mediaUrl.startsWith("http")) {
+            imageUrl = mediaUrl;
+          } else if (mediaUrl) {
+            imageUrl = `${fullBaseUrl}${mediaUrl.startsWith("/") ? "" : "/"}${mediaUrl}`;
+          }
+        }
+      } catch (e) {
+        console.error("[OG] Error fetching post preview:", e);
+      }
+    } else if (!cleanPath || cleanPath === "/" || cleanPath === "/index.html") {
+      // 2. Dynamic Home Page Preview (e.g. www.e-vedhika.in, /)
+      try {
+        const homeMeta = await getDynamicHomeMetadata(fullBaseUrl);
+        title = homeMeta.title;
+        description = homeMeta.description;
+        if (homeMeta.imageUrl) {
+          imageUrl = homeMeta.imageUrl.startsWith("http")
+            ? homeMeta.imageUrl
+            : `${fullBaseUrl}${homeMeta.imageUrl.startsWith("/") ? "" : "/"}${homeMeta.imageUrl}`;
+        } else {
+          imageUrl = `${fullBaseUrl}/banner.jpg`;
+        }
+        type = "website";
+      } catch (e) {
+        console.error("[OG] Error loading home dynamic preview:", e);
+      }
+    } else {
+      // 3. Tab & Tool Route Previews
+      const dynamicDescriptions = await getDynamicDescriptions();
+
+      if (cleanPath === "/workspace/dsr" || rawTab === "workspace/dsr" || cleanPath.endsWith("/dsr")) {
+        const custom = dynamicDescriptions["dsr"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "DSR ఎనలైజర్ (DSR Analyzer) - E-Vedhika";
+        description = custom?.description || "ఈ-పంచాయతి ఆపరేటర్లు & సెక్రటరీల కొరకు Daily Status Report (DSR) ఎనలైజర్. Mana Panchayati ఎక్సెల్ ఫైల్ అప్‌లోడ్ చేసి క్షణాల్లో PS Attendance, DSR Status, Not Reported రిపోర్టులు పొందండి.";
+      } else if (cleanPath === "/workspace/multiday" || rawTab === "workspace/multiday" || cleanPath.endsWith("/multiday")) {
+        const custom = dynamicDescriptions["multiday"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "మల్టీ-డే అటెండెన్స్ (Multi-Day Attendance) - E-Vedhika";
+        description = custom?.description || "ఒకటి కంటే ఎక్కువ రోజుల హాజరు వివరాలను ఒకేసారి నమోదు చేయడానికి మరియు సరిచూడటానికి ఈ టూల్ ఉపయోగపడుతుంది.";
+      } else if (cleanPath === "/workspace/excel-merge" || rawTab === "workspace/excel-merge") {
+        const custom = dynamicDescriptions["excel-merge"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "ఎక్సెల్ ఫైల్ మెర్జర్ (Excel File Merger) - E-Vedhika";
+        description = custom?.description || "వేర్వేరు ఎక్సెల్ ఫైల్స్ (Excel files) లో ఉన్న సమాచారాన్ని ఒకే ఫైల్ గా కలపడానికి మరియు డౌన్‌లోడ్ చేసుకోవడానికి ఈ టూల్ ఉపయోగపడుతుంది.";
+      } else if (cleanPath === "/workspace/training" || rawTab === "workspace/training") {
+        const custom = dynamicDescriptions["training"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "డిజిటల్ ట్రైనింగ్ (Digital Training) - E-Vedhika";
+        description = custom?.description || "డిజిటల్ వర్క్‌ఫ్లోస్ మరియు ట్యుటోరియల్స్ ద్వారా వివిధ పనులను ఎలా చేయాలో నేర్చుకోండి.";
+      } else if (cleanPath === "/workspace/pract" || cleanPath === "/pract" || rawTab === "workspace/pract" || rawTab === "pract") {
+        const custom = dynamicDescriptions["pract"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "నాలెడ్జ్ హబ్ (PR Act Guide) - E-Vedhika";
+        description = custom?.description || "పంచాయతీరాజ్ చట్టం (PR Act), సెక్షన్లు మరియు ఇతర ముఖ్యమైన సమాచారం గురించి తెలుసుకోవడానికి సమగ్ర వేదిక.";
+      } else if (cleanPath === "/workspace/monthly-activity" || rawTab === "workspace/monthly-activity") {
+        const custom = dynamicDescriptions["monthly-activity"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "మంత్లీ యాక్టివిటీ డేటా (Monthly Activity Data) - E-Vedhika";
+        description = custom?.description || "నెలవారీ కార్యకలాపాల డేటాను క్రమబద్ధీకరించడానికి మరియు రిపోర్ట్స్ తయారు చేయడానికి ఈ టూల్ ఉపయోగపడుతుంది.";
+      } else if (cleanPath === "/workspace/excel_print" || rawTab === "workspace/excel_print") {
+        const custom = dynamicDescriptions["excel_print"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "ఎక్సెల్ A4 ప్రింట్ (Excel A4 Print Tool) - E-Vedhika";
+        description = custom?.description || "డేటాను ఎక్సెల్ ఫార్మాట్‌లో సరిచేసుకుని A4 సైజులో ప్రింట్ తీసుకోవడానికి ఈ టూల్ ఉపయోగపడుతుంది.";
+      } else if (cleanPath === "/workspace" || rawTab === "workspace") {
+        const custom = dynamicDescriptions["workspace"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "డిజిటల్ వర్క్‌స్పేస్ (Digital Workspace) - E-Vedhika";
+        description = custom?.description || "ఈ-పంచాయత్ ఆపరేటర్లు & సెక్రటరీలు తమ రోజువారీ పనులను నిర్వహించుకోవడానికి, రిపోర్టులు తయారుచేయడానికి ఉపయోగపడే డిజిటల్ వేదిక.";
+      } else if (cleanPath.startsWith("/suggestions") || rawTab.startsWith("suggestions")) {
+        const custom = dynamicDescriptions["suggestions"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "సమస్యలు & సూచనలు (Suggestions & Feedback) - E-Vedhika";
+        description = custom?.description || "పోర్టల్ అభివృద్ధి కోసం మీ విలువైన సూచనలు మరియు సమస్యలను ఇక్కడ తెలియజేయండి. All Problems One Solution.";
+      } else if (cleanPath.startsWith("/gos_formats") || rawTab.startsWith("gos_formats")) {
+        const custom = dynamicDescriptions["gos_formats"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "జీవోలు & ఫార్మాట్లు (GOs & Formats) - E-Vedhika";
+        description = custom?.description || "అన్ని రకాల ప్రభుత్వ జీవోలు, ప్రొసీడింగ్స్, అప్లికేషన్ ఫార్మాట్‌లు మరియు ఇతర ఫైల్స్ డౌన్‌లోడ్ చేసుకోండి.";
+      } else if (cleanPath.startsWith("/farmer") || rawTab.startsWith("farmer")) {
+        const custom = dynamicDescriptions["farmer_registry"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "రైతు రిజిస్ట్రీ (Farmer Registry) - E-Vedhika";
+        description = custom?.description || "రైతుల డేటా, వ్యవసాయ రికార్డులను నిర్వహించడానికి మరియు సరిచూసుకోవడానికి ప్రత్యేక పోర్టల్.";
+      } else if (cleanPath === "/directlinks" || rawTab === "directlinks") {
+        const custom = dynamicDescriptions["directlinks"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "డైరెక్ట్ లింక్స్ & UBD ట్రాకర్ - E-Vedhika";
+        description = custom?.description || "UBD డేటా ట్రాక్ చేయడానికి మరియు జనన మరణాల వివరాలను సులభంగా నిర్వహించడానికి.";
+      } else if (cleanPath.includes("emergency") || rawTab.includes("emergency")) {
+        const custom = dynamicDescriptions["emergency"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "ఎమర్జెన్సీ కాంటాక్ట్స్ (Emergency Contacts) - E-Vedhika";
+        description = custom?.description || "అత్యవసర పరిస్థితులలో సంప్రదించాల్సిన ముఖ్యమైన ఫోన్ నంబర్లు మరియు సేవలు.";
+      } else if (cleanPath === "/changelog" || rawTab === "changelog") {
+        const custom = dynamicDescriptions["changelog"];
+        title = custom?.title ? `${custom.title} - E-Vedhika` : "సిస్టమ్ అప్‌డేట్స్ (System Updates) - E-Vedhika";
+        description = custom?.description || "ఈ-వేదిక యాప్‌లో కొత్తగా వచ్చిన ఫీచర్లు మరియు తాజా మార్పుల వివరాలు.";
+      }
+    }
+
+    // Replace Title
+    if (/<title>.*?<\/title>/i.test(html)) {
+      html = html.replace(/<title>.*?<\/title>/i, `<title>${title}</title>`);
+    } else {
+      html = html.replace("</head>", `<title>${title}</title>\n</head>`);
+    }
+
+    const setMetaTag = (attrType: "name" | "property" | "itemprop", attrName: string, content: string) => {
+      const escaped = attrName.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const regex = new RegExp(`<meta\\s+[^>]*${attrType}=["']${escaped}["'][^>]*>`, "gi");
+      const safeContent = content.replace(/"/g, "&quot;");
+      const tag = `<meta ${attrType}="${attrName}" content="${safeContent}" />`;
+      if (regex.test(html)) {
+        html = html.replace(regex, tag);
+      } else {
+        html = html.replace("</head>", `  ${tag}\n</head>`);
+      }
+    };
+
+    setMetaTag("name", "description", description);
+    setMetaTag("name", "keywords", "E-Vedhika, Governance, Telangana, Andhra Pradesh, Panchayat, DSR");
+    setMetaTag("name", "author", "E-Vedhika Team");
+
+    setMetaTag("property", "og:site_name", "E-Vedhika");
+    setMetaTag("property", "og:type", type);
+    setMetaTag("property", "og:title", title);
+    setMetaTag("property", "og:description", description);
+    setMetaTag("property", "og:image", imageUrl);
+    setMetaTag("property", "og:image:secure_url", imageUrl);
+    setMetaTag("property", "og:image:type", imageUrl.endsWith(".png") ? "image/png" : "image/jpeg");
+    setMetaTag("property", "og:image:width", "1200");
+    setMetaTag("property", "og:image:height", "630");
+    setMetaTag("property", "og:image:alt", title);
+    setMetaTag("property", "og:url", canonicalUrl);
+    setMetaTag("property", "og:locale", "te_IN");
+
+    setMetaTag("name", "twitter:card", "summary_large_image");
+    setMetaTag("name", "twitter:site", "@EVedhika");
+    setMetaTag("name", "twitter:title", title);
+    setMetaTag("name", "twitter:description", description);
+    setMetaTag("name", "twitter:image", imageUrl);
+    setMetaTag("name", "twitter:url", canonicalUrl);
+
+    setMetaTag("itemprop", "name", title);
+    setMetaTag("itemprop", "description", description);
+    setMetaTag("itemprop", "image", imageUrl);
+
+    html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
+    return html;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const hmrPort = 24678 + Math.floor(Math.random() * 10000); // randomize HMR port
     const vite = await createViteServer({
@@ -2956,145 +3293,62 @@ app.get('/api/remote-commands', (req, res) => {
       },
       appType: "spa",
     });
-    
-    app.use(vite.middlewares);
 
-    // In dev mode, vite.middlewares handles the routing. We can't easily intercept *after* it,
-    // but the above is standard. We will let dev testing rely on frontend, 
-    // BUT we will also add a generic fallback catch-all just in case.
+    // Intercept social media crawlers & direct HTML preview requests in dev / preview
+    app.use(async (req, res, next) => {
+      const userAgent = req.headers["user-agent"] || "";
+      const isBot = /bot|facebookexternalhit|whatsapp|telegram|twitterbot|pinterest|google|bing|duckduckbot|slackbot|discordbot|applebot|linkedinbot|vkshare|skypeuripreview|qwantify|bitlybot|tumblr|embedly/i.test(userAgent);
+      const acceptsHtml = (req.headers.accept?.includes("text/html") || !req.headers.accept) && !req.path.includes(".");
+
+      if (isBot || acceptsHtml) {
+        try {
+          const indexPath = path.join(process.cwd(), "index.html");
+          if (fs.existsSync(indexPath)) {
+            let html = fs.readFileSync(indexPath, "utf-8");
+            html = await vite.transformIndexHtml(req.originalUrl, html);
+            html = await renderDynamicOgTags(req, html);
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            return res.send(html);
+          }
+        } catch (e) {
+          return next();
+        }
+      }
+      next();
+    });
+
+    app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath, { 
       index: false,
       setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html') || filePath.endsWith('sw.js') || filePath.endsWith('manifest.json') || filePath.endsWith('service-worker.js')) {
-          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-          res.setHeader('Pragma', 'no-cache');
-          res.setHeader('Expires', '0');
+        if (filePath.endsWith(".html") || filePath.endsWith("sw.js") || filePath.endsWith("manifest.json") || filePath.endsWith("service-worker.js")) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
         }
       }
     }));
-    app.get('*', async (req, res) => {
-      const postId = (req.query.postId as string) || (req.path.startsWith('/post/') ? req.path.split('/post/')[1] : null);
-      const indexPath = path.join(distPath, 'index.html');
-      
+
+    app.get("*", async (req, res) => {
+      const indexPath = path.join(distPath, "index.html");
       if (!fs.existsSync(indexPath)) {
         return res.status(404).send("Page not found");
       }
 
-      let html = fs.readFileSync(indexPath, 'utf-8');
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-      const host = req.get('host');
-      const fullBaseUrl = `${protocol}://${host}`;
-
-      // Global replacements for correct previews even on home page
-      html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
-      html = html.replace(/property="og:url" content="\/"/g, `property="og:url" content="${fullBaseUrl}/"`);
-      html = html.replace(/content="https:\/\/e-vedhika\.online\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
-      html = html.replace(/content="https:\/\/www\.e-vedhika\.in\/banner\.jpg"/g, `content="${fullBaseUrl}/banner.jpg"`);
-
+      let html = fs.readFileSync(indexPath, "utf-8");
       try {
-        const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
-        const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/site_settings/home_page?key=${apiKey}`;
-        const resp = await fetchObj(firestoreUrl, { headers: { "Referer": `${fullBaseUrl}/` } });
-        if (resp && resp.ok) {
-          const docData = await resp.json();
-          const fields = docData.fields || {};
-          const seoFields = fields.seo?.mapValue?.fields || {};
-          const seoTitle = (seoFields.seoTitle?.stringValue || seoFields.ogTitle?.stringValue || fields.title?.stringValue || "E-Vedhika").replace(/"/g, '&quot;');
-          const seoDesc = (seoFields.seoDescription?.stringValue || seoFields.ogDescription?.stringValue || fields.description?.stringValue || "All Problems One Solution").replace(/"/g, '&quot;');
-          const mediaUrl = seoFields.ogImage?.stringValue || fields.ogImage?.stringValue || "";
-          const keywords = seoFields.seoKeywords?.stringValue || fields.keywords?.stringValue || "";
-          const metaRobots = seoFields.metaRobots?.stringValue || "";
-          const ogType = seoFields.ogType?.stringValue || "";
-          
-          if (seoTitle) {
-            html = html.replace(/<title>.*?<\/title>/, `<title>${seoTitle}</title>`);
-            html = html.replace(/<meta\s+(?:property|name)="og:title"\s+content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${seoTitle}" />`);
-            html = html.replace(/<meta\s+name="twitter:title"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:title" content="${seoTitle}" />`);
-          }
-          if (seoDesc) {
-            html = html.replace(/<meta\s+property="og:description"\s+content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${seoDesc}" />`);
-            html = html.replace(/<meta\s+name="twitter:description"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:description" content="${seoDesc}" />`);
-            html = html.replace(/<meta\s+name="description"\s+content=".*?"\s*\/?>/gi, `<meta name="description" content="${seoDesc}" />`);
-          }
-          if (keywords) {
-            html = html.replace(/<meta\s+name="keywords"\s+content=".*?"\s*\/?>/gi, `<meta name="keywords" content="${keywords.replace(/"/g, '&quot;')}" />`);
-          }
-          if (metaRobots) {
-            html = html.replace(/<meta\s+name="robots"\s+content=".*?"\s*\/?>/gi, `<meta name="robots" content="${metaRobots}" />`);
-          }
-          if (mediaUrl) {
-            const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${fullBaseUrl}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
-            html = html.replace(/<meta\s+property="og:image"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${absMediaUrl}" />`);
-            html = html.replace(/<meta\s+itemprop="image"\s+content=".*?"\s*\/?>/gi, `<meta itemprop="image" content="${absMediaUrl}" />`);
-            html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
-            html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
-          }
-          if (ogType) {
-            html = html.replace(/<meta\s+property="og:type"\s+content=".*?"\s*\/?>/gi, `<meta property="og:type" content="${ogType}" />`);
-          }
-        }
+        html = await renderDynamicOgTags(req, html);
       } catch (err) {
-        // Silently skip if SEO tags cannot be fetched
+        console.error("Failed to generate dynamic OG preview:", err);
       }
 
-      if (postId) {
-        try {
-          const fetchObj = typeof fetch !== 'undefined' ? fetch : (await import('node-fetch')).default as any;
-          const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
-          const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
-          const firestoreResp = await fetchObj(firestoreUrl, { headers: { "Referer": "${fullBaseUrl}/" } });
-          
-          if (firestoreResp.ok) {
-            const data = await firestoreResp.json();
-            const fields = data.fields || {};
-
-            console.log(`[OG Debug] Dynamic preview triggered for ${postId}`);
-
-            const postTitle = (fields.title?.stringValue || "E-Vedhika Post").replace(/"/g, '&quot;').replace(/\s+/g, ' ').trim();
-            const rawContent = (fields.content?.stringValue || "").replace(/"/g, '&quot;');
-            // Remove markdown or html tags from description for OG tags
-            const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`\r\n]/g, " ").replace(/\s+/g, ' ').trim();
-            const postDesc = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
-            const mediaUrl = fields.mediaUrl?.stringValue || fields.imageUrl?.stringValue || fields.poster?.stringValue || fields.videoThumbnailUrl?.stringValue || "";
-
-            html = html.replace(/<title>.*?<\/title>/, `<title>${postTitle} - E-Vedhika</title>`);
-            html = html.replace(/<meta\s+(?:property|name)="og:title"\s+content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${postTitle}" />`);
-            html = html.replace(/<meta\s+property="og:description"\s+content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${postDesc}" />`);
-            html = html.replace(/<meta\s+name="twitter:title"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:title" content="${postTitle}" />`);
-            html = html.replace(/<meta\s+name="twitter:description"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:description" content="${postDesc}" />`);
-            html = html.replace(/<meta\s+property="og:type"\s+content=".*?"\s*\/?>/gi, `<meta property="og:type" content="article" />`);
-            
-            if (mediaUrl) {
-              const absMediaUrl = mediaUrl.startsWith('http') ? mediaUrl : `${fullBaseUrl}${mediaUrl.startsWith('/') ? '' : '/'}${mediaUrl}`;
-              html = html.replace(/<meta\s+property="og:image"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${absMediaUrl}" />`);
-              html = html.replace(/<meta\s+itemprop="image"\s+content=".*?"\s*\/?>/gi, `<meta itemprop="image" content="${absMediaUrl}" />`);
-              html = html.replace(/<meta\s+property="og:image:secure_url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:image:secure_url" content="${absMediaUrl}" />`);
-              html = html.replace(/<meta\s+name="twitter:image"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:image" content="${absMediaUrl}" />`);
-            }
-            const postKeywords = fields.seoKeywords?.stringValue || "";
-            if (postKeywords) {
-              html = html.replace(/<meta\s+name="keywords"\s+content=".*?"\s*\/?>/gi, `<meta name="keywords" content="${postKeywords.replace(/"/g, '&quot;')}" />`);
-            }
-            const postRobots = fields.metaRobots?.stringValue || "";
-            if (postRobots) {
-              html = html.replace(/<meta\s+name="robots"\s+content=".*?"\s*\/?>/gi, `<meta name="robots" content="${postRobots}" />`);
-            }
-            html = html.replace(/<meta\s+property="og:url"\s+content=".*?"\s*\/?>/gi, `<meta property="og:url" content="${fullBaseUrl}${req.originalUrl}" />`);
-            html = html.replace(/<meta\s+name="twitter:url"\s+content=".*?"\s*\/?>/gi, `<meta name="twitter:url" content="${fullBaseUrl}${req.originalUrl}" />`);
-          } else {
-             console.log(`[OG Debug] Firestore fetch failed for ${postId}: ${firestoreResp.status} ${firestoreResp.statusText}`);
-          }
-        } catch (err) {
-          console.error("Failed to generate dynamic OG preview:", err);
-        }
-      }
-      
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.send(html);
     });
   }

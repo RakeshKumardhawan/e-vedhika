@@ -1958,6 +1958,15 @@ function LandingPage({
             className="text-lg lg:text-xl text-slate-600 leading-relaxed font-medium max-w-3xl mx-auto ql-editor px-0 md:px-4"
             dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
           />
+          {landingPageData?.metaDescription?.trim() ? (
+            <div className="max-w-2xl mx-auto p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/80 rounded-2xl text-slate-700 text-sm md:text-base leading-relaxed text-center font-medium shadow-xs">
+              <span className="inline-flex items-center gap-1.5 text-blue-700 font-bold text-xs uppercase tracking-wider mb-1.5 block">
+                <Sparkles size={13} className="text-blue-600 inline" />
+                ల్యాండింగ్ పేజీ ముఖ్యాంశం / Overview
+              </span>
+              {landingPageData.metaDescription.trim()}
+            </div>
+          ) : null}
           <div className="pt-4 flex justify-center gap-4">
             <button 
               onClick={handleEnterWorld}
@@ -3031,9 +3040,19 @@ export default function App() {
         });
       }
     } else {
-      updateDOMMetaTags(siteConfig?.seo || siteConfig?.seoSettings);
+      const customLandingMeta = landingPageData?.metaDescription?.trim();
+      const baseSeo = siteConfig?.seo || siteConfig?.seoSettings;
+      if (customLandingMeta) {
+        updateDOMMetaTags({
+          ...baseSeo,
+          seoDescription: customLandingMeta,
+          ogDescription: customLandingMeta,
+        });
+      } else {
+        updateDOMMetaTags(baseSeo);
+      }
     }
-  }, [postIdFromUrl, posts, user, siteConfig]);
+  }, [postIdFromUrl, posts, user, siteConfig, landingPageData?.metaDescription]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -6717,6 +6736,15 @@ E-Vedhika Team`;
                               style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                               dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
                             />
+                            {landingPageData?.metaDescription?.trim() ? (
+                              <div className="relative z-10 max-w-3xl mx-auto p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/80 rounded-2xl text-slate-700 text-sm md:text-base leading-relaxed text-center font-medium shadow-xs">
+                                <span className="inline-flex items-center gap-1.5 text-blue-700 font-bold text-xs uppercase tracking-wider mb-1.5 block">
+                                  <Sparkles size={13} className="text-blue-600 inline" />
+                                  ల్యాండింగ్ పేజీ ముఖ్యాంశం / Overview
+                                </span>
+                                {landingPageData.metaDescription.trim()}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                         {/* Unified Banner & Footer Section */}
@@ -10432,7 +10460,12 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, "settings", "landing_page"), formData);
+      // Ensure trimmed metaDescription
+      const cleanedData = {
+        ...formData,
+        metaDescription: (formData.metaDescription || "").trim(),
+      };
+      await setDoc(doc(db, "settings", "landing_page"), cleanedData);
       addToast("Landing Page Config saved successfully!");
       fetchLandingPageData();
     } catch (err) {
@@ -10483,15 +10516,20 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
 
   return (
     <div className="bg-white rounded-[32px] p-6 lg:p-10 shadow-sm border border-slate-100">
-      <div className="flex justify-between items-center mb-8">
-        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-          <Globe size={24} className="text-primary" />
-          Landing Page Configuration
-        </h3>
+      <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
+        <div>
+          <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+            <Globe size={24} className="text-primary" />
+            Landing Page Configuration (ల్యాండింగ్ పేజీ సెట్టింగ్స్)
+          </h3>
+          <p className="text-xs text-slate-500 font-medium mt-1">
+            ల్యాండింగ్ పేజీ హెడర్, కంటెంట్ మరియు సెర్చ్ ఇంజిన్ మెటా వివరణలను నిర్వహించండి.
+          </p>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-primary/90 transition-all flex items-center gap-2"
+          className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm"
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
           {saving ? "Saving..." : "Save Changes"}
@@ -10499,7 +10537,129 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
       </div>
 
       <div className="space-y-8">
+        {/* SEO Meta Description Section (Search Results & Link Previews) */}
+        <div className="p-6 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-white rounded-2xl border border-blue-200/90 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                <Search size={20} />
+              </div>
+              <div>
+                <h4 className="font-black text-slate-800 text-lg flex items-center gap-2">
+                  Meta Description (సెర్చ్ ఫలితాల వివరణ)
+                </h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  Google, Bing వంటి సెర్చ్ ఫలితాలు మరియు సోషల్ మీడియా లింక్ ప్రివ్యూలలో కనిపించే వివరణ.
+                </p>
+              </div>
+            </div>
 
+            {/* Dynamic Status Badge (Active vs Auto-Disappeared) */}
+            <div className="shrink-0">
+              {formData.metaDescription?.trim() ? (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-300 shadow-xs">
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                  యాక్టివ్ (Active in Search Results)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-full border border-slate-300 shadow-xs">
+                  <EyeOff size={14} className="text-slate-400" />
+                  ఖాళీగా ఉంది - స్వయంచాలకంగా అదృశ్యమవుతుంది (Auto-Disappeared)
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-slate-700">
+                Meta Description (బహుళ లైన్ల వివరణ / Multi-line Text Input)
+              </label>
+              <span className={`text-xs font-semibold ${(formData.metaDescription?.length || 0) > 160 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                {formData.metaDescription?.length || 0} / 160 అక్షరాలు (సిఫార్సు చేయబడింది)
+              </span>
+            </div>
+
+            <textarea
+              name="metaDescription"
+              rows={4}
+              value={formData.metaDescription || ""}
+              onChange={handleChange}
+              placeholder="ఉదా: ఈ-వేదిక (E-Vedhika) - తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
+              className="w-full bg-white border border-slate-300 p-4 rounded-xl text-slate-800 text-sm md:text-base leading-relaxed focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-y min-h-[110px]"
+            />
+
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+              <p className="text-xs text-slate-500 flex items-start gap-1.5 max-w-xl">
+                <Info size={15} className="text-blue-500 shrink-0 mt-0.5" />
+                <span>
+                  <strong>ఆటోమేటిక్ అదృశ్యం (Auto-Disappearance):</strong> అడ్మిన్ దీన్ని నింపకపోతే లేదా ఖాళీగా ఉంచితే, సెర్చ్ ఇంజిన్లు మరియు ల్యాండింగ్ పేజీ నుండి ఇది స్వయంచాలకంగా అదృశ్యమైపోతుంది.
+                </span>
+              </p>
+
+              <div className="flex items-center gap-2">
+                {formData.metaDescription && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev: any) => ({ ...prev, metaDescription: "" }))}
+                    className="px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all flex items-center gap-1.5"
+                    title="వివరణను తీసివేసి స్వయంచాలకంగా అదృశ్యమయ్యేలా చేయండి"
+                  >
+                    <Trash2 size={13} />
+                    తొలగించు (Clear & Disappear)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev: any) => ({
+                    ...prev,
+                    metaDescription: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
+                  }))}
+                  className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition-all flex items-center gap-1.5"
+                >
+                  <RotateCcw size={13} />
+                  డిఫాల్ట్ సిఫార్సు (Suggest Default)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Real-time Google Search Result Preview Card */}
+          <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs mt-3">
+            <div className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <Eye size={14} className="text-slate-400" />
+              గూగుల్ సెర్చ్ ప్రివ్యూ (Live Google Search Result Preview)
+            </div>
+            <div className="space-y-1 font-sans">
+              <div className="text-xs text-slate-600 flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">EV</span>
+                <span className="text-slate-800 font-medium">https://www.e-vedhika.in</span>
+              </div>
+              <h5 className="text-[#1a0dab] hover:underline text-base md:text-lg font-medium cursor-pointer leading-snug">
+                🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్
+              </h5>
+              <p className="text-xs md:text-sm text-[#4d5156] leading-relaxed">
+                {formData.metaDescription?.trim() ? (
+                  formData.metaDescription.trim()
+                ) : (
+                  <span className="italic text-slate-400">
+                    [మెటా వివరణ ఖాళీగా ఉంది - ఇది స్వయంచాలకంగా అదృశ్యమైంది. సిస్టమ్ డిఫాల్ట్ డైనమిక్ పోస్ట్ నోటిఫికేషన్‌లను ఇక్కడ చూపిస్తుంది.]
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Section */}
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+          <h4 className="font-black text-slate-800 mb-4 text-lg">Hero Header Section</h4>
+          {renderInput("Hero Title", "heroTitle")}
+          {renderInput("Hero Highlight (Blue Colored Text)", "heroHighlight")}
+          {renderRichText("Hero Subtitle", "heroSubtitle")}
+        </div>
+
+        {/* Call To Action Section */}
         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h4 className="font-black text-slate-800 mb-4 text-lg">Call To Action Section</h4>
           {renderInput("CTA Title", "ctaTitle")}

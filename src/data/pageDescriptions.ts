@@ -1,4 +1,5 @@
 export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, { title: string; description: string }> = {
+  home: { title: "🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్", description: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు." },
   workspace: { title: "డిజిటల్ వర్క్‌స్పేస్ (Digital Workspace)", description: "ఈ-పంచాయత్ ఆపరేటర్లు తమ రోజువారీ పనులను నిర్వహించుకోవడానికి, రిపోర్టులు తయారుచేయడానికి ఉపయోగపడే డిజిటల్ వేదిక." },
   logs: { title: "భద్రతా లాగ్స్ (Security Logs)", description: "సిస్టమ్‌లోని యాక్టివిటీ మరియు భద్రతా లాగ్‌లను వీక్షించడానికి." },
   chat: { title: "చాట్ రూమ్ (Chat Room)", description: "తోటి ఈ-పంచాయత్ ఆపరేటర్లు మరియు అధికారులతో సమాచారం పంచుకోవడానికి చాట్ చేయండి." },
