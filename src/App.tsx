@@ -2236,6 +2236,12 @@ export default function App() {
     location.pathname.toLowerCase().endsWith("/farmer_registry") ||
     location.pathname.toLowerCase().endsWith("/farmer-registry");
 
+  const isEvdkaPath =
+    location.pathname.toLowerCase().endsWith("/evdka") ||
+    location.pathname.toLowerCase().endsWith("/evedhika") ||
+    location.pathname.toLowerCase() === "/admin" ||
+    location.pathname.toLowerCase().startsWith("/admin/");
+
   const initialUrlData = parseTabFromUrl(searchParams, location.pathname);
 
   const [activeAdminSubTab, setActiveAdminSubTab] = useState(initialUrlData.adminSubTab);
@@ -3953,9 +3959,6 @@ E-Vedhika Team`;
     recognition.start();
   };
 
-  const isEvdkaPath =
-    location.pathname.toLowerCase().endsWith("/evdka") ||
-    location.pathname.toLowerCase().endsWith("/evedhika");
   const isTargetingAdminRoute =
     isEvdkaPath || currentTab === "admin" || currentTab === "editor";
 
