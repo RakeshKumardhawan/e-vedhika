@@ -19372,44 +19372,122 @@ function DSRAnalyzer({
 
   return (
     <div className="space-y-6">
-      <div className="p-8 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] text-center relative overflow-hidden">
-        {isProcessing && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] flex flex-col items-center justify-center z-10">
-            <div className="w-64">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-                  Processing DSR...
-                </span>
-                <span className="text-[10px] font-black text-primary">
-                  {uploadProgress}%
-                </span>
+      {/* Telugu User Guide & Upload Banner */}
+      <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-hidden">
+        {/* Header Ribbon */}
+        <div className="bg-gradient-to-r from-[#0d3b66] via-[#00609C] to-indigo-900 text-white p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                ఆఫీసర్ & సెక్రటరీల సహాయక సాధనం • లాగిన్ అవసరం లేదు
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  className="h-full bg-primary"
-                />
-              </div>
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                మన పంచాయతీ DSR & హాజరు విశ్లేషణ సాధనం (DSR Analyzer)
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-200 max-w-3xl leading-relaxed">
+                పంచాయతీ సెక్రటరీల రోజువారీ హాజరు, సెలవులు, మండల మీటింగ్‌లు మరియు DSR నివేదికలను ఆటోమేటిక్‌గా విశ్లేషించి అధికారిక రిపోర్ట్‌లుగా మార్చే సులభమైన సాధనం.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 self-start md:self-auto bg-white/10 px-3 py-2 rounded-2xl border border-white/15 backdrop-blur-sm">
+              <span className="text-amber-300 font-bold text-xs">🔒 100% ప్రైవేట్ & సురక్షితం</span>
             </div>
           </div>
-        )}
-        <h4 className="text-sm font-black text-primary uppercase tracking-widest mb-4">
-          DSR Analytical Engine
-        </h4>
-        <input
-          type="file"
-          onChange={onUpload}
-          className="hidden"
-          id="dsr-up"
-          disabled={isProcessing}
-        />
-        <label
-          htmlFor="dsr-up"
-          className={`bg-primary text-white px-10 py-4 rounded-2xl font-black shadow-xl transition-all inline-block text-xs uppercase tracking-widest ${isProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:opacity-90 active:scale-95"}`}
-        >
-          {isProcessing ? "Processing..." : "Select DSR File"}
-        </label>
+        </div>
+
+        {/* 3 Step Simple Guide in Telugu */}
+        <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-200">
+          <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary"></span>
+            ఈ సాధనాన్ని ఎలా ఉపయోగించాలి? (సులభమైన 3 దశలు)
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Step 1 */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 font-black text-sm flex items-center justify-center">
+                1
+              </div>
+              <h5 className="font-bold text-slate-900 text-sm">ఫైల్ డౌన్‌లోడ్ చేయండి</h5>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                <strong>Mana Panchayati</strong> పోర్టల్ నుండి మీ జిల్లా/మండలం యొక్క తాజా హాజరు/DSR Excel (.xlsx / .xls / .html) ఫైల్‌ను డౌన్‌లోడ్ చేసుకోండి.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center">
+                2
+              </div>
+              <h5 className="font-bold text-slate-900 text-sm">ఫైల్‌ను ఇక్కడ అప్‌లోడ్ చేయండి</h5>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                క్రింద ఉన్న <strong>"DSR ఎక్సెల్ ఫైల్‌ను ఎంచుకోండి"</strong> బటన్‌ను నొక్కి డౌన్‌లోడ్ చేసిన ఫైల్‌ను సెలెక్ట్ చేయండి (క్షణాల్లో విశ్లేషిస్తుంది).
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 font-black text-sm flex items-center justify-center">
+                3
+              </div>
+              <h5 className="font-bold text-slate-900 text-sm">రిపోర్ట్‌లు & ఎక్స్‌పోర్ట్</h5>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                అధికారిక టేబుల్స్‌ను చూసి వాట్సాప్‌కి కాపీ చేయండి, లేదా <strong>Master Multi-Sheet Excel</strong> మరియు <strong>PDF</strong> రూపంలో డౌన్‌లోడ్ చేయండి.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Upload Action Area */}
+        <div className="p-6 sm:p-8 text-center relative overflow-hidden bg-white">
+          {isProcessing && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-[2px] flex flex-col items-center justify-center z-20">
+              <div className="w-72 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-black text-primary uppercase tracking-wider">
+                    DSR డేటాను విశ్లేషిస్తున్నాము...
+                  </span>
+                  <span className="text-xs font-black text-primary">
+                    {uploadProgress}%
+                  </span>
+                </div>
+                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${uploadProgress}%` }}
+                    className="h-full bg-primary"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">దయచేసి ఒక్క క్షణం వేచి ఉండండి</p>
+              </div>
+            </div>
+          )}
+
+          <input
+            type="file"
+            onChange={onUpload}
+            className="hidden"
+            id="dsr-up"
+            disabled={isProcessing}
+            accept=".xlsx,.xls,.html,.htm,.csv"
+          />
+          
+          <div className="max-w-xl mx-auto space-y-4">
+            <label
+              htmlFor="dsr-up"
+              className={`bg-primary hover:bg-[#004e80] text-white px-8 sm:px-10 py-4 rounded-2xl font-black shadow-xl transition-all inline-flex items-center gap-3 text-sm tracking-wide ${
+                isProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:shadow-2xl active:scale-95"
+              }`}
+            >
+              <Upload size={18} />
+              {isProcessing ? "డేటా ప్రాసెస్ అవుతోంది..." : (data.length > 0 ? "మరో DSR ఫైల్‌ను మార్చండి (Change File)" : "DSR ఎక్సెల్ ఫైల్‌ను ఎంచుకోండి (Select File)")}
+            </label>
+            <p className="text-xs text-slate-500">
+              మద్దతు ఇచ్చే ఫైల్ ఫార్మాట్‌లు: Excel (.xlsx, .xls), Mana Panchayati HTML Reports
+            </p>
+          </div>
+        </div>
       </div>
 
       {data.length > 0 && (
@@ -19483,28 +19561,28 @@ function DSRAnalyzer({
                 <button
                   onClick={downloadMandalReport}
                   className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
-                  title="Download Mandal-wise 16 Column Excel Report"
+                  title="మండలాల వారీ 20 కాలమ్ల ఎక్సెల్ రిపోర్ట్ డౌన్‌లోడ్ చేయండి"
                 >
                   <Download size={14} /> Mandal Excel
                 </button>
                 <button
                   onClick={downloadFullReport}
                   className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
-                  title="Download Gram Panchayat-wise 16 Column Excel Report"
+                  title="గ్రామ పంచాయతీల వారీ 20 కాలమ్ల పూర్తి ఎక్సెల్ రిపోర్ట్ డౌన్‌లోడ్ చేయండి"
                 >
                   <Download size={14} /> GP Excel
                 </button>
                 <button
                   onClick={downloadRawPdf}
                   className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
-                  title="Download Official 16 Column PDF Report"
+                  title="అధికారిక PDF రిపోర్ట్ డౌన్‌లోడ్ చేయండి"
                 >
-                  <Download size={14} /> Official PDF
+                  <Download size={14} /> PDF రిపోర్ట్
                 </button>
                 <button
                   onClick={copyTableToClipboard}
                   className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all"
-                  title="Copy formatted 16-Column TSV to clipboard for Excel or WhatsApp"
+                  title="వాట్సాప్ లేదా ఎక్సెల్ కోసం టేబుల్‌ను క్లిప్‌బోర్డ్‌కి కాపీ చేయండి"
                 >
                   <Copy size={14} /> Copy Table
                 </button>
