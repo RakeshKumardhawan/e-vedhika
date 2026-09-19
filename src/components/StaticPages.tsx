@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import { Sparkles } from 'lucide-react';
 
 function useStaticPage(pageId: string) {
   const [data, setData] = useState<{ title: string; content: string } | null>(null);
@@ -28,7 +29,7 @@ function useStaticPage(pageId: string) {
   return { data, loading };
 }
 
-function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string, defaultTitle: string, defaultContent: string }) {
+function PageTemplate({ pageId, defaultTitle, defaultContent, extraHeader }: { pageId: string, defaultTitle: string, defaultContent: string, extraHeader?: React.ReactNode }) {
   const { data, loading } = useStaticPage(pageId);
 
   if (loading) {
@@ -52,6 +53,8 @@ function PageTemplate({ pageId, defaultTitle, defaultContent }: { pageId: string
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs font-semibold text-amber-900 leading-relaxed">
           <strong>Disclaimer:</strong> E-VEDHIKA (e-vedhika.in) is an independent private technical utility platform created for automation, deployment assistance, code management, and system monitoring. <strong>This website has no connection, affiliation, partnership, or authorization with any government department or external public entity.</strong>
         </div>
+
+        {extraHeader}
 
         <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-6 border-b pb-4">{title}</h1>
         
@@ -103,8 +106,76 @@ For any questions regarding these terms, please reach out via our official suppo
   `} />;
 }
 
-export function AboutPage() {
-  return <PageTemplate pageId="about" defaultTitle="About E-Vedhika" defaultContent={`
+export function AboutPage({ landingPageData }: { landingPageData?: any }) {
+  const [localLandingData, setLocalLandingData] = useState<any>(landingPageData || null);
+
+  useEffect(() => {
+    if (landingPageData) {
+      setLocalLandingData(landingPageData);
+    } else {
+      getDoc(doc(db, "settings", "landing_page"))
+        .then((snap) => {
+          if (snap.exists()) {
+            setLocalLandingData(snap.data());
+          }
+        })
+        .catch(() => {});
+    }
+  }, [landingPageData]);
+
+  const overview = localLandingData || {
+    heroTitle: "Streamlining Governance & Citizen Services in",
+    heroHighlight: "Andhra Pradesh & Telangana",
+    heroSubtitle:
+      "E-Vedhika is a comprehensive digital platform designed to bridge the gap between citizens and government administration. By digitizing records and streamlining grievance redressal, we ensure transparent, accountable, and efficient governance at the grassroots level.",
+  };
+
+  const overviewSection = (
+    <div className="bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white rounded-3xl p-6 sm:p-10 shadow-sm border border-blue-100 text-center space-y-6 w-full mx-auto flex flex-col items-center relative overflow-hidden my-6">
+      {/* Decorative background blurs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-100/50 blur-3xl rounded-full" />
+        <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] bg-indigo-100/50 blur-3xl rounded-full" />
+      </div>
+
+      <div className="relative z-10 inline-flex items-center justify-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/60 rounded-full text-blue-700 text-xs sm:text-sm font-black uppercase tracking-[0.15em] shadow-xs">
+        <Sparkles size={14} className="text-blue-500" />
+        E-VEDHIKA OVERVIEW
+      </div>
+
+      <h2 className="relative z-10 text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight max-w-3xl w-full">
+        {overview.heroTitle}{" "}
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+          {overview.heroHighlight}
+        </span>
+      </h2>
+
+      {overview.heroSubtitle && (
+        <div
+          className="relative z-10 text-base sm:text-lg text-slate-600 leading-relaxed font-medium ql-editor px-0 max-w-3xl mx-auto w-full"
+          style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
+          dangerouslySetInnerHTML={{ __html: overview.heroSubtitle }}
+        />
+      )}
+
+      {overview?.metaDescription?.trim() ? (
+        <div className="relative z-10 max-w-2xl mx-auto p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/80 rounded-2xl text-slate-700 text-sm md:text-base leading-relaxed text-center font-medium shadow-xs">
+          <span className="inline-flex items-center gap-1.5 text-blue-700 font-bold text-xs uppercase tracking-wider mb-1.5 block">
+            <Sparkles size={13} className="text-blue-600 inline" />
+            ల్యాండింగ్ పేజీ ముఖ్యాంశం / Overview
+          </span>
+          {overview.metaDescription.trim()}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <PageTemplate
+      pageId="about"
+      defaultTitle="About E-Vedhika"
+      extraHeader={overviewSection}
+      defaultContent={`
 ### 🌟 E-Vedhika: All Problems One Solution & Deployment Tool
 **E-Vedhika** is an independent advanced administrative and technical utility platform designed to streamline software configurations, digital signature setups, system telemetry monitoring, and IT support services.
 
@@ -120,7 +191,9 @@ export function AboutPage() {
 - **Email**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
 - **Telegram Chat**: Contact via Telegram for quick assistance and support.
 - **Screen Sharing Requests**: If anyone requests screen sharing or remote assistance, please connect and contact me via **UltraViewer**.
-  `} />;
+  `}
+    />
+  );
 }
 
 export function ContactPage() {

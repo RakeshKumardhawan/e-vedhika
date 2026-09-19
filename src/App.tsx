@@ -4343,7 +4343,7 @@ E-Vedhika Team`;
     return <TermsPage />;
   }
   if (location.pathname === "/about") {
-    return <AboutPage />;
+    return <AboutPage landingPageData={landingPageData} />;
   }
   if (location.pathname === "/contact") {
     return <ContactPage />;
@@ -4441,6 +4441,35 @@ E-Vedhika Team`;
 
                 {showFooterModal === "about" && (
                   <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                    {/* E-VEDHIKA OVERVIEW Section */}
+                    <div className="bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white rounded-3xl p-6 border border-blue-100/80 shadow-xs text-center space-y-4">
+                      <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 bg-blue-100/80 border border-blue-200/60 rounded-full text-blue-700 text-xs font-black uppercase tracking-wider">
+                        <Sparkles size={13} className="text-blue-600" />
+                        E-VEDHIKA OVERVIEW
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug">
+                        {landingPageData?.heroTitle || "Streamlining Governance & Citizen Services in"}{" "}
+                        <span className="text-blue-600">
+                          {landingPageData?.heroHighlight || "Telangana & AP"}
+                        </span>
+                      </h3>
+                      {landingPageData?.heroSubtitle && (
+                        <div
+                          className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium ql-editor px-0"
+                          dangerouslySetInnerHTML={{ __html: landingPageData.heroSubtitle }}
+                        />
+                      )}
+                      {landingPageData?.metaDescription?.trim() ? (
+                        <div className="max-w-xl mx-auto p-3.5 bg-blue-50/90 border border-blue-200/80 rounded-2xl text-slate-700 text-xs sm:text-sm font-medium leading-relaxed">
+                          <span className="inline-flex items-center gap-1 text-blue-700 font-bold text-xs uppercase tracking-wider mb-1 block">
+                            <Sparkles size={12} className="text-blue-600 inline" />
+                            ల్యాండింగ్ పేజీ ముఖ్యాంశం
+                          </span>
+                          {landingPageData.metaDescription.trim()}
+                        </div>
+                      ) : null}
+                    </div>
+
                     <div className="p-6 bg-gradient-to-tr from-indigo-50 to-blue-50 rounded-3xl border border-indigo-100/60 flex gap-4">
                       <Info className="text-indigo-600 shrink-0" size={24} />
                       <div className="text-sm font-bold text-indigo-950 leading-relaxed markdown-body">
@@ -6710,43 +6739,6 @@ E-Vedhika Team`;
                             </div>
                           )}
 
-                        {/* Entry Page / Landing Page Content integrated at the bottom of Main Home Tab */}
-                        <div className="mt-20 border-t border-slate-200/60 pt-16 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                          <div className="bg-white rounded-[2.5rem] p-8 sm:p-14 shadow-sm border border-slate-100 text-center space-y-8 w-full mx-auto flex flex-col items-center relative overflow-hidden">
-                            {/* Decorative background blurs */}
-                            <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-[2.5rem]">
-                              <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-50/60 blur-3xl rounded-full" />
-                              <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] bg-indigo-50/60 blur-3xl rounded-full" />
-                            </div>
-
-                            <div className="relative z-10 inline-flex items-center justify-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50 rounded-full text-blue-700 text-xs sm:text-sm font-black uppercase tracking-[0.15em] shadow-sm">
-                              <Sparkles size={14} className="text-blue-500" />
-                              E-VEDHIKA OVERVIEW
-                            </div>
-
-                            <h2 className="relative z-10 text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight max-w-4xl w-full">
-                              {landingPageData.heroTitle}{" "}
-                              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                                {landingPageData.heroHighlight}
-                              </span>
-                            </h2>
-
-                            <div 
-                              className="relative z-10 text-base sm:text-lg text-slate-600 leading-relaxed font-medium ql-editor px-0 max-w-4xl mx-auto w-full"
-                              style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                              dangerouslySetInnerHTML={{__html: landingPageData.heroSubtitle}}
-                            />
-                            {landingPageData?.metaDescription?.trim() ? (
-                              <div className="relative z-10 max-w-3xl mx-auto p-4 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/80 rounded-2xl text-slate-700 text-sm md:text-base leading-relaxed text-center font-medium shadow-xs">
-                                <span className="inline-flex items-center gap-1.5 text-blue-700 font-bold text-xs uppercase tracking-wider mb-1.5 block">
-                                  <Sparkles size={13} className="text-blue-600 inline" />
-                                  ల్యాండింగ్ పేజీ ముఖ్యాంశం / Overview
-                                </span>
-                                {landingPageData.metaDescription.trim()}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
                         {/* Unified Banner & Footer Section */}
                         <div className="mt-12 -mx-3 sm:-mx-6 lg:-mx-8 bg-[#1565c0]/60 backdrop-blur-xl border-t border-white/20 shadow-2xl overflow-hidden rounded-t-[32px]">
                           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

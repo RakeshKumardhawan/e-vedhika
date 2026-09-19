@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <base href="/" />
     <script>window.addEventListener("unhandledrejection", function(e) { var m = (e.reason && (e.reason.message || e.reason.toString())) || ""; if (m.includes("WebSocket") || m.includes("closed without opened")) { e.preventDefault(); } });</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -66,7 +67,7 @@
         <li><a href="/contact">Contact Us</a></li>
       </ul>
     </div>
-    <script type="module" src="src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 
