@@ -239,7 +239,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       setR2Files(data.files || []);
     } catch (err: any) {
       console.error("R2 fetch error:", err);
-      if (addToast) addToast(`Cloudflare R2 ఫైల్స్ లోడ్ చేయడం విఫలమైంది: ${err.message}`, "error");
+      if (addToast) addToast(`Failed to load Cloudflare R2 files: ${err.message}`, "error");
     } finally {
       setLoadingR2(false);
     }
@@ -320,7 +320,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       (error) => {
         console.error("Upload error:", error);
         if (isQuick) setIsUploading(false);
-        if (addToast) addToast("ఫైల్ అప్‌లోడ్ చేయడం విఫలమైంది.", "error");
+        if (addToast) addToast("Failed to upload file.", "error");
       },
       async () => {
         try {
@@ -339,11 +339,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             setFormItemType("file");
           }
 
-          if (addToast) addToast(`ఫైల్ అప్‌లోడ్ విజయవంతం! (${sizeFormatted})`, "success");
+          if (addToast) addToast(`File uploaded successfully! (${sizeFormatted})`, "success");
         } catch (err) {
           console.error(err);
           if (isQuick) setIsUploading(false);
-          if (addToast) addToast("URL పొందడం విఫలమైంది.", "error");
+          if (addToast) addToast("Failed to retrieve file URL.", "error");
         }
       }
     );
@@ -372,7 +372,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       const sizeStr = formatBytes(file.size);
       const ext = file.name.split(".").pop()?.toUpperCase() || "EXE";
 
-      if (addToast) addToast(`Cloudflare R2 కి ఫైల్ అప్‌లోడ్ పూర్తయింది! (${sizeStr})`, "success");
+      if (addToast) addToast(`File uploaded to Cloudflare R2! (${sizeStr})`, "success");
 
       // Auto publish to Software Hub if requested
       if (r2AutoPublish) {
@@ -392,7 +392,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           fileSize: sizeStr,
           supportedOS: "Windows 10/11",
           downloadUrl: publicUrl,
-          descriptionTelugu: "Cloudflare R2 క్లౌడ్ స్టోరేజ్ నుండి డైరెక్ట్ డౌన్‌లోడ్ ఫైల్.",
+          descriptionTelugu: "Official download file stored directly in Cloudflare R2 cloud storage.",
           isOfficial: true,
           isR2Storage: true,
           r2Key: data.key,
@@ -401,13 +401,13 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
         };
 
         await setDoc(doc(db, "software_repository", docId), newItem);
-        if (addToast) addToast(`'${cleanName}' సాఫ్ట్‌వేర్ హబ్‌లో ఆటోమేటిక్‌గా పబ్లిష్ చేయబడింది!`, "success");
+        if (addToast) addToast(`'${cleanName}' automatically published to Software Hub!`, "success");
       }
 
       await fetchR2Files();
     } catch (err: any) {
       console.error(err);
-      if (addToast) addToast(`Cloudflare R2 అప్‌లోడ్ విఫలమైంది: ${err.message}`, "error");
+      if (addToast) addToast(`Cloudflare R2 upload failed: ${err.message}`, "error");
     } finally {
       setIsR2Uploading(false);
       setR2UploadProgress(null);
@@ -426,7 +426,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
   const handleSaveQuickUpdate = async () => {
     if (!quickUpdateItem) return;
     if (!newDownloadUrl.trim()) {
-      if (addToast) addToast("దయచేసి సరైన లింక్ ఇవ్వండి.", "error");
+      if (addToast) addToast("Please provide a valid download URL or link.", "error");
       return;
     }
 
@@ -439,11 +439,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
         lastUpdated: new Date().toLocaleDateString("en-IN"),
         updatedAtTimestamp: Date.now(),
       });
-      if (addToast) addToast(`'${quickUpdateItem.name}' రియల్-టైమ్‌లో అప్‌డేట్ చేయబడింది!`, "success");
+      if (addToast) addToast(`'${quickUpdateItem.name}' updated in real-time!`, "success");
       setQuickUpdateItem(null);
     } catch (err) {
       console.error(err);
-      if (addToast) addToast("అప్‌డేట్ విఫలమైంది.", "error");
+      if (addToast) addToast("Failed to update item.", "error");
     } finally {
       setIsSavingQuick(false);
     }
@@ -485,7 +485,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
 
   const handleSaveFullSoftware = async () => {
     if (!formName.trim() || !formUrl.trim()) {
-      if (addToast) addToast("సాఫ్ట్‌వేర్ పేరు మరియు డౌన్‌లోడ్/వెబ్ లింక్ తప్పనిసరి.", "error");
+      if (addToast) addToast("Software name and download/web link are required.", "error");
       return;
     }
 
@@ -501,7 +501,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       fileSize: formFileSize.trim() || "N/A",
       supportedOS: formOS.trim() || "Windows All",
       downloadUrl: formUrl.trim(),
-      descriptionTelugu: formDesc.trim() || "సచివాలయం మరియు ఆఫీస్ వర్క్ కొరకు ఉపయోగపడే సాఫ్ట్‌వేర్.",
+      descriptionTelugu: formDesc.trim() || "Utility software for office and administrative workstation tasks.",
       installationGuide: formGuide.trim(),
       isOfficial: formIsOfficial,
       lastUpdated: new Date().toLocaleDateString("en-IN"),
@@ -513,26 +513,26 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       if (addToast) {
         addToast(
           editingItem
-            ? `'${formName}' వివరాలు రియల్-టైమ్‌లో అప్‌డేట్ చేయబడ్డాయి!`
-            : `'${formName}' సాఫ్ట్‌వేర్ విజయవంతంగా జోడించబడింది!`,
+            ? `'${formName}' updated in real-time!`
+            : `'${formName}' added successfully!`,
           "success"
         );
       }
       setIsFullModalOpen(false);
     } catch (err) {
       console.error("Save error:", err);
-      if (addToast) addToast("భద్రపరచడంలో లోపం సంభవించింది.", "error");
+      if (addToast) addToast("Failed to save software details.", "error");
     }
   };
 
   const handleDeleteSoftware = async (id: string, name: string) => {
-    if (confirm(`'${name}' సాఫ్ట్‌వేర్‌ను ఖచ్చితంగా తొలగించాలనుకుంటున్నారా?`)) {
+    if (confirm(`Are you sure you want to delete '${name}'?`)) {
       try {
         await deleteDoc(doc(db, "software_repository", id));
-        if (addToast) addToast(`'${name}' తొలగించబడింది.`, "success");
+        if (addToast) addToast(`'${name}' deleted.`, "success");
       } catch (err) {
         console.error(err);
-        if (addToast) addToast("తొలగించడం విఫలమైంది.", "error");
+        if (addToast) addToast("Failed to delete item.", "error");
       }
     }
   };
@@ -559,7 +559,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
 
   const handleSaveFolder = async () => {
     if (!folderName.trim()) {
-      if (addToast) addToast("దయచేసి ఫోల్డర్ పేరును ఇవ్వండి.", "error");
+      if (addToast) addToast("Please enter a folder name.", "error");
       return;
     }
 
@@ -567,7 +567,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
     const payload: SoftwareFolder = {
       id: fId,
       name: folderName.trim(),
-      descriptionTelugu: folderDesc.trim() || "సాఫ్ట్‌వేర్లు మరియు ఫైల్స్ ఫోల్డర్.",
+      descriptionTelugu: folderDesc.trim() || "Folder containing software and utility files.",
       iconName: folderIcon,
       colorTheme: folderColor,
       allowedRoles: folderAllowedRoles.length > 0 ? folderAllowedRoles : undefined,
@@ -580,15 +580,15 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       if (addToast) {
         addToast(
           editingFolder
-            ? `'${folderName}' ఫోల్డర్ అప్‌డేట్ చేయబడింది!`
-            : `'${folderName}' కొత్త ఫోల్డర్ క్రియేట్ చేయబడింది!`,
+            ? `'${folderName}' folder updated!`
+            : `'${folderName}' folder created successfully!`,
           "success"
         );
       }
       setIsFolderModalOpen(false);
     } catch (e) {
       console.error(e);
-      if (addToast) addToast("ఫోల్డర్ భద్రపరచడం విఫలమైంది.", "error");
+      if (addToast) addToast("Failed to save folder.", "error");
     }
   };
 
@@ -606,18 +606,18 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
         updatedAt: new Date().toISOString(),
       });
       if (addToast) {
-        addToast(`'${item.name}' ను '${targetFolder.name}' ఫోల్డర్‌కి తరలించారు!`, "success");
+        addToast(`Moved '${item.name}' to '${targetFolder.name}' folder!`, "success");
       }
     } catch (err) {
       console.error("Move software error:", err);
-      if (addToast) addToast("ఫైల్ తరలించడం విఫలమైంది.", "error");
+      if (addToast) addToast("Failed to move file.", "error");
     }
   };
 
   const handleDeleteFolder = async (folderId: string, name: string) => {
     if (
       confirm(
-        `'${name}' ఫోల్డర్‌ను తొలగించాలనుకుంటున్నారా?\n(ఈ ఫోల్డర్‌లో ఉన్న సాఫ్ట్‌వేర్లు సురక్షితంగా రూట్/సాధారణ ఫోల్డర్‌కి తరలించబడతాయి)`
+        `Are you sure you want to delete the folder '${name}'?\n(Files in this folder will be safely moved to General Tools)`
       )
     ) {
       try {
@@ -631,10 +631,10 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           });
         }
 
-        if (addToast) addToast(`'${name}' ఫోల్డర్ తొలగించబడింది.`, "success");
+        if (addToast) addToast(`Folder '${name}' deleted.`, "success");
       } catch (e) {
         console.error(e);
-        if (addToast) addToast("ఫోల్డర్ తొలగించడం విఫలమైంది.", "error");
+        if (addToast) addToast("Failed to delete folder.", "error");
       }
     }
   };
@@ -658,7 +658,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
     setFormItemType("file");
     setFormVersion("v1.0");
     setFormOS("Windows 10/11");
-    setFormDesc("Cloudflare R2 క్లౌడ్ స్టోరేజ్ నుండి అధికారిక డౌన్‌లోడ్ ఫైల్.");
+    setFormDesc("Official download file stored directly in Cloudflare R2.");
     setFormGuide("");
     setEditingItem(null);
     setIsFullModalOpen(true);
@@ -735,7 +735,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>అడ్మిన్ సెంట్రల్ కంట్రోలర్ • లైవ్ సింక్</span>
+              <span>Admin Central Controller • Live Sync</span>
             </div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-slate-300 text-xs font-medium border border-white/10">
               <HardDrive size={13} className="text-cyan-400" />
@@ -747,8 +747,8 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             Software Hub & Cloud Storage Manager
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            కంప్యూటర్ ఆపరేటింగ్ సిస్టమ్ తరహాలో ఫోల్డర్లను క్రియేట్, మోడిఫై మరియు డిలీట్ చేయండి. డైరెక్ట్ డౌన్‌లోడ్ ఫైల్స్ (.exe, .zip)
-            మరియు వెబ్ లింకులు వేర్వేరుగా నిర్వహించండి. Cloudflare R2 లోని ఫైల్స్‌ను 1-క్లిక్‌తో సాఫ్ట్‌వేర్ హబ్‌లో పబ్లిష్ చేయండి.
+            Create, modify, and delete folders in an operating system file explorer layout. Manage direct download files (.exe, .zip)
+            and web portal links. Publish files from Cloudflare R2 into the Software Hub with a single click.
           </p>
         </div>
 
@@ -757,13 +757,13 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             onClick={() => handleOpenFullModal()}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-900/30 flex items-center gap-2 transition-all active:scale-95"
           >
-            <Plus size={16} /> కొత్త సాఫ్ట్‌వేర్ జోడించండి
+            <Plus size={16} /> Add Software / Tool
           </button>
           <button
             onClick={() => handleOpenFolderModal()}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-900/30 flex items-center gap-2 transition-all active:scale-95"
           >
-            <FolderPlus size={16} /> కొత్త ఫోల్డర్
+            <FolderPlus size={16} /> New Folder
           </button>
           {onViewPublicHub && (
             <button
@@ -771,7 +771,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-white/20 flex items-center gap-2 transition-all"
             >
               <Eye size={15} />
-              <span>లైవ్ హబ్ చూడండి</span>
+              <span>View Public Hub</span>
             </button>
           )}
         </div>
@@ -788,7 +788,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           }`}
         >
           <Layers size={16} />
-          <span>సాఫ్ట్‌వేర్ & లింక్స్ లిస్ట్ ({softwareList.length})</span>
+          <span>Software & Links ({softwareList.length})</span>
         </button>
 
         <button
@@ -800,7 +800,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           }`}
         >
           <Folder size={16} />
-          <span>ఫోల్డర్ల నిర్వహణ ({folders.length})</span>
+          <span>Folder Explorer ({folders.length})</span>
         </button>
 
         <button
@@ -812,7 +812,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           }`}
         >
           <Cloud size={16} className="text-cyan-500" />
-          <span>Cloudflare R2 క్లౌడ్ ఫైల్స్ ({r2Files.length})</span>
+          <span>Cloudflare R2 Storage ({r2Files.length})</span>
         </button>
       </div>
 
@@ -830,7 +830,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="సాఫ్ట్‌వేర్ పేరు, వర్షన్, లింక్ ద్వారా వెతకండి..."
+                  placeholder="Search software by name, version, download link..."
                   className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {searchQuery && (
@@ -850,7 +850,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   onChange={(e) => setSelectedFolderFilter(e.target.value)}
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="all">📁 అన్ని ఫోల్డర్లు</option>
+                  <option value="all">📁 All Folders</option>
                   {folders.map((f) => (
                     <option key={f.id} value={f.id}>
                       📁 {f.name}
@@ -864,9 +864,9 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   onChange={(e) => setSelectedTypeFilter(e.target.value as any)}
                   className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="all">రకం: అన్నీ</option>
-                  <option value="file">💾 డైరెక్ట్ ఫైల్స్</option>
-                  <option value="link">🌐 వెబ్ & డ్రైవ్ లింకులు</option>
+                  <option value="all">Type: All</option>
+                  <option value="file">💾 Direct Files</option>
+                  <option value="link">🌐 Web & Drive Links</option>
                 </select>
               </div>
             </div>
@@ -875,7 +875,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
               <span className="text-[11px] font-bold text-slate-500 shrink-0 flex items-center gap-1">
                 <GripVertical size={13} className="text-slate-400" />
-                <span>ఫోల్డర్లకు ఫైల్ లాగండి (Drop target):</span>
+                <span>Drag to Folder (Drop Target):</span>
               </span>
               {folders.map((f) => {
                 const isOver = dragOverFolderId === f.id;
@@ -918,11 +918,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           {loading ? (
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
               <Loader2 size={32} className="animate-spin mx-auto text-indigo-600 mb-3" />
-              <p className="text-xs font-bold text-slate-600">సాఫ్ట్‌వేర్ సమాచారం లోడ్ అవుతోంది...</p>
+              <p className="text-xs font-bold text-slate-600">Loading software catalog...</p>
             </div>
           ) : filteredSoftware.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 space-y-2">
-              <p className="text-sm font-bold text-slate-700">సాఫ్ట్‌వేర్లు ఏవీ కనిపించలేదు.</p>
+              <p className="text-sm font-bold text-slate-700">No software items found matching criteria.</p>
               <button
                 onClick={() => {
                   setSearchQuery("");
@@ -931,7 +931,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 }}
                 className="text-xs font-bold text-indigo-600 hover:underline"
               >
-                ఫిల్టర్లు క్లియర్ చేయండి
+                Clear all filters
               </button>
             </div>
           ) : (
@@ -941,12 +941,12 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase tracking-wider text-[11px]">
                       <th className="py-3 px-3 w-8"></th>
-                      <th className="py-3 px-4">సాఫ్ట్‌వేర్ & రకం</th>
-                      <th className="py-3 px-4">ఫోల్డర్</th>
-                      <th className="py-3 px-4">డౌన్‌లోడ్ / వెబ్ లింక్</th>
-                      <th className="py-3 px-4">సైజు / OS</th>
-                      <th className="py-3 px-4">చివరి అప్‌డేట్</th>
-                      <th className="py-3 px-4 text-right">చర్యలు (Actions)</th>
+                      <th className="py-3 px-4">Software & Type</th>
+                      <th className="py-3 px-4">Folder</th>
+                      <th className="py-3 px-4">Download / Web Link</th>
+                      <th className="py-3 px-4">Size / OS</th>
+                      <th className="py-3 px-4">Last Updated</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -995,11 +995,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   {isFile ? (
                                     <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.2 rounded">
-                                      💾 ఫైల్ ({item.fileFormat || "EXE"})
+                                      💾 File ({item.fileFormat || "EXE"})
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.2 rounded">
-                                      🌐 వెబ్ లింక్
+                                      🌐 Web Link
                                     </span>
                                   )}
                                   <span className="text-[10px] text-slate-500 font-mono">
@@ -1014,7 +1014,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                           <td className="py-3.5 px-4">
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
                               <Folder size={12} className="text-indigo-500" />
-                              <span>{folderObj ? folderObj.name.split("(")[0] : "సాధారణం"}</span>
+                              <span>{folderObj ? folderObj.name.split("(")[0] : "General"}</span>
                             </span>
                           </td>
 
@@ -1049,21 +1049,21 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                               <button
                                 onClick={() => handleOpenQuickUpdate(item)}
                                 className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                title="డౌన్‌లోడ్ లింక్ లేదా ఫైల్ మార్చండి"
+                                title="Change download URL or file"
                               >
                                 <Link size={14} />
                               </button>
                               <button
                                 onClick={() => handleOpenFullModal(item)}
                                 className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="పూర్తి వివరాలు ఎడిట్ చేయండి"
+                                title="Edit full details"
                               >
                                 <Edit2 size={14} />
                               </button>
                               <button
                                 onClick={() => handleDeleteSoftware(item.id, item.name)}
                                 className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                title="తొలగించండి"
+                                title="Delete"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1089,10 +1089,10 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             <div>
               <h3 className="text-sm sm:text-base font-black text-indigo-950 flex items-center gap-2">
                 <Folder className="text-indigo-600" size={18} />
-                <span>సిస్టమ్ ఫోల్డర్ల నిర్వహణ (Windows Style Directory)</span>
+                <span>Folder Directory & Access Controls (Windows Style Explorer)</span>
               </h3>
               <p className="text-xs text-indigo-800/80 mt-0.5">
-                మీరు ఇక్కడ కొత్త ఫోల్డర్లు క్రియేట్ చేయవచ్చు, రీనేమ్/మోడిఫై చేయవచ్చు లేదా డిలీట్ చేయవచ్చు.
+                Create custom folders, modify metadata, set role-based access restrictions, or drag and drop software files.
               </p>
             </div>
             <button
@@ -1100,7 +1100,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs shrink-0"
             >
               <FolderPlus size={14} />
-              <span>+ కొత్త ఫోల్డర్ జోడించండి</span>
+              <span>+ Create New Folder</span>
             </button>
           </div>
 
@@ -1145,20 +1145,20 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                         {folder.allowedRoles && folder.allowedRoles.length > 0 && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md mr-1">
                             <Lock size={10} className="text-amber-600" />
-                            <span>పరిమితం ({folder.allowedRoles.length})</span>
+                            <span>Restricted ({folder.allowedRoles.length})</span>
                           </span>
                         )}
                         <button
                           onClick={() => handleOpenFolderModal(folder)}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="ఫోల్డర్ పేరు/వివరాలు మార్చండి (Edit/Rename)"
+                          title="Edit Folder / Rename / Permissions"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => handleDeleteFolder(folder.id, folder.name)}
                           className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="ఫోల్డర్ తొలగించండి (Delete)"
+                          title="Delete Folder"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1168,14 +1168,14 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     <div>
                       <h4 className="text-sm font-black text-slate-900">{folder.name}</h4>
                       <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                        {folder.descriptionTelugu || "ఈ ఫోల్డర్ లోని సాఫ్ట్‌వేర్లు మరియు ఫైల్స్."}
+                        {folder.descriptionTelugu || "Folder containing software and utility files."}
                       </p>
                     </div>
                   </div>
 
                   <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-600">
-                      ఇందులోని ఫైల్స్: <span className="text-indigo-600 font-mono font-black">{count}</span>
+                      Total Files: <span className="text-indigo-600 font-mono font-black">{count}</span>
                     </span>
                     <button
                       onClick={() => {
@@ -1184,7 +1184,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                       }}
                       className="text-indigo-600 hover:underline font-bold"
                     >
-                      ఫైల్స్ చూడండి →
+                      View Files →
                     </button>
                   </div>
                 </div>
@@ -1206,20 +1206,20 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 <Cloud size={13} /> Cloudflare R2 Storage (e-vedhika-files)
               </div>
               <h3 className="text-base sm:text-lg font-black">
-                Cloudflare R2 క్లౌడ్ ఫైల్స్ & సాఫ్ట్‌వేర్ పబ్లిషర్
+                Cloudflare R2 Bucket Explorer & Publisher
               </h3>
               <p className="text-xs text-slate-300 max-w-xl mt-1 leading-relaxed">
-                ఇక్కడ Cloudflare R2 బకెట్‌లోని అన్ని ఫైల్స్ ఉంటాయి. మీరు నేరుగా కొత్త ఫైల్స్‌ను R2 కి అప్‌లోడ్ చేయవచ్చు,
-                మరియు కావలసిన ఫైల్‌ను 1-క్లిక్‌తో సాఫ్ట్‌వేర్ హబ్‌లో పబ్లిష్ చేయవచ్చు.
+                Browse all cloud objects stored in Cloudflare R2. Upload new installers or packages directly,
+                and publish any cloud file to the public Software Hub with 1-click.
               </p>
               {/* Real-time status indicator */}
               <div className="flex items-center gap-3 mt-3 text-xs text-cyan-200">
                 <span className="flex items-center gap-1.5 font-bold">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>రియల్ టైమ్ సింక్ సక్రియం (Auto-Sync Active)</span>
+                  <span>Real-time Sync Active (12s polling)</span>
                 </span>
                 <span className="text-cyan-400">•</span>
-                <span>బకెట్: <span className="font-mono font-bold text-white">e-vedhika-files</span></span>
+                <span>Bucket: <span className="font-mono font-bold text-white">e-vedhika-files</span></span>
               </div>
             </div>
 
@@ -1241,19 +1241,19 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 {isR2Uploading ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    <span>అప్‌లోడ్ అవుతోంది... {r2UploadProgress}%</span>
+                    <span>Uploading... {r2UploadProgress}%</span>
                   </>
                 ) : (
                   <>
                     <Upload size={16} />
-                    <span>+ R2 క్లౌడ్‌కు ఫైల్ అప్‌లోడ్ చేయండి</span>
+                    <span>+ Upload File to R2</span>
                   </>
                 )}
               </button>
               <button
                 onClick={fetchR2Files}
                 className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 transition-colors"
-                title="రిఫ్రెష్ ఫైల్స్"
+                title="Refresh Files"
               >
                 <RefreshCw size={16} className={loadingR2 ? "animate-spin" : ""} />
               </button>
@@ -1268,12 +1268,12 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 type="text"
                 value={r2SearchQuery}
                 onChange={(e) => setR2SearchQuery(e.target.value)}
-                placeholder="R2 బకెట్ ఫైల్ పేరుతో వెతకండి..."
+                placeholder="Search files in Cloudflare R2 bucket..."
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <span className="text-xs font-bold text-slate-500">
-              మొత్తం R2 ఫైల్స్: <span className="text-indigo-600 font-mono">{filteredR2Files.length}</span>
+              Total R2 Files: <span className="text-indigo-600 font-mono">{filteredR2Files.length}</span>
             </span>
           </div>
 
@@ -1281,11 +1281,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           {loadingR2 ? (
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
               <Loader2 size={32} className="animate-spin mx-auto text-cyan-600 mb-3" />
-              <p className="text-xs font-bold text-slate-600">Cloudflare R2 ఫైల్స్ తెస్తున్నాము...</p>
+              <p className="text-xs font-bold text-slate-600">Fetching files from Cloudflare R2...</p>
             </div>
           ) : filteredR2Files.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-              <p className="text-sm font-bold text-slate-700">R2 బకెట్‌లో ఎలాంటి ఫైల్స్ దొరకలేదు.</p>
+              <p className="text-sm font-bold text-slate-700">No files found in Cloudflare R2 bucket.</p>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -1293,11 +1293,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold uppercase tracking-wider text-[11px]">
-                      <th className="py-3 px-4">ఫైల్ పేరు (Key)</th>
-                      <th className="py-3 px-4">సైజు</th>
-                      <th className="py-3 px-4">తేదీ</th>
-                      <th className="py-3 px-4">సాఫ్ట్‌వేర్ హబ్ స్టేటస్</th>
-                      <th className="py-3 px-4 text-right">చర్యలు (Actions)</th>
+                      <th className="py-3 px-4">File Name (Key)</th>
+                      <th className="py-3 px-4">Size</th>
+                      <th className="py-3 px-4">Modified Date</th>
+                      <th className="py-3 px-4">Software Hub Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1328,11 +1328,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                             {publishedItem ? (
                               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                                 <CheckCircle size={12} />
-                                <span>హబ్‌లో ఉంది ({publishedItem.name})</span>
+                                <span>Published ({publishedItem.name})</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                                <span>హబ్‌లో లేదు</span>
+                                <span>Not Published</span>
                               </span>
                             )}
                           </td>
@@ -1343,10 +1343,10 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(file.url);
-                                  if (addToast) addToast("R2 URL కాపీ చేయబడింది!", "success");
+                                  if (addToast) addToast("R2 URL copied to clipboard!", "success");
                                 }}
                                 className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="R2 లింక్ కాపీ చేయండి"
+                                title="Copy R2 Download URL"
                               >
                                 <Copy size={14} />
                               </button>
@@ -1356,7 +1356,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
-                                title="డౌన్‌లోడ్ / ఓపెన్"
+                                title="Download / Open"
                               >
                                 <ExternalLink size={14} />
                               </a>
@@ -1367,15 +1367,15 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1 transition-all"
                                 >
                                   <Plus size={13} />
-                                  <span>హబ్‌కి జోడించు</span>
+                                  <span>Publish to Hub</span>
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => handleDeleteSoftware(publishedItem.id, publishedItem.name)}
                                   className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition-all"
-                                  title="సాఫ్ట్‌వేర్ హబ్ నుండి దాచండి/తొలగించండి"
+                                  title="Unpublish / Remove from Software Hub"
                                 >
-                                  <span>హబ్ నుండి తొలగించు</span>
+                                  <span>Unpublish</span>
                                 </button>
                               )}
                             </div>
@@ -1401,7 +1401,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <div className="flex items-center gap-2">
                 <Link className="text-cyan-400" size={20} />
                 <div>
-                  <h3 className="text-sm sm:text-base font-black">డౌన్‌లోడ్ లింక్ లేదా ఫైల్ అప్‌డేట్</h3>
+                  <h3 className="text-sm sm:text-base font-black">Quick Update Link / File</h3>
                   <p className="text-[11px] text-slate-400 line-clamp-1">{quickUpdateItem.name}</p>
                 </div>
               </div>
@@ -1417,7 +1417,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Type Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ఐటమ్ రకం (Item Type):
+                  Item Type:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -1430,7 +1430,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     }`}
                   >
                     <Download size={14} />
-                    <span>💾 డైరెక్ట్ ఫైల్ (.exe, .zip)</span>
+                    <span>💾 Direct File (.exe, .zip)</span>
                   </button>
 
                   <button
@@ -1443,7 +1443,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     }`}
                   >
                     <Globe size={14} />
-                    <span>🌐 వెబ్ / డ్రైవ్ లింక్</span>
+                    <span>🌐 Web / Drive Link</span>
                   </button>
                 </div>
               </div>
@@ -1451,7 +1451,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Folder Selector */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ఫోల్డర్ (Folder):
+                  Folder:
                 </label>
                 <select
                   value={quickFolderId}
@@ -1470,7 +1470,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 space-y-2">
                 <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                   <Upload size={14} className="text-indigo-600" />
-                  కొత్త ఫైల్ అప్‌లోడ్ చేయండి (.exe, .zip, .rar):
+                  Upload new file (.exe, .zip, .rar):
                 </span>
                 <input
                   type="file"
@@ -1490,12 +1490,12 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   {isUploading ? (
                     <>
                       <Loader2 size={14} className="animate-spin text-indigo-600" />
-                      <span>అప్‌లోడ్ అవుతోంది... {uploadProgress}%</span>
+                      <span>Uploading... {uploadProgress}%</span>
                     </>
                   ) : (
                     <>
                       <Upload size={14} />
-                      <span>ఫైల్ ఎంచుకోండి (క్లౌడ్‌కు అప్‌లోడ్)</span>
+                      <span>Browse & Upload to Cloud</span>
                     </>
                   )}
                 </button>
@@ -1504,13 +1504,13 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Download URL input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  డౌన్‌లోడ్ లింక్ లేదా గూగుల్ డ్రైవ్ URL:
+                  Download Link or Google Drive URL:
                 </label>
                 <input
                   type="url"
                   value={newDownloadUrl}
                   onChange={(e) => setNewDownloadUrl(e.target.value)}
-                  placeholder="https://drive.google.com/... లేదా https://pub-xxx.r2.dev/..."
+                  placeholder="https://drive.google.com/... or https://pub-xxx.r2.dev/..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1522,7 +1522,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   onClick={() => setQuickUpdateItem(null)}
                   className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                 >
-                  రద్దు చేయండి
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1531,7 +1531,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isSavingQuick ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
-                  <span>రియల్-టైమ్‌లో భద్రపరచండి</span>
+                  <span>Save Updates</span>
                 </button>
               </div>
             </div>
@@ -1549,7 +1549,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <div className="flex items-center gap-2">
                 <HardDrive className="text-cyan-400" size={20} />
                 <h3 className="text-base font-black">
-                  {editingItem ? `'${editingItem.name}' ఎడిట్ చేయండి` : "కొత్త సాఫ్ట్‌వేర్ లేదా లింక్ జోడించండి"}
+                  {editingItem ? `Edit '${editingItem.name}'` : "Add New Software or Link"}
                 </h3>
               </div>
               <button
@@ -1564,7 +1564,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Type Selection */}
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 mb-1.5">
-                  ఐటమ్ రకం (Type):
+                  Item Type:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -1577,7 +1577,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     }`}
                   >
                     <Download size={15} />
-                    <span>💾 డైరెక్ట్ ఫైల్ (.EXE, .ZIP, .MSI)</span>
+                    <span>💾 Direct File (.EXE, .ZIP, .MSI)</span>
                   </button>
 
                   <button
@@ -1590,7 +1590,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     }`}
                   >
                     <Globe size={15} />
-                    <span>🌐 వెబ్ పోర్టల్ లేదా డ్రైవ్ లింక్</span>
+                    <span>🌐 Web Portal / Drive Link</span>
                   </button>
                 </div>
               </div>
@@ -1599,18 +1599,18 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    సాఫ్ట్‌వేర్ / టూల్ పేరు *
+                    Software / Tool Name *
                   </label>
                   <input
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="ఉదా: Mantra MFS100 RD Service"
+                    placeholder="e.g., Mantra MFS100 RD Service"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">వర్షన్</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Version</label>
                   <input
                     type="text"
                     value={formVersion}
@@ -1625,7 +1625,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    ఫోల్డర్ (Folder) *
+                    Folder *
                   </label>
                   <select
                     value={formFolderId}
@@ -1641,17 +1641,17 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">కేటగిరీ</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Category</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as any)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="biometric">బయోమెట్రిక్ & RD Services</option>
-                    <option value="fonts">తెలుగు టైపింగ్ & ఫాంట్స్</option>
-                    <option value="portal">DSC & పోర్టల్ టూల్స్</option>
-                    <option value="office">ఆఫీస్ & సిస్టమ్ టూల్స్</option>
-                    <option value="other">ఇతర యుటిలిటీస్</option>
+                    <option value="biometric">Biometric & RD Services</option>
+                    <option value="fonts">Telugu Typing & Fonts</option>
+                    <option value="portal">DSC & Portal Tools</option>
+                    <option value="office">Office & System Utilities</option>
+                    <option value="other">Other Utilities</option>
                   </select>
                 </div>
               </div>
@@ -1660,7 +1660,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {formItemType === "file" && (
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">ఫైల్ ఫార్మాట్</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">File Format</label>
                     <select
                       value={formFileFormat}
                       onChange={(e) => setFormFileFormat(e.target.value)}
@@ -1674,7 +1674,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">ఫైల్ సైజు</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">File Size</label>
                     <input
                       type="text"
                       value={formFileSize}
@@ -1684,7 +1684,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">సపోర్టెడ్ OS</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Supported OS</label>
                     <input
                       type="text"
                       value={formOS}
@@ -1701,7 +1701,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 space-y-2">
                   <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                     <Upload size={14} className="text-indigo-600" />
-                    కంప్యూటర్ నుండి ఫైల్ అప్‌లోడ్ చేయండి (.exe, .zip, .rar):
+                    Upload from Computer (.exe, .zip, .rar):
                   </span>
                   <input
                     type="file"
@@ -1718,7 +1718,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     className="w-full py-2 px-3 bg-white hover:bg-slate-50 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 flex items-center justify-center gap-2 transition-colors"
                   >
                     <Upload size={14} />
-                    <span>ఫైల్ బ్రౌజ్ చేసి అప్‌లోడ్ చేయండి</span>
+                    <span>Browse & Upload File</span>
                   </button>
                 </div>
               )}
@@ -1726,27 +1726,27 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Download URL / External Link Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  డౌన్‌లోడ్ లేదా వెబ్ URL *
+                  Download / Web URL *
                 </label>
                 <input
                   type="url"
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
-                  placeholder="https://drive.google.com/... లేదా https://pub-xxx.r2.dev/..."
+                  placeholder="https://drive.google.com/... or https://pub-xxx.r2.dev/..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
-              {/* Telugu Description */}
+              {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  తెలుగు వివరణ (Description)
+                  Description
                 </label>
                 <textarea
                   rows={2}
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder="సచివాలయ సిస్టమ్స్ లో వాడటానికి అవసరమైన సాఫ్ట్‌వేర్..."
+                  placeholder="Utility software used for administrative and desk operations..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1754,13 +1754,13 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Installation Guide */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ఇన్‌స్టాలేషన్ సూచనలు (Installation Guide - Optional)
+                  Installation Guide (Optional)
                 </label>
                 <textarea
                   rows={3}
                   value={formGuide}
                   onChange={(e) => setFormGuide(e.target.value)}
-                  placeholder="1. ముందుగా పాత డ్రైవర్లను అన్‌ఇన్‌స్టాల్ చేయండి...&#10;2. రన్ యాజ్ అడ్మినిస్ట్రేటర్ తో ఇన్‌స్టాల్ చేయండి..."
+                  placeholder="1. First uninstall existing drivers...&#10;2. Run setup as administrator..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1772,7 +1772,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   onClick={() => setIsFullModalOpen(false)}
                   className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                 >
-                  రద్దు చేయండి
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1780,7 +1780,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5"
                 >
                   <Check size={15} />
-                  <span>రియల్-టైమ్‌లో భద్రపరచండి</span>
+                  <span>Save in Real-Time</span>
                 </button>
               </div>
             </div>
@@ -1798,7 +1798,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <div className="flex items-center gap-2">
                 <FolderPlus className="text-cyan-400" size={20} />
                 <h3 className="text-base font-black">
-                  {editingFolder ? "ఫోల్డర్ మార్చండి (Edit Folder)" : "కొత్త ఫోల్డర్ క్రియేట్ చేయండి"}
+                  {editingFolder ? "Edit Folder Details" : "Create New Folder"}
                 </h3>
               </div>
               <button
@@ -1813,27 +1813,27 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Folder Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ఫోల్డర్ పేరు *
+                  Folder Name *
                 </label>
                 <input
                   type="text"
                   value={folderName}
                   onChange={(e) => setFolderName(e.target.value)}
-                  placeholder="ఉదా: బయోమెట్రిక్ డివైస్ డ్రైవర్లు"
+                  placeholder="e.g., Biometric Device Drivers"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
-              {/* Telugu Description */}
+              {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  వివరణ (Description)
+                  Folder Description
                 </label>
                 <textarea
                   rows={2}
                   value={folderDesc}
                   onChange={(e) => setFolderDesc(e.target.value)}
-                  placeholder="ఈ ఫోల్డర్‌లో ఉండే సాఫ్ట్‌వేర్ల గురించి చిన్న వివరణ..."
+                  placeholder="Brief description of files and software in this folder..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1841,7 +1841,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Icon Selector */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ఐకాన్ (Icon)
+                  Folder Icon
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {[
@@ -1877,7 +1877,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               {/* Color Selector */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  కలర్ థీమ్ (Color)
+                  Color Theme
                 </label>
                 <div className="flex items-center gap-2">
                   {[
@@ -1908,22 +1908,22 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <Lock size={13} className="text-amber-600" />
-                    <span>యాక్సెస్ అనుమతులు (Access Permissions)</span>
+                    <span>Access Permissions</span>
                   </label>
                   <span className="text-[10px] text-slate-500 font-medium">
-                    {folderAllowedRoles.length === 0 ? "అందరికీ అనుమతి (Public)" : "పరిమితం (Restricted)"}
+                    {folderAllowedRoles.length === 0 ? "Public (All Users)" : "Restricted"}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mb-2 leading-relaxed">
-                  ఈ ఫోల్డర్ ఏ యూజర్ రోల్స్‌కు మాత్రమే కనబడాలో ఎంచుకోండి. ఖాళీగా ఉంచితే అందరు యూజర్లకు అందుబాటులో ఉంటుంది.
+                  Select which user roles are granted access to view this folder. Leaving this blank makes it accessible to all users.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { id: "admin", label: "అడ్మిన్ (Admin)" },
-                    { id: "operator", label: "ఆపరేటర్ (Operator)" },
-                    { id: "vro", label: "VRO / రెవెన్యూ" },
-                    { id: "panchayat_secretary", label: "పంచాయతీ కార్యదర్శి" },
-                    { id: "citizen", label: "పౌరులు / సాధారణ యూజర్" },
+                    { id: "admin", label: "Admin" },
+                    { id: "operator", label: "Operator" },
+                    { id: "vro", label: "VRO / Revenue" },
+                    { id: "panchayat_secretary", label: "Panchayat Secretary" },
+                    { id: "citizen", label: "Citizen / Public" },
                   ].map((role) => {
                     const isChecked = folderAllowedRoles.includes(role.id);
                     return (
@@ -1962,7 +1962,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   onClick={() => setIsFolderModalOpen(false)}
                   className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                 >
-                  రద్దు చేయండి
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1970,7 +1970,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                   className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-all flex items-center gap-1.5"
                 >
                   <Check size={14} />
-                  <span>ఫోల్డర్ భద్రపరచండి</span>
+                  <span>Save Folder</span>
                 </button>
               </div>
             </div>

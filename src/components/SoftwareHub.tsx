@@ -85,48 +85,48 @@ export interface SoftwareItem {
 export const DEFAULT_SOFTWARE_FOLDERS: SoftwareFolder[] = [
   {
     id: "folder-biometric",
-    name: "బయోమెట్రిక్ & RD సర్వీసెస్ (Biometric Devices)",
-    descriptionTelugu: "Mantra, Morpho, Startek బయోమెట్రిక్ స్కానర్ డ్రైవర్లు & సర్టిఫైడ్ RD సర్వీసులు",
+    name: "Biometric & RD Services (Biometric Devices)",
+    descriptionTelugu: "Mantra, Morpho, Startek biometric scanner drivers & certified RD services",
     iconName: "Fingerprint",
     colorTheme: "rose",
     order: 1,
   },
   {
     id: "folder-fonts",
-    name: "తెలుగు ఫాంట్లు & టైపింగ్ టూల్స్ (Telugu Fonts & Typing)",
-    descriptionTelugu: "Google Input Tools, Anu Script, మరియు ప్రభుత్వ ప్రామాణిక యూనికోడ్ ఫాంట్ల ప్యాక్",
+    name: "Telugu Fonts & Typing Tools",
+    descriptionTelugu: "Google Input Tools, Anu Script, and standard government Unicode fonts pack",
     iconName: "Type",
     colorTheme: "amber",
     order: 2,
   },
   {
     id: "folder-dsc",
-    name: "DSC & డిజిటల్ సిగ్నేచర్ యుటిలిటీస్ (DSC & PKI Tools)",
-    descriptionTelugu: "ePass 2003 Dongle, Java 8 Runtime (JRE), e-Procurement మరియు CFMS సైనింగ్ టూల్స్",
+    name: "DSC & Digital Signature Utilities (DSC & PKI Tools)",
+    descriptionTelugu: "ePass 2003 Dongle, Java 8 Runtime (JRE), e-Procurement and CFMS signing tools",
     iconName: "ShieldCheck",
     colorTheme: "emerald",
     order: 3,
   },
   {
     id: "folder-office",
-    name: "ఆఫీస్, స్కానర్ & PDF టూల్స్ (Office & Utilities)",
-    descriptionTelugu: "7-Zip Extractor, AnyDesk రిమోట్ సపోర్ట్, Adobe Acrobat Reader మరియు సిస్టమ్ టూల్స్",
+    name: "Office, Scanner & PDF Utilities",
+    descriptionTelugu: "7-Zip Extractor, AnyDesk remote support, Adobe Acrobat Reader and essential system tools",
     iconName: "Laptop",
     colorTheme: "blue",
     order: 4,
   },
   {
     id: "folder-portals",
-    name: "సచివాలయం & మీసేవ పోర్టల్స్ (Portals & Web Links)",
-    descriptionTelugu: "సచివాలయం, మీసేవ, eGramSwaraj, CFMS, మరియు ఇతర అధికారిక ప్రభుత్వ పోర్టల్ లింకులు",
+    name: "Secretariat & Meeseva Portals (Portals & Web Links)",
+    descriptionTelugu: "Secretariat, Meeseva, eGramSwaraj, CFMS, and official government portal links",
     iconName: "Globe",
     colorTheme: "purple",
     order: 5,
   },
   {
     id: "folder-r2",
-    name: "క్లౌడ్ R2 ఫైల్స్ & ఆర్కైవ్స్ (Cloudflare R2 Storage)",
-    descriptionTelugu: "Cloudflare R2 గ్లోబల్ స్టోరేజ్ నుండి పబ్లిష్ చేయబడిన ఫైల్స్ మరియు బ్యాకప్స్",
+    name: "Cloud R2 Files & Archives (Cloudflare R2 Storage)",
+    descriptionTelugu: "Files and backups published directly from Cloudflare R2 global cloud storage",
     iconName: "HardDrive",
     colorTheme: "cyan",
     order: 6,
@@ -144,9 +144,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v1.0.8",
     fileSize: "28.4 MB",
     supportedOS: "Windows 7/8/10/11",
-    descriptionTelugu: "సచివాలయాల్లో వాడే మంత్ర (Mantra MFS100) బయోమెట్రిక్ స్కానర్ సరిగ్గా పని చేయడానికి అధికారిక RD సర్వీస్ మరియు డ్రైవర్లు.",
+    descriptionTelugu: "Official RD Service and USB drivers for Mantra MFS100 Biometric Fingerprint Scanner used in Andhra Pradesh Secretariats.",
     downloadUrl: "https://download.mantratecapp.com/",
-    installationGuide: "1. ముందుగా పాత డ్రైవర్లను Uninstall చేయండి.\n2. సిస్టమ్‌ను రీస్టార్ట్ చేయండి.\n3. ఈ డ్రైవర్‌ను Run as Administrator ద్వారా ఇన్‌స్టాల్ చేయండి.\n4. డివైస్ ప్లగ్ చేయగానే 'Framework is ready to use' అని రావాలి.",
+    installationGuide: "1. Uninstall any older driver versions first.\n2. Restart your computer.\n3. Right-click installer and select 'Run as Administrator'.\n4. Plug in the device; notification should display 'Framework is ready to use'.",
     isOfficial: true,
     tags: ["Mantra", "Biometric", "RD Service", "Aadhaar"],
     lastUpdated: "2024",
@@ -161,9 +161,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v2.0.1.60",
     fileSize: "32.1 MB",
     supportedOS: "Windows 8.1/10/11",
-    descriptionTelugu: "మార్ఫో (Morpho) బయోమెట్రిక్ డివైస్ కోసం సర్టిఫైడ్ RD సర్వీస్. పోర్టల్స్ మరియు AePS పేమెంట్లలో తప్పనిసరి.",
+    descriptionTelugu: "Certified RD Service for Morpho MSO 1300 E3 biometric scanners. Mandatory for AePS payments and portal authentications.",
     downloadUrl: "https://rdserviceonline.com/",
-    installationGuide: "1. జిప్ ఫైల్ అన్‌జిప్ చేసి Windows-RD-Service.exe ని ఇన్‌స్టాల్ చేయండి.\n2. C:\\MorphoRDServiceL0Soft ఫోల్డర్ సెట్టింగ్స్ చెక్ చేసుకోండి.\n3. డివైస్ లైట్ వెలిగి ఆరిపోవాలి.",
+    installationGuide: "1. Extract ZIP file and install Windows-RD-Service.exe.\n2. Verify Communication Mode in C:\\MorphoRDServiceL0Soft config.\n3. Device light will blink indicating readiness.",
     isOfficial: true,
     tags: ["Morpho", "RD Service", "Biometric", "Iris"],
     lastUpdated: "2024",
@@ -178,9 +178,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v1.0.4",
     fileSize: "19.5 MB",
     supportedOS: "Windows 7/10/11",
-    descriptionTelugu: "స్టార్టెక్ FM220 మోడల్ బయోమెట్రిక్ స్కానర్ పని చేయడానికి అవసరమైన పూర్తి ఇన్‌స్టాలర్.",
+    descriptionTelugu: "Complete certified driver and service installer for Startek FM220U fingerprint scanner.",
     downloadUrl: "https://www.acpl.ind.in/download.html",
-    installationGuide: "1. Startek FM220 RD Service Setup రన్ చేయండి.\n2. ACPL FM220 Registered Device Service స్టార్ట్ అయిందో లేదో Services.msc లో చెక్ చేయండి.",
+    installationGuide: "1. Run Startek FM220 RD Service Setup as administrator.\n2. Confirm 'ACPL FM220 Registered Device Service' is running in Services.msc.",
     isOfficial: true,
     tags: ["Startek", "FM220", "Biometric"],
     lastUpdated: "2024",
@@ -195,9 +195,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v1.3.0",
     fileSize: "14.2 MB",
     supportedOS: "Windows 7/8/10/11",
-    descriptionTelugu: "ఇంగ్లీష్ కీబోర్డుతో తెలుగు సులభంగా టైప్ చేయడానికి (ఉదా: 'panchayath' అని టైప్ చేస్తే 'పంచాయత్' వస్తుంది) ఆఫ్లైన్ ఇన్‌స్టాలర్.",
+    descriptionTelugu: "Offline phonetic typing installer to easily type in Telugu with an English keyboard (e.g. typing 'panchayath' yields 'పంచాయత్').",
     downloadUrl: "https://archive.org/details/google-input-tools-telugu-offline-installer",
-    installationGuide: "1. మొదట GoogleInputUpdate.exe ఇన్‌స్టాల్ చేయండి.\n2. తర్వాత GoogleInputTelugu.exe ఇన్‌స్టాల్ చేయండి.\n3. Alt + Shift నొక్కి తెలుగులోకి మారవచ్చు.",
+    installationGuide: "1. First install GoogleInputUpdate.exe.\n2. Next install GoogleInputTelugu.exe.\n3. Press Alt + Shift to toggle between English and Telugu typing.",
     isOfficial: true,
     tags: ["Telugu", "Typing", "Google", "Fonts", "Unicode"],
     lastUpdated: "2024",
@@ -212,9 +212,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v7.0",
     fileSize: "45.8 MB",
     supportedOS: "Windows 7/10/11",
-    descriptionTelugu: "పంచాయతీ ప్రొసీడింగ్స్, బ్యానర్లు మరియు అధికారిక లెటర్ హెడ్స్ డిజైనింగ్ కొరకు అను స్క్రిప్ట్ & యూనికోడ్ తెలుగు ఫాంట్ల పూర్తి సెట్ (Pothana, Gautami, Mandali etc.).",
+    descriptionTelugu: "Comprehensive collection of Anu Script, Unicode, and standard Telugu fonts (Pothana, Gautami, Mandali, etc.) for official circulars and notices.",
     downloadUrl: "https://fonts.google.com/?subset=telugu",
-    installationGuide: "1. జిప్ ఫైల్ ఓపెన్ చేయండి.\n2. అన్ని .ttf ఫాంట్లను సెలెక్ట్ చేసి రైట్ క్లిక్ చేసి 'Install for all users' నొక్కండి.",
+    installationGuide: "1. Extract the ZIP archive.\n2. Select all .ttf font files, right-click and select 'Install for all users'.",
     isOfficial: true,
     tags: ["Anu Script", "Fonts", "Pothana", "Unicode"],
     lastUpdated: "2024",
@@ -229,9 +229,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v2.0",
     fileSize: "18.3 MB",
     supportedOS: "Windows 10/11 64-bit",
-    descriptionTelugu: "ఈ-గ్రామ స్వరాజ్ (eGramSwaraj), CFMS, e-Procurement పోర్టల్స్‌లో చెక్కులు/FTOలు డిజిటల్ సంతకం (DSC Dongle) చేయడానికి డ్రైవర్.",
+    descriptionTelugu: "PKI Token driver for ePass 2003 USB dongles used for digital signature verification across eGramSwaraj, CFMS, and e-Procurement portals.",
     downloadUrl: "https://egramswaraj.gov.in/",
-    installationGuide: "1. మీ ePass 2003 Dongle ను సిస్టమ్ నుండి తీసివేయండి.\n2. ఇన్‌స్టాలర్ రన్ చేయండి.\n3. ఇన్‌స్టాల్ పూర్తయ్యాక టోకెన్ ప్లగ్ చేసి Token Manager లో సర్టిఫికెట్ కనిపిస్తుందో లేదో చూడండి.",
+    installationGuide: "1. Unplug the ePass 2003 Dongle from your PC.\n2. Run the driver installer as administrator.\n3. Plug in the token and confirm certificate visibility in ePass Token Manager.",
     isOfficial: true,
     tags: ["DSC", "eGramSwaraj", "Digital Signature", "ePass"],
     lastUpdated: "2024",
@@ -246,9 +246,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "8u381",
     fileSize: "78.2 MB",
     supportedOS: "Windows 10/11",
-    descriptionTelugu: "డిజిటల్ సిగ్నేచర్ (DSC Signer) సాఫ్ట్‌వేర్లు మరియు ఈ-టెండర్ పోర్టల్స్ రన్ అవ్వడానికి అవసరమైన స్టాండర్డ్ జావా రన్‌టైమ్.",
+    descriptionTelugu: "Standard Java 8 Runtime Environment (JRE) required for DSC Signer software and e-Tendering government portals.",
     downloadUrl: "https://www.java.com/en/download/",
-    installationGuide: "1. సెటప్ రన్ చేసి Next నొక్కండి.\n2. జావా కంట్రోల్ ప్యానెల్‌లో 'Security' ట్యాబ్‌లో eGramSwaraj వెబ్‌సైట్ URLను Exception Site List లో యాడ్ చేయండి.",
+    installationGuide: "1. Run setup and click Next to finish installation.\n2. In Windows Control Panel -> Java -> Security tab, add portal URLs to the Exception Site List.",
     isOfficial: true,
     tags: ["Java", "JRE", "DSC", "eSign"],
     lastUpdated: "2024",
@@ -263,9 +263,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v24.08",
     fileSize: "1.5 MB",
     supportedOS: "Windows 10/11",
-    descriptionTelugu: "పెద్ద ఫైళ్లను, జిప్ (ZIP), రార్ (RAR) ఆర్కైవ్‌లను వేగంగా ఓపెన్ చేయడానికి మరియు కంప్రెస్ చేయడానికి ఉచిత తేలికపాటి టూల్.",
+    descriptionTelugu: "Lightweight and powerful open-source archive manager for opening and compressing ZIP, RAR, 7Z, and TAR archives.",
     downloadUrl: "https://www.7-zip.org/download.html",
-    installationGuide: "ఇన్‌స్టాల్ చేయడం చాలా సులభం. జస్ట్ రన్ చేసి 'Install' నొక్కండి.",
+    installationGuide: "Quick installation: Run installer and click 'Install'.",
     isOfficial: true,
     tags: ["7-Zip", "Compress", "Extractor", "Utility"],
     lastUpdated: "2024",
@@ -280,9 +280,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "v8.0.10",
     fileSize: "4.8 MB",
     supportedOS: "Windows All",
-    descriptionTelugu: "కంప్యూటర్‌లో ఏదైనా సాంకేతిక సమస్య వస్తే ఆఫీస్ లేదా టెక్నికల్ టీమ్ ద్వారా రిమోట్ సపోర్ట్ పొందడానికి పోర్టబుల్ సాఫ్ట్‌వేర్.",
+    descriptionTelugu: "Portable remote desktop tool to connect with technical support teams for rapid troubleshooting and installation help.",
     downloadUrl: "https://anydesk.com/en/downloads/windows",
-    installationGuide: "ఇది ఇన్‌స్టాల్ చేయాల్సిన అవసరం లేదు. డౌన్‌లోడ్ చేసిన వెంటనే డబుల్ క్లిక్ చేసి రన్ చేయవచ్చు.",
+    installationGuide: "No installation required. Double click the downloaded file to run immediately.",
     isOfficial: true,
     tags: ["AnyDesk", "Remote", "Support", "Desktop"],
     lastUpdated: "2024",
@@ -297,9 +297,9 @@ export const DEFAULT_SOFTWARE_LIST: SoftwareItem[] = [
     version: "2024.x",
     fileSize: "260 MB",
     supportedOS: "Windows 10/11",
-    descriptionTelugu: "ప్రభుత్వ జీవోలు, ఆర్డర్లు, రిపోర్టులు స్పష్టంగా చూడటానికి మరియు ప్రింట్ చేయడానికి పూర్తి స్థాయి PDF రీడర్.",
+    descriptionTelugu: "Standard PDF reader for viewing, annotating, and printing government orders, circulars, and official reports.",
     downloadUrl: "https://get.adobe.com/reader/enterprise/",
-    installationGuide: "డౌన్‌లోడ్ పూర్తయ్యాక సెటప్ రన్ చేసి ఇన్‌స్టాల్ చేయండి.",
+    installationGuide: "Run the offline installer and follow on-screen instructions.",
     isOfficial: true,
     tags: ["PDF", "Adobe", "Reader", "Office"],
     lastUpdated: "2024",
@@ -449,7 +449,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
   const handleCopyLink = (item: SoftwareItem) => {
     navigator.clipboard.writeText(item.downloadUrl);
     setCopiedId(item.id);
-    if (addToast) addToast(`'${item.name}' లింక్ కాపీ చేయబడింది!`, "success");
+    if (addToast) addToast(`'${item.name}' link copied to clipboard!`, "success");
     setTimeout(() => setCopiedId(null), 2500);
   };
 
@@ -465,7 +465,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
   const handleSaveQuickUpdate = async () => {
     if (!quickUpdateItem) return;
     if (!quickLinkUrl.trim()) {
-      if (addToast) addToast("దయచేసి సరైన డౌన్‌లోడ్ లేదా వెబ్ లింక్ ఇవ్వండి.", "error");
+      if (addToast) addToast("Please provide a valid download or web URL.", "error");
       return;
     }
 
@@ -478,24 +478,24 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
         lastUpdated: new Date().toLocaleDateString("en-IN"),
         updatedAtTimestamp: Date.now(),
       });
-      if (addToast) addToast(`'${quickUpdateItem.name}' రియల్-టైమ్‌లో అప్‌డేట్ చేయబడింది!`, "success");
+      if (addToast) addToast(`'${quickUpdateItem.name}' updated in real-time!`, "success");
       setQuickUpdateItem(null);
     } catch (e) {
       console.error(e);
-      if (addToast) addToast("అప్‌డేట్ చేయడం విఫలమైంది.", "error");
+      if (addToast) addToast("Failed to update.", "error");
     } finally {
       setIsSavingQuick(false);
     }
   };
 
   const handleDeleteSoftware = async (id: string, name: string) => {
-    if (confirm(`'${name}' సాఫ్ట్‌వేర్‌ను తొలగించాలనుకుంటున్నారా?`)) {
+    if (confirm(`Are you sure you want to delete '${name}'?`)) {
       try {
         await deleteDoc(doc(db, "software_repository", id));
-        if (addToast) addToast(`'${name}' తొలగించబడింది.`, "success");
+        if (addToast) addToast(`'${name}' has been deleted.`, "success");
       } catch (e) {
         console.error(e);
-        if (addToast) addToast("తొలగించడం విఫలమైంది.", "error");
+        if (addToast) addToast("Failed to delete item.", "error");
       }
     }
   };
@@ -696,14 +696,14 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
   const getCategoryLabel = (category: SoftwareItem["category"]) => {
     switch (category) {
       case "biometric":
-        return "బయోమెట్రిక్";
+        return "Biometric";
       case "fonts":
-        return "తెలుగు ఫాంట్";
+        return "Telugu Fonts";
       case "portal":
-        return "DSC & పోర్టల్";
+        return "DSC & Portal";
       case "office":
       default:
-        return "ఆఫీస్ టూల్";
+        return "Office Tool";
     }
   };
 
@@ -725,11 +725,11 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>రియల్-టైమ్ క్లౌడ్ సింక్ యాక్టివ్</span>
+              <span>Real-Time Cloud Sync Active</span>
             </div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-slate-300 text-xs font-medium border border-white/10">
               <HardDrive size={13} className="text-cyan-400" />
-              <span>క్లౌడ్‌స్టోరేజ్ & సాఫ్ట్‌వేర్ బ్యాంక్</span>
+              <span>Cloud Storage & Software Bank</span>
             </div>
           </div>
 
@@ -737,8 +737,8 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
             Software Hub & Drivers Directory
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-            కంప్యూటర్ ఆపరేటింగ్ సిస్టమ్ తరహాలో ఫోల్డర్ల ప్రకారం అమర్చబడిన బయోమెట్రిక్ డ్రైవర్లు, తెలుగు ఫాంట్లు,
-            DSC సైనింగ్ టూల్స్ మరియు అధికారిక పోర్టల్ లింకులు. డైరెక్ట్ డౌన్‌లోడ్ ఫైల్స్ మరియు వెబ్ లింకులు వేర్వేరుగా సులభంగా పొందవచ్చు.
+            Windows OS styled directory of essential biometric scanner drivers, Telugu fonts, 
+            DSC signing utilities, and official portal links. Direct download packages and web links organized by folders.
           </p>
         </div>
 
@@ -749,7 +749,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm px-4 py-3 rounded-2xl shadow-lg shadow-indigo-900/40 flex items-center gap-2 transition-all active:scale-95 border border-indigo-400/30"
             >
               <Settings size={17} className="animate-spin-slow" />
-              <span>అడ్మిన్ నిర్వహణ ప్యానెల్</span>
+              <span>Admin Management Panel</span>
             </button>
           </div>
         )}
@@ -765,7 +765,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="సాఫ్ట్‌వేర్ పేరు, డ్రైవర్, వర్షన్, కీవర్డ్ లేదా ఫైల్ ద్వారా వెతకండి..."
+              placeholder="Search software by name, driver, version, tag or keyword..."
               className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium"
             />
             {searchQuery && (
@@ -792,7 +792,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               }`}
             >
               <Folder size={14} />
-              <span>ఫోల్డర్లు (Folders)</span>
+              <span>Folders</span>
             </button>
             <button
               onClick={() => {
@@ -806,7 +806,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               }`}
             >
               <Layers size={14} />
-              <span>అన్ని సాఫ్ట్‌వేర్లు ({softwareList.length})</span>
+              <span>All Software ({softwareList.length})</span>
             </button>
           </div>
         </div>
@@ -815,12 +815,12 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-              <Filter size={12} /> రకం:
+              <Filter size={12} /> Type:
             </span>
             {[
-              { id: "all", label: "అన్నీ (All)", icon: Layers },
-              { id: "file", label: "💾 డైరెక్ట్ ఫైల్స్ (.EXE, .ZIP)", icon: Download },
-              { id: "link", label: "🌐 అధికారిక పోర్టల్స్ & డ్రైవ్ లింకులు", icon: Globe },
+              { id: "all", label: "All Items", icon: Layers },
+              { id: "file", label: "💾 Direct Files (.EXE, .ZIP)", icon: Download },
+              { id: "link", label: "🌐 Portals & Drive Links", icon: Globe },
             ].map((t) => {
               const active = filterType === t.id;
               const TIcon = t.icon;
@@ -842,7 +842,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
           </div>
 
           <div className="text-xs font-bold text-slate-500">
-            మొత్తం: <span className="text-indigo-600 font-mono">{filteredList.length}</span> ఫలితాలు
+            Total: <span className="text-indigo-600 font-mono">{filteredList.length}</span> items
           </div>
         </div>
       </div>
@@ -856,7 +856,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
             >
               <Folder size={15} />
-              <span>అన్ని ఫోల్డర్లు (Root)</span>
+              <span>All Folders (Root)</span>
             </button>
             <span className="text-indigo-300">/</span>
             <div className="flex items-center gap-1.5 text-indigo-900 bg-white px-2.5 py-1 rounded-lg border border-indigo-200 shadow-xs">
@@ -864,7 +864,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               <span>{currentFolder.name}</span>
             </div>
             <span className="text-[11px] font-mono text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full">
-              {filteredList.length} ఐటమ్స్
+              {filteredList.length} items
             </span>
           </div>
 
@@ -873,7 +873,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
             className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition-colors shrink-0 shadow-xs"
           >
             <ArrowLeft size={14} />
-            <span>ఫోల్డర్ల మెనూకి వెళ్ళండి</span>
+            <span>Back to Folders</span>
           </button>
         </div>
       )}
@@ -885,10 +885,10 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
             <div>
               <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
                 <Folder className="text-indigo-600" size={20} />
-                <span>సాఫ్ట్‌వేర్ డైరెక్టరీ ఫోల్డర్లు (Directory Folders)</span>
+                <span>Software Directory Folders</span>
               </h2>
               <p className="text-xs text-slate-500">
-                కావలసిన ఫోల్డర్‌పై క్లిక్ చేసి అందులోని డ్రైవర్లు మరియు ఫైల్స్ చూడండి.
+                Click on any folder to open its files, drivers, and official portal links.
               </p>
             </div>
           </div>
@@ -912,12 +912,12 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                       </div>
                       <div className="flex items-center gap-1.5">
                         {hasAccessRestricted && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300/80 flex items-center gap-1" title={`అనుమతించబడిన రోల్స్: ${folder.allowedRoles?.join(", ")}`}>
-                            🔒 పరిమితం
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300/80 flex items-center gap-1" title={`Allowed roles: ${folder.allowedRoles?.join(", ")}`}>
+                            🔒 Restricted
                           </span>
                         )}
                         <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-full border ${colorStyle.badge}`}>
-                          {count} ఫైల్స్
+                          {count} files
                         </span>
                       </div>
                     </div>
@@ -927,13 +927,13 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                         {folder.name}
                       </h3>
                       <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                        {folder.descriptionTelugu || "ఈ ఫోల్డర్ లోని సంబంధిత సాఫ్ట్‌వేర్లు మరియు లింకులు."}
+                        {folder.descriptionTelugu || "Software items and links in this folder."}
                       </p>
                     </div>
                   </div>
 
                   <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-600 group-hover:text-indigo-600">
-                    <span>ఓపెన్ చేయండి</span>
+                    <span>Open Folder</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
@@ -949,16 +949,16 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
           {loading ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
               <Loader2 size={32} className="animate-spin mx-auto text-indigo-600 mb-3" />
-              <p className="text-xs font-bold text-slate-600">సాఫ్ట్‌వేర్ మరియు ఫైల్స్ లోడ్ అవుతున్నాయి...</p>
+              <p className="text-xs font-bold text-slate-600">Loading software and drivers...</p>
             </div>
           ) : filteredList.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 space-y-3">
               <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto text-slate-400">
                 <Search size={28} />
               </div>
-              <h3 className="text-base font-bold text-slate-800">సాఫ్ట్‌వేర్ లేదా ఫైల్స్ ఏవీ దొరకలేదు</h3>
+              <h3 className="text-base font-bold text-slate-800">No software or links found</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                మీరు ఎంచుకున్న ఫిల్టర్ లేదా ఫోల్డర్‌లో ఎలాంటి సాఫ్ట్‌వేర్ అందుబాటులో లేదు.
+                No matching software items found for the active filter, search query, or folder.
               </p>
               <button
                 onClick={() => {
@@ -969,7 +969,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                 }}
                 className="text-xs font-bold text-indigo-600 hover:underline pt-2 inline-block"
               >
-                అన్ని ఫిల్టర్లు క్లియర్ చేయండి
+                Clear all filters
               </button>
             </div>
           ) : (
@@ -990,7 +990,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                     {isRecent && (
                       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[10px] font-extrabold px-3 py-0.5 text-center flex items-center justify-center gap-1.5 shadow-xs">
                         <Sparkles size={11} />
-                        <span>ఇప్పుడే అప్‌డేట్ చేయబడింది (Live Real-Time)</span>
+                        <span>Recently Updated (Real-Time)</span>
                       </div>
                     )}
 
@@ -1013,12 +1013,12 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                               {isFile ? (
                                 <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-md flex items-center gap-1">
                                   <HardDrive size={10} />
-                                  <span>డైరెక్ట్ ఫైల్ ({item.fileFormat || "EXE"})</span>
+                                  <span>Direct File ({item.fileFormat || "EXE"})</span>
                                 </span>
                               ) : (
                                 <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-50 border border-purple-200/70 px-2 py-0.5 rounded-md flex items-center gap-1">
                                   <Globe size={10} />
-                                  <span>వెబ్ / డ్రైవ్ లింక్</span>
+                                  <span>Web / Drive Link</span>
                                 </span>
                               )}
                               <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -1038,14 +1038,14 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                             <button
                               onClick={() => handleOpenQuickUpdate(item)}
                               className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
-                              title="లింక్ లేదా ఫైల్ మార్చండి"
+                              title="Update link or file"
                             >
                               <Link size={13} />
                             </button>
                             <button
                               onClick={() => handleDeleteSoftware(item.id, item.name)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="తొలగించండి"
+                              title="Delete"
                             >
                               <Trash2 size={13} />
                             </button>
@@ -1074,7 +1074,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                         </span>
                       </div>
 
-                      {/* Telugu Description */}
+                      {/* Description */}
                       <p className="text-xs text-slate-600 leading-relaxed font-normal">
                         {item.descriptionTelugu}
                       </p>
@@ -1087,13 +1087,13 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                             className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 transition-colors"
                           >
                             <Info size={13} />
-                            <span>{isGuideOpen ? "గైడ్ దాచండి ▲" : "ఇన్‌స్టాలేషన్ సూచనలు చదవండి ▼"}</span>
+                            <span>{isGuideOpen ? "Hide Guide ▲" : "Installation Guide ▼"}</span>
                           </button>
 
                           {isGuideOpen && (
                             <div className="mt-2 p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-slate-800 leading-relaxed whitespace-pre-line font-medium">
                               <p className="font-bold text-amber-900 mb-1 flex items-center gap-1 text-[11px]">
-                                <AlertCircle size={12} /> స్టెప్-బై-స్టెప్ గైడ్:
+                                <AlertCircle size={12} /> Step-by-Step Instructions:
                               </p>
                               {item.installationGuide}
                             </div>
@@ -1110,7 +1110,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                         title="Copy Link to share"
                       >
                         {isCopied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                        <span>{isCopied ? "కాపీ అయింది!" : "లింక్ కాపీ"}</span>
+                        <span>{isCopied ? "Copied!" : "Copy Link"}</span>
                       </button>
 
                       {isFile ? (
@@ -1119,10 +1119,10 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs hover:shadow transition-all active:scale-95"
-                          title="డైరెక్ట్ ఫైల్ డౌన్‌లోడ్"
+                          title="Direct File Download"
                         >
                           <Download size={14} />
-                          <span>డౌన్‌లోడ్ ఫైల్ ({item.fileSize})</span>
+                          <span>Download File ({item.fileSize})</span>
                         </a>
                       ) : (
                         <a
@@ -1130,10 +1130,10 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs hover:shadow transition-all active:scale-95"
-                          title="అధికారిక వెబ్ సైట్ లేదా డ్రైవ్ పోర్టల్ ఓపెన్ చేయండి"
+                          title="Open official portal or drive link"
                         >
                           <Globe size={14} />
-                          <span>పోర్టల్ ఓపెన్ చేయండి</span>
+                          <span>Open Portal</span>
                           <ExternalLink size={12} className="opacity-80" />
                         </a>
                       )}
@@ -1146,7 +1146,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
         </div>
       )}
 
-      {/* QUICK LINK / FILE UPDATE MODAL FOR ADMIN */}
+      {/* QUICK UPDATE LINK/FILE MODAL */}
       {quickUpdateItem && (
         <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 my-auto text-left">
@@ -1154,7 +1154,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               <div className="flex items-center gap-2">
                 <Link className="text-cyan-400" size={20} />
                 <div>
-                  <h3 className="text-sm sm:text-base font-black">డౌన్‌లోడ్ లింక్ లేదా ఫైల్ అప్‌డేట్</h3>
+                  <h3 className="text-sm sm:text-base font-black">Update Download Link or File</h3>
                   <p className="text-[11px] text-slate-400 line-clamp-1">{quickUpdateItem.name}</p>
                 </div>
               </div>
@@ -1170,7 +1170,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               {/* Type Selection: File vs Web Link */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ఐటమ్ రకం (Item Type)
+                  Item Type
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -1183,7 +1183,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                     }`}
                   >
                     <Download size={14} />
-                    <span>💾 డైరెక్ట్ ఫైల్ (.exe, .zip)</span>
+                    <span>💾 Direct File (.exe, .zip)</span>
                   </button>
 
                   <button
@@ -1196,7 +1196,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                     }`}
                   >
                     <Globe size={14} />
-                    <span>🌐 వెబ్ / డ్రైవ్ లింక్</span>
+                    <span>🌐 Web / Drive Link</span>
                   </button>
                 </div>
               </div>
@@ -1204,7 +1204,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               {/* Folder Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ఫోల్డర్ (Folder Destination)
+                  Destination Folder
                 </label>
                 <select
                   value={quickFolderId}
@@ -1224,7 +1224,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                     <Upload size={14} className="text-indigo-600" />
-                    కంప్యూటర్ నుండి కొత్త ఫైల్ అప్‌లోడ్ చేయండి (.exe, .zip, .rar)
+                    Upload new file from computer (.exe, .zip, .rar)
                   </span>
                 </div>
                 <input
@@ -1243,11 +1243,11 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                           setQuickLinkUrl(url);
                           setQuickItemType("file");
                           setIsQuickUploading(false);
-                          if (addToast) addToast(`ఫైల్ అప్‌లోడ్ విజయవంతం! (${sizeFormatted})`, "success");
+                          if (addToast) addToast(`File uploaded successfully! (${sizeFormatted})`, "success");
                         },
                         () => {
                           setIsQuickUploading(false);
-                          if (addToast) addToast("ఫైల్ అప్‌లోడ్ విఫలమైంది.", "error");
+                          if (addToast) addToast("File upload failed.", "error");
                         }
                       );
                     }
@@ -1262,12 +1262,12 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                   {isQuickUploading ? (
                     <>
                       <Loader2 size={14} className="animate-spin text-indigo-600" />
-                      <span>అప్‌లోడ్ అవుతోంది... {quickUploadProgress}%</span>
+                      <span>Uploading... {quickUploadProgress}%</span>
                     </>
                   ) : (
                     <>
                       <Upload size={14} />
-                      <span>ఫైల్ సెలెక్ట్ చేయండి (క్లౌడ్‌కు అప్‌లోడ్)</span>
+                      <span>Select File (Upload to Cloud)</span>
                     </>
                   )}
                 </button>
@@ -1276,17 +1276,17 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               {/* Direct URL / Google Drive Paste */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  డౌన్‌లోడ్ లింక్ లేదా గూగుల్ డ్రైవ్ URL:
+                  Download Link or Google Drive URL:
                 </label>
                 <input
                   type="url"
                   value={quickLinkUrl}
                   onChange={(e) => setQuickLinkUrl(e.target.value)}
-                  placeholder="https://drive.google.com/... లేదా https://pub-xxx.r2.dev/..."
+                  placeholder="https://drive.google.com/... or https://pub-xxx.r2.dev/..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Cloudflare R2, Google Drive ("Anyone with link"), లేదా అధికారిక పోర్టల్ URL ఇక్కడ ఇవ్వవచ్చు.
+                  Cloudflare R2, Google Drive ("Anyone with link"), or official direct links can be provided here.
                 </p>
               </div>
 
@@ -1297,7 +1297,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                   onClick={() => setQuickUpdateItem(null)}
                   className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
                 >
-                  రద్దు చేయండి
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1306,7 +1306,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                   className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {isSavingQuick ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
-                  <span>రియల్-టైమ్‌లో భద్రపరచండి</span>
+                  <span>Save in Real-Time</span>
                 </button>
               </div>
             </div>
