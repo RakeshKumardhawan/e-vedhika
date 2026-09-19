@@ -82,6 +82,39 @@ export interface SoftwareItem {
   r2Key?: string;
 }
 
+// Byte and Size Helpers
+export const parseSizeToBytes = (sizeStr?: string): number => {
+  if (!sizeStr || sizeStr === "N/A") return 0;
+  const cleaned = sizeStr.trim().toUpperCase();
+  const match = cleaned.match(/^([0-9.]+)\s*(BYTES|B|KB|MB|GB|TB)?$/);
+  if (!match) return 0;
+  const value = parseFloat(match[1]);
+  if (isNaN(value)) return 0;
+  const unit = match[2] || "B";
+  switch (unit) {
+    case "TB":
+      return value * 1024 * 1024 * 1024 * 1024;
+    case "GB":
+      return value * 1024 * 1024 * 1024;
+    case "MB":
+      return value * 1024 * 1024;
+    case "KB":
+      return value * 1024;
+    case "BYTES":
+    case "B":
+    default:
+      return value;
+  }
+};
+
+export const formatBytes = (bytes: number): string => {
+  if (!bytes || bytes <= 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
+
 export const DEFAULT_SOFTWARE_FOLDERS: SoftwareFolder[] = [
   {
     id: "folder-biometric",
@@ -567,6 +600,31 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
     return counts;
   }, [visibleFolders, softwareList]);
 
+  // Folders storage size calculation
+  const folderStorage = useMemo(() => {
+    const byteMap: Record<string, number> = {};
+    visibleFolders.forEach((f) => (byteMap[f.id] = 0));
+    softwareList.forEach((item) => {
+      const fId = item.folderId || getDefaultFolderForCategory(item.category);
+      const b = parseSizeToBytes(item.fileSize);
+      byteMap[fId] = (byteMap[fId] || 0) + b;
+    });
+    const formatted: Record<string, string> = {};
+    Object.keys(byteMap).forEach((id) => {
+      formatted[id] = formatBytes(byteMap[id]);
+    });
+    return { byteMap, formatted };
+  }, [visibleFolders, softwareList]);
+
+  // Total software storage
+  const totalSoftwareBytes = useMemo(() => {
+    return softwareList.reduce((acc, item) => acc + parseSizeToBytes(item.fileSize), 0);
+  }, [softwareList]);
+
+  const totalSoftwareStorage = useMemo(() => {
+    return formatBytes(totalSoftwareBytes);
+  }, [totalSoftwareBytes]);
+
   // Active folder object
   const currentFolder = useMemo(() => {
     if (!activeFolderId) return null;
@@ -729,7 +787,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
             </div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-slate-300 text-xs font-medium border border-white/10">
               <HardDrive size={13} className="text-cyan-400" />
-              <span>Cloud Storage & Software Bank</span>
+              <span>Storage Bank: <strong className="text-cyan-300 font-mono font-bold">{totalSoftwareStorage}</strong></span>
             </div>
           </div>
 
@@ -863,8 +921,9 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               <FolderOpen size={15} className="text-indigo-600" />
               <span>{currentFolder.name}</span>
             </div>
-            <span className="text-[11px] font-mono text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full">
-              {filteredList.length} items
+            <span className="text-[11px] font-mono text-indigo-700 bg-indigo-100/80 px-2.5 py-1 rounded-full flex items-center gap-1.5 font-bold">
+              <HardDrive size={11} className="text-indigo-600" />
+              <span>{filteredList.length} items • {folderStorage.formatted[currentFolder.id] || "0 B"}</span>
             </span>
           </div>
 
@@ -916,8 +975,10 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                             🔒 Restricted
                           </span>
                         )}
-                        <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-full border ${colorStyle.badge}`}>
-                          {count} files
+                        <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-full border ${colorStyle.badge} flex items-center gap-1.5`}>
+                          <span>{count} files</span>
+                          <span className="opacity-40">•</span>
+                          <span>{folderStorage.formatted[folder.id] || "0 B"}</span>
                         </span>
                       </div>
                     </div>
@@ -932,9 +993,15 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-600 group-hover:text-indigo-600">
-                    <span>Open Folder</span>
-                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-600 group-hover:text-indigo-600">
+                    <span className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500 font-semibold">
+                      <HardDrive size={12} className="text-slate-400" />
+                      <span>Storage: <strong className="text-slate-700 font-bold">{folderStorage.formatted[folder.id] || "0 B"}</strong></span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span>Open Folder</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </span>
                   </div>
                 </div>
               );

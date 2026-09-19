@@ -1383,13 +1383,13 @@ app.get('/api/remote-commands', (req, res) => {
 
         console.log("File received successfully:", req.file.originalname, "saved to", req.file.path);
 
-        const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-        const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-        let publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || "";
+        const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "").trim();
+        const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
+        const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
+        const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
+        let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "").trim();
 
-        const hasR2 = !!(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
+        const hasR2 = !!(accountId && accessKeyId.length === 32 && secretAccessKey.length >= 32 && bucketName && publicUrl);
 
         if (hasR2) {
           try {
@@ -1459,14 +1459,32 @@ app.get('/api/remote-commands', (req, res) => {
   // Cloud Storage Manager API (Cloudflare R2 + Local fallback)
   app.get("/api/storage/files", verifyToken, async (req, res) => {
     try {
-      const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-      const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-      let publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || "";
+      const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "").trim();
+      const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
+      const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
+      const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
+      let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "").trim();
 
-      const hasR2 = !!(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
+      const missingVars: string[] = [];
+      if (!accountId) missingVars.push("CLOUDFLARE_R2_ACCOUNT_ID");
+      if (!accessKeyId) missingVars.push("CLOUDFLARE_R2_ACCESS_KEY_ID");
+      if (!secretAccessKey) missingVars.push("CLOUDFLARE_R2_SECRET_ACCESS_KEY");
+      if (!publicUrl) missingVars.push("CLOUDFLARE_R2_PUBLIC_URL");
 
+      // Cloudflare R2 Access Key ID must be a 32-character hexadecimal string.
+      // If a placeholder (like "xxxx" length 4) was provided, mark it as invalid to prevent S3 client crash.
+      const isAccessKeyValid = accessKeyId.length === 32;
+      const isSecretKeyValid = secretAccessKey.length >= 32;
+
+      let r2ConfigError: string | null = null;
+      if (accessKeyId && !isAccessKeyValid) {
+        r2ConfigError = `Invalid CLOUDFLARE_R2_ACCESS_KEY_ID (length is ${accessKeyId.length}, Cloudflare R2 keys must be 32 characters)`;
+      } else if (secretAccessKey && !isSecretKeyValid) {
+        r2ConfigError = `Invalid CLOUDFLARE_R2_SECRET_ACCESS_KEY (Cloudflare R2 secret must be at least 32 characters)`;
+      }
+
+      const hasR2 = missingVars.length === 0 && isAccessKeyValid && isSecretKeyValid;
+      let r2Error: string | null = r2ConfigError;
       const fileList: any[] = [];
 
       if (hasR2) {
@@ -1481,7 +1499,7 @@ app.get('/api/remote-commands', (req, res) => {
 
           const listCmd = new ListObjectsV2Command({
             Bucket: bucketName,
-            MaxKeys: 100,
+            MaxKeys: 200,
           });
 
           const r2Res = await r2Client.send(listCmd);
@@ -1498,8 +1516,9 @@ app.get('/api/remote-commands', (req, res) => {
               }
             });
           }
-        } catch (r2Err: any) {
-          console.warn("R2 list warning:", r2Err.message);
+        } catch (err: any) {
+          console.error("R2 list error:", err);
+          r2Error = err.message || String(err);
         }
       }
 
@@ -1524,7 +1543,15 @@ app.get('/api/remote-commands', (req, res) => {
         }
       } catch (e) {}
 
-      res.json({ files: fileList, storageEngine: hasR2 ? "cloudflare" : "local" });
+      res.json({
+        files: fileList,
+        storageEngine: hasR2 ? "cloudflare" : "local",
+        r2Connected: hasR2 && !r2Error,
+        r2Configured: hasR2,
+        missingVars,
+        r2Error,
+        bucketName
+      });
     } catch (err: any) {
       console.error("Storage list error:", err);
       res.status(500).json({ error: err.message || "Failed to list storage files" });
@@ -1536,10 +1563,10 @@ app.get('/api/remote-commands', (req, res) => {
       const { key } = req.body;
       if (!key) return res.status(400).json({ error: "Missing file key" });
 
-      const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-      const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+      const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "").trim();
+      const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
+      const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
+      const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
 
       if (key.startsWith("local/")) {
         const localFileName = key.replace("local/", "");
@@ -1548,7 +1575,7 @@ app.get('/api/remote-commands', (req, res) => {
         return res.json({ success: true });
       }
 
-      if (accountId && accessKeyId && secretAccessKey && bucketName) {
+      if (accountId && accessKeyId.length === 32 && secretAccessKey.length >= 32 && bucketName) {
         const r2Client = new S3Client({
           region: "auto",
           endpoint: `https://${accountId}.r2.cloudflarestorage.com`,

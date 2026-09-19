@@ -54,6 +54,8 @@ import {
   SoftwareItemType,
   DEFAULT_SOFTWARE_LIST,
   DEFAULT_SOFTWARE_FOLDERS,
+  parseSizeToBytes,
+  formatBytes,
 } from "../SoftwareHub";
 
 interface R2StorageFile {
@@ -141,6 +143,14 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
   const [isR2Uploading, setIsR2Uploading] = useState(false);
   const [r2AutoPublish, setR2AutoPublish] = useState(true);
   const [publishModalFile, setPublishModalFile] = useState<R2StorageFile | null>(null);
+  const [r2Diagnostic, setR2Diagnostic] = useState<{
+    configured?: boolean;
+    connected?: boolean;
+    missingVars?: string[];
+    r2Error?: string | null;
+    bucketName?: string;
+    engine?: string;
+  }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const quickFileInputRef = useRef<HTMLInputElement>(null);
@@ -237,6 +247,14 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch files from Cloudflare R2");
       setR2Files(data.files || []);
+      setR2Diagnostic({
+        configured: data.r2Configured,
+        connected: data.r2Connected,
+        missingVars: data.missingVars || [],
+        r2Error: data.r2Error || null,
+        bucketName: data.bucketName,
+        engine: data.storageEngine
+      });
     } catch (err: any) {
       console.error("R2 fetch error:", err);
       if (addToast) addToast(`Failed to load Cloudflare R2 files: ${err.message}`, "error");
@@ -256,14 +274,45 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
     }
   }, [adminTab]);
 
-  // Byte Formatter
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  };
+  // Storage Calculations across repository & Cloudflare R2
+  const folderStorage = useMemo(() => {
+    const byteMap: Record<string, number> = {};
+    folders.forEach((f) => (byteMap[f.id] = 0));
+    softwareList.forEach((item) => {
+      const fId = item.folderId || getDefaultFolderForCategory(item.category);
+      const b = parseSizeToBytes(item.fileSize);
+      byteMap[fId] = (byteMap[fId] || 0) + b;
+    });
+    const formatted: Record<string, string> = {};
+    Object.keys(byteMap).forEach((id) => {
+      formatted[id] = formatBytes(byteMap[id]);
+    });
+    return { byteMap, formatted };
+  }, [folders, softwareList]);
+
+  const totalSoftwareBytes = useMemo(() => {
+    return softwareList.reduce((acc, item) => acc + parseSizeToBytes(item.fileSize), 0);
+  }, [softwareList]);
+
+  const totalSoftwareStorage = useMemo(() => {
+    return formatBytes(totalSoftwareBytes);
+  }, [totalSoftwareBytes]);
+
+  const totalR2Bytes = useMemo(() => {
+    return r2Files.reduce((acc, f) => acc + (f.size || 0), 0);
+  }, [r2Files]);
+
+  const totalR2Storage = useMemo(() => {
+    return formatBytes(totalR2Bytes);
+  }, [totalR2Bytes]);
+
+  const largestR2File = useMemo(() => {
+    if (r2Files.length === 0) return null;
+    return [...r2Files].sort((a, b) => b.size - a.size)[0];
+  }, [r2Files]);
+
+  const r2FreeTierBytes = 10 * 1024 * 1024 * 1024; // 10 GB Monthly Free Tier
+  const r2PercentUsed = Math.min(100, (totalR2Bytes / r2FreeTierBytes) * 100);
 
   // Helper for folder default
   const getDefaultFolderForCategory = (category: string) => {
@@ -788,7 +837,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           }`}
         >
           <Layers size={16} />
-          <span>Software & Links ({softwareList.length})</span>
+          <span>Software & Links ({softwareList.length} • {totalSoftwareStorage})</span>
         </button>
 
         <button
@@ -800,7 +849,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           }`}
         >
           <Folder size={16} />
-          <span>Folder Explorer ({folders.length})</span>
+          <span>Folder Explorer ({folders.length} folders)</span>
         </button>
 
         <button
@@ -812,7 +861,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
           }`}
         >
           <Cloud size={16} className="text-cyan-500" />
-          <span>Cloudflare R2 Storage ({r2Files.length})</span>
+          <span>Cloudflare R2 Storage ({r2Files.length} • {totalR2Storage})</span>
         </button>
       </div>
 
@@ -821,6 +870,51 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       {/* ======================================================== */}
       {adminTab === "software" && (
         <div className="space-y-4">
+          {/* Quick Repository Storage Stats Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <HardDrive size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Software Storage</div>
+                <div className="text-sm font-black text-slate-900 font-mono truncate">{totalSoftwareStorage}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Download size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Direct Installers</div>
+                <div className="text-sm font-black text-slate-900 font-mono truncate">
+                  {softwareList.filter((s) => (s.itemType || "file") === "file").length} files
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
+                <Cloud size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cloudflare R2 Used</div>
+                <div className="text-sm font-black text-slate-900 font-mono truncate">{totalR2Storage}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <Folder size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Folders Configured</div>
+                <div className="text-sm font-black text-slate-900 font-mono truncate">{folders.length} folders</div>
+              </div>
+            </div>
+          </div>
+
           {/* Filter / Search Bar */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200 space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -1104,12 +1198,50 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             </button>
           </div>
 
+          {/* Folder Storage Summary Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <Folder size={18} />
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Folders</div>
+                <div className="text-sm font-black text-slate-900 font-mono">{folders.length} configured</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <HardDrive size={18} />
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repository Storage</div>
+                <div className="text-sm font-black text-slate-900 font-mono">{totalSoftwareStorage}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
+                <Layers size={18} />
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Average / Folder</div>
+                <div className="text-sm font-black text-slate-900 font-mono">
+                  {formatBytes(totalSoftwareBytes / (folders.length || 1))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {folders.map((folder) => {
               const count = softwareList.filter(
                 (s) => (s.folderId || getDefaultFolderForCategory(s.category)) === folder.id
               ).length;
               const isOver = dragOverFolderId === folder.id;
+              const fBytes = folderStorage.byteMap[folder.id] || 0;
+              const fFormatted = folderStorage.formatted[folder.id] || "0 B";
+              const percent = totalSoftwareBytes > 0 ? ((fBytes / totalSoftwareBytes) * 100).toFixed(1) : "0";
 
               return (
                 <div
@@ -1173,16 +1305,23 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-600">
-                      Total Files: <span className="text-indigo-600 font-mono font-black">{count}</span>
-                    </span>
+                  <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>Files: <span className="text-indigo-600 font-mono font-black">{count}</span></span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-slate-700 font-mono font-bold">{fFormatted}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        {percent}% of library
+                      </div>
+                    </div>
                     <button
                       onClick={() => {
                         setSelectedFolderFilter(folder.id);
                         setAdminTab("software");
                       }}
-                      className="text-indigo-600 hover:underline font-bold"
+                      className="text-indigo-600 hover:text-indigo-800 hover:underline font-bold"
                     >
                       View Files →
                     </button>
@@ -1212,14 +1351,44 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 Browse all cloud objects stored in Cloudflare R2. Upload new installers or packages directly,
                 and publish any cloud file to the public Software Hub with 1-click.
               </p>
-              {/* Real-time status indicator */}
-              <div className="flex items-center gap-3 mt-3 text-xs text-cyan-200">
+              {/* Real-time status indicator and Dashboard Quick Link */}
+              <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-cyan-200">
                 <span className="flex items-center gap-1.5 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>Real-time Sync Active (12s polling)</span>
+                  {r2Diagnostic.connected ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="text-emerald-300">R2 API Connected (Live)</span>
+                    </>
+                  ) : r2Diagnostic.missingVars && r2Diagnostic.missingVars.length > 0 ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span className="text-amber-300">R2 Keys Awaiting Config ({r2Diagnostic.missingVars.length} missing)</span>
+                    </>
+                  ) : r2Diagnostic.r2Error ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-rose-400" />
+                      <span className="text-rose-300">R2 Auth Error</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                      <span>Checking R2 Status...</span>
+                    </>
+                  )}
                 </span>
                 <span className="text-cyan-400">•</span>
                 <span>Bucket: <span className="font-mono font-bold text-white">e-vedhika-files</span></span>
+                <span className="text-cyan-400">•</span>
+                <a
+                  href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white border border-cyan-400/30 font-bold transition-all"
+                  title="Open Cloudflare R2 Console in new tab"
+                >
+                  <ExternalLink size={12} />
+                  <span>Open Cloudflare Console</span>
+                </a>
               </div>
             </div>
 
@@ -1260,6 +1429,115 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
             </div>
           </div>
 
+          {/* Cloudflare R2 Storage Capacity & Free Tier Quota Dashboard */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <HardDrive size={16} className="text-cyan-600" />
+                  <span>Cloudflare R2 Storage Quota & Capacity</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Cloudflare R2 provides 10 GB/month free distributed object storage with zero egress bandwidth fees.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-black text-cyan-700 bg-cyan-50 border border-cyan-200 px-3 py-1 rounded-lg">
+                  {totalR2Storage} / 10 GB Tier
+                </span>
+                <a
+                  href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs"
+                  title="Open e-vedhika-files bucket in Cloudflare dashboard"
+                >
+                  <ExternalLink size={12} className="text-cyan-400" />
+                  <span>Cloudflare Dashboard</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Visual Storage Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-slate-700 font-bold">
+                  Storage Used: <span className="text-cyan-600">{r2PercentUsed.toFixed(2)}%</span>
+                </span>
+                <span className="text-slate-500">
+                  Remaining Free: <span className="font-bold text-slate-700">{formatBytes(Math.max(0, r2FreeTierBytes - totalR2Bytes))}</span>
+                </span>
+              </div>
+              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-indigo-600 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(0.6, r2PercentUsed)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Storage Key Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cloud Objects</div>
+                <div className="text-sm font-black text-slate-900 font-mono">{r2Files.length} files</div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Consumed</div>
+                <div className="text-sm font-black text-cyan-700 font-mono">{totalR2Storage}</div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Average File Size</div>
+                <div className="text-sm font-black text-slate-900 font-mono">
+                  {formatBytes(totalR2Bytes / (r2Files.length || 1))}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Largest Object</div>
+                <div className="text-sm font-black text-slate-900 font-mono truncate" title={largestR2File?.key || "None"}>
+                  {largestR2File ? formatBytes(largestR2File.size) : "0 B"}
+                </div>
+              </div>
+            </div>
+            {/* Diagnostic Alert if environment variables are not configured or connection warning */}
+            {(r2Diagnostic.missingVars && r2Diagnostic.missingVars.length > 0) || r2Diagnostic.r2Error ? (
+              <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                    <Cloud size={16} />
+                  </span>
+                  <div>
+                    <div className="font-bold text-amber-900">
+                      {r2Diagnostic.r2Error ? "Cloudflare R2 API Notice" : "Cloudflare R2 Configuration Required"}
+                    </div>
+                    <div className="text-amber-700 text-[11px] mt-0.5">
+                      {r2Diagnostic.r2Error ? (
+                        <span>{r2Diagnostic.r2Error}. (Cloudflare R2 requires a 32-character Access Key ID and Secret Access Key generated from R2 Manage API Tokens)</span>
+                      ) : (
+                        <span>
+                          The server is currently running in local storage fallback mode because the following environment variables are not yet populated:{" "}
+                          <span className="font-mono font-bold text-amber-900">{r2Diagnostic.missingVars?.join(", ")}</span>.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 text-[11px]"
+                >
+                  <ExternalLink size={12} />
+                  <span>R2 API Credentials</span>
+                </a>
+              </div>
+            ) : null}
+          </div>
+
           {/* Search Bar for R2 */}
           <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex items-center justify-between gap-3">
             <div className="relative flex-1">
@@ -1284,8 +1562,60 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               <p className="text-xs font-bold text-slate-600">Fetching files from Cloudflare R2...</p>
             </div>
           ) : filteredR2Files.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-              <p className="text-sm font-bold text-slate-700">No files found in Cloudflare R2 bucket.</p>
+            <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-slate-200 space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mx-auto text-cyan-600">
+                <Cloud size={32} />
+              </div>
+              <div className="max-w-md mx-auto space-y-1">
+                <h4 className="text-base font-bold text-slate-800">
+                  {r2Diagnostic.missingVars && r2Diagnostic.missingVars.length > 0
+                    ? "Cloudflare R2 Environment Variables Setup Required"
+                    : r2Diagnostic.r2Error
+                    ? "Cloudflare R2 Connection Notice"
+                    : "No Files Found in R2 Bucket Yet"}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {r2Diagnostic.missingVars && r2Diagnostic.missingVars.length > 0 ? (
+                    <>
+                      R2 access keys are not yet configured in the environment settings:{" "}
+                      <span className="font-mono text-amber-700 font-bold">
+                        {r2Diagnostic.missingVars.join(", ")}
+                      </span>
+                      . Once configured in Cloud Run / Settings, files will sync automatically.
+                    </>
+                  ) : r2Diagnostic.r2Error ? (
+                    <>
+                      Cloudflare error: <span className="font-mono text-rose-600 font-bold">{r2Diagnostic.r2Error}</span>.
+                      Please check R2 API Token permissions (Object Read & Write).
+                    </>
+                  ) : (
+                    <>
+                      Bucket <span className="font-mono font-bold text-slate-800">e-vedhika-files</span> has 0 objects right now.
+                      Click the <strong>&quot;+ Upload File to R2&quot;</strong> button above or upload directly from the Cloudflare Dashboard to populate files.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <button
+                  disabled={isR2Uploading}
+                  onClick={() => r2FileInputRef.current?.click()}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  <Upload size={14} />
+                  <span>Upload First File to R2</span>
+                </button>
+                <a
+                  href="https://dash.cloudflare.com/8ace4e3f2324eda23d28f8e8ddd1ffb4/r2/default/buckets/e-vedhika-files"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 border border-slate-200"
+                >
+                  <ExternalLink size={14} />
+                  <span>Check Cloudflare Console</span>
+                </a>
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
