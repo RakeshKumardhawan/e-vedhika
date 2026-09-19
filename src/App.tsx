@@ -18567,8 +18567,14 @@ function DSRAnalyzer({
 
   const [viewMode, setViewMode] = useState<"reports" | "mandal" | "gp">("reports");
   const [expandedMandals, setExpandedMandals] = useState<Record<string, boolean>>({});
+  const [selectedMandalModal, setSelectedMandalModal] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  const selectedMandalObj = useMemo(() => {
+    if (!selectedMandalModal) return null;
+    return mandalSummaries.find((m) => m.mandal === selectedMandalModal) || null;
+  }, [selectedMandalModal, mandalSummaries]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
@@ -19979,6 +19985,7 @@ function DSRAnalyzer({
               addToast={addToast}
               loadHeavyModules={loadHeavyModules}
               XLSX={XLSX}
+              onSelectMandal={(mandal) => setSelectedMandalModal(mandal)}
             />
           )}
 
@@ -20184,6 +20191,83 @@ function DSRAnalyzer({
               </table>
             </div>
           </div>
+          )}
+
+          {/* MANDAL GPs MODAL */}
+          {selectedMandalModal && selectedMandalObj && (
+            <div className="fixed inset-0 z-[5000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white w-full max-w-5xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200"
+              >
+                {/* Modal Header */}
+                <div className="bg-[#00609C] text-white p-4 sm:p-6 flex items-center justify-between shrink-0">
+                  <div>
+                    <span className="text-xs uppercase tracking-wider font-bold bg-white/20 px-2.5 py-1 rounded-lg">
+                      Mandal Grama Panchayats Details
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-black mt-1">
+                      {selectedMandalObj.mandal} Mandal
+                    </h2>
+                    <p className="text-xs text-sky-200 mt-0.5 font-medium">
+                      Total GPs: {selectedMandalObj.totalGPs} • Attended: {selectedMandalObj.attendedGP} • DSR Entered: {selectedMandalObj.dsrEntered} • Not Reported: {selectedMandalObj.notReported}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedMandalModal(null)}
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Modal Content / Table */}
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4 bg-slate-50">
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table className="w-full text-center text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-800 text-white font-bold text-[11px] divide-x divide-slate-700">
+                          <th className="py-2.5 px-3">S.NO</th>
+                          <th className="py-2.5 px-4 text-left">Grama Panchayat Name</th>
+                          <th className="py-2.5 px-3">PS Name</th>
+                          <th className="py-2.5 px-3">Attendance Status</th>
+                          <th className="py-2.5 px-3">Attendance Time</th>
+                          <th className="py-2.5 px-3">DSR Status</th>
+                          <th className="py-2.5 px-3">DSR Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 font-medium text-slate-800 bg-white">
+                        {selectedMandalObj.gps.map((gpRow: any, idx: number) => (
+                          <tr key={`mandal_gp_modal_${gpRow.gp}_${idx}`} className="hover:bg-slate-50 transition-colors divide-x divide-slate-100">
+                            <td className="py-2.5 px-3 font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-2.5 px-4 text-left font-bold text-slate-900">{gpRow.gp}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-700">{gpRow.psName || "-"}</td>
+                            <td className="py-2.5 px-3 font-semibold text-indigo-900">{gpRow.attStatus || "-"}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-700">{gpRow.attTime || "-"}</td>
+                            <td className="py-2.5 px-3 font-semibold text-purple-700">{gpRow.dsrStatus || (gpRow.dsrEntered ? "Yes" : "No")}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-700">{gpRow.dsrTime || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between shrink-0">
+                  <span className="text-xs text-slate-500 font-medium">
+                    Showing all {selectedMandalObj.gps.length} Grama Panchayats in {selectedMandalObj.mandal}
+                  </span>
+                  <button
+                    onClick={() => setSelectedMandalModal(null)}
+                    className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold transition-all"
+                  >
+                    Close Modal
+                  </button>
+                </div>
+              </motion.div>
+            </div>
           )}
         </div>
       )}

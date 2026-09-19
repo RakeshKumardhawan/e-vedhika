@@ -11,6 +11,7 @@ interface DsrTablesProps {
   addToast: (msg: string) => void;
   loadHeavyModules: () => Promise<void>;
   XLSX: any;
+  onSelectMandal?: (mandalName: string) => void;
 }
 
 export const DsrTables: React.FC<DsrTablesProps> = ({
@@ -23,10 +24,19 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
   addToast,
   loadHeavyModules,
   XLSX,
+  onSelectMandal,
 }) => {
   const [activeReportTab, setActiveReportTab] = useState<
     "status_summary" | "leave_meetings" | "pending_gps" | "all_combined"
   >("status_summary");
+
+  const [expandedMandals, setExpandedMandals] = useState<Record<string, boolean>>({});
+  const toggleMandalExpand = (mandalName: string) => {
+    setExpandedMandals((prev) => ({
+      ...prev,
+      [mandalName]: !prev[mandalName],
+    }));
+  };
 
   // Filter for Meeting/Training/Leave records (Image 1)
   const leaveMeetingRecords = useMemo(() => {
@@ -608,26 +618,89 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
                 const bef9Color = pctBef9 >= 70 ? "bg-[#fef3c7] text-amber-950 font-semibold" : "bg-[#fee2e2] text-rose-950 font-semibold";
                 const aft9Color = "bg-[#fee2e2] text-rose-950 font-semibold";
 
+                const isEx = !!expandedMandals[m.mandal];
+
                 return (
-                  <tr key={`status_summary_${m.mandal}_${idx}`} className="hover:bg-slate-50 transition-colors divide-x divide-slate-200">
-                    <td className="py-2 px-2 font-mono text-slate-500">{idx + 1}</td>
-                    <td className="py-2 px-3 text-left font-bold text-slate-900">{m.mandal}</td>
-                    <td className="py-2 px-2 font-bold">{m.totalGPs}</td>
-                    <td className="py-2 px-2 font-mono">{m.attendedGP}</td>
-                    <td className="py-2 px-2 font-mono">{m.meetingTraining + m.leaveToday}</td>
-                    <td className={`py-2 px-2 font-mono ${repColor}`}>
-                      {pctRep.toFixed(m.totalReported === m.totalGPs ? 1 : 2)}%
-                    </td>
-                    <td className="py-2 px-2 font-mono font-bold text-slate-700">{m.notReported}</td>
-                    <td className="py-2 px-2 font-mono">{m.dsrEntered}</td>
-                    <td className={`py-2 px-2 font-mono ${dsrColor}`}>
-                      {pctDsr.toFixed(m.dsrEntered === m.totalGPs ? 1 : 2)}%
-                    </td>
-                    <td className="py-2 px-2 font-mono">{m.before9AM}</td>
-                    <td className={`py-2 px-2 font-mono ${bef9Color}`}>{pctBef9.toFixed(2)}%</td>
-                    <td className="py-2 px-2 font-mono">{after9Count}</td>
-                    <td className={`py-2 px-2 font-mono ${aft9Color}`}>{pctAft9.toFixed(2)}%</td>
-                  </tr>
+                  <React.Fragment key={`status_summary_${m.mandal}_${idx}`}>
+                    <tr className="hover:bg-slate-50 transition-colors divide-x divide-slate-200">
+                      <td className="py-2 px-2 font-mono text-slate-500">{idx + 1}</td>
+                      <td 
+                        className="py-2 px-3 text-left font-bold text-indigo-700 hover:text-indigo-900 cursor-pointer flex items-center justify-between gap-1"
+                        onClick={() => toggleMandalExpand(m.mandal)}
+                        title="Click to expand/collapse GPs below"
+                      >
+                        <span className="underline decoration-indigo-300 decoration-dotted underline-offset-4">{m.mandal}</span>
+                        <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded font-mono font-bold shrink-0">
+                          {isEx ? "▲" : `▼ ${m.totalGPs} GPs`}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 font-bold">{m.totalGPs}</td>
+                      <td className="py-2 px-2 font-mono">{m.attendedGP}</td>
+                      <td className="py-2 px-2 font-mono">{m.meetingTraining + m.leaveToday}</td>
+                      <td className={`py-2 px-2 font-mono ${repColor}`}>
+                        {pctRep.toFixed(m.totalReported === m.totalGPs ? 1 : 2)}%
+                      </td>
+                      <td className="py-2 px-2 font-mono font-bold text-slate-700">{m.notReported}</td>
+                      <td className="py-2 px-2 font-mono">{m.dsrEntered}</td>
+                      <td className={`py-2 px-2 font-mono ${dsrColor}`}>
+                        {pctDsr.toFixed(m.dsrEntered === m.totalGPs ? 1 : 2)}%
+                      </td>
+                      <td className="py-2 px-2 font-mono">{m.before9AM}</td>
+                      <td className={`py-2 px-2 font-mono ${bef9Color}`}>{pctBef9.toFixed(2)}%</td>
+                      <td className="py-2 px-2 font-mono">{after9Count}</td>
+                      <td className={`py-2 px-2 font-mono ${aft9Color}`}>{pctAft9.toFixed(2)}%</td>
+                    </tr>
+                    {isEx && (
+                      <tr className="bg-sky-50/70 border-b-2 border-indigo-200">
+                        <td colSpan={13} className="p-3">
+                          <div className="bg-white rounded-xl p-3 shadow-inner border border-indigo-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
+                                <span>📍 {m.mandal} Mandal Gram Panchayats Details</span>
+                                <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-mono">
+                                  Total GPs: {m.gps.length}
+                                </span>
+                              </h4>
+                              <button
+                                onClick={() => toggleMandalExpand(m.mandal)}
+                                className="text-xs font-bold text-slate-500 hover:text-slate-800 px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded"
+                              >
+                                ▲ Hide GPs
+                              </button>
+                            </div>
+                            <div className="overflow-x-auto max-h-[280px] custom-scrollbar border border-slate-200 rounded-lg">
+                              <table className="w-full text-center text-xs border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-800 text-white font-bold text-[10px] divide-x divide-slate-700">
+                                    <th className="py-2 px-2">S.NO</th>
+                                    <th className="py-2 px-3 text-left">Grama Panchayat Name</th>
+                                    <th className="py-2 px-2">PS Name</th>
+                                    <th className="py-2 px-2">Attendance Status</th>
+                                    <th className="py-2 px-2">Attendance Time</th>
+                                    <th className="py-2 px-2">DSR Status</th>
+                                    <th className="py-2 px-2">DSR Time</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 font-medium text-slate-800 bg-white">
+                                  {m.gps.map((gp: any, gIdx: number) => (
+                                    <tr key={`inline_gp_${m.mandal}_${gIdx}`} className="hover:bg-slate-50 transition-colors divide-x divide-slate-100">
+                                      <td className="py-1.5 px-2 font-mono text-slate-500">{gIdx + 1}</td>
+                                      <td className="py-1.5 px-3 text-left font-bold text-slate-900">{gp.gp}</td>
+                                      <td className="py-1.5 px-2 font-mono text-slate-700">{gp.psName || "-"}</td>
+                                      <td className="py-1.5 px-2 font-semibold text-indigo-900">{gp.attStatus || "-"}</td>
+                                      <td className="py-1.5 px-2 font-mono text-slate-700">{gp.attTime || "-"}</td>
+                                      <td className="py-1.5 px-2 font-semibold text-purple-700">{gp.dsrStatus || (gp.dsrEntered ? "Yes" : "No")}</td>
+                                      <td className="py-1.5 px-2 font-mono text-slate-700">{gp.dsrTime || "-"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -799,7 +872,13 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
                   notReportedMandals.map((m, idx) => (
                     <tr key={`not_rep_${m.mandal}_${idx}`} className="hover:bg-slate-50 transition-colors divide-x divide-slate-200">
                       <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                      <td className="py-2 px-4 text-left font-bold text-slate-900">{m.mandal}</td>
+                      <td 
+                        className="py-2 px-4 text-left font-bold text-indigo-700 hover:text-indigo-900 cursor-pointer underline decoration-indigo-300 decoration-dotted underline-offset-4"
+                        onClick={() => onSelectMandal && onSelectMandal(m.mandal)}
+                        title="Click to view all Gram Panchayats in this Mandal"
+                      >
+                        {m.mandal}
+                      </td>
                       <td className="py-2 px-3 font-mono font-bold text-rose-600">{m.balanceGps}</td>
                       <td className="py-2 px-4 text-left font-mono text-slate-700 leading-relaxed">{m.gpsList}</td>
                     </tr>
@@ -861,7 +940,13 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
                   dsrNotCompletedMandals.map((m, idx) => (
                     <tr key={`dsr_pend_${m.mandal}_${idx}`} className="hover:bg-slate-50 transition-colors divide-x divide-slate-200">
                       <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                      <td className="py-2 px-4 text-left font-bold text-slate-900">{m.mandal}</td>
+                      <td 
+                        className="py-2 px-4 text-left font-bold text-indigo-700 hover:text-indigo-900 cursor-pointer underline decoration-indigo-300 decoration-dotted underline-offset-4"
+                        onClick={() => onSelectMandal && onSelectMandal(m.mandal)}
+                        title="Click to view all Gram Panchayats in this Mandal"
+                      >
+                        {m.mandal}
+                      </td>
                       <td className="py-2 px-3 font-mono font-bold text-purple-700">{m.balanceGps}</td>
                       <td className="py-2 px-4 text-left font-mono text-slate-700 leading-relaxed">{m.gpsList}</td>
                     </tr>
