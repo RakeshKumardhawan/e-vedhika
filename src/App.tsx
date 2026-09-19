@@ -18928,15 +18928,36 @@ function DSRAnalyzer({
             }
           }
 
-          const isDsrEntered =
+          const isDsrNegative =
+            dsrStatusRaw.includes("not") ||
+            dsrStatusRaw.includes("no") ||
+            dsrStatusRaw.includes("pending") ||
+            dsrStatusRaw.includes("లేదు") ||
+            dsrStatusRaw.includes("కాదు") ||
+            dsrStatusRaw.includes("పెండింగ్") ||
+            dsrStatusRaw.includes("రాలేదు") ||
+            dsrStatusRaw === "n/a" ||
+            dsrStatusRaw === "nil";
+
+          const isDsrPositive =
             dsrStatusRaw.includes("yes") ||
-            dsrStatusRaw.includes("enter") ||
-            dsrStatusRaw.includes("submit") ||
             dsrStatusRaw.includes("done") ||
+            dsrStatusRaw.includes("submitted") ||
+            dsrStatusRaw.includes("completed") ||
             dsrStatusRaw.includes("చేసారు") ||
-            dsrStatusRaw.includes("హాజరు") ||
-            (dsrTimeStr.length > 2 && dsrTimeStr !== "-") ||
-            dsrMinutes !== null;
+            dsrStatusRaw.includes("సమర్పించబడింది") ||
+            (dsrStatusRaw.includes("enter") && !isDsrNegative);
+
+          const hasValidDsrTime =
+            dsrTimeStr.length > 2 &&
+            dsrTimeStr !== "-" &&
+            dsrTimeStr.toLowerCase() !== "no" &&
+            dsrTimeStr.toLowerCase() !== "pending" &&
+            dsrTimeStr.toLowerCase() !== "nil" &&
+            dsrTimeStr.toLowerCase() !== "n/a" &&
+            (dsrTimeStr.includes(":") || dsrTimeStr.includes(".") || dsrMinutes !== null);
+
+          const isDsrEntered = !isDsrNegative && (isDsrPositive || hasValidDsrTime || dsrMinutes !== null);
 
           // 17. DSR Entered
           const dsrEntered = isDsrEntered ? 1 : 0;
