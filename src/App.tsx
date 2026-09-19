@@ -2028,6 +2028,8 @@ function LandingPage({
 
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
 import { CloudStorageManager } from "./components/CloudStorageManager";
+import { SoftwareHub } from "./components/SoftwareHub";
+import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
 
 export default function App() {
@@ -5176,6 +5178,7 @@ E-Vedhika Team`;
                     { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
                     { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
                     { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
+                    { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
                     
                   ].map((item, index) => {
                     const isActive = currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity"));
@@ -5741,6 +5744,7 @@ E-Vedhika Team`;
                   { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet },
                   { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown },
                   { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat },
+                  { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive },
                   { id: "gpdp_setup", label: "GPDP Initial Setup", icon: ClipboardList },
                   
                 ].map((item) => (
@@ -5911,6 +5915,7 @@ E-Vedhika Team`;
                 setCurrentAdminPin={setCurrentAdminPin}
                 districtsData={districtsData}
                 currentTab={currentTab}
+                setCurrentTab={setCurrentTab}
                 userProfile={userProfile}
                 storageConfig={storageConfig}
                 aboutContent={aboutContent}
@@ -8019,6 +8024,34 @@ E-Vedhika Team`;
     <UBDTracker user={user} addToast={addToast} />
   </motion.div>
 )}
+
+                {currentTab === "software_hub" && (
+                  <motion.div
+                    key="software_hub"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div className="flex justify-between items-center mb-4">
+                      <button
+                        aria-label="Back to Home"
+                        onClick={() => setCurrentTab("home")}
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100"
+                      >
+                        <ArrowLeft size={16} /> Back to Home
+                      </button>
+                    </div>
+                    <SoftwareHub
+                      user={user}
+                      userProfile={userProfile}
+                      addToast={addToast}
+                      onOpenAdminPanel={() => {
+                        setCurrentTab("admin");
+                        setActiveAdminSubTab("admin_software_hub");
+                      }}
+                    />
+                  </motion.div>
+                )}
 
                 
                 {/* Secondary admin block removed */}
@@ -10898,6 +10931,7 @@ function AdminPanel({
   setCurrentAdminPin,
   districtsData,
   currentTab,
+  setCurrentTab = () => {},
   userProfile,
   storageConfig,
   setShowDirectMessages,
@@ -11294,6 +11328,11 @@ function AdminPanel({
                       id: "db_backup",
                       label: "Database Backups",
                       icon: <Database size={18} />,
+                    },
+                    {
+                      id: "admin_software_hub",
+                      label: "Software Hub & Files",
+                      icon: <HardDrive size={18} />,
                     },
                   ]
                 : []),
@@ -12036,6 +12075,17 @@ function AdminPanel({
             
             {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles"].includes(activeSubTab) && (
               <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} activeTab={activeSubTab} />
+            )}
+
+            {activeSubTab === "admin_software_hub" && (
+              <AdminSoftwareHub
+                user={userProfile || user}
+                userProfile={userProfile}
+                addToast={addToast}
+                onViewPublicHub={() => {
+                  setCurrentTab("software_hub");
+                }}
+              />
             )}
 
             {(activeSubTab === "reports" || activeSubTab === "suggestions") && (

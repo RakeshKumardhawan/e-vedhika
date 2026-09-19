@@ -188,6 +188,7 @@ match /daily_traffic/{document=**} { allow read: if isAdmin(); allow create: if 
 match /visitor_logs/{document=**} { allow read: if isAdmin(); allow create: if true; }
 match /user_tracking/{document=**} { allow read: if isAdmin(); allow create: if true; }
 match /typing_status/{document=**} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+match /software_repository/{document=**} { allow read: if true; allow write: if isAdmin() || isSignedIn(); }
 
 // Default deny (fallback) - పైన పేర్కొనని కలెక్షన్స్ ఏవైనా ఉంటే వాటిని బ్లాక్ చేస్తుంది
 match /{document=**} {

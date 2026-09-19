@@ -39,6 +39,7 @@ import { RolesAndPermissionsControl } from './admin/RolesAndPermissionsControl';
 import { SupportCenter } from './admin/SupportCenter';
 import { PublicVisitorLogs } from './PublicVisitorLogs';
 import { CloudStorageManager } from './CloudStorageManager';
+import { AdminSoftwareHub } from './admin/AdminSoftwareHub';
 
 interface SuperAdminDashboardProps {
   user?: any;
@@ -431,6 +432,8 @@ export function SuperAdminDashboard({
         <SecurityLogsSection />
       ) : effectiveTab === "support" ? (
         <SupportCenter currentUser={user} addToast={addToast} />
+      ) : effectiveTab === "admin_software_hub" ? (
+        <AdminSoftwareHub user={user} addToast={addToast} />
       ) : effectiveTab === "roles" || effectiveTab === "staff_management" ? (
         <RolesAndPermissionsControl currentUser={user} addToast={addToast} />
       ) : effectiveTab === "notifications" ? (
@@ -641,6 +644,7 @@ export function SuperAdminDashboard({
                     { l: "Moderation Queue", i: "moderation", icon: Bot, color: "text-amber-400", bg: "bg-amber-400/10" },
                     { l: "Emergency Broadcast", i: "broadcast", icon: Megaphone, color: "text-emerald-400", bg: "bg-emerald-400/10" },
                     { l: "Database Backups", i: "db_backup", icon: Database, color: "text-cyan-400", bg: "bg-cyan-400/10" },
+                    { l: "Software Hub & Files", i: "admin_software_hub", icon: HardDrive, color: "text-indigo-400", bg: "bg-indigo-400/10" },
                     { l: "Security & Audit", i: "security", icon: ShieldAlert, color: "text-pink-400", bg: "bg-pink-400/10" },
                   ].map((btn, i) => (
                     <button 
