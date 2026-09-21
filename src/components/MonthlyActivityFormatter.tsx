@@ -9,6 +9,7 @@ export function MonthlyActivityFormatter({
   const [data, setData] = useState<any[]>([]);
   const [activities, setActivities] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
+  const [nameHeader, setNameHeader] = useState("Mandal Name");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const predefinedActivities = [
@@ -98,14 +99,16 @@ export function MonthlyActivityFormatter({
 
           let headerRowIndex = -1;
           let panchayatColIndex = -1;
+          let totalGpColIndex = -1;
+          let detectedHeaderName = "Mandal Name";
 
-          // Find the header row by looking for Panchayat/Village/Gram/Name or 'S.No'
+          // Find the header row by looking for Panchayat/Mandal/Village/Gram/Name or 'S.No'
           for (let i = 0; i < Math.min(rawData.length, 30); i++) {
             const row = rawData[i];
             if (!row) continue;
             for (let j = 0; j < Math.min(row.length, 10); j++) {
               const val = String(row[j] || "").toLowerCase().trim();
-              if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp" || val === "s.no" || val === "sl.no") {
+              if (val.includes("mandal") || val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp" || val === "s.no" || val === "sl.no") {
                 headerRowIndex = i;
                 break;
               }
@@ -125,13 +128,21 @@ export function MonthlyActivityFormatter({
           }
           if (headerRowIndex === -1) headerRowIndex = 0;
 
-          // Specifically find the Panchayat Name column in header row or nearby rows
+          // Specifically find the Name column and Total No. of GPs column in header row
           const headerRow = rawData[headerRowIndex] || [];
           for (let j = 0; j < Math.min(headerRow.length, 10); j++) {
             const val = String(headerRow[j] || "").toLowerCase().trim();
-            if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp") {
+            if (val.includes("mandal")) {
               panchayatColIndex = j;
-              break;
+              detectedHeaderName = "Mandal Name";
+            } else if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val.includes("village")) {
+              if (panchayatColIndex === -1) {
+                panchayatColIndex = j;
+                detectedHeaderName = "Panchayat Name";
+              }
+            }
+            if (val.includes("total no") || val.includes("total gp") || val.includes("total no. of gp") || val === "total gps") {
+              totalGpColIndex = j;
             }
           }
 
@@ -146,6 +157,15 @@ export function MonthlyActivityFormatter({
             }
           }
 
+          if (totalGpColIndex === -1 && panchayatColIndex + 1 < headerRow.length) {
+            const nextHeader = String(headerRow[panchayatColIndex + 1] || "").toLowerCase().trim();
+            if (nextHeader.includes("total") || nextHeader.includes("gp") || nextHeader.includes("no")) {
+              totalGpColIndex = panchayatColIndex + 1;
+            }
+          }
+
+          setNameHeader(detectedHeaderName);
+
           let foundActivities: string[] = [];
           let activityColMapping: Record<string, number> = {};
 
@@ -159,6 +179,7 @@ export function MonthlyActivityFormatter({
                 !val.toLowerCase().includes("telangana") &&
                 !val.toLowerCase().includes("report") &&
                 !val.toLowerCase().includes("panchayat") &&
+                !val.toLowerCase().includes("mandal") &&
                 !val.toLowerCase().includes("s.no") &&
                 !val.toLowerCase().includes("sl.no") &&
                 !val.toLowerCase().includes("total")
@@ -176,8 +197,9 @@ export function MonthlyActivityFormatter({
           // Fallback to predefined activities if scanning prior rows produced no activities
           if (foundActivities.length === 0) {
              foundActivities = predefinedActivities;
+             const startOffset = totalGpColIndex !== -1 ? totalGpColIndex + 1 : panchayatColIndex + 1;
              foundActivities.forEach((act, idx) => {
-                activityColMapping[act] = panchayatColIndex + 1 + (idx * 2);
+                activityColMapping[act] = startOffset + (idx * 2);
              });
           }
 
@@ -187,7 +209,7 @@ export function MonthlyActivityFormatter({
               let pNameVal = row[panchayatColIndex];
               let pName = String(pNameVal || "").trim();
 
-              // Fallback: If pName is numeric (e.g. S.No like 1, 2, 3), inspect column panchayatColIndex + 1 or column 1
+              // Fallback: If pName is numeric (e.g. S.No like 1, 2, 3), inspect column panchayatColIndex + 1
               if (!isNaN(Number(pName)) && pName !== "") {
                 const altVal = String(row[panchayatColIndex + 1] ?? row[1] ?? "").trim();
                 if (altVal && isNaN(Number(altVal))) {
@@ -196,56 +218,109 @@ export function MonthlyActivityFormatter({
                 }
               }
               
-              // Filter out invalid names (e.g. empty, pure numbers, headers, totals, mandal totals)
-              const lowerPName = pName.toLowerCase();
+              // Clean name (strip leading serial numbers)
+              let cleanPName = pName.replace(/^[\d\s.\-)]+/, "").trim();
+              if (!cleanPName) cleanPName = pName.trim();
+              const lowerPName = cleanPName.toLowerCase();
+
+              // Filter out invalid non-data rows
               if (
-                pName === "" ||
+                !cleanPName ||
+                cleanPName.length < 2 ||
+                /^\d+$/.test(cleanPName) ||
                 lowerPName.includes("grand") ||
                 lowerPName.includes("report") ||
                 lowerPName.includes("telangana") ||
                 lowerPName.includes("total") ||
                 lowerPName.includes("subtotal") ||
                 lowerPName.includes("sub-total") ||
-                lowerPName === "panchayat name" ||
-                lowerPName === "mandal name" ||
+                lowerPName.includes("summary") ||
+                lowerPName.includes("panchayat name") ||
+                lowerPName.includes("mandal name") ||
+                lowerPName.includes("gp name") ||
+                lowerPName.includes("gram panchayat") ||
+                lowerPName.includes("attendance") ||
+                lowerPName.includes("designation") ||
+                lowerPName.includes("page ") ||
+                lowerPName.includes("printed") ||
+                lowerPName.includes("generated") ||
                 lowerPName.startsWith("mandal:") ||
-                lowerPName.startsWith("mandal name:")
+                lowerPName.startsWith("mandal name:") ||
+                lowerPName === "s.no" ||
+                lowerPName === "sl.no" ||
+                lowerPName === "s no" ||
+                lowerPName === "sl no" ||
+                lowerPName === "nil" ||
+                lowerPName === "null" ||
+                lowerPName === "n/a" ||
+                lowerPName === "na"
               ) {
                  return null;
               }
 
               const record: any = {
                 "S.No": 0, // Assigned later
-                "Panchayat Name": pName,
+                "Panchayat Name": cleanPName.toUpperCase(),
+                "TotalGPs": 0,
               };
+
+              let explicitTotalGps = 0;
+              if (totalGpColIndex !== -1 && row[totalGpColIndex] !== undefined) {
+                const parsedNum = parseInt(String(row[totalGpColIndex]).replace(/[^\d]/g, ""), 10);
+                if (!isNaN(parsedNum) && parsedNum > 0) {
+                  explicitTotalGps = parsedNum;
+                }
+              }
 
               foundActivities.forEach((act) => {
                 const colIdx = activityColMapping[act] ?? (panchayatColIndex + 1 + (foundActivities.indexOf(act) * 2));
                 const val = row[colIdx];
+                const notVal = row[colIdx + 1];
                 
-                let isEntered = false;
                 const vStr = String(val || "").trim().toLowerCase();
-                
-                if (
-                   vStr === "1" || 
-                   vStr === "yes" || 
-                   vStr === "entered" || 
-                   vStr === "y" || 
-                   vStr === "true" ||
-                   vStr === "done"
+                const vNum = parseInt(vStr.replace(/[^\d]/g, ""), 10);
+                const notNum = parseInt(String(notVal || "0").replace(/[^\d]/g, ""), 10);
+
+                let enteredCount = 0;
+                let notEnteredCount = 0;
+
+                if (!isNaN(vNum) && (vNum > 1 || !isNaN(notNum))) {
+                  // Numerical report row (e.g. Mandal Summary row)
+                  enteredCount = vNum;
+                  notEnteredCount = isNaN(notNum) ? 0 : notNum;
+                } else if (
+                  vStr === "1" || 
+                  vStr === "yes" || 
+                  vStr === "entered" || 
+                  vStr === "y" || 
+                  vStr === "true" ||
+                  vStr === "done" ||
+                  vNum === 1
                 ) {
-                  isEntered = true;
-                } else if (!isNaN(Number(vStr)) && Number(vStr) > 0) {
-                  isEntered = true; 
-                } else if (vStr.length > 0 && vStr !== "0" && vStr !== "no" && vStr !== "not entered" && vStr !== "n" && vStr !== "false" && vStr !== "-") {
-                  isEntered = true;
+                  enteredCount = 1;
+                  notEnteredCount = 0;
+                } else {
+                  enteredCount = 0;
+                  notEnteredCount = 1;
                 }
 
                 record[act] = {
-                  Entered: isEntered ? 1 : 0,
-                  NotEntered: isEntered ? 0 : 1,
+                  Entered: enteredCount,
+                  NotEntered: notEnteredCount,
                 };
               });
+
+              // Determine TotalGPs for this row
+              if (explicitTotalGps > 0) {
+                record["TotalGPs"] = explicitTotalGps;
+              } else {
+                let maxActivitySum = 0;
+                foundActivities.forEach((act) => {
+                  const actSum = (record[act]?.Entered || 0) + (record[act]?.NotEntered || 0);
+                  if (actSum > maxActivitySum) maxActivitySum = actSum;
+                });
+                record["TotalGPs"] = maxActivitySum > 0 ? maxActivitySum : 1;
+              }
               
               return record;
             }).filter(Boolean);
@@ -255,11 +330,28 @@ export function MonthlyActivityFormatter({
              return;
           }
 
-          // Resequence valid rows
-          parsedData.forEach((row, i) => row["S.No"] = i + 1);
+          // Deduplicate rows by Name
+          const uniqueMap = new Map<string, any>();
+          parsedData.forEach((rec) => {
+            if (!rec) return;
+            const pKey = rec["Panchayat Name"];
+            if (!uniqueMap.has(pKey)) {
+              uniqueMap.set(pKey, rec);
+            } else {
+              const existing = uniqueMap.get(pKey);
+              foundActivities.forEach((act) => {
+                existing[act].Entered += rec[act]?.Entered || 0;
+                existing[act].NotEntered += rec[act]?.NotEntered || 0;
+              });
+              existing["TotalGPs"] = Math.max(existing["TotalGPs"], rec["TotalGPs"]);
+            }
+          });
+
+          const finalRows = Array.from(uniqueMap.values());
+          finalRows.forEach((row, i) => row["S.No"] = i + 1);
 
           setActivities(foundActivities);
-          setData(parsedData);
+          setData(finalRows);
           addToast("ఫైల్ విజ‌య‌వంతంగా ప్రాసెస్ చేయబడింది!");
           if (fileRef.current) fileRef.current.value = ""; // reset for next upload
 
@@ -286,8 +378,8 @@ export function MonthlyActivityFormatter({
       const headerRow1 = ["Telangana State"];
       const headerRow2 = ["Monthly Activity Data Entry Report"];
       
-      const headerRow3 = ["S.No", "Panchayat Name"];
-      const headerRow4 = ["", ""];
+      const headerRow3 = ["S.No", nameHeader, "Total No. of Gp's"];
+      const headerRow4 = ["", "", ""];
       
       activities.forEach((act) => {
         headerRow3.push(act, ""); // Span 2 cols
@@ -304,8 +396,12 @@ export function MonthlyActivityFormatter({
         totals[act] = { entered: 0, notEntered: 0 };
       });
 
+      let grandTotalGps = 0;
+
       data.forEach((row, idx) => {
-        const sheetRow: any[] = [idx + 1, row["Panchayat Name"]];
+        const totalGpsNum = Number(row["TotalGPs"] || 0);
+        grandTotalGps += totalGpsNum;
+        const sheetRow: any[] = [idx + 1, row["Panchayat Name"], totalGpsNum];
         
         activities.forEach((act) => {
           const actData = row[act] || { Entered: 0, NotEntered: 0 };
@@ -318,7 +414,7 @@ export function MonthlyActivityFormatter({
       });
 
       // Total Row
-      const totalRow: any[] = ["Total", ""];
+      const totalRow: any[] = ["Total", "", grandTotalGps];
       activities.forEach((act) => {
         totalRow.push(totals[act].entered, totals[act].notEntered);
       });
@@ -327,16 +423,18 @@ export function MonthlyActivityFormatter({
       const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
       // Add Merges
-      const totalCols = 2 + activities.length * 2;
+      const totalCols = 3 + activities.length * 2;
       const merges = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Telangana State
         { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Monthly Activity Data Entry Report
         { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } }, // S.No
-        { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } }, // Panchayat Name
+        { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } }, // Panchayat/Mandal Name
+        { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } }, // Total No. of Gp's
+        { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 1 } }, // Merge "Total" across S.No & Name cols
       ];
       
       activities.forEach((_, idx) => {
-        const startCol = 2 + idx * 2;
+        const startCol = 3 + idx * 2;
         merges.push({ s: { r: 2, c: startCol }, e: { r: 2, c: startCol + 1 } });
       });
 
@@ -380,18 +478,18 @@ export function MonthlyActivityFormatter({
             isBold = true; // Total Row
           } else {
              // Data Rows styling
-             if (C >= 2) {
+             if (C >= 3) {
                const val = Number(cell.v || 0);
-               const isEnteredCol = C % 2 === 0;
+               const isEnteredCol = (C - 3) % 2 === 0;
                if (isEnteredCol) {
-                 if (val === 1) {
+                 if (val > 0) {
                    bgColor = "92D050"; // Vibrant Green
                    isBold = true;
                  } else {
                    bgColor = "FFFFFF";
                  }
                } else {
-                 if (val === 1) {
+                 if (val > 0) {
                    bgColor = "FF0000"; // Vibrant Red
                    fontColor = "FFFFFF";
                    isBold = true;
@@ -399,7 +497,7 @@ export function MonthlyActivityFormatter({
                    bgColor = "FFFFFF";
                  }
                }
-             } else if (C === 1) {
+             } else if (C === 1 || C === 2) {
                isBold = true;
              }
           }
@@ -435,7 +533,7 @@ export function MonthlyActivityFormatter({
       const jsPDFModule = await import("jspdf");
       const autoTableModule = await import("jspdf-autotable");
       const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF;
-      const autoTable = autoTableModule.default || autoTableModule;
+      const autoTable = (autoTableModule.default || autoTableModule) as any;
 
       const doc = new jsPDF("l", "mm", "a4");
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -457,7 +555,8 @@ export function MonthlyActivityFormatter({
       // Table Headers
       const head1: any[] = [
         { content: "S.No", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
-        { content: "Panchayat Name", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
+        { content: nameHeader, rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
+        { content: "Total No. of Gp's", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
       ];
 
       activities.forEach((act) => {
@@ -477,8 +576,12 @@ export function MonthlyActivityFormatter({
       });
 
       const bodyRows: any[][] = [];
+      let grandTotalGps = 0;
+
       data.forEach((row, idx) => {
-        const r: any[] = [idx + 1, row["Panchayat Name"]];
+        const totalGpsNum = Number(row["TotalGPs"] || 0);
+        grandTotalGps += totalGpsNum;
+        const r: any[] = [idx + 1, row["Panchayat Name"], totalGpsNum];
         activities.forEach((act) => {
           const entry = row[act] || { Entered: 0, NotEntered: 0 };
           r.push(entry.Entered, entry.NotEntered);
@@ -487,7 +590,7 @@ export function MonthlyActivityFormatter({
       });
 
       // Total Row
-      const totalsRow: any[] = ["Total", ""];
+      const totalsRow: any[] = ["Total", "", grandTotalGps];
       activities.forEach((act) => {
         const totalEnt = data.reduce((acc, r) => acc + (r[act]?.Entered || 0), 0);
         const totalNEnt = data.reduce((acc, r) => acc + (r[act]?.NotEntered || 0), 0);
@@ -518,7 +621,8 @@ export function MonthlyActivityFormatter({
         },
         columnStyles: {
           0: { cellWidth: 8 },
-          1: { cellWidth: 28, halign: "left", fontStyle: "bold" },
+          1: { cellWidth: 26, halign: "left", fontStyle: "bold" },
+          2: { cellWidth: 14, halign: "center", fontStyle: "bold" },
         },
         didParseCell: (dataCell) => {
           const { row, column } = dataCell;
@@ -527,18 +631,18 @@ export function MonthlyActivityFormatter({
               // Total Row
               dataCell.cell.styles.fontStyle = "bold";
               dataCell.cell.styles.fillColor = [240, 240, 240];
-            } else if (column.index >= 2) {
+            } else if (column.index >= 3) {
               const val = Number(dataCell.cell.text[0] || 0);
-              const isEnteredCol = column.index % 2 === 0;
+              const isEnteredCol = (column.index - 3) % 2 === 0;
               if (isEnteredCol) {
-                if (val === 1) {
+                if (val > 0) {
                   dataCell.cell.styles.fillColor = [146, 208, 80]; // Green #92D050
                   dataCell.cell.styles.fontStyle = "bold";
                 } else {
                   dataCell.cell.styles.fillColor = [255, 255, 255]; // White
                 }
               } else {
-                if (val === 1) {
+                if (val > 0) {
                   dataCell.cell.styles.fillColor = [255, 0, 0]; // Red #FF0000
                   dataCell.cell.styles.textColor = [255, 255, 255];
                   dataCell.cell.styles.fontStyle = "bold";
@@ -571,6 +675,8 @@ export function MonthlyActivityFormatter({
     if (!data.length) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    const grandTotalGps = data.reduce((acc, row) => acc + (row["TotalGPs"] || 0), 0);
 
     let tableHtml = `
       <!DOCTYPE html>
@@ -653,14 +759,15 @@ export function MonthlyActivityFormatter({
         <table>
           <thead>
             <tr>
-              <th colspan="${2 + activities.length * 2}" class="title-bg">Telangana State</th>
+              <th colspan="${3 + activities.length * 2}" class="title-bg">Telangana State</th>
             </tr>
             <tr>
-              <th colspan="${2 + activities.length * 2}" class="subtitle-bg">Monthly Activity Data Entry Report</th>
+              <th colspan="${3 + activities.length * 2}" class="subtitle-bg">Monthly Activity Data Entry Report</th>
             </tr>
             <tr>
               <th rowspan="2" class="act-header">S.No</th>
-              <th rowspan="2" class="act-header">Panchayat Name</th>
+              <th rowspan="2" class="act-header">${nameHeader}</th>
+              <th rowspan="2" class="act-header">Total No. of Gp's</th>
               ${activities.map((a) => `<th colspan="2" class="act-header">${a}</th>`).join("")}
             </tr>
             <tr>
@@ -674,11 +781,12 @@ export function MonthlyActivityFormatter({
               <tr>
                 <td>${idx + 1}</td>
                 <td class="p-name">${row["Panchayat Name"]}</td>
+                <td style="font-weight:bold;">${row["TotalGPs"] || 0}</td>
                 ${activities
                   .map((act) => {
                     const entry = row[act] || { Entered: 0, NotEntered: 0 };
-                    const entCls = entry.Entered === 1 ? "cell-green" : "cell-white";
-                    const nEntCls = entry.NotEntered === 1 ? "cell-red" : "cell-white";
+                    const entCls = entry.Entered > 0 ? "cell-green" : "cell-white";
+                    const nEntCls = entry.NotEntered > 0 ? "cell-red" : "cell-white";
                     return `<td class="${entCls}">${entry.Entered}</td><td class="${nEntCls}">${entry.NotEntered}</td>`;
                   })
                   .join("")}
@@ -688,6 +796,7 @@ export function MonthlyActivityFormatter({
               .join("")}
             <tr class="total-row">
               <td colspan="2" style="text-align: center; font-weight: bold;">Total</td>
+              <td style="font-weight:bold;">${grandTotalGps}</td>
               ${activities
                 .map((act) => {
                   const tEnt = data.reduce((acc, r) => acc + (r[act]?.Entered || 0), 0);
@@ -708,6 +817,8 @@ export function MonthlyActivityFormatter({
     printWindow.document.write(tableHtml);
     printWindow.document.close();
   };
+
+  const grandTotalGps = data.reduce((acc, row) => acc + (row["TotalGPs"] || 0), 0);
 
   return (
     <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-slate-100 mt-6 shadow-sm">
@@ -789,7 +900,7 @@ export function MonthlyActivityFormatter({
               <thead>
                 <tr>
                   <th
-                    colSpan={2 + activities.length * 2}
+                    colSpan={3 + activities.length * 2}
                     className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-sm tracking-wide"
                   >
                     Telangana State
@@ -797,7 +908,7 @@ export function MonthlyActivityFormatter({
                 </tr>
                 <tr>
                   <th
-                    colSpan={2 + activities.length * 2}
+                    colSpan={3 + activities.length * 2}
                     className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-xs tracking-wide"
                   >
                     Monthly Activity Data Entry Report
@@ -808,7 +919,10 @@ export function MonthlyActivityFormatter({
                     S.No
                   </th>
                   <th rowSpan={2} className="py-2 px-4 border border-black bg-[#11518E] text-white text-center font-bold min-w-[150px]">
-                    Panchayat Name
+                    {nameHeader}
+                  </th>
+                  <th rowSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold min-w-[100px]">
+                    Total No. of Gp's
                   </th>
                   {activities.map((a, i) => (
                     <th key={i} colSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold text-xs">
@@ -838,11 +952,14 @@ export function MonthlyActivityFormatter({
                     <td className="py-1.5 px-4 border border-black whitespace-nowrap font-bold text-slate-800 text-left">
                       {row["Panchayat Name"]}
                     </td>
+                    <td className="py-1.5 px-2 border border-black text-center font-bold text-xs text-slate-900 bg-slate-50">
+                      {row["TotalGPs"] || 0}
+                    </td>
                     {activities.map((act, actIdx) => {
                       const entry = row[act] || { Entered: 0, NotEntered: 0 };
                       
-                      const isEnt = entry.Entered === 1;
-                      const isNotEnt = entry.NotEntered === 1;
+                      const isEnt = entry.Entered > 0;
+                      const isNotEnt = entry.NotEntered > 0;
 
                       return (
                         <React.Fragment key={`${idx}-${actIdx}`}>
@@ -868,6 +985,9 @@ export function MonthlyActivityFormatter({
                 <tr className="bg-white font-bold border-t-2 border-black">
                   <td colSpan={2} className="py-2 px-4 border border-black text-center font-black text-slate-900 text-xs">
                     Total
+                  </td>
+                  <td className="py-2 px-2 border border-black text-center font-black text-slate-900 bg-slate-100 text-xs">
+                    {grandTotalGps}
                   </td>
                   {activities.map((act, idx) => {
                     const totalEnt = data.reduce((acc, row) => acc + (row[act]?.Entered || 0), 0);

@@ -18923,19 +18923,52 @@ function DSRAnalyzer({
             currentDynamicMandal = mandalRaw;
           }
 
-          // Filter out header, total, subtotal, numeric S.No, and invalid rows
+          // Clean GP name (strip leading serial numbers like "1. ", "02) ", "3 - ")
+          let cleanGp = gpRaw.replace(/^[\d\s.\-)]+/, "").trim();
+          if (!cleanGp) cleanGp = gpRaw.trim();
+          const cleanGpLower = cleanGp.toLowerCase();
+
+          // Comprehensive filter to reject non-GP rows (headers, footers, subtotals, repeating page titles)
           if (
-            !gpRaw ||
-            gpRaw.length < 2 ||
-            gpLower.includes("total") ||
-            gpLower.includes("subtotal") ||
-            gpLower.includes("grand") ||
-            gpLower.includes("report") ||
-            gpLower.includes("telangana") ||
-            gpLower === "panchayat name" ||
-            gpLower === "mandal name" ||
-            gpLower === "gp name" ||
-            /^\d+$/.test(gpRaw)
+            !cleanGp ||
+            cleanGp.length < 2 ||
+            /^\d+$/.test(cleanGp) ||
+            cleanGpLower.includes("total") ||
+            cleanGpLower.includes("subtotal") ||
+            cleanGpLower.includes("sub-total") ||
+            cleanGpLower.includes("grand") ||
+            cleanGpLower.includes("summary") ||
+            cleanGpLower.includes("report") ||
+            cleanGpLower.includes("telangana") ||
+            cleanGpLower.includes("panchayat name") ||
+            cleanGpLower.includes("gp name") ||
+            cleanGpLower.includes("gram panchayat") ||
+            cleanGpLower.includes("mandal name") ||
+            cleanGpLower.includes("district name") ||
+            cleanGpLower.includes("name of") ||
+            cleanGpLower.includes("attendance status") ||
+            cleanGpLower.includes("dsr status") ||
+            cleanGpLower.includes("dsr entry") ||
+            cleanGpLower.includes("designation") ||
+            cleanGpLower.includes("secretary name") ||
+            cleanGpLower.includes("ps name") ||
+            cleanGpLower.includes("page ") ||
+            cleanGpLower.includes("printed") ||
+            cleanGpLower.includes("generated") ||
+            cleanGpLower.includes("as on") ||
+            cleanGpLower === "s.no" ||
+            cleanGpLower === "sl.no" ||
+            cleanGpLower === "s no" ||
+            cleanGpLower === "sl no" ||
+            cleanGpLower === "serial no" ||
+            cleanGpLower === "s. no" ||
+            cleanGpLower === "sl. no" ||
+            cleanGpLower === "nil" ||
+            cleanGpLower === "null" ||
+            cleanGpLower === "n/a" ||
+            cleanGpLower === "na" ||
+            cleanGpLower === "mandal" ||
+            cleanGpLower === "district"
           ) {
             return;
           }
@@ -19058,10 +19091,12 @@ function DSRAnalyzer({
           // 20. DSR After 11 AM (> 660 min)
           const dsrAfter11 = isDsrEntered && (dsrMinutes !== null ? dsrMinutes > 660 : false) ? 1 : 0;
 
+          const finalGpName = cleanGp.toUpperCase();
+
           const rowItem = {
             sNo: processed.length + 1,
             mandal: mandalRaw,
-            gp: gpRaw.toUpperCase(),
+            gp: finalGpName,
             attStatus: isP
               ? before9AM
                 ? "Present (BEFORE 9:00 AM)"
@@ -19098,9 +19133,8 @@ function DSRAnalyzer({
             dsrBefore11,
             dsrAfter11,
           };
-          processed.push(rowItem);
 
-          // Mandal aggregation
+          // Mandal aggregation with deduplication
           if (!mandalMap.has(mandalRaw)) {
             mandalMap.set(mandalRaw, {
               mandal: mandalRaw,
@@ -19122,26 +19156,55 @@ function DSRAnalyzer({
               dsrBefore11: 0,
               dsrAfter11: 0,
               gps: [] as any[],
+              seenGps: new Set<string>(),
             });
           }
 
           const mObj = mandalMap.get(mandalRaw);
-          mObj.totalGPs += 1;
-          mObj.c6_7 += c6_7;
-          mObj.c7_8 += c7_8;
-          mObj.c8_9 += c8_9;
-          mObj.before9AM += before9AM;
-          mObj.c9_11 += c9_11;
-          mObj.after11AM += after11AM;
-          mObj.attendedGP += attendedGP;
-          mObj.leaveToday += leaveToday;
-          mObj.meetingTraining += meetingTraining;
-          mObj.totalReported += totalReported;
-          mObj.notReported += notReported;
-          mObj.dsrEntered += dsrEntered;
-          mObj.dsrBefore11 += dsrBefore11;
-          mObj.dsrAfter11 += dsrAfter11;
-          mObj.gps.push(rowItem);
+
+          if (mObj.seenGps.has(finalGpName)) {
+            // Duplicate GP row: Merge status into existing GP without double counting totalGPs
+            const existingGp = mObj.gps.find((g: any) => g.gp === finalGpName);
+            if (existingGp) {
+              if (isP && !existingGp.isPresent) {
+                mObj.attendedGP += 1;
+                mObj.before9AM += before9AM;
+                mObj.c6_7 += c6_7;
+                mObj.c7_8 += c7_8;
+                mObj.c8_9 += c8_9;
+                mObj.c9_11 += c9_11;
+                mObj.after11AM += after11AM;
+                existingGp.isPresent = true;
+                existingGp.attendedGP = 1;
+              }
+              if (dsrEntered && !existingGp.dsrEntered) {
+                mObj.dsrEntered += 1;
+                mObj.dsrBefore11 += dsrBefore11;
+                mObj.dsrAfter11 += dsrAfter11;
+                existingGp.dsrEntered = 1;
+              }
+            }
+          } else {
+            // New unique GP
+            mObj.seenGps.add(finalGpName);
+            mObj.totalGPs += 1;
+            mObj.c6_7 += c6_7;
+            mObj.c7_8 += c7_8;
+            mObj.c8_9 += c8_9;
+            mObj.before9AM += before9AM;
+            mObj.c9_11 += c9_11;
+            mObj.after11AM += after11AM;
+            mObj.attendedGP += attendedGP;
+            mObj.leaveToday += leaveToday;
+            mObj.meetingTraining += meetingTraining;
+            mObj.totalReported += totalReported;
+            mObj.notReported += notReported;
+            mObj.dsrEntered += dsrEntered;
+            mObj.dsrBefore11 += dsrBefore11;
+            mObj.dsrAfter11 += dsrAfter11;
+            mObj.gps.push(rowItem);
+            processed.push(rowItem);
+          }
         });
 
         if (processed.length === 0) {
