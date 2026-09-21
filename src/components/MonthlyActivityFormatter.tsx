@@ -10,6 +10,7 @@ export function MonthlyActivityFormatter({
   const [activities, setActivities] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
   const [nameHeader, setNameHeader] = useState("Mandal Name");
+  const [uploadDateTime, setUploadDateTime] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const predefinedActivities = [
@@ -37,6 +38,19 @@ export function MonthlyActivityFormatter({
     if (!file) return;
 
     setFileName(file.name);
+
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const year = now.getFullYear();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedTime = `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
+    const defaultUploadDateTime = `${day}-${month}-${year} ${formattedTime}`;
+
     try {
       const XLSX = await import("xlsx-js-style");
       const reader = new FileReader();
@@ -96,6 +110,18 @@ export function MonthlyActivityFormatter({
             addToast("Excel ఫైల్ ఖాళీగా ఉంది.");
             return;
           }
+
+          // Detect any date/time in header rows (0-5) or fallback to upload date & time
+          let detectedDateTime = defaultUploadDateTime;
+          for (let i = 0; i < Math.min(rawData.length, 6); i++) {
+            const rowText = (rawData[i] || []).join(" ");
+            const match = rowText.match(/(?:date|as on|report date|on)?[:\s]*(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AaPp][Mm])?)?)/i);
+            if (match && match[1] && match[1].length >= 8) {
+              detectedDateTime = match[1].trim();
+              break;
+            }
+          }
+          setUploadDateTime(detectedDateTime);
 
           let headerRowIndex = -1;
           let panchayatColIndex = -1;
@@ -376,7 +402,11 @@ export function MonthlyActivityFormatter({
       
       const ws_data: any[][] = [];
       const headerRow1 = ["Telangana State"];
-      const headerRow2 = ["Monthly Activity Data Entry Report"];
+      const headerRow2 = [
+        uploadDateTime
+          ? `Monthly Activity Data Entry Report - (${uploadDateTime})`
+          : "Monthly Activity Data Entry Report",
+      ];
       
       const headerRow3 = ["S.No", nameHeader, "Total No. of Gp's"];
       const headerRow4 = ["", "", ""];
@@ -550,7 +580,10 @@ export function MonthlyActivityFormatter({
       doc.setFillColor(17, 81, 142);
       doc.rect(0, 12, pageWidth, 8, "F");
       doc.setFontSize(9);
-      doc.text("Monthly Activity Data Entry Report", pageWidth / 2, 17.5, { align: "center" });
+      const pdfSubtitle = uploadDateTime
+        ? `Monthly Activity Data Entry Report - (${uploadDateTime})`
+        : "Monthly Activity Data Entry Report";
+      doc.text(pdfSubtitle, pageWidth / 2, 17.5, { align: "center" });
 
       // Table Headers
       const head1: any[] = [
@@ -762,7 +795,7 @@ export function MonthlyActivityFormatter({
               <th colspan="${3 + activities.length * 2}" class="title-bg">Telangana State</th>
             </tr>
             <tr>
-              <th colspan="${3 + activities.length * 2}" class="subtitle-bg">Monthly Activity Data Entry Report</th>
+              <th colspan="${3 + activities.length * 2}" class="subtitle-bg">Monthly Activity Data Entry Report ${uploadDateTime ? `- (${uploadDateTime})` : ""}</th>
             </tr>
             <tr>
               <th rowspan="2" class="act-header">S.No</th>
@@ -849,6 +882,19 @@ export function MonthlyActivityFormatter({
 
           {data.length > 0 && (
             <>
+              {uploadDateTime && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-semibold shadow-xs">
+                  <span className="text-blue-700 font-bold whitespace-nowrap">తేదీ & సమయం:</span>
+                  <input
+                    type="text"
+                    value={uploadDateTime}
+                    onChange={(e) => setUploadDateTime(e.target.value)}
+                    className="bg-transparent border-b border-blue-400 focus:outline-none px-1 text-xs font-bold text-blue-950 min-w-[155px]"
+                    title="రిపోర్ట్ తేదీ మరియు సమయం (మార్చుకోవచ్చు)"
+                  />
+                </div>
+              )}
+
               <button
                 onClick={handleExportExcel}
                 className="flex items-center gap-2 px-4 py-2.5 bg-[#11518E] text-white font-bold text-xs rounded-xl hover:bg-[#0d3f6f] transition-all shadow-sm"
@@ -911,7 +957,7 @@ export function MonthlyActivityFormatter({
                     colSpan={3 + activities.length * 2}
                     className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-xs tracking-wide"
                   >
-                    Monthly Activity Data Entry Report
+                    Monthly Activity Data Entry Report {uploadDateTime ? `- (${uploadDateTime})` : ""}
                   </th>
                 </tr>
                 <tr>
