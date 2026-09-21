@@ -18888,21 +18888,57 @@ function DSRAnalyzer({
 
         const processed: any[] = [];
         const mandalMap = new Map<string, any>();
+        let currentDynamicMandal = "GENERAL";
 
         allRows.slice(bestHeaderIdx + 1).forEach((r) => {
-          const gpRaw = String(r[finalGpIdx] || "").trim();
-          const mandalRaw = String(r[finalMandalIdx] || "UNKNOWN")
+          let gpRaw = String(r[finalGpIdx] || "").trim();
+          let mandalRaw = String(r[finalMandalIdx] || "")
             .trim()
             .toUpperCase();
 
+          // Check if this row is a Mandal Section Header inside the Panchayat column (e.g. "Mandal: Bheemini", "Mandal Name: Chennur")
+          const gpLower = gpRaw.toLowerCase();
+          if (
+            gpLower.startsWith("mandal:") ||
+            gpLower.startsWith("mandal name") ||
+            gpLower.includes("mandal name:") ||
+            gpLower.endsWith("mandal")
+          ) {
+            const extracted = gpRaw.replace(/mandal\s*(name)?\s*[:\-]?/i, "").replace(/mandal$/i, "").trim().toUpperCase();
+            if (extracted && extracted.length > 2 && !extracted.includes("TOTAL") && !extracted.includes("SUMMARY")) {
+              currentDynamicMandal = extracted;
+            }
+            // Skip the section header row itself
+            return;
+          }
+
+          // If Mandal column is missing or UNKNOWN, fallback to currentDynamicMandal
+          if (!mandalRaw || mandalRaw === "UNKNOWN" || mandalRaw === "UNDEFINED") {
+            if (currentDynamicMandal !== "GENERAL") {
+              mandalRaw = currentDynamicMandal;
+            } else {
+              mandalRaw = "DISTRICT GENERAL";
+            }
+          } else {
+            currentDynamicMandal = mandalRaw;
+          }
+
+          // Filter out header, total, subtotal, numeric S.No, and invalid rows
           if (
             !gpRaw ||
             gpRaw.length < 2 ||
-            gpRaw.toLowerCase().includes("total") ||
+            gpLower.includes("total") ||
+            gpLower.includes("subtotal") ||
+            gpLower.includes("grand") ||
+            gpLower.includes("report") ||
+            gpLower.includes("telangana") ||
+            gpLower === "panchayat name" ||
+            gpLower === "mandal name" ||
+            gpLower === "gp name" ||
             /^\d+$/.test(gpRaw)
-          )
+          ) {
             return;
-          if (gpRaw.toLowerCase() === "panchayat name") return;
+          }
 
           const attStatusRaw = String(r[attStatusIdx] || "").toLowerCase();
           const dsrStatusRaw = String(r[dsrStatusIdx] || "").toLowerCase();
@@ -19365,21 +19401,72 @@ function DSRAnalyzer({
   };
 
   const downloadRawPdf = async () => {
+    await exportMandalSummaryPDF();
+  };
+
+  const exportMandalSummaryPDF = async () => {
     await loadHeavyModules();
-    if (mandalSummaries.length === 0 && data.length === 0) return;
+    if (mandalSummaries.length === 0 && data.length === 0) {
+      addToast("PDF జనరేట్ చేయడానికి ఎలాంటి డేటా అందుబాటులో లేదు!");
+      return;
+    }
+
     const doc = new jsPDF("l", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // Title & Header Banner
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageWidth, 22, "F");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
-    doc.text("Telangana State", 14, 11);
-    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("TELANGANA STATE - PANCHAYAT RAJ & RURAL DEVELOPMENT", 12, 9);
+
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
+    doc.setTextColor(203, 213, 225); // slate-300
     doc.text(
-      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
-      14,
-      16,
+      `Mandal-wise Panchayat Secretaries Attendance & DSR Analysis Report (${reportDate} - ${reportTime || currentTime})`,
+      12,
+      16
     );
 
+    // Right Badge in Header
+    doc.setFillColor(30, 41, 59);
+    doc.roundedRect(pageWidth - 70, 4, 58, 14, 2, 2, "F");
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(56, 189, 248); // sky-400
+    doc.text("E-VEDHIKA DIGITAL PORTAL", pageWidth - 66, 9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(226, 232, 240);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - 66, 14);
+
+    // Summary Metric Strip
+    const cardY = 25;
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.roundedRect(12, cardY, pageWidth - 24, 10, 2, 2, "F");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+
+    const dsrPct = grandTotal.totalGPs > 0 ? ((grandTotal.dsrEntered / grandTotal.totalGPs) * 100).toFixed(1) : "0";
+    const metricsText = [
+      `Total Mandals: ${mandalSummaries.length}`,
+      `Total GPs: ${grandTotal.totalGPs}`,
+      `Attended: ${grandTotal.attendedGP}`,
+      `Bef 9 AM: ${grandTotal.before9AM} (${grandTotal.pctBefore9AM.toFixed(1)}%)`,
+      `Aft 11 AM: ${grandTotal.after11AM} (${grandTotal.pctAfter11AM.toFixed(1)}%)`,
+      `DSR Entered: ${grandTotal.dsrEntered} (${dsrPct}%)`,
+      `Not Reported: ${grandTotal.notReported}`
+    ].join("   |   ");
+
+    doc.text(metricsText, 16, cardY + 6.5);
+
+    // Build Table Body
     const tableBody = mandalSummaries.map((m, idx) => [
       idx + 1,
       m.mandal,
@@ -19403,9 +19490,10 @@ function DSRAnalyzer({
       m.dsrAfter11,
     ]);
 
+    // Total Row
     tableBody.push([
       "Total",
-      "Total",
+      "TOTAL DISTRICT SUMMARY",
       grandTotal.totalGPs,
       grandTotal.c6_7,
       grandTotal.c7_8,
@@ -19421,32 +19509,158 @@ function DSRAnalyzer({
       grandTotal.totalReported,
       grandTotal.notReported,
       grandTotal.dsrEntered,
-      `${grandTotal.dsrEntered}/${grandTotal.totalGPs}`,
+      `${grandTotal.dsrEntered} / ${grandTotal.totalGPs}`,
       grandTotal.dsrBefore11,
       grandTotal.dsrAfter11,
     ]);
 
     autoTable(doc, {
-      startY: 20,
-      head: [DSR_REPORT_HEADERS],
+      startY: 38,
+      head: [
+        [
+          "1. S.No",
+          "2. Mandal Name",
+          "3. Total GPs",
+          "4. 6-7 AM",
+          "5. 7-8 AM",
+          "6. 8-9 AM",
+          "7. Bef 9 AM",
+          "8. % Bef 9 AM",
+          "9. 9-11 AM",
+          "10. Aft 11 AM",
+          "11. % Aft 11 AM",
+          "12. Attended",
+          "13. Leave",
+          "14. Meeting",
+          "15. Reported",
+          "16. Not Rep.",
+          "17. DSR Ent.",
+          "18. DSR Status",
+          "19. DSR < 11",
+          "20. DSR > 11",
+        ],
+      ],
       body: tableBody,
-      styles: { fontSize: 5.5, cellPadding: 1, halign: "center" },
+      styles: { fontSize: 6, cellPadding: 1.2, halign: "center", font: "helvetica" },
       headStyles: {
         fillColor: [15, 23, 42],
         textColor: [255, 255, 255],
         fontStyle: "bold",
+        fontSize: 6,
+        halign: "center",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 7 },
-        1: { cellWidth: 28, halign: "left" },
+        0: { cellWidth: 10 },
+        1: { cellWidth: 32, halign: "left", fontStyle: "bold" },
+      },
+      didParseCell: (cellData) => {
+        if (cellData.row.index === tableBody.length - 1) {
+          cellData.cell.styles.fontStyle = "bold";
+          cellData.cell.styles.fillColor = [15, 23, 42];
+          cellData.cell.styles.textColor = [255, 255, 255];
+        }
+      },
+      didDrawPage: (dataArg) => {
+        const pageCount = (doc.internal as any).getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+
+        doc.text(
+          "E-Vedhika Digital Portal • DSR Analyzer Official Mandal Summary Report",
+          12,
+          pageHeight - 8
+        );
+        doc.text(
+          `Page ${dataArg.pageNumber} of ${pageCount}`,
+          pageWidth - 25,
+          pageHeight - 8
+        );
       },
       theme: "grid",
     });
 
-    doc.save(
-      `Report_Mandal_wise_Status_PS_Attendance_${reportDate.replace(/\./g, "-")}.pdf`,
+    doc.save(`Mandal_Summary_Report_${reportDate.replace(/\./g, "-")}.pdf`);
+    addToast("మండల్ సమ్మరీ PDF రిపోర్ట్ విజయవంతంగా డౌన్‌లోడ్ అయింది!");
+  };
+
+  const exportSingleMandalPDF = async (mandalObj: any) => {
+    await loadHeavyModules();
+    if (!mandalObj || !mandalObj.gps) return;
+
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // Title & Header Banner
+    doc.setFillColor(0, 96, 156); // #00609C
+    doc.rect(0, 0, pageWidth, 24, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text(`${mandalObj.mandal.toUpperCase()} MANDAL - GP DSR & ATTENDANCE REPORT`, 12, 11);
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(224, 242, 254);
+    doc.text(`Report Date: ${reportDate} | Time: ${reportTime || currentTime} | Total GPs: ${mandalObj.totalGPs}`, 12, 18);
+
+    // Summary Box
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(12, 28, pageWidth - 24, 12, 2, 2, "F");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      `Attended: ${mandalObj.attendedGP}   |   DSR Entered: ${mandalObj.dsrEntered}   |   Not Reported: ${mandalObj.notReported}   |   On Leave/Meeting: ${mandalObj.leaveToday + mandalObj.meetingTraining}`,
+      16,
+      35.5
     );
-    addToast("అధికారిక PDF రిపోర్ట్ డౌన్లోడ్ అవుతోంది...");
+
+    const gpTableBody = mandalObj.gps.map((g: any, idx: number) => [
+      idx + 1,
+      g.gp,
+      g.psName || "-",
+      g.attStatus || (g.isAttended ? "Attended" : "Not Reported"),
+      g.attTime || "-",
+      g.dsrStatus || (g.dsrEntered ? "Yes" : "No"),
+      g.dsrTime || "-",
+    ]);
+
+    autoTable(doc, {
+      startY: 44,
+      head: [["S.NO", "Grama Panchayat", "PS Name", "Attendance Status", "Attendance Time", "DSR Status", "DSR Time"]],
+      body: gpTableBody,
+      styles: { fontSize: 7.5, cellPadding: 2, halign: "center", font: "helvetica" },
+      headStyles: {
+        fillColor: [0, 96, 156],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 8,
+      },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 12 },
+        1: { cellWidth: 45, halign: "left", fontStyle: "bold" },
+        2: { cellWidth: 35, halign: "left" },
+      },
+      didDrawPage: (dataArg) => {
+        const pageCount = (doc.internal as any).getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text(`E-Vedhika Digital Portal • ${mandalObj.mandal} Mandal Report`, 12, pageHeight - 8);
+        doc.text(`Page ${dataArg.pageNumber} of ${pageCount}`, pageWidth - 25, pageHeight - 8);
+      },
+      theme: "grid",
+    });
+
+    doc.save(`${mandalObj.mandal}_Mandal_GP_Report_${reportDate.replace(/\./g, "-")}.pdf`);
+    addToast(`${mandalObj.mandal} మండ్ల GP సమ్మరీ PDF ప్రింట్ అయింది!`);
   };
 
   const copyTableToClipboard = () => {
@@ -20264,12 +20478,21 @@ function DSRAnalyzer({
                       Total GPs: {selectedMandalObj.totalGPs} • Attended: {selectedMandalObj.attendedGP} • DSR Entered: {selectedMandalObj.dsrEntered} • Not Reported: {selectedMandalObj.notReported}
                     </p>
                   </div>
-                  <button
-                    onClick={() => setSelectedMandalModal(null)}
-                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => exportSingleMandalPDF(selectedMandalObj)}
+                      className="bg-white/20 hover:bg-white/30 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 backdrop-blur-sm transition-all active:scale-95 border border-white/20"
+                      title="Export Mandal PDF Report"
+                    >
+                      <Download size={14} /> Download PDF
+                    </button>
+                    <button
+                      onClick={() => setSelectedMandalModal(null)}
+                      className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Modal Content / Table */}

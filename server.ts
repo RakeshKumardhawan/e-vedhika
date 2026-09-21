@@ -1383,11 +1383,11 @@ app.get('/api/remote-commands', (req, res) => {
 
         console.log("File received successfully:", req.file.originalname, "saved to", req.file.path);
 
-        const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "").trim();
+        const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "8ace4e3f2324eda23d28f8e8ddd1ffb4").trim();
         const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
         const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
         const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
-        let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "").trim();
+        let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev").trim();
 
         const hasR2 = !!(accountId && accessKeyId.length === 32 && secretAccessKey.length >= 32 && bucketName && publicUrl);
 
@@ -1459,17 +1459,15 @@ app.get('/api/remote-commands', (req, res) => {
   // Cloud Storage Manager API (Cloudflare R2 + Local fallback)
   app.get("/api/storage/files", verifyToken, async (req, res) => {
     try {
-      const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "").trim();
+      const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "8ace4e3f2324eda23d28f8e8ddd1ffb4").trim();
       const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
       const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
       const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
-      let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "").trim();
+      let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev").trim();
 
       const missingVars: string[] = [];
-      if (!accountId) missingVars.push("CLOUDFLARE_R2_ACCOUNT_ID");
       if (!accessKeyId) missingVars.push("CLOUDFLARE_R2_ACCESS_KEY_ID");
       if (!secretAccessKey) missingVars.push("CLOUDFLARE_R2_SECRET_ACCESS_KEY");
-      if (!publicUrl) missingVars.push("CLOUDFLARE_R2_PUBLIC_URL");
 
       // Cloudflare R2 Access Key ID must be a 32-character hexadecimal string.
       // If a placeholder (like "xxxx" length 4) was provided, mark it as invalid to prevent S3 client crash.
@@ -1563,7 +1561,7 @@ app.get('/api/remote-commands', (req, res) => {
       const { key } = req.body;
       if (!key) return res.status(400).json({ error: "Missing file key" });
 
-      const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "").trim();
+      const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "8ace4e3f2324eda23d28f8e8ddd1ffb4").trim();
       const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
       const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
       const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();

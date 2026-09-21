@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Download, Copy, FileSpreadsheet, BarChart3, Calendar, AlertTriangle, LayoutGrid, CheckCircle2, ChevronDown, ChevronUp, Printer, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface DsrTablesProps {
   mandalSummaries: any[];
@@ -231,6 +233,137 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
     XLSX.utils.book_append_sheet(wb, ws, "PS Attendance & DSR");
     XLSX.writeFile(wb, `Status_PS_Attendance_Reporting_DSR_${reportDate.replace(/\./g, "-")}.xlsx`);
     addToast("PS Attendance & DSR Status ఎక్సెల్ ఫైల్ డౌన్లోడ్ అవుతోంది...");
+  };
+
+  // Download PDF helper for Status Summary
+  const downloadStatusSummaryPdf = async () => {
+    await loadHeavyModules();
+    if (mandalSummaries.length === 0) return;
+    const doc = new jsPDF("l", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // Top Header Banner
+    doc.setFillColor(0, 96, 156);
+    doc.rect(0, 0, pageWidth, 22, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text("TELANGANA STATE - PANCHAYAT RAJ & RURAL DEVELOPMENT", 12, 9);
+
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(224, 242, 254);
+    doc.text(`Status of PS Attendance and Reporting DSR (As of ${fullTimestamp})`, 12, 16);
+
+    // Summary Metric Strip
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(12, 26, pageWidth - 24, 10, 2, 2, "F");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    const dsrPct = grandTotal.totalGPs > 0 ? ((grandTotal.dsrEntered / grandTotal.totalGPs) * 100).toFixed(1) : "0";
+    doc.text(
+      `Total Mandals: ${mandalSummaries.length}   |   Total GPs: ${grandTotal.totalGPs}   |   Attended: ${grandTotal.attendedGP}   |   DSR Entered: ${grandTotal.dsrEntered} (${dsrPct}%)   |   Not Reported: ${grandTotal.notReported}`,
+      16,
+      32.5
+    );
+
+    const headers = [
+      "S.NO",
+      "Mandal Name",
+      "Total GPs",
+      "PS Attended GP",
+      "Meeting/Training/Leave",
+      "% Reported",
+      "Not Reported",
+      "DSR Entered",
+      "% DSR Entered",
+      "Submitted < 9 AM",
+      "% Sub < 9 AM",
+      "Reported > 9 AM",
+      "% Rep > 9 AM",
+    ];
+
+    const tableRows: any[][] = [];
+    mandalSummaries.forEach((m, idx) => {
+      const after9Count = m.c9_11 + m.after11AM;
+      const pctRep = m.totalGPs > 0 ? (m.totalReported / m.totalGPs) * 100 : 0;
+      const pctDsr = m.totalGPs > 0 ? (m.dsrEntered / m.totalGPs) * 100 : 0;
+      const pctBef9 = m.totalGPs > 0 ? (m.before9AM / m.totalGPs) * 100 : 0;
+      const pctAft9 = m.totalGPs > 0 ? (after9Count / m.totalGPs) * 100 : 0;
+
+      tableRows.push([
+        idx + 1,
+        m.mandal,
+        m.totalGPs,
+        m.attendedGP,
+        m.meetingTraining + m.leaveToday,
+        `${pctRep.toFixed(1)}%`,
+        m.notReported,
+        m.dsrEntered,
+        `${pctDsr.toFixed(1)}%`,
+        m.before9AM,
+        `${pctBef9.toFixed(2)}%`,
+        after9Count,
+        `${pctAft9.toFixed(2)}%`,
+      ]);
+    });
+
+    const totAfter9 = grandTotal.c9_11 + grandTotal.after11AM;
+    const totPctRep = grandTotal.totalGPs > 0 ? (grandTotal.totalReported / grandTotal.totalGPs) * 100 : 0;
+    const totPctDsr = grandTotal.totalGPs > 0 ? (grandTotal.dsrEntered / grandTotal.totalGPs) * 100 : 0;
+    const totPctBef9 = grandTotal.totalGPs > 0 ? (grandTotal.before9AM / grandTotal.totalGPs) * 100 : 0;
+    const totPctAft9 = grandTotal.totalGPs > 0 ? (totAfter9 / grandTotal.totalGPs) * 100 : 0;
+
+    tableRows.push([
+      "Total",
+      "TOTAL DISTRICT SUMMARY",
+      grandTotal.totalGPs,
+      grandTotal.attendedGP,
+      grandTotal.meetingTraining + grandTotal.leaveToday,
+      `${totPctRep.toFixed(2)}%`,
+      grandTotal.notReported,
+      grandTotal.dsrEntered,
+      `${totPctDsr.toFixed(2)}%`,
+      grandTotal.before9AM,
+      `${totPctBef9.toFixed(2)}%`,
+      totAfter9,
+      `${totPctAft9.toFixed(2)}%`,
+    ]);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [headers],
+      body: tableRows,
+      styles: { fontSize: 7, cellPadding: 1.5, halign: "center", font: "helvetica" },
+      headStyles: { fillColor: [0, 96, 156], textColor: [255, 255, 255], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 12 },
+        1: { cellWidth: 35, halign: "left", fontStyle: "bold" },
+      },
+      didParseCell: (data) => {
+        if (data.row.index === tableRows.length - 1) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [0, 96, 156];
+          data.cell.styles.textColor = [255, 255, 255];
+        }
+      },
+      didDrawPage: (dataArg) => {
+        const pageCount = (doc.internal as any).getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 116, 139);
+        doc.text("E-Vedhika Digital Portal • PS Attendance & DSR Status Summary Report", 12, pageHeight - 8);
+        doc.text(`Page ${dataArg.pageNumber} of ${pageCount}`, pageWidth - 25, pageHeight - 8);
+      },
+      theme: "grid",
+    });
+
+    doc.save(`Status_PS_Attendance_Reporting_DSR_${reportDate.replace(/\./g, "-")}.pdf`);
+    addToast("మండలాల వ్యాప్తంగా PS Attendance & DSR Status PDF డౌన్‌లోడ్ చేయబడింది!");
   };
 
   // Copy helper for Leave/Meetings (Image 1)
@@ -581,6 +714,13 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
               title="Download Excel"
             >
               <Download size={13} /> Excel
+            </button>
+            <button
+              onClick={downloadStatusSummaryPdf}
+              className="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+              title="Download PDF Report"
+            >
+              <FileText size={13} /> PDF రిపోర్ట్
             </button>
           </div>
         </div>

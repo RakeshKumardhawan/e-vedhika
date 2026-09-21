@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Upload, FileSpreadsheet, Download, RefreshCw } from "lucide-react";
+import { Upload, FileSpreadsheet, Download, RefreshCw, Printer, FileText, Copy } from "lucide-react";
 
 export function MonthlyActivityFormatter({
   addToast,
@@ -19,16 +19,16 @@ export function MonthlyActivityFormatter({
     "Water Supply",
     "GP Meetings",
     "Gram Sabha",
-    "Record Maintenance",
-    "Approvals and Certificates",
+    "Record",
+    "Approvals and",
     "Deaths",
-    "Receipts",
+    "Recipts",
     "Expenditure",
     "Cheque Details",
     "Salary Details",
     "VWSC Banl Balance",
-    "MGNRE Bank Balance",
-    "Payment of Electricity",
+    "MGNRE Bank",
+    "Payment of",
   ];
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,111 +44,183 @@ export function MonthlyActivityFormatter({
         try {
           const result = event.target?.result;
           if (!result) return;
-          const workbook = XLSX.read(result, { type: "array" });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const rawData: any[][] = XLSX.utils.sheet_to_json(worksheet, {
-            header: 1,
-            defval: ""
-          });
+
+          let rawData: any[][] = [];
+
+          // 1. Try HTML table decoding first if file contains HTML markup
+          try {
+            const textDecoder = new TextDecoder("utf-8");
+            const decodedText = textDecoder.decode(result as ArrayBuffer);
+
+            if (decodedText.includes("<table") || decodedText.includes("<tr") || decodedText.includes("<td")) {
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(decodedText, "text/html");
+              const htmlRows: string[][] = [];
+
+              doc.querySelectorAll("tr").forEach((tr) => {
+                const rowCells: string[] = [];
+                tr.querySelectorAll("th, td").forEach((cell) => {
+                  const cellText = (cell.textContent || "").trim();
+                  const colspan = parseInt(cell.getAttribute("colspan") || "1", 10);
+                  rowCells.push(cellText);
+                  for (let k = 1; k < colspan; k++) {
+                    rowCells.push("");
+                  }
+                });
+                if (rowCells.some((c) => c.length > 0)) {
+                  htmlRows.push(rowCells);
+                }
+              });
+
+              if (htmlRows.length > 0) {
+                rawData = htmlRows;
+              }
+            }
+          } catch (htmlErr) {
+            console.warn("DOMParser HTML check skipped:", htmlErr);
+          }
+
+          // 2. Fallback to standard XLSX array parsing if not HTML
+          if (!rawData || rawData.length === 0) {
+            const workbook = XLSX.read(result, { type: "array" });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            rawData = XLSX.utils.sheet_to_json(worksheet, {
+              header: 1,
+              defval: ""
+            });
+          }
 
           if (!rawData || rawData.length === 0) {
-            addToast("Excel file is empty.");
+            addToast("Excel ఫైల్ ఖాళీగా ఉంది.");
             return;
           }
 
           let headerRowIndex = -1;
           let panchayatColIndex = -1;
 
-          // 1. Find the header row by looking for Panchayat/Village/Gram/Name
+          // Find the header row by looking for Panchayat/Village/Gram/Name or 'S.No'
           for (let i = 0; i < Math.min(rawData.length, 30); i++) {
             const row = rawData[i];
             if (!row) continue;
             for (let j = 0; j < Math.min(row.length, 10); j++) {
               const val = String(row[j] || "").toLowerCase().trim();
-              if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp") {
+              if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp" || val === "s.no" || val === "sl.no") {
                 headerRowIndex = i;
-                panchayatColIndex = j;
                 break;
               }
             }
-            if (panchayatColIndex !== -1) break;
+            if (headerRowIndex !== -1) break;
           }
 
-          // 2. Fallback: finding header row with most text
+          // Fallback if header row not found
           if (headerRowIndex === -1) {
-             let maxCols = 0;
-             for (let i = 0; i < Math.min(rawData.length, 20); i++) {
-                const row = rawData[i] || [];
-                let textCols = 0;
-                for (let j=0; j<row.length; j++) if (String(row[j]).trim().length > 0) textCols++;
-                if (textCols > maxCols && textCols > 2) {
-                   maxCols = textCols;
+             for (let i = 0; i < Math.min(rawData.length, 10); i++) {
+                const row = rawData[i];
+                if (row && row.length > 3) {
                    headerRowIndex = i;
+                   break;
                 }
              }
           }
           if (headerRowIndex === -1) headerRowIndex = 0;
 
-          // 3. Fallback: guessing the panchayat name column (Find a column with mostly non-numeric strings)
-          if (panchayatColIndex === -1) {
-            let bestCol = 0;
-            let maxStrings = 0;
-            for(let c=0; c < 5; c++) {
-               let strCount = 0;
-               for(let r=headerRowIndex+1; r < Math.min(rawData.length, headerRowIndex+20); r++) {
-                  const val = String(rawData[r]?.[c] || "").trim();
-                  if (val.length > 2 && isNaN(Number(val))) strCount++;
-               }
-               if (strCount > maxStrings) {
-                  maxStrings = strCount;
-                  bestCol = c;
-               }
+          // Specifically find the Panchayat Name column in header row or nearby rows
+          const headerRow = rawData[headerRowIndex] || [];
+          for (let j = 0; j < Math.min(headerRow.length, 10); j++) {
+            const val = String(headerRow[j] || "").toLowerCase().trim();
+            if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp") {
+              panchayatColIndex = j;
+              break;
             }
-            panchayatColIndex = bestCol;
           }
 
-          const headers = rawData[headerRowIndex] || [];
-          const rows = rawData.slice(headerRowIndex + 1);
+          // If not found explicitly, determine based on data sample
+          if (panchayatColIndex === -1) {
+            const col0Header = String(headerRow[0] || "").toLowerCase().trim();
+            const sampleDataCol0 = String(rawData[headerRowIndex + 1]?.[0] || "").trim();
+            if (col0Header.includes("s.no") || col0Header.includes("sl.no") || !isNaN(Number(sampleDataCol0))) {
+              panchayatColIndex = 1;
+            } else {
+              panchayatColIndex = 0;
+            }
+          }
 
           let foundActivities: string[] = [];
           let activityColMapping: Record<string, number> = {};
 
-          for (let j = panchayatColIndex + 1; j < headers.length; j++) {
-            const valStr = String(headers[j] || "").trim();
-            // Ignore empty headers and common non-activity headers
-            if (valStr.length > 0 && !valStr.toLowerCase().includes("total") && !valStr.toLowerCase().includes("blank") && !valStr.toLowerCase().includes("entered")) {
-              if (!foundActivities.includes(valStr)) {
-                 foundActivities.push(valStr);
-                 activityColMapping[valStr] = j;
+          // Extract activities by scanning rows prior to headerRowIndex
+          for (let r = 0; r < headerRowIndex; r++) {
+            const row = rawData[r] || [];
+            row.forEach((cellVal: any, cIdx: number) => {
+              const val = String(cellVal || "").trim();
+              if (
+                val.length > 1 &&
+                !val.toLowerCase().includes("telangana") &&
+                !val.toLowerCase().includes("report") &&
+                !val.toLowerCase().includes("panchayat") &&
+                !val.toLowerCase().includes("s.no") &&
+                !val.toLowerCase().includes("sl.no") &&
+                !val.toLowerCase().includes("total")
+              ) {
+                if (!foundActivities.includes(val)) {
+                  foundActivities.push(val);
+                }
+                if (activityColMapping[val] === undefined) {
+                  activityColMapping[val] = cIdx;
+                }
               }
-            }
+            });
           }
 
-          // If headers couldn't be parsed properly, use predefined and just take columns sequentially
+          // Fallback to predefined activities if scanning prior rows produced no activities
           if (foundActivities.length === 0) {
              foundActivities = predefinedActivities;
              foundActivities.forEach((act, idx) => {
-                activityColMapping[act] = panchayatColIndex + 1 + idx;
+                activityColMapping[act] = panchayatColIndex + 1 + (idx * 2);
              });
           }
 
-          const parsedData = rows.map((row, idx) => {
-              const pNameVal = row[panchayatColIndex];
-              const pName = String(pNameVal || "").trim();
+          const rows = rawData.slice(headerRowIndex + 1);
+
+          const parsedData = rows.map((row) => {
+              let pNameVal = row[panchayatColIndex];
+              let pName = String(pNameVal || "").trim();
+
+              // Fallback: If pName is numeric (e.g. S.No like 1, 2, 3), inspect column panchayatColIndex + 1 or column 1
+              if (!isNaN(Number(pName)) && pName !== "") {
+                const altVal = String(row[panchayatColIndex + 1] ?? row[1] ?? "").trim();
+                if (altVal && isNaN(Number(altVal))) {
+                  pName = altVal;
+                  pNameVal = altVal;
+                }
+              }
               
-              // Filter out invalid names (e.g. empty, pure numbers, headers, totals, single chars)
-              if (pName === "" || pName.length < 2 || !isNaN(Number(pName)) || pName.toLowerCase().includes("total") || pName.toLowerCase().includes("grand") || pName.toLowerCase().includes("panchayat")) {
+              // Filter out invalid names (e.g. empty, pure numbers, headers, totals, mandal totals)
+              const lowerPName = pName.toLowerCase();
+              if (
+                pName === "" ||
+                lowerPName.includes("grand") ||
+                lowerPName.includes("report") ||
+                lowerPName.includes("telangana") ||
+                lowerPName.includes("total") ||
+                lowerPName.includes("subtotal") ||
+                lowerPName.includes("sub-total") ||
+                lowerPName === "panchayat name" ||
+                lowerPName === "mandal name" ||
+                lowerPName.startsWith("mandal:") ||
+                lowerPName.startsWith("mandal name:")
+              ) {
                  return null;
               }
 
               const record: any = {
                 "S.No": 0, // Assigned later
-                "Panchayat Name": pNameVal,
+                "Panchayat Name": pName,
               };
 
               foundActivities.forEach((act) => {
-                const colIdx = activityColMapping[act];
+                const colIdx = activityColMapping[act] ?? (panchayatColIndex + 1 + (foundActivities.indexOf(act) * 2));
                 const val = row[colIdx];
                 
                 let isEntered = false;
@@ -179,9 +251,7 @@ export function MonthlyActivityFormatter({
             }).filter(Boolean);
 
           if (parsedData.length === 0) {
-             const debugInfo = JSON.stringify(rawData.slice(0, 5));
-             addToast(`Parsing Error: Data could not be mapped. Header detected at row ${headerRowIndex}.`);
-             console.error("RAW DATA:", debugInfo);
+             addToast(`డేటా మ్యాప్ కాలేదు. ఫైల్ హెడర్ సరైన స్థానంలో ఉందో లేదో చూడండి.`);
              return;
           }
 
@@ -190,11 +260,12 @@ export function MonthlyActivityFormatter({
 
           setActivities(foundActivities);
           setData(parsedData);
+          addToast("ఫైల్ విజ‌య‌వంతంగా ప్రాసెస్ చేయబడింది!");
           if (fileRef.current) fileRef.current.value = ""; // reset for next upload
 
         } catch (innerErr: any) {
           console.error("Inner Parsing Error:", innerErr);
-          addToast("Parsing Error: " + (innerErr?.message || "Unknown error"));
+          addToast("Parsing Error: " + (innerErr?.message || "అపరిచిత పొరపాటు"));
         }
       };
 
@@ -205,7 +276,8 @@ export function MonthlyActivityFormatter({
     }
   };
 
-  const handleExport = async () => {
+  // Styled Excel Export with Page Setup Properties
+  const handleExportExcel = async () => {
     if (!data.length) return;
     try {
       const XLSX = await import("xlsx-js-style");
@@ -255,9 +327,10 @@ export function MonthlyActivityFormatter({
       const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
       // Add Merges
+      const totalCols = 2 + activities.length * 2;
       const merges = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 2 + activities.length * 2 - 1 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 + activities.length * 2 - 1 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Telangana State
+        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Monthly Activity Data Entry Report
         { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } }, // S.No
         { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } }, // Panchayat Name
       ];
@@ -269,7 +342,18 @@ export function MonthlyActivityFormatter({
 
       ws["!merges"] = merges;
 
-      // Apply styles
+      // Page Setup for Excel Print / Export
+      ws["!pageSetup"] = {
+        orientation: "landscape",
+        paperSize: 9, // A4
+        scale: 80,
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0
+      };
+      ws["!margins"] = { left: 0.25, right: 0.25, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
+
+      // Apply cell styling matching government blue (#11518E), green (#92D050), red (#FF0000)
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
       for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
@@ -282,38 +366,48 @@ export function MonthlyActivityFormatter({
           let fontColor = "000000";
           let isBold = false;
           
-          if (R === 0 || R === 1) {
-            bgColor = "1E5F99";
+          if (R === 0 || R === 1 || R === 2) {
+            bgColor = "11518E"; // Government Blue
             fontColor = "FFFFFF";
             isBold = true;
-          } else if (R === 2 || R === 3) {
-            bgColor = "F2F2F2";
+          } else if (R === 3) {
+            bgColor = "FFFFFF"; // White for Entered / Not Entered
+            fontColor = "000000";
             isBold = true;
           } else if (R === range.e.r) {
+            bgColor = "FFFFFF";
+            fontColor = "000000";
             isBold = true; // Total Row
           } else {
-             // Data Rows styling logic similar to screenshot
+             // Data Rows styling
              if (C >= 2) {
-               const val = cell.v || 0;
+               const val = Number(cell.v || 0);
                const isEnteredCol = C % 2 === 0;
-               if (val === 1 && isEnteredCol) bgColor = "92D050";
-               else if (val === 1 && !isEnteredCol) bgColor = "FF0000";
-               else if (val === 0 && !isEnteredCol) {
-                 // check if preceding Entered was 0, if yes, color yellow
-                 const prevCellRef = XLSX.utils.encode_cell({ c: C-1, r: R });
-                 const prevVal = ws[prevCellRef]?.v || 0;
-                 if (prevVal === 0) {
-                     // sometimes yellow
-                     bgColor = "FFFF00";
+               if (isEnteredCol) {
+                 if (val === 1) {
+                   bgColor = "92D050"; // Vibrant Green
+                   isBold = true;
+                 } else {
+                   bgColor = "FFFFFF";
+                 }
+               } else {
+                 if (val === 1) {
+                   bgColor = "FF0000"; // Vibrant Red
+                   fontColor = "FFFFFF";
+                   isBold = true;
+                 } else {
+                   bgColor = "FFFFFF";
                  }
                }
+             } else if (C === 1) {
+               isBold = true;
              }
           }
 
           cell.s = {
-            font: { bold: isBold, color: { rgb: fontColor } },
+            font: { bold: isBold, color: { rgb: fontColor }, name: "Arial", sz: 9 },
             fill: { fgColor: { rgb: bgColor } },
-            alignment: { horizontal: "center", vertical: "center" },
+            alignment: { horizontal: C === 1 ? "left" : "center", vertical: "center" },
             border: {
               top: { style: "thin", color: { rgb: "000000" } },
               bottom: { style: "thin", color: { rgb: "000000" } },
@@ -325,27 +419,308 @@ export function MonthlyActivityFormatter({
       }
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Activity Report");
-      XLSX.writeFile(wb, "Formatted_Activity_Report.xlsx");
-      addToast("File exported successfully");
+      XLSX.utils.book_append_sheet(wb, ws, "Monthly Activity Report");
+      XLSX.writeFile(wb, "Monthly_Activity_Data_Entry_Report_PageSetup.xlsx");
+      addToast("పేజీ సెటప్‌తో కూడిన స్టైల్డ్ ఎక్సెల్ ఫైల్ డౌన్లోడ్ అయింది!");
     } catch (err) {
       console.error(err);
-      addToast("Failed to export file.");
+      addToast("ఎక్సెల్ ఫైల్ జనరేట్ చేయడం సాధ్యపడలేదు.");
     }
   };
 
+  // PDF Export with Landscape Page Setup
+  const handleExportPdf = async () => {
+    if (!data.length) return;
+    try {
+      const jsPDFModule = await import("jspdf");
+      const autoTableModule = await import("jspdf-autotable");
+      const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF;
+      const autoTable = autoTableModule.default || autoTableModule;
+
+      const doc = new jsPDF("l", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // Top Banners
+      doc.setFillColor(17, 81, 142); // #11518E
+      doc.rect(0, 0, pageWidth, 12, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Telangana State", pageWidth / 2, 7.5, { align: "center" });
+
+      doc.setFillColor(17, 81, 142);
+      doc.rect(0, 12, pageWidth, 8, "F");
+      doc.setFontSize(9);
+      doc.text("Monthly Activity Data Entry Report", pageWidth / 2, 17.5, { align: "center" });
+
+      // Table Headers
+      const head1: any[] = [
+        { content: "S.No", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
+        { content: "Panchayat Name", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
+      ];
+
+      activities.forEach((act) => {
+        head1.push({
+          content: act,
+          colSpan: 2,
+          styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] },
+        });
+      });
+
+      const head2: any[] = [];
+      activities.forEach(() => {
+        head2.push(
+          { content: "Entered", styles: { halign: "center", fillColor: [255, 255, 255], textColor: [0, 0, 0] } },
+          { content: "Not Entered", styles: { halign: "center", fillColor: [255, 255, 255], textColor: [0, 0, 0] } }
+        );
+      });
+
+      const bodyRows: any[][] = [];
+      data.forEach((row, idx) => {
+        const r: any[] = [idx + 1, row["Panchayat Name"]];
+        activities.forEach((act) => {
+          const entry = row[act] || { Entered: 0, NotEntered: 0 };
+          r.push(entry.Entered, entry.NotEntered);
+        });
+        bodyRows.push(r);
+      });
+
+      // Total Row
+      const totalsRow: any[] = ["Total", ""];
+      activities.forEach((act) => {
+        const totalEnt = data.reduce((acc, r) => acc + (r[act]?.Entered || 0), 0);
+        const totalNEnt = data.reduce((acc, r) => acc + (r[act]?.NotEntered || 0), 0);
+        totalsRow.push(totalEnt, totalNEnt);
+      });
+      bodyRows.push(totalsRow);
+
+      autoTable(doc, {
+        startY: 22,
+        head: [head1, head2],
+        body: bodyRows,
+        theme: "grid",
+        styles: {
+          fontSize: 5.5,
+          cellPadding: 0.8,
+          halign: "center",
+          valign: "middle",
+          lineColor: [0, 0, 0],
+          lineWidth: 0.1,
+          font: "helvetica",
+          textColor: [0, 0, 0],
+        },
+        headStyles: {
+          fontSize: 5.5,
+          fontStyle: "bold",
+          lineColor: [0, 0, 0],
+          lineWidth: 0.1,
+        },
+        columnStyles: {
+          0: { cellWidth: 8 },
+          1: { cellWidth: 28, halign: "left", fontStyle: "bold" },
+        },
+        didParseCell: (dataCell) => {
+          const { row, column } = dataCell;
+          if (row.section === "body") {
+            if (row.index === bodyRows.length - 1) {
+              // Total Row
+              dataCell.cell.styles.fontStyle = "bold";
+              dataCell.cell.styles.fillColor = [240, 240, 240];
+            } else if (column.index >= 2) {
+              const val = Number(dataCell.cell.text[0] || 0);
+              const isEnteredCol = column.index % 2 === 0;
+              if (isEnteredCol) {
+                if (val === 1) {
+                  dataCell.cell.styles.fillColor = [146, 208, 80]; // Green #92D050
+                  dataCell.cell.styles.fontStyle = "bold";
+                } else {
+                  dataCell.cell.styles.fillColor = [255, 255, 255]; // White
+                }
+              } else {
+                if (val === 1) {
+                  dataCell.cell.styles.fillColor = [255, 0, 0]; // Red #FF0000
+                  dataCell.cell.styles.textColor = [255, 255, 255];
+                  dataCell.cell.styles.fontStyle = "bold";
+                } else {
+                  dataCell.cell.styles.fillColor = [255, 255, 255]; // White
+                }
+              }
+            }
+          }
+        },
+        didDrawPage: (dataArg) => {
+          doc.setFontSize(6);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(100, 116, 139);
+          doc.text("Telangana State • Monthly Activity Data Entry Report (A4 Landscape)", 10, pageHeight - 4);
+          doc.text(`Page ${dataArg.pageNumber}`, pageWidth - 20, pageHeight - 4);
+        },
+      });
+
+      doc.save("Monthly_Activity_Data_Entry_Report_A4.pdf");
+      addToast("A4 ల్యాండ్‌స్కేప్ పేజీ సెటప్‌తో PDF డౌన్‌లోడ్ అయింది!");
+    } catch (err) {
+      console.error(err);
+      addToast("PDF జనరేట్ చేయడం సాధ్యపడలేదు.");
+    }
+  };
+
+  // Direct A4 Landscape Window Print
+  const handlePrint = () => {
+    if (!data.length) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    let tableHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Telangana State - Monthly Activity Data Entry Report</title>
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 4mm;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            background: #fff;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+          }
+          th, td {
+            border: 1px solid #000000;
+            padding: 3px 2px;
+            text-align: center;
+          }
+          .title-bg {
+            background-color: #11518E !important;
+            color: #ffffff !important;
+            font-weight: bold;
+            font-size: 13px;
+          }
+          .subtitle-bg {
+            background-color: #11518E !important;
+            color: #ffffff !important;
+            font-weight: bold;
+            font-size: 11px;
+          }
+          .act-header {
+            background-color: #11518E !important;
+            color: #ffffff !important;
+            font-weight: bold;
+            font-size: 9px;
+          }
+          .sub-header {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-weight: bold;
+            font-size: 8px;
+          }
+          .p-name {
+            text-align: left;
+            font-weight: bold;
+            padding-left: 6px;
+          }
+          .cell-green {
+            background-color: #92D050 !important;
+            color: #000000 !important;
+            font-weight: bold;
+          }
+          .cell-red {
+            background-color: #FF0000 !important;
+            color: #ffffff !important;
+            font-weight: bold;
+          }
+          .cell-white {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+          }
+          .total-row {
+            background-color: #ffffff !important;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th colspan="${2 + activities.length * 2}" class="title-bg">Telangana State</th>
+            </tr>
+            <tr>
+              <th colspan="${2 + activities.length * 2}" class="subtitle-bg">Monthly Activity Data Entry Report</th>
+            </tr>
+            <tr>
+              <th rowspan="2" class="act-header">S.No</th>
+              <th rowspan="2" class="act-header">Panchayat Name</th>
+              ${activities.map((a) => `<th colspan="2" class="act-header">${a}</th>`).join("")}
+            </tr>
+            <tr>
+              ${activities.map(() => `<th class="sub-header">Entered</th><th class="sub-header">Not Entered</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${data
+              .map(
+                (row, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td class="p-name">${row["Panchayat Name"]}</td>
+                ${activities
+                  .map((act) => {
+                    const entry = row[act] || { Entered: 0, NotEntered: 0 };
+                    const entCls = entry.Entered === 1 ? "cell-green" : "cell-white";
+                    const nEntCls = entry.NotEntered === 1 ? "cell-red" : "cell-white";
+                    return `<td class="${entCls}">${entry.Entered}</td><td class="${nEntCls}">${entry.NotEntered}</td>`;
+                  })
+                  .join("")}
+              </tr>
+            `
+              )
+              .join("")}
+            <tr class="total-row">
+              <td colspan="2" style="text-align: center; font-weight: bold;">Total</td>
+              ${activities
+                .map((act) => {
+                  const tEnt = data.reduce((acc, r) => acc + (r[act]?.Entered || 0), 0);
+                  const tNEnt = data.reduce((acc, r) => acc + (r[act]?.NotEntered || 0), 0);
+                  return `<td style="font-weight:bold;">${tEnt}</td><td style="font-weight:bold;">${tNEnt}</td>`;
+                })
+                .join("")}
+            </tr>
+          </tbody>
+        </table>
+        <script>
+          window.onload = function() { window.print(); };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(tableHtml);
+    printWindow.document.close();
+  };
+
   return (
-    <div className="bg-white rounded-[32px] p-8 border border-slate-100 mt-6 shadow-sm">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-6 border-b border-slate-100 gap-4">
+    <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-slate-100 mt-6 shadow-sm">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 pb-6 border-b border-slate-100 gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-            <FileSpreadsheet className="text-indigo-600" /> E-Panchayat Monthly Activity Report
+            <FileSpreadsheet className="text-sky-700" /> E-Panchayat Monthly Activity Report
           </h2>
           <p className="text-slate-500 font-medium mt-1">
-            Upload raw data file to generate a styled state report.
+            Upload raw data file to generate exact Telangana State activity data entry report format with page setup.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <input
             type="file"
             accept=".xlsx, .xls, .csv"
@@ -355,20 +730,41 @@ export function MonthlyActivityFormatter({
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
           >
-            <Upload size={18} />
-            {fileName ? "Change File" : "Upload Raw File"}
+            <Upload size={16} />
+            {fileName ? "ఫైల్ మార్చు" : "Upload Raw File"}
           </button>
-          
+
           {data.length > 0 && (
-             <button
-               onClick={handleExport}
-               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/30"
-             >
-               <Download size={18} />
-               Export Styled Excel
-             </button>
+            <>
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#11518E] text-white font-bold text-xs rounded-xl hover:bg-[#0d3f6f] transition-all shadow-sm"
+                title="Download formatted Excel with Page Setup"
+              >
+                <Download size={16} />
+                Excel (Page Setup)
+              </button>
+
+              <button
+                onClick={handleExportPdf}
+                className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition-all shadow-sm"
+                title="Export A4 Landscape PDF Report"
+              >
+                <FileText size={16} />
+                PDF (A4 Landscape)
+              </button>
+
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-all shadow-sm"
+                title="Print or Save as PDF"
+              >
+                <Printer size={16} />
+                Print / Save PDF
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -376,23 +772,25 @@ export function MonthlyActivityFormatter({
       {!data.length ? (
         <div
           onClick={() => fileRef.current?.click()}
-          className="border-2 border-dashed border-slate-200 rounded-[24px] p-16 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-indigo-300 transition-all cursor-pointer"
+          className="border-2 border-dashed border-slate-200 rounded-[24px] p-12 sm:p-16 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-sky-300 transition-all cursor-pointer"
         >
-          <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 mb-6">
-            <Upload size={32} />
+          <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center text-sky-700 mb-4">
+            <Upload size={28} />
           </div>
-          <h3 className="text-xl font-black text-slate-700 mb-2">Upload Raw Data File</h3>
-          <p className="text-slate-500 font-medium">Select a CSV or Excel file to format</p>
+          <h3 className="text-xl font-black text-slate-700 mb-2">Upload Raw Activity Data File</h3>
+          <p className="text-slate-500 font-medium text-xs">
+            Select a raw .xls or .xlsx report file to generate the official color-coded report format with page setup.
+          </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 hide-scrollbar pb-6">
+        <div className="overflow-x-auto rounded-xl border border-black custom-scrollbar pb-4 bg-white">
           <div className="inline-block min-w-max">
-            <table className="w-full border-collapse bg-white text-xs font-medium">
+            <table className="w-full border-collapse bg-white text-xs font-medium border border-black">
               <thead>
                 <tr>
                   <th
                     colSpan={2 + activities.length * 2}
-                    className="bg-[#0b3b66] text-white p-3 border border-[#000000] text-center font-bold"
+                    className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-sm tracking-wide"
                   >
                     Telangana State
                   </th>
@@ -400,16 +798,20 @@ export function MonthlyActivityFormatter({
                 <tr>
                   <th
                     colSpan={2 + activities.length * 2}
-                    className="bg-[#0b3b66] text-white p-3 border border-[#000000] text-center font-bold"
+                    className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-xs tracking-wide"
                   >
                     Monthly Activity Data Entry Report
                   </th>
                 </tr>
                 <tr>
-                  <th rowSpan={2} className="p-2 border border-[#000000] bg-slate-50 text-center font-bold text-slate-800">S.No</th>
-                  <th rowSpan={2} className="p-2 border border-[#000000] bg-slate-50 text-center font-bold text-slate-800">Panchayat Name</th>
+                  <th rowSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold">
+                    S.No
+                  </th>
+                  <th rowSpan={2} className="py-2 px-4 border border-black bg-[#11518E] text-white text-center font-bold min-w-[150px]">
+                    Panchayat Name
+                  </th>
                   {activities.map((a, i) => (
-                    <th key={i} colSpan={2} className="p-2 border border-[#000000] bg-[#0b3b66] text-white text-center font-bold">
+                    <th key={i} colSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold text-xs">
                       {a}
                     </th>
                   ))}
@@ -417,38 +819,44 @@ export function MonthlyActivityFormatter({
                 <tr>
                   {activities.map((_, i) => (
                     <React.Fragment key={`sub-${i}`}>
-                      <th className="p-2 border border-[#000000] bg-slate-100 text-center text-[10px] uppercase font-bold text-slate-800">Entered</th>
-                      <th className="p-2 border border-[#000000] bg-slate-100 text-center text-[10px] uppercase font-bold text-slate-800">Not Entered</th>
+                      <th className="py-1.5 px-2 border border-black bg-white text-black text-center text-[10px] font-bold">
+                        Entered
+                      </th>
+                      <th className="py-1.5 px-2 border border-black bg-white text-black text-center text-[10px] font-bold">
+                        Not Entered
+                      </th>
                     </React.Fragment>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {data.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="p-2 border border-[#000000] text-center w-12">{idx + 1}</td>
-                    <td className="p-2 border border-[#000000] whitespace-nowrap px-4 font-bold text-slate-700">{row["Panchayat Name"]}</td>
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-1.5 px-2 border border-black text-center font-bold w-10 text-slate-800">
+                      {idx + 1}
+                    </td>
+                    <td className="py-1.5 px-4 border border-black whitespace-nowrap font-bold text-slate-800 text-left">
+                      {row["Panchayat Name"]}
+                    </td>
                     {activities.map((act, actIdx) => {
                       const entry = row[act] || { Entered: 0, NotEntered: 0 };
                       
-                      let entColor = "transparent";
-                      if (entry.Entered === 1) entColor = "#92d050";
-                      else if (entry.Entered === 0 && entry.NotEntered === 1) entColor = "#ffff00"; // Example logic for yellow
+                      const isEnt = entry.Entered === 1;
+                      const isNotEnt = entry.NotEntered === 1;
 
-                      let nEntColor = "transparent";
-                      if (entry.NotEntered === 1) nEntColor = "#ff0000";
-                      
                       return (
                         <React.Fragment key={`${idx}-${actIdx}`}>
                           <td 
-                            className="p-2 border border-[#000000] text-center font-bold text-black"
-                            style={{ backgroundColor: entColor }}
+                            className={`py-1.5 px-2 border border-black text-center font-bold text-xs ${
+                              isEnt ? "bg-[#92D050] text-black" : "bg-white text-black"
+                            }`}
                           >
                             {entry.Entered}
                           </td>
                           <td 
-                            className="p-2 border border-[#000000] text-center font-bold text-black"
-                            style={{ backgroundColor: nEntColor }}
+                            className={`py-1.5 px-2 border border-black text-center font-bold text-xs ${
+                              isNotEnt ? "bg-[#FF0000] text-white" : "bg-white text-black"
+                            }`}
                           >
                             {entry.NotEntered}
                           </td>
@@ -457,8 +865,8 @@ export function MonthlyActivityFormatter({
                     })}
                   </tr>
                 ))}
-                <tr>
-                  <td colSpan={2} className="p-3 border border-[#000000] text-right font-black text-slate-800 bg-slate-100">
+                <tr className="bg-white font-bold border-t-2 border-black">
+                  <td colSpan={2} className="py-2 px-4 border border-black text-center font-black text-slate-900 text-xs">
                     Total
                   </td>
                   {activities.map((act, idx) => {
@@ -466,8 +874,12 @@ export function MonthlyActivityFormatter({
                     const totalNEnt = data.reduce((acc, row) => acc + (row[act]?.NotEntered || 0), 0);
                     return (
                       <React.Fragment key={`tot-${idx}`}>
-                        <td className="p-2 border border-[#000000] text-center font-black bg-slate-100">{totalEnt}</td>
-                        <td className="p-2 border border-[#000000] text-center font-black bg-slate-100">{totalNEnt}</td>
+                        <td className="py-2 px-2 border border-black text-center font-black text-black bg-white text-xs">
+                          {totalEnt}
+                        </td>
+                        <td className="py-2 px-2 border border-black text-center font-black text-black bg-white text-xs">
+                          {totalNEnt}
+                        </td>
                       </React.Fragment>
                     );
                   })}
