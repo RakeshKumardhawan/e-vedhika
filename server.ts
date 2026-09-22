@@ -1366,6 +1366,27 @@ app.get('/api/remote-commands', (req, res) => {
     limits: { fileSize: 1024 * 1024 * 1024 } // 1GB limit
   });
 
+  // Helper to get a clean Cloudflare R2 Public URL without any accidental markdown brackets or trailing slashes
+  const getCleanR2PublicUrl = (): string => {
+    const raw = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev").trim();
+    const match = raw.match(/https?:\/\/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (match) {
+      return match[0].replace(/\/+$/, "");
+    }
+    return "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev";
+  };
+
+  // Helper to sanitize any URL string from double concatenations, brackets, or markdown
+  const sanitizeUrlString = (raw: any): string => {
+    if (!raw || typeof raw !== "string") return "";
+    let s = raw.trim();
+    const matches = s.match(/https?:\/\/[^\s\]\)\"\'<>]+/g);
+    if (matches && matches.length > 0) {
+      return matches[0];
+    }
+    return s;
+  };
+
   app.post("/api/upload", verifyToken, (req, res) => {
     console.log("POST /api/upload hit. Content-Type:", req.headers['content-type']);
     
@@ -1387,7 +1408,7 @@ app.get('/api/remote-commands', (req, res) => {
         const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
         const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
         const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
-        let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev").trim();
+        let publicUrl = getCleanR2PublicUrl();
 
         const hasR2 = !!(accountId && accessKeyId.length === 32 && secretAccessKey.length >= 32 && bucketName && publicUrl);
 
@@ -1463,7 +1484,7 @@ app.get('/api/remote-commands', (req, res) => {
       const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
       const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "").trim();
       const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || "e-vedhika-files").trim();
-      let publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev").trim();
+      let publicUrl = getCleanR2PublicUrl();
 
       const missingVars: string[] = [];
       if (!accessKeyId) missingVars.push("CLOUDFLARE_R2_ACCESS_KEY_ID");
@@ -1616,19 +1637,23 @@ app.get('/api/remote-commands', (req, res) => {
         }
       }
 
+      url = sanitizeUrlString(url);
+      fallbackUrl = sanitizeUrlString(fallbackUrl);
+
       if (!url && fallbackUrl) {
         url = fallbackUrl;
       }
 
       const filename = (typeof req.query.name === "string" ? req.query.name : null) || (typeof req.query.filename === "string" ? req.query.filename : null) || "download";
 
-      if (!url || typeof url !== 'string') {
+      if (!url) {
         return res.status(400).send("No URL provided");
       }
 
       // Check if this is a local /uploads/ file
       if (url.startsWith('/uploads/')) {
-        const localPath = path.join('/tmp', 'uploads', url.substring('/uploads/'.length));
+        const localRel = url.substring('/uploads/'.length);
+        const localPath = path.join('/tmp', 'uploads', localRel);
         if (fs.existsSync(localPath)) {
           let downloadName = filename as string;
           const extMatch = localPath.match(/\.[a-zA-Z0-9]+$/);
@@ -1638,24 +1663,31 @@ app.get('/api/remote-commands', (req, res) => {
           return res.download(localPath, downloadName);
         }
         
+        // Also check if stripped file exists in /tmp/uploads
+        const strippedLocalRel = localRel.replace(/^\d{5,15}-/, '').replace(/^\d{5,15}-/, '');
+        const strippedLocalPath = path.join('/tmp', 'uploads', strippedLocalRel);
+        if (fs.existsSync(strippedLocalPath)) {
+          let downloadName = filename as string;
+          const extMatch = strippedLocalPath.match(/\.[a-zA-Z0-9]+$/);
+          if (extMatch && !downloadName.includes('.')) {
+            downloadName += extMatch[0];
+          }
+          return res.download(strippedLocalPath, downloadName);
+        }
+
         // If local file is missing, try fallback public URL if provided
-        if (fallbackUrl && fallbackUrl !== url) {
+        if (fallbackUrl && fallbackUrl !== url && fallbackUrl.startsWith('http')) {
           url = fallbackUrl;
         } else {
-          // Fallback to Cloudflare R2 if not found locally
-          const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-          if (publicUrl) {
-            const baseUrl = publicUrl.endsWith('/') ? publicUrl.slice(0, -1) : publicUrl;
-            url = `${baseUrl}${url}`;
-          } else {
-            return res.status(404).send("ఫైల్ అందుబాటులో లేదు (Local file not found and no remote fallback configured)");
-          }
+          // Fallback to Cloudflare R2
+          const baseUrl = getCleanR2PublicUrl();
+          url = `${baseUrl}${url}`;
         }
       }
 
       // Helper function to resolve direct download links for cloud storage
       const resolveRemoteUrl = (rawUrl: string): string => {
-        let clean = rawUrl.trim();
+        let clean = sanitizeUrlString(rawUrl);
         // Google Drive
         if (clean.includes("drive.google.com") || clean.includes("docs.google.com")) {
           const driveMatch = clean.match(/\/d\/([a-zA-Z0-9_-]+)/) || clean.match(/[?&]id=([a-zA-Z0-9_-]+)/);
@@ -1703,6 +1735,26 @@ app.get('/api/remote-commands', (req, res) => {
           fetchResp = await doFetch(fetchUrl);
         } else {
           throw err;
+        }
+      }
+
+      // If initial fetch was 404 on R2 with a timestamp-prefixed key, try stripping timestamp
+      if (!fetchResp.ok && fetchUrl.includes('/uploads/')) {
+        const urlParts = fetchUrl.split('/uploads/');
+        if (urlParts.length === 2) {
+          const baseUrlPart = urlParts[0];
+          let filePart = urlParts[1];
+          const stripped = filePart.replace(/^\d{5,15}-/, '').replace(/^\d{5,15}-/, '');
+          if (stripped !== filePart) {
+            const alternativeUrl = `${baseUrlPart}/uploads/${stripped}`;
+            try {
+              const altResp = await doFetch(alternativeUrl);
+              if (altResp.ok) {
+                fetchResp = altResp;
+                fetchUrl = alternativeUrl;
+              }
+            } catch (eAlt) {}
+          }
         }
       }
 
@@ -1783,6 +1835,12 @@ app.get('/api/remote-commands', (req, res) => {
       
       if (fetchResp.body) {
         const readableNodeStream = Readable.fromWeb(fetchResp.body as any);
+        readableNodeStream.on('error', (err) => {
+          console.error("Readable stream error:", err);
+          if (!res.headersSent) {
+            res.status(500).end();
+          }
+        });
         readableNodeStream.pipe(res);
       } else {
         res.end();

@@ -1722,26 +1722,54 @@ export const handleForceDownload = async (
       extractedFilename = extractedFilename.replace(/^\d{5,15}-/, "");
     }
 
+    // Helper to sanitize URL from accidental concatenations or markdown
+    const cleanRawUrl = (str: string) => {
+      if (!str) return "";
+      let s = str.trim();
+      const match = s.match(/https?:\/\/[^\s\]\)\"\'<>]+/);
+      return match ? match[0] : s;
+    };
+
+    const sanitizedTargetUrl = cleanRawUrl(targetUrl);
+    const sanitizedFallbackUrl = cleanRawUrl(fallbackUrl || "");
+
+    // Give the user instant visual confirmation that download was requested
+    Swal.mixin({
+      toast: true,
+      position: "top",
+      showConfirmButton: false,
+      timer: 2500,
+      timerProgressBar: true,
+    }).fire({
+      icon: "info",
+      title: "డౌన్‌లోడ్ ప్రారంభమైంది...",
+    });
+
     const link = document.createElement("a");
 
-    if (targetUrl.startsWith("data:") || targetUrl.startsWith("blob:")) {
-      link.href = targetUrl;
+    if (sanitizedTargetUrl.startsWith("data:") || sanitizedTargetUrl.startsWith("blob:")) {
+      link.href = sanitizedTargetUrl;
       link.download = extractedFilename;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      setTimeout(() => {
+        if (document.body.contains(link)) document.body.removeChild(link);
+      }, 1500);
     } else {
       // Stream seamlessly through our /api/download backend proxy with Base64 masked parameters
       // This protects the user key and file origin while preventing 'file not found' errors
-      const encodedQ = btoa(encodeURIComponent(targetUrl));
-      const encodedFQ = fallbackUrl ? btoa(encodeURIComponent(fallbackUrl)) : "";
+      const encodedQ = btoa(encodeURIComponent(sanitizedTargetUrl));
+      const encodedFQ = sanitizedFallbackUrl ? btoa(encodeURIComponent(sanitizedFallbackUrl)) : "";
       const downloadApiUrl = `/api/download?name=${encodeURIComponent(extractedFilename)}&filename=${encodeURIComponent(extractedFilename)}&q=${encodeURIComponent(encodedQ)}${encodedFQ ? `&fq=${encodeURIComponent(encodedFQ)}` : ""}`;
 
       link.href = downloadApiUrl;
       link.download = extractedFilename;
+      link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      setTimeout(() => {
+        if (document.body.contains(link)) document.body.removeChild(link);
+      }, 2000);
     }
 
   } catch (error) {
