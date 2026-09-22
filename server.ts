@@ -1598,64 +1598,127 @@ app.get('/api/remote-commands', (req, res) => {
 
   app.get('/api/download', async (req, res) => {
     try {
-      let url = req.query.url as string;
+      let url = (typeof req.query.url === "string" ? req.query.url : "") || "";
+      if (!url && typeof req.query.q === "string") {
+        try {
+          url = decodeURIComponent(Buffer.from(req.query.q, 'base64').toString('utf-8'));
+        } catch (e) {
+          try { url = Buffer.from(req.query.q, 'base64').toString('utf-8'); } catch (e2) {}
+        }
+      }
+
+      let fallbackUrl = (typeof req.query.fallbackUrl === "string" ? req.query.fallbackUrl : "") || "";
+      if (!fallbackUrl && typeof req.query.fq === "string") {
+        try {
+          fallbackUrl = decodeURIComponent(Buffer.from(req.query.fq, 'base64').toString('utf-8'));
+        } catch (e) {
+          try { fallbackUrl = Buffer.from(req.query.fq, 'base64').toString('utf-8'); } catch (e2) {}
+        }
+      }
+
+      if (!url && fallbackUrl) {
+        url = fallbackUrl;
+      }
+
       const filename = (typeof req.query.name === "string" ? req.query.name : null) || (typeof req.query.filename === "string" ? req.query.filename : null) || "download";
 
       if (!url || typeof url !== 'string') {
         return res.status(400).send("No URL provided");
       }
 
-      // Automatically convert Google Drive view URLs to direct stream/export URLs
-      if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
-        const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        if (driveMatch && driveMatch[1]) {
-          url = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}&confirm=t`;
-        }
-      }
-
+      // Check if this is a local /uploads/ file
       if (url.startsWith('/uploads/')) {
         const localPath = path.join('/tmp', 'uploads', url.substring('/uploads/'.length));
         if (fs.existsSync(localPath)) {
           let downloadName = filename as string;
           const extMatch = localPath.match(/\.[a-zA-Z0-9]+$/);
           if (extMatch && !downloadName.includes('.')) {
-            const lowerName = downloadName.toLowerCase();
-            if (lowerName === "download" || lowerName === "document" || lowerName === "attachment" || lowerName === "download.zip" || lowerName.startsWith("download")) {
-              downloadName += extMatch[0];
-            } else {
-              downloadName += extMatch[0];
-            }
+            downloadName += extMatch[0];
           }
           return res.download(localPath, downloadName);
         }
         
-        // Fallback to Cloudflare R2 if not found locally
-        const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-        if (publicUrl) {
-           const baseUrl = publicUrl.endsWith('/') ? publicUrl.slice(0, -1) : publicUrl;
-           url = `${baseUrl}${url}`;
+        // If local file is missing, try fallback public URL if provided
+        if (fallbackUrl && fallbackUrl !== url) {
+          url = fallbackUrl;
         } else {
-           return res.status(404).send("Local file not found and no remote fallback configured");
+          // Fallback to Cloudflare R2 if not found locally
+          const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+          if (publicUrl) {
+            const baseUrl = publicUrl.endsWith('/') ? publicUrl.slice(0, -1) : publicUrl;
+            url = `${baseUrl}${url}`;
+          } else {
+            return res.status(404).send("ఫైల్ అందుబాటులో లేదు (Local file not found and no remote fallback configured)");
+          }
         }
       }
 
-      const fetchUrl = url;
-
-      const fetchResp = await fetch(fetchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': '*/*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+      // Helper function to resolve direct download links for cloud storage
+      const resolveRemoteUrl = (rawUrl: string): string => {
+        let clean = rawUrl.trim();
+        // Google Drive
+        if (clean.includes("drive.google.com") || clean.includes("docs.google.com")) {
+          const driveMatch = clean.match(/\/d\/([a-zA-Z0-9_-]+)/) || clean.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+          if (driveMatch && driveMatch[1]) {
+            return `https://drive.usercontent.google.com/download?id=${driveMatch[1]}&export=download&confirm=t`;
+          }
         }
-      });
-      if (!fetchResp.ok) throw new Error("Failed to fetch remote URL <" + fetchUrl + ">: " + fetchResp.statusText + " (" + fetchResp.status + ")");
+        // Dropbox
+        if (clean.includes("dropbox.com")) {
+          return clean.replace(/[?&]dl=0/, '').replace(/\?$/, '') + (clean.includes('?') ? '&' : '?') + 'dl=1';
+        }
+        return clean;
+      };
+
+      let fetchUrl = resolveRemoteUrl(url);
+
+      const doFetch = async (target: string) => {
+        return await fetch(target, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          redirect: 'follow'
+        });
+      };
+
+      let fetchResp: any;
+      try {
+        fetchResp = await doFetch(fetchUrl);
+        // If Google Drive usercontent returned 404 or failed, try google.com/uc
+        if (!fetchResp.ok && (url.includes("drive.google.com") || url.includes("docs.google.com"))) {
+          const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+          if (driveMatch && driveMatch[1]) {
+            fetchUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}&confirm=t`;
+            fetchResp = await doFetch(fetchUrl);
+          }
+        }
+      } catch (err) {
+        // If primary fetch threw network error, attempt fallbackUrl
+        if (fallbackUrl && fallbackUrl !== url) {
+          fetchUrl = resolveRemoteUrl(fallbackUrl);
+          fetchResp = await doFetch(fetchUrl);
+        } else {
+          throw err;
+        }
+      }
+
+      // If initial fetch failed and we have a fallback, try fallback
+      if (!fetchResp.ok && fallbackUrl && fallbackUrl !== url) {
+        fetchUrl = resolveRemoteUrl(fallbackUrl);
+        fetchResp = await doFetch(fetchUrl);
+      }
+
+      if (!fetchResp.ok) {
+        throw new Error("Failed to fetch remote URL: " + fetchResp.statusText + " (" + fetchResp.status + ")");
+      }
 
       let extractedFilename = filename as string;
       const remoteDisposition = fetchResp.headers.get('content-disposition');
       if (remoteDisposition) {
-
         const filenameStarMatch = remoteDisposition.match(/filename\*=UTF-8''([^;]+)/i);
         const filenameMatch = remoteDisposition.match(/filename="?([^";]+)"?/i);
         if (filenameStarMatch && filenameStarMatch[1]) {
@@ -1727,7 +1790,7 @@ app.get('/api/remote-commands', (req, res) => {
 
     } catch (e: any) {
       console.error("Proxy download error:", e);
-      res.status(500).send("Download failed: " + (e.message || String(e)));
+      res.status(500).send("డౌన్‌లోడ్ విఫలమైంది: " + (e.message || String(e)));
     }
   });
 

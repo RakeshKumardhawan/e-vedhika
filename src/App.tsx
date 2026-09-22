@@ -632,6 +632,7 @@ interface Post {
   attachments?: {
     name: string;
     url: string;
+    fallbackUrl?: string;
     version?: string;
     status?: "New" | "Old";
     badgePrefix?: string;
@@ -1644,14 +1645,24 @@ export const handleForceDownload = async (
   e: React.MouseEvent,
   url: string,
   fileName: string,
-  isDirect?: boolean
+  isDirect?: boolean,
+  fallbackUrl?: string
 ) => {
   e.preventDefault();
   e.stopPropagation();
 
   if (requireLoginAlert()) return;
 
-  if (!url) return;
+  const targetUrl = (url || fallbackUrl || "").trim();
+  if (!targetUrl) {
+    Swal.fire({
+      icon: "warning",
+      title: "డౌన్‌లోడ్ లింక్ అందుబాటులో లేదు",
+      text: "ఈ ఫైల్ కోసం డౌన్‌లోడ్ లింక్ అందుబాటులో లేదు.",
+      confirmButtonText: "సరే"
+    });
+    return;
+  }
 
   try {
     let extractedFilename = fileName || "download";
@@ -1666,8 +1677,8 @@ export const handleForceDownload = async (
       !extractedFilename.includes(".");
 
     if (isGenericInfo) {
-      if (url.startsWith("data:")) {
-        const mimeMatch = url.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);/);
+      if (targetUrl.startsWith("data:")) {
+        const mimeMatch = targetUrl.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);/);
         if (mimeMatch) {
           const mime = mimeMatch[1];
           const mimeToExt: Record<string, string> = {
@@ -1691,7 +1702,7 @@ export const handleForceDownload = async (
         }
       } else {
         try {
-          const urlObj = new URL(url, window.location.origin);
+          const urlObj = new URL(targetUrl, window.location.origin);
           const decodedPath = decodeURIComponent(urlObj.pathname);
           const parts = decodedPath.split("/");
           const lastPart = parts[parts.length - 1];
@@ -1711,28 +1722,20 @@ export const handleForceDownload = async (
       extractedFilename = extractedFilename.replace(/^\d{5,15}-/, "");
     }
 
-    let targetUrl = url;
-    if (targetUrl.includes("drive.google.com") || targetUrl.includes("docs.google.com")) {
-      const driveMatch = targetUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || targetUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (driveMatch && driveMatch[1]) {
-        targetUrl = `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-      }
-    }
-
     const link = document.createElement("a");
 
-    if (url.startsWith("data:") || url.startsWith("blob:")) {
-      link.href = url;
+    if (targetUrl.startsWith("data:") || targetUrl.startsWith("blob:")) {
+      link.href = targetUrl;
       link.download = extractedFilename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      // Stream seamlessly through our /api/download backend proxy
-      // This works for Cloudflare R2, Google Drive, Firebase Storage, and external links without opening a new tab
-      const downloadApiUrl = targetUrl.startsWith("/") && !targetUrl.startsWith("/uploads/")
-        ? targetUrl
-        : `/api/download?url=${encodeURIComponent(targetUrl)}&name=${encodeURIComponent(extractedFilename)}&filename=${encodeURIComponent(extractedFilename)}`;
+      // Stream seamlessly through our /api/download backend proxy with Base64 masked parameters
+      // This protects the user key and file origin while preventing 'file not found' errors
+      const encodedQ = btoa(encodeURIComponent(targetUrl));
+      const encodedFQ = fallbackUrl ? btoa(encodeURIComponent(fallbackUrl)) : "";
+      const downloadApiUrl = `/api/download?name=${encodeURIComponent(extractedFilename)}&filename=${encodeURIComponent(extractedFilename)}&q=${encodeURIComponent(encodedQ)}${encodedFQ ? `&fq=${encodeURIComponent(encodedFQ)}` : ""}`;
 
       link.href = downloadApiUrl;
       link.download = extractedFilename;
@@ -1743,12 +1746,12 @@ export const handleForceDownload = async (
 
   } catch (error) {
     console.error("Download failed:", error);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName || "download";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    Swal.fire({
+      icon: "error",
+      title: "డౌన్‌లోడ్ సమస్య",
+      text: "డౌన్‌లోడ్ ప్రక్రియలో సమస్య ఎదురైంది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      confirmButtonText: "సరే"
+    });
   }
 };
 
@@ -18356,13 +18359,20 @@ function MultiDayAnalyzer({
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
-                    {mandalList.map((mName) => {
+                  <tbody 
+                    key={`${mandalFilter}_${searchTerm}_${sortedDates.length}`}
+                    className="divide-y divide-slate-100 bg-white"
+                  >
+                    {mandalList.map((mName, mIdx) => {
                       const isEx = expandedMandals.has(mName);
                       const items = groupedByMandal[mName];
                       return (
                         <React.Fragment key={mName}>
-                          <tr
+                          <motion.tr
+                            key={`mandal_${mName}`}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.22, delay: Math.min(mIdx * 0.02, 0.2), ease: "easeOut" }}
                             className="bg-slate-50 hover:bg-slate-100 cursor-pointer border-b border-slate-200 group transition-colors"
                             onClick={() => toggleMandal(mName)}
                           >
@@ -18382,11 +18392,14 @@ function MultiDayAnalyzer({
                                 {items.length} GPs
                               </span>
                             </td>
-                          </tr>
+                          </motion.tr>
                           {isEx &&
-                            items.map((info) => (
-                              <tr
+                            items.map((info, gpIdx) => (
+                              <motion.tr
                                 key={`${(info.mandal || "").toUpperCase()}_${(info.gp || "").toUpperCase()}`}
+                                initial={{ opacity: 0, x: -6 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.18, delay: Math.min(gpIdx * 0.015, 0.25), ease: "easeOut" }}
                                 className="hover:bg-indigo-50/50 text-slate-700 border-b border-slate-100 group transition-colors"
                               >
                                 <td className="p-3 border border-slate-200 text-center font-medium bg-slate-50 text-slate-400 group-hover:text-indigo-600 text-xs">
@@ -18436,7 +18449,7 @@ function MultiDayAnalyzer({
                                     </td>
                                   );
                                 })}
-                              </tr>
+                              </motion.tr>
                             ))}
                         </React.Fragment>
                       );
@@ -20622,6 +20635,128 @@ function CustomAdUnit({ id, code, className }: { id: string; code?: string; clas
   );
 }
 
+function toDatetimeLocalString(val: any): string {
+  if (!val) return "";
+  let ms = typeof val === 'number' ? val : (val.seconds ? val.seconds * 1000 : Date.now());
+  const d = new Date(ms);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function handleEditPostTimings(post: Post, addToast: (s: string) => void, isAdmin?: boolean) {
+  if (isAdmin === false) {
+    addToast("ఈ ఆప్షన్ కేవలం అడ్మిన్‌కు మాత్రమే అందుబాటులో ఉంది (Admin Only).");
+    return;
+  }
+  const currentCreatedMs = getValidTime(post);
+  const currentCreatedStr = toDatetimeLocalString(currentCreatedMs);
+
+  const currentUpdateMs = post.lastEditedAt || post.updatedAt;
+  const currentUpdateStr = currentUpdateMs ? toDatetimeLocalString(currentUpdateMs) : toDatetimeLocalString(Date.now());
+  const hasExistingUpdate = Boolean(currentUpdateMs);
+
+  const result = await Swal.fire({
+    title: `<div style="font-size: 16px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; justify-content: center;">
+      <span style="color: #d97706;">🕒</span> పోస్ట్ సమయాలు సవరణ (Edit Post Timings)
+    </div>`,
+    html: `
+      <div style="text-align: left; font-size: 12px; color: #334155; line-height: 1.5; font-family: inherit;">
+        <p style="margin-bottom: 12px; font-size: 11px; color: #64748b;">
+          అడ్మిన్ ద్వారా పోస్ట్ ప్రచురణ తేదీ మరియు చివరి అప్‌డేట్ సమయాలను ఇక్కడే మార్చవచ్చు:
+        </p>
+
+        <div style="margin-bottom: 14px; padding: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;">
+          <label style="display: block; font-weight: 800; font-size: 11px; text-transform: uppercase; color: #92400e; margin-bottom: 6px;">
+            1. అసలు ప్రచురణ తేదీ & సమయం (Created / Published Time):
+          </label>
+          <input 
+            id="swal-edit-created-time" 
+            type="datetime-local" 
+            value="${currentCreatedStr}" 
+            style="width: 100%; padding: 8px 10px; border: 1.5px solid #d97706; border-radius: 8px; font-size: 13px; font-weight: 600; color: #0f172a; background: #ffffff; outline: none; box-sizing: border-box;" 
+          />
+          <span style="display: block; font-size: 10px; color: #b45309; margin-top: 4px;">
+            * పోస్ట్ హెడర్‌లో కనిపించే మొదటి సమయం (e.g. 05 MAY 2026, 01:37 AM)
+          </span>
+        </div>
+
+        <div style="padding: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px;">
+          <label style="display: block; font-weight: 800; font-size: 11px; text-transform: uppercase; color: #065f46; margin-bottom: 6px;">
+            2. చివరి అప్‌డేట్ తేదీ & సమయం (Last Update Time):
+          </label>
+          <input 
+            id="swal-edit-update-time" 
+            type="datetime-local" 
+            value="${currentUpdateStr}" 
+            style="width: 100%; padding: 8px 10px; border: 1.5px solid #059669; border-radius: 8px; font-size: 13px; font-weight: 600; color: #0f172a; background: #ffffff; outline: none; box-sizing: border-box;" 
+          />
+          
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 7px; font-size: 11px; font-weight: 600; color: #1e293b;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="swal-update-choice" value="custom" ${hasExistingUpdate ? 'checked' : ''} style="cursor: pointer;" />
+              <span>📅 పైన ఇచ్చిన కస్టమ్ తేదీని సెట్ చేయండి (Use Custom Date)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="swal-update-choice" value="now" style="cursor: pointer;" />
+              <span>⚡ ప్రస్తుత సమయాన్ని సెట్ చేయండి (Set to Now)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="radio" name="swal-update-choice" value="remove" ${!hasExistingUpdate ? 'checked' : ''} style="cursor: pointer;" />
+              <span style="color: #b91c1c;">🚫 లాస్ట్ అప్‌డేట్ బ్యాడ్జ్ తీసివేయండి (Hide / Remove Badge)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: "సేవ్ చేయండి (Save Timings)",
+    cancelButtonText: "రద్దు (Cancel)",
+    confirmButtonColor: "#0284c7",
+    cancelButtonColor: "#94a3b8",
+    preConfirm: () => {
+      const createdInput = (document.getElementById("swal-edit-created-time") as HTMLInputElement)?.value;
+      const updateInput = (document.getElementById("swal-edit-update-time") as HTMLInputElement)?.value;
+      const choice = (document.querySelector('input[name="swal-update-choice"]:checked') as HTMLInputElement)?.value || "custom";
+
+      return { createdInput, updateInput, choice };
+    }
+  });
+
+  if (result.isConfirmed && result.value) {
+    const { createdInput, updateInput, choice } = result.value;
+    const updates: any = {};
+
+    if (createdInput) {
+      const createdMs = new Date(createdInput).getTime();
+      if (!isNaN(createdMs)) {
+        updates.createdAt = createdMs;
+        updates.time = createdMs;
+      }
+    }
+
+    if (choice === "remove") {
+      updates.lastEditedAt = deleteField();
+      updates.updatedAt = deleteField();
+    } else if (choice === "now") {
+      updates.lastEditedAt = Date.now();
+    } else if (choice === "custom" && updateInput) {
+      const updateMs = new Date(updateInput).getTime();
+      if (!isNaN(updateMs)) {
+        updates.lastEditedAt = updateMs;
+      }
+    }
+
+    try {
+      await updateDoc(doc(db, "posts", post.id), updates);
+      addToast("పోస్ట్ సమయాలు విజయవంతంగా అప్‌డేట్ చేయబడ్డాయి! (Timings Updated)");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  }
+}
+
 function PostCard({
   post,
   isExpanded,
@@ -21064,6 +21199,20 @@ function PostCard({
                 </span>
               </>
             )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditPostTimings(post, addToast, isAdmin);
+                }}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-colors shadow-xs ml-0.5 cursor-pointer"
+                title="సమయాలు మార్చండి (Edit Created / Last Update Timings)"
+              >
+                <Calendar size={10} className="text-amber-600" />
+                <span>సమయం ఎడిట్ (Edit Time)</span>
+              </button>
+            )}
             <span>•</span>
             <span className="text-primary/70">
               {post.categories && post.categories.length > 0
@@ -21076,6 +21225,16 @@ function PostCard({
         <div className="flex gap-2">
           {isOwner && (
             <>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => handleEditPostTimings(post, addToast, isAdmin)}
+                  className="p-1.5 hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-all rounded-lg"
+                  title="సమయాలు మార్చండి (Edit Post Timings)"
+                >
+                  <Clock size={16} />
+                </button>
+              )}
               {isAdmin && (
                 <button
                   onClick={async () => {
@@ -21301,12 +21460,10 @@ function PostCard({
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <a
-                          href={att.url}
+                          href="#download"
                           onClick={(e) =>
-                            handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
+                            handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect, att.fallbackUrl)
                           }
-                          target="_blank"
-                          rel="noopener noreferrer"
                           className="p-2 bg-white rounded-full text-primary hover:scale-110 transition-transform"
                         >
                           <ExternalLink size={16} />
@@ -21422,15 +21579,10 @@ function PostCard({
           <div className="w-full lg:w-[280px] xl:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6 flex flex-col">
             <div className="mb-5">
               <a
-                href={(() => {
-                  const att = getLatestAttachment(post.attachments);
-                  return att ? att.url : post.attachments[0]?.url;
-                })()}
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#download"
                 onClick={(e) => {
                   const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
-                  handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect);
+                  handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect, attToDownload.fallbackUrl);
                 }}
                 className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
                 style={{
@@ -21500,12 +21652,10 @@ function PostCard({
               {post.attachments?.map((att, idx) => (
                 <a
                   key={idx}
-                  href={att.url}
+                  href="#download"
                   onClick={(e) =>
-                    handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect)
+                    handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect, att.fallbackUrl)
                   }
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
                     att.isDirect
                       ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
@@ -22035,15 +22185,6 @@ function PostCard({
   );
 }
 
-function toDatetimeLocalString(val: any): string {
-  if (!val) return "";
-  let ms = typeof val === 'number' ? val : (val.seconds ? val.seconds * 1000 : Date.now());
-  const d = new Date(ms);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function PostForm({
   addToast,
   onCancel,
@@ -22084,18 +22225,18 @@ function PostForm({
     editingPost?.versionStatus,
   );
   const [attachments, setAttachments] = useState<
-    { name: string; url: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean }[]
+    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean }[]
   >(editingPost?.attachments || []);
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
     editingPost?.downloadStyle || "techspot",
   );
-  const [updateTimeOption, setUpdateTimeOption] = useState<"now" | "custom" | "keep">(
-    editingPost ? "now" : "now"
+  const [updateTimeOption, setUpdateTimeOption] = useState<"now" | "custom" | "keep" | "none">(
+    editingPost ? "keep" : "now"
   );
   const [customUpdateTime, setCustomUpdateTime] = useState<string>(() => {
-    if (editingPost?.lastEditedAt) {
-      return toDatetimeLocalString(editingPost.lastEditedAt);
+    if (editingPost?.lastEditedAt || editingPost?.updatedAt) {
+      return toDatetimeLocalString(editingPost.lastEditedAt || editingPost.updatedAt);
     }
     return toDatetimeLocalString(Date.now());
   });
@@ -22535,6 +22676,12 @@ function PostForm({
 
       const cleanAttachments = (attachments || []).map((att) => {
         const cleaned: any = { ...att };
+        if (!cleaned.url && cleaned.fallbackUrl) {
+          cleaned.url = cleaned.fallbackUrl;
+        }
+        if (!cleaned.fallbackUrl && cleaned.url && !cleaned.url.startsWith('/uploads/') && !cleaned.url.startsWith('blob:') && !cleaned.url.startsWith('data:')) {
+          cleaned.fallbackUrl = cleaned.url;
+        }
         Object.keys(cleaned).forEach((key) => {
           if (cleaned[key] === undefined) delete cleaned[key];
         });
@@ -22594,6 +22741,9 @@ function PostForm({
           } else {
             updatePayload.lastEditedAt = deleteField();
           }
+        } else if (updateTimeOption === "none") {
+          updatePayload.lastEditedAt = deleteField();
+          updatePayload.updatedAt = deleteField();
         }
 
         if (overrideCreatedTime && customCreatedTime) {
@@ -22882,10 +23032,14 @@ function PostForm({
               
               {/* Attachments Meta Box */}
               <div className="bg-white border border-[#c3c4c7] shadow-sm">
-                <div className="px-3 py-2 border-b border-[#c3c4c7] bg-white font-semibold text-[14px] flex items-center gap-2">
-                  <Paperclip size={14} /> Attachments & Downloads
+                <div className="px-3 py-2 border-b border-[#c3c4c7] bg-white font-semibold text-[14px] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Paperclip size={14} className="text-blue-600" />
+                    <span>Attachments & Downloads ({attachments.length})</span>
+                  </div>
+                  <span className="text-[11px] font-normal text-slate-500">డైరెక్ట్ & పబ్లిక్ లింక్ సపోర్ట్</span>
                 </div>
-                <div className="p-3">
+                <div className="p-3 space-y-3">
                   <input
                     type="file"
                     multiple
@@ -22893,16 +23047,130 @@ function PostForm({
                     onChange={handleFileUpload}
                     className="hidden"
                   />
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="border border-[#2271b1] text-[#2271b1] bg-[#f6f7f7] px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-[#f0f0f1] font-medium transition-colors">
-                    Upload Files
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border border-[#2271b1] text-[#2271b1] bg-[#f6f7f7] px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-[#f0f0f1] font-medium transition-colors flex items-center gap-1.5"
+                    >
+                      <Upload size={13} /> Upload Files
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        Swal.fire({
+                          title: "పబ్లిక్ లింక్ ద్వారా ఫైల్ జోడించండి",
+                          html: `
+                            <div class="text-left mb-1 text-xs font-bold text-slate-600">ఫైల్ పేరు (File Name):</div>
+                            <input id="swal-meta-name" class="swal2-input !mt-0 !mb-3 !text-sm" placeholder="ఉదా: UBD_Site_Setup.bat, Deployment.zip">
+                            <div class="text-left mb-1 text-xs font-bold text-slate-600">పబ్లిక్ డౌన్‌లోడ్ లింక్ (Google Drive / Direct URL / Cloud):</div>
+                            <input id="swal-meta-link" class="swal2-input !mt-0 !mb-2 !text-sm" placeholder="https://drive.google.com/... లేదా పబ్లిక్ లింక్">
+                            <div class="text-left text-[11px] text-slate-500 bg-blue-50 p-2 rounded border border-blue-100 mt-2">
+                              🔒 ఈ లింక్ యూజర్లకు కనిపించదు. యూజర్ ఫైల్ డౌన్‌లోడ్ క్లిక్ చేయగానే ఈ లింక్ నుండి ఫైల్ నేరుగా డౌన్‌లోడ్ అవుతుంది.
+                            </div>
+                          `,
+                          showCancelButton: true,
+                          confirmButtonText: "ఫైల్ జోడించండి",
+                          cancelButtonText: "రద్దు",
+                          confirmButtonColor: "#2271b1",
+                          preConfirm: () => {
+                            const name = (document.getElementById("swal-meta-name") as HTMLInputElement)?.value;
+                            const link = (document.getElementById("swal-meta-link") as HTMLInputElement)?.value;
+                            if (!link || !link.trim()) {
+                              Swal.showValidationMessage("దయచేసి పబ్లిక్ లింక్ ఇవ్వండి");
+                              return null;
+                            }
+                            return {
+                              name: name && name.trim() ? name.trim() : "Attachment",
+                              url: link.trim(),
+                              fallbackUrl: link.trim(),
+                              version: "1.0",
+                              status: "New" as const
+                            };
+                          }
+                        }).then((result) => {
+                          if (result.isConfirmed && result.value) {
+                            setAttachments(prev => [...prev, result.value]);
+                            addToast("పబ్లిక్ లింక్ తో ఫైల్ జోడించబడింది!");
+                          }
+                        });
+                      }}
+                      className="border border-emerald-600 text-emerald-700 bg-emerald-50 px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-emerald-100 font-medium transition-colors flex items-center gap-1.5"
+                    >
+                      <Plus size={13} /> + పబ్లిక్ లింక్ ద్వారా జోడించండి
+                    </button>
+                  </div>
+
                   {/* Render Attachments */}
                   {attachments.length > 0 && (
-                    <div className="mt-3 space-y-2 border-t border-[#c3c4c7] pt-3">
+                    <div className="mt-3 space-y-3 border-t border-[#c3c4c7] pt-3">
                       {attachments.map((att, i) => (
-                        <div key={i} className="flex justify-between items-center text-[13px] bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-sm">
-                          <span className="truncate max-w-[200px] sm:max-w-[400px] font-medium text-slate-700">{att.name}</span>
-                          <button type="button" onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))} className="text-[#d63638] hover:underline font-medium">Remove</button>
+                        <div key={i} className="flex flex-col bg-slate-50 border border-slate-200 p-2.5 rounded-sm gap-2">
+                          <div className="flex justify-between items-center gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <FileText size={14} className="text-blue-600 shrink-0" />
+                              <input
+                                type="text"
+                                value={att.name || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setAttachments(prev => prev.map((item, idx) => idx === i ? { ...item, name: val } : item));
+                                }}
+                                placeholder="File Name (e.g. UBD_Site_Setup.bat)"
+                                className="text-[13px] font-semibold text-slate-800 bg-white border border-slate-300 rounded px-2 py-0.5 w-full max-w-sm focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReplaceIndex(i);
+                                  fileInputRef.current?.click();
+                                }}
+                                className="text-[12px] text-blue-600 hover:underline font-medium"
+                                title="ఫైల్ మార్చండి (Replace file)"
+                              >
+                                Replace
+                              </button>
+                              <span className="text-slate-300">|</span>
+                              <button
+                                type="button"
+                                onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                className="text-[#d63638] hover:underline font-medium text-[12px]"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Public / Fallback Link under the file */}
+                          <div className="p-2 bg-amber-50/80 border border-amber-200/90 rounded text-[11px] space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                              <Link2 size={12} className="text-amber-700 shrink-0" />
+                              <span>ఈ ఫైల్ కి సంబంధించిన పబ్లిక్ లింక్ (Public / Fallback Link):</span>
+                            </div>
+                            <input
+                              type="text"
+                              value={att.fallbackUrl || (att.url && !att.url.startsWith('/uploads/') && !att.url.startsWith('blob:') && !att.url.startsWith('data:') ? att.url : "")}
+                              onChange={(e) => {
+                                const val = e.target.value.trim();
+                                setAttachments(prev => prev.map((item, idx) => {
+                                  if (idx !== i) return item;
+                                  return {
+                                    ...item,
+                                    fallbackUrl: val,
+                                    url: item.url || val
+                                  };
+                                }));
+                              }}
+                              placeholder="ఫైల్ డైరెక్ట్ రాకపోతే ఈ పబ్లిక్ లింక్ పేస్ట్ చేయండి (Google Drive, Dropbox, etc.)..."
+                              className="w-full bg-white border border-amber-300 rounded px-2 py-1 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                            <div className="flex items-center gap-1 text-[10px] text-slate-600">
+                              <ShieldCheck size={11} className="text-emerald-600 shrink-0" />
+                              <span>ఈ లింక్ యూజర్లకు కనిపించదు. డైరెక్ట్ ఫైల్ లేకపోయినా ఫైల్ క్లిక్ చేయగానే ఈ లింక్ నుండి డైరెక్ట్‌గా వస్తుంది.</span>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -22951,6 +23219,107 @@ function PostForm({
                   </button>
                 </div>
               </div>
+
+              {/* Post Timings Meta Box (Admin & Editor only) */}
+              {(isAdmin || isEditor) && (
+                <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                  <div className="px-3 py-2 border-b border-[#c3c4c7] font-semibold text-[14px] flex items-center justify-between bg-[#f8f9fa]">
+                    <span className="flex items-center gap-1.5 text-slate-800">
+                      <Clock size={15} className="text-amber-600" />
+                      Post Timings (తేదీ & సమయం)
+                    </span>
+                    <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300">
+                      Admin
+                    </span>
+                  </div>
+                  <div className="p-3 text-[13px] space-y-4">
+                    {/* 1. Created / Published Date & Time */}
+                    <div className="space-y-1.5">
+                      <label className="font-semibold text-slate-800 text-[12px] flex items-center gap-1.5">
+                        <Calendar size={13} className="text-[#2271b1]" />
+                        1. ప్రచురణ తేదీ & సమయం (Created Time):
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={customCreatedTime}
+                        onChange={(e) => {
+                          setCustomCreatedTime(e.target.value);
+                          setOverrideCreatedTime(true);
+                        }}
+                        className="w-full border border-[#8c8f94] px-2 py-1.5 text-[12px] bg-white rounded focus:border-[#2271b1] focus:shadow-[0_0_0_1px_#2271b1] outline-none font-medium"
+                      />
+                      <p className="text-[10px] text-slate-500">
+                        * పోస్ట్ హెడర్‌లో కనిపించే ప్రచురణ సమయం
+                      </p>
+                    </div>
+
+                    {/* 2. Last Update Date & Time */}
+                    {editingPost && (
+                      <div className="pt-3 border-t border-slate-200 space-y-2">
+                        <label className="font-semibold text-slate-800 text-[12px] block">
+                          2. చివరి అప్‌డేట్ సమయం (Last Update Time):
+                        </label>
+                        <div className="space-y-2 text-[12px]">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="wpUpdateTimeOption"
+                              value="keep"
+                              checked={updateTimeOption === "keep"}
+                              onChange={() => setUpdateTimeOption("keep")}
+                              className="text-[#2271b1]"
+                            />
+                            <span>⏳ పాత అప్‌డేట్ డేట్ ఉంచండి (Keep Existing)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="wpUpdateTimeOption"
+                              value="now"
+                              checked={updateTimeOption === "now"}
+                              onChange={() => setUpdateTimeOption("now")}
+                              className="text-[#2271b1]"
+                            />
+                            <span>⚡ ఇప్పటి ప్రస్తుత సమయం (Set to Now)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="wpUpdateTimeOption"
+                              value="custom"
+                              checked={updateTimeOption === "custom"}
+                              onChange={() => setUpdateTimeOption("custom")}
+                              className="text-[#2271b1]"
+                            />
+                            <span>📅 కస్టమ్ సమయం ఎంచుకోండి (Custom Date)</span>
+                          </label>
+                          {updateTimeOption === "custom" && (
+                            <div className="pl-5 pt-1">
+                              <input
+                                type="datetime-local"
+                                value={customUpdateTime}
+                                onChange={(e) => setCustomUpdateTime(e.target.value)}
+                                className="w-full border border-amber-400 bg-amber-50/60 px-2 py-1.5 text-[12px] rounded focus:border-[#2271b1] focus:outline-none font-medium"
+                              />
+                            </div>
+                          )}
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="wpUpdateTimeOption"
+                              value="none"
+                              checked={updateTimeOption === "none"}
+                              onChange={() => setUpdateTimeOption("none")}
+                              className="text-[#2271b1]"
+                            />
+                            <span className="text-rose-700">🚫 లాస్ట్ అప్‌డేట్ బ్యాడ్జ్ తీసివేయండి (Remove Badge)</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Categories Meta Box */}
               <div className="bg-white border border-[#c3c4c7] shadow-sm">
@@ -24146,23 +24515,29 @@ function PostForm({
                       </div>
 
                       {/* Bottom Bar: External Link Input */}
-                      <div className="flex items-center gap-1.5 bg-amber-50/70 border border-amber-200/80 rounded-lg px-2 py-1 w-full">
-                        <Link2 size={12} className="text-amber-600 shrink-0" />
-                        <span className="text-[9px] font-bold uppercase text-amber-800 shrink-0">
-                          Link:
-                        </span>
+                      <div className="flex flex-col gap-1 bg-amber-50/70 border border-amber-200/80 rounded-lg p-2 w-full">
+                        <div className="flex items-center gap-1.5">
+                          <Link2 size={12} className="text-amber-700 shrink-0" />
+                          <span className="text-[10px] font-bold text-amber-900 shrink-0">
+                            పబ్లిక్ లింక్ (Public / Fallback Link):
+                          </span>
+                        </div>
                         <input
                           type="text"
-                          value={att.url || ""}
+                          value={att.fallbackUrl || (att.url && !att.url.startsWith('/uploads/') && !att.url.startsWith('blob:') && !att.url.startsWith('data:') ? att.url : "")}
                           onChange={(e) => {
-                            const newUrl = e.target.value;
+                            const newUrl = e.target.value.trim();
                             setAttachments((prev) =>
-                              prev.map((a, i) => (i === idx ? { ...a, url: newUrl } : a))
+                              prev.map((a, i) => (i === idx ? { ...a, fallbackUrl: newUrl, url: a.url || newUrl } : a))
                             );
                           }}
-                          placeholder="Paste Cloudflare R2 / Google Drive / Direct URL..."
-                          className="text-[10px] font-medium text-slate-700 bg-transparent outline-none border-none w-full placeholder:text-amber-400/80"
+                          placeholder="Paste Google Drive / Dropbox / Cloudflare R2 / Direct URL..."
+                          className="text-[11px] font-medium text-slate-800 bg-white border border-amber-300 rounded px-2 py-1 outline-none w-full placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
                         />
+                        <div className="flex items-center gap-1 text-[9px] text-slate-500 mt-0.5">
+                          <ShieldCheck size={10} className="text-emerald-600 shrink-0" />
+                          <span>ఈ లింక్ యూజర్లకు కనిపించదు. డైరెక్ట్ ఫైల్ లేకపోయినా ఈ లింక్ నుండి ఫైల్ నేరుగా డౌన్‌లోడ్ అవుతుంది.</span>
+                        </div>
                       </div>
                     </Reorder.Item>
                   ))}
@@ -24250,7 +24625,7 @@ function PostForm({
                     పోస్ట్ సవరించినప్పుడు అప్డేట్ డేట్ చూపించాలా లేదా పాత పోస్ట్ టైమ్‌నే ఉంచాలా ఎంచుకోండి:
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-1">
                     <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "now" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
                       <input
                         type="radio"
@@ -24293,6 +24668,21 @@ function PostForm({
                       <div className="text-xs">
                         <span className="font-black text-slate-800 block">⏳ పాత డేట్‌నే ఉంచండి</span>
                         <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">అసలు క్రియేషన్ డేట్‌నే మార్చకుండా ఉంచుతుంది</span>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${updateTimeOption === "none" ? "border-amber-500 bg-amber-50/80 shadow-sm font-bold" : "border-slate-200 hover:border-slate-300 bg-slate-50/50"}`}>
+                      <input
+                        type="radio"
+                        name="updateTimeOption"
+                        value="none"
+                        checked={updateTimeOption === "none"}
+                        onChange={() => setUpdateTimeOption("none")}
+                        className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                      />
+                      <div className="text-xs">
+                        <span className="font-black text-rose-700 block">🚫 బ్యాడ్జ్ వద్దు (None)</span>
+                        <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">లాస్ట్ అప్‌డేట్ బ్యాడ్జ్ తొలగిస్తుంది</span>
                       </div>
                     </label>
                   </div>
@@ -25252,7 +25642,26 @@ function PostDetail({
               )}
             </span>
             <span className="text-slate-300">•</span>
-            <span>Last updated <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</strong></span>
+            <span>ప్రచురణ: <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}</strong></span>
+            {(post.lastEditedAt || post.updatedAt) && (
+              <>
+                <span className="text-slate-300">•</span>
+                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200">
+                  Last Update: {new Date(typeof (post.lastEditedAt || post.updatedAt) === 'number' ? (post.lastEditedAt || post.updatedAt) : ((post.lastEditedAt || post.updatedAt).seconds ? (post.lastEditedAt || post.updatedAt).seconds * 1000 : (post.lastEditedAt || post.updatedAt))).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                </span>
+              </>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => handleEditPostTimings(post, addToast, isAdmin)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 transition-colors shadow-xs cursor-pointer ml-1"
+                title="సమయాలు మార్చండి (Edit Timings)"
+              >
+                <Clock size={11} className="text-amber-700" />
+                <span>సమయం ఎడిట్ (Edit Time)</span>
+              </button>
+            )}
             <span className="text-slate-300">•</span>
             <span className="flex items-center gap-1"><Eye size={12} className="text-slate-400" /> <strong>{getPostDisplayViews(post, isAdmin)}</strong></span>
           </div>
@@ -25467,11 +25876,8 @@ function PostDetail({
               {post.attachments.map((att: any, idx: number) => (
                 <a
                   key={idx}
-                  href={att.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  download={att.name || "Attachment"}
-                  onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment")}
+                  href="#download"
+                  onClick={(e) => handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect, att.fallbackUrl)}
                   className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors group cursor-pointer"
                 >
                   <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center shrink-0">
@@ -26845,15 +27251,41 @@ function PostComments({
                   </button>
                 )}
 
-                <button
-                  onClick={() =>
-                    setReplyingToId(replyingToId === c.id ? null : c.id)
-                  }
-                  className="text-xs font-bold text-slate-500 hover:text-primary transition-colors ml-auto flex gap-1 items-center bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100"
-                >
-                  <MessageCircle size={12} />
-                  రిప్లై (Reply)
-                </button>
+                <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                  {(() => {
+                    const replyCount = Array.isArray(c.replies) ? c.replies.length : 0;
+                    return (
+                      <>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                            replyCount > 0
+                              ? "text-indigo-700 bg-indigo-50 border-indigo-200 shadow-2xs font-extrabold"
+                              : "text-slate-400 bg-slate-50/80 border-slate-200/60"
+                          }`}
+                          title={`మొత్తం సమాధానాలు: ${replyCount}`}
+                        >
+                          <CornerDownRight size={11} className={replyCount > 0 ? "text-indigo-600" : "text-slate-400"} />
+                          <span>{replyCount} {replyCount === 1 ? "రిప్లై" : "రిప్లైలు"}</span>
+                        </span>
+
+                        <button
+                          onClick={() =>
+                            setReplyingToId(replyingToId === c.id ? null : c.id)
+                          }
+                          className={`text-xs font-bold transition-all flex gap-1 items-center px-2.5 py-1 rounded-full border ${
+                            replyingToId === c.id
+                              ? "bg-primary text-white border-primary shadow-xs"
+                              : "text-slate-600 hover:text-primary hover:bg-slate-100 bg-slate-50 border-slate-200"
+                          }`}
+                          title={replyingToId === c.id ? "రిప్లై బాక్స్ మూసివేయండి" : "సమాధానం ఇవ్వండి (Reply)"}
+                        >
+                          <MessageCircle size={12} />
+                          <span>రిప్లై (Reply)</span>
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
 
               {/* Replies List */}
