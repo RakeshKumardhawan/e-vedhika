@@ -1,5 +1,23 @@
-import React, { useState, useRef } from "react";
-import { Upload, FileSpreadsheet, Download, RefreshCw, Printer, FileText, Copy } from "lucide-react";
+import React, { useState, useRef, useMemo } from "react";
+import { 
+  Upload, 
+  FileSpreadsheet, 
+  Download, 
+  RefreshCw, 
+  Printer, 
+  FileText, 
+  Copy, 
+  Check, 
+  CheckCircle2, 
+  AlertCircle, 
+  Plus, 
+  Edit3, 
+  Trash2, 
+  X, 
+  Sparkles, 
+  CheckCheck,
+  CheckSquare
+} from "lucide-react";
 
 export function MonthlyActivityFormatter({
   addToast,
@@ -12,6 +30,14 @@ export function MonthlyActivityFormatter({
   const [nameHeader, setNameHeader] = useState("Mandal Name");
   const [uploadDateTime, setUploadDateTime] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Form State for Manual Data Entry & Editing
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formTotalGps, setFormTotalGps] = useState("");
+  const [formActivities, setFormActivities] = useState<Record<string, { entered: string; notEntered: string }>>({});
+  const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
 
   const predefinedActivities = [
     "Nursery",
@@ -853,6 +879,168 @@ export function MonthlyActivityFormatter({
 
   const grandTotalGps = data.reduce((acc, row) => acc + (row["TotalGPs"] || 0), 0);
 
+  // Active activities list for data entry
+  const activeActivities = activities.length > 0 ? activities : predefinedActivities;
+
+  // Real-time Form Validation states
+  const isNameValid = formName.trim().length >= 2;
+  const formTotalGpsNum = parseInt(formTotalGps, 10);
+  const isTotalGpsValid = !isNaN(formTotalGpsNum) && formTotalGpsNum > 0;
+  const isUploadDateTimeValid = uploadDateTime.trim().length >= 8;
+
+  // Real-time calculation of activity counts validated
+  const activitiesStatus = useMemo(() => {
+    let completedCount = 0;
+    activeActivities.forEach((act) => {
+      const ent = parseInt(formActivities[act]?.entered || "0", 10) || 0;
+      const notEnt = parseInt(formActivities[act]?.notEntered || "0", 10) || 0;
+      if (isTotalGpsValid && ent + notEnt === formTotalGpsNum) {
+        completedCount++;
+      }
+    });
+    return {
+      completedCount,
+      totalActs: activeActivities.length,
+      allMatched: isTotalGpsValid && completedCount === activeActivities.length,
+      progressPercent: isTotalGpsValid 
+        ? Math.round((completedCount / activeActivities.length) * 100) 
+        : 0,
+    };
+  }, [activeActivities, formActivities, isTotalGpsValid, formTotalGpsNum]);
+
+  // Open Add Form
+  const handleOpenAddForm = () => {
+    setEditingIndex(null);
+    setFormName("");
+    setFormTotalGps("");
+    const initialAct: Record<string, { entered: string; notEntered: string }> = {};
+    activeActivities.forEach((act) => {
+      initialAct[act] = { entered: "0", notEntered: "0" };
+    });
+    setFormActivities(initialAct);
+    setFormTouched({});
+    setIsFormOpen(true);
+  };
+
+  // Open Edit Form for specific row
+  const handleOpenEditForm = (idx: number) => {
+    const row = data[idx];
+    if (!row) return;
+    setEditingIndex(idx);
+    setFormName(row["Panchayat Name"] || "");
+    const totalGpsVal = String(row["TotalGPs"] || 0);
+    setFormTotalGps(totalGpsVal);
+    const initialAct: Record<string, { entered: string; notEntered: string }> = {};
+    activeActivities.forEach((act) => {
+      const actData = row[act] || { Entered: 0, NotEntered: 0 };
+      initialAct[act] = {
+        entered: String(actData.Entered || 0),
+        notEntered: String(actData.NotEntered || 0),
+      };
+    });
+    setFormActivities(initialAct);
+    setFormTouched({});
+    setIsFormOpen(true);
+  };
+
+  // Quick Action: Mark all as Entered
+  const handleMarkAllEntered = () => {
+    if (!isTotalGpsValid) {
+      addToast("ముందుగా సరైన మొత్తం GPల సంఖ్యను నమోదు చేయండి.");
+      return;
+    }
+    const updated = { ...formActivities };
+    activeActivities.forEach((act) => {
+      updated[act] = { entered: String(formTotalGpsNum), notEntered: "0" };
+    });
+    setFormActivities(updated);
+    addToast("అన్ని యాక్టివిటీలకు 'సమర్పించినవి' విలువలు సెట్ చేయబడ్డాయి.");
+  };
+
+  // Quick Action: Auto-balance Not Entered
+  const handleAutoBalance = () => {
+    if (!isTotalGpsValid) {
+      addToast("ముందుగా సరైన మొత్తం GPల సంఖ్యను నమోదు చేయండి.");
+      return;
+    }
+    const updated = { ...formActivities };
+    activeActivities.forEach((act) => {
+      const ent = parseInt(updated[act]?.entered || "0", 10) || 0;
+      const remaining = Math.max(0, formTotalGpsNum - ent);
+      updated[act] = { entered: String(ent), notEntered: String(remaining) };
+    });
+    setFormActivities(updated);
+    addToast("సమర్పించని GPల సంఖ్య ఆటో-బ్యాలెన్స్ చేయబడింది.");
+  };
+
+  // Save Record
+  const handleSaveForm = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!isNameValid) {
+      addToast("దయచేసి సరైన పేరు నమోదు చేయండి (కనీసం 2 అక్షరాలు).");
+      return;
+    }
+    if (!isTotalGpsValid) {
+      addToast("దయచేసి సరైన మొత్తం GPల సంఖ్యను నమోదు చేయండి.");
+      return;
+    }
+
+    if (activities.length === 0) {
+      setActivities(predefinedActivities);
+    }
+
+    const currentActs = activities.length > 0 ? activities : predefinedActivities;
+    const newRecord: any = {
+      "Panchayat Name": formName.trim(),
+      "TotalGPs": formTotalGpsNum,
+    };
+
+    currentActs.forEach((act) => {
+      const ent = parseInt(formActivities[act]?.entered || "0", 10) || 0;
+      const notEnt = parseInt(formActivities[act]?.notEntered || "0", 10) || 0;
+      newRecord[act] = {
+        Entered: ent,
+        NotEntered: notEnt,
+      };
+    });
+
+    if (editingIndex !== null && editingIndex >= 0 && editingIndex < data.length) {
+      const updated = [...data];
+      updated[editingIndex] = { ...updated[editingIndex], ...newRecord };
+      setData(updated);
+      addToast("రికార్డు విజయవంతంగా నవీకరించబడింది!");
+    } else {
+      newRecord["S.No"] = data.length + 1;
+      setData([...data, newRecord]);
+      addToast("కొత్త డేటా ఎంట్రీ విజయవంతంగా జోడించబడింది!");
+    }
+
+    if (!uploadDateTime) {
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, "0");
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const year = now.getFullYear();
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const formattedTime = `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
+      setUploadDateTime(`${day}-${month}-${year} ${formattedTime}`);
+    }
+
+    setIsFormOpen(false);
+  };
+
+  const handleDeleteRow = (idx: number) => {
+    if (window.confirm("ఈ రికార్డును తొలగించాలనుకుంటున్నారా?")) {
+      const filtered = data.filter((_, i) => i !== idx);
+      filtered.forEach((r, i) => r["S.No"] = i + 1);
+      setData(filtered);
+      addToast("రికార్డు తొలగించబడింది.");
+    }
+  };
+
   return (
     <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-slate-100 mt-6 shadow-sm">
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 pb-6 border-b border-slate-100 gap-4">
@@ -880,18 +1068,49 @@ export function MonthlyActivityFormatter({
             {fileName ? "ఫైల్ మార్చు" : "Upload Raw File"}
           </button>
 
+          <button
+            onClick={handleOpenAddForm}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
+            title="కొత్త డేటా ఎంట్రీ ఫారం ఓపెన్ చేయండి (New Data Entry Form)"
+          >
+            <Plus size={16} />
+            కొత్త ఎంట్రీ (Add Entry)
+          </button>
+
           {data.length > 0 && (
             <>
               {uploadDateTime && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-semibold shadow-xs">
-                  <span className="text-blue-700 font-bold whitespace-nowrap">తేదీ & సమయం:</span>
-                  <input
-                    type="text"
-                    value={uploadDateTime}
-                    onChange={(e) => setUploadDateTime(e.target.value)}
-                    className="bg-transparent border-b border-blue-400 focus:outline-none px-1 text-xs font-bold text-blue-950 min-w-[155px]"
-                    title="రిపోర్ట్ తేదీ మరియు సమయం (మార్చుకోవచ్చు)"
-                  />
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-xs transition-all ${
+                  isUploadDateTimeValid 
+                    ? "bg-emerald-50/80 border border-emerald-300 text-emerald-950" 
+                    : "bg-blue-50 border border-blue-200 text-blue-900"
+                }`}>
+                  <span className="text-slate-600 font-bold whitespace-nowrap">తేదీ & సమయం:</span>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={uploadDateTime}
+                      onChange={(e) => setUploadDateTime(e.target.value)}
+                      className={`bg-white border rounded-lg px-2 py-0.5 text-xs font-bold focus:outline-none min-w-[155px] pr-6 transition-all ${
+                        isUploadDateTimeValid
+                          ? "border-emerald-500 text-emerald-900 focus:ring-1 focus:ring-emerald-500"
+                          : "border-slate-300 text-slate-800"
+                      }`}
+                      title="రిపోర్ట్ తేదీ మరియు సమయం (మార్చుకోవచ్చు)"
+                    />
+                    <div className="absolute right-1.5 pointer-events-none">
+                      {isUploadDateTimeValid ? (
+                        <CheckCircle2 size={14} className="text-emerald-600 animate-in zoom-in" />
+                      ) : (
+                        <AlertCircle size={14} className="text-amber-500" />
+                      )}
+                    </div>
+                  </div>
+                  {isUploadDateTimeValid && (
+                    <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md font-bold">
+                      <Check size={10} /> Valid
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -927,17 +1146,38 @@ export function MonthlyActivityFormatter({
       </div>
 
       {!data.length ? (
-        <div
-          onClick={() => fileRef.current?.click()}
-          className="border-2 border-dashed border-slate-200 rounded-[24px] p-12 sm:p-16 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-sky-300 transition-all cursor-pointer"
-        >
-          <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center text-sky-700 mb-4">
-            <Upload size={28} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4">
+          <div
+            onClick={() => fileRef.current?.click()}
+            className="border-2 border-dashed border-slate-200 rounded-[24px] p-8 sm:p-12 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-sky-300 transition-all cursor-pointer group"
+          >
+            <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center text-sky-700 mb-4 group-hover:scale-105 transition-transform">
+              <Upload size={28} />
+            </div>
+            <h3 className="text-lg font-black text-slate-700 mb-2">Upload Raw Activity Data File</h3>
+            <p className="text-slate-500 font-medium text-xs max-w-sm">
+              Select a raw .xls or .xlsx report file to generate the official color-coded report format with page setup.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-colors">
+              <Upload size={14} /> ఫైల్ ఎంచుకోండి (Choose File)
+            </span>
           </div>
-          <h3 className="text-xl font-black text-slate-700 mb-2">Upload Raw Activity Data File</h3>
-          <p className="text-slate-500 font-medium text-xs">
-            Select a raw .xls or .xlsx report file to generate the official color-coded report format with page setup.
-          </p>
+
+          <div
+            onClick={handleOpenAddForm}
+            className="border-2 border-dashed border-emerald-200 rounded-[24px] p-8 sm:p-12 flex flex-col items-center justify-center text-center hover:bg-emerald-50/40 hover:border-emerald-400 transition-all cursor-pointer group"
+          >
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-105 transition-transform">
+              <Plus size={28} />
+            </div>
+            <h3 className="text-lg font-black text-emerald-950 mb-2">నేరుగా డేటా నమోదు (Manual Data Entry)</h3>
+            <p className="text-slate-500 font-medium text-xs max-w-sm">
+              రియల్-టైమ్ చెక్‌మార్క్ వాలిడేషన్‌తో పంచాయతీ / మండల వివరాలు మరియు 17 కార్యాచరణల డేటాను సులభంగా నమోదు చేయండి.
+            </p>
+            <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl group-hover:bg-emerald-700 shadow-sm transition-colors">
+              <Plus size={14} /> కొత్త ఎంట్రీ ఫారం (Open Form)
+            </span>
+          </div>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-black custom-scrollbar pb-4 bg-white">
@@ -946,7 +1186,7 @@ export function MonthlyActivityFormatter({
               <thead>
                 <tr>
                   <th
-                    colSpan={3 + activities.length * 2}
+                    colSpan={4 + activities.length * 2}
                     className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-sm tracking-wide"
                   >
                     Telangana State
@@ -954,7 +1194,7 @@ export function MonthlyActivityFormatter({
                 </tr>
                 <tr>
                   <th
-                    colSpan={3 + activities.length * 2}
+                    colSpan={4 + activities.length * 2}
                     className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-xs tracking-wide"
                   >
                     Monthly Activity Data Entry Report {uploadDateTime ? `- (${uploadDateTime})` : ""}
@@ -975,6 +1215,9 @@ export function MonthlyActivityFormatter({
                       {a}
                     </th>
                   ))}
+                  <th rowSpan={2} className="py-2 px-2 border border-black bg-[#11518E] text-white text-center font-bold text-xs min-w-[70px]">
+                    చర్యలు
+                  </th>
                 </tr>
                 <tr>
                   {activities.map((_, i) => (
@@ -1026,6 +1269,24 @@ export function MonthlyActivityFormatter({
                         </React.Fragment>
                       );
                     })}
+                    <td className="py-1.5 px-2 border border-black text-center whitespace-nowrap bg-white">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditForm(idx)}
+                          className="p-1.5 text-sky-700 hover:bg-sky-100/70 rounded-lg transition-colors inline-flex items-center"
+                          title="సవరించండి (Edit Record)"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRow(idx)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-100/70 rounded-lg transition-colors inline-flex items-center"
+                          title="తొలగించండి (Delete Record)"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 <tr className="bg-white font-bold border-t-2 border-black">
@@ -1049,9 +1310,363 @@ export function MonthlyActivityFormatter({
                       </React.Fragment>
                     );
                   })}
+                  <td className="py-2 px-2 border border-black text-center font-black text-slate-400 bg-slate-50 text-xs">
+                    -
+                  </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Data Entry & Edit Modal with Real-time Validation Indicators */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[28px] max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100/80 flex items-center justify-center text-emerald-700">
+                  <CheckSquare size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">
+                    {editingIndex !== null ? "నెలవారీ రికార్డు సవరణ (Edit Monthly Record)" : "కొత్త నెలవారీ కార్యాచరణ డేటా ఎంట్రీ"}
+                  </h3>
+                  <p className="text-slate-500 font-medium text-xs">
+                    ప్రతి ఫీల్డ్‌లో సరైన డేటా ఎంటర్ చేసినప్పుడు రియల్-టైమ్ ఆకుపచ్చ చెక్‌మార్క్ (<CheckCircle2 size={12} className="inline text-emerald-600" />) కనిపిస్తుంది.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsFormOpen(false)}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+                title="మూసివేయి (Close)"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Real-time Validation Progress & Status Banner */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">ధృవీకరణ పురోగతి:</span>
+                <span className="text-xs font-black text-emerald-700">
+                  {activitiesStatus.completedCount} / {activitiesStatus.totalActs} కార్యాచరణలు సరిపోయాయి ({activitiesStatus.progressPercent}%)
+                </span>
+              </div>
+              <div className="w-full sm:w-48 bg-slate-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${activitiesStatus.progressPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSaveForm} className="overflow-y-auto p-6 space-y-6 flex-1 custom-scrollbar">
+              {/* Basic Fields */}
+              <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200/80">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> ప్రాథమిక సమాచారం (Basic Details)
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Name field */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      పంచాయతీ / మండల పేరు <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        placeholder="ఉదాహరణ: Mandal Name లేదా Panchayat"
+                        value={formName}
+                        onChange={(e) => {
+                          setFormName(e.target.value);
+                          setFormTouched((prev) => ({ ...prev, name: true }));
+                        }}
+                        onBlur={() => setFormTouched((prev) => ({ ...prev, name: true }))}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all pr-10 ${
+                          isNameValid
+                            ? "border-emerald-500 bg-emerald-50/20 text-slate-900 focus:ring-2 focus:ring-emerald-400/30"
+                            : formTouched["name"]
+                            ? "border-rose-400 bg-rose-50/20 text-slate-900 focus:ring-2 focus:ring-rose-400/30"
+                            : "border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-sky-400/30"
+                        }`}
+                      />
+                      <div className="absolute right-3 pointer-events-none">
+                        {isNameValid ? (
+                          <CheckCircle2 size={18} className="text-emerald-600 animate-in zoom-in" />
+                        ) : formTouched["name"] ? (
+                          <AlertCircle size={18} className="text-rose-500" />
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-1 min-h-[18px]">
+                      {isNameValid ? (
+                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 animate-in fade-in">
+                          <Check size={12} className="text-emerald-600" /> సరైన పేరు నమోదైంది (Valid Name)
+                        </p>
+                      ) : formTouched["name"] ? (
+                        <p className="text-[11px] text-rose-600 font-medium">దయచేసి కనీసం 2 అక్షరాలు గల పేరు రాయండి.</p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400">మండలం లేదా పంచాయతీ పేరు నమోదు చేయండి.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total GPs field */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      మొత్తం గ్రామ పంచాయతీల సంఖ్య (Total No. of GPs) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="ఉదాహరణ: 20"
+                        value={formTotalGps}
+                        onChange={(e) => {
+                          setFormTotalGps(e.target.value);
+                          setFormTouched((prev) => ({ ...prev, totalGps: true }));
+                        }}
+                        onBlur={() => setFormTouched((prev) => ({ ...prev, totalGps: true }))}
+                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all pr-10 ${
+                          isTotalGpsValid
+                            ? "border-emerald-500 bg-emerald-50/20 text-slate-900 focus:ring-2 focus:ring-emerald-400/30"
+                            : formTouched["totalGps"]
+                            ? "border-rose-400 bg-rose-50/20 text-slate-900 focus:ring-2 focus:ring-rose-400/30"
+                            : "border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-sky-400/30"
+                        }`}
+                      />
+                      <div className="absolute right-3 pointer-events-none">
+                        {isTotalGpsValid ? (
+                          <CheckCircle2 size={18} className="text-emerald-600 animate-in zoom-in" />
+                        ) : formTouched["totalGps"] ? (
+                          <AlertCircle size={18} className="text-rose-500" />
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-1 min-h-[18px]">
+                      {isTotalGpsValid ? (
+                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 animate-in fade-in">
+                          <Check size={12} className="text-emerald-600" /> ధృవీకరించబడింది: {formTotalGpsNum} పంచాయతీలు (Valid GP Count)
+                        </p>
+                      ) : formTouched["totalGps"] ? (
+                        <p className="text-[11px] text-rose-600 font-medium">దయచేసి 1 లేదా అంతకంటే ఎక్కువ సంఖ్య నమోదు చేయండి.</p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400">మొత్తం GPల సంఖ్య నమోదు చేయండి.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 17 Activities Fields with Real-Time Validation */}
+              <div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 gap-3 mb-4">
+                  <div>
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-sky-500" /> కార్యాచరణల డేటా ఎంట్రీ & రియల్-టైమ్ వాలిడేషన్
+                    </h4>
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      ప్రతి కార్యాచరణలో Entered మరియు Not Entered విలువల మొత్తం, Total GPs కు సమానమైనప్పుడు ఆకుపచ్చ చెక్‌మార్క్ వస్తుంది.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleMarkAllEntered}
+                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-xl border border-emerald-200 transition-colors"
+                      title="అన్నింటికీ Entered = Total GPs గా సెట్ చేస్తుంది"
+                    >
+                      అన్నీ Entered
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAutoBalance}
+                      className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 text-[11px] font-bold rounded-xl border border-sky-200 transition-colors"
+                      title="సమర్పించని వాటిని (Not Entered = Total GPs - Entered) ఆటోమేటిక్‌గా గణిస్తుంది"
+                    >
+                      ఆటో బ్యాలెన్స్
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {activeActivities.map((act) => {
+                    const entStr = formActivities[act]?.entered ?? "0";
+                    const notEntStr = formActivities[act]?.notEntered ?? "0";
+                    const entNum = parseInt(entStr || "0", 10) || 0;
+                    const notEntNum = parseInt(notEntStr || "0", 10) || 0;
+                    const isSumMatched = isTotalGpsValid && entNum + notEntNum === formTotalGpsNum;
+                    const isOver = isTotalGpsValid && entNum + notEntNum > formTotalGpsNum;
+                    const isUnder = isTotalGpsValid && entNum + notEntNum < formTotalGpsNum;
+
+                    return (
+                      <div
+                        key={act}
+                        className={`p-3.5 rounded-2xl border transition-all ${
+                          isSumMatched
+                            ? "bg-emerald-50/30 border-emerald-300 ring-1 ring-emerald-400/20"
+                            : isOver
+                            ? "bg-rose-50/30 border-rose-200"
+                            : "bg-white border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-black text-slate-800 tracking-tight">
+                            {act}
+                          </span>
+                          {/* Real-time Indicator Pill */}
+                          {isSumMatched ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs animate-in zoom-in">
+                              <CheckCircle2 size={12} className="text-emerald-600" />
+                              సరిపోయింది ({entNum + notEntNum}/{formTotalGpsNum})
+                            </span>
+                          ) : isOver ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                              అధికం: {entNum + notEntNum}/{formTotalGpsNum}
+                            </span>
+                          ) : isUnder ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                              మొత్తం: {entNum + notEntNum}/{formTotalGpsNum}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-slate-400">
+                              మొత్తం: {entNum + notEntNum}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Entered Input */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold text-slate-600">Entered:</span>
+                              {entNum >= 0 && (
+                                <span className="inline-flex items-center text-[10px] text-emerald-700 font-bold">
+                                  <Check size={10} className="text-emerald-600 mr-0.5" /> Ok
+                                </span>
+                              )}
+                            </div>
+                            <div className="relative flex items-center">
+                              <input
+                                type="number"
+                                min="0"
+                                value={entStr}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setFormActivities((prev) => ({
+                                    ...prev,
+                                    [act]: {
+                                      entered: val,
+                                      notEntered: prev[act]?.notEntered ?? "0",
+                                    },
+                                  }));
+                                }}
+                                className={`w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold focus:outline-none transition-all pr-6 ${
+                                  entNum > 0
+                                    ? "bg-emerald-50 border-emerald-400 text-emerald-950 font-black focus:ring-1 focus:ring-emerald-500"
+                                    : "bg-slate-50/60 border-slate-200 text-slate-800 focus:bg-white"
+                                }`}
+                              />
+                              {entNum >= 0 && (
+                                <div className="absolute right-2 pointer-events-none">
+                                  <CheckCircle2 size={12} className="text-emerald-600" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Not Entered Input */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold text-slate-600">Not Entered:</span>
+                              {notEntNum >= 0 && (
+                                <span className="inline-flex items-center text-[10px] text-emerald-700 font-bold">
+                                  <Check size={10} className="text-emerald-600 mr-0.5" /> Ok
+                                </span>
+                              )}
+                            </div>
+                            <div className="relative flex items-center">
+                              <input
+                                type="number"
+                                min="0"
+                                value={notEntStr}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setFormActivities((prev) => ({
+                                    ...prev,
+                                    [act]: {
+                                      entered: prev[act]?.entered ?? "0",
+                                      notEntered: val,
+                                    },
+                                  }));
+                                }}
+                                className={`w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold focus:outline-none transition-all pr-6 ${
+                                  notEntNum > 0
+                                    ? "bg-rose-50/70 border-rose-300 text-rose-900 font-black focus:ring-1 focus:ring-rose-500"
+                                    : "bg-slate-50/60 border-slate-200 text-slate-800 focus:bg-white"
+                                }`}
+                              />
+                              {notEntNum >= 0 && (
+                                <div className="absolute right-2 pointer-events-none">
+                                  <CheckCircle2 size={12} className="text-emerald-600" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bottom Validation Message Banner */}
+              {activitiesStatus.allMatched ? (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-2.5 text-xs font-bold text-emerald-900 animate-in fade-in">
+                  <CheckCheck size={20} className="text-emerald-600 shrink-0" />
+                  <span>అన్ని 17 కార్యాచరణల డేటా మరియు మొత్తం GPల సంఖ్య విజయవంతంగా సరిపోయాయి! ఎంట్రీని సేవ్ చేయవచ్చు.</span>
+                </div>
+              ) : isNameValid && isTotalGpsValid ? (
+                <div className="p-3.5 bg-sky-50 border border-sky-200 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-sky-900">
+                  <CheckCircle2 size={18} className="text-sky-600 shrink-0" />
+                  <span>ప్రాథమిక వివరాలు ధృవీకరించబడ్డాయి. కార్యాచరణల సంఖ్యలను కూడా సరిపోల్చి సేవ్ చేయండి.</span>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-slate-100 border border-slate-200 rounded-2xl flex items-center gap-2.5 text-xs font-medium text-slate-600">
+                  <AlertCircle size={18} className="text-slate-400 shrink-0" />
+                  <span>సేవ్ చేయడానికి దయచేసి పంచాయతీ/మండల పేరు మరియు మొత్తం GPల సంఖ్యను నమోదు చేయండి.</span>
+                </div>
+              )}
+            </form>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-200/60 font-bold text-xs transition-colors"
+              >
+                రద్దు (Cancel)
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveForm}
+                disabled={!isNameValid || !isTotalGpsValid}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white transition-all shadow-sm ${
+                  isNameValid && isTotalGpsValid
+                    ? "bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
+                    : "bg-slate-300 cursor-not-allowed text-slate-500"
+                }`}
+              >
+                <Check size={16} />
+                {editingIndex !== null ? "నవీకరించు (Update Record)" : "ఎంట్రీని సేవ్ చేయి (Save Entry)"}
+              </button>
+            </div>
           </div>
         </div>
       )}
