@@ -1730,8 +1730,21 @@ export const handleForceDownload = async (
       return match ? match[0] : s;
     };
 
-    const sanitizedTargetUrl = cleanRawUrl(targetUrl);
-    const sanitizedFallbackUrl = cleanRawUrl(fallbackUrl || "");
+    let sanitizedTargetUrl = cleanRawUrl(targetUrl);
+    let sanitizedFallbackUrl = cleanRawUrl(fallbackUrl || "");
+
+    if (!sanitizedTargetUrl && sanitizedFallbackUrl) {
+      sanitizedTargetUrl = sanitizedFallbackUrl;
+    }
+
+    // Automatically resolve relative /uploads/ URLs to Cloudflare R2 public bucket
+    const R2_PUBLIC_BASE = "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev";
+    if (sanitizedTargetUrl.startsWith("/uploads/")) {
+      sanitizedTargetUrl = `${R2_PUBLIC_BASE}${sanitizedTargetUrl}`;
+    }
+    if (sanitizedFallbackUrl.startsWith("/uploads/")) {
+      sanitizedFallbackUrl = `${R2_PUBLIC_BASE}${sanitizedFallbackUrl}`;
+    }
 
     // Give the user instant visual confirmation that download was requested
     Swal.mixin({
@@ -1745,9 +1758,9 @@ export const handleForceDownload = async (
       title: "డౌన్‌లోడ్ ప్రారంభమైంది...",
     });
 
-    const link = document.createElement("a");
-
+    // 1. Data URLs or existing Blob URLs
     if (sanitizedTargetUrl.startsWith("data:") || sanitizedTargetUrl.startsWith("blob:")) {
+      const link = document.createElement("a");
       link.href = sanitizedTargetUrl;
       link.download = extractedFilename;
       document.body.appendChild(link);
@@ -1755,21 +1768,51 @@ export const handleForceDownload = async (
       setTimeout(() => {
         if (document.body.contains(link)) document.body.removeChild(link);
       }, 1500);
-    } else {
-      // Stream seamlessly through our /api/download backend proxy with Base64 masked parameters
-      // This protects the user key and file origin while preventing 'file not found' errors
-      const encodedQ = btoa(encodeURIComponent(sanitizedTargetUrl));
-      const encodedFQ = sanitizedFallbackUrl ? btoa(encodeURIComponent(sanitizedFallbackUrl)) : "";
-      const downloadApiUrl = `/api/download?name=${encodeURIComponent(extractedFilename)}&filename=${encodeURIComponent(extractedFilename)}&q=${encodeURIComponent(encodedQ)}${encodedFQ ? `&fq=${encodeURIComponent(encodedFQ)}` : ""}`;
+      return;
+    }
 
-      link.href = downloadApiUrl;
-      link.download = extractedFilename;
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        if (document.body.contains(link)) document.body.removeChild(link);
-      }, 2000);
+    // 2. Primary High-Reliability Strategy: Fetch bytes via CORS and download as same-origin Blob
+    // This completely bypasses cross-origin restrictions, works natively on mobile Chrome/Android,
+    // ensures the exact specified filename is used, and prevents server 404s on static hosting (e-vedhika.in / GitHub Pages).
+    let blobDownloadSuccess = false;
+    try {
+      const fetchResp = await fetch(sanitizedTargetUrl, { mode: "cors" });
+      if (fetchResp.ok) {
+        const blob = await fetchResp.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = extractedFilename;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          window.URL.revokeObjectURL(blobUrl);
+          if (document.body.contains(link)) document.body.removeChild(link);
+        }, 10000);
+        blobDownloadSuccess = true;
+        return;
+      }
+    } catch (blobErr) {
+      console.warn("Direct blob download attempt note:", blobErr);
+    }
+
+    // 3. Fallback: Direct Anchor click with target="_blank" and download attribute
+    // Cloudflare R2 serves Content-Disposition: attachment so the browser download manager directly handles it
+    if (!blobDownloadSuccess) {
+      try {
+        const link = document.createElement("a");
+        link.href = sanitizedTargetUrl;
+        link.download = extractedFilename;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          if (document.body.contains(link)) document.body.removeChild(link);
+        }, 3000);
+      } catch (directErr) {
+        console.warn("Direct anchor download error:", directErr);
+      }
     }
 
   } catch (error) {
