@@ -5477,16 +5477,7 @@ E-Vedhika Team`;
                                             <span className="text-[13px] font-bold">{tool.label}</span>
                                           </div>
                                         </div>
-                                        {!user && !tool.isFree && (
-                                          <span className="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                                            <Lock size={10} /> లాగిన్
-                                          </span>
-                                        )}
-                                        {tool.isFree && (
-                                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
-                                            ఉచితం
-                                          </span>
-                                        )}
+
                                       </button>
                                     ))}
                                   </>
@@ -16954,16 +16945,7 @@ function DigitalWorkspaceSection({
               setActiveTool(t.id);
             }}
           >
-            {!user && t.id !== "dsr" && (
-              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-amber-500/10 border border-amber-500/25 text-amber-700 text-[10px] font-black rounded-full flex items-center gap-1 shadow-2xs">
-                <Lock size={10} /> లాగిన్ అవసరం
-              </span>
-            )}
-            {!user && t.id === "dsr" && (
-              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 text-[10px] font-black rounded-full flex items-center gap-1 shadow-2xs">
-                ✨ ఉచితం
-              </span>
-            )}
+
             <div
               style={{
                 color: "var(--primary)",
@@ -17026,17 +17008,14 @@ function DigitalWorkspaceSection({
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative">
               {!user && activeTool !== "dsr" ? (
                 <div className="max-w-xl mx-auto my-10 bg-white rounded-[32px] p-8 sm:p-12 border border-slate-200 shadow-xl text-center flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-5 shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center mb-5 shadow-sm">
                     <Lock size={32} />
                   </div>
-                  <span className="px-3.5 py-1 bg-amber-100 text-amber-900 text-xs font-black rounded-full mb-3 uppercase tracking-wider">
-                    లాగిన్ అవసరం • Login Required
-                  </span>
                   <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-2">
                     {tools.find((t) => t.id === activeTool)?.title || "ఈ టూల్"} ఉపయోగించడానికి లాగిన్ అవ్వండి
                   </h3>
                   <p className="text-slate-500 font-medium text-xs sm:text-sm mb-6 max-w-md leading-relaxed">
-                    సర్వర్ లోడ్ నిర్వహణ కొరకు, కేవలం <strong>DSR Analyzer</strong> మాత్రమే లాగిన్ లేకుండా ఉచితంగా అందుబాటులో ఉంటుంది. మిగిలిన అన్ని టూల్స్ పూర్తి యాక్సెస్ కోసం దయచేసి లాగిన్ అవ్వండి.
+                    ఈ సాధనాన్ని ఉపయోగించడానికి దయచేసి మీ ఖాతాతో లాగిన్ అవ్వండి.
                   </p>
                   <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                     <button
@@ -17044,14 +17023,14 @@ function DigitalWorkspaceSection({
                       onClick={() => requireLoginAlert(user)}
                       className="w-full sm:w-auto px-6 py-3 bg-[#0d3b66] hover:bg-[#082440] text-white font-black text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <Key size={16} /> లాగిన్ అవ్వండి (Login to Access)
+                      <Key size={16} /> లాగిన్ అవ్వండి
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTool("dsr")}
-                      className="w-full sm:w-auto px-5 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      DSR Analyzer కి వెళ్లండి (ఉచితం)
+                      DSR Analyzer కి వెళ్లండి
                     </button>
                   </div>
                 </div>
@@ -20041,7 +20020,7 @@ function DSRAnalyzer({
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                ఆఫీసర్ & సెక్రటరీల సహాయక సాధనం • లాగిన్ అవసరం లేదు
+                ఆఫీసర్ & సెక్రటరీల సహాయక సాధనం
               </div>
               <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
                 మన పంచాయతీ DSR & హాజరు విశ్లేషణ సాధనం (DSR Analyzer)
