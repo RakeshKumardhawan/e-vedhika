@@ -17,6 +17,6 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, { title: string; descript
   multiday: { title: "మల్టీ-డే అటెండెన్స్ (Multi-Day Attendance)", description: "ఒకటి కంటే ఎక్కువ రోజుల హాజరు వివరాలను ఒకేసారి నమోదు చేయడానికి మరియు సరిచూడటానికి ఈ టూల్ ఉపయోగపడుతుంది." },
   training: { title: "డిజిటల్ ట్రైనింగ్ (Digital Training)", description: "డిజిటల్ వర్క్‌ఫ్లోస్ మరియు ట్యుటోరియల్స్ ద్వారా వివిధ పనులను ఎలా చేయాలో నేర్చుకోండి." },
   pract: { title: "నాలెడ్జ్ హబ్ (PR Act Guide)", description: "పంచాయతీరాజ్ చట్టం (PR Act) మరియు ఇతర ముఖ్యమైన సమాచారం గురించి తెలుసుకోవడానికి ఈ నాలెడ్జ్ హబ్ ఉపయోగపడుతుంది." },
-  "monthly-activity": { title: "మంత్లీ యాక్టివిటీ డేటా (Monthly Activity Data)", description: "నెలవారీ కార్యకలాపాల డేటాను క్రమబద్ధీకరించడానికి మరియు రిపోర్ట్స్ తయారు చేయడానికి ఈ టూల్ ఉపయోగపడుతుంది." },
+  "monthly-activity": { title: "Monthly Activity Monitoring (MAS)", description: "Streamlined monthly activity data monitoring and comprehensive Mandal & District MAS reporting." },
   "excel-merge": { title: "ఎక్సెల్ ఫైల్ మెర్జర్ (Excel File Merger)", description: "వేర్వేరు ఎక్సెల్ ఫైల్స్ (Excel files) లో ఉన్న సమాచారాన్ని ఒకే ఫైల్ గా కలపడానికి ఈ టూల్ ఉపయోగపడుతుంది." },
 };

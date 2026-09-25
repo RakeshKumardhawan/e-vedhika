@@ -155,7 +155,8 @@ import {  DollarSign,
   ArrowUpDown,
   UserCheck,
   Smile,
-  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key, Copy, Printer } from "lucide-react";
+  ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key, Copy, Printer,
+  Landmark, Building2 } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -172,23 +173,12 @@ import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
 import { PollsScreen } from "./components/PollsScreen";
 
-const LazyPdfCompressToolComponent = React.lazy(() => import('./components/PdfCompressTool').then(m => ({ default: m.PdfCompressTool })));
-export const PdfCompressTool = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading PDF Tool...</div>}><LazyPdfCompressToolComponent {...props} /></React.Suspense>;
-
-const LazyFarmerRegistryToolComponent = React.lazy(() => import('./components/FarmerRegistryTool').then(m => ({ default: m.FarmerRegistryTool })));
-export const FarmerRegistryTool = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Farmer Registry...</div>}><LazyFarmerRegistryToolComponent {...props} /></React.Suspense>;
-
-const LazyUBDTrackerComponent = React.lazy(() => import('./components/UBDTracker').then(m => ({ default: m.UBDTracker })));
-export const UBDTracker = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading UBD Tracker...</div>}><LazyUBDTrackerComponent {...props} /></React.Suspense>;
-
-const LazyExeUbdLiveMonitoringComponent = React.lazy(() => import('./components/ExeUbdLiveMonitoring').then(m => ({ default: m.ExeUbdLiveMonitoring })));
-export const ExeUbdLiveMonitoring = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Live Monitoring...</div>}><LazyExeUbdLiveMonitoringComponent {...props} /></React.Suspense>;
-
-const LazyExcelMergerComponent = React.lazy(() => import('./components/ExcelMerger').then(m => ({ default: m.ExcelMerger })));
-export const ExcelMerger = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Excel Merger...</div>}><LazyExcelMergerComponent {...props} /></React.Suspense>;
-
-const LazyMonthlyActivityFormatterComponent = React.lazy(() => import('./components/MonthlyActivityFormatter').then(m => ({ default: m.MonthlyActivityFormatter })));
-export const MonthlyActivityFormatter = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Formatter...</div>}><LazyMonthlyActivityFormatterComponent {...props} /></React.Suspense>;
+import { PdfCompressTool } from "./components/PdfCompressTool";
+import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
+import { UBDTracker } from "./components/UBDTracker";
+import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
+import { ExcelMerger } from "./components/ExcelMerger";
+import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
 
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
@@ -5459,7 +5449,7 @@ E-Vedhika Team`;
                                       { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} /> },
                                       { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} /> },
                                       { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} /> },
-                                      { id: 'monthly-activity', label: 'Monthly Activity Data', icon: <FileSpreadsheet size={16} /> },
+                                      { id: 'monthly-activity', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} /> },
                                       { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} /> },
                                       { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} /> },
                                     ].map(tool => (
@@ -16866,9 +16856,9 @@ function DigitalWorkspaceSection({
     },
     {
       id: "monthly-activity",
-      title: "Monthly Activity Data",
+      title: "Monthly Activity Monitoring (MAS)",
       icon: FileSpreadsheet,
-      desc: "Format Monthly Activity Reports",
+      desc: "Mandal MAS & District MAS Reports",
     },
     {
       id: "excel-merge",
@@ -17083,8 +17073,13 @@ function DigitalWorkspaceSection({
                 </div>
               )}
               {activeTool === "pract" && <PRActHub user={user} />}
-              {activeTool === "monthly-activity" && (
-                <MonthlyActivityFormatter addToast={addToast} />
+              {(activeTool === "monthly-activity" ||
+                activeTool === "mandal-monthly-activity" ||
+                activeTool === "district-monthly-activity") && (
+                <MonthlyActivityFormatter
+                  addToast={addToast}
+                  initialLevel={activeTool === "district-monthly-activity" ? "district" : "mandal"}
+                />
               )}
               {activeTool === "excel-merge" && (
                 <ExcelMerger user={user} addToast={addToast} />

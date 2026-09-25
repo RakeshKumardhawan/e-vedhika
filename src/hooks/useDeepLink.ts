@@ -61,7 +61,7 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
         workspaceTool = "multiday";
       else if (norm === "training" || norm === "digitaltraining") workspaceTool = "training";
       else if (norm === "pract" || norm === "knowledgehub" || norm === "practguide") workspaceTool = "pract";
-      else if (norm === "monthlyactivity" || norm === "monthlyactivitydata") workspaceTool = "monthly-activity";
+      else if (norm === "monthlyactivity" || norm === "monthlyactivitydata" || norm === "mas") workspaceTool = "monthly-activity";
       else if (
         norm === "excelmerge" ||
         norm === "excelmerger" ||
@@ -69,9 +69,10 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
         norm === "excel"
       )
         workspaceTool = "excel-merge";
+      else if (norm === "gpdpplanning" || norm === "gpdp") workspaceTool = "gpdp-planning";
       else workspaceTool = subToolFromUrl;
     } else {
-      workspaceTool = "dsr";
+      workspaceTool = null;
     }
   }
 

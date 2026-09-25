@@ -1,1675 +1,2490 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { 
   Upload, 
-  FileSpreadsheet, 
   Download, 
-  RefreshCw, 
   Printer, 
   FileText, 
-  Copy, 
   Check, 
-  CheckCircle2, 
-  AlertCircle, 
-  Plus, 
-  Edit3, 
-  Trash2, 
+  Building2,
+  Landmark,
+  Share2,
+  Filter,
   X, 
-  Sparkles, 
-  CheckCheck,
-  CheckSquare
+  MessageSquareShare,
+  Trash2,
+  FileSpreadsheet,
+  AlertCircle,
+  Plus,
+  Edit3,
+  CheckCircle2,
+  CheckSquare,
+  Pencil
 } from "lucide-react";
+
+// Standard 15 MAS Activities
+export const STANDARD_MAS_ACTIVITIES = [
+  "Nursery",
+  "Plantation",
+  "Vaikunta Dhamam",
+  "Dump Yard",
+  "Water Supply",
+  "GP Meetings",
+  "Gram Sabha",
+  "Record Maintenance",
+  "Approvals and Certificates",
+  "Death",
+  "Receipts",
+  "Salary Details",
+  "VWSC Balance",
+  "MGNRE Bank Balance",
+  "Birth"
+];
+
+export interface MonthlyActivityFormatterProps {
+  addToast: (msg: string) => void;
+  initialLevel?: "mandal" | "district";
+}
 
 export function MonthlyActivityFormatter({
   addToast,
-}: {
-  addToast: (msg: string) => void;
-}) {
-  const [data, setData] = useState<any[]>([]);
-  const [activities, setActivities] = useState<string[]>([]);
-  const [fileName, setFileName] = useState("");
-  const [nameHeader, setNameHeader] = useState("Mandal Name");
+  initialLevel = "mandal",
+}: MonthlyActivityFormatterProps) {
+  // Mode: "mandal" (Mandal Monthly Activity Monitoring) vs "district" (District Monthly Activity Monitoring)
+  const [reportLevel, setReportLevel] = useState<"mandal" | "district">(initialLevel);
+
+  useEffect(() => {
+    if (initialLevel && (initialLevel === "mandal" || initialLevel === "district")) {
+      setReportLevel(initialLevel);
+    }
+  }, [initialLevel]);
+
+  // Dynamic columns state
+  const [dynamicActivities, setDynamicActivities] = useState<string[]>(STANDARD_MAS_ACTIVITIES);
+  
+  // Data states
+  const [districtData, setDistrictData] = useState<any[]>([]);
+  const [mandalData, setMandalData] = useState<any[]>([]);
+  
+  // File metadata
+  const [uploadedFilesLabel, setUploadedFilesLabel] = useState("");
   const [uploadDateTime, setUploadDateTime] = useState<string>("");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [mandalNameInput, setMandalNameInput] = useState("");
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [bulkCopied, setBulkCopied] = useState(false);
 
-  // Form State for Manual Data Entry & Editing
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formTotalGps, setFormTotalGps] = useState("");
-  const [formActivities, setFormActivities] = useState<Record<string, { entered: string; notEntered: string }>>({});
-  const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pendingFilter, setPendingFilter] = useState<"all" | "pending" | "completed">("all");
 
-  const predefinedActivities = [
-    "Nursery",
-    "Plantation",
-    "Vaikunta Dhamam",
-    "Dump Yard",
-    "Water Supply",
-    "GP Meetings",
-    "Gram Sabha",
-    "Record",
-    "Approvals and",
-    "Deaths",
-    "Recipts",
-    "Expenditure",
-    "Cheque Details",
-    "Salary Details",
-    "VWSC Banl Balance",
-    "MGNRE Bank",
-    "Payment of",
-  ];
+  // Manual Data Entry Modal
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newGpName, setNewGpName] = useState("");
+  const [newGpStatuses, setNewGpStatuses] = useState<Record<string, number>>({});
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [actions, setActions] = useState<Record<string, string>>({});
 
-    setFileName(file.name);
+  // Edit Monthly Record (District level)
+  const [editingDistrictMandal, setEditingDistrictMandal] = useState<any | null>(null);
+  const [tempDistrictActivities, setTempDistrictActivities] = useState<Record<string, { entered: number; notEntered: number }>>({});
 
+  // Edit GP Record (Mandal level)
+  const [editingMandalGp, setEditingMandalGp] = useState<any | null>(null);
+  const [tempGpName, setTempGpName] = useState("");
+  const [tempGpStatuses, setTempGpStatuses] = useState<Record<string, number>>({});
+
+  // Single Unified File Input Ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleActionChange = (key: string, value: string) => {
+    setActions((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Open District Edit Modal
+  const handleOpenEditDistrictRecord = (row: any) => {
+    setEditingDistrictMandal(row);
+    const actMap: Record<string, { entered: number; notEntered: number }> = {};
+    const totGps = row.TotalGPs || 1;
+    dynamicActivities.forEach((act) => {
+      const actData = row.activities?.[act] || { entered: 0, notEntered: totGps };
+      const ent = actData.entered ?? 0;
+      const notEnt = actData.notEntered !== undefined ? actData.notEntered : Math.max(0, totGps - ent);
+      actMap[act] = { entered: ent, notEntered: notEnt };
+    });
+    setTempDistrictActivities(actMap);
+  };
+
+  // Update Activity in District Edit Modal
+  const handleUpdateDistrictActivity = (act: string, field: "entered" | "notEntered", rawVal: string) => {
+    const num = rawVal === "" ? 0 : (parseInt(rawVal.replace(/[^\d]/g, ""), 10) || 0);
+    setTempDistrictActivities((prev) => {
+      const cur = prev[act] || { entered: 0, notEntered: 0 };
+      return {
+        ...prev,
+        [act]: {
+          ...cur,
+          [field]: num
+        }
+      };
+    });
+  };
+
+  // Save District Record
+  const handleSaveDistrictRecord = () => {
+    if (!editingDistrictMandal) return;
+    const targetMandalName = editingDistrictMandal["Mandal Name"];
+    const totGps = editingDistrictMandal["TotalGPs"] || 1;
+
+    setDistrictData((prev) => {
+      return prev.map((row) => {
+        if (row["Mandal Name"] !== targetMandalName) return row;
+
+        const newActivities: Record<string, any> = { ...row.activities };
+        let sumPct = 0;
+
+        dynamicActivities.forEach((act) => {
+          const item = tempDistrictActivities[act] || { entered: 0, notEntered: 0 };
+          const ent = item.entered;
+          const notEnt = item.notEntered;
+          const pct = totGps > 0 ? (ent / totGps) * 100 : 0;
+          const finalPct = Math.min(100, Math.max(0, parseFloat(pct.toFixed(2))));
+          newActivities[act] = {
+            entered: ent,
+            notEntered: notEnt,
+            percentage: finalPct
+          };
+          sumPct += finalPct;
+        });
+
+        const overallPct = dynamicActivities.length > 0 ? parseFloat((sumPct / dynamicActivities.length).toFixed(2)) : 0;
+
+        return {
+          ...row,
+          activities: newActivities,
+          "Overall %": overallPct
+        };
+      });
+    });
+
+    addToast(`${targetMandalName} record updated successfully!`);
+    setEditingDistrictMandal(null);
+  };
+
+  // Open Mandal GP Edit Modal
+  const handleOpenEditMandalGp = (gpRow: any) => {
+    setEditingMandalGp(gpRow);
+    setTempGpName(gpRow["Panchayat Name"] || "");
+    setTempGpStatuses({ ...(gpRow.status || {}) });
+  };
+
+  // Save Mandal GP
+  const handleSaveMandalGp = () => {
+    if (!editingMandalGp) return;
+    const origName = editingMandalGp["Panchayat Name"];
+    const updatedName = tempGpName.trim().toUpperCase() || origName;
+
+    setMandalData((prev) => {
+      return prev.map((row) => {
+        if (row["Panchayat Name"] !== origName) return row;
+        return {
+          ...row,
+          "Panchayat Name": updatedName,
+          status: { ...tempGpStatuses }
+        };
+      });
+    });
+
+    addToast(`${updatedName} details updated successfully!`);
+    setEditingMandalGp(null);
+  };
+
+  // Delete Mandal GP
+  const handleDeleteMandalGp = (gpName: string) => {
+    if (!window.confirm(`Are you sure you want to delete ${gpName} Panchayat?`)) return;
+    setMandalData((prev) => {
+      const updated = prev.filter((r) => r["Panchayat Name"] !== gpName);
+      return updated.map((r, idx) => ({ ...r, "S.No": idx + 1 }));
+    });
+    addToast(`${gpName} Panchayat deleted successfully.`);
+  };
+
+  // Delete District Mandal
+  const handleDeleteDistrictMandal = (mandalName: string) => {
+    if (!window.confirm(`Are you sure you want to delete ${mandalName} Mandal?`)) return;
+    setDistrictData((prev) => {
+      const updated = prev.filter((r) => r["Mandal Name"] !== mandalName);
+      return updated.map((r, idx) => ({ ...r, "S.No": idx + 1 }));
+    });
+    addToast(`${mandalName} Mandal deleted successfully.`);
+  };
+
+  // Generate formatted default timestamp
+  const getFormattedDateTime = () => {
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
-    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthName = months[now.getMonth()];
+    const day = now.getDate();
     const year = now.getFullYear();
     let hours = now.getHours();
     const minutes = String(now.getMinutes()).padStart(2, "0");
+    const seconds = String(now.getSeconds()).padStart(2, "0");
     const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12;
     hours = hours ? hours : 12;
-    const formattedTime = `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
-    const defaultUploadDateTime = `${day}-${month}-${year} ${formattedTime}`;
+    const formattedHours = String(hours).padStart(2, "0");
+    return `${monthName} ${day}, ${year} at ${formattedHours}:${minutes}:${seconds} ${ampm}`;
+  };
 
-    try {
-      const XLSX = await import("xlsx-js-style");
-      const reader = new FileReader();
+  // Helper clean activity name
+  const isReservedNonActivityHeader = (rawText: string): boolean => {
+    if (!rawText) return true;
+    const clean = rawText
+      .toLowerCase()
+      .replace(/ entered\s*%/gi, "")
+      .replace(/ not entered/gi, "")
+      .replace(/ entered/gi, "")
+      .replace(/ pending/gi, "")
+      .replace(/ status/gi, "")
+      .replace(/[^a-z0-9]/g, "")
+      .trim();
 
-      reader.onload = (event) => {
-        try {
-          const result = event.target?.result;
-          if (!result) return;
+    const reserved = [
+      "", "sno", "slno", "serialno", "serialnumber", "no", "s", "sl", "snoentered", "slnoentered",
+      "panchayatname", "grampanchayatname", "grampanchayat", "gpname", "panchayat", "village", "villagename", "gp", "nameofgp", "nameofgrampanchayat", "panchayatnameentered", "gpnameentered",
+      "mandalname", "mandal", "districtname", "district", "nameofmandal", "nameofdistrict", "mandalnameentered",
+      "total", "grandtotal", "totalgps", "totalgp", "overall", "overallpercent", "overallpercentage", "percentage",
+      "status", "action", "actions", "remarks", "name", "notentered", "entered",
+      "totalnoofgps", "totalnoofgp", "noofgps", "noofgp", "totalgpsentered", "totalgpentered", "noofgpentered"
+    ];
+    if (reserved.includes(clean)) return true;
+    if (clean.startsWith("sno") || clean.startsWith("slno") || clean === "sno" || clean === "slno") return true;
+    if (clean.includes("panchayatname") || clean.includes("grampanchayat") || clean.includes("mandalname") || clean.includes("totalno")) return true;
+    return false;
+  };
 
-          let rawData: any[][] = [];
+  const cleanActivityTitle = (rawText: string): string => {
+    if (isReservedNonActivityHeader(rawText)) return "";
 
-          // 1. Try HTML table decoding first if file contains HTML markup
-          try {
-            const textDecoder = new TextDecoder("utf-8");
-            const decodedText = textDecoder.decode(result as ArrayBuffer);
+    const t = rawText
+      .replace(/\n+/g, " ")
+      .replace(/[\r\t]+/g, " ")
+      .replace(/ entered\s*%/gi, "")
+      .replace(/ entered/gi, "")
+      .replace(/ not entered/gi, "")
+      .replace(/ pending/gi, "")
+      .replace(/ status/gi, "")
+      .replace(/%/g, "")
+      .replace(/_/g, " ")
+      .trim();
 
-            if (decodedText.includes("<table") || decodedText.includes("<tr") || decodedText.includes("<td")) {
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(decodedText, "text/html");
-              const htmlRows: string[][] = [];
+    if (isReservedNonActivityHeader(t)) return "";
 
-              doc.querySelectorAll("tr").forEach((tr) => {
-                const rowCells: string[] = [];
-                tr.querySelectorAll("th, td").forEach((cell) => {
-                  const cellText = (cell.textContent || "").trim();
-                  const colspan = parseInt(cell.getAttribute("colspan") || "1", 10);
-                  rowCells.push(cellText);
-                  for (let k = 1; k < colspan; k++) {
-                    rowCells.push("");
-                  }
-                });
-                if (rowCells.some((c) => c.length > 0)) {
-                  htmlRows.push(rowCells);
-                }
-              });
+    const lower = t.toLowerCase();
+    if (lower.includes("nursery")) return "Nursery";
+    if (lower.includes("plantation")) return "Plantation";
+    if (lower.includes("vaikunta") || lower.includes("dhamam") || lower.includes("vaikuntha")) return "Vaikunta Dhamam";
+    if (lower.includes("dump") || lower.includes("yard")) return "Dump Yard";
+    if (lower.includes("water") || lower.includes("supply")) return "Water Supply";
+    if (lower.includes("gp meet") || lower.includes("meetings")) return "GP Meetings";
+    if (lower.includes("gram sabha") || lower.includes("sabha")) return "Gram Sabha";
+    if (lower.includes("record") || lower.includes("maintenance")) return "Record Maintenance";
+    if (lower.includes("approval") || lower.includes("certificate")) return "Approvals and Certificates";
+    if (lower.includes("death")) return "Death";
+    if (lower.includes("receipt") || lower.includes("recipt")) return "Receipts";
+    if (lower.includes("expenditure")) return "Expenditure";
+    if (lower.includes("cheque")) return "Cheque Details";
+    if (lower.includes("salary")) return "Salary Details";
+    if (lower.includes("vwsc")) return "VWSC Balance";
+    if (lower.includes("mgnre") || lower.includes("nregs")) return "MGNRE Bank Balance";
+    if (lower.includes("electricity") || lower.includes("payment of electricity")) return "Payment of Electricity";
+    if (lower.includes("birth")) return "Birth";
+    if (lower.includes("sanitation")) return "Sanitation";
+    if (lower.includes("street light") || lower.includes("lights")) return "Street Lights";
+    if (lower.includes("tax") || lower.includes("property tax")) return "Property Tax";
+    if (lower.includes("audit")) return "Audit";
 
-              if (htmlRows.length > 0) {
-                rawData = htmlRows;
-              }
-            }
-          } catch (htmlErr) {
-            console.warn("DOMParser HTML check skipped:", htmlErr);
+    return t.replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  // Match pending activity title
+  const isActivityPendingInText = (act: string, pendingText: string): boolean => {
+    const pLower = pendingText.toLowerCase();
+    const actLower = act.toLowerCase();
+    if (pLower.includes(actLower)) return true;
+
+    if (act === "Vaikunta Dhamam" && (pLower.includes("vaikunta") || pLower.includes("dhamam") || pLower.includes("vaikuntha"))) return true;
+    if (act === "Dump Yard" && (pLower.includes("dump") || pLower.includes("yard"))) return true;
+    if (act === "Water Supply" && (pLower.includes("water") || pLower.includes("supply"))) return true;
+    if (act === "GP Meetings" && (pLower.includes("gp meet") || pLower.includes("meetings"))) return true;
+    if (act === "Gram Sabha" && (pLower.includes("gram sabha") || pLower.includes("sabha"))) return true;
+    if (act === "Record Maintenance" && (pLower.includes("record") || pLower.includes("maintenance"))) return true;
+    if (act === "Approvals and Certificates" && (pLower.includes("approval") || pLower.includes("certificate"))) return true;
+    if (act === "Death" && pLower.includes("death")) return true;
+    if (act === "Receipts" && (pLower.includes("receipt") || pLower.includes("recipt"))) return true;
+    if (act === "Salary Details" && pLower.includes("salary")) return true;
+    if (act === "VWSC Balance" && pLower.includes("vwsc")) return true;
+    if (act === "MGNRE Bank Balance" && (pLower.includes("mgnre") || pLower.includes("bank balance") || pLower.includes("nregs"))) return true;
+    if (act === "Birth" && pLower.includes("birth")) return true;
+
+    return false;
+  };
+
+  // Helper to accurately extract array of pending activity strings from cell text
+  const extractPendingActivitiesList = (rawText: string): string[] => {
+    if (!rawText) return [];
+
+    const rawParts = rawText
+      .replace(/<br\s*[\/]?>/gi, "\n")
+      .split(/\r?\n|(?<=[^\d])\s*(?=\d+[\s.)-])/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const pendingList: string[] = [];
+
+    rawParts.forEach((part) => {
+      let clean = part.replace(/^\d+[\s.)-]+/, "").trim();
+      if (!clean) return;
+
+      const lower = clean.toLowerCase();
+      let matchedAct = "";
+
+      if (lower.includes("nursery")) matchedAct = "Nursery";
+      else if (lower.includes("plantation")) matchedAct = "Plantation";
+      else if (lower.includes("vaikunta") || lower.includes("dhamam") || lower.includes("vaikuntha")) matchedAct = "Vaikunta Dhamam";
+      else if (lower.includes("dump") || lower.includes("yard")) matchedAct = "Dump Yard";
+      else if (lower.includes("water") || lower.includes("supply")) matchedAct = "Water Supply";
+      else if (lower.includes("meeting") || lower.includes("meetings")) matchedAct = "GP Meetings";
+      else if (lower.includes("sabha")) matchedAct = "Gram Sabha";
+      else if (lower.includes("record") || lower.includes("maintenance")) matchedAct = "Record Maintenance";
+      else if (lower.includes("approval") || lower.includes("certificate")) matchedAct = "Approvals and Certificates";
+      else if (lower.includes("death")) matchedAct = "Death";
+      else if (lower.includes("receipt") || lower.includes("recipt")) matchedAct = "Receipts";
+      else if (lower.includes("salary")) matchedAct = "Salary Details";
+      else if (lower.includes("vwsc")) matchedAct = "VWSC Balance";
+      else if (lower.includes("mgnre") || lower.includes("bank balance") || lower.includes("nregs")) matchedAct = "MGNRE Bank Balance";
+      else if (lower.includes("birth")) matchedAct = "Birth";
+      else {
+        clean = clean.replace(/\s+not\s+entered/i, "").trim();
+        if (clean.length > 2 && !clean.toLowerCase().includes("total")) matchedAct = clean;
+      }
+
+      if (matchedAct) {
+        const full = `${matchedAct} Not Entered`;
+        if (!pendingList.includes(full)) {
+          pendingList.push(full);
+        }
+      }
+    });
+
+    return pendingList;
+  };
+
+  // Unified Parser for ALL Files / Sheets
+  const processUnifiedSheets = (sheets: { fileName: string; sheetName: string; rows: any[][] }[]) => {
+    let detectedTime = "";
+    let detectedMandal = "";
+
+    // 1. Try to detect Timestamp and Mandal Name across all sheets
+    for (const sheet of sheets) {
+      for (let i = 0; i < Math.min(sheet.rows.length, 8); i++) {
+        const rowStr = (sheet.rows[i] || []).join(" ");
+        if (!detectedTime) {
+          const match = rowStr.match(/(?:month of|as on|report date|on|dated)?[:\s]*([A-Za-z]+\s+\d{1,2},?\s+\d{4}(?:\s+at\s+\d{1,2}:\d{2}(?::\d{2})?\s*[AaPp][Mm])?|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}(?:\s+at\s+\d{1,2}:\d{2}(?::\d{2})?\s*[AaPp][Mm])?)/i);
+          if (match && match[1] && match[1].length >= 8) {
+            detectedTime = match[1].trim();
           }
-
-          // 2. Fallback to standard XLSX array parsing if not HTML
-          if (!rawData || rawData.length === 0) {
-            const workbook = XLSX.read(result, { type: "array" });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            rawData = XLSX.utils.sheet_to_json(worksheet, {
-              header: 1,
-              defval: ""
-            });
+        }
+        if (!detectedMandal) {
+          const mandalMatch = rowStr.match(/mandal[:\s]+([A-Za-z\s]+)/i);
+          if (mandalMatch && mandalMatch[1]) {
+            detectedMandal = mandalMatch[1].trim();
           }
+        }
+      }
+    }
+    setUploadDateTime(detectedTime || getFormattedDateTime());
+    if (detectedMandal) setMandalNameInput(detectedMandal);
 
-          if (!rawData || rawData.length === 0) {
-            addToast("Excel ఫైల్ ఖాళీగా ఉంది.");
-            return;
+    // 2. Classify sheets into: Report 14, Report 13, District Report
+    let isDistrict = false;
+    let districtRows: any[][] | null = null;
+
+    const report14Sheets: any[][][] = [];
+    const report13Sheets: any[][][] = [];
+
+    sheets.forEach((sheet) => {
+      const rows = sheet.rows;
+      if (!rows || rows.length === 0) return;
+
+      let hasReport14Keyword = false;
+      let hasDistrictKeyword = false;
+      let hasReport13Keyword = false;
+
+      for (let i = 0; i < Math.min(rows.length, 15); i++) {
+        const joined = (rows[i] || []).map((c) => String(c || "").toLowerCase().trim()).join(" ");
+
+        // Report 14: Pending List
+        if (joined.includes("pending_activities") || joined.includes("pending activity") || joined.includes("pending activities")) {
+          hasReport14Keyword = true;
+          break;
+        }
+
+        // District Report: Contains Mandal Name / Total No. of Gps without Panchayat Name
+        if (
+          (joined.includes("mandal name") || joined.includes("mandal")) &&
+          !joined.includes("panchayat name") &&
+          !joined.includes("gram panchayat")
+        ) {
+          if (
+            joined.includes("total no") ||
+            joined.includes("total gp") ||
+            joined.includes("no. of gp") ||
+            joined.includes("nursery") ||
+            joined.includes("plantation") ||
+            joined.includes("entered") ||
+            joined.includes("%")
+          ) {
+            hasDistrictKeyword = true;
+            break;
           }
+        }
 
-          // Detect any date/time in header rows (0-5) or fallback to upload date & time
-          let detectedDateTime = defaultUploadDateTime;
-          for (let i = 0; i < Math.min(rawData.length, 6); i++) {
-            const rowText = (rawData[i] || []).join(" ");
-            const match = rowText.match(/(?:date|as on|report date|on)?[:\s]*(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AaPp][Mm])?)?)/i);
-            if (match && match[1] && match[1].length >= 8) {
-              detectedDateTime = match[1].trim();
+        // Check for "Total No. of Gp's" in header
+        if (joined.includes("total no") && (joined.includes("gp") || joined.includes("gps"))) {
+          hasDistrictKeyword = true;
+          break;
+        }
+
+        // Report 13: Gram Panchayat Matrix
+        if (joined.includes("panchayat name") || joined.includes("gram panchayat")) {
+          hasReport13Keyword = true;
+          break;
+        }
+      }
+
+      if (hasReport14Keyword) {
+        report14Sheets.push(rows);
+      } else if (hasDistrictKeyword) {
+        isDistrict = true;
+        districtRows = rows;
+      } else if (hasReport13Keyword) {
+        report13Sheets.push(rows);
+      } else {
+        // Fallback check
+        const firstFew = rows.slice(0, 10).map((r) => r.join(" ").toLowerCase()).join(" ");
+        if (firstFew.includes("pending")) {
+          report14Sheets.push(rows);
+        } else if (firstFew.includes("mandal name") || (firstFew.includes("mandal") && !firstFew.includes("panchayat"))) {
+          isDistrict = true;
+          districtRows = rows;
+        } else {
+          report13Sheets.push(rows);
+        }
+      }
+    });
+
+    // 3. IF DISTRICT REPORT
+    if (isDistrict && districtRows) {
+      parseDistrictSheet(districtRows);
+      return;
+    }
+
+    // 4. MANDAL REPORT: Extract Report 14 and/or Report 13 and merge seamlessly
+    const mandalMap = new Map<string, {
+      name: string;
+      status: Record<string, number>;
+      pendingActivities: string[];
+      pendingCount: number;
+      percentage: number;
+    }>();
+
+    const detectedMandalActivitiesSet = new Set<string>();
+
+    // A. Parse Report 14 sheets
+    report14Sheets.forEach((rows) => {
+      let r14HeaderIdx = -1;
+      let pendingNamesColIdx = -1;
+      let pendingCountColIdx = -1;
+
+      for (let i = 0; i < Math.min(rows.length, 15); i++) {
+        const row = rows[i] || [];
+        const joined = row.map((c) => String(c || "").toLowerCase().trim()).join(" ");
+        if (joined.includes("pending_activities") || joined.includes("pending activity") || joined.includes("pending activities")) {
+          r14HeaderIdx = i;
+          row.forEach((cell, idx) => {
+            const cStr = String(cell || "").toLowerCase();
+            if (cStr.includes("pending_activities_names") || cStr.includes("pending_activities") || cStr.includes("pending activity")) pendingNamesColIdx = idx;
+            if (cStr.includes("pending_activities_count") || cStr.includes("pending_count") || cStr.includes("count")) pendingCountColIdx = idx;
+          });
+          break;
+        }
+      }
+
+      if (r14HeaderIdx !== -1 && pendingNamesColIdx !== -1) {
+        const bodyRows = rows.slice(r14HeaderIdx + 1);
+        bodyRows.forEach((row) => {
+          let pName = "";
+          for (let c = 0; c < Math.min(row.length, 3); c++) {
+            const rawVal = String(row[c] || "").trim();
+            const cleanVal = rawVal.replace(/^[\d\s.\-)]+/, "").trim();
+            if (cleanVal && isNaN(Number(cleanVal)) && !cleanVal.toLowerCase().includes("total") && cleanVal.length >= 2) {
+              pName = cleanVal.toUpperCase();
               break;
             }
           }
-          setUploadDateTime(detectedDateTime);
+          if (!pName || pName.includes("TOTAL") || pName.includes("SUMMARY")) return;
 
-          let headerRowIndex = -1;
-          let panchayatColIndex = -1;
-          let totalGpColIndex = -1;
-          let detectedHeaderName = "Mandal Name";
-
-          // Find the header row by looking for Panchayat/Mandal/Village/Gram/Name or 'S.No'
-          for (let i = 0; i < Math.min(rawData.length, 30); i++) {
-            const row = rawData[i];
-            if (!row) continue;
-            for (let j = 0; j < Math.min(row.length, 10); j++) {
-              const val = String(row[j] || "").toLowerCase().trim();
-              if (val.includes("mandal") || val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val === "name" || val.includes("village") || val === "gp" || val === "s.no" || val === "sl.no") {
-                headerRowIndex = i;
-                break;
-              }
-            }
-            if (headerRowIndex !== -1) break;
+          const rawPendingText = String(row[pendingNamesColIdx] || "").trim();
+          let rawCount = 0;
+          if (pendingCountColIdx !== -1) {
+            rawCount = parseInt(String(row[pendingCountColIdx] || "").replace(/[^\d]/g, ""), 10);
           }
 
-          // Fallback if header row not found
-          if (headerRowIndex === -1) {
-             for (let i = 0; i < Math.min(rawData.length, 10); i++) {
-                const row = rawData[i];
-                if (row && row.length > 3) {
-                   headerRowIndex = i;
-                   break;
-                }
-             }
-          }
-          if (headerRowIndex === -1) headerRowIndex = 0;
+          // Extract real pending activities list accurately
+          let pendingActsList = extractPendingActivitiesList(rawPendingText);
 
-          // Specifically find the Name column and Total No. of GPs column in header row
-          const headerRow = rawData[headerRowIndex] || [];
-          for (let j = 0; j < Math.min(headerRow.length, 10); j++) {
-            const val = String(headerRow[j] || "").toLowerCase().trim();
-            if (val.includes("mandal")) {
-              panchayatColIndex = j;
-              detectedHeaderName = "Mandal Name";
-            } else if (val.includes("panchayat") || val.includes("gp name") || val.includes("gram") || val.includes("village")) {
-              if (panchayatColIndex === -1) {
-                panchayatColIndex = j;
-                detectedHeaderName = "Panchayat Name";
-              }
-            }
-            if (val.includes("total no") || val.includes("total gp") || val.includes("total no. of gp") || val === "total gps") {
-              totalGpColIndex = j;
-            }
-          }
-
-          // If not found explicitly, determine based on data sample
-          if (panchayatColIndex === -1) {
-            const col0Header = String(headerRow[0] || "").toLowerCase().trim();
-            const sampleDataCol0 = String(rawData[headerRowIndex + 1]?.[0] || "").trim();
-            if (col0Header.includes("s.no") || col0Header.includes("sl.no") || !isNaN(Number(sampleDataCol0))) {
-              panchayatColIndex = 1;
-            } else {
-              panchayatColIndex = 0;
-            }
-          }
-
-          if (totalGpColIndex === -1 && panchayatColIndex + 1 < headerRow.length) {
-            const nextHeader = String(headerRow[panchayatColIndex + 1] || "").toLowerCase().trim();
-            if (nextHeader.includes("total") || nextHeader.includes("gp") || nextHeader.includes("no")) {
-              totalGpColIndex = panchayatColIndex + 1;
-            }
-          }
-
-          setNameHeader(detectedHeaderName);
-
-          let foundActivities: string[] = [];
-          let activityColMapping: Record<string, number> = {};
-
-          // Extract activities by scanning rows prior to headerRowIndex
-          for (let r = 0; r < headerRowIndex; r++) {
-            const row = rawData[r] || [];
-            row.forEach((cellVal: any, cIdx: number) => {
-              const val = String(cellVal || "").trim();
-              if (
-                val.length > 1 &&
-                !val.toLowerCase().includes("telangana") &&
-                !val.toLowerCase().includes("report") &&
-                !val.toLowerCase().includes("panchayat") &&
-                !val.toLowerCase().includes("mandal") &&
-                !val.toLowerCase().includes("s.no") &&
-                !val.toLowerCase().includes("sl.no") &&
-                !val.toLowerCase().includes("total")
-              ) {
-                if (!foundActivities.includes(val)) {
-                  foundActivities.push(val);
-                }
-                if (activityColMapping[val] === undefined) {
-                  activityColMapping[val] = cIdx;
-                }
+          // Fallback if cell had count but extract returned empty
+          if (pendingActsList.length === 0 && !isNaN(rawCount) && rawCount > 0) {
+            STANDARD_MAS_ACTIVITIES.forEach((act) => {
+              if (isActivityPendingInText(act, rawPendingText)) {
+                pendingActsList.push(`${act} Not Entered`);
               }
             });
           }
 
-          // Fallback to predefined activities if scanning prior rows produced no activities
-          if (foundActivities.length === 0) {
-             foundActivities = predefinedActivities;
-             const startOffset = totalGpColIndex !== -1 ? totalGpColIndex + 1 : panchayatColIndex + 1;
-             foundActivities.forEach((act, idx) => {
-                activityColMapping[act] = startOffset + (idx * 2);
-             });
-          }
+          const finalPendingCount = !isNaN(rawCount) && rawCount > 0 ? rawCount : pendingActsList.length;
 
-          const rows = rawData.slice(headerRowIndex + 1);
-
-          const parsedData = rows.map((row) => {
-              let pNameVal = row[panchayatColIndex];
-              let pName = String(pNameVal || "").trim();
-
-              // Fallback: If pName is numeric (e.g. S.No like 1, 2, 3), inspect column panchayatColIndex + 1
-              if (!isNaN(Number(pName)) && pName !== "") {
-                const altVal = String(row[panchayatColIndex + 1] ?? row[1] ?? "").trim();
-                if (altVal && isNaN(Number(altVal))) {
-                  pName = altVal;
-                  pNameVal = altVal;
-                }
-              }
-              
-              // Clean name (strip leading serial numbers)
-              let cleanPName = pName.replace(/^[\d\s.\-)]+/, "").trim();
-              if (!cleanPName) cleanPName = pName.trim();
-              const lowerPName = cleanPName.toLowerCase();
-
-              // Filter out invalid non-data rows
-              if (
-                !cleanPName ||
-                cleanPName.length < 2 ||
-                /^\d+$/.test(cleanPName) ||
-                lowerPName.includes("grand") ||
-                lowerPName.includes("report") ||
-                lowerPName.includes("telangana") ||
-                lowerPName.includes("total") ||
-                lowerPName.includes("subtotal") ||
-                lowerPName.includes("sub-total") ||
-                lowerPName.includes("summary") ||
-                lowerPName.includes("panchayat name") ||
-                lowerPName.includes("mandal name") ||
-                lowerPName.includes("gp name") ||
-                lowerPName.includes("gram panchayat") ||
-                lowerPName.includes("attendance") ||
-                lowerPName.includes("designation") ||
-                lowerPName.includes("page ") ||
-                lowerPName.includes("printed") ||
-                lowerPName.includes("generated") ||
-                lowerPName.startsWith("mandal:") ||
-                lowerPName.startsWith("mandal name:") ||
-                lowerPName === "s.no" ||
-                lowerPName === "sl.no" ||
-                lowerPName === "s no" ||
-                lowerPName === "sl no" ||
-                lowerPName === "nil" ||
-                lowerPName === "null" ||
-                lowerPName === "n/a" ||
-                lowerPName === "na"
-              ) {
-                 return null;
-              }
-
-              const record: any = {
-                "S.No": 0, // Assigned later
-                "Panchayat Name": cleanPName.toUpperCase(),
-                "TotalGPs": 0,
-              };
-
-              let explicitTotalGps = 0;
-              if (totalGpColIndex !== -1 && row[totalGpColIndex] !== undefined) {
-                const parsedNum = parseInt(String(row[totalGpColIndex]).replace(/[^\d]/g, ""), 10);
-                if (!isNaN(parsedNum) && parsedNum > 0) {
-                  explicitTotalGps = parsedNum;
-                }
-              }
-
-              foundActivities.forEach((act) => {
-                const colIdx = activityColMapping[act] ?? (panchayatColIndex + 1 + (foundActivities.indexOf(act) * 2));
-                const val = row[colIdx];
-                const notVal = row[colIdx + 1];
-                
-                const vStr = String(val || "").trim().toLowerCase();
-                const vNum = parseInt(vStr.replace(/[^\d]/g, ""), 10);
-                const notNum = parseInt(String(notVal || "0").replace(/[^\d]/g, ""), 10);
-
-                let enteredCount = 0;
-                let notEnteredCount = 0;
-
-                if (!isNaN(vNum) && (vNum > 1 || !isNaN(notNum))) {
-                  // Numerical report row (e.g. Mandal Summary row)
-                  enteredCount = vNum;
-                  notEnteredCount = isNaN(notNum) ? 0 : notNum;
-                } else if (
-                  vStr === "1" || 
-                  vStr === "yes" || 
-                  vStr === "entered" || 
-                  vStr === "y" || 
-                  vStr === "true" ||
-                  vStr === "done" ||
-                  vNum === 1
-                ) {
-                  enteredCount = 1;
-                  notEnteredCount = 0;
-                } else {
-                  enteredCount = 0;
-                  notEnteredCount = 1;
-                }
-
-                record[act] = {
-                  Entered: enteredCount,
-                  NotEntered: notEnteredCount,
-                };
-              });
-
-              // Determine TotalGPs for this row
-              if (explicitTotalGps > 0) {
-                record["TotalGPs"] = explicitTotalGps;
-              } else {
-                let maxActivitySum = 0;
-                foundActivities.forEach((act) => {
-                  const actSum = (record[act]?.Entered || 0) + (record[act]?.NotEntered || 0);
-                  if (actSum > maxActivitySum) maxActivitySum = actSum;
-                });
-                record["TotalGPs"] = maxActivitySum > 0 ? maxActivitySum : 1;
-              }
-              
-              return record;
-            }).filter(Boolean);
-
-          if (parsedData.length === 0) {
-             addToast(`డేటా మ్యాప్ కాలేదు. ఫైల్ హెడర్ సరైన స్థానంలో ఉందో లేదో చూడండి.`);
-             return;
-          }
-
-          // Deduplicate rows by Name
-          const uniqueMap = new Map<string, any>();
-          parsedData.forEach((rec) => {
-            if (!rec) return;
-            const pKey = rec["Panchayat Name"];
-            if (!uniqueMap.has(pKey)) {
-              uniqueMap.set(pKey, rec);
-            } else {
-              const existing = uniqueMap.get(pKey);
-              foundActivities.forEach((act) => {
-                existing[act].Entered += rec[act]?.Entered || 0;
-                existing[act].NotEntered += rec[act]?.NotEntered || 0;
-              });
-              existing["TotalGPs"] = Math.max(existing["TotalGPs"], rec["TotalGPs"]);
+          // Compute status for standard activities based on Report 14 explicitly listed pending items
+          const statusMap: Record<string, number> = {};
+          STANDARD_MAS_ACTIVITIES.forEach((act) => {
+            const isPending = pendingActsList.some((p) => isActivityPendingInText(act, p));
+            statusMap[act] = isPending ? 0 : 1;
+            if (isPending) {
+              detectedMandalActivitiesSet.add(act);
             }
           });
 
-          const finalRows = Array.from(uniqueMap.values());
-          finalRows.forEach((row, i) => row["S.No"] = i + 1);
+          const enteredCount = STANDARD_MAS_ACTIVITIES.length - pendingActsList.length;
+          const percentage = parseFloat(((enteredCount / STANDARD_MAS_ACTIVITIES.length) * 100).toFixed(2));
 
-          setActivities(foundActivities);
-          setData(finalRows);
-          addToast("ఫైల్ విజ‌య‌వంతంగా ప్రాసెస్ చేయబడింది!");
-          if (fileRef.current) fileRef.current.value = ""; // reset for next upload
-
-        } catch (innerErr: any) {
-          console.error("Inner Parsing Error:", innerErr);
-          addToast("Parsing Error: " + (innerErr?.message || "అపరిచిత పొరపాటు"));
-        }
-      };
-
-      reader.readAsArrayBuffer(file);
-    } catch (err: any) {
-      console.error(err);
-      addToast("Failed to initialize parser: " + (err?.message || "Unknown Error"));
-    }
-  };
-
-  // Styled Excel Export with Page Setup Properties
-  const handleExportExcel = async () => {
-    if (!data.length) return;
-    try {
-      const XLSX = await import("xlsx-js-style");
-      
-      const ws_data: any[][] = [];
-      const headerRow1 = ["Telangana State"];
-      const headerRow2 = [
-        uploadDateTime
-          ? `Monthly Activity Data Entry Report - (${uploadDateTime})`
-          : "Monthly Activity Data Entry Report",
-      ];
-      
-      const headerRow3 = ["S.No", nameHeader, "Total No. of Gp's"];
-      const headerRow4 = ["", "", ""];
-      
-      activities.forEach((act) => {
-        headerRow3.push(act, ""); // Span 2 cols
-        headerRow4.push("Entered", "Not Entered");
-      });
-
-      ws_data.push(headerRow1);
-      ws_data.push(headerRow2);
-      ws_data.push(headerRow3);
-      ws_data.push(headerRow4);
-
-      let totals: Record<string, { entered: number; notEntered: number }> = {};
-      activities.forEach((act) => {
-        totals[act] = { entered: 0, notEntered: 0 };
-      });
-
-      let grandTotalGps = 0;
-
-      data.forEach((row, idx) => {
-        const totalGpsNum = Number(row["TotalGPs"] || 0);
-        grandTotalGps += totalGpsNum;
-        const sheetRow: any[] = [idx + 1, row["Panchayat Name"], totalGpsNum];
-        
-        activities.forEach((act) => {
-          const actData = row[act] || { Entered: 0, NotEntered: 0 };
-          sheetRow.push(actData.Entered, actData.NotEntered);
-          totals[act].entered += actData.Entered || 0;
-          totals[act].notEntered += actData.NotEntered || 0;
+          mandalMap.set(pName, {
+            name: pName,
+            status: statusMap,
+            pendingActivities: pendingActsList,
+            pendingCount: finalPendingCount,
+            percentage
+          });
         });
-        
-        ws_data.push(sheetRow);
-      });
+      }
+    });
 
-      // Total Row
-      const totalRow: any[] = ["Total", "", grandTotalGps];
-      activities.forEach((act) => {
-        totalRow.push(totals[act].entered, totals[act].notEntered);
-      });
-      ws_data.push(totalRow);
+    // B. Parse Report 13 sheets (Activity Matrix)
+    report13Sheets.forEach((rows) => {
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(rows.length, 25); i++) {
+        const joined = (rows[i] || []).map((c) => String(c || "").toLowerCase().trim()).join(" ");
+        if (joined.includes("panchayat") || joined.includes("nursery") || joined.includes("plantation") || (joined.includes("s.no") && (rows[i + 1] || []).join(" ").toLowerCase().includes("entered"))) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+      if (headerRowIndex === -1) headerRowIndex = 0;
 
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      const mainHeaderRow = rows[headerRowIndex] || [];
+      const subHeaderRow = rows[headerRowIndex + 1] || [];
 
-      // Add Merges
-      const totalCols = 3 + activities.length * 2;
-      const merges = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Telangana State
-        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }, // Monthly Activity Data Entry Report
-        { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } }, // S.No
-        { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } }, // Panchayat/Mandal Name
-        { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } }, // Total No. of Gp's
-        { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 1 } }, // Merge "Total" across S.No & Name cols
-      ];
-      
-      activities.forEach((_, idx) => {
-        const startCol = 3 + idx * 2;
-        merges.push({ s: { r: 2, c: startCol }, e: { r: 2, c: startCol + 1 } });
-      });
+      // Detect activity columns
+      const detectedActCols: { activityName: string; colIdx: number }[] = [];
+      const usedCols = new Set<number>();
 
-      ws["!merges"] = merges;
+      for (let c = 0; c < Math.max(mainHeaderRow.length, subHeaderRow.length); c++) {
+        const mainText = String(mainHeaderRow[c] || "").trim();
+        const subText = String(subHeaderRow[c] || "").trim();
+        const combined = `${mainText} ${subText}`.trim();
 
-      // Page Setup for Excel Print / Export
-      ws["!pageSetup"] = {
-        orientation: "landscape",
-        paperSize: 9, // A4
-        scale: 80,
-        fitToPage: true,
-        fitToWidth: 1,
-        fitToHeight: 0
-      };
-      ws["!margins"] = { left: 0.25, right: 0.25, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
-
-      // Apply cell styling matching government blue (#11518E), green (#92D050), red (#FF0000)
-      const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = { c: C, r: R };
-          const cellRef = XLSX.utils.encode_cell(cellAddress);
-          if (!ws[cellRef]) ws[cellRef] = { t: "s", v: "" };
-
-          const cell = ws[cellRef];
-          let bgColor = "FFFFFF";
-          let fontColor = "000000";
-          let isBold = false;
-          
-          if (R === 0 || R === 1 || R === 2) {
-            bgColor = "11518E"; // Government Blue
-            fontColor = "FFFFFF";
-            isBold = true;
-          } else if (R === 3) {
-            bgColor = "FFFFFF"; // White for Entered / Not Entered
-            fontColor = "000000";
-            isBold = true;
-          } else if (R === range.e.r) {
-            bgColor = "FFFFFF";
-            fontColor = "000000";
-            isBold = true; // Total Row
-          } else {
-             // Data Rows styling
-             if (C >= 3) {
-               const val = Number(cell.v || 0);
-               const isEnteredCol = (C - 3) % 2 === 0;
-               if (isEnteredCol) {
-                 if (val > 0) {
-                   bgColor = "92D050"; // Vibrant Green
-                   isBold = true;
-                 } else {
-                   bgColor = "FFFFFF";
-                 }
-               } else {
-                 if (val > 0) {
-                   bgColor = "FF0000"; // Vibrant Red
-                   fontColor = "FFFFFF";
-                   isBold = true;
-                 } else {
-                   bgColor = "FFFFFF";
-                 }
-               }
-             } else if (C === 1 || C === 2) {
-               isBold = true;
-             }
-          }
-
-          cell.s = {
-            font: { bold: isBold, color: { rgb: fontColor }, name: "Arial", sz: 9 },
-            fill: { fgColor: { rgb: bgColor } },
-            alignment: { horizontal: C === 1 ? "left" : "center", vertical: "center" },
-            border: {
-              top: { style: "thin", color: { rgb: "000000" } },
-              bottom: { style: "thin", color: { rgb: "000000" } },
-              left: { style: "thin", color: { rgb: "000000" } },
-              right: { style: "thin", color: { rgb: "000000" } },
-            },
-          };
+        const actTitle = cleanActivityTitle(combined) || cleanActivityTitle(mainText);
+        if (actTitle && !usedCols.has(c)) {
+          detectedActCols.push({ activityName: actTitle, colIdx: c });
+          usedCols.add(c);
+          detectedMandalActivitiesSet.add(actTitle);
         }
       }
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Monthly Activity Report");
-      XLSX.writeFile(wb, "Monthly_Activity_Data_Entry_Report_PageSetup.xlsx");
-      addToast("పేజీ సెటప్‌తో కూడిన స్టైల్డ్ ఎక్సెల్ ఫైల్ డౌన్లోడ్ అయింది!");
-    } catch (err) {
+      // If no columns detected, default to standard 15 columns starting after name col
+      const finalActCols = detectedActCols.length > 0 
+        ? detectedActCols 
+        : STANDARD_MAS_ACTIVITIES.map((act, i) => ({ activityName: act, colIdx: 2 + i }));
+
+      if (detectedActCols.length === 0) {
+        STANDARD_MAS_ACTIVITIES.forEach((a) => detectedMandalActivitiesSet.add(a));
+      }
+
+      const dataStartRow = headerRowIndex + 1 + (subHeaderRow.length > 0 && subHeaderRow.some((x) => String(x).toLowerCase().includes("entered")) ? 1 : 0);
+      const bodyRows = rows.slice(dataStartRow);
+
+      bodyRows.forEach((row) => {
+        if (!row || row.length < 2) return;
+        const rowJoined = row.map((c) => String(c || "").toLowerCase().trim()).join(" ");
+        if (rowJoined.includes("total") || rowJoined.startsWith("grand total") || rowJoined.includes("statement showing") || rowJoined.includes("panchayat name")) {
+          return;
+        }
+
+        let pName = "";
+        for (let c = 0; c < Math.min(row.length, 3); c++) {
+          const val = String(row[c] || "").trim().replace(/^[\d\s.\-)]+/, "");
+          if (val && isNaN(Number(val)) && !val.toLowerCase().includes("total") && val.length >= 2) {
+            pName = val.toUpperCase();
+            break;
+          }
+        }
+        if (!pName) return;
+
+        const statusMap: Record<string, number> = {};
+        const pendingActs: string[] = [];
+        let enteredCount = 0;
+
+        finalActCols.forEach((actCol) => {
+          const val = String(row[actCol.colIdx] ?? "").trim().toLowerCase();
+          const isEnt = val === "1" || val === "yes" || val === "true" || parseInt(val, 10) > 0 ? 1 : 0;
+          statusMap[actCol.activityName] = isEnt;
+          if (isEnt === 1) {
+            enteredCount++;
+          } else {
+            pendingActs.push(`${actCol.activityName} Not Entered`);
+          }
+        });
+
+        // Merge with Report 14 if already registered
+        const existing = mandalMap.get(pName);
+        if (existing) {
+          // Report 13 matrix is the primary source of truth for 0/1 status: update status values!
+          finalActCols.forEach((actCol) => {
+            existing.status[actCol.activityName] = statusMap[actCol.activityName];
+          });
+        } else {
+          // Add Panchayat (e.g. 100% completed GPs that had 0 pending activities in Report 14)
+          mandalMap.set(pName, {
+            name: pName,
+            status: statusMap,
+            pendingActivities: pendingActs,
+            pendingCount: pendingActs.length,
+            percentage: finalActCols.length > 0 ? parseFloat(((enteredCount / finalActCols.length) * 100).toFixed(2)) : 100
+          });
+        }
+      });
+    });
+
+    // 5. Build final unified records with guaranteed 100% synchronization
+    const activeMandalActivities = (report13Sheets.length > 0 && detectedMandalActivitiesSet.size > 0)
+      ? Array.from(detectedMandalActivitiesSet)
+      : STANDARD_MAS_ACTIVITIES;
+
+    const finalMandalList = Array.from(mandalMap.values()).map((rec, idx) => {
+      // GUARANTEED SYNC: An activity is pending IF AND ONLY IF status is explicitly 0!
+      // If status is 1 (or unlisted as pending in Report 14), it is ENTERED!
+      const synchronizedPendingList: string[] = [];
+      let entCount = 0;
+
+      activeMandalActivities.forEach((act) => {
+        const isPending = rec.status?.[act] === 0;
+        if (isPending) {
+          synchronizedPendingList.push(`${act} Not Entered`);
+        } else {
+          entCount++;
+          if (rec.status) rec.status[act] = 1;
+        }
+      });
+
+      const totalActs = activeMandalActivities.length;
+      const pct = totalActs > 0 ? parseFloat(((entCount / totalActs) * 100).toFixed(2)) : 100;
+
+      return {
+        "S.No": idx + 1,
+        "Panchayat Name": rec.name,
+        status: rec.status,
+        pendingActivities: synchronizedPendingList,
+        pendingCount: synchronizedPendingList.length,
+        percentage: pct
+      };
+    });
+
+    if (finalMandalList.length === 0) {
+      addToast("Panchayat data not found in file. Please select a valid e-Panchayat file.");
+      return;
+    }
+
+    setDynamicActivities(activeMandalActivities);
+    setMandalData(finalMandalList);
+    setReportLevel("mandal");
+    addToast(`Mandal Report 13 and 14 loaded successfully (Total ${finalMandalList.length} Panchayats)!`);
+  };
+
+  // Parse District Percentage Sheet
+  const parseDistrictSheet = (rawData: any[][]) => {
+    // 1. Find the Sub-header Row (The row containing "Entered" and "Not Entered")
+    let sIdx = -1;
+    for (let i = 0; i < Math.min(rawData.length, 30); i++) {
+      const rowStrings = (rawData[i] || []).map(c => String(c || "").toLowerCase().trim());
+      // A sub-header row typically has many "entered" and "not entered" cells
+      const matches = rowStrings.filter(s => s === "entered" || s === "not entered" || s.includes("entered %")).length;
+      if (matches >= 6) {
+        sIdx = i;
+        break;
+      }
+    }
+
+    // 2. Identify the Main Header Row (The row above the sub-header)
+    let hIdx = sIdx > 0 ? sIdx - 1 : -1;
+
+    // Fallback if sIdx was not found: search for "Mandal Name"
+    if (sIdx === -1) {
+      for (let i = 0; i < Math.min(rawData.length, 30); i++) {
+        const rowJoined = (rawData[i] || []).map(c => String(c || "").toLowerCase()).join(" ");
+        if (rowJoined.includes("mandal name") || rowJoined.includes("total no. of gp")) {
+          hIdx = i;
+          sIdx = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (sIdx === -1 || hIdx === -1) {
+      addToast("Could not recognize report headers. Please upload a valid report file.");
+      return;
+    }
+
+    const mHead = rawData[hIdx] || [];
+    const sHead = rawData[sIdx] || [];
+
+    // 3. Detect Mandal and Total GP Columns
+    let mCol = -1, tCol = -1;
+    // Check both header rows for these labels
+    [mHead, sHead].forEach(row => {
+      for (let c = 0; c < row.length; c++) {
+        const txt = String(row[c] || "").toLowerCase().trim();
+        if (mCol === -1 && (txt.includes("mandal name") || txt === "mandal")) mCol = c;
+        if (tCol === -1 && (txt.includes("total no") || txt.includes("total gp") || txt.includes("no. of gp") || txt.includes("total no. of gp"))) tCol = c;
+      }
+    });
+    if (mCol === -1) mCol = 1;
+    if (tCol === -1) tCol = 2;
+
+    // 4. Map Activity Columns
+    const actCols: { name: string; entIdx: number; notEntIdx?: number; isPct: boolean }[] = [];
+    const usedIndices = new Set<number>();
+
+    // Scan columns in the sub-header
+    for (let c = 0; c < sHead.length; c++) {
+      if (c === mCol || c === tCol || usedIndices.has(c)) continue;
+      
+      const subTxt = String(sHead[c] || "").toLowerCase().trim();
+      if (subTxt === "entered" || subTxt === "entered %") {
+        // This is an "Entered" column. Find what activity it belongs to.
+        // Usually the activity title is in the row above (mHead), possibly to the left if merged.
+        let rawTitle = "";
+        let scanIdx = c;
+        while (scanIdx >= 0) {
+          const t = String(mHead[scanIdx] || "").trim();
+          if (t) { rawTitle = t; break; }
+          // If we hit another "entered" to the left, stop scanning
+          if (scanIdx < c && String(sHead[scanIdx] || "").toLowerCase().trim() === "entered") break;
+          scanIdx--;
+        }
+
+        const cleanTitle = cleanActivityTitle(rawTitle);
+        if (cleanTitle && !isReservedNonActivityHeader(cleanTitle)) {
+          const isPct = subTxt.includes("%");
+          let notEntIdx: number | undefined = undefined;
+          if (String(sHead[c + 1] || "").toLowerCase().trim() === "not entered") {
+            notEntIdx = c + 1;
+          }
+
+          actCols.push({ name: cleanTitle, entIdx: c, notEntIdx, isPct });
+          usedIndices.add(c);
+          if (notEntIdx !== undefined) usedIndices.add(notEntIdx);
+        }
+      }
+    }
+
+    // 5. Parse Mandal Data Rows
+    const dataStart = sIdx + 1;
+    const bodyRows = rawData.slice(dataStart);
+    const parsed: any[] = [];
+
+    bodyRows.forEach(row => {
+      if (!row || row.length < 2) return;
+      const rawM = String(row[mCol] || "").trim();
+      if (!rawM || rawM.toLowerCase().includes("total") || rawM.toLowerCase().includes("statement") || rawM.toLowerCase().includes("telangana")) return;
+
+      const mName = rawM.replace(/^[\d\s.\-)]+/, "").toUpperCase();
+      const tGPs = parseInt(String(row[tCol] || "0").replace(/[^\d]/g, ""), 10) || 1;
+      
+      const activities: any = {};
+      let sumP = 0;
+
+      actCols.forEach(ac => {
+        const val = String(row[ac.entIdx] || "0").trim();
+        const num = parseFloat(val.replace(/[^\d.]/g, "")) || 0;
+        let p = 0;
+
+        if (ac.isPct || val.includes("%")) {
+          p = num;
+          if (p > 100 && tGPs > 0) p = (num / tGPs) * 100;
+        } else {
+          // If the number is a count (Entered GPs)
+          p = tGPs > 0 ? (num / tGPs) * 100 : 0;
+        }
+        
+        p = Math.min(100, Math.max(0, p));
+        activities[ac.name] = { 
+          entered: num, 
+          notEntered: ac.notEntIdx !== undefined ? (parseFloat(String(row[ac.notEntIdx] || "0").replace(/[^\d.]/g, "")) || 0) : Math.max(0, tGPs - num),
+          percentage: parseFloat(p.toFixed(2)) 
+        };
+        sumP += p;
+      });
+
+      parsed.push({
+        "S.No": 0, "Mandal Name": mName, "TotalGPs": tGPs, activities,
+        "Overall %": actCols.length > 0 ? parseFloat((sumP / actCols.length).toFixed(2)) : 0
+      });
+    });
+
+    if (parsed.length === 0) {
+      addToast("Data could not be recognized. Please upload a valid file.");
+      return;
+    }
+
+    parsed.forEach((r, i) => r["S.No"] = i + 1);
+    setDynamicActivities(actCols.map(a => a.name));
+    setDistrictData(parsed);
+    setReportLevel("district");
+    addToast(`District report loaded successfully (Total ${parsed.length} Mandals)!`);
+  };
+
+  // Handle file drop / file select
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await processUploadedFiles(Array.from(files));
+  };
+
+  const processUploadedFiles = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+    setUploadedFilesLabel(files.map((f) => f.name).join(", "));
+
+    try {
+      const XLSX = await import("xlsx-js-style");
+      const sheetsList: { fileName: string; sheetName: string; rows: any[][] }[] = [];
+
+      for (const file of files) {
+        const buffer = await file.arrayBuffer();
+
+        // 1. Try HTML Table parser
+        let isHtml = false;
+        try {
+          const textDecoder = new TextDecoder("utf-8");
+          const htmlText = textDecoder.decode(buffer);
+          if (htmlText.includes("<table") || htmlText.includes("<tr") || htmlText.includes("<td")) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, "text/html");
+            const htmlRows: string[][] = [];
+            doc.querySelectorAll("tr").forEach((tr) => {
+              const rowCells: string[] = [];
+              tr.querySelectorAll("th, td").forEach((cell) => {
+                const tempCell = cell.cloneNode(true) as HTMLElement;
+                tempCell.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+                tempCell.querySelectorAll("p, div, li").forEach((el) => el.after("\n"));
+                const txt = (tempCell.textContent || "").trim();
+                const colspan = parseInt(cell.getAttribute("colspan") || "1", 10);
+                rowCells.push(txt);
+                for (let k = 1; k < colspan; k++) rowCells.push("");
+              });
+              if (rowCells.some((c) => c.length > 0)) htmlRows.push(rowCells);
+            });
+            if (htmlRows.length > 0) {
+              sheetsList.push({ fileName: file.name, sheetName: "HTML", rows: htmlRows });
+              isHtml = true;
+            }
+          }
+        } catch (e) {
+          // ignore HTML error
+        }
+
+        // 2. Fallback to XLSX for Excel sheets
+        if (!isHtml) {
+          const workbook = XLSX.read(buffer, { type: "array" });
+          for (const sName of workbook.SheetNames) {
+            const sheetRows = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[sName], { header: 1, defval: "" });
+            if (sheetRows && sheetRows.length > 0) {
+              sheetsList.push({ fileName: file.name, sheetName: sName, rows: sheetRows });
+            }
+          }
+        }
+      }
+
+      if (sheetsList.length === 0) {
+        addToast("No data found in uploaded files.");
+        return;
+      }
+
+      processUnifiedSheets(sheetsList);
+    } catch (err: any) {
       console.error(err);
-      addToast("ఎక్సెల్ ఫైల్ జనరేట్ చేయడం సాధ్యపడలేదు.");
+      addToast("File processing error: " + (err?.message || "Error"));
     }
   };
 
-  // PDF Export with Landscape Page Setup
-  const handleExportPdf = async () => {
-    if (!data.length) return;
+  // Clear data handler
+  const handleClearData = () => {
+    setMandalData([]);
+    setDistrictData([]);
+    setUploadedFilesLabel("");
+    setUploadDateTime("");
+    setMandalNameInput("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    addToast("Data cleared successfully.");
+  };
+
+  // Calculations for Mandal Report
+  const mandalActivityTotals = useMemo(() => {
+    const totals: Record<string, { entered: number; percentage: number }> = {};
+    dynamicActivities.forEach((act) => {
+      const enteredCount = mandalData.filter((r) => r.status?.[act] === 1).length;
+      const pct = mandalData.length > 0 ? (enteredCount / mandalData.length) * 100 : 0;
+      totals[act] = {
+        entered: enteredCount,
+        percentage: parseFloat(pct.toFixed(1))
+      };
+    });
+    return totals;
+  }, [mandalData, dynamicActivities]);
+
+  const mandalSummaryStats = useMemo(() => {
+    const totalGPs = mandalData.length;
+    const completedGPs = mandalData.filter((r) => r.pendingCount === 0).length;
+    const pendingGPs = mandalData.filter((r) => r.pendingCount > 0).length;
+    const avgPct = totalGPs > 0 ? mandalData.reduce((acc, r) => acc + (r.percentage || 0), 0) / totalGPs : 0;
+    return {
+      totalGPs,
+      completedGPs,
+      pendingGPs,
+      avgPct: parseFloat(avgPct.toFixed(1))
+    };
+  }, [mandalData]);
+
+  // Calculations for District Report
+  const districtGrandTotalGps = useMemo(() => {
+    return districtData.reduce((acc, row) => acc + (row["TotalGPs"] || 0), 0);
+  }, [districtData]);
+
+  const districtActivityTotals = useMemo(() => {
+    const totals: Record<string, { totalEntered: number; districtPct: number }> = {};
+    dynamicActivities.forEach((act) => {
+      const totalEnt = districtData.reduce((acc, row) => acc + (row.activities?.[act]?.entered || 0), 0);
+      const districtPct = districtGrandTotalGps > 0 ? (totalEnt / districtGrandTotalGps) * 100 : 0;
+      totals[act] = {
+        totalEntered: totalEnt,
+        districtPct: parseFloat(districtPct.toFixed(2))
+      };
+    });
+    return totals;
+  }, [districtData, dynamicActivities, districtGrandTotalGps]);
+
+  const districtOverallTotalPct = useMemo(() => {
+    if (dynamicActivities.length === 0) return 0;
+    const sum = Object.values(districtActivityTotals).reduce((acc, val) => acc + val.districtPct, 0);
+    return parseFloat((sum / dynamicActivities.length).toFixed(2));
+  }, [districtActivityTotals, dynamicActivities]);
+
+  const districtStats = useMemo(() => {
+    if (!districtData.length) return null;
+    const sorted = [...districtData].sort((a, b) => (b["Overall %"] || 0) - (a["Overall %"] || 0));
+    return {
+      totalMandals: districtData.length,
+      totalGps: districtGrandTotalGps,
+      overallPct: districtOverallTotalPct,
+      highestMandal: sorted[0],
+      lowestMandal: sorted[sorted.length - 1]
+    };
+  }, [districtData, districtGrandTotalGps, districtOverallTotalPct]);
+
+  // Filtered lists for search
+  const filteredMandalData = useMemo(() => {
+    let list = mandalData;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((r) => r["Panchayat Name"]?.toLowerCase().includes(q));
+    }
+    if (pendingFilter === "pending") {
+      list = list.filter((r) => r.pendingCount > 0);
+    } else if (pendingFilter === "completed") {
+      list = list.filter((r) => r.pendingCount === 0);
+    }
+    return list;
+  }, [mandalData, searchQuery, pendingFilter]);
+
+  const filteredDistrictData = useMemo(() => {
+    if (!searchQuery.trim()) return districtData;
+    const q = searchQuery.toLowerCase().trim();
+    return districtData.filter((r) => r["Mandal Name"]?.toLowerCase().includes(q));
+  }, [districtData, searchQuery]);
+
+  // Color coding helper for district percentages (Matching demo.jpeg heatmap exactly)
+  const getPercentageColorClass = (pct: number) => {
+    if (pct >= 99.99) return "bg-[#22c55e] text-white font-bold";
+    if (pct >= 90) return "bg-[#bbf7d0] text-slate-900 font-bold";
+    if (pct >= 75) return "bg-[#fef9c3] text-slate-900 font-bold";
+    if (pct >= 50) return "bg-[#fef08a] text-slate-900 font-bold";
+    return "bg-[#fecdd3] text-slate-900 font-bold";
+  };
+
+  // Export Combined Excel for Mandal (Sheet 1 = Report 13, Sheet 2 = Report 14)
+  const handleExportMandalExcel = async () => {
+    if (!mandalData.length) return;
     try {
-      const jsPDFModule = await import("jspdf");
-      const autoTableModule = await import("jspdf-autotable");
-      const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF;
-      const autoTable = (autoTableModule.default || autoTableModule) as any;
+      const XLSX = await import("xlsx-js-style");
+      const wb = XLSX.utils.book_new();
 
-      const doc = new jsPDF("l", "mm", "a4");
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      // Sheet 1: Report 13 (Matrix)
+      const r13Rows: any[][] = [
+        [`Statement showing the Monthly activity report for the month of ${uploadDateTime || getFormattedDateTime()}`],
+        ["S.No", "Panchayat Name", ...dynamicActivities.map((a) => `${a} Entered`)]
+      ];
+      mandalData.forEach((row, idx) => {
+        const r = [idx + 1, row["Panchayat Name"]];
+        dynamicActivities.forEach((act) => {
+          r.push(row.status?.[act] ?? 0);
+        });
+        r13Rows.push(r);
+      });
+      const totRow: any[] = ["Total", ""];
+      dynamicActivities.forEach((act) => {
+        totRow.push(mandalActivityTotals[act]?.entered ?? 0);
+      });
+      r13Rows.push(totRow);
+      r13Rows.push([]);
+      r13Rows.push(["Generated via E-VEDHIKA | Website: www.e-vedhika.in"]);
+      const ws1 = XLSX.utils.aoa_to_sheet(r13Rows);
+      XLSX.utils.book_append_sheet(wb, ws1, "Report 13 (Matrix)");
 
-      // Top Banners
-      doc.setFillColor(17, 81, 142); // #11518E
-      doc.rect(0, 0, pageWidth, 12, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text("Telangana State", pageWidth / 2, 7.5, { align: "center" });
+      // Sheet 2: Report 14 (Pending List)
+      const r14Rows: any[][] = [
+        [`MAS Not Entered Gram Panchayat's and Pending Activity Names Report as on ${uploadDateTime || getFormattedDateTime()}`],
+        ["S.NO", "Panchayat Name", "Pending_activities_count", "pending_activities_names"]
+      ];
+      let sNo = 1;
+      mandalData.forEach((row) => {
+        if (row.pendingCount > 0) {
+          const pText = row.pendingActivities.map((act: string, i: number) => `${i + 1}. ${act}`).join("\n");
+          r14Rows.push([sNo++, row["Panchayat Name"], row.pendingCount, pText]);
+        }
+      });
+      r14Rows.push([]);
+      r14Rows.push(["Generated via E-VEDHIKA | Website: www.e-vedhika.in"]);
+      const ws2 = XLSX.utils.aoa_to_sheet(r14Rows);
+      XLSX.utils.book_append_sheet(wb, ws2, "Report 14 (Pending)");
 
-      doc.setFillColor(17, 81, 142);
-      doc.rect(0, 12, pageWidth, 8, "F");
-      doc.setFontSize(9);
-      const pdfSubtitle = uploadDateTime
-        ? `Monthly Activity Data Entry Report - (${uploadDateTime})`
-        : "Monthly Activity Data Entry Report";
-      doc.text(pdfSubtitle, pageWidth / 2, 17.5, { align: "center" });
+      XLSX.writeFile(wb, "Mandal_MAS_Report_13_and_14.xlsx");
+      addToast("Mandal Report 13 & 14 Excel file downloaded successfully!");
+    } catch (e) {
+      console.error(e);
+      addToast("Excel export failed.");
+    }
+  };
 
-      // Table Headers
-      const head1: any[] = [
-        { content: "S.No", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
-        { content: nameHeader, rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
-        { content: "Total No. of Gp's", rowSpan: 2, styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] } },
+  // Export District Excel
+  const handleExportDistrictExcel = async () => {
+    if (!districtData.length) return;
+    try {
+      const XLSX = await import("xlsx-js-style");
+      const wb = XLSX.utils.book_new();
+
+      const headers = [
+        [`Statement showing the Monthly activity report for the month of ${uploadDateTime || getFormattedDateTime()}`],
+        ["S.No", "Mandal Name", "Total GP's", ...dynamicActivities.map((a) => `${a} Entered %`), "Overall %"]
       ];
 
-      activities.forEach((act) => {
-        head1.push({
-          content: act,
-          colSpan: 2,
-          styles: { halign: "center", valign: "middle", fillColor: [17, 81, 142], textColor: [255, 255, 255] },
+      const dataRows = districtData.map((row, idx) => {
+        const r: any[] = [idx + 1, row["Mandal Name"], row["TotalGPs"]];
+        dynamicActivities.forEach((act) => {
+          r.push(row.activities?.[act]?.percentage ?? 0);
         });
+        r.push(row["Overall %"] ?? 0);
+        return r;
       });
 
-      const head2: any[] = [];
-      activities.forEach(() => {
-        head2.push(
-          { content: "Entered", styles: { halign: "center", fillColor: [255, 255, 255], textColor: [0, 0, 0] } },
-          { content: "Not Entered", styles: { halign: "center", fillColor: [255, 255, 255], textColor: [0, 0, 0] } }
-        );
+      const totalRow: any[] = ["Total", "", districtGrandTotalGps];
+      dynamicActivities.forEach((act) => {
+        totalRow.push(districtActivityTotals[act]?.districtPct ?? 0);
       });
+      totalRow.push(districtOverallTotalPct);
 
-      const bodyRows: any[][] = [];
-      let grandTotalGps = 0;
+      const allRows = [
+        ...headers, 
+        ...dataRows, 
+        totalRow,
+        [],
+        ["Generated via E-VEDHIKA | Website: www.e-vedhika.in"]
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(allRows);
+      XLSX.utils.book_append_sheet(wb, ws, "District Report");
+      XLSX.writeFile(wb, "District_MAS_Percentage_Report.xlsx");
+      addToast("District percentage report Excel file downloaded successfully!");
+    } catch (e) {
+      console.error(e);
+      addToast("Excel export failed.");
+    }
+  };
 
-      data.forEach((row, idx) => {
-        const totalGpsNum = Number(row["TotalGPs"] || 0);
-        grandTotalGps += totalGpsNum;
-        const r: any[] = [idx + 1, row["Panchayat Name"], totalGpsNum];
-        activities.forEach((act) => {
-          const entry = row[act] || { Entered: 0, NotEntered: 0 };
-          r.push(entry.Entered, entry.NotEntered);
+  // Export Complete PDF (Exactly matching user's PDF: Page 1 = Report 13, Pages 2-5 = Report 14)
+  const handleExportPdf = async () => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      if (reportLevel === "district") {
+        if (!districtData.length) return;
+        const doc = new jsPDF("l", "mm", "a4");
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        doc.setFillColor(17, 81, 142);
+        doc.rect(0, 0, pageWidth, 12, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+        const title = `Statement showing the Monthly activity report for the month of ${uploadDateTime || getFormattedDateTime()}`;
+        doc.text(title, pageWidth / 2, 7.5, { align: "center" });
+
+        const headers = ["S.No", "Mandal Name", "Total GP's", ...dynamicActivities.map((a) => `${a}\nEntered %`), "Overall\n%"];
+        const bodyRows: any[][] = [];
+
+        districtData.forEach((row, idx) => {
+          const r: any[] = [idx + 1, row["Mandal Name"], row["TotalGPs"]];
+          dynamicActivities.forEach((act) => {
+            r.push(row.activities?.[act]?.percentage?.toFixed(2) ?? "0.00");
+          });
+          r.push((row["Overall %"] ?? 0).toFixed(2));
+          bodyRows.push(r);
         });
-        bodyRows.push(r);
-      });
 
-      // Total Row
-      const totalsRow: any[] = ["Total", "", grandTotalGps];
-      activities.forEach((act) => {
-        const totalEnt = data.reduce((acc, r) => acc + (r[act]?.Entered || 0), 0);
-        const totalNEnt = data.reduce((acc, r) => acc + (r[act]?.NotEntered || 0), 0);
-        totalsRow.push(totalEnt, totalNEnt);
-      });
-      bodyRows.push(totalsRow);
+        const totalsRow: any[] = [districtData.length + 1, "Total", districtGrandTotalGps];
+        dynamicActivities.forEach((act) => {
+          totalsRow.push((districtActivityTotals[act]?.districtPct ?? 0).toFixed(2));
+        });
+        totalsRow.push(districtOverallTotalPct.toFixed(2));
+        bodyRows.push(totalsRow);
 
-      autoTable(doc, {
-        startY: 22,
-        head: [head1, head2],
-        body: bodyRows,
-        theme: "grid",
-        styles: {
-          fontSize: 5.5,
-          cellPadding: 0.8,
-          halign: "center",
-          valign: "middle",
-          lineColor: [0, 0, 0],
-          lineWidth: 0.1,
-          font: "helvetica",
-          textColor: [0, 0, 0],
-        },
-        headStyles: {
-          fontSize: 5.5,
-          fontStyle: "bold",
-          lineColor: [0, 0, 0],
-          lineWidth: 0.1,
-        },
-        columnStyles: {
-          0: { cellWidth: 8 },
-          1: { cellWidth: 26, halign: "left", fontStyle: "bold" },
-          2: { cellWidth: 14, halign: "center", fontStyle: "bold" },
-        },
-        didParseCell: (dataCell) => {
-          const { row, column } = dataCell;
-          if (row.section === "body") {
-            if (row.index === bodyRows.length - 1) {
-              // Total Row
-              dataCell.cell.styles.fontStyle = "bold";
-              dataCell.cell.styles.fillColor = [240, 240, 240];
-            } else if (column.index >= 3) {
-              const val = Number(dataCell.cell.text[0] || 0);
-              const isEnteredCol = (column.index - 3) % 2 === 0;
-              if (isEnteredCol) {
-                if (val > 0) {
-                  dataCell.cell.styles.fillColor = [146, 208, 80]; // Green #92D050
-                  dataCell.cell.styles.fontStyle = "bold";
-                } else {
-                  dataCell.cell.styles.fillColor = [255, 255, 255]; // White
-                }
-              } else {
-                if (val > 0) {
-                  dataCell.cell.styles.fillColor = [255, 0, 0]; // Red #FF0000
+        autoTable(doc, {
+          startY: 15,
+          head: [headers],
+          body: bodyRows,
+          theme: "grid",
+          styles: { fontSize: 5.5, cellPadding: 0.8, halign: "center", valign: "middle", font: "helvetica", textColor: [0, 0, 0] },
+          headStyles: { fontSize: 5.5, fontStyle: "bold", fillColor: [17, 81, 142], textColor: [255, 255, 255] },
+          columnStyles: {
+            0: { cellWidth: 7 },
+            1: { cellWidth: 24, halign: "left", fontStyle: "bold" },
+            2: { cellWidth: 12, halign: "center", fontStyle: "bold" }
+          },
+          didParseCell: (dataCell: any) => {
+            const { row, column } = dataCell;
+            if (row.section === "body") {
+              if (row.index === bodyRows.length - 1) {
+                dataCell.cell.styles.fontStyle = "bold";
+                dataCell.cell.styles.fillColor = [240, 240, 240];
+              } else if (column.index >= 3) {
+                const val = parseFloat(dataCell.cell.text[0] || "0");
+                if (val >= 99.99) {
+                  dataCell.cell.styles.fillColor = [34, 197, 94];
                   dataCell.cell.styles.textColor = [255, 255, 255];
                   dataCell.cell.styles.fontStyle = "bold";
+                } else if (val >= 90) {
+                  dataCell.cell.styles.fillColor = [187, 247, 208];
+                  dataCell.cell.styles.textColor = [15, 23, 42];
+                  dataCell.cell.styles.fontStyle = "bold";
+                } else if (val >= 75) {
+                  dataCell.cell.styles.fillColor = [254, 249, 195];
+                  dataCell.cell.styles.textColor = [15, 23, 42];
+                  dataCell.cell.styles.fontStyle = "bold";
+                } else if (val >= 50) {
+                  dataCell.cell.styles.fillColor = [254, 240, 138];
+                  dataCell.cell.styles.textColor = [15, 23, 42];
+                  dataCell.cell.styles.fontStyle = "bold";
                 } else {
-                  dataCell.cell.styles.fillColor = [255, 255, 255]; // White
+                  dataCell.cell.styles.fillColor = [254, 205, 211];
+                  dataCell.cell.styles.textColor = [15, 23, 42];
+                  dataCell.cell.styles.fontStyle = "bold";
                 }
               }
             }
+          },
+          didDrawPage: () => {
+            const footerText = "Generated via E-VEDHIKA | Website: www.e-vedhika.in";
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 116, 139);
+            doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 4, { align: "center" });
           }
-        },
-        didDrawPage: (dataArg) => {
-          doc.setFontSize(6);
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(100, 116, 139);
-          doc.text("Telangana State • Monthly Activity Data Entry Report (A4 Landscape)", 10, pageHeight - 4);
-          doc.text(`Page ${dataArg.pageNumber}`, pageWidth - 20, pageHeight - 4);
-        },
-      });
+        });
 
-      doc.save("Monthly_Activity_Data_Entry_Report_A4.pdf");
-      addToast("A4 ల్యాండ్‌స్కేప్ పేజీ సెటప్‌తో PDF డౌన్‌లోడ్ అయింది!");
+        doc.save("District_Monthly_Activity_Report_A4.pdf");
+        addToast("District percentage report (PDF) downloaded successfully!");
+
+      } else {
+        // MANDAL COMPLETE PDF (Page 1 = Report 13, Pages 2+ = Report 14)
+        if (!mandalData.length) return;
+
+        // Page 1: Landscape Report 13 Matrix
+        const doc = new jsPDF("l", "mm", "a4");
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        doc.setFillColor(17, 81, 142);
+        doc.rect(0, 0, pageWidth, 12, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        const title13 = `Statement showing the Monthly activity report for the month of ${uploadDateTime || getFormattedDateTime()}`;
+        doc.text(title13, pageWidth / 2, 7.5, { align: "center" });
+
+        const headers13 = ["S.No", "Panchayat Name", ...dynamicActivities.map((a) => `${a}\nEntered`)];
+        const bodyRows13: any[][] = [];
+
+        mandalData.forEach((row, idx) => {
+          const r: any[] = [idx + 1, row["Panchayat Name"]];
+          dynamicActivities.forEach((act) => {
+            r.push(row.status?.[act] ?? 0);
+          });
+          bodyRows13.push(r);
+        });
+
+        const totalsRow13: any[] = ["Total", ""];
+        dynamicActivities.forEach((act) => {
+          totalsRow13.push(mandalActivityTotals[act]?.entered ?? 0);
+        });
+        bodyRows13.push(totalsRow13);
+
+        autoTable(doc, {
+          startY: 15,
+          head: [headers13],
+          body: bodyRows13,
+          theme: "grid",
+          styles: { fontSize: 5.5, cellPadding: 0.8, halign: "center", valign: "middle", font: "helvetica", textColor: [0, 0, 0] },
+          headStyles: { fontSize: 5.5, fontStyle: "bold", fillColor: [17, 81, 142], textColor: [255, 255, 255] },
+          columnStyles: {
+            0: { cellWidth: 8 },
+            1: { cellWidth: 28, halign: "left", fontStyle: "bold" }
+          },
+          didParseCell: (dataCell: any) => {
+            const { row, column } = dataCell;
+            if (row.section === "body") {
+              if (row.index === bodyRows13.length - 1) {
+                dataCell.cell.styles.fontStyle = "bold";
+                dataCell.cell.styles.fillColor = [240, 240, 240];
+              } else if (column.index >= 2 && column.index < 2 + dynamicActivities.length) {
+                const val = Number(dataCell.cell.text[0] || "0");
+                if (val === 0) {
+                  dataCell.cell.styles.fillColor = [128, 0, 0]; // Maroon #800000
+                  dataCell.cell.styles.textColor = [255, 255, 255];
+                  dataCell.cell.styles.fontStyle = "bold";
+                } else {
+                  dataCell.cell.styles.fillColor = [255, 255, 255];
+                  dataCell.cell.styles.textColor = [0, 0, 0];
+                }
+              }
+            }
+          },
+          didDrawPage: () => {
+            const footerText = "Generated via E-VEDHIKA | Website: www.e-vedhika.in";
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 116, 139);
+            doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 4, { align: "center" });
+          }
+        });
+
+        // Page 2+: Portrait Report 14 Pending List
+        doc.addPage("a4", "p");
+        const pWidth = doc.internal.pageSize.getWidth();
+
+        doc.setFillColor(17, 81, 142);
+        doc.rect(0, 0, pWidth, 14, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(255, 255, 255);
+        const title14 = `MAS Not Entered Gram Panchayat's and Pending Activity Names Report as on ${uploadDateTime || getFormattedDateTime()}`;
+        doc.text(title14, pWidth / 2, 8.5, { align: "center", maxWidth: pWidth - 10 });
+
+        const headers14 = ["S.NO", "Panchayat Name", "Pending_activities_count", "pending_activities_names"];
+        const bodyRows14: any[][] = [];
+
+        let pSerial = 1;
+        mandalData.forEach((row) => {
+          if (row.pendingCount > 0) {
+            const namesFormatted = row.pendingActivities
+              .map((act: string, i: number) => `${i + 1}. ${act.replace(/^\d+[\s.)-]+/, "").trim()}`)
+              .join("\n");
+            bodyRows14.push([pSerial++, row["Panchayat Name"], row.pendingCount, namesFormatted]);
+          }
+        });
+
+        autoTable(doc, {
+          startY: 18,
+          head: [headers14],
+          body: bodyRows14,
+          theme: "grid",
+          styles: { fontSize: 7, cellPadding: 2, font: "helvetica", textColor: [0, 0, 0] },
+          headStyles: { fontSize: 7.5, fontStyle: "bold", fillColor: [17, 81, 142], textColor: [255, 255, 255] },
+          columnStyles: {
+            0: { cellWidth: 12, halign: "center" },
+            1: { cellWidth: 40, fontStyle: "bold" },
+            2: { cellWidth: 35, halign: "center", fontStyle: "bold" },
+            3: { cellWidth: 95 }
+          },
+          didDrawPage: (dataCell: any) => {
+            const footerText = `Generated via E-VEDHIKA | Website: www.e-vedhika.in  •  Page ${dataCell.pageNumber}`;
+            doc.setFontSize(7.5);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(100, 116, 139);
+            doc.text(footerText, pWidth / 2, doc.internal.pageSize.getHeight() - 4, { align: "center" });
+          }
+        });
+
+        doc.save("Mandal_MAS_Complete_Report_A4.pdf");
+        addToast("Mandal MAS comprehensive report (PDF) downloaded successfully!");
+      }
     } catch (err) {
       console.error(err);
-      addToast("PDF జనరేట్ చేయడం సాధ్యపడలేదు.");
+      addToast("Failed to generate PDF.");
     }
   };
 
-  // Direct A4 Landscape Window Print
+  // Direct Print
   const handlePrint = () => {
-    if (!data.length) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    const grandTotalGps = data.reduce((acc, row) => acc + (row["TotalGPs"] || 0), 0);
-
-    let tableHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Telangana State - Monthly Activity Data Entry Report</title>
-        <style>
-          @page {
-            size: A4 landscape;
-            margin: 4mm;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 8px;
-            background: #fff;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10px;
-          }
-          th, td {
-            border: 1px solid #000000;
-            padding: 3px 2px;
-            text-align: center;
-          }
-          .title-bg {
-            background-color: #11518E !important;
-            color: #ffffff !important;
-            font-weight: bold;
-            font-size: 13px;
-          }
-          .subtitle-bg {
-            background-color: #11518E !important;
-            color: #ffffff !important;
-            font-weight: bold;
-            font-size: 11px;
-          }
-          .act-header {
-            background-color: #11518E !important;
-            color: #ffffff !important;
-            font-weight: bold;
-            font-size: 9px;
-          }
-          .sub-header {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-            font-weight: bold;
-            font-size: 8px;
-          }
-          .p-name {
-            text-align: left;
-            font-weight: bold;
-            padding-left: 6px;
-          }
-          .cell-green {
-            background-color: #92D050 !important;
-            color: #000000 !important;
-            font-weight: bold;
-          }
-          .cell-red {
-            background-color: #FF0000 !important;
-            color: #ffffff !important;
-            font-weight: bold;
-          }
-          .cell-white {
-            background-color: #ffffff !important;
-            color: #000000 !important;
-          }
-          .total-row {
-            background-color: #ffffff !important;
-            font-weight: bold;
-          }
-        </style>
-      </head>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th colspan="${3 + activities.length * 2}" class="title-bg">Telangana State</th>
-            </tr>
-            <tr>
-              <th colspan="${3 + activities.length * 2}" class="subtitle-bg">Monthly Activity Data Entry Report ${uploadDateTime ? `- (${uploadDateTime})` : ""}</th>
-            </tr>
-            <tr>
-              <th rowspan="2" class="act-header">S.No</th>
-              <th rowspan="2" class="act-header">${nameHeader}</th>
-              <th rowspan="2" class="act-header">Total No. of Gp's</th>
-              ${activities.map((a) => `<th colspan="2" class="act-header">${a}</th>`).join("")}
-            </tr>
-            <tr>
-              ${activities.map(() => `<th class="sub-header">Entered</th><th class="sub-header">Not Entered</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${data
-              .map(
-                (row, idx) => `
-              <tr>
-                <td>${idx + 1}</td>
-                <td class="p-name">${row["Panchayat Name"]}</td>
-                <td style="font-weight:bold;">${row["TotalGPs"] || 0}</td>
-                ${activities
-                  .map((act) => {
-                    const entry = row[act] || { Entered: 0, NotEntered: 0 };
-                    const entCls = entry.Entered > 0 ? "cell-green" : "cell-white";
-                    const nEntCls = entry.NotEntered > 0 ? "cell-red" : "cell-white";
-                    return `<td class="${entCls}">${entry.Entered}</td><td class="${nEntCls}">${entry.NotEntered}</td>`;
-                  })
-                  .join("")}
-              </tr>
-            `
-              )
-              .join("")}
-            <tr class="total-row">
-              <td colspan="2" style="text-align: center; font-weight: bold;">Total</td>
-              <td style="font-weight:bold;">${grandTotalGps}</td>
-              ${activities
-                .map((act) => {
-                  const tEnt = data.reduce((acc, r) => acc + (r[act]?.Entered || 0), 0);
-                  const tNEnt = data.reduce((acc, r) => acc + (r[act]?.NotEntered || 0), 0);
-                  return `<td style="font-weight:bold;">${tEnt}</td><td style="font-weight:bold;">${tNEnt}</td>`;
-                })
-                .join("")}
-            </tr>
-          </tbody>
-        </table>
-        <script>
-          window.onload = function() { window.print(); };
-        </script>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(tableHtml);
-    printWindow.document.close();
+    window.print();
   };
 
-  const grandTotalGps = data.reduce((acc, row) => acc + (row["TotalGPs"] || 0), 0);
+  // Copy WhatsApp alert for a single Panchayat
+  const handleCopyWhatsAppMessage = (row: any, idx: number) => {
+    const listText = row.pendingActivities.map((act: string, i: number) => `${i + 1}. ${act}`).join("\n");
+    const msg = `*E-Panchayat MAS Pending Activity Alert*\n📍 *Gram Panchayat:* ${row["Panchayat Name"]}\n⚠️ *Pending Activities Count:* ${row.pendingCount}\n📊 *Current Completion:* ${row.percentage}%\n\n*Pending List:*\n${listText}\n\n_Please complete the above pending activities on the e-Panchayat portal immediately._\n\n🌐 _Generated via E-VEDHIKA | www.e-vedhika.in_`;
+    navigator.clipboard.writeText(msg);
+    setCopiedIndex(idx);
+    addToast(`${row["Panchayat Name"]} pending details copied for WhatsApp!`);
+    setTimeout(() => setCopiedIndex(null), 2500);
+  };
 
-  // Active activities list for data entry
-  const activeActivities = activities.length > 0 ? activities : predefinedActivities;
+  // Bulk WhatsApp summary for Mandal
+  const handleCopyBulkMandalWhatsApp = () => {
+    const pendingList = mandalData.filter((r) => r.pendingCount > 0);
+    if (pendingList.length === 0) {
+      addToast("All Panchayats in the Mandal are 100% completed!");
+      return;
+    }
 
-  // Real-time Form Validation states
-  const isNameValid = formName.trim().length >= 2;
-  const formTotalGpsNum = parseInt(formTotalGps, 10);
-  const isTotalGpsValid = !isNaN(formTotalGpsNum) && formTotalGpsNum > 0;
-  const isUploadDateTimeValid = uploadDateTime.trim().length >= 8;
+    let msg = `*E-Panchayat Monthly Activity Status Report (MAS)*\n🏛️ *Mandal:* ${mandalNameInput || "Mandal"}\n📅 *Report Time:* ${uploadDateTime || getFormattedDateTime()}\n\n📊 *Summary:*\n• Total GPs: ${mandalData.length}\n• 100% Completed: ${mandalSummaryStats.completedGPs}\n• Pending GPs: ${mandalSummaryStats.pendingGPs}\n• Mandal Average Completion: ${mandalSummaryStats.avgPct}%\n\n⚠️ *Pending GP's List:*\n`;
 
-  // Real-time calculation of activity counts validated
-  const activitiesStatus = useMemo(() => {
-    let completedCount = 0;
-    activeActivities.forEach((act) => {
-      const ent = parseInt(formActivities[act]?.entered || "0", 10) || 0;
-      const notEnt = parseInt(formActivities[act]?.notEntered || "0", 10) || 0;
-      if (isTotalGpsValid && ent + notEnt === formTotalGpsNum) {
-        completedCount++;
+    pendingList.forEach((r, idx) => {
+      msg += `\n${idx + 1}. *${r["Panchayat Name"]}* (Pending: ${r.pendingCount}, %: ${r.percentage}%)\n   ${r.pendingActivities.join(", ")}\n`;
+    });
+
+    msg += `\n_All concerned Panchayat Secretaries are requested to complete the remaining entries immediately._\n\n🌐 _Generated via E-VEDHIKA | www.e-vedhika.in_`;
+
+    navigator.clipboard.writeText(msg);
+    setBulkCopied(true);
+    addToast("Mandal pending details copied in WhatsApp broadcast format!");
+    setTimeout(() => setBulkCopied(false), 3000);
+  };
+
+  // Add GP Entry manually
+  const handleManualAddGp = () => {
+    if (!newGpName.trim()) {
+      addToast("Please enter Panchayat name.");
+      return;
+    }
+    const status: Record<string, number> = {};
+    const pendingActs: string[] = [];
+    STANDARD_MAS_ACTIVITIES.forEach((act) => {
+      const isEnt = newGpStatuses[act] === 1 ? 1 : 0;
+      status[act] = isEnt;
+      if (isEnt === 0) {
+        pendingActs.push(`${act} Not Entered`);
       }
     });
-    return {
-      completedCount,
-      totalActs: activeActivities.length,
-      allMatched: isTotalGpsValid && completedCount === activeActivities.length,
-      progressPercent: isTotalGpsValid 
-        ? Math.round((completedCount / activeActivities.length) * 100) 
-        : 0,
-    };
-  }, [activeActivities, formActivities, isTotalGpsValid, formTotalGpsNum]);
 
-  // Open Add Form
-  const handleOpenAddForm = () => {
-    setEditingIndex(null);
-    setFormName("");
-    setFormTotalGps("");
-    const initialAct: Record<string, { entered: string; notEntered: string }> = {};
-    activeActivities.forEach((act) => {
-      initialAct[act] = { entered: "0", notEntered: "0" };
-    });
-    setFormActivities(initialAct);
-    setFormTouched({});
-    setIsFormOpen(true);
-  };
+    const pendingCount = pendingActs.length;
+    const pct = parseFloat((((STANDARD_MAS_ACTIVITIES.length - pendingCount) / STANDARD_MAS_ACTIVITIES.length) * 100).toFixed(1));
 
-  // Open Edit Form for specific row
-  const handleOpenEditForm = (idx: number) => {
-    const row = data[idx];
-    if (!row) return;
-    setEditingIndex(idx);
-    setFormName(row["Panchayat Name"] || "");
-    const totalGpsVal = String(row["TotalGPs"] || 0);
-    setFormTotalGps(totalGpsVal);
-    const initialAct: Record<string, { entered: string; notEntered: string }> = {};
-    activeActivities.forEach((act) => {
-      const actData = row[act] || { Entered: 0, NotEntered: 0 };
-      initialAct[act] = {
-        entered: String(actData.Entered || 0),
-        notEntered: String(actData.NotEntered || 0),
-      };
-    });
-    setFormActivities(initialAct);
-    setFormTouched({});
-    setIsFormOpen(true);
-  };
-
-  // Quick Action: Mark all as Entered
-  const handleMarkAllEntered = () => {
-    if (!isTotalGpsValid) {
-      addToast("ముందుగా సరైన మొత్తం GPల సంఖ్యను నమోదు చేయండి.");
-      return;
-    }
-    const updated = { ...formActivities };
-    activeActivities.forEach((act) => {
-      updated[act] = { entered: String(formTotalGpsNum), notEntered: "0" };
-    });
-    setFormActivities(updated);
-    addToast("అన్ని యాక్టివిటీలకు 'సమర్పించినవి' విలువలు సెట్ చేయబడ్డాయి.");
-  };
-
-  // Quick Action: Auto-balance Not Entered
-  const handleAutoBalance = () => {
-    if (!isTotalGpsValid) {
-      addToast("ముందుగా సరైన మొత్తం GPల సంఖ్యను నమోదు చేయండి.");
-      return;
-    }
-    const updated = { ...formActivities };
-    activeActivities.forEach((act) => {
-      const ent = parseInt(updated[act]?.entered || "0", 10) || 0;
-      const remaining = Math.max(0, formTotalGpsNum - ent);
-      updated[act] = { entered: String(ent), notEntered: String(remaining) };
-    });
-    setFormActivities(updated);
-    addToast("సమర్పించని GPల సంఖ్య ఆటో-బ్యాలెన్స్ చేయబడింది.");
-  };
-
-  // Save Record
-  const handleSaveForm = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!isNameValid) {
-      addToast("దయచేసి సరైన పేరు నమోదు చేయండి (కనీసం 2 అక్షరాలు).");
-      return;
-    }
-    if (!isTotalGpsValid) {
-      addToast("దయచేసి సరైన మొత్తం GPల సంఖ్యను నమోదు చేయండి.");
-      return;
-    }
-
-    if (activities.length === 0) {
-      setActivities(predefinedActivities);
-    }
-
-    const currentActs = activities.length > 0 ? activities : predefinedActivities;
-    const newRecord: any = {
-      "Panchayat Name": formName.trim(),
-      "TotalGPs": formTotalGpsNum,
+    const newRecord = {
+      "Panchayat Name": newGpName.trim().toUpperCase(),
+      status,
+      pendingActivities: pendingActs,
+      pendingCount,
+      percentage: pct
     };
 
-    currentActs.forEach((act) => {
-      const ent = parseInt(formActivities[act]?.entered || "0", 10) || 0;
-      const notEnt = parseInt(formActivities[act]?.notEntered || "0", 10) || 0;
-      newRecord[act] = {
-        Entered: ent,
-        NotEntered: notEnt,
-      };
-    });
-
-    if (editingIndex !== null && editingIndex >= 0 && editingIndex < data.length) {
-      const updated = [...data];
-      updated[editingIndex] = { ...updated[editingIndex], ...newRecord };
-      setData(updated);
-      addToast("రికార్డు విజయవంతంగా నవీకరించబడింది!");
-    } else {
-      newRecord["S.No"] = data.length + 1;
-      setData([...data, newRecord]);
-      addToast("కొత్త డేటా ఎంట్రీ విజయవంతంగా జోడించబడింది!");
-    }
-
-    if (!uploadDateTime) {
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, "0");
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const year = now.getFullYear();
-      let hours = now.getHours();
-      const minutes = String(now.getMinutes()).padStart(2, "0");
-      const ampm = hours >= 12 ? "PM" : "AM";
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      const formattedTime = `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
-      setUploadDateTime(`${day}-${month}-${year} ${formattedTime}`);
-    }
-
-    setIsFormOpen(false);
+    setMandalData((prev) => [...prev, newRecord]);
+    setReportLevel("mandal");
+    setIsAddModalOpen(false);
+    setNewGpName("");
+    setNewGpStatuses({});
+    addToast(`${newRecord["Panchayat Name"]} details added successfully!`);
   };
 
-  const handleDeleteRow = (idx: number) => {
-    if (window.confirm("ఈ రికార్డును తొలగించాలనుకుంటున్నారా?")) {
-      const filtered = data.filter((_, i) => i !== idx);
-      filtered.forEach((r, i) => r["S.No"] = i + 1);
-      setData(filtered);
-      addToast("రికార్డు తొలగించబడింది.");
-    }
-  };
+  const hasData = (reportLevel === "district" && districtData.length > 0) || (reportLevel === "mandal" && mandalData.length > 0) || mandalData.length > 0 || districtData.length > 0;
 
   return (
-    <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-slate-100 mt-6 shadow-sm">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 pb-6 border-b border-slate-100 gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-            <FileSpreadsheet className="text-sky-700" /> E-Panchayat Monthly Activity Report
-          </h2>
-          <p className="text-slate-500 font-medium mt-1">
-            Upload raw data file to generate exact Telangana State activity data entry report format with page setup.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="file"
-            accept=".xlsx, .xls, .csv"
-            ref={fileRef}
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
-          >
-            <Upload size={16} />
-            {fileName ? "ఫైల్ మార్చు" : "Upload Raw File"}
-          </button>
+    <div className="bg-white rounded-[32px] p-4 sm:p-8 border border-slate-100 mt-6 shadow-sm">
+      {/* Hidden Unified File Input with multiple support */}
+      <input
+        type="file"
+        multiple
+        accept=".xlsx, .xls, .csv, .html, .htm"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
 
-          <button
-            onClick={handleOpenAddForm}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
-            title="కొత్త డేటా ఎంట్రీ ఫారం ఓపెన్ చేయండి (New Data Entry Form)"
-          >
-            <Plus size={16} />
-            కొత్త ఎంట్రీ (Add Entry)
-          </button>
-
-          {data.length > 0 && (
-            <>
-              {uploadDateTime && (
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-xs transition-all ${
-                  isUploadDateTimeValid 
-                    ? "bg-emerald-50/80 border border-emerald-300 text-emerald-950" 
-                    : "bg-blue-50 border border-blue-200 text-blue-900"
-                }`}>
-                  <span className="text-slate-600 font-bold whitespace-nowrap">తేదీ & సమయం:</span>
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      value={uploadDateTime}
-                      onChange={(e) => setUploadDateTime(e.target.value)}
-                      className={`bg-white border rounded-lg px-2 py-0.5 text-xs font-bold focus:outline-none min-w-[155px] pr-6 transition-all ${
-                        isUploadDateTimeValid
-                          ? "border-emerald-500 text-emerald-900 focus:ring-1 focus:ring-emerald-500"
-                          : "border-slate-300 text-slate-800"
-                      }`}
-                      title="రిపోర్ట్ తేదీ మరియు సమయం (మార్చుకోవచ్చు)"
-                    />
-                    <div className="absolute right-1.5 pointer-events-none">
-                      {isUploadDateTimeValid ? (
-                        <CheckCircle2 size={14} className="text-emerald-600 animate-in zoom-in" />
-                      ) : (
-                        <AlertCircle size={14} className="text-amber-500" />
-                      )}
-                    </div>
-                  </div>
-                  {isUploadDateTimeValid && (
-                    <span className="hidden sm:inline-flex items-center gap-0.5 text-[10px] text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md font-bold">
-                      <Check size={10} /> Valid
-                    </span>
-                  )}
-                </div>
-              )}
-
+      {/* Manual Data Entry Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[3000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                  <Plus size={20} />
+                </span>
+                <h3 className="text-lg font-black text-slate-800">
+                  New Panchayat Data Entry (Manual Entry)
+                </h3>
+              </div>
               <button
-                onClick={handleExportExcel}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#11518E] text-white font-bold text-xs rounded-xl hover:bg-[#0d3f6f] transition-all shadow-sm"
-                title="Download formatted Excel with Page Setup"
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
-                <Download size={16} />
-                Excel (Page Setup)
+                <X size={18} />
               </button>
-
-              <button
-                onClick={handleExportPdf}
-                className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition-all shadow-sm"
-                title="Export A4 Landscape PDF Report"
-              >
-                <FileText size={16} />
-                PDF (A4 Landscape)
-              </button>
-
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-all shadow-sm"
-                title="Print or Save as PDF"
-              >
-                <Printer size={16} />
-                Print / Save PDF
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {!data.length ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-4">
-          <div
-            onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-slate-200 rounded-[24px] p-8 sm:p-12 flex flex-col items-center justify-center text-center hover:bg-slate-50 hover:border-sky-300 transition-all cursor-pointer group"
-          >
-            <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center text-sky-700 mb-4 group-hover:scale-105 transition-transform">
-              <Upload size={28} />
             </div>
-            <h3 className="text-lg font-black text-slate-700 mb-2">Upload Raw Activity Data File</h3>
-            <p className="text-slate-500 font-medium text-xs max-w-sm">
-              Select a raw .xls or .xlsx report file to generate the official color-coded report format with page setup.
-            </p>
-            <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-colors">
-              <Upload size={14} /> ఫైల్ ఎంచుకోండి (Choose File)
-            </span>
-          </div>
 
-          <div
-            onClick={handleOpenAddForm}
-            className="border-2 border-dashed border-emerald-200 rounded-[24px] p-8 sm:p-12 flex flex-col items-center justify-center text-center hover:bg-emerald-50/40 hover:border-emerald-400 transition-all cursor-pointer group"
-          >
-            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-105 transition-transform">
-              <Plus size={28} />
-            </div>
-            <h3 className="text-lg font-black text-emerald-950 mb-2">నేరుగా డేటా నమోదు (Manual Data Entry)</h3>
-            <p className="text-slate-500 font-medium text-xs max-w-sm">
-              రియల్-టైమ్ చెక్‌మార్క్ వాలిడేషన్‌తో పంచాయతీ / మండల వివరాలు మరియు 17 కార్యాచరణల డేటాను సులభంగా నమోదు చేయండి.
-            </p>
-            <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl group-hover:bg-emerald-700 shadow-sm transition-colors">
-              <Plus size={14} /> కొత్త ఎంట్రీ ఫారం (Open Form)
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-black custom-scrollbar pb-4 bg-white">
-          <div className="inline-block min-w-max">
-            <table className="w-full border-collapse bg-white text-xs font-medium border border-black">
-              <thead>
-                <tr>
-                  <th
-                    colSpan={4 + activities.length * 2}
-                    className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-sm tracking-wide"
-                  >
-                    Telangana State
-                  </th>
-                </tr>
-                <tr>
-                  <th
-                    colSpan={4 + activities.length * 2}
-                    className="bg-[#11518E] text-white py-2 px-3 border border-black text-center font-bold text-xs tracking-wide"
-                  >
-                    Monthly Activity Data Entry Report {uploadDateTime ? `- (${uploadDateTime})` : ""}
-                  </th>
-                </tr>
-                <tr>
-                  <th rowSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold">
-                    S.No
-                  </th>
-                  <th rowSpan={2} className="py-2 px-4 border border-black bg-[#11518E] text-white text-center font-bold min-w-[150px]">
-                    {nameHeader}
-                  </th>
-                  <th rowSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold min-w-[100px]">
-                    Total No. of Gp's
-                  </th>
-                  {activities.map((a, i) => (
-                    <th key={i} colSpan={2} className="py-2 px-3 border border-black bg-[#11518E] text-white text-center font-bold text-xs">
-                      {a}
-                    </th>
-                  ))}
-                  <th rowSpan={2} className="py-2 px-2 border border-black bg-[#11518E] text-white text-center font-bold text-xs min-w-[70px]">
-                    చర్యలు
-                  </th>
-                </tr>
-                <tr>
-                  {activities.map((_, i) => (
-                    <React.Fragment key={`sub-${i}`}>
-                      <th className="py-1.5 px-2 border border-black bg-white text-black text-center text-[10px] font-bold">
-                        Entered
-                      </th>
-                      <th className="py-1.5 px-2 border border-black bg-white text-black text-center text-[10px] font-bold">
-                        Not Entered
-                      </th>
-                    </React.Fragment>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-1.5 px-2 border border-black text-center font-bold w-10 text-slate-800">
-                      {idx + 1}
-                    </td>
-                    <td className="py-1.5 px-4 border border-black whitespace-nowrap font-bold text-slate-800 text-left">
-                      {row["Panchayat Name"]}
-                    </td>
-                    <td className="py-1.5 px-2 border border-black text-center font-bold text-xs text-slate-900 bg-slate-50">
-                      {row["TotalGPs"] || 0}
-                    </td>
-                    {activities.map((act, actIdx) => {
-                      const entry = row[act] || { Entered: 0, NotEntered: 0 };
-                      
-                      const isEnt = entry.Entered > 0;
-                      const isNotEnt = entry.NotEntered > 0;
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Gram Panchayat Name *
+                </label>
+                <input
+                  type="text"
+                  value={newGpName}
+                  onChange={(e) => setNewGpName(e.target.value)}
+                  placeholder="e.g. AKKALAPALLI"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
 
-                      return (
-                        <React.Fragment key={`${idx}-${actIdx}`}>
-                          <td 
-                            className={`py-1.5 px-2 border border-black text-center font-bold text-xs ${
-                              isEnt ? "bg-[#92D050] text-black" : "bg-white text-black"
-                            }`}
-                          >
-                            {entry.Entered}
-                          </td>
-                          <td 
-                            className={`py-1.5 px-2 border border-black text-center font-bold text-xs ${
-                              isNotEnt ? "bg-[#FF0000] text-white" : "bg-white text-black"
-                            }`}
-                          >
-                            {entry.NotEntered}
-                          </td>
-                        </React.Fragment>
-                      );
-                    })}
-                    <td className="py-1.5 px-2 border border-black text-center whitespace-nowrap bg-white">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => handleOpenEditForm(idx)}
-                          className="p-1.5 text-sky-700 hover:bg-sky-100/70 rounded-lg transition-colors inline-flex items-center"
-                          title="సవరించండి (Edit Record)"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRow(idx)}
-                          className="p-1.5 text-rose-600 hover:bg-rose-100/70 rounded-lg transition-colors inline-flex items-center"
-                          title="తొలగించండి (Delete Record)"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-white font-bold border-t-2 border-black">
-                  <td colSpan={2} className="py-2 px-4 border border-black text-center font-black text-slate-900 text-xs">
-                    Total
-                  </td>
-                  <td className="py-2 px-2 border border-black text-center font-black text-slate-900 bg-slate-100 text-xs">
-                    {grandTotalGps}
-                  </td>
-                  {activities.map((act, idx) => {
-                    const totalEnt = data.reduce((acc, row) => acc + (row[act]?.Entered || 0), 0);
-                    const totalNEnt = data.reduce((acc, row) => acc + (row[act]?.NotEntered || 0), 0);
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Select Activities Status (17 Activities):
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {STANDARD_MAS_ACTIVITIES.map((act, idx) => {
+                    const isDone = newGpStatuses[act] === 1;
                     return (
-                      <React.Fragment key={`tot-${idx}`}>
-                        <td className="py-2 px-2 border border-black text-center font-black text-black bg-white text-xs">
-                          {totalEnt}
-                        </td>
-                        <td className="py-2 px-2 border border-black text-center font-black text-black bg-white text-xs">
-                          {totalNEnt}
-                        </td>
-                      </React.Fragment>
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() =>
+                          setNewGpStatuses((prev) => ({
+                            ...prev,
+                            [act]: isDone ? 0 : 1
+                          }))
+                        }
+                        className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          isDone
+                            ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>{act}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                            isDone ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {isDone ? "Entered (1)" : "Pending (0)"}
+                        </span>
+                      </button>
                     );
                   })}
-                  <td className="py-2 px-2 border border-black text-center font-black text-slate-400 bg-slate-50 text-xs">
-                    -
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleManualAddGp}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                >
+                  Save Entry
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Data Entry & Edit Modal with Real-time Validation Indicators */}
-      {isFormOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[28px] max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden">
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+      {/* Edit Monthly Record (District Level Modal) - Exactly Matching User Screenshot */}
+      {editingDistrictMandal && (
+        <div className="fixed inset-0 z-[3000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white rounded-3xl p-5 sm:p-7 max-w-4xl w-full shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 mb-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-100/80 flex items-center justify-center text-emerald-700">
-                  <CheckSquare size={20} />
+                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center shadow-xs">
+                  <CheckSquare size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-800">
-                    {editingIndex !== null ? "నెలవారీ రికార్డు సవరణ (Edit Monthly Record)" : "కొత్త నెలవారీ కార్యాచరణ డేటా ఎంట్రీ"}
+                  <h3 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight">
+                    Edit Monthly Record
                   </h3>
-                  <p className="text-slate-500 font-medium text-xs">
-                    ప్రతి ఫీల్డ్‌లో సరైన డేటా ఎంటర్ చేసినప్పుడు రియల్-టైమ్ ఆకుపచ్చ చెక్‌మార్క్ (<CheckCircle2 size={12} className="inline text-emerald-600" />) కనిపిస్తుంది.
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Enter valid numbers for Entered & Not Entered; real-time green checkmark (✓) confirms validation.
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => setIsFormOpen(false)}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
-                title="మూసివేయి (Close)"
+                type="button"
+                onClick={() => setEditingDistrictMandal(null)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Real-time Validation Progress & Status Banner */}
-            <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700">ధృవీకరణ పురోగతి:</span>
-                <span className="text-xs font-black text-emerald-700">
-                  {activitiesStatus.completedCount} / {activitiesStatus.totalActs} కార్యాచరణలు సరిపోయాయి ({activitiesStatus.progressPercent}%)
-                </span>
+            {/* Validation Progress & Mandal Info */}
+            <div className="mb-4 bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <span>Mandal: <strong className="text-slate-900 font-black">{editingDistrictMandal["Mandal Name"]}</strong></span>
+                  <span className="text-slate-300">|</span>
+                  <span>Total GPs: <strong className="text-sky-700 font-black">{editingDistrictMandal["TotalGPs"]}</strong></span>
+                </div>
+                <div className="text-xs font-bold text-slate-700">
+                  Validation Progress:{" "}
+                  <span className="text-emerald-700 font-black">
+                    {dynamicActivities.filter((act) => {
+                      const item = tempDistrictActivities[act] || { entered: 0, notEntered: 0 };
+                      return (item.entered + item.notEntered) === (editingDistrictMandal["TotalGPs"] || 0);
+                    }).length}{" "}
+                    / {dynamicActivities.length} activities matched (
+                    {Math.round(
+                      (dynamicActivities.filter((act) => {
+                        const item = tempDistrictActivities[act] || { entered: 0, notEntered: 0 };
+                        return (item.entered + item.notEntered) === (editingDistrictMandal["TotalGPs"] || 0);
+                      }).length /
+                        (dynamicActivities.length || 1)) *
+                        100
+                    )}
+                    %)
+                  </span>
+                </div>
               </div>
-              <div className="w-full sm:w-48 bg-slate-200 rounded-full h-2 overflow-hidden">
+              {/* Progress Bar */}
+              <div className="w-full bg-slate-200/70 rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${activitiesStatus.progressPercent}%` }}
+                  className="bg-emerald-600 h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.round(
+                      (dynamicActivities.filter((act) => {
+                        const item = tempDistrictActivities[act] || { entered: 0, notEntered: 0 };
+                        return (item.entered + item.notEntered) === (editingDistrictMandal["TotalGPs"] || 0);
+                      }).length /
+                        (dynamicActivities.length || 1)) *
+                        100
+                    )}%`
+                  }}
                 />
               </div>
             </div>
 
-            {/* Scrollable Form Body */}
-            <form onSubmit={handleSaveForm} className="overflow-y-auto p-6 space-y-6 flex-1 custom-scrollbar">
-              {/* Basic Fields */}
-              <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200/80">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> ప్రాథమిక సమాచారం (Basic Details)
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Name field */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      పంచాయతీ / మండల పేరు <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        placeholder="ఉదాహరణ: Mandal Name లేదా Panchayat"
-                        value={formName}
-                        onChange={(e) => {
-                          setFormName(e.target.value);
-                          setFormTouched((prev) => ({ ...prev, name: true }));
-                        }}
-                        onBlur={() => setFormTouched((prev) => ({ ...prev, name: true }))}
-                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all pr-10 ${
-                          isNameValid
-                            ? "border-emerald-500 bg-emerald-50/20 text-slate-900 focus:ring-2 focus:ring-emerald-400/30"
-                            : formTouched["name"]
-                            ? "border-rose-400 bg-rose-50/20 text-slate-900 focus:ring-2 focus:ring-rose-400/30"
-                            : "border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-sky-400/30"
-                        }`}
-                      />
-                      <div className="absolute right-3 pointer-events-none">
-                        {isNameValid ? (
-                          <CheckCircle2 size={18} className="text-emerald-600 animate-in zoom-in" />
-                        ) : formTouched["name"] ? (
-                          <AlertCircle size={18} className="text-rose-500" />
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-1 min-h-[18px]">
-                      {isNameValid ? (
-                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 animate-in fade-in">
-                          <Check size={12} className="text-emerald-600" /> సరైన పేరు నమోదైంది (Valid Name)
-                        </p>
-                      ) : formTouched["name"] ? (
-                        <p className="text-[11px] text-rose-600 font-medium">దయచేసి కనీసం 2 అక్షరాలు గల పేరు రాయండి.</p>
-                      ) : (
-                        <p className="text-[11px] text-slate-400">మండలం లేదా పంచాయతీ పేరు నమోదు చేయండి.</p>
-                      )}
-                    </div>
-                  </div>
+            {/* Scrollable Grid of 17 Activity Cards */}
+            <div className="flex-1 overflow-y-auto pr-1.5 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pb-2">
+                {dynamicActivities.map((act, idx) => {
+                  const totGps = editingDistrictMandal["TotalGPs"] || 1;
+                  const item = tempDistrictActivities[act] || { entered: 0, notEntered: 0 };
+                  const isMatched = (item.entered + item.notEntered) === totGps;
 
-                  {/* Total GPs field */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      మొత్తం గ్రామ పంచాయతీల సంఖ్య (Total No. of GPs) <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="ఉదాహరణ: 20"
-                        value={formTotalGps}
-                        onChange={(e) => {
-                          setFormTotalGps(e.target.value);
-                          setFormTouched((prev) => ({ ...prev, totalGps: true }));
-                        }}
-                        onBlur={() => setFormTouched((prev) => ({ ...prev, totalGps: true }))}
-                        className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all pr-10 ${
-                          isTotalGpsValid
-                            ? "border-emerald-500 bg-emerald-50/20 text-slate-900 focus:ring-2 focus:ring-emerald-400/30"
-                            : formTouched["totalGps"]
-                            ? "border-rose-400 bg-rose-50/20 text-slate-900 focus:ring-2 focus:ring-rose-400/30"
-                            : "border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-sky-400/30"
-                        }`}
-                      />
-                      <div className="absolute right-3 pointer-events-none">
-                        {isTotalGpsValid ? (
-                          <CheckCircle2 size={18} className="text-emerald-600 animate-in zoom-in" />
-                        ) : formTouched["totalGps"] ? (
-                          <AlertCircle size={18} className="text-rose-500" />
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-1 min-h-[18px]">
-                      {isTotalGpsValid ? (
-                        <p className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 animate-in fade-in">
-                          <Check size={12} className="text-emerald-600" /> ధృవీకరించబడింది: {formTotalGpsNum} పంచాయతీలు (Valid GP Count)
-                        </p>
-                      ) : formTouched["totalGps"] ? (
-                        <p className="text-[11px] text-rose-600 font-medium">దయచేసి 1 లేదా అంతకంటే ఎక్కువ సంఖ్య నమోదు చేయండి.</p>
-                      ) : (
-                        <p className="text-[11px] text-slate-400">మొత్తం GPల సంఖ్య నమోదు చేయండి.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 17 Activities Fields with Real-Time Validation */}
-              <div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 gap-3 mb-4">
-                  <div>
-                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-sky-500" /> కార్యాచరణల డేటా ఎంట్రీ & రియల్-టైమ్ వాలిడేషన్
-                    </h4>
-                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                      ప్రతి కార్యాచరణలో Entered మరియు Not Entered విలువల మొత్తం, Total GPs కు సమానమైనప్పుడు ఆకుపచ్చ చెక్‌మార్క్ వస్తుంది.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleMarkAllEntered}
-                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-xl border border-emerald-200 transition-colors"
-                      title="అన్నింటికీ Entered = Total GPs గా సెట్ చేస్తుంది"
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        isMatched
+                          ? "bg-emerald-50/20 border-emerald-300 shadow-xs"
+                          : "bg-amber-50/20 border-amber-300"
+                      }`}
                     >
-                      అన్నీ Entered
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAutoBalance}
-                      className="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 text-[11px] font-bold rounded-xl border border-sky-200 transition-colors"
-                      title="సమర్పించని వాటిని (Not Entered = Total GPs - Entered) ఆటోమేటిక్‌గా గణిస్తుంది"
-                    >
-                      ఆటో బ్యాలెన్స్
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  {activeActivities.map((act) => {
-                    const entStr = formActivities[act]?.entered ?? "0";
-                    const notEntStr = formActivities[act]?.notEntered ?? "0";
-                    const entNum = parseInt(entStr || "0", 10) || 0;
-                    const notEntNum = parseInt(notEntStr || "0", 10) || 0;
-                    const isSumMatched = isTotalGpsValid && entNum + notEntNum === formTotalGpsNum;
-                    const isOver = isTotalGpsValid && entNum + notEntNum > formTotalGpsNum;
-                    const isUnder = isTotalGpsValid && entNum + notEntNum < formTotalGpsNum;
-
-                    return (
-                      <div
-                        key={act}
-                        className={`p-3.5 rounded-2xl border transition-all ${
-                          isSumMatched
-                            ? "bg-emerald-50/30 border-emerald-300 ring-1 ring-emerald-400/20"
-                            : isOver
-                            ? "bg-rose-50/30 border-rose-200"
-                            : "bg-white border-slate-200 hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-black text-slate-800 tracking-tight">
-                            {act}
+                      {/* Card Header */}
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <span className="text-xs sm:text-sm font-black text-slate-800 truncate">
+                          {act}
+                        </span>
+                        {isMatched ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-300 shrink-0">
+                            <Check size={12} className="stroke-[3]" /> Matched ({item.entered + item.notEntered}/{totGps})
                           </span>
-                          {/* Real-time Indicator Pill */}
-                          {isSumMatched ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs animate-in zoom-in">
-                              <CheckCircle2 size={12} className="text-emerald-600" />
-                              సరిపోయింది ({entNum + notEntNum}/{formTotalGpsNum})
-                            </span>
-                          ) : isOver ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                              అధికం: {entNum + notEntNum}/{formTotalGpsNum}
-                            </span>
-                          ) : isUnder ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                              మొత్తం: {entNum + notEntNum}/{formTotalGpsNum}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-medium text-slate-400">
-                              మొత్తం: {entNum + notEntNum}
-                            </span>
-                          )}
-                        </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100/80 text-amber-800 border border-amber-300 shrink-0">
+                            Total: {item.entered + item.notEntered}/{totGps}
+                          </span>
+                        )}
+                      </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Entered Input */}
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] font-bold text-slate-600">Entered:</span>
-                              {entNum >= 0 && (
-                                <span className="inline-flex items-center text-[10px] text-emerald-700 font-bold">
-                                  <Check size={10} className="text-emerald-600 mr-0.5" /> Ok
-                                </span>
-                              )}
-                            </div>
-                            <div className="relative flex items-center">
-                              <input
-                                type="number"
-                                min="0"
-                                value={entStr}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setFormActivities((prev) => ({
-                                    ...prev,
-                                    [act]: {
-                                      entered: val,
-                                      notEntered: prev[act]?.notEntered ?? "0",
-                                    },
-                                  }));
-                                }}
-                                className={`w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold focus:outline-none transition-all pr-6 ${
-                                  entNum > 0
-                                    ? "bg-emerald-50 border-emerald-400 text-emerald-950 font-black focus:ring-1 focus:ring-emerald-500"
-                                    : "bg-slate-50/60 border-slate-200 text-slate-800 focus:bg-white"
-                                }`}
-                              />
-                              {entNum >= 0 && (
-                                <div className="absolute right-2 pointer-events-none">
-                                  <CheckCircle2 size={12} className="text-emerald-600" />
-                                </div>
-                              )}
+                      {/* Side-by-side inputs matching user screenshot */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {/* Entered Field */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-slate-700">Entered:</label>
+                            {item.entered >= 0 && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                <Check size={11} className="stroke-[3]" /> Ok
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max={totGps}
+                              value={item.entered}
+                              onChange={(e) => handleUpdateDistrictActivity(act, "entered", e.target.value)}
+                              className="w-full pl-3 pr-8 py-2 bg-emerald-50/50 border border-emerald-200 focus:border-emerald-500 rounded-xl text-base font-black text-slate-900 focus:outline-none transition-colors"
+                            />
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-600">
+                              <CheckCircle2 size={16} />
                             </div>
                           </div>
+                        </div>
 
-                          {/* Not Entered Input */}
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] font-bold text-slate-600">Not Entered:</span>
-                              {notEntNum >= 0 && (
-                                <span className="inline-flex items-center text-[10px] text-emerald-700 font-bold">
-                                  <Check size={10} className="text-emerald-600 mr-0.5" /> Ok
-                                </span>
-                              )}
-                            </div>
-                            <div className="relative flex items-center">
-                              <input
-                                type="number"
-                                min="0"
-                                value={notEntStr}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setFormActivities((prev) => ({
-                                    ...prev,
-                                    [act]: {
-                                      entered: prev[act]?.entered ?? "0",
-                                      notEntered: val,
-                                    },
-                                  }));
-                                }}
-                                className={`w-full px-2.5 py-1.5 rounded-xl border text-xs font-bold focus:outline-none transition-all pr-6 ${
-                                  notEntNum > 0
-                                    ? "bg-rose-50/70 border-rose-300 text-rose-900 font-black focus:ring-1 focus:ring-rose-500"
-                                    : "bg-slate-50/60 border-slate-200 text-slate-800 focus:bg-white"
-                                }`}
-                              />
-                              {notEntNum >= 0 && (
-                                <div className="absolute right-2 pointer-events-none">
-                                  <CheckCircle2 size={12} className="text-emerald-600" />
-                                </div>
-                              )}
+                        {/* Not Entered Field */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-slate-700">Not Entered:</label>
+                            {item.notEntered >= 0 && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                <Check size={11} className="stroke-[3]" /> Ok
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max={totGps}
+                              value={item.notEntered}
+                              onChange={(e) => handleUpdateDistrictActivity(act, "notEntered", e.target.value)}
+                              className={`w-full pl-3 pr-8 py-2 bg-emerald-50/50 border border-emerald-200 focus:border-emerald-500 rounded-xl text-base font-black focus:outline-none transition-colors ${
+                                item.notEntered > 0 ? "text-rose-700" : "text-slate-900"
+                              }`}
+                            />
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-600">
+                              <CheckCircle2 size={16} />
                             </div>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* Bottom Validation Message Banner */}
-              {activitiesStatus.allMatched ? (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center gap-2.5 text-xs font-bold text-emerald-900 animate-in fade-in">
-                  <CheckCheck size={20} className="text-emerald-600 shrink-0" />
-                  <span>అన్ని 17 కార్యాచరణల డేటా మరియు మొత్తం GPల సంఖ్య విజయవంతంగా సరిపోయాయి! ఎంట్రీని సేవ్ చేయవచ్చు.</span>
-                </div>
-              ) : isNameValid && isTotalGpsValid ? (
-                <div className="p-3.5 bg-sky-50 border border-sky-200 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-sky-900">
-                  <CheckCircle2 size={18} className="text-sky-600 shrink-0" />
-                  <span>ప్రాథమిక వివరాలు ధృవీకరించబడ్డాయి. కార్యాచరణల సంఖ్యలను కూడా సరిపోల్చి సేవ్ చేయండి.</span>
-                </div>
-              ) : (
-                <div className="p-3.5 bg-slate-100 border border-slate-200 rounded-2xl flex items-center gap-2.5 text-xs font-medium text-slate-600">
-                  <AlertCircle size={18} className="text-slate-400 shrink-0" />
-                  <span>సేవ్ చేయడానికి దయచేసి పంచాయతీ/మండల పేరు మరియు మొత్తం GPల సంఖ్యను నమోదు చేయండి.</span>
-                </div>
-              )}
-            </form>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 pt-4 mt-3 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setIsFormOpen(false)}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-200/60 font-bold text-xs transition-colors"
+                onClick={() => setEditingDistrictMandal(null)}
+                className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
-                రద్దు (Cancel)
+                Cancel
               </button>
               <button
                 type="button"
-                onClick={handleSaveForm}
-                disabled={!isNameValid || !isTotalGpsValid}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white transition-all shadow-sm ${
-                  isNameValid && isTotalGpsValid
-                    ? "bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
-                    : "bg-slate-300 cursor-not-allowed text-slate-500"
-                }`}
+                onClick={handleSaveDistrictRecord}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg flex items-center gap-2 transition-all cursor-pointer"
               >
-                <Check size={16} />
-                {editingIndex !== null ? "నవీకరించు (Update Record)" : "ఎంట్రీని సేవ్ చేయి (Save Entry)"}
+                <Check size={16} className="stroke-[3]" />
+                <span>Update Record</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Edit Panchayat Record (Mandal Level Modal) */}
+      {editingMandalGp && (
+        <div className="fixed inset-0 z-[3000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white rounded-3xl p-5 sm:p-7 max-w-2xl w-full shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 mb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center shadow-xs">
+                  <CheckSquare size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight">
+                    Edit Panchayat Record
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    Easily update Panchayat name and activities status (Entered / Pending).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMandalGp(null)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Panchayat Name input */}
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Gram Panchayat Name:
+              </label>
+              <input
+                type="text"
+                value={tempGpName}
+                onChange={(e) => setTempGpName(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-sm font-bold text-slate-800 focus:outline-none"
+              />
+            </div>
+
+            {/* Activity Toggles */}
+            <div className="flex-1 overflow-y-auto pr-1.5 custom-scrollbar mb-2">
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                Activities Status:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {dynamicActivities.map((act, idx) => {
+                  const isDone = tempGpStatuses[act] === 1;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() =>
+                        setTempGpStatuses((prev) => ({
+                          ...prev,
+                          [act]: isDone ? 0 : 1
+                        }))
+                      }
+                      className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isDone
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span className="truncate">{act}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-black shrink-0 ${
+                          isDone ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {isDone ? "Entered (1)" : "Pending (0)"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingMandalGp(null)}
+                className="px-5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMandalGp}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Check size={16} className="stroke-[3]" />
+                <span>Update Record</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INITIAL SCREEN (When No Data Loaded Yet) - Exactly Matching User Screenshot */}
+      {!hasData ? (
+        <div>
+          {/* Header Banner matching screenshot */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 pb-6 border-b border-slate-100 gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                <FileSpreadsheet className="text-sky-700" size={26} />
+                E-Panchayat Monthly Activity Report
+              </h2>
+              <p className="text-slate-500 font-medium mt-1 text-xs sm:text-sm">
+                Upload raw data file to generate exact Telangana State activity data entry report format with page setup.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-5 py-2.5 bg-[#11518E] hover:bg-[#0d3f6f] text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+                title="Upload Raw File"
+              >
+                <Upload size={16} /> Upload Raw File
+              </button>
+            </div>
+          </div>
+
+          {/* Upload Activity Data File Card */}
+          <div className="max-w-2xl mx-auto my-6">
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-300 hover:border-[#11518E] hover:bg-sky-50/20 rounded-[28px] p-10 text-center bg-white transition-all shadow-xs flex flex-col items-center justify-center cursor-pointer group"
+            >
+              <div className="w-16 h-16 bg-blue-50 group-hover:bg-blue-100 rounded-2xl flex items-center justify-center text-[#11518E] mb-4 border border-blue-100 shadow-2xs transition-colors">
+                <Upload size={32} />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-2">
+                Upload Raw Activity Data File
+              </h3>
+              <p className="text-slate-500 font-medium text-xs sm:text-sm max-w-md mb-6 leading-relaxed">
+                Select a raw .xls or .xlsx report file to generate the official color-coded report format with page setup.
+              </p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="px-6 py-2.5 bg-[#11518E] hover:bg-[#0d3f6f] text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+              >
+                <Upload size={14} /> Choose File
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* OUTPUT VIEW (When File Data Loaded or Added) */
+        <div>
+          {/* Header Banner and Action Toolbar */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 pb-6 border-b border-slate-100 gap-4 print:hidden">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 bg-sky-50 text-sky-800 rounded-2xl">
+                  {reportLevel === "district" ? <Building2 size={26} /> : <Landmark size={26} />}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold text-[10px]">
+                      {reportLevel === "district" ? "District Level Report" : "Mandal Level Report"}
+                    </span>
+                    {uploadedFilesLabel && (
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[200px]" title={uploadedFilesLabel}>
+                        File: {uploadedFilesLabel}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mt-0.5">
+                    {reportLevel === "district"
+                      ? "District MAS – District Level Monitoring"
+                      : "Mandal MAS – Mandal Level Monitoring"}
+                  </h2>
+                </div>
+              </div>
+              <p className="text-slate-500 font-medium mt-1 text-xs sm:text-sm">
+                {reportLevel === "district"
+                  ? "Percentage analysis, rankings & color-coded comprehensive report for all Mandals in the district."
+                  : "Panchayat-wise MAS Report 13 Matrix and Report 14 Pending List comprehensive report."}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#11518E] text-white hover:bg-[#0d3f6f] font-bold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
+                title="Upload Report 14, Report 13, or both files together"
+              >
+                <Upload size={14} /> Change File
+              </button>
+
+              {reportLevel === "mandal" && (
+                <button
+                  type="button"
+                  onClick={handleCopyBulkMandalWhatsApp}
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
+                  title="Copy entire Mandal pending summary to WhatsApp"
+                >
+                  {bulkCopied ? <Check size={14} /> : <MessageSquareShare size={14} />}
+                  {bulkCopied ? "Copied!" : "WhatsApp Broadcast"}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={reportLevel === "district" ? handleExportDistrictExcel : handleExportMandalExcel}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all border border-slate-200 cursor-pointer"
+              >
+                <Download size={14} /> Excel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
+              >
+                <FileText size={14} /> PDF (A4 Download)
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all shadow-2xs cursor-pointer"
+              >
+                <Printer size={14} /> Print
+              </button>
+
+              <button
+                type="button"
+                onClick={handleClearData}
+                className="flex items-center gap-1.5 px-3 py-2.5 text-rose-700 hover:bg-rose-50 font-bold text-xs rounded-xl transition-all border border-rose-200 cursor-pointer"
+                title="Clear Data"
+              >
+                <Trash2 size={14} /> Clear Data
+              </button>
+            </div>
+          </div>
+
+      {/* OVERVIEW STAT CARDS (When data is loaded) */}
+      {reportLevel === "mandal" && mandalData.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 print:hidden">
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500">Total GPs</span>
+            <div className="text-xl font-black text-slate-800 mt-0.5">{mandalSummaryStats.totalGPs}</div>
+          </div>
+          <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-emerald-800">100% Completed</span>
+            <div className="text-xl font-black text-emerald-900 mt-0.5">{mandalSummaryStats.completedGPs}</div>
+          </div>
+          <div className="bg-rose-50 p-3.5 rounded-2xl border border-rose-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-rose-800">Pending GPs</span>
+            <div className="text-xl font-black text-rose-900 mt-0.5">{mandalSummaryStats.pendingGPs}</div>
+          </div>
+          <div className="bg-blue-50 p-3.5 rounded-2xl border border-blue-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-blue-800">Mandal Avg Completion</span>
+            <div className="text-xl font-black text-blue-900 mt-0.5">{mandalSummaryStats.avgPct}%</div>
+          </div>
+        </div>
+      )}
+
+      {reportLevel === "district" && districtData.length > 0 && districtStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6 print:hidden">
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500">Total Mandals</span>
+            <div className="text-xl font-black text-slate-800 mt-0.5">{districtStats.totalMandals}</div>
+          </div>
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-slate-500">District Total GPs</span>
+            <div className="text-xl font-black text-slate-800 mt-0.5">{districtStats.totalGps}</div>
+          </div>
+          <div className="bg-blue-50 p-3.5 rounded-2xl border border-blue-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-blue-800">District Avg Completion</span>
+            <div className="text-xl font-black text-blue-900 mt-0.5">{districtStats.overallPct}%</div>
+          </div>
+          <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 shadow-2xs">
+            <span className="text-[11px] font-bold text-emerald-800">Top Performing Mandal</span>
+            <div className="text-xs font-black text-emerald-950 truncate mt-0.5" title={districtStats.highestMandal?.["Mandal Name"]}>
+              {districtStats.highestMandal?.["Mandal Name"]}
+            </div>
+            <div className="text-xs font-bold text-emerald-700">({districtStats.highestMandal?.["Overall %"]}%)</div>
+          </div>
+          <div className="bg-rose-50 p-3.5 rounded-2xl border border-rose-200 shadow-2xs col-span-2 sm:col-span-1">
+            <span className="text-[11px] font-bold text-rose-800">Low Progress Mandal</span>
+            <div className="text-xs font-black text-rose-950 truncate mt-0.5" title={districtStats.lowestMandal?.["Mandal Name"]}>
+              {districtStats.lowestMandal?.["Mandal Name"]}
+            </div>
+            <div className="text-xs font-bold text-rose-700">({districtStats.lowestMandal?.["Overall %"]}%)</div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MANDAL MAS VIEW: Continuous Complete PDF Layout (Matching User's PDF)      */}
+      {/* ========================================================================= */}
+      {reportLevel === "mandal" && (
+        <>
+          {!mandalData.length ? (
+            /* Unified Empty State: Single Clean Upload Card */
+            <div className="border-2 border-dashed border-slate-200 rounded-[28px] p-8 sm:p-14 flex flex-col items-center justify-center text-center my-4 bg-slate-50/50">
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-700 mb-4 border border-blue-100 shadow-2xs">
+                <Landmark size={30} />
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-2">
+                Mandal Level MAS Report Upload (Report 14 or Report 13)
+              </h3>
+              <p className="text-slate-500 font-medium text-xs sm:text-sm max-w-lg mb-6 leading-relaxed">
+                Upload Report 14 (Pending List) or Report 13 file (.xlsx, .xls, .csv or .html) downloaded from e-Panchayat portal. You can also select both files together.
+              </p>
+              <div className="flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-6 py-3.5 bg-[#11518E] text-white text-sm font-bold rounded-xl hover:bg-[#0d3f6f] transition-all flex items-center gap-2.5 shadow-md cursor-pointer"
+                >
+                  <Upload size={18} /> Upload Report File(s)
+                </button>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs mt-2">
+                  <AlertCircle size={14} className="text-blue-600" />
+                  <span>Uploading Report 14 is sufficient; both Report 13 Matrix and Report 14 Pending List will be generated automatically.</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Mandal MAS Complete View (Report 13 + Report 14 in Continuous PDF Flow) */
+            <div className="space-y-8">
+              {/* Optional Search / Quick GP Filter */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 print:hidden">
+                <div className="relative w-full sm:w-80">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by Panchayat Name..."
+                    className="w-full bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 shadow-2xs"
+                    style={{
+                      paddingLeft: "28px",
+                      paddingRight: "0px",
+                      paddingBottom: "4px",
+                      paddingTop: "4px",
+                      marginBottom: "26px",
+                      height: "36.3281px",
+                      fontWeight: "bold",
+                      fontStyle: "italic",
+                      fontFamily: "Georgia, serif",
+                    }}
+                  />
+                  <Filter size={14} className="absolute left-3 top-3 text-slate-400" />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setPendingFilter("all")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pendingFilter === "all" ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    All ({mandalData.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingFilter("pending")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pendingFilter === "pending" ? "bg-rose-600 text-white" : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    Pending ({mandalSummaryStats.pendingGPs})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingFilter("completed")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pendingFilter === "completed" ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    100% Completed ({mandalSummaryStats.completedGPs})
+                  </button>
+                </div>
+              </div>
+
+              {/* ------------------------------------------------------------- */}
+              {/* SECTION 1: Report 13 Table (Matching Page 1 of PDF)            */}
+              {/* ------------------------------------------------------------- */}
+              <div className="bg-white rounded-xl border border-black overflow-hidden shadow-2xs">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full border-collapse bg-white text-[11px] font-medium border border-black print:text-[8px]">
+                    <thead>
+                      <tr>
+                        <th
+                          colSpan={2 + dynamicActivities.length + 1}
+                          className="bg-[#11518E] text-white py-2.5 px-4 text-center font-bold text-xs sm:text-sm tracking-wide border border-black"
+                        >
+                          Statement showing the Monthly activity report for the month of {uploadDateTime || getFormattedDateTime()}
+                        </th>
+                      </tr>
+                      <tr className="bg-[#0f4c81] text-white text-center font-bold">
+                        <th className="py-2 px-2 border border-black w-10">S.No</th>
+                        <th className="py-2 px-4 border border-black min-w-[150px] text-left">Panchayat Name</th>
+                        {dynamicActivities.map((act, i) => {
+                          const actLabel = act.toLowerCase().endsWith("entered") ? act : `${act}\nEntered`;
+                          return (
+                            <th key={i} className="py-2 px-2 border border-black min-w-[75px] leading-tight whitespace-pre-line text-center">
+                              {actLabel}
+                            </th>
+                          );
+                        })}
+                        <th className="py-2 px-3 border border-black min-w-[90px] print:hidden">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMandalData.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors text-center">
+                          <td className="py-1.5 px-2 border border-black font-bold text-slate-800">
+                            {idx + 1}
+                          </td>
+                          <td className="py-1.5 px-3 border border-black font-black text-slate-900 text-left whitespace-nowrap">
+                            {row["Panchayat Name"]}
+                          </td>
+                          {dynamicActivities.map((act, aIdx) => {
+                            const isEnt = row.status?.[act] === 1;
+                            return (
+                              <td
+                                key={aIdx}
+                                className={`py-1.5 px-2 border border-black font-bold text-center ${
+                                  isEnt
+                                    ? "bg-white text-black font-bold"
+                                    : "bg-[#800000] text-white font-black"
+                                }`}
+                              >
+                                {isEnt ? "1" : "0"}
+                              </td>
+                            );
+                          })}
+                          <td className="py-1.5 px-2 border border-black text-center whitespace-nowrap print:hidden">
+                            <div className="flex items-center justify-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMandalGp(row)}
+                                className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                                title="Edit Record"
+                              >
+                                <Pencil size={16} className="stroke-[2.2]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMandalGp(row["Panchayat Name"])}
+                                className="text-rose-600 hover:text-rose-800 p-1 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                title="Delete Record"
+                              >
+                                <Trash2 size={16} className="stroke-[2.2]" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {/* Total Row */}
+                      <tr className="bg-white font-bold border-t-2 border-black text-center">
+                        <td className="py-2 px-2 border border-black font-black text-slate-900">
+                          {mandalData.length + 1}
+                        </td>
+                        <td className="py-2 px-3 border border-black font-black text-slate-900 text-left">
+                          Total
+                        </td>
+                        {dynamicActivities.map((act, idx) => (
+                          <td
+                            key={idx}
+                            className="py-2 px-2 border border-black font-black text-center bg-white text-slate-900"
+                          >
+                            {mandalActivityTotals[act]?.entered ?? 0}
+                          </td>
+                        ))}
+                        <td className="py-2 px-2 border border-black bg-white print:hidden"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {/* Branding footer */}
+                <div className="text-center py-2 text-[11px] font-bold text-slate-500 print:text-black border-t border-slate-200">
+                  Generated via <span className="text-blue-700 print:text-black font-black">E-VEDHIKA</span> | Website: <span className="text-blue-600 print:text-black">www.e-vedhika.in</span>
+                </div>
+              </div>
+
+              {/* ------------------------------------------------------------- */}
+              {/* SECTION 2: Report 14 Table (Matching Pages 2-5 of PDF)         */}
+              {/* ------------------------------------------------------------- */}
+              <div className="bg-white rounded-xl border border-black overflow-hidden shadow-2xs print:break-before-page">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full border-collapse bg-white text-xs font-medium border border-black">
+                    <thead>
+                      <tr>
+                        <th
+                          colSpan={4}
+                          className="bg-[#11518E] text-white py-2.5 px-4 text-center font-bold text-xs sm:text-sm tracking-wide border border-black"
+                        >
+                          MAS Not Entered Gram Panchayat's and Pending Activity Names Report as on {uploadDateTime || getFormattedDateTime()}
+                        </th>
+                      </tr>
+                      <tr className="bg-[#0f4c81] text-white text-left font-bold text-xs">
+                        <th className="py-2 px-3 border border-black w-14 text-center">S.NO</th>
+                        <th className="py-2 px-4 border border-black w-60">Panchayat Name</th>
+                        <th className="py-2 px-3 border border-black w-48 text-center">Pending_activities_count</th>
+                        <th className="py-2 px-4 border border-black">pending_activities_names</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMandalData
+                        .filter((r) => r.pendingCount > 0)
+                        .map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors align-top">
+                            <td className="py-2.5 px-2 border border-black font-bold text-slate-800 text-center">
+                              {idx + 1}
+                            </td>
+                            <td className="py-2.5 px-4 border border-black font-black text-slate-900">
+                              {row["Panchayat Name"]}
+                              <div className="mt-2 print:hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyWhatsAppMessage(row, idx)}
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                    copiedIndex === idx
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                                  }`}
+                                  title="Copy WhatsApp Alert"
+                                >
+                                  {copiedIndex === idx ? <Check size={12} /> : <Share2 size={12} />}
+                                  {copiedIndex === idx ? "Copied!" : "Copy WhatsApp Alert"}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 border border-black font-black text-center text-sm text-slate-900 bg-white">
+                              {row.pendingCount}
+                            </td>
+                            <td className="py-2 px-4 border border-black text-slate-900">
+                              <div className="space-y-0.5">
+                                {row.pendingActivities.map((pAct: string, pIdx: number) => {
+                                  const clean = pAct.replace(/^\d+[\s.)-]+/, "").trim();
+                                  return (
+                                    <div key={pIdx} className="text-xs font-normal text-slate-900 leading-snug">
+                                      <span className="font-semibold text-slate-950 mr-1">{pIdx + 1}.</span>
+                                      <span>{clean}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      {filteredMandalData.filter((r) => r.pendingCount > 0).length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-emerald-700 font-bold bg-emerald-50">
+                            ✓ Congratulations! All Panchayats in the Mandal have successfully submitted 100% activities (No Pending Activities).
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Branding footer */}
+                <div className="text-center py-2 text-[11px] font-bold text-slate-500 print:text-black border-t border-slate-200">
+                  Generated via <span className="text-blue-700 print:text-black font-black">E-VEDHIKA</span> | Website: <span className="text-blue-600 print:text-black">www.e-vedhika.in</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DISTRICT MAS VIEW: District Percentage Analysis (% Report)                */}
+      {/* ========================================================================= */}
+      {reportLevel === "district" && (
+        <>
+          {!districtData.length ? (
+            <div className="border-2 border-dashed border-slate-200 rounded-[28px] p-8 sm:p-14 flex flex-col items-center justify-center text-center my-4 bg-slate-50/50">
+              <div className="w-16 h-16 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-700 mb-4 border border-sky-100 shadow-2xs">
+                <Building2 size={30} />
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-2">
+                District Level Percentage Report (District MAS)
+              </h3>
+              <p className="text-slate-500 font-medium text-xs sm:text-sm max-w-lg mb-6 leading-relaxed">
+                Upload district level MAS file (.xlsx, .xls, .csv or .html) downloaded from e-Panchayat portal. All Mandals' activity percentages and rankings will be analyzed.
+              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-6 py-3.5 bg-[#11518E] text-white text-sm font-bold rounded-xl hover:bg-[#0d3f6f] transition-all flex items-center gap-2 shadow-md cursor-pointer"
+              >
+                <Upload size={18} /> Upload District Report File
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 print:hidden">
+                <div className="relative w-full sm:w-80">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by Mandal Name..."
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 shadow-2xs"
+                  />
+                  <Filter size={14} className="absolute left-3 top-3 text-slate-400" />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <div className="text-xs font-bold text-slate-600">
+                  Showing Mandals: <span className="text-sky-700 font-black">{filteredDistrictData.length}</span> / {districtData.length}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-black custom-scrollbar pb-4 bg-white print:border-none">
+                <div className="inline-block min-w-full">
+                  <table className="w-full border-collapse bg-white text-[11px] font-medium border border-black print:text-[9px]">
+                    <thead>
+                      <tr>
+                        <th
+                          colSpan={3 + dynamicActivities.length + 1 + 1}
+                          className="bg-[#11518E] text-white py-2.5 px-3 border border-black text-center font-black text-sm tracking-wide"
+                        >
+                          Statement showing the Monthly activity report for the month of {uploadDateTime || getFormattedDateTime()}
+                        </th>
+                      </tr>
+                      <tr className="bg-[#0f4c81] text-white text-center font-bold">
+                        <th className="py-2 px-2 border border-black">S.No</th>
+                        <th className="py-2 px-4 border border-black min-w-[140px] text-left">Mandal Name</th>
+                        <th className="py-2 px-2 border border-black min-w-[70px]">Total GP's</th>
+                        {dynamicActivities.map((act, i) => (
+                          <th key={i} className="py-2 px-2 border border-black min-w-[85px] leading-tight">
+                            {act}<br />Entered %
+                          </th>
+                        ))}
+                        <th className="py-2 px-2 border border-black min-w-[75px] bg-[#0d3f6f]">
+                          Overall<br />%
+                        </th>
+                        <th className="py-2 px-3 border border-black min-w-[90px] print:hidden">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDistrictData.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50 transition-colors text-center">
+                          <td className="py-1.5 px-2 border border-black font-bold text-slate-800">
+                            {idx + 1}
+                          </td>
+                          <td className="py-1.5 px-3 border border-black font-black text-slate-900 text-left whitespace-nowrap">
+                            {row["Mandal Name"]}
+                          </td>
+                          <td className="py-1.5 px-2 border border-black font-bold text-slate-900 bg-slate-50">
+                            {row["TotalGPs"]}
+                          </td>
+                          {dynamicActivities.map((act, aIdx) => {
+                            const actInfo = row.activities?.[act] || { percentage: 0 };
+                            const pct = actInfo.percentage;
+                            const colorCls = getPercentageColorClass(pct);
+                            return (
+                              <td
+                                key={aIdx}
+                                className={`py-1.5 px-2 border border-black text-center font-bold ${colorCls}`}
+                              >
+                                {pct.toFixed(2)}
+                              </td>
+                            );
+                          })}
+                          <td className={`py-1.5 px-2 border border-black text-center font-black ${getPercentageColorClass(row["Overall %"] ?? 0)}`}>
+                            {(row["Overall %"] ?? 0).toFixed(2)}
+                          </td>
+                          <td className="py-1.5 px-2 border border-black text-center whitespace-nowrap print:hidden">
+                            <div className="flex items-center justify-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditDistrictRecord(row)}
+                                className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                                title="Edit Record"
+                              >
+                                <Pencil size={16} className="stroke-[2.2]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDistrictMandal(row["Mandal Name"])}
+                                className="text-rose-600 hover:text-rose-800 p-1 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                title="Delete Record"
+                              >
+                                <Trash2 size={16} className="stroke-[2.2]" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {/* Total Row */}
+                      <tr className="bg-white font-bold border-t-2 border-black text-center">
+                        <td className="py-2 px-2 border border-black font-black text-slate-900">
+                          {districtData.length + 1}
+                        </td>
+                        <td className="py-2 px-3 border border-black font-black text-slate-900 text-left">
+                          Total
+                        </td>
+                        <td className="py-2 px-2 border border-black font-black text-slate-900 bg-slate-100">
+                          {districtGrandTotalGps}
+                        </td>
+                        {dynamicActivities.map((act, idx) => {
+                          const totPct = districtActivityTotals[act]?.districtPct ?? 0;
+                          return (
+                            <td
+                              key={idx}
+                              className={`py-2 px-2 border border-black font-black text-center ${getPercentageColorClass(totPct)}`}
+                            >
+                              {totPct.toFixed(2)}
+                            </td>
+                          );
+                        })}
+                        <td className={`py-2 px-2 border border-black font-black text-center ${getPercentageColorClass(districtOverallTotalPct)}`}>
+                          {districtOverallTotalPct.toFixed(2)}
+                        </td>
+                        <td className="py-2 px-2 border border-black bg-white print:hidden"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {/* Branding footer */}
+                <div className="text-center py-2 text-[11px] font-bold text-slate-500 print:text-black border-t border-slate-200">
+                  Generated via <span className="text-blue-700 print:text-black font-black">E-VEDHIKA</span> | Website: <span className="text-blue-600 print:text-black">www.e-vedhika.in</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+        </div>
+      )}
     </div>
   );
 }
+
+export default MonthlyActivityFormatter;
