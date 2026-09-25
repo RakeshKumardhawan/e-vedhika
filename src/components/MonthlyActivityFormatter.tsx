@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
+import { requireLoginAlert } from "../App";
 import { 
   Upload, 
   Download, 
@@ -43,11 +44,13 @@ export const STANDARD_MAS_ACTIVITIES = [
 export interface MonthlyActivityFormatterProps {
   addToast: (msg: string) => void;
   initialLevel?: "mandal" | "district";
+  user?: any;
 }
 
 export function MonthlyActivityFormatter({
   addToast,
   initialLevel = "mandal",
+  user,
 }: MonthlyActivityFormatterProps) {
   // Mode: "mandal" (Mandal Monthly Activity Monitoring) vs "district" (District Monthly Activity Monitoring)
   const [reportLevel, setReportLevel] = useState<"mandal" | "district">(initialLevel);
@@ -865,6 +868,9 @@ export function MonthlyActivityFormatter({
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    if (user !== undefined && !user) {
+      if (requireLoginAlert(user)) return;
+    }
     await processUploadedFiles(Array.from(files));
   };
 

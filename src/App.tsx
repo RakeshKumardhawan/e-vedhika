@@ -5445,27 +5445,48 @@ E-Vedhika Team`;
                                     <div className="h-px bg-slate-200/70 my-1" />
 
                                     {[
-                                      { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} /> },
-                                      { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} /> },
-                                      { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} /> },
-                                      { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} /> },
-                                      { id: 'monthly-activity', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} /> },
-                                      { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} /> },
-                                      { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} /> },
+                                      { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} />, isFree: true },
+                                      { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: false },
+                                      { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} />, isFree: false },
+                                      { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} />, isFree: false },
+                                      { id: 'monthly-activity', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: false },
+                                      { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} />, isFree: false },
+                                      { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} />, isFree: false },
                                     ].map(tool => (
                                       <button
                                         key={tool.id}
-                                        onClick={() => { setCurrentTab("workspace"); setWorkspaceActiveTool(tool.id); setOpenDropdown(null); }}
-                                        className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${
+                                        onClick={() => {
+                                          if (!user && !tool.isFree) {
+                                            setOpenDropdown(null);
+                                            requireLoginAlert(user);
+                                            return;
+                                          }
+                                          setCurrentTab("workspace");
+                                          setWorkspaceActiveTool(tool.id);
+                                          setOpenDropdown(null);
+                                        }}
+                                        className={`flex items-center justify-between w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${
                                           currentTab === 'workspace' && workspaceActiveTool === tool.id ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50/50 hover:bg-blue-50 text-slate-700'
                                         } border border-slate-100 shadow-sm sm:shadow-none`}
                                       >
-                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-blue-600">
-                                          {tool.icon}
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-100 text-blue-600">
+                                            {tool.icon}
+                                          </div>
+                                          <div className="flex flex-col">
+                                            <span className="text-[13px] font-bold">{tool.label}</span>
+                                          </div>
                                         </div>
-                                        <div className="flex flex-col">
-                                          <span className="text-[13px] font-bold">{tool.label}</span>
-                                        </div>
+                                        {!user && !tool.isFree && (
+                                          <span className="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                                            <Lock size={10} /> లాగిన్
+                                          </span>
+                                        )}
+                                        {tool.isFree && (
+                                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">
+                                            ఉచితం
+                                          </span>
+                                        )}
                                       </button>
                                     ))}
                                   </>
@@ -16924,9 +16945,25 @@ function DigitalWorkspaceSection({
         {tools.map((t) => (
           <div
             key={t.id}
-            className="mana-card"
-            onClick={() => setActiveTool(t.id)}
+            className="mana-card relative group cursor-pointer"
+            onClick={() => {
+              if (!user && t.id !== "dsr") {
+                requireLoginAlert(user);
+                return;
+              }
+              setActiveTool(t.id);
+            }}
           >
+            {!user && t.id !== "dsr" && (
+              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-amber-500/10 border border-amber-500/25 text-amber-700 text-[10px] font-black rounded-full flex items-center gap-1 shadow-2xs">
+                <Lock size={10} /> లాగిన్ అవసరం
+              </span>
+            )}
+            {!user && t.id === "dsr" && (
+              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 text-[10px] font-black rounded-full flex items-center gap-1 shadow-2xs">
+                ✨ ఉచితం
+              </span>
+            )}
             <div
               style={{
                 color: "var(--primary)",
@@ -16987,6 +17024,39 @@ function DigitalWorkspaceSection({
               <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} />
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative">
+              {!user && activeTool !== "dsr" ? (
+                <div className="max-w-xl mx-auto my-10 bg-white rounded-[32px] p-8 sm:p-12 border border-slate-200 shadow-xl text-center flex flex-col items-center">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-5 shadow-sm">
+                    <Lock size={32} />
+                  </div>
+                  <span className="px-3.5 py-1 bg-amber-100 text-amber-900 text-xs font-black rounded-full mb-3 uppercase tracking-wider">
+                    లాగిన్ అవసరం • Login Required
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-2">
+                    {tools.find((t) => t.id === activeTool)?.title || "ఈ టూల్"} ఉపయోగించడానికి లాగిన్ అవ్వండి
+                  </h3>
+                  <p className="text-slate-500 font-medium text-xs sm:text-sm mb-6 max-w-md leading-relaxed">
+                    సర్వర్ లోడ్ నిర్వహణ కొరకు, కేవలం <strong>DSR Analyzer</strong> మాత్రమే లాగిన్ లేకుండా ఉచితంగా అందుబాటులో ఉంటుంది. మిగిలిన అన్ని టూల్స్ పూర్తి యాక్సెస్ కోసం దయచేసి లాగిన్ అవ్వండి.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => requireLoginAlert(user)}
+                      className="w-full sm:w-auto px-6 py-3 bg-[#0d3b66] hover:bg-[#082440] text-white font-black text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Key size={16} /> లాగిన్ అవ్వండి (Login to Access)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTool("dsr")}
+                      className="w-full sm:w-auto px-5 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      DSR Analyzer కి వెళ్లండి (ఉచితం)
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
               {activeTool === "dsr" && (
                 <DSRAnalyzer addToast={addToast} user={user} />
               )}
@@ -17078,11 +17148,14 @@ function DigitalWorkspaceSection({
                 activeTool === "district-monthly-activity") && (
                 <MonthlyActivityFormatter
                   addToast={addToast}
+                  user={user}
                   initialLevel={activeTool === "district-monthly-activity" ? "district" : "mandal"}
                 />
               )}
               {activeTool === "excel-merge" && (
                 <ExcelMerger user={user} addToast={addToast} />
+              )}
+                </>
               )}
             </div>
           </motion.div>
