@@ -36,18 +36,24 @@ function isEmailVerified() { return isSignedIn() && request.auth.token.email_ver
 function isSuperAdmin() {
   return isSignedIn() && 
          'email' in request.auth.token && 
-         (request.auth.token.email == 'rakeshkumardhawan123@gmail.com' || request.auth.token.email == 'Rakeshkumardhawan123@gmail.com');
+         request.auth.token.email.lower() == 'rakeshkumardhawan123@gmail.com';
 }
 
 // 2. ADMIN/MODERATOR: సూపర్ అడ్మిన్ లేదా భవిష్యత్తులో అడ్మిన్ ప్యానెల్ ద్వారా యాడ్ చేయబడిన వారు
-// బ్రేకప్ సర్క్యులర్ డిపెండెన్సీ: exists() కాలింగ్ isAdmin() ని నివారించాలి
 function isAdmin() { 
   return isSuperAdmin() || 
          (isSignedIn() && (
            exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
            (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super admin', 'system admin', 'administrator', 'editor', 'moderator'])
+            'role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data &&
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() in [
+              'admin', 'super_admin', 'super admin', 'editor', 'moderator', 'staff', 'administrator'
+            ])
          )); 
+}
+
+match /{document=**} {
+  allow read, write: if isSuperAdmin();
 }
 
 function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -65,7 +71,7 @@ function isPostOwner(postId) {
 
 // PIN కలెక్షన్
 match /user_pins/{pinId} {
-  allow read, write: if isSuperAdmin() || (isSignedIn() && request.auth.uid == pinId);
+  allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == pinId);
 }
 
 match /pins/{pinId} {
@@ -73,6 +79,24 @@ match /pins/{pinId} {
   allow write: if isSuperAdmin();
 }
 
+match /customMenus/{document=**} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+
+match /customMenuCards/{document=**} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+
+match /exe_releases/{document=**} {
+  allow read: if true;
+  allow write: if isAdmin();
+}
+
+match /system_backups/{document=**} {
+  allow read, write: if isAdmin();
+}
 
 // ADMINS కలెక్షన్: కొత్త ఎడిటర్స్ ని యాడ్ చేసే పవర్ కేవలం "Super Admin" కి మాత్రమే
 match /admins/{adminId} {
@@ -85,20 +109,19 @@ match /updates/{updateId} {
   allow write: if isAdmin(); // పబ్లిక్ యాక్సెస్ తీసేసి అడ్మిన్ కి మాత్రమే ఇచ్చాం
 }
 
-match /suggestions/{suggestionId} {
-  allow read: if true;
-  allow create: if true; 
-  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid') && (!('status' in incoming()) || incoming().status == (resource == null ? null : resource.data.status)));
+match /suggestions/{document=**} {
+  allow read, create, update: if true; 
+  allow delete: if isAdmin();
 }
 
-match /telemetryLogs/{logId} {
+match /telemetryLogs/{document=**} {
   allow read: if true;
   allow create: if true;
   allow update: if true;
   allow delete: if isAdmin();
 }
 
-match /deploymentLogs/{logId} {
+match /deploymentLogs/{document=**} {
   allow read: if true;
   allow create: if true;
   allow update: if true;
@@ -118,10 +141,9 @@ match /chat/{msgId} {
   allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid'));
 }
 
-match /problems/{problemId} {
-  allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-  allow create: if isSignedIn() && (isOwner('uid') || isOwner('userId') || isOwner('authorId') || !('uid' in incoming())); 
-  allow update, delete: if isAdmin() || (isSignedIn() && isExistingOwner('uid') && (!('status' in incoming()) || incoming().status == (resource == null ? null : resource.data.status)));
+match /problems/{document=**} {
+  allow read, create, update: if true; 
+  allow delete: if isAdmin() || (isSignedIn() && resource != null && 'uid' in resource.data && resource.data.uid == request.auth.uid);
 }
 
 match /requests/{requestId} {
@@ -144,30 +166,28 @@ match /forms/{formId} {
 }
 
 
-match /support_tickets/{ticketId} {
-  allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
-  allow create: if isSignedIn() && incoming().uid == request.auth.uid;
-  allow update, delete: if isAdmin();
-  
-  match /messages/{messageId} {
-    allow read: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.uid == request.auth.uid);
-    allow create: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/support_tickets/$(ticketId)).data.uid == request.auth.uid && (incoming().senderId == request.auth.uid || incoming().senderId == 'admin'));
-    allow update, delete: if isAdmin();
-  }
+// సపోర్ట్ సిస్టమ్ & టికెట్లు (Support Tickets & Inquiries)
+match /support_tickets/{document=**} {
+  allow read, write: if true;
 }
 
-match /notifications/{notifId} {
-  allow read: if true;
-  allow create: if true;
-  allow update: if isSignedIn() || isAdmin();
-  allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+match /admin_notifications/{document=**} {
+  allow read, write: if isAdmin();
 }
-match /security_logs/{logId} {
+
+match /admin_inbox/{document=**} {
+  allow read, write: if isAdmin();
+}
+
+match /notifications/{document=**} {
+  allow read, write: if true;
+}
+match /security_logs/{document=**} {
   allow read: if isAdmin();
   allow create: if true;
   allow update, delete: if false;
 }
-match /audit_logs/{logId} {
+match /audit_logs/{document=**} {
   allow read: if isAdmin();
   allow create: if true;
   allow update, delete: if false;
@@ -183,12 +203,21 @@ match /system_alerts/{document=**} { allow read: if true; allow create: if true;
 match /remoteQueue/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
 match /gpdp_plans/{document=**} { allow read: if true; allow write: if isAdmin(); }
 match /ubdDataChunks/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
-match /custom_code/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /custom_code/{document=**} { 
+  allow read: if true; 
+  allow write: if isAdmin();
+  match /history/{docId} {
+    allow read, write: if isAdmin();
+  }
+}
 match /daily_traffic/{document=**} { allow read: if isAdmin(); allow create: if true; allow update: if true; }
 match /visitor_logs/{document=**} { allow read: if isAdmin(); allow create: if true; }
 match /user_tracking/{document=**} { allow read: if isAdmin(); allow create: if true; }
 match /typing_status/{document=**} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
 match /software_repository/{document=**} { allow read: if true; allow write: if isAdmin() || isSignedIn(); }
+match /software_folders/{document=**} { allow read: if true; allow write: if isAdmin(); }
+match /survey_reports/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
+match /farmer_registry_jobs/{document=**} { allow read: if isAdmin(); allow write: if isAdmin(); }
 
 // Default deny (fallback) - పైన పేర్కొనని కలెక్షన్స్ ఏవైనా ఉంటే వాటిని బ్లాక్ చేస్తుంది
 match /{document=**} {

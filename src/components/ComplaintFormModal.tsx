@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Copy, Check, Search } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Swal from 'sweetalert2';
+import { generateTicketTrackingNumber } from '../services/supportTicketService';
 
 export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any) {
   const [ticketType, setTicketType] = useState("New Task");
@@ -35,10 +36,14 @@ export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any
       // Backend mapping for user details despite not showing them in UI
       const userName = userProfile?.name || userProfile?.username || user?.displayName || "Unknown User";
 
+      const trackingNumber = generateTicketTrackingNumber();
       const ticketRef = await addDoc(collection(db, "support_tickets"), {
         userId: user.uid,
+        uid: user.uid,
         userEmail: user.email,
         userName: userName,
+        trackingNumber: trackingNumber,
+        ticketNumber: trackingNumber,
         phone: contactNo.trim(),
         ticketType,
         moduleName,
@@ -60,17 +65,18 @@ export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any
       await addDoc(collection(db, "notifications"), {
         type: "admin_alert",
         title: "🚨 కొత్త సపోర్ట్ టికెట్",
-        message: `${userName} - ${subject.substring(0, 40)}...`,
+        message: `${userName} - ${subject.substring(0, 40)}... [ట్రాకింగ్: #${trackingNumber}]`,
         read: false,
         time: Date.now(),
-        complaintId: ticketRef.id
+        complaintId: ticketRef.id,
+        trackingNumber: trackingNumber
       }).catch(() => {});
 
       if (addToast) {
-        addToast("టికెట్ విజయవంతంగా సమర్పించబడింది.");
+        addToast(`టికెట్ విజయవంతంగా సమర్పించబడింది! నెంబర్: #${trackingNumber}`);
       }
 
-      setSuccessTicketId(ticketRef.id.substring(0, 8).toUpperCase());
+      setSuccessTicketId(trackingNumber);
     } catch (err) {
       console.error("Error submitting support request:", err);
       Swal.fire({
@@ -112,15 +118,37 @@ export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any
             <p className="text-slate-600 text-[15px] max-w-md">
               మీ సమస్య/విజ్ఞప్తి మా బృందానికి చేరింది. దయచేసి భవిష్యత్తు సూచన కోసం మీ టికెట్ నంబరును సేవ్ చేసుకోండి.
             </p>
-            <div className="bg-white border-2 border-dashed border-slate-300 px-6 py-4 rounded-lg">
-              <p className="text-slate-500 text-[13px] font-medium mb-1 uppercase tracking-wider">Ticket Reference Number</p>
-              <p className="text-3xl font-black text-[#005bb5]">#{successTicketId}</p>
+            <div className="bg-white border-2 border-dashed border-indigo-200 p-5 rounded-2xl max-w-sm w-full space-y-2">
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">యూనిక్ ట్రాకింగ్ నెంబర్ (Tracking ID)</p>
+              <p className="text-2xl sm:text-3xl font-mono font-black text-indigo-700">#{successTicketId}</p>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(successTicketId);
+                    if (addToast) addToast("ట్రాకింగ్ నెంబర్ కాపీ అయ్యింది!", "success");
+                  }}
+                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy size={12} /> కాపీ చేయండి
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    window.dispatchEvent(new CustomEvent("open-ticket-tracker", { detail: { code: successTicketId } }));
+                  }}
+                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <Search size={12} /> లైవ్ స్టేటస్ ట్రాక్ చేయండి
+                </button>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="mt-4 bg-[#005bb5] hover:bg-[#004a94] text-white px-8 py-2.5 rounded text-[14px] font-bold shadow-md transition-all hover:shadow-lg"
+              className="mt-2 bg-slate-800 hover:bg-slate-900 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all cursor-pointer"
             >
-              Close Window
+              విండోను మూసివేయి (Close Window)
             </button>
           </div>
         ) : (

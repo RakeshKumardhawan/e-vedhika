@@ -4,8 +4,10 @@ import {
   AlertTriangle, CheckCircle, Clock, Search, Bell, Settings,
   Download, FileText, BarChart2, Shield, Radio, Zap, Box, MessageSquare, 
   MapPin, UserCheck, ShieldAlert, Wifi, Cpu, ActivitySquare,
-  HeartPulse, Megaphone, RefreshCw, Sliders, ShieldCheck, Terminal, TrendingUp, DollarSign, LayoutDashboard, Rss, Palette, Bot, Sparkles, Languages, Package, Inbox, CheckSquare, MessageCircle, ArrowRight, Eye, Check, X, Filter
+  HeartPulse, Megaphone, RefreshCw, Sliders, ShieldCheck, Terminal, TrendingUp, DollarSign, LayoutDashboard, Rss, Palette, Bot, Sparkles, Languages, Package, Inbox, CheckSquare, MessageCircle, ArrowRight, Eye, Check, X, Filter, LifeBuoy
 } from 'lucide-react';
+import Swal from 'sweetalert2';
+import { pushPostToSupportSystem } from '../services/supportTicketService';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend
@@ -274,24 +276,31 @@ export function SuperAdminDashboard({
 
   const handleUpdatePostStatus = async (post: any, newStatus: string) => {
     try {
-      await updateDoc(doc(db, 'posts', post.id), { status: newStatus, verified: newStatus === 'published' });
       if (newStatus === 'private_support') {
-        const docRef = await addDoc(collection(db, 'support_tickets'), {
-          subject: post.title || post.subject || 'Support Request',
-          status: 'new',
-          uid: post.uid || '',
-          userName: post.userName || post.authorName || 'Citizen',
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        });
-        await addDoc(collection(db, 'support_tickets', docRef.id, 'messages'), {
-          senderId: post.uid || '',
-          senderName: post.userName || post.authorName || 'Citizen',
-          text: post.content || post.description || '',
-          time: Date.now()
-        });
-        if (addToast) addToast("Post moved to Private Support queue!", "success");
+        const res = await pushPostToSupportSystem(post, user);
+        if (res.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'సపోర్ట్ సిస్టమ్‌కు పంపబడింది! (Pushed to Support)',
+            html: `
+              <div class="text-left text-xs text-slate-600 space-y-2">
+                <p>పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ & ఇన్క్వైరీస్ లోకి బదిలీ చేయబడింది.</p>
+                <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-center my-2">
+                  <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">యూనిక్ ట్రాకింగ్ నెంబర్ (Unique Tracking Number)</span>
+                  <span class="text-lg font-mono font-black text-indigo-700 select-all block mt-0.5">#${res.trackingNumber}</span>
+                </div>
+                <p class="text-[11px] text-slate-500">ఈ నెంబర్‌తో యూజర్ ఎప్పుడైనా తమ పోస్ట్ లేదా విజ్ఞప్తి యొక్క లైవ్ స్టేటస్ ట్రాక్ చేయవచ్చు.</p>
+              </div>
+            `,
+            confirmButtonText: 'సరే (OK)',
+            confirmButtonColor: '#4f46e5'
+          });
+          if (addToast) addToast(`సపోర్ట్ సిస్టమ్‌కు పంపబడింది! ట్రాకింగ్: #${res.trackingNumber}`, "success");
+        } else {
+          if (addToast) addToast("సపోర్ట్ సిస్టమ్‌కు పంపడంలో లోపం: " + res.error, "error");
+        }
       } else {
+        await updateDoc(doc(db, 'posts', post.id), { status: newStatus, verified: newStatus === 'published' });
         if (addToast) addToast(`Post status updated to ${newStatus}`, "success");
       }
     } catch (e) {
@@ -469,47 +478,6 @@ export function SuperAdminDashboard({
       ) : (
         /* UNIFIED OVERVIEW & ANALYTICS HUB DASHBOARD */
         <div className="space-y-6 pb-12">
-          {/* Main Hero Header */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-[#0B3D91] to-[#1e1b4b] p-6 sm:p-8 rounded-3xl text-white shadow-xl border border-white/10">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/20 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/20 rounded-full blur-[80px] pointer-events-none -translate-x-1/3 translate-y-1/3"></div>
-            
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Live System Active
-                  </span>
-                  <span className="text-slate-300 text-xs font-medium">
-                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </span>
-                </div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-2">
-                  Admin Analytics & Control Hub
-                </h2>
-                <p className="text-blue-100/80 text-xs sm:text-sm max-w-2xl font-medium leading-relaxed">
-                  Real-time operational dashboard for E-Vedhika. Monitor user growth, submissions, community interactions, and system telemetry from a single interface.
-                </p>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-3">
-                <button 
-                  onClick={() => setIsSearchOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/15 rounded-2xl text-xs font-bold transition-all backdrop-blur-md"
-                >
-                  <Search size={15} /> Quick Search <span className="text-[10px] opacity-60 bg-white/20 px-1.5 py-0.5 rounded-md">Ctrl+K</span>
-                </button>
-                <button 
-                  onClick={() => navigateToTab("broadcast")} 
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white rounded-2xl font-black text-xs transition-all shadow-lg shadow-blue-900/40 border border-white/20"
-                >
-                  <Megaphone size={15} /> Broadcast
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* 10 High-Precision Live System Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {[
@@ -531,8 +499,6 @@ export function SuperAdminDashboard({
                   onClick={() => navigateToTab(stat.tab)} 
                   className="relative overflow-hidden p-4 bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
                 >
-                  <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${stat.color}`}></div>
-                  
                   <div className="flex items-center justify-between mb-3">
                     <div className={`p-2 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-xs`}>
                       <Icon size={16} />
@@ -722,14 +688,19 @@ export function SuperAdminDashboard({
                           </span>
                         </td>
                         <td className="p-3.5">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
-                            p.status === 'published' ? 'bg-emerald-50 text-emerald-700' :
-                            p.status === 'private_support' ? 'bg-purple-50 text-purple-700' :
-                            p.status === 'rejected' ? 'bg-amber-50 text-amber-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {p.status || 'pending'}
-                          </span>
+                          {p.status === 'private_support' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                              సపోర్ట్: #{p.trackingNumber || 'Active'}
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                              p.status === 'published' ? 'bg-emerald-50 text-emerald-700' :
+                              p.status === 'rejected' ? 'bg-amber-50 text-amber-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {p.status || 'pending'}
+                            </span>
+                          )}
                         </td>
                         <td className="p-3.5 text-right space-x-1.5">
                           {p.status === 'pending' && (
@@ -742,9 +713,10 @@ export function SuperAdminDashboard({
                               </button>
                               <button
                                 onClick={() => handleUpdatePostStatus(p, 'private_support')}
-                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-black transition-colors"
+                                className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-black transition-all inline-flex items-center gap-1 shadow-xs"
+                                title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
                               >
-                                Support
+                                <LifeBuoy size={11} /> పుష్ టు సపోర్ట్ సిస్టమ్
                               </button>
                               <button
                                 onClick={() => handleUpdatePostStatus(p, 'rejected')}

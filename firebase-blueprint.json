@@ -122,9 +122,32 @@
         "date": { "type": "string" },
         "time": { "type": "string" }
       }
+    },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "Citizen grievance inquiry or pushed community post ticket with unique tracking code.",
+      "type": "object",
+      "properties": {
+        "trackingNumber": { "type": "string" },
+        "ticketNumber": { "type": "string" },
+        "subject": { "type": "string" },
+        "problem": { "type": "string" },
+        "status": { "type": "string" },
+        "category": { "type": "string" },
+        "userName": { "type": "string" },
+        "userId": { "type": "string" },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "updatedAt": { "type": "integer" },
+        "postId": { "type": "string" }
+      }
     }
   },
   "firestore": {
+    "/support_tickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "Citizen support tickets and inquiries."
+    },
     "/telemetryLogs/{logId}": {
       "schema": "TelemetryLog",
       "description": "EXE and UBD diagnostic telemetry logs."

@@ -2,11 +2,11 @@
   "firestore": [
     {
       "rules": "firestore.rules",
-      "database": "(default)"
+      "database": "ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db"
     },
     {
       "rules": "firestore.rules",
-      "database": "ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db"
+      "database": "(default)"
     }
   ],
   "storage": {

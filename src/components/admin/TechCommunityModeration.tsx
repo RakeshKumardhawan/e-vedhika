@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { MessageSquare, Shield, CheckCircle, Trash2, Bot, AlertTriangle, MessageCircle } from 'lucide-react';
+import { MessageSquare, Shield, CheckCircle, Trash2, Bot, AlertTriangle, MessageCircle, LifeBuoy } from 'lucide-react';
 import { collection, onSnapshot, query, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
+import Swal from 'sweetalert2';
+import { pushPostToSupportSystem } from '../../services/supportTicketService';
 
 export function TechCommunityModeration() {
   const [pendingPosts, setPendingPosts] = useState<any[]>([]);
@@ -25,6 +27,7 @@ export function TechCommunityModeration() {
   }, []);
 
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'private_support') => {
+    const postDoc = pendingPosts.find(p => p.id === id);
     if (action === 'approve') {
       await updateDoc(doc(db, "posts", id), { status: "published" });
       
@@ -40,13 +43,27 @@ export function TechCommunityModeration() {
         category: "DELETE", title: "Post Rejected", description: "Post " + id + " was rejected", admin: "Admin", time: Date.now()
       });
     } else if (action === 'private_support') {
-      await updateDoc(doc(db, "posts", id), { status: "private_support" });
-      
-      // Audit log
-      await addDoc(collection(db, "security_logs"), {
-        category: "SETTINGS_CHANGE", title: "Post Moved to Private Support", description: "Post " + id + " was moved to private support", admin: "Admin", time: Date.now()
-      });
-      alert("Post moved to private support. It will not be visible publicly.");
+      if (postDoc) {
+        const res = await pushPostToSupportSystem(postDoc);
+        if (res.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'సపోర్ట్ సిస్టమ్‌కు పంపబడింది! (Pushed to Support)',
+            html: `
+              <div class="text-left text-xs text-slate-600 space-y-2">
+                <p>పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ / ఇన్క్వైరీస్ లోకి మార్చబడింది.</p>
+                <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-center my-2">
+                  <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">యూనిక్ ట్రాకింగ్ నెంబర్ (Unique Tracking Number)</span>
+                  <span class="text-lg font-mono font-black text-indigo-700 select-all block mt-0.5">#${res.trackingNumber}</span>
+                </div>
+                <p class="text-[11px] text-slate-500">ఈ నెంబర్‌తో యూజర్ ఎప్పుడైనా తమ పోస్ట్ లేదా విజ్ఞప్తి యొక్క లైవ్ స్టేటస్ ట్రాక్ చేయవచ్చు.</p>
+              </div>
+            `,
+            confirmButtonText: 'సరే (OK)',
+            confirmButtonColor: '#4f46e5'
+          });
+        }
+      }
     }
   };
 
@@ -92,13 +109,21 @@ export function TechCommunityModeration() {
                   <td className="p-3 text-right flex items-center justify-end gap-2">
                     <button 
                       onClick={() => handleAction(item.id, 'approve')}
-                      className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors tooltip-trigger" title="Approve"
+                      className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors tooltip-trigger" title="పబ్లిక్ పోర్టల్లో ప్రచురించు (Publish General Post)"
                     >
                       <CheckCircle size={16} />
                     </button>
                     <button 
+                      onClick={() => handleAction(item.id, 'private_support')}
+                      className="p-1.5 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700 hover:bg-purple-100 rounded-lg transition-all tooltip-trigger flex items-center gap-1 font-bold text-[10px]" 
+                      title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
+                    >
+                      <LifeBuoy size={14} className="text-purple-600" />
+                      <span className="hidden sm:inline">పుష్ టు సపోర్ట్</span>
+                    </button>
+                    <button 
                       onClick={() => handleAction(item.id, 'reject')}
-                      className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors tooltip-trigger" title="Reject / Delete"
+                      className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors tooltip-trigger" title="తిరస్కరించు (Reject / Delete)"
                     >
                       <Trash2 size={16} />
                     </button>
