@@ -3616,6 +3616,17 @@ export default function App() {
           const p = { id: snap.id, ...snap.data() } as UserProfile & { welcomeMessageSent?: boolean };
           setUserProfile(p);
           
+          // Increment visit/login count once per session
+          const sessionKey = "ev_visit_incremented_" + user.uid;
+          if (!sessionStorage.getItem(sessionKey)) {
+            sessionStorage.setItem(sessionKey, "true");
+            const currentCount = p.loginCount || 0;
+            updateDoc(doc(db, "users", user.uid), {
+              loginCount: currentCount + 1,
+              lastLoginTime: Date.now()
+            }).catch(console.error);
+          }
+          
           if (!p.welcomeNotificationSent) {
             // Send detailed welcome notification to existing & new users on login
             updateDoc(doc(db, "users", user.uid), { welcomeNotificationSent: true }).then(async () => {
@@ -9179,6 +9190,8 @@ function EditProfileModal({
           theme,
           notifications,
           time: userProfile?.time || Date.now(),
+          loginCount: userProfile?.loginCount || 1,
+          lastLoginTime: userProfile?.lastLoginTime || Date.now(),
         },
         { merge: true },
       );
@@ -9317,6 +9330,45 @@ function EditProfileModal({
               </div>
             </div>
           )}
+
+          {/* User Visit Stats (విజిటర్ గణాంకాలు - ఆ యూజర్ కి మాత్రమే) */}
+          <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 mb-4 text-left shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <Activity size={18} className="animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-none">
+                    మీ లాగిన్ వివరాలు (Login Stats)
+                  </h4>
+                  <p className="text-[9px] font-bold text-amber-600 uppercase mt-1 tracking-tight">
+                    ఈ వెబ్‌సైట్‌లో మీ సందర్శనల సంఖ్య
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-black text-amber-800 block">
+                  {userProfile?.loginCount || 1} సార్లు
+                </span>
+                <span className="text-[8px] font-bold text-amber-500 uppercase tracking-tighter">
+                  Total Visits
+                </span>
+              </div>
+            </div>
+            {userProfile?.lastLoginTime && (
+              <div className="mt-2.5 pt-2 border-t border-amber-200/20 flex justify-between items-center text-[9px] font-bold text-slate-500">
+                <span>చివరిగా లాగిన్ అయిన సమయం:</span>
+                <span className="text-slate-700">
+                  {new Date(userProfile.lastLoginTime).toLocaleString("te-IN", {
+                    hour12: true,
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Cover Photo Section */}
           <div className="mb-4">
@@ -13143,6 +13195,7 @@ function AdminPanel({
                               Village: u.panchayat || "",
                               Designation: u.designation || "",
                               Role: u.role || "user",
+                              Visits: u.loginCount || 1,
                               Status: u.isDeleted ? "Deleted" : "Active",
                               Joined: u.createdAt
                                 ? new Date(u.createdAt).toLocaleDateString()
@@ -13449,6 +13502,12 @@ function AdminPanel({
                               <span>Usage Time</span>
                               <span className="text-blue-600 font-bold">
                                 {u.timeSpentMinutes || 0} Minutes
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+                              <span>Visit Count</span>
+                              <span className="text-amber-600 font-bold">
+                                {u.loginCount || 1} Times (సార్లు)
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
