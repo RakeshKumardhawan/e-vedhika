@@ -72,6 +72,17 @@
         "link": { "type": "string" }
       }
     },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "Customer support requests.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "userId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      }
+    },
     "GosFormat": {
       "title": "GOs and Formats",
       "description": "Government orders, formats and application PDFs shared by admin.",

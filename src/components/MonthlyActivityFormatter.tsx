@@ -34,11 +34,11 @@ export const STANDARD_MAS_ACTIVITIES = [
   "Record Maintenance",
   "Approvals and Certificates",
   "Death",
+  "Birth",
   "Receipts",
   "Salary Details",
   "VWSC Balance",
-  "MGNRE Bank Balance",
-  "Birth"
+  "MGNRE Bank Balance"
 ];
 
 export interface MonthlyActivityFormatterProps {
@@ -242,11 +242,11 @@ export function MonthlyActivityFormatter({
     if (!rawText) return true;
     const clean = rawText
       .toLowerCase()
-      .replace(/ entered\s*%/gi, "")
-      .replace(/ not entered/gi, "")
-      .replace(/ entered/gi, "")
-      .replace(/ pending/gi, "")
-      .replace(/ status/gi, "")
+      .replace(/entered\s*%/gi, "")
+      .replace(/not\s*entered/gi, "")
+      .replace(/entered/gi, "")
+      .replace(/pending/gi, "")
+      .replace(/status/gi, "")
       .replace(/[^a-z0-9]/g, "")
       .trim();
 
@@ -255,7 +255,7 @@ export function MonthlyActivityFormatter({
       "panchayatname", "grampanchayatname", "grampanchayat", "gpname", "panchayat", "village", "villagename", "gp", "nameofgp", "nameofgrampanchayat", "panchayatnameentered", "gpnameentered",
       "mandalname", "mandal", "districtname", "district", "nameofmandal", "nameofdistrict", "mandalnameentered",
       "total", "grandtotal", "totalgps", "totalgp", "overall", "overallpercent", "overallpercentage", "percentage",
-      "status", "action", "actions", "remarks", "name", "notentered", "entered",
+      "status", "action", "actions", "remarks", "name", "notentered", "entered", "enteredpercentage",
       "totalnoofgps", "totalnoofgp", "noofgps", "noofgp", "totalgpsentered", "totalgpentered", "noofgpentered"
     ];
     if (reserved.includes(clean)) return true;
@@ -270,11 +270,11 @@ export function MonthlyActivityFormatter({
     const t = rawText
       .replace(/\n+/g, " ")
       .replace(/[\r\t]+/g, " ")
-      .replace(/ entered\s*%/gi, "")
-      .replace(/ entered/gi, "")
-      .replace(/ not entered/gi, "")
-      .replace(/ pending/gi, "")
-      .replace(/ status/gi, "")
+      .replace(/entered\s*%/gi, "")
+      .replace(/not\s*entered/gi, "")
+      .replace(/entered/gi, "")
+      .replace(/pending/gi, "")
+      .replace(/status/gi, "")
       .replace(/%/g, "")
       .replace(/_/g, " ")
       .trim();
@@ -408,11 +408,9 @@ export function MonthlyActivityFormatter({
     if (detectedMandal) setMandalNameInput(detectedMandal);
 
     // 2. Classify sheets into: Report 14, Report 13, District Report
-    let isDistrict = false;
-    let districtRows: any[][] | null = null;
-
     const report14Sheets: any[][][] = [];
     const report13Sheets: any[][][] = [];
+    const districtSheets: any[][][] = [];
 
     sheets.forEach((sheet) => {
       const rows = sheet.rows;
@@ -422,7 +420,7 @@ export function MonthlyActivityFormatter({
       let hasDistrictKeyword = false;
       let hasReport13Keyword = false;
 
-      for (let i = 0; i < Math.min(rows.length, 15); i++) {
+      for (let i = 0; i < Math.min(rows.length, 30); i++) {
         const joined = (rows[i] || []).map((c) => String(c || "").toLowerCase().trim()).join(" ");
 
         // Report 14: Pending List
@@ -432,11 +430,10 @@ export function MonthlyActivityFormatter({
         }
 
         // District Report: Contains Mandal Name / Total No. of Gps without Panchayat Name
-        if (
-          (joined.includes("mandal name") || joined.includes("mandal")) &&
-          !joined.includes("panchayat name") &&
-          !joined.includes("gram panchayat")
-        ) {
+        const containsMandal = joined.includes("mandal name") || joined.includes("mandal_name") || joined.includes("mandalname") || joined.includes("mandal name entered");
+        const containsPanchayat = joined.includes("panchayat name") || joined.includes("gram panchayat") || joined.includes("gp name") || joined.includes("gp_name") || joined.includes("villagename");
+
+        if (containsMandal && !containsPanchayat) {
           if (
             joined.includes("total no") ||
             joined.includes("total gp") ||
@@ -444,21 +441,25 @@ export function MonthlyActivityFormatter({
             joined.includes("nursery") ||
             joined.includes("plantation") ||
             joined.includes("entered") ||
-            joined.includes("%")
+            joined.includes("%") ||
+            joined.includes("telangana") ||
+            joined.includes("monthly activity")
           ) {
             hasDistrictKeyword = true;
             break;
           }
         }
 
-        // Check for "Total No. of Gp's" in header
-        if (joined.includes("total no") && (joined.includes("gp") || joined.includes("gps"))) {
-          hasDistrictKeyword = true;
-          break;
+        // Check for "Total No. of Gp's" specifically (Very common in District MAS)
+        if ((joined.includes("total no") || joined.includes("no of gp")) && (joined.includes("gp") || joined.includes("gps"))) {
+          if (!containsPanchayat) {
+            hasDistrictKeyword = true;
+            break;
+          }
         }
 
         // Report 13: Gram Panchayat Matrix
-        if (joined.includes("panchayat name") || joined.includes("gram panchayat")) {
+        if (containsPanchayat) {
           hasReport13Keyword = true;
           break;
         }
@@ -467,8 +468,7 @@ export function MonthlyActivityFormatter({
       if (hasReport14Keyword) {
         report14Sheets.push(rows);
       } else if (hasDistrictKeyword) {
-        isDistrict = true;
-        districtRows = rows;
+        districtSheets.push(rows);
       } else if (hasReport13Keyword) {
         report13Sheets.push(rows);
       } else {
@@ -477,8 +477,7 @@ export function MonthlyActivityFormatter({
         if (firstFew.includes("pending")) {
           report14Sheets.push(rows);
         } else if (firstFew.includes("mandal name") || (firstFew.includes("mandal") && !firstFew.includes("panchayat"))) {
-          isDistrict = true;
-          districtRows = rows;
+          districtSheets.push(rows);
         } else {
           report13Sheets.push(rows);
         }
@@ -486,12 +485,22 @@ export function MonthlyActivityFormatter({
     });
 
     // 3. IF DISTRICT REPORT
-    if (isDistrict && districtRows) {
-      parseDistrictSheet(districtRows);
+    if (districtSheets.length > 0) {
+      parseDistrictSheet(districtSheets);
       return;
     }
 
     // 4. MANDAL REPORT: Extract Report 14 and/or Report 13 and merge seamlessly
+    const normalizePanchayatName = (name: string): string => {
+      if (!name) return "";
+      return name
+        .toUpperCase()
+        .replace(/^[\d\s.\-)]+/, "") // Remove leading numbers
+        .replace(/\b(GP|GRAM\s*PANCHAYAT|VILLAGE|GP\s*NAME|G\.P)\b/gi, "") // Remove suffixes
+        .replace(/[^A-Z0-9]/g, "") // Keep alphanumeric only
+        .trim();
+    };
+
     const mandalMap = new Map<string, {
       name: string;
       status: Record<string, number>;
@@ -569,7 +578,8 @@ export function MonthlyActivityFormatter({
           const enteredCount = STANDARD_MAS_ACTIVITIES.length - pendingActsList.length;
           const percentage = parseFloat(((enteredCount / STANDARD_MAS_ACTIVITIES.length) * 100).toFixed(2));
 
-          mandalMap.set(pName, {
+          const normName = normalizePanchayatName(pName);
+          mandalMap.set(normName, {
             name: pName,
             status: statusMap,
             pendingActivities: pendingActsList,
@@ -656,8 +666,9 @@ export function MonthlyActivityFormatter({
           }
         });
 
-        // Merge with Report 14 if already registered
-        const existing = mandalMap.get(pName);
+        // Merge with Report 14 if already registered using Normalized GP Name
+        const normName = normalizePanchayatName(pName);
+        const existing = mandalMap.get(normName);
         if (existing) {
           // Report 13 matrix is the primary source of truth for 0/1 status: update status values!
           finalActCols.forEach((actCol) => {
@@ -665,7 +676,7 @@ export function MonthlyActivityFormatter({
           });
         } else {
           // Add Panchayat (e.g. 100% completed GPs that had 0 pending activities in Report 14)
-          mandalMap.set(pName, {
+          mandalMap.set(normName, {
             name: pName,
             status: statusMap,
             pendingActivities: pendingActs,
@@ -677,9 +688,19 @@ export function MonthlyActivityFormatter({
     });
 
     // 5. Build final unified records with guaranteed 100% synchronization
-    const activeMandalActivities = (report13Sheets.length > 0 && detectedMandalActivitiesSet.size > 0)
+    let activeMandalActivities = (report13Sheets.length > 0 && detectedMandalActivitiesSet.size > 0)
       ? Array.from(detectedMandalActivitiesSet)
-      : STANDARD_MAS_ACTIVITIES;
+      : STANDARD_MAS_ACTIVITIES.filter(act => act !== "Birth");
+
+    // Sort to follow standard sequence and keep columns consistent
+    activeMandalActivities.sort((a, b) => {
+      const idxA = STANDARD_MAS_ACTIVITIES.indexOf(a);
+      const idxB = STANDARD_MAS_ACTIVITIES.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
 
     const finalMandalList = Array.from(mandalMap.values()).map((rec, idx) => {
       // GUARANTEED SYNC: An activity is pending IF AND ONLY IF status is explicitly 0!
@@ -721,155 +742,259 @@ export function MonthlyActivityFormatter({
     addToast(`Mandal Report 13 and 14 loaded successfully (Total ${finalMandalList.length} Panchayats)!`);
   };
 
-  // Parse District Percentage Sheet
-  const parseDistrictSheet = (rawData: any[][]) => {
-    // 1. Find the Sub-header Row (The row containing "Entered" and "Not Entered")
-    let sIdx = -1;
-    for (let i = 0; i < Math.min(rawData.length, 30); i++) {
-      const rowStrings = (rawData[i] || []).map(c => String(c || "").toLowerCase().trim());
-      // A sub-header row typically has many "entered" and "not entered" cells
-      const matches = rowStrings.filter(s => s === "entered" || s === "not entered" || s.includes("entered %")).length;
-      if (matches >= 6) {
-        sIdx = i;
-        break;
-      }
-    }
+  // Parse District Percentage Sheet and merge multiple sheets seamlessly
+  const parseDistrictSheet = (districtSheets: any[][][]) => {
+    const normalizeMandalName = (name: string): string => {
+      if (!name) return "";
+      return name.toUpperCase().replace(/[^A-Z0-9]/g, "").trim();
+    };
 
-    // 2. Identify the Main Header Row (The row above the sub-header)
-    let hIdx = sIdx > 0 ? sIdx - 1 : -1;
+    // Store unique mandals
+    const districtMap = new Map<string, {
+      name: string;
+      totalGPs: number;
+      activities: Record<string, { entered: number; notEntered: number; percentage: number }>;
+    }>();
 
-    // Fallback if sIdx was not found: search for "Mandal Name"
-    if (sIdx === -1) {
+    const detectedDistrictActivitiesSet = new Set<string>();
+
+    districtSheets.forEach((rawData) => {
+      // 1. Find the Sub-header Row (The row containing "Entered" and "%" or "Not Entered")
+      let sIdx = -1;
       for (let i = 0; i < Math.min(rawData.length, 30); i++) {
-        const rowJoined = (rawData[i] || []).map(c => String(c || "").toLowerCase()).join(" ");
-        if (rowJoined.includes("mandal name") || rowJoined.includes("total no. of gp")) {
-          hIdx = i;
-          sIdx = i + 1;
+        const rowStrings = (rawData[i] || []).map(c => String(c || "").toLowerCase().trim());
+        const matches = rowStrings.filter(s => s === "entered" || s === "not entered" || s === "not_entered" || s === "%" || s.includes("entered %")).length;
+        if (matches >= 4) {
+          sIdx = i;
           break;
         }
       }
-    }
 
-    if (sIdx === -1 || hIdx === -1) {
-      addToast("Could not recognize report headers. Please upload a valid report file.");
-      return;
-    }
+      // 2. Identify the Main Header Row (The row above the sub-header)
+      let hIdx = sIdx > 0 ? sIdx - 1 : -1;
 
-    const mHead = rawData[hIdx] || [];
-    const sHead = rawData[sIdx] || [];
-
-    // 3. Detect Mandal and Total GP Columns
-    let mCol = -1, tCol = -1;
-    // Check both header rows for these labels
-    [mHead, sHead].forEach(row => {
-      for (let c = 0; c < row.length; c++) {
-        const txt = String(row[c] || "").toLowerCase().trim();
-        if (mCol === -1 && (txt.includes("mandal name") || txt === "mandal")) mCol = c;
-        if (tCol === -1 && (txt.includes("total no") || txt.includes("total gp") || txt.includes("no. of gp") || txt.includes("total no. of gp"))) tCol = c;
+      // Fallback if sIdx was not found: search for "Mandal Name"
+      if (sIdx === -1) {
+        for (let i = 0; i < Math.min(rawData.length, 30); i++) {
+          const rowJoined = (rawData[i] || []).map(c => String(c || "").toLowerCase()).join(" ");
+          if (rowJoined.includes("mandal name") || rowJoined.includes("total no. of gp") || rowJoined.includes("mandal")) {
+            hIdx = i;
+            sIdx = i + 1;
+            break;
+          }
+        }
       }
-    });
-    if (mCol === -1) mCol = 1;
-    if (tCol === -1) tCol = 2;
 
-    // 4. Map Activity Columns
-    const actCols: { name: string; entIdx: number; notEntIdx?: number; isPct: boolean }[] = [];
-    const usedIndices = new Set<number>();
+      if (sIdx === -1) return; // invalid sheet
 
-    // Scan columns in the sub-header
-    for (let c = 0; c < sHead.length; c++) {
-      if (c === mCol || c === tCol || usedIndices.has(c)) continue;
-      
-      const subTxt = String(sHead[c] || "").toLowerCase().trim();
-      if (subTxt === "entered" || subTxt === "entered %") {
-        // This is an "Entered" column. Find what activity it belongs to.
-        // Usually the activity title is in the row above (mHead), possibly to the left if merged.
+      const mHead = hIdx !== -1 ? (rawData[hIdx] || []) : [];
+      const sHead = rawData[sIdx] || [];
+
+      // 3. Detect Mandal and Total GP Columns
+      let mCol = -1, tCol = -1;
+      [mHead, sHead].forEach(row => {
+        for (let c = 0; c < row.length; c++) {
+          const txt = String(row[c] || "").toLowerCase().trim();
+          if (mCol === -1 && (txt.includes("mandal name") || txt === "mandal")) mCol = c;
+          if (tCol === -1 && (txt.includes("total no") || txt.includes("total gp") || txt.includes("no. of gp") || txt.includes("total no. of gp") || txt.includes("no of gp"))) tCol = c;
+        }
+      });
+
+      if (mCol === -1) {
+        for (let c = 0; c < Math.min(sHead.length, 5); c++) {
+          const txt = String(sHead[c] || "").toLowerCase().trim();
+          if (txt.includes("mandal") || (c > 0 && isNaN(Number(txt)) && txt.length > 2)) {
+            mCol = c;
+            break;
+          }
+        }
+      }
+      if (mCol === -1) mCol = 1;
+      if (tCol === -1) tCol = mCol + 1;
+
+      // 4. Map Column Groups by Activity Title
+      const activityColGroups = new Map<string, {
+        entIdx?: number;
+        notEntIdx?: number;
+        pctIdx?: number;
+      }>();
+
+      for (let c = 0; c < sHead.length; c++) {
+        if (c === mCol || c === tCol) continue;
+
         let rawTitle = "";
         let scanIdx = c;
         while (scanIdx >= 0) {
           const t = String(mHead[scanIdx] || "").trim();
           if (t) { rawTitle = t; break; }
-          // If we hit another "entered" to the left, stop scanning
-          if (scanIdx < c && String(sHead[scanIdx] || "").toLowerCase().trim() === "entered") break;
           scanIdx--;
         }
 
-        const cleanTitle = cleanActivityTitle(rawTitle);
-        if (cleanTitle && !isReservedNonActivityHeader(cleanTitle)) {
-          const isPct = subTxt.includes("%");
-          let notEntIdx: number | undefined = undefined;
-          if (String(sHead[c + 1] || "").toLowerCase().trim() === "not entered") {
-            notEntIdx = c + 1;
-          }
+        if (!rawTitle) {
+          rawTitle = String(sHead[c] || "").trim();
+        }
 
-          actCols.push({ name: cleanTitle, entIdx: c, notEntIdx, isPct });
-          usedIndices.add(c);
-          if (notEntIdx !== undefined) usedIndices.add(notEntIdx);
+        const cleanTitle = cleanActivityTitle(rawTitle);
+        const isOverallCol = cleanTitle === "overall" || cleanTitle === "overallpercentage" || cleanTitle === "overallpercent";
+
+        if (cleanTitle && !isReservedNonActivityHeader(cleanTitle) && !isOverallCol) {
+          const subTxt = String(sHead[c] || "").toLowerCase().trim();
+          
+          if (!activityColGroups.has(cleanTitle)) {
+            activityColGroups.set(cleanTitle, {});
+          }
+          const group = activityColGroups.get(cleanTitle)!;
+
+          if (subTxt === "%" || subTxt.includes("entered %") || subTxt.includes("%")) {
+            group.pctIdx = c;
+          } else if (subTxt === "not entered" || subTxt === "not_entered" || subTxt.includes("not entered")) {
+            group.notEntIdx = c;
+          } else {
+            group.entIdx = c;
+          }
+          detectedDistrictActivitiesSet.add(cleanTitle);
         }
       }
-    }
 
-    // 5. Parse Mandal Data Rows
-    const dataStart = sIdx + 1;
-    const bodyRows = rawData.slice(dataStart);
-    const parsed: any[] = [];
+      // 5. Parse Mandal Data Rows
+      const dataStart = sIdx + 1;
+      const bodyRows = rawData.slice(dataStart);
 
-    bodyRows.forEach(row => {
-      if (!row || row.length < 2) return;
-      const rawM = String(row[mCol] || "").trim();
-      if (!rawM || rawM.toLowerCase().includes("total") || rawM.toLowerCase().includes("statement") || rawM.toLowerCase().includes("telangana")) return;
+      bodyRows.forEach(row => {
+        if (!row || row.length < 2) return;
+        const rawM = String(row[mCol] || "").trim();
+        if (!rawM || rawM.toLowerCase().includes("total") || rawM.toLowerCase().includes("statement") || rawM.toLowerCase().includes("telangana") || rawM.toLowerCase().includes("monthly")) return;
 
-      const mName = rawM.replace(/^[\d\s.\-)]+/, "").toUpperCase();
-      const tGPs = parseInt(String(row[tCol] || "0").replace(/[^\d]/g, ""), 10) || 1;
-      
-      const activities: any = {};
-      let sumP = 0;
+        const mName = rawM.replace(/^[\d\s.\-)]+/, "").toUpperCase();
+        const tGPs = parseInt(String(row[tCol] || "0").replace(/[^\d]/g, ""), 10) || 1;
+        const normMandal = normalizeMandalName(mName);
 
-      actCols.forEach(ac => {
-        const val = String(row[ac.entIdx] || "0").trim();
-        const num = parseFloat(val.replace(/[^\d.]/g, "")) || 0;
-        let p = 0;
-
-        if (ac.isPct || val.includes("%")) {
-          p = num;
-          if (p > 100 && tGPs > 0) p = (num / tGPs) * 100;
-        } else {
-          // If the number is a count (Entered GPs)
-          p = tGPs > 0 ? (num / tGPs) * 100 : 0;
+        if (!districtMap.has(normMandal)) {
+          districtMap.set(normMandal, {
+            name: mName,
+            totalGPs: tGPs,
+            activities: {}
+          });
         }
-        
-        p = Math.min(100, Math.max(0, p));
-        activities[ac.name] = { 
-          entered: num, 
-          notEntered: ac.notEntIdx !== undefined ? (parseFloat(String(row[ac.notEntIdx] || "0").replace(/[^\d.]/g, "")) || 0) : Math.max(0, tGPs - num),
-          percentage: parseFloat(p.toFixed(2)) 
-        };
-        sumP += p;
-      });
 
-      parsed.push({
-        "S.No": 0, "Mandal Name": mName, "TotalGPs": tGPs, activities,
-        "Overall %": actCols.length > 0 ? parseFloat((sumP / actCols.length).toFixed(2)) : 0
+        const mandalRecord = districtMap.get(normMandal)!;
+        if (tGPs > mandalRecord.totalGPs) {
+          mandalRecord.totalGPs = tGPs;
+        }
+
+        activityColGroups.forEach((group, act) => {
+          let ent = 0;
+          let notEnt = 0;
+          let pct = 0;
+
+          if (group.entIdx !== undefined) {
+            ent = parseFloat(String(row[group.entIdx] || "0").replace(/[^\d.]/g, "")) || 0;
+          }
+          if (group.notEntIdx !== undefined) {
+            notEnt = parseFloat(String(row[group.notEntIdx] || "0").replace(/[^\d.]/g, "")) || 0;
+          }
+          if (group.pctIdx !== undefined) {
+            pct = parseFloat(String(row[group.pctIdx] || "0").replace(/[^\d.]/g, "")) || 0;
+          }
+
+          const existingAct = mandalRecord.activities[act];
+          if (existingAct) {
+            ent = ent || existingAct.entered;
+            notEnt = notEnt || existingAct.notEntered;
+            pct = pct || existingAct.percentage;
+          }
+
+          const totalGPs = mandalRecord.totalGPs;
+          if (group.entIdx !== undefined && group.notEntIdx !== undefined) {
+            // we have both
+          } else if (group.entIdx !== undefined) {
+            notEnt = Math.max(0, totalGPs - ent);
+          } else if (group.notEntIdx !== undefined) {
+            ent = Math.max(0, totalGPs - notEnt);
+          } else if (group.pctIdx !== undefined) {
+            ent = Math.round((pct / 100) * totalGPs);
+            notEnt = Math.max(0, totalGPs - ent);
+          }
+
+          if (group.pctIdx === undefined) {
+            pct = totalGPs > 0 ? (ent / totalGPs) * 100 : 0;
+          }
+
+          pct = Math.min(100, Math.max(0, pct));
+
+          mandalRecord.activities[act] = {
+            entered: ent,
+            notEntered: notEnt,
+            percentage: parseFloat(pct.toFixed(2))
+          };
+        });
       });
     });
 
-    if (parsed.length === 0) {
+    if (districtMap.size === 0) {
       addToast("Data could not be recognized. Please upload a valid file.");
       return;
     }
 
-    parsed.forEach((r, i) => r["S.No"] = i + 1);
-    setDynamicActivities(actCols.map(a => a.name));
+    let activeDistrictActivities = detectedDistrictActivitiesSet.size > 0
+      ? Array.from(detectedDistrictActivitiesSet)
+      : STANDARD_MAS_ACTIVITIES.filter(act => act !== "Birth");
+
+    // Sort to follow standard sequence and keep columns consistent
+    activeDistrictActivities.sort((a, b) => {
+      const idxA = STANDARD_MAS_ACTIVITIES.indexOf(a);
+      const idxB = STANDARD_MAS_ACTIVITIES.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    const parsed: any[] = [];
+    Array.from(districtMap.values()).forEach((rec, idx) => {
+      const activities: Record<string, { entered: number; notEntered: number; percentage: number }> = {};
+      let sumP = 0;
+
+      activeDistrictActivities.forEach((act) => {
+        const actData = rec.activities[act] || { entered: 0, notEntered: rec.totalGPs, percentage: 0 };
+        if (actData.entered === 0 && actData.notEntered === 0) {
+          actData.notEntered = rec.totalGPs;
+        }
+        activities[act] = actData;
+        sumP += actData.percentage;
+      });
+
+      const activeActs = activeDistrictActivities.map(act => activities[act]);
+      const avgEntered = activeActs.length > 0 ? activeActs.reduce((acc, a) => acc + a.entered, 0) / activeActs.length : 0;
+      const overallPct = activeDistrictActivities.length > 0 ? parseFloat((sumP / activeDistrictActivities.length).toFixed(2)) : 0;
+
+      parsed.push({
+        "S.No": idx + 1,
+        "Mandal Name": rec.name,
+        "TotalGPs": rec.totalGPs,
+        activities,
+        "Overall Entered": parseFloat(avgEntered.toFixed(2)),
+        "Overall %": overallPct
+      });
+    });
+
+    setDynamicActivities(activeDistrictActivities);
     setDistrictData(parsed);
     setReportLevel("district");
-    addToast(`District report loaded successfully (Total ${parsed.length} Mandals)!`);
+    addToast(`District report loaded successfully (Total ${parsed.length} Mandals merged)!`);
   };
 
   // Handle file drop / file select
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    
+    // Check login for tools except DSR (already handled in App.tsx navigation but double check here)
     if (user !== undefined && !user) {
-      if (requireLoginAlert(user)) return;
+      if (requireLoginAlert(user)) {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
     }
     await processUploadedFiles(Array.from(files));
   };
@@ -1037,11 +1162,16 @@ export function MonthlyActivityFormatter({
 
   // Color coding helper for district percentages (Matching demo.jpeg heatmap exactly)
   const getPercentageColorClass = (pct: number) => {
-    if (pct >= 99.99) return "bg-[#22c55e] text-white font-bold";
-    if (pct >= 90) return "bg-[#bbf7d0] text-slate-900 font-bold";
-    if (pct >= 75) return "bg-[#fef9c3] text-slate-900 font-bold";
-    if (pct >= 50) return "bg-[#fef08a] text-slate-900 font-bold";
-    return "bg-[#fecdd3] text-slate-900 font-bold";
+    if (pct >= 100) return "bg-[#228b22] text-white font-bold";
+    if (pct >= 90) return "bg-[#90ee90] text-slate-900 font-bold";
+    if (pct >= 75) return "bg-[#ffff00] text-slate-900 font-bold";
+    if (pct >= 50) return "bg-[#ffa500] text-slate-900 font-bold";
+    return "bg-[#ff4500] text-white font-bold";
+  };
+
+  const getMandalRowClass = (overallPct: number) => {
+    if (overallPct >= 99.9) return "bg-[#99ff99] hover:bg-[#80ff80]"; // Bright Green for 100% (Matching demo)
+    return "hover:bg-slate-50";
   };
 
   // Export Combined Excel for Mandal (Sheet 1 = Report 13, Sheet 2 = Report 14)
@@ -1367,6 +1497,39 @@ export function MonthlyActivityFormatter({
   // Direct Print
   const handlePrint = () => {
     window.print();
+  };
+
+  // Copy WhatsApp alert for a single Mandal (District View)
+  const handleCopyDistrictMandalWhatsApp = (row: any, idx: number) => {
+    const listText = dynamicActivities.map(act => {
+      const pct = row.activities?.[act]?.percentage ?? 0;
+      return `• ${act}: ${pct}%`;
+    }).join("\n");
+
+    const msg = `*E-Panchayat District MAS Report Alert*\n🏛️ *Mandal:* ${row["Mandal Name"]}\n📈 *Overall Completion:* ${row["Overall %"]}%\n\n*Activity-wise Details:*\n${listText}\n\n🌐 _Generated via E-VEDHIKA | www.e-vedhika.in_`;
+    navigator.clipboard.writeText(msg);
+    setCopiedIndex(idx);
+    addToast(`${row["Mandal Name"]} MAS details copied for WhatsApp!`);
+    setTimeout(() => setCopiedIndex(null), 2500);
+  };
+
+  // Bulk WhatsApp summary for District
+  const handleCopyBulkDistrictWhatsApp = () => {
+    if (districtData.length === 0) return;
+    
+    let msg = `*E-Panchayat District Monthly Activity Status Report (MAS)*\n📅 *Report Time:* ${uploadDateTime || getFormattedDateTime()}\n\n📊 *District Summary:*\n• Total Mandals: ${districtData.length}\n• District Average: ${districtOverallTotalPct.toFixed(2)}%\n\n🏆 *Mandal Performance:*\n`;
+
+    const topMandals = [...districtData].sort((a, b) => (b["Overall %"] || 0) - (a["Overall %"] || 0)).slice(0, 15);
+    topMandals.forEach((r, idx) => {
+      msg += `${idx + 1}. *${r["Mandal Name"]}* - ${r["Overall %"]}%\n`;
+    });
+
+    msg += `\n_All Mandals are requested to ensure 100% completion of all MAS activities._\n\n🌐 _Generated via E-VEDHIKA | www.e-vedhika.in_`;
+
+    navigator.clipboard.writeText(msg);
+    setBulkCopied(true);
+    addToast("District MAS details copied for WhatsApp broadcast!");
+    setTimeout(() => setBulkCopied(false), 3000);
   };
 
   // Copy WhatsApp alert for a single Panchayat
@@ -1911,7 +2074,7 @@ export function MonthlyActivityFormatter({
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mt-0.5">
                     {reportLevel === "district"
-                      ? "District MAS – District Level Monitoring"
+                      ? "E-Panchayat Monthly Activity Report"
                       : "Mandal MAS – Mandal Level Monitoring"}
                   </h2>
                 </div>
@@ -2331,7 +2494,7 @@ export function MonthlyActivityFormatter({
                 <Building2 size={30} />
               </div>
               <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-2">
-                District Level Percentage Report (District MAS)
+                E-Panchayat Monthly Activity Report (District MAS)
               </h3>
               <p className="text-slate-500 font-medium text-xs sm:text-sm max-w-lg mb-6 leading-relaxed">
                 Upload district level MAS file (.xlsx, .xls, .csv or .html) downloaded from e-Panchayat portal. All Mandals' activity percentages and rankings will be analyzed.
@@ -2369,72 +2532,111 @@ export function MonthlyActivityFormatter({
                 <div className="text-xs font-bold text-slate-600">
                   Showing Mandals: <span className="text-sky-700 font-black">{filteredDistrictData.length}</span> / {districtData.length}
                 </div>
+                <button
+                  type="button"
+                  onClick={handleCopyBulkDistrictWhatsApp}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-2xs cursor-pointer border ${
+                    bulkCopied
+                      ? "bg-emerald-600 border-emerald-700 text-white"
+                      : "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white"
+                  }`}
+                >
+                  {bulkCopied ? <Check size={14} /> : <Share2 size={14} />}
+                  Copy WhatsApp Summary
+                </button>
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-black custom-scrollbar pb-4 bg-white print:border-none">
                 <div className="inline-block min-w-full">
-                  <table className="w-full border-collapse bg-white text-[11px] font-medium border border-black print:text-[9px]">
+                  <table className="w-full border-collapse bg-white text-[10px] font-medium border border-black print:text-[8px]">
                     <thead>
-                      <tr>
-                        <th
-                          colSpan={3 + dynamicActivities.length + 1 + 1}
-                          className="bg-[#11518E] text-white py-2.5 px-3 border border-black text-center font-black text-sm tracking-wide"
-                        >
-                          Statement showing the Monthly activity report for the month of {uploadDateTime || getFormattedDateTime()}
+                      <tr className="bg-[#11518E] text-white text-center font-bold border border-black">
+                        <th colSpan={3 + dynamicActivities.length * 2 + 2 + 1} className="py-1.5 px-3 border border-black text-sm">
+                          Telangana State
                         </th>
                       </tr>
-                      <tr className="bg-[#0f4c81] text-white text-center font-bold">
-                        <th className="py-2 px-2 border border-black">S.No</th>
-                        <th className="py-2 px-4 border border-black min-w-[140px] text-left">Mandal Name</th>
-                        <th className="py-2 px-2 border border-black min-w-[70px]">Total GP's</th>
+                      <tr className="bg-[#11518E] text-[#FFD700] text-center font-black border border-black">
+                        <th colSpan={3 + dynamicActivities.length * 2 + 2 + 1} className="py-2 px-3 border border-black text-base italic uppercase tracking-wider">
+                          Monthly Activity Data Entry Report - {uploadDateTime || getFormattedDateTime()}
+                        </th>
+                      </tr>
+                      <tr className="bg-[#11518E] text-white text-center font-bold">
+                        <th rowSpan={2} className="py-2 px-1 border border-black min-w-[30px]">S.No</th>
+                        <th rowSpan={2} className="py-2 px-2 border border-black min-w-[130px] text-left">Mandal Name</th>
+                        <th rowSpan={2} className="py-2 px-1 border border-black min-w-[50px] leading-tight">Total<br/>No. of<br/>Gp's</th>
                         {dynamicActivities.map((act, i) => (
-                          <th key={i} className="py-2 px-2 border border-black min-w-[85px] leading-tight">
-                            {act}<br />Entered %
+                          <th key={i} colSpan={2} className="py-1.5 px-1 border border-black min-w-[90px] text-xs">
+                            {act}
                           </th>
                         ))}
-                        <th className="py-2 px-2 border border-black min-w-[75px] bg-[#0d3f6f]">
-                          Overall<br />%
-                        </th>
-                        <th className="py-2 px-3 border border-black min-w-[90px] print:hidden">Actions</th>
+                        <th colSpan={2} className="py-1.5 px-1 border border-black min-w-[90px] text-xs">over all</th>
+                        <th rowSpan={2} className="py-2 px-2 border border-black min-w-[110px] print:hidden">Actions</th>
+                      </tr>
+                      <tr className="bg-[#11518E] text-white text-center font-bold text-[9px]">
+                        {dynamicActivities.map((_, i) => (
+                          <React.Fragment key={i}>
+                            <th className="py-1 px-1 border border-black bg-slate-100 text-slate-800">Entered</th>
+                            <th className="py-1 px-1 border border-black bg-yellow-300 text-slate-900">%</th>
+                          </React.Fragment>
+                        ))}
+                        <th className="py-1 px-1 border border-black bg-slate-100 text-slate-800">Entered</th>
+                        <th className="py-1 px-1 border border-black bg-yellow-300 text-slate-900">%</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredDistrictData.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors text-center">
-                          <td className="py-1.5 px-2 border border-black font-bold text-slate-800">
+                        <tr key={idx} className={`${getMandalRowClass(row["Overall %"] ?? 0)} transition-colors text-center font-bold text-slate-900`}>
+                          <td className="py-1 px-1 border border-black">
                             {idx + 1}
                           </td>
-                          <td className="py-1.5 px-3 border border-black font-black text-slate-900 text-left whitespace-nowrap">
+                          <td className={`py-1 px-2 border border-black text-left whitespace-nowrap ${row["Overall %"] >= 100 ? "text-emerald-800" : ""}`}>
                             {row["Mandal Name"]}
                           </td>
-                          <td className="py-1.5 px-2 border border-black font-bold text-slate-900 bg-slate-50">
+                          <td className="py-1 px-1 border border-black">
                             {row["TotalGPs"]}
                           </td>
                           {dynamicActivities.map((act, aIdx) => {
-                            const actInfo = row.activities?.[act] || { percentage: 0 };
+                            const actInfo = row.activities?.[act] || { entered: 0, percentage: 0 };
                             const pct = actInfo.percentage;
                             const colorCls = getPercentageColorClass(pct);
                             return (
-                              <td
-                                key={aIdx}
-                                className={`py-1.5 px-2 border border-black text-center font-bold ${colorCls}`}
-                              >
-                                {pct.toFixed(2)}
-                              </td>
+                              <React.Fragment key={aIdx}>
+                                <td className="py-1 px-1 border border-black bg-white">
+                                  {actInfo.entered}
+                                </td>
+                                <td className={`py-1 px-1 border border-black text-center ${colorCls}`}>
+                                  {pct === 100 ? "100%" : `${pct}%`}
+                                </td>
+                              </React.Fragment>
                             );
                           })}
-                          <td className={`py-1.5 px-2 border border-black text-center font-black ${getPercentageColorClass(row["Overall %"] ?? 0)}`}>
-                            {(row["Overall %"] ?? 0).toFixed(2)}
+                          <td className="py-1 px-1 border border-black bg-white italic text-slate-700 font-medium">
+                            {row["Overall Entered"]}
                           </td>
-                          <td className="py-1.5 px-2 border border-black text-center whitespace-nowrap print:hidden">
-                            <div className="flex items-center justify-center gap-3">
+                          <td className={`py-1 px-1 border border-black text-center ${getPercentageColorClass(row["Overall %"] ?? 0)}`}>
+                            {(row["Overall %"] ?? 0).toFixed(0)}%
+                          </td>
+                          <td className="py-1 px-1 border border-black text-center whitespace-nowrap print:hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyDistrictMandalWhatsApp(row, idx)}
+                                className={`p-1 rounded transition-all border flex items-center justify-center cursor-pointer ${
+                                  copiedIndex === idx
+                                    ? "bg-emerald-500 border-emerald-600 text-white"
+                                    : "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+                                }`}
+                                title="Share on WhatsApp"
+                              >
+                                {copiedIndex === idx ? <Check size={12} /> : <Share2 size={12} />}
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditDistrictRecord(row)}
                                 className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded transition-colors cursor-pointer"
                                 title="Edit Record"
                               >
-                                <Pencil size={16} className="stroke-[2.2]" />
+                                <Pencil size={14} className="stroke-[2.2]" />
                               </button>
                               <button
                                 type="button"
@@ -2442,38 +2644,44 @@ export function MonthlyActivityFormatter({
                                 className="text-rose-600 hover:text-rose-800 p-1 hover:bg-rose-50 rounded transition-colors cursor-pointer"
                                 title="Delete Record"
                               >
-                                <Trash2 size={16} className="stroke-[2.2]" />
+                                <Trash2 size={14} className="stroke-[2.2]" />
                               </button>
                             </div>
                           </td>
                         </tr>
                       ))}
                       {/* Total Row */}
-                      <tr className="bg-white font-bold border-t-2 border-black text-center">
-                        <td className="py-2 px-2 border border-black font-black text-slate-900">
+                      <tr className="bg-slate-100 font-black border-t-2 border-black text-center text-slate-900">
+                        <td className="py-1.5 px-1 border border-black">
                           {districtData.length + 1}
                         </td>
-                        <td className="py-2 px-3 border border-black font-black text-slate-900 text-left">
+                        <td className="py-1.5 px-2 border border-black text-left">
                           Total
                         </td>
-                        <td className="py-2 px-2 border border-black font-black text-slate-900 bg-slate-100">
+                        <td className="py-1.5 px-1 border border-black">
                           {districtGrandTotalGps}
                         </td>
                         {dynamicActivities.map((act, idx) => {
+                          const totEnt = districtActivityTotals[act]?.totalEntered ?? 0;
                           const totPct = districtActivityTotals[act]?.districtPct ?? 0;
                           return (
-                            <td
-                              key={idx}
-                              className={`py-2 px-2 border border-black font-black text-center ${getPercentageColorClass(totPct)}`}
-                            >
-                              {totPct.toFixed(2)}
-                            </td>
+                            <React.Fragment key={idx}>
+                              <td className="py-1.5 px-1 border border-black bg-white">
+                                {totEnt}
+                              </td>
+                              <td className={`py-1.5 px-1 border border-black text-center ${getPercentageColorClass(totPct)}`}>
+                                {totPct.toFixed(0)}%
+                              </td>
+                            </React.Fragment>
                           );
                         })}
-                        <td className={`py-2 px-2 border border-black font-black text-center ${getPercentageColorClass(districtOverallTotalPct)}`}>
-                          {districtOverallTotalPct.toFixed(2)}
+                        <td className="py-1.5 px-1 border border-black bg-white font-black text-slate-900">
+                          {Object.values(districtActivityTotals).reduce((acc, v) => acc + v.totalEntered, 0) / Math.max(1, dynamicActivities.length)}
                         </td>
-                        <td className="py-2 px-2 border border-black bg-white print:hidden"></td>
+                        <td className={`py-1.5 px-1 border border-black text-center ${getPercentageColorClass(districtOverallTotalPct)}`}>
+                          {districtOverallTotalPct.toFixed(0)}%
+                        </td>
+                        <td className="py-1.5 px-1 border border-black bg-white print:hidden"></td>
                       </tr>
                     </tbody>
                   </table>

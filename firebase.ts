@@ -8,10 +8,10 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Use initializeFirestore with long polling for better connectivity in proxied environments
-const databaseId = (firebaseConfig as any).firestoreDatabaseId || "(default)";
+const firestoreDatabaseId = "ai-studio-22c3cfb1-d6e9-43a5-89ff-c26680c1e4db";
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, databaseId);
+}, firestoreDatabaseId);
 
 import { getFirestore } from "firebase/firestore";
 export const analyticsDb = db;

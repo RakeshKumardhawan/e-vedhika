@@ -4,9 +4,6 @@ import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
 import { ComplaintFormModal } from "./components/ComplaintFormModal";
 import { DsrTables } from "./components/DsrTables";
-import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
-import { pushPostToSupportSystem } from "./services/supportTicketService";
-import { SupportCenter } from "./components/admin/SupportCenter";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -111,7 +108,6 @@ import {  DollarSign,
   Clock,
   ArrowLeft,
   ArrowRight,
-  LifeBuoy,
   ArrowUpRight,
   Loader2,
   Radio,
@@ -120,6 +116,7 @@ import {  DollarSign,
   ChevronRight,
   Flag,
   ShieldCheck,
+  Headphones,
   Info,
   Hash,
   EyeOff,
@@ -160,7 +157,7 @@ import {  DollarSign,
   UserCheck,
   Smile,
   ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key, Copy, Printer,
-  Landmark, Building2 } from "lucide-react";
+  Landmark, Building2, LifeBuoy } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -183,6 +180,7 @@ import { UBDTracker } from "./components/UBDTracker";
 import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
 import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
+import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
 
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
@@ -635,6 +633,8 @@ interface Post {
   downloadStyle?: "classic" | "techspot";
   submissionType?: "post" | "complaint";
   userPhone?: string;
+  supportTicketId?: string;
+  sentToSupportAt?: number;
 }
 
 interface Comment {
@@ -734,6 +734,203 @@ interface Notification {
   link?: string;
   readBy?: string[];
   senderUid?: string;
+}
+
+export async function escalatePostToSupportTicket({
+  post,
+  isAdmin,
+  addToast,
+  onSuccess,
+}: {
+  post: any;
+  isAdmin: boolean;
+  addToast?: (msg: string) => void;
+  onSuccess?: (ticketId: string) => void;
+}) {
+  try {
+    if (!isAdmin) {
+      if (typeof Swal !== "undefined" && Swal.fire) {
+        Swal.fire({
+          icon: "error",
+          title: "యాక్సెస్ లేదు",
+          text: "ఈ ఆప్షన్ కేవలం అడ్మిన్లకు మాత్రమే అందుబాటులో ఉంటుంది.",
+          confirmButtonColor: "#0d3b66"
+        });
+      } else {
+        alert("యాక్సెస్ లేదు: ఈ ఆప్షన్ కేవలం అడ్మిన్లకు మాత్రమే అందుబాటులో ఉంటుంది.");
+      }
+      return;
+    }
+
+    if (post && post.supportTicketId) {
+      let confirmResend = { isConfirmed: false };
+      if (typeof Swal !== "undefined" && Swal.fire) {
+        confirmResend = await Swal.fire({
+          title: "ఇప్పటికే పంపబడింది!",
+          html: `ఈ పోస్ట్ ఇప్పటికే సపోర్ట్ టికెట్ <strong>#${post.supportTicketId.substring(0, 6).toUpperCase()}</strong> గా సపోర్ట్ సిస్టమ్‌కి పంపబడింది.<br/><br/>మరొక కొత్త టికెట్ రైజ్ చేయాలనుకుంటున్నారా?`,
+          icon: "info",
+          showCancelButton: true,
+          confirmButtonText: "అవును, కొత్త టికెట్ పంపు",
+          cancelButtonText: "రద్దు",
+          confirmButtonColor: "#2563eb",
+          cancelButtonColor: "#64748b"
+        });
+      } else {
+        const res = confirm("ఈ పోస్ట్ ఇప్పటికే సపోర్ట్ టికెట్ గా పంపబడింది. మరొక కొత్త టికెట్ రైజ్ చేయాలనుకుంటున్నారా?");
+        confirmResend = { isConfirmed: res };
+      }
+      if (!confirmResend.isConfirmed) return;
+    } else {
+      const postAuthor = post.userName || post.author || "User";
+      const postPhone = post.userPhone || post.phone;
+      const postTitle = post.title || post.problem || "సపోర్ట్ రిక్వెస్ట్";
+      const postCategory = post.category || "";
+
+      let confirmPrompt = { isConfirmed: false };
+      if (typeof Swal !== "undefined" && Swal.fire) {
+        confirmPrompt = await Swal.fire({
+          title: "సపోర్ట్ సిస్టమ్‌కి పంపించాలా?",
+          html: `
+            <div style="text-align: left; font-size: 13px; color: #334155; line-height: 1.6;">
+              <p style="margin-bottom: 8px;">ఈ పోస్ట్‌ను నేరుగా <strong>సపోర్ట్ టికెట్</strong>‌గా మార్చి అడ్మిన్ సపోర్ట్ సిస్టమ్‌కి పంపిస్తుంది:</p>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
+                <p><strong>రచయిత:</strong> ${postAuthor}</p>
+                ${postPhone ? `<p><strong>ఫోన్:</strong> <span style="color: #1d4ed8; font-weight: bold;">${postPhone}</span></p>` : ""}
+                <p><strong>శీర్షిక:</strong> ${postTitle}</p>
+                ${postCategory ? `<p><strong>కేటగిరీ:</strong> ${postCategory}</p>` : ""}
+              </div>
+              <p style="font-size: 11px; color: #64748b;">టికెట్ క్రియేట్ అయిన తర్వాత సపోర్ట్ సెంటర్ ద్వారా యూజర్‌తో సంభాషించవచ్చు మరియు సమస్యను పరిష్కరించవచ్చు.</p>
+            </div>
+          `,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "అవును, సపోర్ట్‌కి పంపు",
+          cancelButtonText: "రద్దు",
+          confirmButtonColor: "#2563eb",
+          cancelButtonColor: "#64748b"
+        });
+      } else {
+        const res = confirm(`సపోర్ట్ సిస్టమ్‌కి పంపించాలా?\nరచయిత: ${postAuthor}\nశీర్షిక: ${postTitle}`);
+        confirmPrompt = { isConfirmed: res };
+      }
+      if (!confirmPrompt.isConfirmed) return;
+    }
+
+    const postTitle = post.title || post.problem || post.content || "సపోర్ట్ రిక్వెస్ట్";
+    const postUserPhone = post.userPhone || post.phone || "";
+    const postAuthor = post.userName || post.author || "User";
+
+    const ticketData = {
+      uid: post.uid || "community_user",
+      userId: post.uid || "community_user",
+      userEmail: post.userEmail || post.email || "",
+      userName: postAuthor,
+      phone: postUserPhone,
+      ticketType: (post.category || "").toLowerCase().includes("tech") ? "tech_support" : "complaint",
+      moduleName: post.category || "Technical Support",
+      subModule: postTitle,
+      subject: postTitle,
+      status: "new",
+      priority: "high",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      sourcePostId: post.id,
+      source: "community_post_escalation",
+      attachedFile: post.fileUrl || post.downloadUrl || post.mediaUrl || null
+    };
+
+    let ticketRef;
+    try {
+      ticketRef = await addDoc(collection(db, "support_tickets"), ticketData);
+    } catch (e: any) {
+      throw new Error(`[Step 1: సపోర్ట్ టికెట్ సృష్టించడం] ${e.message || e}`);
+    }
+
+    try {
+      const initialMessage = `[పోస్ట్ నుండి సపోర్ట్ టికెట్]\n\n📌 శీర్షిక: ${postTitle}\n\n📝 వివరాలు:\n${post.content || post.description || post.problem || "వివరాలు లేవు"}${postUserPhone ? `\n\n📞 సంప్రదించాల్సిన ఫోన్ నంబర్: ${postUserPhone}` : ""}`;
+
+      await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
+        senderId: post.uid || "community_user",
+        senderName: postAuthor,
+        text: initialMessage,
+        time: Date.now()
+      });
+    } catch (e: any) {
+      throw new Error(`[Step 2: తొలి సందేశాన్ని సృష్టించడం] ${e.message || e}`);
+    }
+
+    try {
+      await updateDoc(doc(db, "posts", post.id), {
+        status: "Sent to Support",
+        supportTicketId: ticketRef.id,
+        sentToSupportAt: Date.now()
+      });
+    } catch (e: any) {
+      throw new Error(`[Step 3: పోస్ట్ స్థితిని మార్చడం] ${e.message || e}`);
+    }
+
+    // Notify User
+    if (post.uid) {
+      await addDoc(collection(db, "notifications"), {
+        uid: post.uid,
+        title: "🎧 మీ పోస్ట్ సపోర్ట్ సిస్టమ్‌కి పంపబడింది!",
+        message: `మీరు పెట్టిన '${postTitle.substring(0, 35)}' పోస్ట్‌ను అడ్మిన్ సపోర్ట్ టికెట్‌గా మార్చారు (టికెట్ #${ticketRef.id.substring(0, 6).toUpperCase()}). సపోర్ట్ టీమ్ త్వరలోనే పరిశీలిస్తుంది.`,
+        type: "support_ticket_created",
+        read: false,
+        time: Date.now(),
+        ticketId: ticketRef.id,
+        postId: post.id
+      }).catch(() => {});
+    }
+
+    // Admin Notification
+    await addDoc(collection(db, "notifications"), {
+      type: "admin_alert",
+      title: "🚨 పోస్ట్ సపోర్ట్ సిస్టమ్‌కి పంపబడింది",
+      message: `${postAuthor} - ${postTitle.substring(0, 35)}... (Ticket #${ticketRef.id.substring(0, 6).toUpperCase()})`,
+      read: false,
+      time: Date.now(),
+      complaintId: ticketRef.id
+    }).catch(() => {});
+
+    // Telegram Notification
+    sendTelegramNotification(
+      `🎧 <b>Post Escalated to Support System</b>\n\n` +
+      `<b>Author:</b> ${postAuthor}\n` +
+      `<b>Phone:</b> ${postUserPhone || 'N/A'}\n` +
+      `<b>Title:</b> ${postTitle}\n` +
+      `<b>Ticket ID:</b> #${ticketRef.id.substring(0, 6).toUpperCase()}\n\n` +
+      `<i>#EVedhika #SupportSystem</i>`,
+      "post"
+    );
+
+    if (addToast) {
+      addToast("సపోర్ట్ సిస్టమ్‌కి విజయవంతంగా పంపబడింది!");
+    }
+
+    if (typeof Swal !== "undefined" && Swal.fire) {
+      Swal.fire({
+        title: "సపోర్ట్ సిస్టమ్‌కి పంపబడింది!",
+        html: `పోస్ట్‌ను విజయవంతంగా సపోర్ట్ టికెట్ <strong>#${ticketRef.id.substring(0, 6).toUpperCase()}</strong> గా సపోర్ట్ సిస్టమ్‌కి పంపాము.`,
+        icon: "success",
+        confirmButtonText: "సరే",
+        confirmButtonColor: "#2563eb"
+      });
+    } else {
+      alert(`సపోర్ట్ సిస్టమ్‌కి పంపబడింది!\nపోస్ట్‌ను విజయవంతంగా సపోర్ట్ టికెట్ #${ticketRef.id.substring(0, 6).toUpperCase()} గా సపోర్ట్ సిస్టమ్‌కి పంపాము.`);
+    }
+
+    if (onSuccess) {
+      onSuccess(ticketRef.id);
+    }
+  } catch (err: any) {
+    console.error("Error escalating post to support ticket:", err);
+    const errMsg = err?.message || JSON.stringify(err) || "తెలియని లోపం";
+    if (addToast) {
+      addToast("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం ఏర్పడింది: " + errMsg);
+    }
+    alert("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం ఏర్పడింది:\n" + errMsg);
+  }
 }
 
 const APP_STYLES = `
@@ -2118,17 +2315,20 @@ export default function App() {
   // Accessibility and User-Friendly Navigation States
   const [textZoom, setTextZoom] = useState<"normal" | "large" | "xlarge">("normal");
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showTicketTracker, setShowTicketTracker] = useState(false);
+  const [ticketTrackingCode, setTicketTrackingCode] = useState("");
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 400) {
-        setShowBackToTop(true);
+    const handleOpenTracker = (e: any) => {
+      if (e.detail?.code) {
+        setTicketTrackingCode(e.detail.code);
+        setShowTicketTracker(true);
       } else {
-        setShowBackToTop(false);
+        setShowTicketTracker(true);
       }
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("open-ticket-tracker", handleOpenTracker);
+    return () => window.removeEventListener("open-ticket-tracker", handleOpenTracker);
   }, []);
 
   const scrollToTop = () => {
@@ -2769,9 +2969,7 @@ export default function App() {
         );
         setAllUsers(uArr.sort((a, b) => (b.time || 0) - (a.time || 0)));
       },
-      (e) => {
-        console.error("DEBUG: Users List Error:", e);
-      },
+      (e) => console.error("Users List Error:", e),
     );
     return () => unsub();
   }, [user]);
@@ -2976,26 +3174,6 @@ export default function App() {
     return () => window.removeEventListener("open-login-modal", handleOpenLoginModal);
   }, []);
   const [showComplaintFormModal, setShowComplaintFormModal] = useState(false);
-  const [showSupportTicketTracker, setShowSupportTicketTracker] = useState(false);
-  const [trackerInitialCode, setTrackerInitialCode] = useState("");
-
-  useEffect(() => {
-    const trackCode = searchParams.get("track") || searchParams.get("ticket") || searchParams.get("tracking");
-    if (trackCode) {
-      setTrackerInitialCode(trackCode);
-      setShowSupportTicketTracker(true);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const handleOpenTracker = (e: any) => {
-      const code = e?.detail?.code || "";
-      setTrackerInitialCode(code);
-      setShowSupportTicketTracker(true);
-    };
-    window.addEventListener("open-ticket-tracker", handleOpenTracker);
-    return () => window.removeEventListener("open-ticket-tracker", handleOpenTracker);
-  }, []);
   const [selectedIframeUrl, setSelectedIframeUrl] = useState<string | null>(
     null,
   );
@@ -3391,7 +3569,7 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newPost = addedChanges[0].doc.data() as any;
-            const isApproved = ["approved", "active"].includes((newPost.status || "").toLowerCase());
+            const isApproved = ["approved", "active"].includes((newPost.status || "").toLowerCase()) || (((newPost.status || "").toLowerCase() === "published") && newPost.isAdminPost);
             const isRecent = !newPost.time || (Date.now() - newPost.time < 60000);
             if (isRecent && isApproved) {
               triggerNotification(
@@ -3897,14 +4075,9 @@ E-Vedhika Team`;
     if (p.status === "Deleted") return false;
 
     const pStatus = (p.status || "").toLowerCase();
-    const isApproved = ["approved", "active", "published"].includes(pStatus);
+    const isApproved = ["approved", "active"].includes(pStatus) || (pStatus === "published" && p.isAdminPost);
     const isAuthor = Boolean(user?.uid && p.uid === user.uid);
     const canSeePending = isAdmin || isEditor || isDevEmail;
-
-    // A post that is private_support should NOT appear in the main feed
-    if (pStatus === "private_support") {
-      return false;
-    }
 
     // A post that is not approved can ONLY be seen by its author or admins/staff
     if (!canSeePending && !isApproved && !isAuthor) {
@@ -4841,19 +5014,8 @@ E-Vedhika Team`;
           
         
           {/* Right Action Icons & User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Ticket & Support Status Tracking Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setShowSupportTicketTracker(true);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-400/40 rounded-xl text-white text-xs font-black cursor-pointer transition-all active:scale-95 shadow-sm"
-              title="సపోర్ట్ టికెట్ & గ్రీవెన్స్ లైవ్ ట్రాకింగ్ (Live Support Ticket Tracker)"
-            >
-              <LifeBuoy size={16} className="text-[#fbe947]" />
-              <span className="hidden sm:inline text-[11px] font-bold">ట్రాక్ స్టేటస్</span>
-            </button>
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            
 
             {/* Direct Messages Button */}
             <div
@@ -4977,10 +5139,7 @@ E-Vedhika Team`;
                                         }
                                       } catch (e) {}
                                     }
-                                    if ((n as any).trackingNumber) {
-                                      setTrackerInitialCode((n as any).trackingNumber);
-                                      setShowSupportTicketTracker(true);
-                                    } else if ((n as any).postId) {
+                                    if ((n as any).postId) {
                                       setSearchParams({
                                         postId: (n as any).postId,
                                       });
@@ -6056,8 +6215,6 @@ E-Vedhika Team`;
                 setSidebarOpen={setSidebarOpen}
                 siteConfig={siteConfig}
                 setSiteConfig={setSiteConfig}
-                setShowDirectMessages={setShowDirectMessages}
-                setActiveDmUser={setActiveDmUser}
               />
             )}
 
@@ -8202,7 +8359,6 @@ E-Vedhika Team`;
                     editingPost={editingPost}
                     isAdmin={isAdmin}
                     isEditor={isEditor}
-                    user={user}
                   />
                 </div>
                 </div>
@@ -8611,6 +8767,17 @@ E-Vedhika Team`;
         <Plus size={24} strokeWidth={3} />
       </button>
 
+      {showTicketTracker && (
+        <SupportTicketTrackerModal
+          initialTrackingCode={ticketTrackingCode}
+          user={user}
+          onClose={() => {
+            setShowTicketTracker(false);
+            setTicketTrackingCode("");
+          }}
+          addToast={addToast}
+        />
+      )}
       {showBackToTop && (
         <button
           onClick={scrollToTop}
@@ -8635,18 +8802,6 @@ E-Vedhika Team`;
           user={user}
           userProfile={userProfile}
           onClose={() => setShowComplaintFormModal(false)}
-          addToast={addToast}
-        />
-      )}
-
-      {showSupportTicketTracker && (
-        <SupportTicketTrackerModal
-          initialTrackingCode={trackerInitialCode}
-          user={user}
-          onClose={() => {
-            setShowSupportTicketTracker(false);
-            setTrackerInitialCode("");
-          }}
           addToast={addToast}
         />
       )}
@@ -9797,29 +9952,15 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
   const [activeTab, setActiveTab] = useState<"posts" | "problems" | "suggestions" | "support">("posts");
 
   const myPosts = posts?.filter(
-    (p: any) => (p.uid === user?.uid || p.authorId === user?.uid || p.author === userProfile?.username) && (p.status || "").toLowerCase() !== "private_support"
-  ) || [];
-
-  const myPrivatePosts = posts?.filter(
-    (p: any) => (p.uid === user?.uid || p.authorId === user?.uid || p.author === userProfile?.username) && (p.status || "").toLowerCase() === "private_support"
-  ) || [];
-
-  const combinedSupport = [
-    ...supportTickets,
-    ...myPrivatePosts.map(p => ({
-      ...p,
-      subject: p.title || "Private Support Post",
-      createdAt: p.time,
-      isPostSource: true
-    }))
-  ].sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
-
-  const mySuggestions = suggestions?.filter(
-    (s: any) => s.authorId === user?.uid || s.userId === user?.uid || s.uid === user?.uid
+    (p: any) => p.uid === user?.uid || p.authorId === user?.uid || p.author === userProfile?.username
   ) || [];
 
   const myProblems = problems?.filter(
     (p: any) => p.userId === user?.uid || p.authorId === user?.uid
+  ) || [];
+
+  const mySuggestions = suggestions?.filter(
+    (s: any) => s.authorId === user?.uid || s.userId === user?.uid || s.uid === user?.uid
   ) || [];
 
   const pendingProblems = myProblems.filter((p: any) => p.status !== "resolved").length;
@@ -9924,13 +10065,6 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
                     </span>
                     {(() => {
                       const st = (p.status || "pending").toLowerCase();
-                      if (st === "private_support" || p.trackingNumber) {
-                        return (
-                          <span className="px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1">
-                            <LifeBuoy size={12} /> సపోర్ట్ సిస్టమ్‌లో ఉంది
-                          </span>
-                        );
-                      }
                       if (st === "approved" || st === "active" || st === "published") {
                         return (
                           <span className="px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-250 flex items-center gap-1">
@@ -9958,27 +10092,6 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
                   <p className="text-[10px] font-bold text-slate-400 mt-2">
                     Posted on: {new Date(p.createdAt || p.time || Date.now()).toLocaleDateString()}
                   </p>
-
-                  {(p.status === "private_support" || p.trackingNumber) && (
-                    <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <LifeBuoy size={16} className="text-purple-600 shrink-0" />
-                        <div>
-                          <span className="text-xs font-black text-purple-950 block">ఈ పోస్ట్ సపోర్ట్ సిస్టమ్‌కు బదిలీ చేయబడింది</span>
-                          <span className="text-[11px] font-mono font-black text-purple-700">యూనిక్ ట్రాకింగ్ నెంబర్: #{p.trackingNumber || 'Active'}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent("open-ticket-tracker", { detail: { code: p.trackingNumber } }));
-                        }}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-black flex items-center gap-1.5 shadow-sm cursor-pointer"
-                      >
-                        <Search size={12} /> లైవ్ స్టేటస్ ట్రాక్ చేయండి
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <button
                   onClick={() => handleDeleteItem("posts", p.id)}
@@ -9998,62 +10111,26 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
         
         {activeTab === "support" && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent("open-ticket-tracker"));
-                }}
-                className="px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <LifeBuoy size={14} className="text-indigo-600" /> ట్రాకింగ్ నెంబర్‌తో వెతకండి (Track by Number)
-              </button>
-              <button 
-                onClick={() => setShowSupportModal(true)} 
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md hover:bg-blue-500 transition-colors flex items-center gap-2 cursor-pointer"
-              >
-                <MessageSquare size={16} /> కొత్త టికెట్ / Contact Admin
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setShowSupportModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-blue-500 transition-colors flex items-center gap-2">
+                <MessageSquare size={16} /> Contact Admin
               </button>
             </div>
-            {combinedSupport.length === 0 ? (
+            {supportTickets.length === 0 ? (
               <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-slate-500 font-medium">మీకు ఎటువంటి సపోర్ట్ టికెట్లు లేవు.</p>
+                <p className="text-slate-500 font-medium">You have no support tickets.</p>
               </div>
             ) : (
-              combinedSupport.map(t => (
-                <div key={t.id} className="p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between items-start gap-4 hover:border-slate-300 transition-all bg-white">
-                  <div className="w-full flex flex-wrap justify-between items-start gap-2">
+              supportTickets.map(t => (
+                <div key={t.id} className="p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between items-start gap-4 hover:border-slate-300 transition-all">
+                  <div className="w-full flex justify-between items-start">
                     <div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-mono text-xs font-black px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg">
-                          #{t.trackingNumber || t.ticketNumber || (t.id && t.id.substring(0, 8).toUpperCase()) || "POST"}
-                        </span>
-                        <h4 className="font-bold text-slate-800 text-base">{t.subject}</h4>
-                        {t.isPostSource && (
-                          <span className="px-2 py-0.5 bg-purple-50 text-purple-600 border border-purple-100 rounded text-[10px] font-black uppercase">From Post</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">{t.createdAt ? new Date(t.createdAt).toLocaleString() : "Recent"}</p>
+                      <h4 className="font-bold text-slate-800 text-lg">{t.subject}</h4>
+                      <p className="text-xs text-slate-400 mt-1">{new Date(t.createdAt).toLocaleString()}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${t.status === 'new' || t.status === 'open' || t.status === 'private_support' ? 'bg-blue-100 text-blue-800' : t.status === 'read' ? 'bg-slate-100 text-slate-800' : t.status === 'pending' || t.status === 'in_progress' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                        {t.status === 'private_support' ? 'Open' : t.status}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (t.isPostSource) {
-                             // Logic to show post details or open tracking
-                             window.dispatchEvent(new CustomEvent("open-ticket-tracker", { detail: { code: t.id } }));
-                          } else {
-                             window.dispatchEvent(new CustomEvent("open-ticket-tracker", { detail: { code: t.trackingNumber || t.ticketNumber || t.id } }));
-                          }
-                        }}
-                        className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-black transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
-                      >
-                        <Search size={12} /> లైవ్ స్టేటస్
-                      </button>
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${t.status === 'new' ? 'bg-blue-100 text-blue-800' : t.status === 'read' ? 'bg-slate-100 text-slate-800' : t.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {t.status}
+                    </span>
                   </div>
                 </div>
               ))
@@ -10598,9 +10675,10 @@ export function SmartImage({
 
   if (hasError || !currentSrc) {
     return (
-      <div className="p-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center flex flex-col items-center justify-center gap-3 my-2 min-h-[120px]">
-        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
-           <ImageIcon size={20} />
+      <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-center flex flex-col items-center justify-center gap-2 my-2 shadow-sm">
+        <div className="flex items-center gap-2 text-slate-600 font-bold text-xs">
+          <ImageOff size={16} className="text-amber-500 shrink-0" />
+          <span>చిత్రం అందుబాటులో లేదు (Photo Not Displaying)</span>
         </div>
         {src && (
           <a
@@ -11220,7 +11298,8 @@ function AdminPanel({
     userRoleStr === "admin" ||
     userRoleStr === "system admin" ||
     userRoleStr === "super admin" ||
-    userRoleStr === "administrator";
+    userRoleStr === "administrator" ||
+    !userRoleStr;
   const isSuperAdmin = isDevEmail || isAdminRole;
   const isAdmin = isSuperAdmin || isAdminRole;
   const isEditor =
@@ -11849,10 +11928,6 @@ function AdminPanel({
   const [logsError, setLogsError] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) {
-      setLogs([]);
-      return;
-    }
     const unsubLogs = onSnapshot(
       query(collection(db, "security_logs"), orderBy("time", "desc")),
       (snap) => {
@@ -11867,7 +11942,7 @@ function AdminPanel({
       },
     );
     return () => unsubLogs();
-  }, [isAdmin]);
+  }, []);
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [farmerRegistryJobs, setFarmerRegistryJobs] = useState<any>({});
@@ -12474,7 +12549,7 @@ function AdminPanel({
                       {(() => {
                         const filteredItems = (activeSubTab === "reports"
                           ? reportsType === "posts"
-                            ? posts.filter(p => (p.status || "").toLowerCase() !== "private_support")
+                            ? posts
                             : allProblems
                           : suggestions
                         ).filter((item) => {
@@ -12708,60 +12783,6 @@ function AdminPanel({
                                   >
                                     <Check size={13} /> ఆమోదించు
                                   </button>
-
-                                  <button
-                                    type="button"
-                                    title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
-                                    onClick={async () => {
-                                      const tabId = "reports";
-                                      if (!hasEditPermission(tabId)) {
-                                        addToast("క్షమించండి, ఈ సమాచారాన్ని మార్చే అనుమతి మీకు లేదు.");
-                                        return;
-                                      }
-                                      const confirmRes = await Swal.fire({
-                                        title: "పుష్ టు సపోర్ట్ సిస్టమ్?",
-                                        text: "ఈ పెండింగ్ పోస్ట్‌ను సపోర్ట్ సిస్టమ్ / ఇన్క్వైరీస్‌కు తరలించి, ప్రత్యేకమైన యూనిక్ ట్రాకింగ్ నెంబర్‌ను కేటాయించాలనుకుంటున్నారా?",
-                                        icon: "question",
-                                        showCancelButton: true,
-                                        confirmButtonText: "అవును, పుష్ చేయండి (Yes, Push)",
-                                        cancelButtonText: "రద్దు చేయి (Cancel)",
-                                        confirmButtonColor: "#6366f1"
-                                      });
-
-                                      if (confirmRes.isConfirmed) {
-                                        try {
-                                          const res = await pushPostToSupportSystem(item, user);
-                                          if (res.success) {
-                                            Swal.fire({
-                                              icon: "success",
-                                              title: "సపోర్ట్ సిస్టమ్‌కు పంపబడింది! (Pushed to Support)",
-                                              html: `
-                                                <div class="text-left text-xs text-slate-600 space-y-2">
-                                                  <p>పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ & ఇన్క్వైరీస్ లోకి బదిలీ చేయబడింది.</p>
-                                                  <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-center my-2">
-                                                    <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">యూనిక్ ట్రాకింగ్ నెంబర్ (Unique Tracking Number)</span>
-                                                    <span class="text-lg font-mono font-black text-indigo-700 select-all block mt-0.5">#${res.trackingNumber}</span>
-                                                  </div>
-                                                  <p class="text-[11px] text-slate-500">యూజర్ ఈ నెంబర్‌తో ఎప్పుడైనా తమ పోస్ట్ లేదా విజ్ఞప్తి యొక్క లైవ్ స్టేటస్ ట్రాక్ చేయవచ్చు.</p>
-                                                </div>
-                                              `,
-                                              confirmButtonText: "సరే (OK)",
-                                              confirmButtonColor: "#4f46e5"
-                                            });
-                                            addToast(`పోస్ట్ సపోర్ట్ సిస్టమ్‌కు పంపబడింది! ట్రాకింగ్: #${res.trackingNumber}`);
-                                          } else {
-                                            addToast("సపోర్ట్ సిస్టమ్‌కు పంపడంలో లోపం: " + (res.error || ""));
-                                          }
-                                        } catch (err: any) {
-                                          addToast(getFriendlyError(err));
-                                        }
-                                      }
-                                    }}
-                                    className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
-                                  >
-                                    <LifeBuoy size={13} /> పుష్ టు సపోర్ట్ సిస్టమ్
-                                  </button>
-
                                   <button
                                     type="button"
                                     title="Message User (యూజర్‌తో చాట్ చేయండి)"
@@ -12818,10 +12839,21 @@ function AdminPanel({
                                   </button>
                                 )}
 
-                                {reportsType === "posts" && (item.status === "private_support" || item.trackingNumber) && (
-                                  <span className="px-2.5 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black uppercase flex items-center gap-1 shrink-0">
-                                    <LifeBuoy size={12} /> సపోర్ట్: #{item.trackingNumber || 'Active'}
-                                  </span>
+                                {reportsType === "posts" && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
+                                  <button
+                                    type="button"
+                                    title="Send to Support System (సపోర్ట్ సిస్టమ్‌కి పంపు)"
+                                    onClick={async () => {
+                                      await escalatePostToSupportTicket({
+                                        post: item,
+                                        isAdmin,
+                                        addToast,
+                                      });
+                                    }}
+                                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
+                                  >
+                                    <Headphones size={13} /> సపోర్ట్ సిస్టమ్‌కి పంపు
+                                  </button>
                                 )}
 
                                 <select
@@ -17067,10 +17099,16 @@ function DigitalWorkspaceSection({
       desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
     },
     {
-      id: "monthly-activity",
-      title: "Monthly Activity Monitoring (MAS)",
+      id: "mandal-monthly-activity",
+      title: "Mandal MAS (GP Matrix)",
       icon: FileSpreadsheet,
-      desc: "Mandal MAS & District MAS Reports",
+      desc: "గ్రామ పంచాయతీల వారీగా MAS రిపోర్ట్",
+    },
+    {
+      id: "district-monthly-activity",
+      title: "E-Panchayat Monthly Activity Report",
+      icon: FileSpreadsheet,
+      desc: "మండలాల వారీగా శాతం (Percentage) రిపోర్ట్",
     },
     {
       id: "excel-merge",
@@ -17083,6 +17121,12 @@ function DigitalWorkspaceSection({
       title: "(GPDP) – Planning & Budget Allocation",
       icon: ClipboardList,
       desc: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక",
+    },
+    {
+      id: "ticket-tracker",
+      title: "Support Ticket Tracker",
+      icon: LifeBuoy,
+      desc: "ట్రాకింగ్ నెంబర్‌తో టికెట్ స్టేటస్ చూడండి",
     },
   ];
 
@@ -17333,6 +17377,18 @@ function DigitalWorkspaceSection({
               )}
               {activeTool === "excel-merge" && (
                 <ExcelMerger user={user} addToast={addToast} />
+              )}
+              {activeTool === "gpdp-planning" && (
+                <GPDPPlanningTool user={user} addToast={addToast} />
+              )}
+              {activeTool === "ticket-tracker" && (
+                <div className="max-w-4xl mx-auto py-6">
+                  <SupportTicketTrackerModal
+                    user={user}
+                    onClose={() => setActiveTool(null)}
+                    addToast={addToast}
+                  />
+                </div>
               )}
                 </>
               )}
@@ -21317,7 +21373,7 @@ function PostCard({
         )}
       </AnimatePresence>
       {/* Moderation Status Banner (Only for non-approved posts) */}
-      {post.status && !["approved", "active", "private_support"].includes(post.status.toLowerCase()) && (
+      {post.status && post.status.toLowerCase() !== "approved" && post.status.toLowerCase() !== "active" && !(post.status.toLowerCase() === "published" && post.isAdminPost) && (
         <div className="mb-4">
           {isAdmin ? (
             <div className="p-3.5 bg-indigo-50/90 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-indigo-950 shadow-sm">
@@ -21331,13 +21387,18 @@ function PostCard({
                     <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-black border border-amber-200">
                       {post.status || "Pending"}
                     </span>
+                    {post.supportTicketId && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-black border border-blue-200 flex items-center gap-1">
+                        <Headphones size={10} /> #{post.supportTicketId.substring(0, 6).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <p className="text-[11px] text-indigo-700 font-medium leading-tight mt-0.5">
                     ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే అందరికీ కనిపిస్తుంది.
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
                 <button
                   type="button"
                   onClick={async (e) => {
@@ -21407,6 +21468,23 @@ function PostCard({
                 >
                   <X size={14} /> తిరస్కరించు
                 </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await escalatePostToSupportTicket({
+                        post,
+                        isAdmin,
+                        addToast,
+                      });
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    title="ఈ పోస్ట్‌ను సపోర్ట్ టికెట్‌గా మార్చి సపోర్ట్ సిస్టమ్‌కి పంపు"
+                  >
+                    <Headphones size={14} /> సపోర్ట్ సిస్టమ్‌కి పంపు
+                  </button>
+                )}
               </div>
             </div>
           ) : post.status.toLowerCase() === "rejected" ? (
@@ -21422,6 +21500,30 @@ function PostCard({
                   ఈ పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు. ఇది ఇతరులకు కనిపించదు.
                 </p>
               </div>
+            </div>
+          ) : post.status.toLowerCase() === "sent to support" ? (
+            <div className="p-3.5 bg-blue-50/90 border border-blue-200 rounded-2xl flex items-center justify-between gap-3 text-blue-950 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0">
+                  <Headphones size={16} />
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                    <span>🎧 సపోర్ట్ సిస్టమ్‌కి పంపబడింది (Sent to Support System)</span>
+                    {post.supportTicketId && (
+                      <span className="px-2 py-0.5 bg-blue-200/80 text-blue-900 rounded-md text-[10px] font-black">
+                        #{post.supportTicketId.substring(0, 6).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-blue-700 font-medium leading-tight mt-0.5">
+                    మీ పోస్ట్‌ను అడ్మిన్ సపోర్ట్ సిస్టమ్‌కి పంపించారు. సపోర్ట్ టీమ్ త్వరలోనే మీ సమస్యను పరిశీలించి పరిష్కరిస్తుంది.
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-block px-2.5 py-1 bg-blue-200/70 border border-blue-300 text-blue-900 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap">
+                🔒 ఇన్ రివ్యూ (Under Review)
+              </span>
             </div>
           ) : (
             <div className="p-3.5 bg-amber-50/90 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-3 text-amber-900 shadow-sm">
@@ -22513,7 +22615,6 @@ function PostForm({
   storageConfig,
   setShowDirectMessages,
   setActiveDmUser,
-  user,
 }: {
   addToast: (s: string) => void;
   onCancel: () => void;
@@ -22524,10 +22625,9 @@ function PostForm({
   storageConfig: "cloudflare" | "firebase";
   setShowDirectMessages?: (show: boolean) => void;
   setActiveDmUser?: (user: any) => void;
-  user: any;
 }) {
   const [loading, setLoading] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<"draft" | "published" | "private_support" | "pending" | "rejected">((editingPost?.status as any) || "published");
+  const [draftStatus, setDraftStatus] = useState<"draft" | "published">(editingPost?.status === "draft" ? "draft" : "published");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [submissionType, setSubmissionType] = useState<"post" | "complaint">(editingPost?.submissionType || (isAdmin || isEditor ? "post" : "complaint"));
@@ -23074,22 +23174,12 @@ function PostForm({
           }
         }
 
-        if (!isAdmin && !isEditor && editingPost.status !== "Approved") {
+        if (!isAdmin && !isEditor) {
           updatePayload.status = "Pending";
         }
 
         await updateDoc(doc(db, "posts", editingPost.id), updatePayload);
         addToast("Update Saved!");
-
-        if ((isEditor || isAdmin) && draftStatus === "private_support" && editingPost.status !== "private_support") {
-          const targetUid = editingPost.uid || auth.currentUser.uid;
-          const targetUser = editingPost.userName || currentUserProfile?.username || auth.currentUser.displayName || "User";
-          
-          await pushPostToSupportSystem(
-            { ...editingPost, title, content, userName: targetUser, uid: targetUid },
-            currentUserProfile || user
-          );
-        }
         
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
         if (isAdmin || isEditor || editingPost.status === "published") {
@@ -23131,18 +23221,8 @@ function PostForm({
           userPhoto:
             isEditor || isAdmin ? "" : currentUserProfile?.photoURL || "",
           isAdminPost: isEditor || isAdmin,
-          status: isEditor || isAdmin ? draftStatus : "pending",
+          status: isEditor || isAdmin ? "published" : "pending",
         });
-
-        if ((isEditor || isAdmin) && draftStatus === "private_support") {
-          const targetUid = auth.currentUser.uid;
-          const targetUser = currentUserProfile?.username || auth.currentUser.displayName || "User";
-          
-          await pushPostToSupportSystem(
-            { id: docRef.id, ...postData, userName: targetUser, uid: targetUid },
-            currentUserProfile || user
-          );
-        }
 
         const hasUpdateTag =
           finalTags.some((tag) =>
@@ -23180,18 +23260,7 @@ function PostForm({
               postId: docRef.id,
             }).catch(() => {});
           }
-          
-          if (draftStatus === "private_support") {
-            addToast("సందేశం విజయవంతంగా వ్యక్తిగత సపోర్ట్ రిక్వెస్ట్‌గా మార్చబడింది!");
-          } else if (draftStatus === "draft") {
-            addToast("పోస్ట్ విజయవంతంగా డ్రాఫ్ట్ గా సేవ్ చేయబడింది!");
-          } else if (draftStatus === "pending") {
-            addToast("పోస్ట్ విజయవంతంగా పెండింగ్ లో ఉంచబడింది!");
-          } else if (draftStatus === "rejected") {
-            addToast("పోస్ట్ విజయవంతంగా తిరస్కరించబడింది!");
-          } else {
-            addToast("పోస్ట్ ప్రచురించబడింది (Post Published)!");
-          }
+          addToast("పోస్ట్ ప్రచురించబడింది (Post Published)!");
         } else {
           // Regular user post: Send notification for Admin Review only
           sendTelegramNotification(`⚠️ <b>New Post Pending Approval</b>\n\n<b>Title:</b> ${title}\n<b>Author:</b> ${postAuthor}\n\n<i>Please review and approve in the Admin Panel.</i>`, "system");
@@ -23551,74 +23620,8 @@ function PostForm({
                   <div className="space-y-2 mt-3 text-[#3c434a]">
                     <div className="flex items-center gap-2">
                       <Key size={14} className="text-[#8c8f94]" />
-                      <span>Status: <strong className="capitalize">{draftStatus === "published" ? "Published" : (draftStatus === "private_support" ? "Private Support" : (draftStatus === "pending" ? "Pending" : (draftStatus === "rejected" ? "Rejected" : "Draft")))}</strong></span>
+                      <span>Status: <strong>{draftStatus === "published" ? "Published" : "Draft"}</strong></span>
                     </div>
-                    {(isAdmin || isEditor) && (
-                      <div className="pt-3 border-t border-slate-200 space-y-2">
-                        <label className="font-bold text-slate-800 text-[11px] block flex items-center gap-1.5">
-                          🎯 డెస్టినేషన్ రూటింగ్ (Destination Route):
-                        </label>
-                        <div className="space-y-1.5 text-[11px] text-slate-700 font-medium">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="postDestinationRoute"
-                              value="published"
-                              checked={draftStatus === "published"}
-                              onChange={() => setDraftStatus("published")}
-                              disabled={editingPost?.status === "private_support"}
-                              className="text-[#2271b1] w-3 h-3 disabled:opacity-50"
-                            />
-                            <span className={editingPost?.status === "private_support" ? "opacity-50" : ""}>📢 పబ్లిక్ పోర్టల్ (Public Portal)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="postDestinationRoute"
-                              value="private_support"
-                              checked={draftStatus === "private_support"}
-                              onChange={() => setDraftStatus("private_support")}
-                              className="text-[#2271b1] w-3 h-3"
-                            />
-                            <span className="text-purple-700 font-bold">🔒 వ్యక్తిగత సపోర్ట్ (Private Support)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="postDestinationRoute"
-                              value="draft"
-                              checked={draftStatus === "draft"}
-                              onChange={() => setDraftStatus("draft")}
-                              className="text-[#2271b1] w-3 h-3"
-                            />
-                            <span>📝 డ్రాఫ్ట్ గా సేవ్ (Save as Draft)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="postDestinationRoute"
-                              value="pending"
-                              checked={draftStatus === "pending"}
-                              onChange={() => setDraftStatus("pending")}
-                              disabled={editingPost?.status === "private_support"}
-                              className="text-[#2271b1] w-3 h-3 disabled:opacity-50"
-                            />
-                            <span className={`text-amber-600 ${editingPost?.status === "private_support" ? "opacity-50" : ""}`}>⏳ పెండింగ్ समीक्षा (Pending Review)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="postDestinationRoute"
-                              value="rejected"
-                              checked={draftStatus === "rejected"}
-                              onChange={() => setDraftStatus("rejected")}
-                              className="text-[#2271b1] w-3 h-3"
-                            />
-                            <span className="text-rose-600">❌ తిరస్కరించు (Reject)</span>
-                          </label>
-                        </div>
-                      </div>
-                    )}
                     <div className="flex items-center gap-2">
                       <Eye size={14} className="text-[#8c8f94]" />
                       <span>Visibility: <strong>Public</strong></span>
@@ -23631,7 +23634,7 @@ function PostForm({
                 </div>
                 <div className="bg-[#f6f7f7] border-t border-[#c3c4c7] p-3 flex justify-between items-center">
                   <button type="button" onClick={onCancel} className="text-[#d63638] text-[13px] hover:underline font-medium">Move to Trash</button>
-                  <button id="post-form-submit" type="submit" disabled={loading || uploadingFile} onClick={() => { if (!isAdmin && !isEditor) setDraftStatus("published"); }} className="bg-[#2271b1] border border-[#2271b1] hover:bg-[#135e96] text-white px-4 py-1.5 rounded-[3px] font-semibold text-[13px] shadow-[0_1px_0_#135e96] disabled:opacity-50 transition-colors">
+                  <button id="post-form-submit" type="submit" disabled={loading || uploadingFile} onClick={() => setDraftStatus("published")} className="bg-[#2271b1] border border-[#2271b1] hover:bg-[#135e96] text-white px-4 py-1.5 rounded-[3px] font-semibold text-[13px] shadow-[0_1px_0_#135e96] disabled:opacity-50 transition-colors">
                     {loading ? "Publishing..." : (editingPost ? "Update" : "Publish")}
                   </button>
                 </div>
@@ -25785,7 +25788,7 @@ function PostDetail({
   }
 
   const pStatus = (post.status || "").toLowerCase();
-  const isApproved = pStatus === "approved" || pStatus === "active";
+  const isApproved = pStatus === "approved" || pStatus === "active" || (pStatus === "published" && post.isAdminPost);
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
   const canViewPending = isAdmin || isAuthor;
 
@@ -25872,7 +25875,7 @@ function PostDetail({
       </div>
 
       {/* Moderation Status Banner (Only for non-approved posts) */}
-      {!isApproved && pStatus !== "private_support" && (
+      {!isApproved && (
         <div className="mb-6">
           {isAdmin ? (
             <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-indigo-950 shadow-sm">
@@ -25886,13 +25889,18 @@ function PostDetail({
                     <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-xs font-black border border-amber-200">
                       {post.status || "Pending"}
                     </span>
+                    {post.supportTicketId && (
+                      <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-md text-xs font-black border border-blue-200 flex items-center gap-1">
+                        <Headphones size={12} /> Ticket #{post.supportTicketId.substring(0, 6).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-indigo-700 font-medium mt-0.5">
                     ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే సాధారణ యూజర్లకు కనిపిస్తుంది.
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={async () => {
@@ -25953,6 +25961,25 @@ function PostDetail({
                 >
                   <MessageCircle size={14} /> మెసేజ్ పంపండి (Message)
                 </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await escalatePostToSupportTicket({
+                        post,
+                        isAdmin,
+                        addToast,
+                        onSuccess: (ticketId) => {
+                          setPost((prev) => prev ? { ...prev, status: "Sent to Support", supportTicketId: ticketId } : null);
+                        }
+                      });
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                    title="ఈ పోస్ట్‌ను సపోర్ట్ టికెట్‌గా మార్చి సపోర్ట్ సిస్టమ్‌కి పంపు"
+                  >
+                    <Headphones size={14} /> సపోర్ట్ సిస్టమ్‌కి పంపు
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={async () => {
@@ -25995,6 +26022,30 @@ function PostDetail({
                   ఈ పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు. ఇది ఇతరులకు ఎవరికీ కనిపించదు.
                 </p>
               </div>
+            </div>
+          ) : pStatus === "sent to support" ? (
+            <div className="p-4 bg-blue-50/90 border border-blue-200 rounded-2xl flex items-center justify-between gap-4 text-blue-950 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0">
+                  <Headphones size={20} />
+                </div>
+                <div>
+                  <div className="text-sm font-black uppercase tracking-wider text-blue-900 flex items-center gap-2">
+                    <span>🎧 సపోర్ట్ సిస్టమ్‌కి పంపబడింది (Sent to Support System)</span>
+                    {post.supportTicketId && (
+                      <span className="px-2.5 py-0.5 bg-blue-200/80 text-blue-900 rounded-md text-xs font-black">
+                        Ticket #{post.supportTicketId.substring(0, 6).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-blue-700 font-medium mt-0.5">
+                    మీ పోస్ట్‌ను అడ్మిన్ సపోర్ట్ సిస్టమ్‌కి పంపించారు. సపోర్ట్ టీమ్ త్వరలోనే మీ సమస్యను పరిశీలించి పరిష్కరిస్తుంది.
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-block px-3 py-1.5 bg-blue-200/80 border border-blue-300 text-blue-900 rounded-xl text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
+                🔒 ఇన్ రివ్యూ (Under Review)
+              </span>
             </div>
           ) : (
             <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl flex items-center justify-between gap-4 text-amber-900 shadow-sm">

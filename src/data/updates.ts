@@ -12,6 +12,36 @@ export interface UpdateEntry {
 
 export const SYSTEM_UPDATES: UpdateEntry[] = [
   {
+    id: "sys_v168",
+    version: "V1.6.8",
+    time: Date.now(),
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "UPDATE",
+    title: "MAS రిపోర్ట్ పార్సర్ మెరుగుదలలు 🚀",
+    description: "e-Panchayat పోర్టల్ నుండి వచ్చే జిలా లెవల్ రిపోర్ట్‌లను మరింత సజావుగా ప్రాసెస్ చేసేలా పార్సర్‌లో మార్పులు చేసాము. యూజర్ కోరిక మేరకు ర్యాంక్ మరియు గ్రేడ్ కాలమ్స్ తొలగించబడ్డాయి.",
+    color: "bg-sky-600",
+  },
+  {
+    id: "sys_v167",
+    version: "V1.6.7",
+    time: Date.now(),
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "MAJOR",
+    title: "MAS రిపోర్ట్ ప్రాసెసింగ్ మెరుగుదలలు 🚀",
+    description: "జిలా లెవల్ MAS రిపోర్ట్‌లలో 'Entered' మరియు '%' ఫార్మాట్‌ను గుర్తించేలా పార్సర్ (Parser) మెరుగుపరచబడింది. ఇప్పుడు e-Panchayat పోర్టల్ నుండి డౌన్లోడ్ చేసిన అన్ని రకాల ఫైల్స్ సజావుగా పనిచేస్తాయి.",
+    color: "bg-emerald-600",
+  },
+  {
+    id: "sys_v166",
+    version: "V1.6.6",
+    time: Date.now(),
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "UPDATE",
+    title: "జిలా MAS రిపోర్ట్ అప్‌డేట్ 🚀",
+    description: "జిలా లెవల్ MAS రిపోర్ట్‌లో ఇప్పుడు మండలం వారీగా ర్యాంక్ (Rank), గ్రేడ్ (Grade) మరియు వాట్సాప్ షేర్ (WhatsApp Share) ఫీచర్లు అందుబాటులోకి వచ్చాయి.",
+    color: "bg-orange-500",
+  },
+  {
     id: "sys_v165",
     version: "V1.6.5",
     time: Date.now(),
