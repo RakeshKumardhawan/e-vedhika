@@ -1,1 +1,7 @@
-{ "latestVersion": "v1.0.2", "versionCode": 101, "releaseNotes": "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements.", "downloadUrl": "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe" }
+{
+  "latestVersion": "v1.0.2",
+  "versionCode": 101,
+  "downloadUrl": "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+  "releaseNotes": "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements.",
+  "updatedAt": "2026-09-27T17:21:08.798Z"
+}

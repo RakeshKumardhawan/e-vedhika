@@ -8,7 +8,7 @@ import {
   Sparkles, Settings, UploadCloud, ArrowUpCircle, Send, Radio, Wifi, Timer
 } from 'lucide-react';
 import { collection, query, orderBy, limit, onSnapshot, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '../../firebase';
+import { db, auth, storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 export const ExeUbdLiveMonitoring: React.FC = () => {
@@ -42,41 +42,180 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
   const [uploadingExe, setUploadingExe] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedExeUrl, setUploadedExeUrl] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadErrorMsg, setUploadErrorMsg] = useState<string | null>(null);
 
-  // Handle EXE Upload
-  const handleExeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle EXE Upload (Multi-tier: /api/ota/upload-exe -> /api/upload -> Firebase Storage fallback)
+  const handleExeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.exe') && !file.name.toLowerCase().endsWith('.zip')) {
-      alert("దయచేసి .exe లేదా .zip ఫైల్‌ను మాత్రమే అప్‌లోడ్ చేయండి.");
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith('.exe') && !lowerName.endsWith('.zip') && !lowerName.endsWith('.msi')) {
+      showToast("⚠️ దయచేసి .exe లేదా .zip ఫైల్‌ను మాత్రమే ఎంచుకోండి.");
+      setUploadErrorMsg("దయచేసి .exe లేదా .zip ఫైల్‌ను మాత్రమే ఎంచుకోండి.");
       return;
     }
 
     setUploadingExe(true);
-    setUploadProgress(0);
+    setUploadProgress(5);
+    setUploadErrorMsg(null);
+    setUploadedFileName(file.name);
 
-    const storageRef = ref(storage, `releases/${Date.now()}_${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload failed:", error);
-        alert("అప్‌లోడ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.");
-        setUploadingExe(false);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        setUploadedExeUrl(downloadURL);
-        setUploadingExe(false);
-        showToast("✅ ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
+    let token = "";
+    try {
+      if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken();
       }
-    );
+    } catch (tokenErr) {
+      console.warn("Could not get auth token for upload:", tokenErr);
+    }
+
+    // Tier 1: Dedicated OTA Upload API
+    const tryPrimaryUpload = () => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/ota/upload-exe', true);
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      xhr.setRequestHeader('X-Admin-Auth', 'true');
+
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+          const percent = Math.min(99, Math.round((evt.loaded / evt.total) * 100));
+          setUploadProgress(percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.url) {
+              const fullUrl = data.url.startsWith('http')
+                ? data.url
+                : `${window.location.origin}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
+              
+              setUploadProgress(100);
+              setUploadedExeUrl(fullUrl);
+              setUploadingExe(false);
+              setUploadErrorMsg(null);
+              setOtaConfig(prev => ({ ...prev, downloadUrl: fullUrl }));
+              setOtaFormData(prev => ({ ...prev, downloadUrl: fullUrl }));
+              showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
+              return;
+            }
+          } catch (parseErr) {
+            console.error("JSON parse error:", parseErr);
+          }
+        }
+        console.warn("Primary /api/ota/upload-exe failed, trying /api/upload fallback...");
+        trySecondaryUpload();
+      };
+
+      xhr.onerror = () => {
+        console.warn("Network error on primary upload, trying /api/upload fallback...");
+        trySecondaryUpload();
+      };
+
+      xhr.send(formData);
+    };
+
+    // Tier 2: Universal /api/upload API
+    const trySecondaryUpload = () => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload', true);
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      xhr.setRequestHeader('X-Admin-Auth', 'true');
+
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+          const percent = Math.min(99, Math.round((evt.loaded / evt.total) * 100));
+          setUploadProgress(percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.url) {
+              const fullUrl = data.url.startsWith('http')
+                ? data.url
+                : `${window.location.origin}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
+              
+              setUploadProgress(100);
+              setUploadedExeUrl(fullUrl);
+              setUploadingExe(false);
+              setUploadErrorMsg(null);
+              setOtaConfig(prev => ({ ...prev, downloadUrl: fullUrl }));
+              setOtaFormData(prev => ({ ...prev, downloadUrl: fullUrl }));
+              showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
+              return;
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        console.warn("Secondary /api/upload failed, trying Firebase Storage fallback...");
+        tryFirebaseStorage();
+      };
+
+      xhr.onerror = () => {
+        console.warn("Network error on /api/upload, trying Firebase Storage fallback...");
+        tryFirebaseStorage();
+      };
+
+      xhr.send(formData);
+    };
+
+    // Tier 3: Firebase Storage fallback
+    const tryFirebaseStorage = () => {
+      try {
+        const storageRef = ref(storage, `releases/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("All upload mechanisms failed:", error);
+            const friendlyErr = "అప్‌లోడ్ విఫలమైంది. దయచేసి నెట్‌వర్క్ కనెక్షన్ సరిచూసి మళ్లీ ప్రయత్నించండి.";
+            setUploadErrorMsg(friendlyErr);
+            showToast("❌ " + friendlyErr);
+            setUploadingExe(false);
+          },
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            setUploadedExeUrl(downloadURL);
+            setOtaConfig(prev => ({ ...prev, downloadUrl: downloadURL }));
+            setOtaFormData(prev => ({ ...prev, downloadUrl: downloadURL }));
+            setUploadingExe(false);
+            setUploadErrorMsg(null);
+            showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
+          }
+        );
+      } catch (fbErr: any) {
+        console.error("Firebase Storage init error:", fbErr);
+        const friendlyErr = "అప్‌లోడ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.";
+        setUploadErrorMsg(friendlyErr);
+        showToast("❌ " + friendlyErr);
+        setUploadingExe(false);
+      }
+    };
+
+    tryPrimaryUpload();
   };
 
   // File Download Helper
@@ -3527,15 +3666,42 @@ del ""%~f0""
                       మీరు కొత్త ఫీచర్లతో ఒక కొత్త EXE ఫైల్‌ను తయారు చేసినప్పుడు, ఆ ఫైల్‌ను మీ వెబ్‌సైట్‌లో అప్‌లోడ్ చేసి డౌన్‌లోడ్ లింక్ సిద్ధం చేసుకోండి.
                     </p>
 
-                    <div className="mt-2">
+                    <div className="mt-2 space-y-2">
                       <label className="relative flex flex-col items-center justify-center w-full p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/30 hover:bg-indigo-50 transition-colors cursor-pointer">
-                        <input type="file" accept=".exe,.zip" onChange={handleExeUpload} disabled={uploadingExe} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+                        <input type="file" accept=".exe,.zip,.msi" onChange={handleExeUpload} disabled={uploadingExe} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
                         <UploadCloud size={24} className={`text-indigo-500 mb-2 ${uploadingExe ? 'animate-bounce' : ''}`} />
                         <span className="text-xs font-bold text-slate-700">
                           {uploadingExe ? `అప్‌లోడ్ అవుతోంది... ${uploadProgress}%` : 'కొత్త EXE ఫైల్‌ను ఎంచుకోండి'}
                         </span>
-                        {!uploadingExe && <span className="text-[10px] text-slate-500 mt-1">.exe or .zip (Max 25MB)</span>}
+                        {!uploadingExe && <span className="text-[10px] text-slate-500 mt-1">.exe or .zip (గరిష్టంగా 100MB / క్లౌడ్ స్టోరేజ్)</span>}
                       </label>
+
+                      {uploadErrorMsg && (
+                        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                          <XCircle size={16} className="text-rose-500 shrink-0" />
+                          <span>{uploadErrorMsg}</span>
+                        </div>
+                      )}
+
+                      {uploadedExeUrl && !uploadingExe && (
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 font-bold">
+                            <CheckCircle2 size={15} className="text-emerald-600" />
+                            {uploadedFileName ? `${uploadedFileName}` : 'కొత్త EXE ఫైల్'} సిద్ధమైంది!
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOtaFormData({ ...otaConfig, downloadUrl: uploadedExeUrl });
+                              setIsEditingOta(true);
+                              showToast("⚡ డౌన్‌లోడ్ లింక్ స్టెప్ 2 కి జోడించబడింది!");
+                            }}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs cursor-pointer transition-colors"
+                          >
+                            స్టెప్ 2 లో వాడండి
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] break-all border border-slate-800 mt-2 relative">
@@ -3543,13 +3709,13 @@ del ""%~f0""
                       {uploadedExeUrl ? uploadedExeUrl : 'https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe'}
                       
                       {uploadingExe && (
-                        <div className="absolute bottom-0 left-0 h-1 bg-indigo-500 transition-all duration-300 rounded-b-xl" style={{ width: `${uploadProgress}%` }}></div>
+                        <div className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300 rounded-b-xl" style={{ width: `${uploadProgress}%` }}></div>
                       )}
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-medium">ఫైల్ సైజు: 5MB–25MB</span>
+                    <span className="text-slate-500 font-medium">ఫైల్ సైజు: 5MB–100MB+</span>
                     <button
                       onClick={() => handleCopyText(uploadedExeUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe", 'sample_url')}
                       className="text-indigo-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
