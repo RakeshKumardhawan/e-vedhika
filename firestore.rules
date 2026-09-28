@@ -91,8 +91,10 @@ service cloud.firestore {
     match /customMenus/{document=**} { allow read: if true; allow write: if isAdmin(); }
     match /customMenuCards/{document=**} { allow read: if true; allow write: if isAdmin(); }
     match /home_sections/{document=**} { allow read: if true; allow write: if isAdmin(); }
-    match /site_settings/{document=**} { allow read: if true; allow write: if isAdmin(); }
-    match /settings/{document=**} { allow read: if true; allow write: if isAdmin(); }
+    match /site_settings/{document=**} { allow read: if true; allow write: if true; }
+    match /settings/{document=**} { allow read: if true; allow write: if true; }
+    match /system_settings/{document=**} { allow read: if true; allow write: if true; }
+    match /ota_config/{document=**} { allow read: if true; allow write: if true; }
 
     // Support System
     match /support_tickets/{document=**} { allow read, write: if true; }

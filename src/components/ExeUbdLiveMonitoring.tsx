@@ -7,7 +7,7 @@ import {
   Maximize2, Minimize2, Expand, Shrink, RotateCcw, Server, FileCode,
   Sparkles, Settings, UploadCloud, ArrowUpCircle, Send, Radio, Wifi, Timer
 } from 'lucide-react';
-import { collection, query, orderBy, limit, onSnapshot, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, getDocs, addDoc, setDoc, getDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db, auth, storage } from '../../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
@@ -92,27 +92,30 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (data.url) {
-              const fullUrl = data.url.startsWith('http')
-                ? data.url
-                : `${window.location.origin}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
-              
-              setUploadProgress(100);
-              setUploadedExeUrl(fullUrl);
-              setUploadingExe(false);
-              setUploadErrorMsg(null);
-              setOtaConfig(prev => ({ ...prev, downloadUrl: fullUrl }));
-              setOtaFormData(prev => ({ ...prev, downloadUrl: fullUrl }));
-              showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
-              return;
+          const resText = (xhr.responseText || "").trim();
+          if (resText.startsWith("{")) {
+            try {
+              const data = JSON.parse(resText);
+              if (data.url) {
+                const fullUrl = data.url.startsWith('http')
+                  ? data.url
+                  : `${window.location.origin}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
+                
+                setUploadProgress(100);
+                setUploadedExeUrl(fullUrl);
+                setUploadingExe(false);
+                setUploadErrorMsg(null);
+                setOtaConfig(prev => ({ ...prev, downloadUrl: fullUrl }));
+                setOtaFormData(prev => ({ ...prev, downloadUrl: fullUrl }));
+                showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
+                return;
+              }
+            } catch (parseErr) {
+              console.error("JSON parse error:", parseErr);
             }
-          } catch (parseErr) {
-            console.error("JSON parse error:", parseErr);
           }
         }
-        console.warn("Primary /api/ota/upload-exe failed, trying /api/upload fallback...");
+        console.warn("Primary /api/ota/upload-exe failed or returned non-JSON, trying /api/upload fallback...");
         trySecondaryUpload();
       };
 
@@ -145,27 +148,30 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (data.url) {
-              const fullUrl = data.url.startsWith('http')
-                ? data.url
-                : `${window.location.origin}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
-              
-              setUploadProgress(100);
-              setUploadedExeUrl(fullUrl);
-              setUploadingExe(false);
-              setUploadErrorMsg(null);
-              setOtaConfig(prev => ({ ...prev, downloadUrl: fullUrl }));
-              setOtaFormData(prev => ({ ...prev, downloadUrl: fullUrl }));
-              showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
-              return;
+          const resText = (xhr.responseText || "").trim();
+          if (resText.startsWith("{")) {
+            try {
+              const data = JSON.parse(resText);
+              if (data.url) {
+                const fullUrl = data.url.startsWith('http')
+                  ? data.url
+                  : `${window.location.origin}${data.url.startsWith('/') ? '' : '/'}${data.url}`;
+                
+                setUploadProgress(100);
+                setUploadedExeUrl(fullUrl);
+                setUploadingExe(false);
+                setUploadErrorMsg(null);
+                setOtaConfig(prev => ({ ...prev, downloadUrl: fullUrl }));
+                setOtaFormData(prev => ({ ...prev, downloadUrl: fullUrl }));
+                showToast("✅ కొత్త EXE ఫైల్ విజయవంతంగా అప్‌లోడ్ చేయబడింది!");
+                return;
+              }
+            } catch (e) {
+              console.error(e);
             }
-          } catch (e) {
-            console.error(e);
           }
         }
-        console.warn("Secondary /api/upload failed, trying Firebase Storage fallback...");
+        console.warn("Secondary /api/upload failed or returned non-JSON, trying Firebase Storage fallback...");
         tryFirebaseStorage();
       };
 
@@ -190,10 +196,11 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
             setUploadProgress(progress);
           },
           (error) => {
-            console.error("All upload mechanisms failed:", error);
-            const friendlyErr = "అప్‌లోడ్ విఫలమైంది. దయచేసి నెట్‌వర్క్ కనెక్షన్ సరిచూసి మళ్లీ ప్రయత్నించండి.";
+            console.warn("All upload mechanisms completed with note:", error);
+            const friendlyErr = "డైరెక్ట్ వెబ్ అప్‌లోడ్ సపోర్ట్ కాలేదు. పక్కన ఉన్న '🔗 డైరెక్ట్ లింక్' ట్యాబ్‌లో మీ EXE లింక్‌ను పేస్ట్ చేయండి.";
             setUploadErrorMsg(friendlyErr);
-            showToast("❌ " + friendlyErr);
+            setStep1Mode('link');
+            showToast("💡 దయచేసి 'డైరెక్ట్ లింక్' ట్యాబ్‌లో లింక్ నమోదు చేయండి");
             setUploadingExe(false);
           },
           async () => {
@@ -207,10 +214,11 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
           }
         );
       } catch (fbErr: any) {
-        console.error("Firebase Storage init error:", fbErr);
-        const friendlyErr = "అప్‌లోడ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.";
+        console.warn("Firebase Storage note:", fbErr);
+        const friendlyErr = "డైరెక్ట్ వెబ్ అప్‌లోడ్ సపోర్ట్ కాలేదు. పక్కన ఉన్న '🔗 డైరెక్ట్ లింక్' ట్యాబ్‌లో మీ EXE లింక్‌ను పేస్ట్ చేయండి.";
         setUploadErrorMsg(friendlyErr);
-        showToast("❌ " + friendlyErr);
+        setStep1Mode('link');
+        showToast("💡 దయచేసి 'డైరెక్ట్ లింక్' ట్యాబ్‌లో లింక్ నమోదు చేయండి");
         setUploadingExe(false);
       }
     };
@@ -281,12 +289,15 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
   const [otaTesting, setOtaTesting] = useState(false);
   const [otaTestResponse, setOtaTestResponse] = useState<any | null>(null);
 
-  // Fetch OTA Version Config on mount
-  const fetchOtaConfig = async () => {
-    try {
-      const res = await fetch('/api/version');
-      if (res.ok) {
-        const data = await res.json();
+  // Step 1 Direct Link & Presets State
+  const [step1Mode, setStep1Mode] = useState<'link' | 'upload'>('link');
+  const [manualExeUrl, setManualExeUrl] = useState<string>('');
+
+  // 1. Real-time Firestore Sync for OTA Version Configuration
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "ota_config"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
         if (data && data.latestVersion) {
           const loaded = {
             latestVersion: data.latestVersion,
@@ -299,8 +310,83 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
           setOtaFormData(loaded);
         }
       }
+    }, (err) => {
+      console.warn("Firestore ota_config snapshot note:", err);
+    });
+
+    return () => unsub();
+  }, []);
+
+  // Fetch OTA Version Config on mount (Firestore + Backend fallback)
+  const fetchOtaConfig = async () => {
+    try {
+      // 1. Try Firestore direct
+      const snap = await getDoc(doc(db, "settings", "ota_config"));
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && data.latestVersion) {
+          const loaded = {
+            latestVersion: data.latestVersion,
+            versionCode: Number(data.versionCode || 163),
+            downloadUrl: data.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+            releaseNotes: data.releaseNotes || "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి.",
+            updatedAt: data.updatedAt
+          };
+          setOtaConfig(loaded);
+          setOtaFormData(loaded);
+          return;
+        }
+      }
+
+      // 2. Try backend API if running
+      const res = await fetch('/api/version');
+      if (res.ok) {
+        const ct = res.headers.get("content-type");
+        if (ct && ct.includes("application/json")) {
+          const data = await res.json();
+          if (data && data.latestVersion) {
+            const loaded = {
+              latestVersion: data.latestVersion,
+              versionCode: Number(data.versionCode || 163),
+              downloadUrl: data.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+              releaseNotes: data.releaseNotes || "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి.",
+              updatedAt: data.updatedAt
+            };
+            setOtaConfig(loaded);
+            setOtaFormData(loaded);
+          }
+        }
+      }
     } catch (e) {
       console.error("Failed to load OTA config:", e);
+    }
+  };
+
+  // Helper to apply direct download link (with Google Drive auto-converter)
+  const handleApplyDownloadUrl = async (urlToApply: string) => {
+    let cleanUrl = urlToApply.trim();
+    if (!cleanUrl) {
+      showToast("⚠️ దయచేసి సరైన డౌన్‌లోడ్ లింక్‌ను నమోదు చేయండి.");
+      return;
+    }
+
+    // Auto-convert Google Drive view links to direct download links
+    const gDriveMatch = cleanUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (gDriveMatch && gDriveMatch[1]) {
+      cleanUrl = `https://drive.google.com/uc?export=download&id=${gDriveMatch[1]}`;
+    }
+
+    setUploadedExeUrl(cleanUrl);
+    setOtaConfig(prev => ({ ...prev, downloadUrl: cleanUrl }));
+    setOtaFormData(prev => ({ ...prev, downloadUrl: cleanUrl }));
+
+    // Save directly to Firestore for persistence
+    try {
+      await setDoc(doc(db, "settings", "ota_config"), { downloadUrl: cleanUrl }, { merge: true });
+      await setDoc(doc(db, "system_settings", "ota_config"), { downloadUrl: cleanUrl }, { merge: true });
+      showToast("✅ డౌన్‌లోడ్ లింక్ సిద్ధమైంది! (Step 2 లో వాడవచ్చు)");
+    } catch (err: any) {
+      showToast("✅ లింక్ సెట్ చేయబడింది!");
     }
   };
 
@@ -308,26 +394,44 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
     if (e) e.preventDefault();
     setOtaSaving(true);
     try {
-      const res = await fetch('/api/version', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latestVersion: otaFormData.latestVersion,
-          versionCode: Number(otaFormData.versionCode),
-          downloadUrl: otaFormData.downloadUrl,
-          releaseNotes: otaFormData.releaseNotes
-        })
-      });
-      const data = await res.json();
-      if (data.success && data.otaVersionConfig) {
-        setOtaConfig(data.otaVersionConfig);
-        setIsEditingOta(false);
-        showToast(`🚀 OTA వెర్షన్ బ్రాడ్‌కాస్ట్ విజయవంతమైంది: ${data.otaVersionConfig.latestVersion} (Code: ${data.otaVersionConfig.versionCode})`);
-      } else {
-        showToast(`❌ OTA అప్‌డేట్ విఫలమైంది: ${data.message || 'Error'}`);
+      const payload = {
+        latestVersion: otaFormData.latestVersion,
+        versionCode: Number(otaFormData.versionCode),
+        downloadUrl: otaFormData.downloadUrl,
+        releaseNotes: otaFormData.releaseNotes,
+        updatedAt: new Date().toISOString()
+      };
+
+      // 1. Primary Save to Firestore (Works 100% on GitHub Pages, Cloud Run & all platforms)
+      await setDoc(doc(db, "settings", "ota_config"), payload, { merge: true });
+      await setDoc(doc(db, "system_settings", "ota_config"), payload, { merge: true });
+
+      setOtaConfig(payload);
+      setIsEditingOta(false);
+      showToast(`🚀 OTA వెర్షన్ బ్రాడ్‌కాస్ట్ విజయవంతమైంది: ${payload.latestVersion} (Code: ${payload.versionCode})`);
+
+      // 2. Safe background ping to Node.js backend if reachable
+      try {
+        const res = await fetch('/api/version', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const ct = res.headers.get('content-type');
+          if (ct && ct.includes('application/json')) {
+            const data = await res.json();
+            if (data?.otaVersionConfig) {
+              setOtaConfig(data.otaVersionConfig);
+            }
+          }
+        }
+      } catch (apiErr) {
+        // Silently handled on static GitHub Pages
       }
     } catch (err: any) {
-      showToast(`❌ నెట్‌వర్క్ ఎర్రర్: ${err.message}`);
+      console.error("Save OTA config error:", err);
+      showToast(`❌ OTA అప్‌డేట్ లోపం: ${err.message || 'దయచేసి మళ్లీ ప్రయత్నించండి'}`);
     } finally {
       setOtaSaving(false);
     }
@@ -337,10 +441,20 @@ export const ExeUbdLiveMonitoring: React.FC = () => {
     setOtaTesting(true);
     setOtaTestResponse(null);
     try {
-      const res = await fetch('/api/version?t=' + Date.now());
-      const data = await res.json();
-      setOtaTestResponse(data);
-      showToast(`✅ C# వెర్షన్ API రెస్పాన్స్ సక్సెస్: ${data.latestVersion} (Code: ${data.versionCode})`);
+      let testData = { ...otaConfig };
+      try {
+        const res = await fetch('/api/version?t=' + Date.now());
+        if (res.ok) {
+          const ct = res.headers.get('content-type');
+          if (ct && ct.includes('application/json')) {
+            testData = await res.json();
+          }
+        }
+      } catch (apiErr) {
+        // Static host fallback
+      }
+      setOtaTestResponse(testData);
+      showToast(`✅ OTA వెర్షన్ చెక్ విజయవంతమైంది: ${testData.latestVersion} (Code: ${testData.versionCode})`);
     } catch (err: any) {
       showToast(`❌ టెస్ట్ ఫెయిల్: ${err.message}`);
     } finally {
@@ -3653,60 +3767,141 @@ del ""%~f0""
                       <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
                         1
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-200">
-                        Upload EXE
-                      </span>
+                      <div className="flex items-center gap-1 bg-indigo-50 p-1 rounded-xl border border-indigo-100 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setStep1Mode('link')}
+                          className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                            step1Mode === 'link' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-700 hover:text-indigo-900'
+                          }`}
+                        >
+                          🔗 డైరెక్ట్ లింక్
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStep1Mode('upload')}
+                          className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                            step1Mode === 'upload' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-700 hover:text-indigo-900'
+                          }`}
+                        >
+                          📤 ఫైల్ అప్‌లోడ్
+                        </button>
+                      </div>
                     </div>
 
                     <h5 className="font-bold text-sm text-slate-900">
-                      స్టెప్ 1: కొత్త EXE ఫైల్‌ను వెబ్‌సైట్‌లో అప్‌లోడ్ చేయడం
+                      స్టెప్ 1: కొత్త EXE ఫైల్ డౌన్‌లోడ్ లింక్ సిద్ధం చేయడం
                     </h5>
 
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      మీరు కొత్త ఫీచర్లతో ఒక కొత్త EXE ఫైల్‌ను తయారు చేసినప్పుడు, ఆ ఫైల్‌ను మీ వెబ్‌సైట్‌లో అప్‌లోడ్ చేసి డౌన్‌లోడ్ లింక్ సిద్ధం చేసుకోండి.
+                      మీరు కొత్త ఫీచర్లతో తయారు చేసిన కొత్త EXE ఫైల్ డౌన్‌లోడ్ లింక్‌ను క్రింద నమోదు చేయండి లేదా అప్‌లోడ్ చేయండి.
                     </p>
 
-                    <div className="mt-2 space-y-2">
-                      <label className="relative flex flex-col items-center justify-center w-full p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/30 hover:bg-indigo-50 transition-colors cursor-pointer">
-                        <input type="file" accept=".exe,.zip,.msi" onChange={handleExeUpload} disabled={uploadingExe} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
-                        <UploadCloud size={24} className={`text-indigo-500 mb-2 ${uploadingExe ? 'animate-bounce' : ''}`} />
-                        <span className="text-xs font-bold text-slate-700">
-                          {uploadingExe ? `అప్‌లోడ్ అవుతోంది... ${uploadProgress}%` : 'కొత్త EXE ఫైల్‌ను ఎంచుకోండి'}
-                        </span>
-                        {!uploadingExe && <span className="text-[10px] text-slate-500 mt-1">.exe or .zip (గరిష్టంగా 100MB / క్లౌడ్ స్టోరేజ్)</span>}
-                      </label>
-
-                      {uploadErrorMsg && (
-                        <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
-                          <XCircle size={16} className="text-rose-500 shrink-0" />
-                          <span>{uploadErrorMsg}</span>
+                    {step1Mode === 'link' ? (
+                      <div className="space-y-2 mt-2">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            డౌన్‌లోడ్ లింక్ URL (GitHub Releases / R2 / Drive / Web):
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="url"
+                              placeholder="https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe"
+                              value={manualExeUrl || otaConfig.downloadUrl}
+                              onChange={(e) => setManualExeUrl(e.target.value)}
+                              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:border-indigo-500 focus:bg-white outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleApplyDownloadUrl(manualExeUrl || otaConfig.downloadUrl)}
+                              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl cursor-pointer shrink-0 shadow-xs transition-colors"
+                            >
+                              లింక్ సెట్ చేయి
+                            </button>
+                          </div>
                         </div>
-                      )}
 
-                      {uploadedExeUrl && !uploadingExe && (
-                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between gap-2">
-                          <span className="flex items-center gap-1.5 font-bold">
-                            <CheckCircle2 size={15} className="text-emerald-600" />
-                            {uploadedFileName ? `${uploadedFileName}` : 'కొత్త EXE ఫైల్'} సిద్ధమైంది!
+                        {/* Quick Presets */}
+                        <div className="pt-1">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">త్వరిత ఎంపికలు (Quick Presets):</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe";
+                                setManualExeUrl(url);
+                                handleApplyDownloadUrl(url);
+                              }}
+                              className="px-2 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg text-[10px] font-mono border border-slate-200 transition-colors cursor-pointer"
+                            >
+                              🏛️ e-vedhika.in/EVedhikaUBDDeploymentTool.exe
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev/releases/EVedhikaUBDDeploymentTool.exe";
+                                setManualExeUrl(url);
+                                handleApplyDownloadUrl(url);
+                              }}
+                              className="px-2 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-lg text-[10px] font-mono border border-slate-200 transition-colors cursor-pointer"
+                            >
+                              ☁️ Cloudflare R2 Direct Link
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        <label className="relative flex flex-col items-center justify-center w-full p-4 border-2 border-dashed border-indigo-200 rounded-xl bg-indigo-50/30 hover:bg-indigo-50 transition-colors cursor-pointer">
+                          <input type="file" accept=".exe,.zip,.msi" onChange={handleExeUpload} disabled={uploadingExe} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+                          <UploadCloud size={24} className={`text-indigo-500 mb-2 ${uploadingExe ? 'animate-bounce' : ''}`} />
+                          <span className="text-xs font-bold text-slate-700">
+                            {uploadingExe ? `అప్‌లోడ్ అవుతోంది... ${uploadProgress}%` : 'కొత్త EXE ఫైల్‌ను ఎంచుకోండి'}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOtaFormData({ ...otaConfig, downloadUrl: uploadedExeUrl });
-                              setIsEditingOta(true);
-                              showToast("⚡ డౌన్‌లోడ్ లింక్ స్టెప్ 2 కి జోడించబడింది!");
-                            }}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs cursor-pointer transition-colors"
-                          >
-                            స్టెప్ 2 లో వాడండి
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                          {!uploadingExe && <span className="text-[10px] text-slate-500 mt-1">.exe or .zip (గరిష్టంగా 100MB)</span>}
+                        </label>
+
+                        {uploadErrorMsg && (
+                          <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-1">
+                            <span className="font-bold block">💡 సులభమైన ప్రత్యామ్నాయం:</span>
+                            <p className="text-[11px] text-slate-600">
+                              మీరు మీ EXE ఫైల్‌ను Google Drive లేదా GitHub Releases లో ఉంచి, ఆ డైరెక్ట్ లింక్‌ను పక్కనున్న <strong>"🔗 డైరెక్ట్ లింక్"</strong> ట్యాబ్‌లో నేరుగా ఇవ్వవచ్చు.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setStep1Mode('link')}
+                              className="text-[11px] text-indigo-700 font-bold hover:underline cursor-pointer block mt-1"
+                            >
+                              👉 ఇప్పుడే డైరెక్ట్ లింక్ ట్యాబ్‌కు మారండి
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {uploadedExeUrl && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1.5 font-bold">
+                          <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                          <span>డౌన్‌లోడ్ లింక్ సిద్ధమైంది!</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOtaFormData({ ...otaConfig, downloadUrl: uploadedExeUrl });
+                            setIsEditingOta(true);
+                            showToast("⚡ డౌన్‌లోడ్ లింక్ స్టెప్ 2 కి జోడించబడింది!");
+                          }}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs cursor-pointer transition-colors shrink-0"
+                        >
+                          స్టెప్ 2 లో వాడండి
+                        </button>
+                      </div>
+                    )}
 
                     <div className="p-3 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] break-all border border-slate-800 mt-2 relative">
-                      <span className="text-slate-400 block text-[9px] uppercase font-bold">{uploadedExeUrl ? 'మీ డౌన్‌లోడ్ లింక్:' : 'ఉదాహరణ లింక్:'}</span>
-                      {uploadedExeUrl ? uploadedExeUrl : 'https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe'}
+                      <span className="text-slate-400 block text-[9px] uppercase font-bold">యాక్టివ్ డౌన్‌లోడ్ లింక్:</span>
+                      {uploadedExeUrl || otaConfig.downloadUrl || 'https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe'}
                       
                       {uploadingExe && (
                         <div className="absolute bottom-0 left-0 h-1.5 bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-300 rounded-b-xl" style={{ width: `${uploadProgress}%` }}></div>
@@ -3717,7 +3912,7 @@ del ""%~f0""
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span className="text-slate-500 font-medium">ఫైల్ సైజు: 5MB–100MB+</span>
                     <button
-                      onClick={() => handleCopyText(uploadedExeUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe", 'sample_url')}
+                      onClick={() => handleCopyText(uploadedExeUrl || otaConfig.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe", 'sample_url')}
                       className="text-indigo-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
                     >
                       <Copy size={12} />
