@@ -2005,7 +2005,7 @@ export function MonthlyActivityFormatter({
             <div>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
                 <FileSpreadsheet className="text-sky-700" size={26} />
-                E-Panchayat Monthly Activity Report
+                E-Panchayat Monthly Activity Report (MAS)
               </h2>
               <p className="text-slate-500 font-medium mt-1 text-xs sm:text-sm">
                 Upload raw data file to generate exact Telangana State activity data entry report format with page setup.
@@ -2073,9 +2073,7 @@ export function MonthlyActivityFormatter({
                     )}
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mt-0.5">
-                    {reportLevel === "district"
-                      ? "E-Panchayat Monthly Activity Report"
-                      : "Mandal MAS – Mandal Level Monitoring"}
+                    E-Panchayat Monthly Activity Report (MAS)
                   </h2>
                 </div>
               </div>

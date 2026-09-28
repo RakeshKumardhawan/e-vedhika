@@ -5450,7 +5450,7 @@ E-Vedhika Team`;
                     { id: "priority_services", label: "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
                     { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
                     { id: "union", label: "Union Corner & Polls", icon: Users, colorTheme: "orange" },
-                    { id: "directlinks", label: "Direct Link", icon: Megaphone, colorTheme: "purple" },
+                    { id: "ubd_tracker", label: "UBD Tool Tracker", icon: Megaphone, colorTheme: "purple" },
                                                                                 { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
                     { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
                     { id: "useful_links", label: "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
@@ -5664,7 +5664,7 @@ E-Vedhika Team`;
                                       { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: false },
                                       { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} />, isFree: false },
                                       { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} />, isFree: false },
-                                      { id: 'monthly-activity', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: false },
+                                      { id: 'MAS', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: false },
                                       { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} />, isFree: false },
                                       { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} />, isFree: false },
                                     ].map(tool => (
@@ -8296,9 +8296,9 @@ E-Vedhika Team`;
                   </motion.div>
                 )}
 
-                {currentTab === "directlinks" && (
+                {currentTab === "ubd_tracker" && (
   <motion.div
-    key="directlinks"
+    key="ubd_tracker"
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0 }}
@@ -16862,25 +16862,9 @@ function SmartAssistant({
         <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl">
           <button
             type="button"
-            onClick={() => setAiEngine("chatgpt")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              aiEngine === "chatgpt" 
-                ? "bg-emerald-600 text-white shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs"
           >
-            🤖 ChatGPT Engine
-          </button>
-          <button
-            type="button"
-            onClick={() => setAiEngine("gemini")}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              aiEngine === "gemini" 
-                ? "bg-indigo-600 text-white shadow-xs" 
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            ✨ Gemini 2.5 Pro
+            ✨ E-Vedhika AI Engine
           </button>
         </div>
       </div>
@@ -16909,18 +16893,6 @@ function SmartAssistant({
               </>
             )}
           </button>
-        </div>
-        <div className="flex items-center gap-2 px-1">
-          <input
-            type="checkbox"
-            id="deep-thinking-toggle"
-            checked={deepThinking}
-            onChange={(e) => setDeepThinking(e.target.checked)}
-            className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
-          />
-          <label htmlFor="deep-thinking-toggle" className="text-xs font-bold text-slate-600 cursor-pointer">
-            ✨ Deep Thinking / Detailed System Audit Mode
-          </label>
         </div>
       </div>
 
@@ -17158,16 +17130,10 @@ function DigitalWorkspaceSection({
       desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
     },
     {
-      id: "mandal-monthly-activity",
-      title: "Mandal MAS (GP Matrix)",
+      id: "MAS",
+      title: "E-Panchayat Monthly Activity Report (MAS)",
       icon: FileSpreadsheet,
-      desc: "గ్రామ పంచాయతీల వారీగా MAS రిపోర్ట్",
-    },
-    {
-      id: "district-monthly-activity",
-      title: "E-Panchayat Monthly Activity Report",
-      icon: FileSpreadsheet,
-      desc: "మండలాల వారీగా శాతం (Percentage) రిపోర్ట్",
+      desc: "మండల/జిల్లా స్థాయి మాసాంతపు యాక్టివిటీ రిపోర్ట్ (GP Matrix)",
     },
     {
       id: "excel-merge",
@@ -17218,7 +17184,7 @@ function DigitalWorkspaceSection({
         <button
           onClick={() => {
             const sharePath = activeTool ? `workspace/${activeTool}` : "workspace";
-            const url = `${getSiteBaseUrl()}/?tab=${sharePath}`;
+            const url = `${getSiteBaseUrl()}/${sharePath}`;
             const toolObj = tools.find((t) => t.id === activeTool);
             const title = toolObj ? `${toolObj.title} - E-Vedhika` : "Mana Panchayath - E-Vedhika";
             handleShare(
@@ -17283,7 +17249,7 @@ function DigitalWorkspaceSection({
                   <button
                     onClick={() => {
                       const currentToolObj = tools.find((t) => t.id === activeTool);
-                      const url = `${getSiteBaseUrl()}/?tab=workspace/${activeTool}`;
+                      const url = `${getSiteBaseUrl()}/workspace/${activeTool}`;
                       handleShare(
                         `${currentToolObj?.title || 'Tool'} - E-Vedhika`,
                         `Access ${currentToolObj?.title || 'tool'} on Mana Panchayath - E-Vedhika!`,
@@ -17425,13 +17391,11 @@ function DigitalWorkspaceSection({
                 </div>
               )}
               {activeTool === "pract" && <PRActHub user={user} />}
-              {(activeTool === "monthly-activity" ||
-                activeTool === "mandal-monthly-activity" ||
-                activeTool === "district-monthly-activity") && (
+              {activeTool === "MAS" && (
                 <MonthlyActivityFormatter
                   addToast={addToast}
                   user={user}
-                  initialLevel={activeTool === "district-monthly-activity" ? "district" : "mandal"}
+                  initialLevel="mandal"
                 />
               )}
               {activeTool === "excel-merge" && (

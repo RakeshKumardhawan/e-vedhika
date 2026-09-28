@@ -33,7 +33,8 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
   }
 
   if (mainTab === "reports") mainTab = "my_activity";
-  if (mainTab === "problems") mainTab = "directlinks";
+  if (mainTab === "problems") mainTab = "ubd_tracker";
+  if (mainTab === "directlinks") mainTab = "ubd_tracker";
 
   const normMain = (mainTab || "").toLowerCase().replace(/[-_ ]/g, "");
   if (
@@ -43,7 +44,7 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
     normMain === "sysadmin" ||
     normMain === "admin"
   ) {
-    mainTab = "admin";
+    mainTab = "admin","evdka","adminpanel";
   }
 
   let workspaceTool: string | null = null;
@@ -61,7 +62,7 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
         workspaceTool = "multiday";
       else if (norm === "training" || norm === "digitaltraining") workspaceTool = "training";
       else if (norm === "pract" || norm === "knowledgehub" || norm === "practguide") workspaceTool = "pract";
-      else if (norm === "monthlyactivity" || norm === "monthlyactivitydata" || norm === "mas") workspaceTool = "monthly-activity";
+      else if (norm === "monthlyactivity" || norm === "monthlyactivitydata" || norm === "mas" || norm === "mandalmonthlyactivity" || norm === "districtmonthlyactivity") workspaceTool = "MAS";
       else if (
         norm === "excelmerge" ||
         norm === "excelmerger" ||
@@ -70,7 +71,7 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
       )
         workspaceTool = "excel-merge";
       else if (norm === "gpdpplanning" || norm === "gpdp") workspaceTool = "gpdp-planning";
-      else workspaceTool = subToolFromUrl;
+      else workspaceTool = subToolFromUrl === "monthly-activity" ? "MAS" : subToolFromUrl;
     } else {
       workspaceTool = null;
     }
