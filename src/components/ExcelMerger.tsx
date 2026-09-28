@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FileSpreadsheet, FileUp, Download, Loader2, AlertTriangle, CheckCircle } from "lucide-react";
+import XLSX from "xlsx-js-style";
 
 export function ExcelMerger({ user, addToast }: { user: any; addToast: (s: string) => void }) {
   const [files, setFiles] = useState<File[]>([]);
@@ -26,7 +27,6 @@ export function ExcelMerger({ user, addToast }: { user: any; addToast: (s: strin
       setMergedDataSummary(null);
 
       try {
-        const XLSX = await import("xlsx-js-style");
         const file = newFiles[0];
         const dataBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(dataBuffer, { type: "array" });
@@ -86,9 +86,6 @@ export function ExcelMerger({ user, addToast }: { user: any; addToast: (s: strin
     setSuccess(null);
 
     try {
-      let XLSX: any = null;
-      XLSX = await import("xlsx-js-style");
-
       let allRows: any[] = [];
       let allKeys = new Set<string>();
 

@@ -30,18 +30,32 @@ export function AdminInbox({ user }: any) {
 
   const handleSendReply = async () => {
     if (!replyText.trim() || !selectedTicket) return;
+    const text = replyText.trim();
+    setReplyText("");
     try {
-      await addDoc(collection(db, "support_tickets", selectedTicket.id, "messages"), {
-        senderId: user.uid,
-        senderName: "e-Vedika Team",
-        text: replyText,
-        time: Date.now()
+      const res = await fetch("/api/support/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          text: text,
+          status: "pending"
+        })
       });
-      await updateDoc(doc(db, "support_tickets", selectedTicket.id), {
-        status: "pending",
-        updatedAt: Date.now()
-      });
-      setReplyText("");
+      const data = await res.json();
+      if (!data.success) {
+        // Fallback to client
+        await addDoc(collection(db, "support_tickets", selectedTicket.id, "messages"), {
+          senderId: user?.uid || "admin",
+          senderName: "e-Vedika Team",
+          text: text,
+          time: Date.now()
+        });
+        await updateDoc(doc(db, "support_tickets", selectedTicket.id), {
+          status: "pending",
+          updatedAt: Date.now()
+        });
+      }
     } catch (e) {
       console.error(e);
     }

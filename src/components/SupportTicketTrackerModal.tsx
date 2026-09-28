@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebase";
-import { trackTicketByCode } from "../services/supportTicketService";
+import { trackTicketByCode, notifySupportTicketToTelegram } from "../services/supportTicketService";
 
 interface SupportTicketTrackerModalProps {
   initialTrackingCode?: string;
@@ -126,6 +126,18 @@ export function SupportTicketTrackerModal({
         lastReplyTime: Date.now(),
         status: ticketData.status === "resolved" ? "open" : ticketData.status
       });
+
+      // Instant Telegram Alert with Spot Reply buttons
+      notifySupportTicketToTelegram({
+        ticketId: ticketData.id,
+        trackingNumber: ticketData.trackingNumber || ticketData.ticketNumber,
+        userName: senderName,
+        userEmail: user?.email,
+        subject: ticketData.subject || ticketData.problem || "Follow-up Inquiry",
+        category: ticketData.category || "Citizen Follow-up",
+        message: text,
+        isFollowUp: true
+      }).catch(console.error);
 
       if (addToast) addToast("మీ సందేశం సపోర్ట్ టీమ్‌కు పంపబడింది!", "success");
     } catch (err: any) {

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { requireLoginAlert } from "../App";
+import XLSX from "xlsx-js-style";
 import { 
   Upload, 
   Download, 
@@ -973,7 +974,7 @@ export function MonthlyActivityFormatter({
         "Mandal Name": rec.name,
         "TotalGPs": rec.totalGPs,
         activities,
-        "Overall Entered": parseFloat(avgEntered.toFixed(2)),
+        "Overall Entered": Math.ceil(avgEntered),
         "Overall %": overallPct
       });
     });
@@ -1004,7 +1005,6 @@ export function MonthlyActivityFormatter({
     setUploadedFilesLabel(files.map((f) => f.name).join(", "));
 
     try {
-      const XLSX = await import("xlsx-js-style");
       const sheetsList: { fileName: string; sheetName: string; rows: any[][] }[] = [];
 
       for (const file of files) {
@@ -1178,7 +1178,6 @@ export function MonthlyActivityFormatter({
   const handleExportMandalExcel = async () => {
     if (!mandalData.length) return;
     try {
-      const XLSX = await import("xlsx-js-style");
       const wb = XLSX.utils.book_new();
 
       // Sheet 1: Report 13 (Matrix)
@@ -1232,7 +1231,6 @@ export function MonthlyActivityFormatter({
   const handleExportDistrictExcel = async () => {
     if (!districtData.length) return;
     try {
-      const XLSX = await import("xlsx-js-style");
       const wb = XLSX.utils.book_new();
 
       const headers = [
@@ -2665,7 +2663,7 @@ export function MonthlyActivityFormatter({
                           return (
                             <React.Fragment key={idx}>
                               <td className="py-1.5 px-1 border border-black bg-white">
-                                {totEnt}
+                                {Number.isInteger(totEnt) ? totEnt : totEnt.toFixed(2)}
                               </td>
                               <td className={`py-1.5 px-1 border border-black text-center ${getPercentageColorClass(totPct)}`}>
                                 {totPct.toFixed(0)}%
@@ -2674,7 +2672,7 @@ export function MonthlyActivityFormatter({
                           );
                         })}
                         <td className="py-1.5 px-1 border border-black bg-white font-black text-slate-900">
-                          {Object.values(districtActivityTotals).reduce((acc, v) => acc + v.totalEntered, 0) / Math.max(1, dynamicActivities.length)}
+                          {Math.ceil(Object.values(districtActivityTotals).reduce((acc, v) => acc + v.totalEntered, 0) / Math.max(1, dynamicActivities.length))}
                         </td>
                         <td className={`py-1.5 px-1 border border-black text-center ${getPercentageColorClass(districtOverallTotalPct)}`}>
                           {districtOverallTotalPct.toFixed(0)}%

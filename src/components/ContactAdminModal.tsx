@@ -3,6 +3,7 @@ import { Mail, X, Send } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Swal from 'sweetalert2';
+import { generateTicketTrackingNumber, notifySupportTicketToTelegram } from '../services/supportTicketService';
 
 export function ContactAdminModal({ user, userProfile, onClose }: any) {
   const [subject, setSubject] = useState("");
@@ -11,34 +12,57 @@ export function ContactAdminModal({ user, userProfile, onClose }: any) {
 
   const handleSubmit = async () => {
     if (!subject.trim() || !message.trim()) {
-      Swal.fire("Error", "Please fill in all fields", "error");
+      Swal.fire("Error", "దయచేసి అన్ని వివరాలు పూరించండి", "warning");
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const trackingNumber = generateTicketTrackingNumber();
+      const userName = userProfile?.name || userProfile?.username || user?.displayName || "Citizen User";
+
       const ticketRef = await addDoc(collection(db, "support_tickets"), {
-        userId: user.uid,
-        userEmail: user.email,
-        userName: userProfile?.name || userProfile?.username || user.displayName || "Unknown User",
-        subject,
+        userId: user?.uid || "guest",
+        uid: user?.uid || "guest",
+        userEmail: user?.email || "",
+        userName: userName,
+        trackingNumber: trackingNumber,
+        ticketNumber: trackingNumber,
+        subject: subject.trim(),
+        category: "Direct Admin Inquiry",
         status: "new",
         createdAt: Date.now(),
         updatedAt: Date.now()
       });
 
       await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
-        senderId: user.uid,
-        senderName: userProfile?.name || userProfile?.username || user.displayName || "Unknown User",
-        text: message,
+        senderId: user?.uid || "guest",
+        senderName: userName,
+        text: message.trim(),
         time: Date.now()
       });
 
-      Swal.fire("Sent!", "Your message has been sent to the admin team.", "success");
+      // Instant Telegram Alert with Spot Reply buttons
+      notifySupportTicketToTelegram({
+        ticketId: ticketRef.id,
+        trackingNumber: trackingNumber,
+        userName: userName,
+        userEmail: user?.email,
+        subject: subject.trim(),
+        category: "Direct Admin Inquiry",
+        message: message.trim()
+      }).catch(console.error);
+
+      Swal.fire({
+        icon: "success",
+        title: "సందేశం పంపబడింది!",
+        text: `మీ సపోర్ట్ విన్నపం అడ్మిన్ టీమ్‌కు చేరింది. ట్రాకింగ్ నెంబర్: #${trackingNumber}`,
+        confirmButtonColor: "#005bb5"
+      });
       onClose();
     } catch (e: any) {
       console.error(e);
-      Swal.fire("Error", "Failed to send message.", "error");
+      Swal.fire("Error", "సందేశం పంపడం విఫలమైంది.", "error");
     } finally {
       setIsSubmitting(false);
     }

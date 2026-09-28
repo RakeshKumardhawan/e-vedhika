@@ -102,10 +102,28 @@ export async function pushPostToSupportSystem(
     try {
       ticketRef = await addDoc(collection(db, "support_tickets"), ticketPayload);
     } catch (createErr) {
-      console.warn("addDoc failed, trying setDoc fallback:", createErr);
-      const fallbackDoc = doc(collection(db, "support_tickets"));
-      await setDoc(fallbackDoc, ticketPayload);
-      ticketRef = fallbackDoc;
+      console.warn("Client addDoc failed, trying setDoc or server fallback:", createErr);
+      try {
+        const fallbackDoc = doc(collection(db, "support_tickets"));
+        await setDoc(fallbackDoc, ticketPayload);
+        ticketRef = fallbackDoc;
+      } catch (setErr) {
+        // Ultimate resilience: Server Admin SDK fallback
+        const serverRes = await fetch("/api/support/push-post", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ post, adminUser, customNote })
+        });
+        const data = await serverRes.json();
+        if (data.success) {
+          return {
+            success: true,
+            trackingNumber: data.trackingNumber,
+            ticketId: data.ticketId
+          };
+        }
+        throw setErr;
+      }
     }
 
     // 3. Add initial citizen message to messages subcollection
@@ -163,6 +181,18 @@ export async function pushPostToSupportSystem(
       description: `Post '${postTitle}' [ID: ${postId}] pushed to support with Tracking #${trackingNumber}`,
       admin: adminUser?.fullName || adminUser?.username || "Admin",
       time: Date.now()
+    }).catch(console.error);
+
+    // 7. Instant Telegram Notification with Spot Reply buttons
+    notifySupportTicketToTelegram({
+      ticketId: ticketRef.id,
+      trackingNumber: trackingNumber,
+      userName: authorName,
+      userPhone: post.userPhone || post.phone,
+      userEmail: post.userEmail || post.email,
+      subject: postTitle,
+      category: post.category || "General Support",
+      message: initialMessage
     }).catch(console.error);
 
     return {
@@ -321,3 +351,33 @@ export async function trackTicketByCode(inputCode: string): Promise<{
     };
   }
 }
+
+/**
+ * Sends real-time Support Center Alert to Telegram with 1-Click Spot Reply buttons.
+ */
+export async function notifySupportTicketToTelegram(payload: {
+  ticketId: string;
+  trackingNumber?: string;
+  userName?: string;
+  userPhone?: string;
+  userEmail?: string;
+  subject?: string;
+  category?: string;
+  moduleName?: string;
+  message?: string;
+  isFollowUp?: boolean;
+}): Promise<boolean> {
+  try {
+    const res = await fetch("/api/support/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    return !!data.success;
+  } catch (e) {
+    console.warn("Failed to notify Telegram about support ticket:", e);
+    return false;
+  }
+}
+

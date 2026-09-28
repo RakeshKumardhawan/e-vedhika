@@ -3,7 +3,7 @@ import { X, Plus, Copy, Check, Search } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Swal from 'sweetalert2';
-import { generateTicketTrackingNumber } from '../services/supportTicketService';
+import { generateTicketTrackingNumber, notifySupportTicketToTelegram } from '../services/supportTicketService';
 
 export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any) {
   const [ticketType, setTicketType] = useState("New Task");
@@ -71,6 +71,19 @@ export function ComplaintFormModal({ user, userProfile, onClose, addToast }: any
         complaintId: ticketRef.id,
         trackingNumber: trackingNumber
       }).catch(() => {});
+
+      // Instant Telegram Alert with Spot Reply buttons
+      notifySupportTicketToTelegram({
+        ticketId: ticketRef.id,
+        trackingNumber: trackingNumber,
+        userName: userName,
+        userPhone: contactNo.trim(),
+        userEmail: user.email,
+        subject: subject.trim(),
+        category: `${moduleName} (${subModule})`,
+        moduleName: moduleName,
+        message: message.trim()
+      }).catch(console.error);
 
       if (addToast) {
         addToast(`టికెట్ విజయవంతంగా సమర్పించబడింది! నెంబర్: #${trackingNumber}`);

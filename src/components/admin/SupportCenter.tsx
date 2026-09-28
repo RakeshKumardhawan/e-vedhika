@@ -4,7 +4,7 @@ import {
   Search, RefreshCw, Filter, User, Check, X, ShieldAlert,
   ArrowRight, ChevronRight, MessageCircle, AlertTriangle, Sparkles, Inbox,
   ExternalLink, Mail, Calendar, Hash, Flag, ShieldCheck, Phone, Paperclip, Image as ImageIcon,
-  FileText
+  FileText, Zap, Radio
 } from 'lucide-react';
 import { 
   collection, query, orderBy, onSnapshot, updateDoc, 
@@ -12,11 +12,47 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import Swal from 'sweetalert2';
+import { notifySupportTicketToTelegram } from '../../services/supportTicketService';
 
 interface SupportCenterProps {
   currentUser?: any;
   addToast?: (msg: string, type?: "success" | "error" | "info") => void;
 }
+
+export const SPOT_REPLIES_DATA = [
+  {
+    id: "review",
+    label: "పరిశీలనలో ఉంది ⏳",
+    badge: "Under Review",
+    text: "నమస్కారం! మీ విన్నపం/సమస్య పరిశీలనలో ఉంది. మా సాంకేతిక బృందం దీనిపై పరిశీలిస్తోంది, త్వరలోనే తగిన పరిష్కారం అందజేస్తాము. - e-Vedika Support Team",
+    status: "in_progress",
+    btnColor: "bg-amber-600 hover:bg-amber-700 text-white"
+  },
+  {
+    id: "resolved",
+    label: "సమస్య పరిష్కరించబడింది ✅",
+    badge: "Resolved",
+    text: "నమస్కారం! మీరు తెలియజేసిన సమస్య విజయవంతంగా పరిష్కరించబడింది. ఏవైనా సమస్యలుంటే మళ్లీ తెలియజేయగలరు. ధన్యవాదాలు! - e-Vedika Support Team",
+    status: "resolved",
+    btnColor: "bg-emerald-600 hover:bg-emerald-700 text-white"
+  },
+  {
+    id: "info",
+    label: "వివరాలు పంపండి 📝",
+    badge: "Need Info",
+    text: "నమస్కారం! మీ సమస్యను వేగంగా పరిష్కరించడానికి దయచేసి మీ జిల్లా, మండలం, గ్రామ పంచాయతీ వివరాలు లేదా స్క్రీన్‌షాట్/ఎర్రర్ వివరాలు ఇక్కడ పంపగలరు. - e-Vedika Support Team",
+    status: "in_progress",
+    btnColor: "bg-blue-600 hover:bg-blue-700 text-white"
+  },
+  {
+    id: "escalate",
+    label: "అధికారులకు ఫార్వర్డ్ 🏛️",
+    badge: "Escalated",
+    text: "నమస్కారం! మీ సమస్య తగిన పరిష్కారం నిమిత్తం సంబంధిత జిల్లా / టెక్నికల్ అధికార బృందానికి ఫార్వర్డ్ చేయబడింది. త్వరలోనే అప్‌డేట్ చేస్తాము. - e-Vedika Support Team",
+    status: "in_progress",
+    btnColor: "bg-purple-600 hover:bg-purple-700 text-white"
+  }
+];
 
 const QUICK_RESPONSES = [
   "నమస్కారం! మీ సమస్య పరిశీలనలో ఉంది. త్వరలోనే తగిన పరిష్కారం అందజేస్తాము. (We are reviewing your issue and will resolve it soon.)",
@@ -67,7 +103,10 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     const unsubPosts = onSnapshot(postsQuery, (snapshot) => {
       const privatePosts = snapshot.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter((p: any) => (p.status || "").toLowerCase() === "private_support")
+        .filter((p: any) => {
+          const s = (p.status || "").toLowerCase();
+          return s === "private_support" || s === "sent to support" || s === "sent-to-support";
+        })
         .map((p: any) => ({
           ...p,
           id: p.id,
@@ -213,8 +252,24 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     setReplyText("");
 
     try {
+      // 1. Primary: Use Server API with Admin SDK (zero permission issues)
+      const res = await fetch("/api/support/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          text: text,
+          status: selectedTicket.status === "resolved" || selectedTicket.status === "closed" ? "open" : "in_progress"
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (addToast) addToast("Reply sent to citizen as e-Vedika Team!", "success");
+        return;
+      }
+
+      // 2. Client fallback if API route not reached
       if (selectedTicket.isPostSource) {
-        // Add as admin comment to post
         await addDoc(collection(db, "posts", selectedTicket.id, "comments"), {
           uid: currentUser?.uid || "admin",
           userName: "e-Vedika Team",
@@ -222,21 +277,14 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           time: Date.now(),
           isAdminComment: true
         });
-        
-        // Update post updatedAt
-        await updateDoc(doc(db, "posts", selectedTicket.id), {
-          updatedAt: Date.now()
-        });
+        await updateDoc(doc(db, "posts", selectedTicket.id), { updatedAt: Date.now() });
       } else {
-        // 1. Add message to subcollection
         await addDoc(collection(db, "support_tickets", selectedTicket.id, "messages"), {
           senderId: currentUser?.uid || "admin",
           senderName: "e-Vedika Team",
           text: text,
           time: Date.now()
         });
-
-        // 2. Update ticket status & updatedAt timestamp
         const nextStatus = selectedTicket.status === "resolved" || selectedTicket.status === "closed" ? "open" : "in_progress";
         await updateDoc(doc(db, "support_tickets", selectedTicket.id), {
           status: nextStatus,
@@ -253,6 +301,82 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       setReplyText(text); // restore on failure
     } finally {
       setIsSending(false);
+    }
+  };
+
+  // Handle 1-Click Spot Reply
+  const handleSendSpotReply = async (spot: typeof SPOT_REPLIES_DATA[0]) => {
+    if (!selectedTicket?.id || isSending) return;
+    setIsSending(true);
+    try {
+      // 1. Primary: Use Server API with Admin SDK (guarantees 100% permission pass & instant Telegram sync)
+      const res = await fetch("/api/support/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          text: spot.text,
+          status: spot.status
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (addToast) addToast(`⚡ Spot Reply [${spot.label}] విజయవంతంగా పంపబడింది!`, "success");
+        return;
+      }
+
+      // 2. Client fallback
+      if (selectedTicket.isPostSource) {
+        await addDoc(collection(db, "posts", selectedTicket.id, "comments"), {
+          uid: currentUser?.uid || "admin",
+          userName: "e-Vedika Team",
+          text: spot.text,
+          time: Date.now(),
+          isAdminComment: true
+        });
+        await updateDoc(doc(db, "posts", selectedTicket.id), { updatedAt: Date.now() });
+      } else {
+        await addDoc(collection(db, "support_tickets", selectedTicket.id, "messages"), {
+          senderId: currentUser?.uid || "admin",
+          senderName: "e-Vedika Team",
+          text: spot.text,
+          time: Date.now(),
+          isAdminComment: true
+        });
+        await updateDoc(doc(db, "support_tickets", selectedTicket.id), {
+          status: spot.status,
+          updatedAt: Date.now(),
+          lastReplyBy: "e-Vedika Team",
+          lastReplyTime: Date.now()
+        });
+      }
+      if (addToast) addToast(`⚡ Spot Reply [${spot.label}] విజయవంతంగా పంపబడింది!`, "success");
+    } catch (e: any) {
+      console.error("Error sending spot reply:", e);
+      if (addToast) addToast(`Spot reply error: ${e.message}`, "error");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Manual Trigger to Broadcast Ticket to Telegram
+  const handleTriggerTelegramAlert = async () => {
+    if (!selectedTicket?.id) return;
+    const trackingNumber = selectedTicket.trackingNumber || selectedTicket.ticketNumber || selectedTicket.id.substring(0, 8).toUpperCase();
+    const ok = await notifySupportTicketToTelegram({
+      ticketId: selectedTicket.id,
+      trackingNumber: trackingNumber,
+      userName: selectedTicket.userName || selectedTicket.name || "Citizen",
+      userPhone: selectedTicket.phone || selectedTicket.userPhone,
+      userEmail: selectedTicket.userEmail || selectedTicket.email,
+      subject: selectedTicket.subject || selectedTicket.title || "Support Request",
+      category: selectedTicket.category || selectedTicket.moduleName || "General Support",
+      message: selectedTicket.message || selectedTicket.problem || selectedTicket.description || ""
+    });
+    if (ok) {
+      if (addToast) addToast("✅ టెలిగ్రామ్ అలర్ట్ & 1-Click Spot Reply బటన్లు పంపబడ్డాయి!", "success");
+    } else {
+      if (addToast) addToast("⚠️ టెలిగ్రామ్ నోటిఫికేషన్ పంపడంలో లోపం", "error");
     }
   };
 
@@ -301,15 +425,24 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     if (!matchesSearch) return false;
 
     if (statusFilter === "all") return true;
-    if (statusFilter === "open") return t.status === "open" || t.status === "new" || t.status === "private_support" || !t.status;
+    if (statusFilter === "open") {
+      const s = (t.status || "open").toLowerCase();
+      return s === "open" || s === "new" || s === "private_support" || s === "sent to support" || s === "sent-to-support" || !t.status;
+    }
     if (statusFilter === "in_progress") return t.status === "in_progress" || t.status === "pending";
     if (statusFilter === "resolved") return t.status === "resolved";
     if (statusFilter === "closed") return t.status === "closed";
     return true;
   });
 
-  const openCount = tickets.filter(t => t.status === "open" || t.status === "new" || t.status === "private_support" || !t.status).length;
-  const inProgressCount = tickets.filter(t => t.status === "in_progress" || t.status === "pending").length;
+  const openCount = tickets.filter(t => {
+    const s = (t.status || "open").toLowerCase();
+    return s === "open" || s === "new" || s === "private_support" || s === "sent to support" || s === "sent-to-support" || !t.status;
+  }).length;
+  const inProgressCount = tickets.filter(t => {
+    const s = (t.status || "").toLowerCase();
+    return s === "in_progress" || s === "pending";
+  }).length;
   const resolvedCount = tickets.filter(t => t.status === "resolved").length;
   const closedCount = tickets.filter(t => t.status === "closed").length;
 
@@ -338,6 +471,13 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className="px-3 py-1.5 bg-sky-500/10 border border-sky-400/30 rounded-2xl flex items-center gap-2 text-sky-200">
+              <Radio size={14} className="text-sky-400 animate-pulse" />
+              <div className="text-left">
+                <span className="text-[9px] font-black uppercase tracking-wider block text-sky-300">Telegram 2-Way Bot</span>
+                <span className="text-[11px] font-bold text-white">Live Direct Replies & Spot Sync</span>
+              </div>
+            </div>
             <div className="px-4 py-2 bg-white/10 rounded-2xl border border-white/10 text-center">
               <span className="text-[10px] font-bold uppercase text-slate-300 block">Open Tickets</span>
               <span className="text-lg font-black text-white">{openCount}</span>
@@ -449,7 +589,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                       </span>
                       <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider ${
                         status === "resolved" ? "bg-emerald-100 text-emerald-800" :
-                        status === "in_progress" || status === "pending" || status === "private_support" ? "bg-amber-100 text-amber-800" :
+                        status === "in_progress" || status === "pending" || status === "private_support" || status === "sent to support" || status === "sent-to-support" ? "bg-amber-100 text-amber-800" :
                         "bg-blue-100 text-blue-800"
                       }`}>
                         {status === "resolved" ? "Resolved" : "Pending"}
@@ -519,6 +659,13 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={handleTriggerTelegramAlert}
+                      title="Telegram కి అలర్ట్ & 1-Click Spot Reply బటన్లు పంపు"
+                      className="px-3 py-2 bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#229ED9] border border-[#229ED9]/30 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all shadow-xs"
+                    >
+                      <Send size={13} /> 📱 Telegram అలర్ట్ పంపు
+                    </button>
                     <button 
                       onClick={() => setShowUserInfo(!showUserInfo)}
                       className={`p-2.5 rounded-xl border transition-all shadow-sm ${showUserInfo ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
@@ -575,7 +722,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
 
                 {/* Subcollection Thread Messages */}
                 {messages.map((m) => {
-                  const isAdminMsg = m.senderName === "e-Vedika Team" || m.senderId === "admin" || m.senderId === currentUser?.uid || m.isAdminComment;
+                  const isAdminMsg = m.senderName === "e-Vedika Team" || m.senderId === "admin" || m.senderId === currentUser?.uid || m.isAdminComment || m.fromTelegram;
 
                   return (
                     <div
@@ -598,6 +745,11 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                                 Official Admin
                               </span>
                             )}
+                            {m.fromTelegram && (
+                              <span className="text-[9px] bg-sky-500/30 text-sky-100 border border-sky-400/40 px-1.5 py-0.2 rounded font-bold flex items-center gap-1">
+                                📱 Telegram Reply
+                              </span>
+                            )}
                           </span>
                           <span className={`text-[9px] ${isAdminMsg ? 'text-blue-200' : 'text-slate-400'}`}>
                             {m.time ? new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -614,10 +766,36 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Template Replies */}
-              <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto">
+              {/* ⚡ 1-Click Spot Replies Toolbar */}
+              <div className="px-5 py-3 bg-indigo-50/50 border-t border-indigo-100/60 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap size={13} className="text-amber-500 fill-amber-500" />
+                    ⚡ 1-Click Spot Replies (తక్షణ ప్రత్యుత్తరాలు):
+                  </span>
+                  <span className="text-[9px] text-slate-500 font-semibold">
+                    (Telegram బాట్ లో మరియు వెబ్‌సైట్ లో ఒకేసారి సింక్ అవుతాయి)
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {SPOT_REPLIES_DATA.map((spot) => (
+                    <button
+                      key={spot.id}
+                      onClick={() => handleSendSpotReply(spot)}
+                      disabled={isSending}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 ${spot.btnColor}`}
+                      title={spot.text}
+                    >
+                      <span>{spot.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Template Replies (paste to textarea) */}
+              <div className="px-5 py-2 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                  <Sparkles size={11} className="text-blue-600" /> Quick Replies:
+                  <Sparkles size={11} className="text-blue-600" /> టెంప్లేట్ కాపీ:
                 </span>
                 {QUICK_RESPONSES.map((qr, idx) => (
                   <button

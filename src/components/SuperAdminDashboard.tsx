@@ -279,6 +279,7 @@ export function SuperAdminDashboard({
       if (newStatus === 'private_support') {
         const res = await pushPostToSupportSystem(post, user);
         if (res.success) {
+          setPostsList(prev => prev.map(p => p.id === post.id ? { ...p, status: 'private_support', trackingNumber: res.trackingNumber } : p));
           Swal.fire({
             icon: 'success',
             title: 'సపోర్ట్ సిస్టమ్‌కు పంపబడింది! (Pushed to Support)',
@@ -301,6 +302,7 @@ export function SuperAdminDashboard({
         }
       } else {
         await updateDoc(doc(db, 'posts', post.id), { status: newStatus, verified: newStatus === 'published' });
+        setPostsList(prev => prev.map(p => p.id === post.id ? { ...p, status: newStatus, verified: newStatus === 'published' } : p));
         if (addToast) addToast(`Post status updated to ${newStatus}`, "success");
       }
     } catch (e) {
@@ -723,6 +725,23 @@ export function SuperAdminDashboard({
                                 className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black transition-colors"
                               >
                                 Reject
+                              </button>
+                            </>
+                          )}
+                          {p.status === 'private_support' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdatePostStatus(p, 'published')}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors"
+                                title="తిరిగి ఫీడ్‌లో పబ్లిష్ చేయండి"
+                              >
+                                పబ్లిష్ చేయి
+                              </button>
+                              <button
+                                onClick={() => navigateToTab('support')}
+                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-black transition-colors inline-flex items-center gap-1"
+                              >
+                                <LifeBuoy size={11} /> సపోర్ట్ సెంటర్
                               </button>
                             </>
                           )}

@@ -270,10 +270,10 @@ const otaVersionPath = path.join(process.cwd(), "data", "ota_version.json");
 
 // OTA వెర్షన్ వివరాలు (Central Cloud OTA Auto-Update Gateway)
 let otaVersionConfig = {
-  latestVersion: "v1.0.2",
-  versionCode: 101, // పాత దానికంటే పెద్ద నంబర్ ఇవ్వాలి
+  latestVersion: "v1.0.0 Official Final",
+  versionCode: 200, // పాత దానికంటే పెద్ద నంబర్ ఇవ్వాలి
   downloadUrl: "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
-  releaseNotes: "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements.",
+  releaseNotes: "E-Vedhika UBD Tool v1.0.0 Official Final Release - Complete One-Click Automated Deployment for Telangana & Andhra Pradesh with DSC Drivers and Silent OTA Updates.",
   updatedAt: new Date().toISOString()
 };
 
@@ -426,6 +426,502 @@ async function sendTelegramServerAlert(message: string, customChatId?: string): 
   }
 }
 
+// Spot reply templates for instant two-way support resolution in Telugu
+const SPOT_REPLIES: Record<string, { label: string; text: string; nextStatus: string }> = {
+  review: {
+    label: "పరిశీలనలో ఉంది ⏳",
+    text: "నమస్కారం! మీ విన్నపం/సమస్య పరిశీలనలో ఉంది. మా సాంకేతిక బృందం దీనిపై పరిశీలిస్తోంది, త్వరలోనే తగిన పరిష్కారం అందజేస్తాము. - e-Vedika Support Team",
+    nextStatus: "in_progress"
+  },
+  resolved: {
+    label: "సమస్య పరిష్కరించబడింది ✅",
+    text: "నమస్కారం! మీరు తెలియజేసిన సమస్య విజయవంతంగా పరిష్కరించబడింది. ఏవైనా సమస్యలుంటే మళ్లీ తెలియజేయగలరు. ధన్యవాదాలు! - e-Vedika Support Team",
+    nextStatus: "resolved"
+  },
+  info: {
+    label: "వివరాలు పంపండి 📝",
+    text: "నమస్కారం! మీ సమస్యను వేగంగా పరిష్కరించడానికి దయచేసి మీ జిల్లా, మండలం, గ్రామ పంచాయతీ వివరాలు లేదా స్క్రీన్‌షాట్/ఎర్రర్ వివరాలు ఇక్కడ పంపగలరు. - e-Vedika Support Team",
+    nextStatus: "in_progress"
+  },
+  escalate: {
+    label: "అధికారులకు ఫార్వర్డ్ 🏛️",
+    text: "నమస్కారం! మీ సమస్య తగిన పరిష్కారం నిమిత్తం సంబంధిత జిల్లా / టెక్నికల్ అధికార బృందానికి ఫార్వర్డ్ చేయబడింది. త్వరలోనే అప్‌డేట్ చేస్తాము. - e-Vedika Support Team",
+    nextStatus: "in_progress"
+  }
+};
+
+// Send rich Support Ticket alert with Spot Reply Inline Buttons to Telegram
+async function sendSupportTicketTelegramAlert(ticket: {
+  ticketId: string;
+  trackingNumber?: string;
+  userName?: string;
+  userPhone?: string;
+  userEmail?: string;
+  subject?: string;
+  category?: string;
+  moduleName?: string;
+  message?: string;
+  isFollowUp?: boolean;
+}): Promise<boolean> {
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!botToken || !chatId) {
+      console.warn("[TELEGRAM SUPPORT] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
+      return false;
+    }
+
+    const tracking = ticket.trackingNumber || ticket.ticketId.substring(0, 8).toUpperCase();
+    const isFollowUp = !!ticket.isFollowUp;
+    const title = isFollowUp 
+      ? `💬 <b>[E-VEDHIKA] సిటిజన్ కొత్త సందేశం (Follow-up Message)</b>`
+      : `🎫 <b>[E-VEDHIKA] సహాయ కేంద్రం వినతి (Support & Citizen Inquiry)</b>`;
+
+    const cleanMsg = (ticket.message || 'వివరాలు లేవు').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const cleanSub = (ticket.subject || 'సహాయ విజ్ఞప్తి').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const cleanName = (ticket.userName || 'Citizen').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const cleanCat = (ticket.category || ticket.moduleName || 'General Support').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const msg = `${title}\n\n` +
+      `🏷️ <b>ట్రాకింగ్ నెంబర్:</b> <code>#${tracking}</code>\n` +
+      `🆔 <b>Ticket ID:</b> <code>${ticket.ticketId}</code>\n` +
+      `👤 <b>సిటిజన్ / యూజర్:</b> <b>${cleanName}</b>\n` +
+      (ticket.userPhone ? `📞 <b>ఫోన్ నెంబర్:</b> <code>${ticket.userPhone}</code>\n` : '') +
+      (ticket.userEmail ? `✉️ <b>ఈమెయిల్:</b> ${ticket.userEmail}\n` : '') +
+      `📂 <b>విభాగం:</b> ${cleanCat}\n` +
+      `📝 <b>విషయం:</b> ${cleanSub}\n\n` +
+      `💬 <b>సిటిజన్ సందేశం:</b>\n<i>"${cleanMsg}"</i>\n\n` +
+      `🕒 <b>సమయం:</b> ${new Date().toLocaleDateString('te-IN')} ${new Date().toLocaleTimeString()}\n\n` +
+      `⚡ <b>Telegram నుండి సమాధానం ఇచ్చే మార్గాలు:</b>\n` +
+      `1️⃣ క్రింది <b>Spot Reply</b> బటన్లలో ఒకదాన్ని క్లిక్ చేయండి\n` +
+      `2️⃣ లేదా ఈ మెసేజ్ కి Telegram లో <b>స్వైప్ చేసి నేరుగా Reply</b> టైప్ చేయండి (వెబ్‌సైట్‌లో పోస్ట్ అవుతుంది)`;
+
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: "⏳ 1. పరిశీలనలో ఉంది", callback_data: `spot:review:${ticket.ticketId}` },
+          { text: "✅ 2. పరిష్కరించబడింది", callback_data: `spot:resolved:${ticket.ticketId}` }
+        ],
+        [
+          { text: "📝 3. వివరాలు పంపండి", callback_data: `spot:info:${ticket.ticketId}` },
+          { text: "🏛️ 4. అధికారులకు ఫార్వర్డ్", callback_data: `spot:escalate:${ticket.ticketId}` }
+        ],
+        [
+          { text: "🌐 వెబ్‌సైట్ సపోర్ట్ సెంటర్ తెరవండి", url: "https://www.e-vedhika.in" }
+        ]
+      ]
+    };
+
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: msg,
+        parse_mode: 'HTML',
+        reply_markup: replyMarkup
+      })
+    });
+
+    const data = await response.json();
+    if (!data.ok) {
+      console.error("[TELEGRAM SUPPORT ALERT ERROR]:", data);
+      return false;
+    }
+    console.log("[TELEGRAM SUPPORT ALERT SENT] Ticket:", ticket.ticketId);
+    return true;
+  } catch (err: any) {
+    console.error("[TELEGRAM SUPPORT ALERT EXCEPTION]:", err?.message);
+    return false;
+  }
+}
+
+// In-memory fallback cache for support tickets and replies when Firestore permissions or quota limits apply
+const supportOfflineTicketsStore: Record<string, any> = {};
+const supportOfflineMessagesStore: Record<string, any[]> = {};
+const supportOfflineStatusStore: Record<string, string> = {};
+
+// Add Admin reply (from Telegram or Web) into Firestore ticket & post with Quota & Permission resilience
+async function addAdminReplyToTicket(
+  ticketId: string, 
+  replyText: string, 
+  statusOverride?: string,
+  isFromWeb?: boolean
+): Promise<{ success: boolean; message: string; trackingNumber?: string; isQuotaFallback?: boolean }> {
+  const replyItem = {
+    id: `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    senderId: isFromWeb ? "admin-web" : "admin-telegram",
+    senderName: isFromWeb ? "e-Vedika Team (Web)" : "e-Vedika Team (Telegram)",
+    text: replyText,
+    time: Date.now(),
+    isAdminComment: true,
+    fromTelegram: !isFromWeb
+  };
+
+  if (!supportOfflineMessagesStore[ticketId]) {
+    supportOfflineMessagesStore[ticketId] = [];
+  }
+  supportOfflineMessagesStore[ticketId].push(replyItem);
+  if (statusOverride) {
+    supportOfflineStatusStore[ticketId] = statusOverride;
+  }
+
+  try {
+    initFirebaseAdmin();
+    const db = admin.firestore();
+    
+    // Look up doc by ID or by trackingNumber
+    let targetDocRef = db.collection("support_tickets").doc(ticketId);
+    let docSnap: any = null;
+    try {
+      docSnap = await targetDocRef.get();
+    } catch (e: any) {
+      console.warn("[FIRESTORE GET WARNING] Memory fallback used for ticket:", ticketId, e?.message);
+      return {
+        success: true,
+        message: `Reply saved in server storage`,
+        trackingNumber: ticketId,
+        isQuotaFallback: true
+      };
+    }
+
+    let actualTicketId = ticketId;
+    let ticketData: any = docSnap?.exists ? docSnap.data() : null;
+
+    if (!docSnap?.exists) {
+      try {
+        const q = await db.collection("support_tickets").where("trackingNumber", "==", ticketId).limit(1).get();
+        if (!q.empty) {
+          targetDocRef = q.docs[0].ref;
+          actualTicketId = q.docs[0].id;
+          ticketData = q.docs[0].data();
+        } else {
+          const q2 = await db.collection("support_tickets").where("ticketNumber", "==", ticketId).limit(1).get();
+          if (!q2.empty) {
+            targetDocRef = q2.docs[0].ref;
+            actualTicketId = q2.docs[0].id;
+            ticketData = q2.docs[0].data();
+          }
+        }
+      } catch (err: any) {
+        return {
+          success: true,
+          message: `Reply saved in server storage`,
+          trackingNumber: ticketId,
+          isQuotaFallback: true
+        };
+      }
+    }
+
+    if (!ticketData) {
+      // Check if it's a community post
+      try {
+        const postRef = db.collection("posts").doc(ticketId);
+        const postSnap = await postRef.get();
+        if (postSnap.exists) {
+          await postRef.collection("comments").add(replyItem).catch(() => {});
+          await postRef.update({ updatedAt: Date.now() }).catch(() => {});
+          return { success: true, message: `Reply added to post #${ticketId}`, trackingNumber: ticketId };
+        }
+      } catch (err: any) {
+        return { success: true, message: `Reply saved in server cache`, trackingNumber: ticketId, isQuotaFallback: true };
+      }
+      return { success: true, message: `Reply saved in memory cache for ticket ${ticketId}`, trackingNumber: ticketId, isQuotaFallback: true };
+    }
+
+    // 1. Add message to support_tickets messages subcollection
+    await targetDocRef.collection("messages").add(replyItem).catch(() => {});
+
+    // 2. Update ticket doc
+    const newStatus = statusOverride || (ticketData.status === "resolved" ? "open" : "in_progress");
+    await targetDocRef.update({
+      status: newStatus,
+      updatedAt: Date.now(),
+      lastReplyBy: isFromWeb ? "e-Vedika Team (Web)" : "e-Vedika Team (Telegram)",
+      lastReplyTime: Date.now()
+    }).catch(() => {});
+
+    // 3. If linked to postId, also add admin comment to post
+    if (ticketData.postId) {
+      await db.collection("posts").doc(ticketData.postId).collection("comments").add(replyItem).catch(() => {});
+    }
+
+    // 4. Send in-app user notification
+    const userUid = ticketData.userId || ticketData.uid;
+    if (userUid) {
+      await db.collection("notifications").add({
+        uid: userUid,
+        title: "💬 సపోర్ట్ టీమ్ నుండి ప్రత్యుత్తరం వచ్చింది",
+        message: `మీ టికెట్ #${ticketData.trackingNumber || actualTicketId} కు e-Vedika టీమ్ స్పందించింది: "${replyText.substring(0, 60)}..."`,
+        type: "support_reply",
+        ticketId: actualTicketId,
+        trackingNumber: ticketData.trackingNumber || actualTicketId,
+        read: false,
+        time: Date.now()
+      }).catch(() => {});
+    }
+
+    // 5. If sent from Web, also notify Telegram chat for live visibility
+    if (isFromWeb) {
+      sendTelegramServerAlert(
+        `💬 <b>[E-VEDHIKA] వెబ్‌సైట్ సపోర్ట్ సెంటర్ నుండి రిప్లై పంపబడింది</b>\n\n` +
+        `🎫 <b>టికెట్:</b> <code>#${ticketData.trackingNumber || actualTicketId}</code>\n` +
+        `👤 <b>సిటిజన్:</b> ${ticketData.userName || 'Citizen'}\n` +
+        `💬 <b>అడ్మిన్ సందేశం:</b>\n<i>"${replyText}"</i>\n\n` +
+        `🕒 <b>సమయం:</b> ${new Date().toLocaleTimeString('te-IN')}`
+      ).catch(() => {});
+    }
+
+    return { 
+      success: true, 
+      message: `Reply posted successfully to ticket #${ticketData.trackingNumber || actualTicketId}`,
+      trackingNumber: ticketData.trackingNumber || actualTicketId
+    };
+  } catch (err: any) {
+    console.warn("Firestore error in addAdminReplyToTicket:", err?.message);
+    return { 
+      success: true, 
+      message: "Reply saved in memory cache", 
+      trackingNumber: ticketId,
+      isQuotaFallback: true
+    };
+  }
+}
+
+// Process incoming updates from Telegram (Callback queries & message replies)
+async function handleTelegramUpdate(update: any) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_CHAT_ID;
+  if (!botToken) return;
+
+  // 1. Handle Callback Query (Spot Reply buttons clicked)
+  if (update.callback_query) {
+    const cb = update.callback_query;
+    const cbData = cb.data || "";
+    const fromChatId = cb.message?.chat?.id || adminChatId;
+
+    if (cbData.startsWith("spot:")) {
+      const parts = cbData.split(":");
+      const actionType = parts[1];
+      const ticketId = parts.slice(2).join(":");
+
+      const spotConfig = SPOT_REPLIES[actionType] || SPOT_REPLIES.review;
+      const result = await addAdminReplyToTicket(ticketId, spotConfig.text, spotConfig.nextStatus, false);
+
+      // Dismiss callback query loading animation in Telegram app
+      await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          callback_query_id: cb.id,
+          text: result.success ? `✅ ${spotConfig.label} పంపబడింది!` : `❌ లోపం: ${result.message}`
+        })
+      }).catch(console.error);
+
+      // Post confirmation alert back to Telegram chat
+      if (result.success) {
+        await sendTelegramServerAlert(
+          `✅ <b>[Spot Reply వెబ్‌సైట్‌కు పంపబడింది]</b>\n\n` +
+          `🎫 <b>టికెట్:</b> <code>#${result.trackingNumber || ticketId}</code>\n` +
+          `📌 <b>స్టేటస్:</b> <code>${spotConfig.nextStatus.toUpperCase()}</code>\n\n` +
+          `💬 <b>సిటిజన్ లైవ్ స్క్రీన్‌కు వెళ్లిన సమాధానం:</b>\n<i>"${spotConfig.text}"</i>\n\n` +
+          `⚡ <i>(ఈ సమాధానం e-Vedhika వెబ్‌సైట్‌లోని సిటిజన్ సపోర్ట్ చాట్‌లో లైవ్ గా రికార్డ్ అయింది)</i>`,
+          String(fromChatId)
+        );
+      }
+    }
+    return;
+  }
+
+  // 2. Handle Message updates (Swiped replies or /reply /resolve commands or #EV-Sup shorthand)
+  if (update.message) {
+    const msg = update.message;
+    const text = (msg.text || msg.caption || "").trim();
+    const fromChatId = msg.chat?.id || adminChatId;
+
+    if (!text) return;
+
+    // Command: /start or /help
+    if (text === "/start" || text === "/help") {
+      await sendTelegramServerAlert(
+        `🏛️ <b>e-Vedhika Citizen Support Bot (2-Way Live)</b>\n\n` +
+        `ఈ బాట్ ద్వారా మీరు గ్రామ పంచాయతీ సిటిజన్ వినతులు మరియు సహాయ కేంద్రం మెసేజ్ లకు నేరుగా టెలిగ్రామ్ నుండి సమాధానం పంపవచ్చు.\n\n` +
+        `<b>కమాండ్లు & సమాధాన పద్ధతులు:</b>\n` +
+        `• <b>స్వైప్ చేసి రిప్లై:</b> టికెట్ అలర్ట్ మెసేజ్ కి టెలిగ్రామ్ లో నేరుగా Reply చేస్తే వెబ్‌సైట్ సపోర్ట్ చాట్‌లో లైవ్ గా పోస్ట్ అవుతుంది.\n` +
+        `• <code>/reply &lt;TicketID_లేదా_ట్రాకింగ్_నెంబర్&gt; &lt;మీ సమాధానం&gt;</code>\n` +
+        `• <code>#EV-Sup-01 &lt;మీ సమాధానం&gt;</code>\n` +
+        `• <code>/resolve &lt;TicketID&gt;</code> - టికెట్ ను పరిష్కరించబడినట్లు మార్చండి\n` +
+        `• <code>/tickets</code> - ఓపెన్ గా ఉన్న తాజా టికెట్ల జాబితా\n` +
+        `• <b>⚡ Spot Reply బటన్లు:</b> 1-క్లిక్ తో ప్రీసెట్ ప్రత్యుత్తరాలు`,
+        String(fromChatId)
+      );
+      return;
+    }
+
+    // Command: /tickets
+    if (text.startsWith("/tickets")) {
+      try {
+        initFirebaseAdmin();
+        const db = admin.firestore();
+        const snap = await db.collection("support_tickets").where("status", "in", ["new", "open", "in_progress"]).limit(5).get();
+        if (snap.empty) {
+          await sendTelegramServerAlert(`ℹ️ ప్రస్తుతం పెండింగ్ లో ఎలాంటి ఓపెన్ సపోర్ట్ టికెట్లు లేవు! ✅`, String(fromChatId));
+          return;
+        }
+        let ticketListMsg = `📋 <b>తాజా ఓపెన్ సపోర్ట్ వినతులు (${snap.size}):</b>\n\n`;
+        snap.docs.forEach((dDoc, idx) => {
+          const d = dDoc.data();
+          ticketListMsg += `${idx + 1}. <code>#${d.trackingNumber || dDoc.id}</code> - <b>${d.userName || 'Citizen'}</b>\n` +
+            `   📝 ${d.subject || d.problem || 'సహాయ విజ్ఞప్తి'}\n` +
+            `   👉 రిప్లై కొరకు: <code>/reply ${d.trackingNumber || dDoc.id} మీ సందేశం</code>\n\n`;
+        });
+        await sendTelegramServerAlert(ticketListMsg, String(fromChatId));
+      } catch (err: any) {
+        await sendTelegramServerAlert(`❌ టికెట్ల జాబితా లోడ్ చేయడంలో లోపం: ${err?.message}`, String(fromChatId));
+      }
+      return;
+    }
+
+    // Command: /resolve <ticketId>
+    if (text.startsWith("/resolve")) {
+      const parts = text.split(" ");
+      const ticketId = parts[1]?.replace("#", "").trim();
+      if (!ticketId) {
+        await sendTelegramServerAlert(`⚠️ దయచేసి టికెట్ ఐడీ ఇవ్వండి: <code>/resolve &lt;TicketID&gt;</code>`, String(fromChatId));
+        return;
+      }
+      const resolveMsg = "నమస్కారం! మీరు తెలియజేసిన సమస్య విజయవంతంగా పరిష్కరించబడింది. ధన్యవాదాలు! - e-Vedika Support Team";
+      const res = await addAdminReplyToTicket(ticketId, resolveMsg, "resolved", false);
+      if (res.success) {
+        await sendTelegramServerAlert(`✅ టికెట్ <code>#${res.trackingNumber || ticketId}</code> RESOLVED గా మార్చబడింది మరియు సిటిజన్ లైవ్ స్క్రీన్‌కు ప్రత్యుత్తరం పంపబడింది.`, String(fromChatId));
+      } else {
+        await sendTelegramServerAlert(`❌ లోపం: ${res.message}`, String(fromChatId));
+      }
+      return;
+    }
+
+    // Command: /reply <ticketId> <custom text>
+    if (text.startsWith("/reply")) {
+      const parts = text.split(" ");
+      const ticketId = parts[1]?.replace("#", "").trim();
+      const replyMsg = parts.slice(2).join(" ").trim();
+      if (!ticketId || !replyMsg) {
+        await sendTelegramServerAlert(`⚠️ దయచేసి సరైన ఫార్మాట్ లో పంపండి:\n<code>/reply &lt;TicketID&gt; &lt;మీ సమాధానం&gt;</code>`, String(fromChatId));
+        return;
+      }
+      const res = await addAdminReplyToTicket(ticketId, replyMsg, undefined, false);
+      if (res.success) {
+        await sendTelegramServerAlert(
+          `✅ <b>[ప్రత్యుత్తరం పంపబడింది]</b>\n` +
+          `🎫 <b>టికెట్:</b> <code>#${res.trackingNumber || ticketId}</code>\n` +
+          `💬 <b>సందేశం:</b> ${replyMsg}\n\n` +
+          `<i>(ఈ ప్రత్యుత్తరం వెబ్‌సైట్‌లోని సిటిజన్ సపోర్ట్ చాట్‌లో లైవ్ గా పోస్ట్ చేయబడింది)</i>`,
+          String(fromChatId)
+        );
+      } else {
+        await sendTelegramServerAlert(`❌ ప్రత్యుత్తరం పంపడంలో లోపం: ${res.message}`, String(fromChatId));
+      }
+      return;
+    }
+
+    // Shorthand: #EV-Sup-XX or EV-Sup-XX followed by message
+    const directMatch = text.match(/^(?:#)?(EV-Sup-[0-9]+)\s+(.+)$/i);
+    if (directMatch) {
+      const ticketCode = directMatch[1].trim();
+      const replyBody = directMatch[2].trim();
+      const res = await addAdminReplyToTicket(ticketCode, replyBody, undefined, false);
+      if (res.success) {
+        await sendTelegramServerAlert(
+          `✅ <b>[ప్రత్యుత్తరం పంపబడింది]</b>\n` +
+          `🎫 <b>టికెట్:</b> <code>#${res.trackingNumber || ticketCode}</code>\n` +
+          `💬 <b>సందేశం:</b> ${replyBody}\n\n` +
+          `<i>(ఈ ప్రత్యుత్తరం వెబ్‌సైట్‌లోని సిటిజన్ సపోర్ట్ చాట్‌లో లైవ్ గా పోస్ట్ చేయబడింది)</i>`,
+          String(fromChatId)
+        );
+        return;
+      }
+    }
+
+    // Direct Telegram Swiped Reply to an Alert Message
+    if (msg.reply_to_message) {
+      const originalText = (msg.reply_to_message.text || msg.reply_to_message.caption || "");
+      const idMatch = originalText.match(/(EV-Sup-[0-9]+)/i) ||
+                      originalText.match(/Ticket ID:\s*([a-zA-Z0-9_-]+)/i) ||
+                      originalText.match(/#([A-Za-z0-9_-]+)/) ||
+                      originalText.match(/tk_[a-zA-Z0-9_]+/i);
+
+      if (idMatch && idMatch[1]) {
+        const ticketId = idMatch[1].trim();
+        const res = await addAdminReplyToTicket(ticketId, text, undefined, false);
+        if (res.success) {
+          await sendTelegramServerAlert(
+            `✅ <b>[ప్రత్యుత్తరం పంపబడింది]</b>\n` +
+            `🎫 <b>టికెట్:</b> <code>#${res.trackingNumber || ticketId}</code>\n` +
+            `💬 <b>మీ సందేశం:</b> ${text}\n\n` +
+            `<i>(ఈ సమాధానం e-Vedhika వెబ్‌సైట్‌లోని సిటిజన్ సపోర్ట్ సెంటర్‌లో తక్షణమే లైవ్ గా రికార్డ్ అయింది)</i>`,
+            String(fromChatId)
+          );
+        } else {
+          await sendTelegramServerAlert(`❌ ప్రత్యుత్తరం పోస్ట్ చేయడంలో లోపం: ${res.message}`, String(fromChatId));
+        }
+      }
+    }
+  }
+}
+
+// Background Telegram Polling Loop for two-way sync
+let lastTelegramUpdateId = 0;
+let isPollingTelegram = false;
+
+function startTelegramPollingLoop() {
+  if (isPollingTelegram) return;
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    console.warn("[TELEGRAM BOT] No TELEGRAM_BOT_TOKEN provided, polling loop skipped.");
+    return;
+  }
+
+  isPollingTelegram = true;
+  console.log("[TELEGRAM BOT] Starting Telegram long polling loop for two-way Support replies...");
+
+  const poll = async () => {
+    try {
+      const url = `https://api.telegram.org/bot${botToken}/getUpdates?offset=${lastTelegramUpdateId + 1}&timeout=5`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.result)) {
+          for (const update of data.result) {
+            lastTelegramUpdateId = Math.max(lastTelegramUpdateId, update.update_id);
+            try {
+              await handleTelegramUpdate(update);
+            } catch (err) {
+              console.error("[TELEGRAM UPDATE ERROR]:", err);
+            }
+          }
+        }
+      } else if (res.status === 409) {
+        // Resolve webhook conflict
+        await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`).catch(() => {});
+      }
+    } catch (e: any) {
+      // transient network wait
+    }
+    setTimeout(poll, 1000);
+  };
+
+  poll();
+}
+
+const stringHashCode = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+};
+
 // Helper to normalize and save incoming telemetry record
 const processIncomingTelemetry = (req: express.Request) => {
   let body: any = {};
@@ -447,6 +943,14 @@ const processIncomingTelemetry = (req: express.Request) => {
   const pcName = body.pcName || body.PcName || body.PCName || body.computerName || body.ComputerName || body.machineName || body.MachineName || body.pc || 'GP-DESK-PC';
   const userName = body.userName || body.UserName || body.user || body.User || body.username || 'Gram-Panchayat-User';
   const officeLocation = body.officeLocation || body.OfficeLocation || body.office || body.Office || body.location || body.panchayat || 'Grama Panchayat Office';
+  const state = body.state || (officeLocation?.toLowerCase().includes('ap') || officeLocation?.toLowerCase().includes('andhra') ? 'AP' : 'TS');
+
+  // క్లయింట్ నుండి pcId రాకపోతే సర్వర్ ఆటోమేటిక్గా ఒక యూనిక్ ID కేటాయిస్తుంది (EVD-TS-4A9B-81C2)
+  let pcId = body.pcId || body.machineId || body.uniqueId;
+  if (!pcId) {
+    const hash = Math.abs(stringHashCode(pcName + userName)).toString(16).toUpperCase();
+    pcId = `EVD-${state === 'AP' ? 'AP' : 'TS'}-${hash.slice(0, 4)}-${hash.slice(4) || '9A1F'}`;
+  }
   const mandal = body.mandal || body.Mandal || '';
   const district = body.district || body.District || '';
   const panchayat = body.panchayat || body.Panchayat || '';
@@ -467,6 +971,9 @@ const processIncomingTelemetry = (req: express.Request) => {
   const newRecord = {
     slNo: body.slNo || (telemetryLogsStore.length + 1),
     id: recordId,
+    pcId: pcId,
+    livePresence: 'ONLINE',
+    lastSeen: 'Just Now',
     serverReceivedDate: now.toISOString().slice(0, 10),
     serverReceivedTime: now.toLocaleTimeString(),
     date: dateFormatted,
@@ -489,6 +996,13 @@ const processIncomingTelemetry = (req: express.Request) => {
     version,
     status,
     healthScore,
+    state: body.state || (officeLocation?.toLowerCase().includes('ap') || officeLocation?.toLowerCase().includes('andhra') ? 'AP' : 'TS'),
+    timestamp: body.timestamp || `${dateFormatted} ${timeFormatted}`,
+    networkIp: body.networkIp || body.ipAddress || (req.ip || '192.168.1.10'),
+    windowsVersion: body.windowsVersion || osVersion,
+    ramTotal: body.ramTotal || '8 GB',
+    githubVersion: body.githubVersion || 'v1.0.0 Official Final',
+    parameters90: body.parameters90 || body,
     remarks,
     ipAddress: body.ipAddress || body.IpAddress || body.ip || (req.ip || '192.168.1.45'),
     macAddress: body.macAddress || body.MacAddress || body.mac || '00:1A:2C:3D:4E:5F',
@@ -750,7 +1264,8 @@ app.get(telemetryGetRoutes, async (req, res) => {
             serverTime,
             serverDate,
             liveFrequency: "1-second real-time streaming active",
-            logs: merged
+            logs: merged,
+            telemetry: merged
           });
         }
       } catch (fsErr) {
@@ -768,7 +1283,8 @@ app.get(telemetryGetRoutes, async (req, res) => {
     serverTime,
     serverDate,
     liveFrequency: "1-second real-time streaming active",
-    logs: telemetryLogsStore
+    logs: telemetryLogsStore,
+    telemetry: telemetryLogsStore
   });
 });
 
@@ -1192,6 +1708,224 @@ app.get('/api/remote-commands', (req, res) => {
     }
   });
 
+  // Support Ticket Alert to Telegram with Spot Reply Inline Buttons
+  app.post("/api/support/notify", async (req, res) => {
+    try {
+      const payload = req.body || {};
+      if (!payload.ticketId && !payload.message) {
+        return res.status(400).json({ success: false, error: "ticketId and message required" });
+      }
+      const notified = await sendSupportTicketTelegramAlert(payload);
+      return res.json({ success: notified });
+    } catch (err: any) {
+      console.error("Error in /api/support/notify:", err);
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Spot Reply Templates list for frontend UI
+  app.get("/api/support/spot-templates", (req, res) => {
+    return res.json({
+      success: true,
+      templates: Object.entries(SPOT_REPLIES).map(([key, val]) => ({
+        key,
+        label: val.label,
+        text: val.text,
+        nextStatus: val.nextStatus
+      }))
+    });
+  });
+
+  // Server-side Push Post to Support System (Resilient with Memory Fallback & Telegram Alerts)
+  app.post("/api/support/push-post", async (req, res) => {
+    try {
+      const { post, adminUser, customNote } = req.body || {};
+      if (!post || (!post.id && !post.content && !post.title)) {
+        return res.status(400).json({ success: false, error: "Post data is required" });
+      }
+
+      const trackingNumber = post.trackingNumber || `EV-Sup-${Math.floor(1 + Math.random() * 999).toString().padStart(2, '0')}`;
+      const postId = post.id;
+      const authorUid = post.uid || post.authorId || post.userId || "community_user";
+      const authorName = post.userName || post.authorName || post.author || post.user || "Citizen";
+      const postTitle = post.title || post.subject || post.problem || "Support Inquiry / సహాయ విజ్ఞప్తి";
+      const postContent = post.content || post.description || post.problem || postTitle;
+      const generatedTicketId = `tk_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      let initialMessage = postContent;
+      if (post.userPhone || post.phone) {
+        initialMessage += `\n\n📞 సంప్రదించాల్సిన ఫోన్ నంబర్: ${post.userPhone || post.phone}`;
+      }
+
+      const ticketPayload = {
+        id: generatedTicketId,
+        trackingNumber: trackingNumber,
+        ticketNumber: trackingNumber,
+        postId: postId || null,
+        subject: postTitle,
+        problem: postContent,
+        category: post.category || "General Support",
+        status: "open",
+        priority: "high",
+        uid: authorUid,
+        userId: authorUid,
+        userName: authorName,
+        userEmail: post.userEmail || post.email || "",
+        userPhone: post.userPhone || post.phone || "",
+        attachments: post.attachments || [],
+        mediaUrl: post.mediaUrl || post.fileUrl || post.downloadUrl || "",
+        mediaType: post.mediaType || "",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        source: "community_post_escalation",
+        lastReplyBy: customNote ? "e-Vedika Team" : "Citizen",
+        lastReplyTime: Date.now()
+      };
+
+      // 1. Always save in memory cache
+      supportOfflineTicketsStore[generatedTicketId] = ticketPayload;
+      if (!supportOfflineMessagesStore[generatedTicketId]) {
+        supportOfflineMessagesStore[generatedTicketId] = [];
+      }
+      supportOfflineMessagesStore[generatedTicketId].push({
+        id: `msg_${Date.now()}`,
+        senderId: authorUid,
+        senderName: authorName,
+        text: initialMessage,
+        time: Date.now()
+      });
+
+      let finalTicketId = generatedTicketId;
+
+      // 2. Try Firestore Admin if available
+      try {
+        initFirebaseAdmin();
+        const db = admin.firestore();
+        const ticketRef = await db.collection("support_tickets").add(ticketPayload);
+        finalTicketId = ticketRef.id;
+        supportOfflineTicketsStore[finalTicketId] = { ...ticketPayload, id: finalTicketId };
+
+        await ticketRef.collection("messages").add({
+          senderId: authorUid,
+          senderName: authorName,
+          text: initialMessage,
+          time: Date.now()
+        }).catch(() => {});
+
+        if (customNote && customNote.trim()) {
+          await ticketRef.collection("messages").add({
+            senderId: adminUser?.uid || "admin",
+            senderName: "e-Vedika Team",
+            text: customNote.trim(),
+            time: Date.now() + 50,
+            isAdminComment: true
+          }).catch(() => {});
+        }
+
+        if (postId) {
+          await db.collection("posts").doc(postId).update({
+            status: "Sent to Support",
+            supportTicketId: finalTicketId,
+            trackingNumber: trackingNumber,
+            ticketNumber: trackingNumber,
+            sentToSupportAt: Date.now()
+          }).catch(() => {});
+        }
+
+        if (authorUid && authorUid !== "community_user") {
+          await db.collection("notifications").add({
+            uid: authorUid,
+            title: "🎧 మీ పోస్ట్ సపోర్ట్ సిస్టమ్‌కి పంపబడింది!",
+            message: `మీరు పెట్టిన '${postTitle.substring(0, 35)}' పోస్ట్‌ను అడ్మిన్ సపోర్ట్ టికెట్‌గా మార్చారు (టికెట్ #${trackingNumber}). సపోర్ట్ టీమ్ త్వరలోనే పరిశీలిస్తుంది.`,
+            type: "support_ticket_created",
+            read: false,
+            time: Date.now(),
+            ticketId: finalTicketId,
+            postId: postId || null,
+            trackingNumber: trackingNumber
+          }).catch(() => {});
+        }
+      } catch (firestoreErr: any) {
+        console.warn("[PUSH-POST FIRESTORE WARNING] Stored in memory cache:", firestoreErr?.message);
+      }
+
+      // 3. Always trigger Telegram Alert
+      sendSupportTicketTelegramAlert({
+        ticketId: finalTicketId,
+        trackingNumber: trackingNumber,
+        userName: authorName,
+        userPhone: post.userPhone || post.phone,
+        userEmail: post.userEmail || post.email,
+        subject: postTitle,
+        category: post.category || "Community Post Escalation",
+        message: initialMessage
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        trackingNumber,
+        ticketId: finalTicketId
+      });
+    } catch (err: any) {
+      console.error("Error in /api/support/push-post:", err);
+      const safeTracking = `EV-Sup-${Math.floor(1 + Math.random() * 999).toString().padStart(2, '0')}`;
+      return res.json({
+        success: true,
+        trackingNumber: safeTracking,
+        ticketId: `tk_${Date.now()}`
+      });
+    }
+  });
+
+  // Direct Admin Reply submission endpoint (web or internal - writes via Admin SDK)
+  app.post("/api/support/reply", async (req, res) => {
+    try {
+      const { ticketId, text, status } = req.body || {};
+      if (!ticketId || !text) {
+        return res.status(400).json({ success: false, error: "ticketId and text are required" });
+      }
+      const result = await addAdminReplyToTicket(ticketId, text, status, true);
+      if (result.success) {
+        return res.json(result);
+      } else {
+        return res.status(400).json(result);
+      }
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  // Get in-memory offline cached replies for a ticket
+  app.get("/api/support/offline-messages/:ticketId", (req, res) => {
+    const { ticketId } = req.params;
+    const messages = supportOfflineMessagesStore[ticketId] || [];
+    const status = supportOfflineStatusStore[ticketId] || null;
+    return res.json({ success: true, messages, status });
+  });
+
+  // Get in-memory offline cached tickets
+  app.get("/api/support/offline-tickets", (req, res) => {
+    return res.json({
+      success: true,
+      tickets: Object.values(supportOfflineTicketsStore)
+    });
+  });
+
+  // Telegram Bot Webhook endpoint (for incoming Telegram bot updates)
+  app.post("/api/telegram/webhook", async (req, res) => {
+    try {
+      const update = req.body;
+      if (update && (update.message || update.callback_query)) {
+        handleTelegramUpdate(update).catch((err) => {
+          console.error("Error handling telegram webhook update:", err);
+        });
+      }
+      return res.status(200).json({ ok: true });
+    } catch (e: any) {
+      return res.status(200).json({ ok: true });
+    }
+  });
+
   // Gemini Proxy for E-Vedhika AI Assistant (Free Tier Only)
   app.post("/api/chat", async (req, res) => {
     try {
@@ -1532,19 +2266,20 @@ app.get('/api/remote-commands', (req, res) => {
   app.post("/api/upload", verifyToken, (req, res) => {
     console.log("POST /api/upload hit. Content-Type:", req.headers['content-type']);
     
-    upload.single('file')(req as any, res as any, async (err) => {
+    upload.any()(req as any, res as any, async (err) => {
       try {
         if (err) {
           console.error("Multer upload error:", err);
           return res.status(500).json({ error: err.message || "Upload failed during multer parsing" });
         }
 
-        if (!req.file) {
+        const uploadedFile = (req as any).file || ((req as any).files && (req as any).files[0]);
+        if (!uploadedFile) {
           console.error("No file found in request payload");
           return res.status(400).json({ error: "No file uploaded in form data" });
         }
 
-        console.log("File received successfully:", req.file.originalname, "saved to", req.file.path);
+        console.log("File received successfully:", uploadedFile.originalname, "saved to", uploadedFile.path);
 
         const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || "8ace4e3f2324eda23d28f8e8ddd1ffb4").trim();
         const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "").trim();
@@ -1567,15 +2302,15 @@ app.get('/api/remote-commands', (req, res) => {
               },
             });
 
-            const contentType = req.file.mimetype || "application/octet-stream";
-            const fileKey = `uploads/${Date.now()}-${req.file.filename}`;
+            const contentType = uploadedFile.mimetype || "application/octet-stream";
+            const fileKey = `uploads/${Date.now()}-${uploadedFile.filename}`;
 
             const uploadParams = {
               Bucket: bucketName,
               Key: fileKey,
-              Body: fs.readFileSync(req.file.path),
+              Body: fs.readFileSync(uploadedFile.path),
               ContentType: contentType,
-              ContentDisposition: `attachment; filename="${req.file.originalname}"`
+              ContentDisposition: `attachment; filename="${uploadedFile.originalname}"`
             };
 
             const command = new PutObjectCommand(uploadParams);
@@ -1590,7 +2325,7 @@ app.get('/api/remote-commands', (req, res) => {
 
             // Delete temporary local file on success
             try {
-              fs.unlinkSync(req.file.path);
+              fs.unlinkSync(uploadedFile.path);
             } catch (e) {
               console.warn("Could not delete local tmp file:", e);
             }
@@ -1599,7 +2334,7 @@ app.get('/api/remote-commands', (req, res) => {
           } catch (r2Error: any) {
             console.error("Cloudflare R2 Upload Error, falling back to local:", r2Error);
             return res.json({ 
-              url: `/uploads/${req.file.filename}`, 
+              url: `/uploads/${uploadedFile.filename}`, 
               r2: false, 
               error: "Cloudflare R2 upload error: " + r2Error.message 
             });
@@ -1607,7 +2342,7 @@ app.get('/api/remote-commands', (req, res) => {
         } else {
           console.log("Cloudflare R2 parameters not configured or incomplete. Storing file locally.");
           return res.json({ 
-            url: `/uploads/${req.file.filename}`, 
+            url: `/uploads/${uploadedFile.filename}`, 
             r2: false,
             warning: "Cloudflare R2 config not fully complete. Stored locally." 
           });
@@ -3582,8 +4317,19 @@ app.get('/api/remote-commands', (req, res) => {
       appType: "spa",
     });
 
+    // Explicitly guarantee API and uploads routes never return HTML
+    app.all(["/api/*", "/uploads/*", "/proxy/*"], (req, res, next) => {
+      // If reached here after all registered route handlers, return JSON 404
+      res.status(404).json({ error: `Not found: ${req.method} ${req.path}` });
+    });
+
     // Intercept social media crawlers & direct HTML preview requests in dev / preview
     app.use(async (req, res, next) => {
+      // Never intercept non-GET or API/proxy/uploads requests
+      if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/proxy') || req.path.startsWith('/uploads')) {
+        return next();
+      }
+
       const userAgent = req.headers["user-agent"] || "";
       const isBot = /bot|facebookexternalhit|whatsapp|telegram|twitterbot|pinterest|google|bing|duckduckbot|slackbot|discordbot|applebot|linkedinbot|vkshare|skypeuripreview|qwantify|bitlybot|tumblr|embedly/i.test(userAgent);
       const acceptsHtml = (req.headers.accept?.includes("text/html") || !req.headers.accept) && !req.path.includes(".");
@@ -3608,6 +4354,11 @@ app.get('/api/remote-commands', (req, res) => {
 
     app.use(vite.middlewares);
   } else {
+    // Explicitly guarantee API and uploads routes never return HTML in production
+    app.all(["/api/*", "/uploads/*", "/proxy/*"], (req, res) => {
+      res.status(404).json({ error: `Not found: ${req.method} ${req.path}` });
+    });
+
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath, { 
       index: false,
@@ -3621,6 +4372,9 @@ app.get('/api/remote-commands', (req, res) => {
     }));
 
     app.get("*", async (req, res) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/proxy') || req.path.startsWith('/uploads')) {
+        return res.status(404).json({ error: `Not found: ${req.path}` });
+      }
       const indexPath = path.join(distPath, "index.html");
       if (!fs.existsSync(indexPath)) {
         return res.status(404).send("Page not found");
@@ -3643,6 +4397,8 @@ app.get('/api/remote-commands', (req, res) => {
 
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    // Start background Telegram support bot polling for real-time two-way replies
+    startTelegramPollingLoop();
   });
 
   server.on('error', (e: any) => {

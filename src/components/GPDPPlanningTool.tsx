@@ -354,7 +354,7 @@ function SankalpThemeTable({
   );
 }
 
-export function GPDPPlanningTool({ addToast }: { addToast: (s: string) => void }) {
+export function GPDPPlanningTool({ addToast, user }: { addToast: (s: string) => void; user?: any }) {
   const [step, setStep] = useState(0);
   const [activeAllocTab, setActiveAllocTab] = useState<'tied' | 'sankalp' | 'untied' | 'other'>('tied');
   const [masterData] = useState<GPDPActivityItem[]>(GPDP_MASTER_ACTIVITIES);

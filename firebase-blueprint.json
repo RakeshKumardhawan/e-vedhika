@@ -134,6 +134,22 @@
         "time": { "type": "string" }
       }
     },
+    "SystemError": {
+      "title": "System Error",
+      "description": "Captured runtime exception/error boundary log.",
+      "type": "object",
+      "properties": {
+        "message": { "type": "string" },
+        "stack": { "type": "string" },
+        "componentStack": { "type": "string" },
+        "time": { "type": "integer" },
+        "url": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userRole": { "type": "string" },
+        "userAgent": { "type": "string" }
+      }
+    },
     "SupportTicket": {
       "title": "Support Ticket",
       "description": "Citizen grievance inquiry or pushed community post ticket with unique tracking code.",
@@ -155,6 +171,10 @@
     }
   },
   "firestore": {
+    "/system_errors/{errorId}": {
+      "schema": "SystemError",
+      "description": "Captured runtime system/client error logs."
+    },
     "/support_tickets/{ticketId}": {
       "schema": "SupportTicket",
       "description": "Citizen support tickets and inquiries."

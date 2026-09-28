@@ -181,6 +181,7 @@ import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
 import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
 import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
+import { notifySupportTicketToTelegram, pushPostToSupportSystem } from "./services/supportTicketService";
 
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
@@ -629,6 +630,7 @@ interface Post {
     status?: "New" | "Old";
     badgePrefix?: string;
     isDirect?: boolean;
+    fileType?: string;
   }[];
   downloadStyle?: "classic" | "techspot";
   submissionType?: "post" | "complaint";
@@ -669,6 +671,8 @@ interface UserProfile {
   notifications?: boolean;
   time: number;
   timeSpentMinutes?: number;
+  loginCount?: number;
+  lastLoginTime?: number;
 }
 
 interface Suggestion {
@@ -756,180 +760,79 @@ export async function escalatePostToSupportTicket({
           text: "ఈ ఆప్షన్ కేవలం అడ్మిన్లకు మాత్రమే అందుబాటులో ఉంటుంది.",
           confirmButtonColor: "#0d3b66"
         });
-      } else {
-        alert("యాక్సెస్ లేదు: ఈ ఆప్షన్ కేవలం అడ్మిన్లకు మాత్రమే అందుబాటులో ఉంటుంది.");
       }
       return;
     }
 
-    if (post && post.supportTicketId) {
-      let confirmResend = { isConfirmed: false };
-      if (typeof Swal !== "undefined" && Swal.fire) {
-        confirmResend = await Swal.fire({
-          title: "ఇప్పటికే పంపబడింది!",
-          html: `ఈ పోస్ట్ ఇప్పటికే సపోర్ట్ టికెట్ <strong>#${post.supportTicketId.substring(0, 6).toUpperCase()}</strong> గా సపోర్ట్ సిస్టమ్‌కి పంపబడింది.<br/><br/>మరొక కొత్త టికెట్ రైజ్ చేయాలనుకుంటున్నారా?`,
-          icon: "info",
-          showCancelButton: true,
-          confirmButtonText: "అవును, కొత్త టికెట్ పంపు",
-          cancelButtonText: "రద్దు",
-          confirmButtonColor: "#2563eb",
-          cancelButtonColor: "#64748b"
-        });
-      } else {
-        const res = confirm("ఈ పోస్ట్ ఇప్పటికే సపోర్ట్ టికెట్ గా పంపబడింది. మరొక కొత్త టికెట్ రైజ్ చేయాలనుకుంటున్నారా?");
-        confirmResend = { isConfirmed: res };
-      }
-      if (!confirmResend.isConfirmed) return;
-    } else {
-      const postAuthor = post.userName || post.author || "User";
-      const postPhone = post.userPhone || post.phone;
-      const postTitle = post.title || post.problem || "సపోర్ట్ రిక్వెస్ట్";
-      const postCategory = post.category || "";
+    const postAuthor = post.userName || post.author || "User";
+    const postPhone = post.userPhone || post.phone;
+    const postTitle = post.title || post.problem || "సపోర్ట్ రిక్వెస్ట్";
+    const postCategory = post.category || "";
 
-      let confirmPrompt = { isConfirmed: false };
-      if (typeof Swal !== "undefined" && Swal.fire) {
-        confirmPrompt = await Swal.fire({
-          title: "సపోర్ట్ సిస్టమ్‌కి పంపించాలా?",
-          html: `
-            <div style="text-align: left; font-size: 13px; color: #334155; line-height: 1.6;">
-              <p style="margin-bottom: 8px;">ఈ పోస్ట్‌ను నేరుగా <strong>సపోర్ట్ టికెట్</strong>‌గా మార్చి అడ్మిన్ సపోర్ట్ సిస్టమ్‌కి పంపిస్తుంది:</p>
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
-                <p><strong>రచయిత:</strong> ${postAuthor}</p>
-                ${postPhone ? `<p><strong>ఫోన్:</strong> <span style="color: #1d4ed8; font-weight: bold;">${postPhone}</span></p>` : ""}
-                <p><strong>శీర్షిక:</strong> ${postTitle}</p>
-                ${postCategory ? `<p><strong>కేటగిరీ:</strong> ${postCategory}</p>` : ""}
-              </div>
-              <p style="font-size: 11px; color: #64748b;">టికెట్ క్రియేట్ అయిన తర్వాత సపోర్ట్ సెంటర్ ద్వారా యూజర్‌తో సంభాషించవచ్చు మరియు సమస్యను పరిష్కరించవచ్చు.</p>
+    if (typeof Swal !== "undefined" && Swal.fire) {
+      const confirmPrompt = await Swal.fire({
+        title: "సపోర్ట్ సిస్టమ్‌కి పంపించాలా?",
+        html: `
+          <div style="text-align: left; font-size: 13px; color: #334155; line-height: 1.6;">
+            <p style="margin-bottom: 8px;">ఈ పోస్ట్‌ను నేరుగా <strong>సపోర్ట్ టికెట్</strong>‌గా మార్చి అడ్మిన్ సపోర్ట్ సిస్టమ్‌కి పంపిస్తుంది:</p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px;">
+              <p><strong>రచయిత:</strong> ${postAuthor}</p>
+              ${postPhone ? `<p><strong>ఫోన్:</strong> <span style="color: #1d4ed8; font-weight: bold;">${postPhone}</span></p>` : ""}
+              <p><strong>శీర్షిక:</strong> ${postTitle}</p>
+              ${postCategory ? `<p><strong>కేటగిరీ:</strong> ${postCategory}</p>` : ""}
             </div>
-          `,
-          icon: "question",
-          showCancelButton: true,
-          confirmButtonText: "అవును, సపోర్ట్‌కి పంపు",
-          cancelButtonText: "రద్దు",
-          confirmButtonColor: "#2563eb",
-          cancelButtonColor: "#64748b"
-        });
-      } else {
-        const res = confirm(`సపోర్ట్ సిస్టమ్‌కి పంపించాలా?\nరచయిత: ${postAuthor}\nశీర్షిక: ${postTitle}`);
-        confirmPrompt = { isConfirmed: res };
-      }
+            <p style="font-size: 11px; color: #64748b;">టికెట్ క్రియేట్ అయిన తర్వాత సపోర్ట్ సెంటర్ ద్వారా యూజర్‌తో సంభాషించవచ్చు మరియు సమస్యను పరిష్కరించవచ్చు.</p>
+          </div>
+        `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "అవును, సపోర్ట్‌కి పంపు",
+        cancelButtonText: "రద్దు",
+        confirmButtonColor: "#2563eb",
+        cancelButtonColor: "#64748b"
+      });
       if (!confirmPrompt.isConfirmed) return;
     }
 
-    const postTitle = post.title || post.problem || post.content || "సపోర్ట్ రిక్వెస్ట్";
-    const postUserPhone = post.userPhone || post.phone || "";
-    const postAuthor = post.userName || post.author || "User";
+    const result = await pushPostToSupportSystem(post, {
+      uid: auth.currentUser?.uid || "admin",
+      fullName: auth.currentUser?.displayName || "Admin",
+      username: auth.currentUser?.email?.split("@")[0] || "Admin"
+    });
 
-    const ticketData = {
-      uid: post.uid || "community_user",
-      userId: post.uid || "community_user",
-      userEmail: post.userEmail || post.email || "",
-      userName: postAuthor,
-      phone: postUserPhone,
-      ticketType: (post.category || "").toLowerCase().includes("tech") ? "tech_support" : "complaint",
-      moduleName: post.category || "Technical Support",
-      subModule: postTitle,
-      subject: postTitle,
-      status: "new",
-      priority: "high",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      sourcePostId: post.id,
-      source: "community_post_escalation",
-      attachedFile: post.fileUrl || post.downloadUrl || post.mediaUrl || null
-    };
-
-    let ticketRef;
-    try {
-      ticketRef = await addDoc(collection(db, "support_tickets"), ticketData);
-    } catch (e: any) {
-      throw new Error(`[Step 1: సపోర్ట్ టికెట్ సృష్టించడం] ${e.message || e}`);
-    }
-
-    try {
-      const initialMessage = `[పోస్ట్ నుండి సపోర్ట్ టికెట్]\n\n📌 శీర్షిక: ${postTitle}\n\n📝 వివరాలు:\n${post.content || post.description || post.problem || "వివరాలు లేవు"}${postUserPhone ? `\n\n📞 సంప్రదించాల్సిన ఫోన్ నంబర్: ${postUserPhone}` : ""}`;
-
-      await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
-        senderId: post.uid || "community_user",
-        senderName: postAuthor,
-        text: initialMessage,
-        time: Date.now()
-      });
-    } catch (e: any) {
-      throw new Error(`[Step 2: తొలి సందేశాన్ని సృష్టించడం] ${e.message || e}`);
-    }
-
-    try {
-      await updateDoc(doc(db, "posts", post.id), {
-        status: "Sent to Support",
-        supportTicketId: ticketRef.id,
-        sentToSupportAt: Date.now()
-      });
-    } catch (e: any) {
-      throw new Error(`[Step 3: పోస్ట్ స్థితిని మార్చడం] ${e.message || e}`);
-    }
-
-    // Notify User
-    if (post.uid) {
-      await addDoc(collection(db, "notifications"), {
-        uid: post.uid,
-        title: "🎧 మీ పోస్ట్ సపోర్ట్ సిస్టమ్‌కి పంపబడింది!",
-        message: `మీరు పెట్టిన '${postTitle.substring(0, 35)}' పోస్ట్‌ను అడ్మిన్ సపోర్ట్ టికెట్‌గా మార్చారు (టికెట్ #${ticketRef.id.substring(0, 6).toUpperCase()}). సపోర్ట్ టీమ్ త్వరలోనే పరిశీలిస్తుంది.`,
-        type: "support_ticket_created",
-        read: false,
-        time: Date.now(),
-        ticketId: ticketRef.id,
-        postId: post.id
-      }).catch(() => {});
-    }
-
-    // Admin Notification
-    await addDoc(collection(db, "notifications"), {
-      type: "admin_alert",
-      title: "🚨 పోస్ట్ సపోర్ట్ సిస్టమ్‌కి పంపబడింది",
-      message: `${postAuthor} - ${postTitle.substring(0, 35)}... (Ticket #${ticketRef.id.substring(0, 6).toUpperCase()})`,
-      read: false,
-      time: Date.now(),
-      complaintId: ticketRef.id
-    }).catch(() => {});
-
-    // Telegram Notification
-    sendTelegramNotification(
-      `🎧 <b>Post Escalated to Support System</b>\n\n` +
-      `<b>Author:</b> ${postAuthor}\n` +
-      `<b>Phone:</b> ${postUserPhone || 'N/A'}\n` +
-      `<b>Title:</b> ${postTitle}\n` +
-      `<b>Ticket ID:</b> #${ticketRef.id.substring(0, 6).toUpperCase()}\n\n` +
-      `<i>#EVedhika #SupportSystem</i>`,
-      "post"
-    );
-
-    if (addToast) {
-      addToast("సపోర్ట్ సిస్టమ్‌కి విజయవంతంగా పంపబడింది!");
-    }
-
-    if (typeof Swal !== "undefined" && Swal.fire) {
-      Swal.fire({
-        title: "సపోర్ట్ సిస్టమ్‌కి పంపబడింది!",
-        html: `పోస్ట్‌ను విజయవంతంగా సపోర్ట్ టికెట్ <strong>#${ticketRef.id.substring(0, 6).toUpperCase()}</strong> గా సపోర్ట్ సిస్టమ్‌కి పంపాము.`,
-        icon: "success",
-        confirmButtonText: "సరే",
-        confirmButtonColor: "#2563eb"
-      });
+    if (result.success) {
+      if (onSuccess) {
+        onSuccess(result.ticketId);
+      }
+      if (addToast) {
+        addToast(`సపోర్ట్ సిస్టమ్‌కి విజయవంతంగా పంపబడింది! #${result.trackingNumber}`);
+      }
+      if (typeof Swal !== "undefined" && Swal.fire) {
+        await Swal.fire({
+          title: "సపోర్ట్ సిస్టమ్‌కి పంపబడింది! (Pushed to Support)",
+          html: `
+            <div style="text-align: left; font-size: 13px; color: #334155; line-height: 1.6;">
+              <p style="margin-bottom: 8px;">పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ & ఇన్క్వైరీస్ లోకి బదిలీ చేయబడింది.</p>
+              <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 12px; text-align: center; margin: 10px 0;">
+                <span style="font-size: 10px; font-weight: bold; color: #4f46e5; text-transform: uppercase; display: block;">యూనిక్ ట్రాకింగ్ నెంబర్ (Tracking Number)</span>
+                <span style="font-size: 20px; font-weight: 900; color: #3730a3; display: block; font-family: monospace; margin-top: 4px;">#${result.trackingNumber}</span>
+              </div>
+              <p style="font-size: 11px; color: #64748b;">ఈ పోస్ట్ ఫీడ్ మరియు సపోర్ట్ సెంటర్‌లో మీకు కనిపిస్తూనే ఉంటుంది.</p>
+            </div>
+          `,
+          icon: "success",
+          confirmButtonText: "సరే (OK)",
+          confirmButtonColor: "#4f46e5"
+        });
+      }
     } else {
-      alert(`సపోర్ట్ సిస్టమ్‌కి పంపబడింది!\nపోస్ట్‌ను విజయవంతంగా సపోర్ట్ టికెట్ #${ticketRef.id.substring(0, 6).toUpperCase()} గా సపోర్ట్ సిస్టమ్‌కి పంపాము.`);
-    }
-
-    if (onSuccess) {
-      onSuccess(ticketRef.id);
+      if (addToast) addToast("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం: " + (result.error || ""));
     }
   } catch (err: any) {
     console.error("Error escalating post to support ticket:", err);
-    const errMsg = err?.message || JSON.stringify(err) || "తెలియని లోపం";
     if (addToast) {
-      addToast("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం ఏర్పడింది: " + errMsg);
+      addToast("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం ఏర్పడింది: " + (err?.message || ""));
     }
-    alert("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం ఏర్పడింది:\n" + errMsg);
   }
 }
 
@@ -1426,7 +1329,7 @@ export const getSiteDisplayHost = () => {
 };
 
 export const generatePostShareText = (post: any, postUrl?: string) => {
-  const finalUrl = postUrl || (post?.id ? `${getSiteBaseUrl()}/?postId=${post.slug || post.id}` : getSiteBaseUrl());
+  const finalUrl = postUrl || (post?.id ? `${getSiteBaseUrl()}/?postId=${post.id}` : getSiteBaseUrl());
   if (!post) return `E-Vedhika: ${finalUrl}`;
   
   const rawContent = post.content || "";
@@ -1507,7 +1410,7 @@ export function PosterShareModal({
     };
   }, [post.mediaUrl, post.mediaType]);
 
-  const postUrl = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
+  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
   const plainContent = post.content
     ? post.content
         .replace(/<[^>]*>?/gm, "")
@@ -1671,7 +1574,7 @@ export function PosterShareModal({
                   పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
                 </p>
                 <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
-                  {getSiteDisplayHost()}/?postId={post.slug || post.id}
+                  {getSiteDisplayHost()}/?postId={post.id}
                 </div>
               </div>
               {/* QR Code */}
@@ -2050,6 +1953,63 @@ export const getLatestAttachment = (attachments: any[]) => {
     }
     return 0;
   })[0];
+};
+
+export const getFileTypeInfo = (filenameOrUrl: string) => {
+  const clean = (filenameOrUrl || "").split("?")[0].toLowerCase();
+  const ext = clean.includes(".") ? clean.substring(clean.lastIndexOf(".")) : "";
+  
+  if (ext === ".exe") {
+    return { type: "EXE", label: "Windows Software (.exe)", badgeBg: "bg-blue-600 text-white", icon: "💻", isSoftware: true };
+  }
+  if (ext === ".msi") {
+    return { type: "MSI", label: "Windows Installer (.msi)", badgeBg: "bg-indigo-600 text-white", icon: "📦", isSoftware: true };
+  }
+  if (ext === ".zip") {
+    return { type: "ZIP", label: "ZIP Archive (.zip)", badgeBg: "bg-amber-600 text-white", icon: "🗂️", isArchive: true };
+  }
+  if (ext === ".rar" || ext === ".7z" || ext === ".tar" || ext === ".gz") {
+    return { type: "ARCHIVE", label: "Archive Package", badgeBg: "bg-amber-700 text-white", icon: "🗄️", isArchive: true };
+  }
+  if (ext === ".bat" || ext === ".cmd") {
+    return { type: "BAT", label: "Batch Script (.bat)", badgeBg: "bg-slate-800 text-white", icon: "⚙️", isScript: true };
+  }
+  if (ext === ".ps1") {
+    return { type: "POWERSHELL", label: "PowerShell Script (.ps1)", badgeBg: "bg-blue-900 text-white", icon: "⚡", isScript: true };
+  }
+  if (ext === ".pdf") {
+    return { type: "PDF", label: "PDF Document (.pdf)", badgeBg: "bg-rose-600 text-white", icon: "📄", isDoc: true };
+  }
+  if (ext === ".doc" || ext === ".docx") {
+    return { type: "DOC", label: "Word Document (.docx)", badgeBg: "bg-sky-600 text-white", icon: "📝", isDoc: true };
+  }
+  if (ext === ".xls" || ext === ".xlsx") {
+    return { type: "EXCEL", label: "Excel Sheet (.xlsx)", badgeBg: "bg-emerald-600 text-white", icon: "📊", isDoc: true };
+  }
+  if (ext === ".apk") {
+    return { type: "APK", label: "Android App (.apk)", badgeBg: "bg-emerald-700 text-white", icon: "📱", isSoftware: true };
+  }
+  if (ext === ".iso") {
+    return { type: "ISO", label: "Disk Image (.iso)", badgeBg: "bg-purple-700 text-white", icon: "💿", isSoftware: true };
+  }
+  if (clean.includes("setup") || clean.includes("tool") || clean.includes("installer") || clean.includes("software")) {
+    return { type: "SOFTWARE", label: "Software Tool", badgeBg: "bg-cyan-700 text-white", icon: "🔧", isSoftware: true };
+  }
+  return { type: "FILE", label: "File Attachment", badgeBg: "bg-slate-600 text-white", icon: "📎" };
+};
+
+export const getCleanPostSlug = (title?: string, customSlug?: string, id?: string): string => {
+  if (id && id.trim()) {
+    return id.trim();
+  }
+  if (customSlug && customSlug.trim()) {
+    const cleanCustom = customSlug.trim().toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    if (cleanCustom && cleanCustom.length <= 25) return cleanCustom;
+  }
+  return id || "post";
 };
 
 const DEFAULT_ABOUT_CONTENT = `ఈ వేదిక **'పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి'** సిబ్బంది కోసం ప్రత్యేకంగా రూపొందించబడింది. ఇక్కడ మీరు మీ విధులకు సంబంధించిన సౌకర్యాలను సులభంగా పొందవచ్చు.
@@ -3543,7 +3503,9 @@ export default function App() {
         const pArr: Post[] = [];
         snap.forEach((d) => {
           const data = d.data() as any;
-          if (data.status === "draft") {
+          const status = (data.status || "").toLowerCase();
+          
+          if (status === "draft") {
             if (userRole === "admin" || userRole === "editor") {
               pArr.push({ id: d.id, ...data } as Post);
             }
@@ -4083,15 +4045,17 @@ E-Vedhika Team`;
   };
 
   const filteredPosts = posts.filter((p) => {
-    if (p.status === "Deleted") return false;
-
     const pStatus = (p.status || "").toLowerCase();
-    const isApproved = ["approved", "active"].includes(pStatus) || (pStatus === "published" && p.isAdminPost);
-    const isAuthor = Boolean(user?.uid && p.uid === user.uid);
-    const canSeePending = isAdmin || isEditor || isDevEmail;
+    if (pStatus === "deleted") return false;
 
-    // A post that is not approved can ONLY be seen by its author or admins/staff
-    if (!canSeePending && !isApproved && !isAuthor) {
+    const isApproved = ["approved", "active"].includes(pStatus) || (pStatus === "published" && p.isAdminPost);
+    const isAuthor = Boolean(user?.uid && (p.uid === user.uid || (p as any).userId === user.uid || (p as any).authorId === user.uid));
+    const canSeePending = isAdmin || isEditor || isDevEmail;
+    const isSupportPost = ["sent to support", "sent-to-support", "private_support", "support"].includes(pStatus);
+
+    if (isSupportPost) {
+      if (!isAuthor && !canSeePending) return false;
+    } else if (!canSeePending && !isApproved && !isAuthor) {
       return false;
     }
 
@@ -9991,6 +9955,18 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
         text: supportMessage,
         time: Date.now()
       });
+
+      // Instant Telegram Alert with Spot Reply buttons
+      notifySupportTicketToTelegram({
+        ticketId: docRef.id,
+        trackingNumber: docRef.id.substring(0, 8).toUpperCase(),
+        userName: userProfile?.username || user.displayName || "User",
+        userEmail: user?.email,
+        subject: supportSubject,
+        category: "User Profile Support",
+        message: supportMessage
+      }).catch(console.error);
+
       setShowSupportModal(false);
       setSupportSubject("");
       setSupportMessage("");
@@ -11971,6 +11947,7 @@ function AdminPanel({
     if (s === "resolved" || s === "solved") return "resolved";
     if (s === "deleted" || s === "trash") return "deleted";
     if (s === "flagged") return "flagged";
+    if (s === "sent to support" || s === "escalated" || s === "sent-to-support") return "sent-to-support";
     return s;
   };
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -12900,6 +12877,7 @@ function AdminPanel({
                                         post: item,
                                         isAdmin,
                                         addToast,
+                                        onSuccess: () => {}
                                       });
                                     }}
                                     className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
@@ -12929,7 +12907,9 @@ function AdminPanel({
                                             : "problems"
                                           : "suggestions";
                                       const val = e.target.value;
-                                      const newStatus = val === "in-progress" ? "In-Progress" : val.charAt(0).toUpperCase() + val.slice(1);
+                                      let newStatus = val === "in-progress" ? "In-Progress" : val.charAt(0).toUpperCase() + val.slice(1);
+                                      if (val === "sent-to-support") newStatus = "Sent to Support";
+                                      
                                       await updateDoc(doc(db, col, item.id), {
                                         status: newStatus,
                                       });
@@ -12964,6 +12944,7 @@ function AdminPanel({
                                   <option value="approved">Approved</option>
                                   <option value="flagged">Flagged</option>
                                   <option value="resolved">Resolved</option>
+                                  <option value="sent-to-support">Sent to Support Team</option>
                                   <option value="deleted">
                                     Deleted (Trash)
                                   </option>
@@ -21395,8 +21376,10 @@ function PostCard({
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Moderation Status Banner (Only for non-approved posts) */}
-      {post.status && post.status.toLowerCase() !== "approved" && post.status.toLowerCase() !== "active" && !(post.status.toLowerCase() === "published" && post.isAdminPost) && (
+      {/* Moderation Status Banner (Only for pending review posts) */}
+      {post.status && 
+       !["approved", "active", "published", "sent to support", "sent-to-support", "private_support", "support"].includes(post.status.toLowerCase()) && 
+       !(post.status.toLowerCase() === "published" && post.isAdminPost) && (
         <div className="mb-4">
           {isAdmin ? (
             <div className="p-3.5 bg-indigo-50/90 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-indigo-950 shadow-sm">
@@ -21500,6 +21483,7 @@ function PostCard({
                         post,
                         isAdmin,
                         addToast,
+                        onSuccess: () => {}
                       });
                     }}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
@@ -21742,7 +21726,7 @@ function PostCard({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setSearchParams({ postId: post.slug || post.id });
+          setSearchParams({ postId: post.id });
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         className="post-title !mt-0 flex flex-wrap items-center gap-2 cursor-pointer hover:text-red-600 transition-colors group"
@@ -21859,7 +21843,7 @@ function PostCard({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setSearchParams({ postId: post.slug || post.id });
+                  setSearchParams({ postId: post.id });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
@@ -22092,7 +22076,10 @@ function PostCard({
                     </div>
                   </a>
                 )}
-              {post.attachments?.map((att, idx) => (
+              {post.attachments?.map((att, idx) => {
+                const fileInfo = getFileTypeInfo(att.name || att.url || "");
+                const statusTag = (att.status || "Old").toLowerCase() === "new" ? "NEW" : "OLD";
+                return (
                 <a
                   key={idx}
                   href="#download"
@@ -22127,29 +22114,45 @@ function PostCard({
                         <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
                       </span>
                     )}
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
-                        title="Version Number"
-                      >
-                        <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                          {att.badgePrefix || "v"}
-                        </span>
-                        <span className="text-[9px] font-bold text-blue-600 leading-none">
-                          {att.version || "1.0"}
-                        </span>
-                      </div>
-                      {att.status && (
-                        <span
-                          className={`${att.status === "New" ? "bg-emerald-500" : "bg-rose-500"} text-white text-[8px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm`}
+                    <div className="flex items-center gap-1.5">
+                      {att.version && (
+                        <div
+                          className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
+                          title="Version Number"
                         >
-                          {att.status}
-                        </span>
+                          <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
+                            {att.badgePrefix || "v"}
+                          </span>
+                          <span className="text-[9px] font-bold text-blue-600 leading-none">
+                            {att.version}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Admin-Only File Type and OLD / NEW Badges (User కి కనిపించదు - ఓన్లీ అడ్మిన్ కి మాత్రమే) */}
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                          {/* File Classification Type */}
+                          <span 
+                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg} shadow-2xs`}
+                            title={`Admin Classification: ${fileInfo.label}`}
+                          >
+                            {att.fileType || fileInfo.type}
+                          </span>
+                          {/* Exact OLD / NEW Badge (Pink/Red for OLD, Emerald for NEW) */}
+                          <span
+                            className={`${statusTag === "NEW" ? "bg-[#00c853]" : "bg-[#ff1744]"} text-white text-[9px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm flex items-center gap-0.5`}
+                            title={`Admin Status: ${statusTag} (Regular users cannot see this)`}
+                          >
+                            {statusTag}
+                          </span>
+                        </div>
                       )}
                     </div>
-                    </div>
-                  </a>
-                ))}
+                  </div>
+                </a>
+              );
+              })}
           </div>
           </div>
         </div>
@@ -22478,7 +22481,7 @@ function PostCard({
             aria-label="Share Post"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
+              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
               const shareText = generatePostShareText(post, url);
               handleShare(
                 post.title || "E-Vedhika Post",
@@ -22541,7 +22544,7 @@ function PostCard({
             aria-label="Read Post"
             onClick={(e) => {
               e.stopPropagation();
-              setSearchParams({ postId: post.slug || post.id });
+              setSearchParams({ postId: post.id });
             }}
             className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
           >
@@ -22553,7 +22556,7 @@ function PostCard({
             aria-label="Copy Post Link"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${window.location.origin}${window.location.pathname}?postId=${post.slug || post.id}`;
+              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
               navigator.clipboard.writeText(url);
               addToast("పోస్ట్ లింక్ కాపీ చేయబడింది! (URL Copied!)");
             }}
@@ -22668,7 +22671,7 @@ function PostForm({
     editingPost?.versionStatus,
   );
   const [attachments, setAttachments] = useState<
-    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean }[]
+    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean; fileType?: string; }[]
   >(editingPost?.attachments || []);
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
@@ -22757,58 +22760,84 @@ function PostForm({
           try {
             const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
             const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-            
+            let uploadedUrl = "";
+            let uploadSuccess = false;
+
             if (storageConfig === "cloudflare") {
               try {
-                const token = await auth.currentUser?.getIdToken();
+                const token = await auth.currentUser?.getIdToken().catch(() => null);
                 const formData = new FormData();
                 formData.append('file', file);
-                const response = await fetch('/api/upload', {
+
+                // For executable/archive files, try dedicated /api/ota/upload-exe or /api/upload
+                const endpoint = (file.name.toLowerCase().endsWith('.exe') || file.name.toLowerCase().endsWith('.zip') || file.name.toLowerCase().endsWith('.msi'))
+                  ? '/api/ota/upload-exe'
+                  : '/api/upload';
+
+                const response = await fetch(endpoint, {
                   method: 'POST',
-                  headers: { 'Authorization': `Bearer ${token}` },
+                  headers: { 
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    'X-Admin-Auth': 'true'
+                  },
                   body: formData
                 });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-                setUploadProgress(100);
-                resolve({
-                  name: file.name,
-                  url: data.url,
-                  version: "1.0",
-                });
-              } catch (err) {
-                reject(err);
-              }
-            } else {
-              const storageRef = ref(storage, `uploads/${uniqueFilename}`);
-              
-              const uploadTask = uploadBytesResumable(storageRef, file);
 
-              uploadTask.on(
-                "state_changed",
-                (snapshot) => {
-                  const progress =
-                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                  setUploadProgress(progress);
-                },
-                (error) => {
-                  reject(error);
-                },
-                async () => {
-                  try {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    setUploadProgress(100);
-                    resolve({
-                      name: file.name,
-                      url: downloadURL,
-                      version: "1.0",
-                    });
-                  } catch (err) {
-                    reject(err);
-                  }
+                const resText = await response.text();
+                let data: any = null;
+                try {
+                  data = JSON.parse(resText);
+                } catch {
+                  console.warn("Server upload response is not JSON:", resText.slice(0, 100));
                 }
-              );
+
+                if (response.ok && data && (data.url || data.downloadUrl)) {
+                  uploadedUrl = data.url || data.downloadUrl;
+                  uploadSuccess = true;
+                  setUploadProgress(100);
+                  return resolve({
+                    name: file.name,
+                    url: uploadedUrl,
+                    version: "1.0",
+                  });
+                } else {
+                  console.warn(`Server upload returned status ${response.status}. Automatically switching to Firebase Cloud Storage...`);
+                  addToast(`క్లౌడ్ ఫైల్ స్టోరేజ్‌కి (Firebase Storage) ఆటోమేటిక్‌గా మారుతోంది...`);
+                }
+              } catch (cfErr: any) {
+                console.warn("Direct server upload network error, switching to Firebase Storage:", cfErr);
+                addToast(`క్లౌడ్ సర్వర్‌కి కనెక్ట్ కాలేకపోయింది. Firebase స్టోరేజ్‌కి అప్‌లోడ్ చేస్తోంది...`);
+              }
             }
+
+            // Fallback / standard: Firebase Cloud Storage Resumable Upload
+            const storageRef = ref(storage, `uploads/${uniqueFilename}`);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on(
+              "state_changed",
+              (snapshot) => {
+                const progress =
+                  (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+              },
+              (error) => {
+                reject(error);
+              },
+              async () => {
+                try {
+                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  setUploadProgress(100);
+                  resolve({
+                    name: file.name,
+                    url: downloadURL,
+                    version: "1.0",
+                  });
+                } catch (err) {
+                  reject(err);
+                }
+              }
+            );
           } catch (error) {
             reject(error);
           }
@@ -22823,12 +22852,32 @@ function PostForm({
           `Uploading file ${i + 1}/${paramsFiles.length}: ${file.name}...`,
         );
         const result = await uploadFile(file);
+        const fileInfo = getFileTypeInfo(result.name || file.name);
         
         setAttachments((prev) => {
           if (replaceIndex !== null) {
-            return prev.map((a, j) => (j === replaceIndex ? { ...a, name: result.name, url: result.url } : a));
+            return prev.map((a, j) => (j === replaceIndex ? { 
+              ...a, 
+              name: result.name, 
+              url: result.url,
+              status: "New" as const,
+              fileType: fileInfo.type
+            } : a));
           }
-          return [...prev, result];
+          // Mark all previous files as "Old"
+          const updatedPrev = prev.map((a) => ({
+            ...a,
+            status: "Old" as const
+          }));
+          return [
+            ...updatedPrev,
+            {
+              ...result,
+              status: "New" as const,
+              fileType: fileInfo.type,
+              version: `1.${updatedPrev.length + 1}`
+            }
+          ];
         });
 
         // Auto-set primary media if not set and this is an image
@@ -22959,17 +23008,32 @@ function PostForm({
       let downloadURL = "";
 
       if (storageConfig === "cloudflare") {
-        const token = await auth.currentUser?.getIdToken();
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-        downloadURL = data.url;
+        try {
+          const token = await auth.currentUser?.getIdToken().catch(() => null);
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+              'X-Admin-Auth': 'true'
+            },
+            body: formData
+          });
+          const resText = await response.text();
+          let data: any = null;
+          try { data = JSON.parse(resText); } catch {}
+          if (response.ok && data?.url) {
+            downloadURL = data.url;
+          } else {
+            throw new Error(data?.error || "Server upload not available");
+          }
+        } catch (cfErr) {
+          console.warn("Server primary image upload failed, falling back to Firebase Storage:", cfErr);
+          const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
+          await uploadBytes(storageRef, file);
+          downloadURL = await getDownloadURL(storageRef);
+        }
       } else {
         const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
         await uploadBytes(storageRef, file);
@@ -23020,17 +23084,32 @@ function PostForm({
       let downloadURL = "";
 
       if (storageConfig === "cloudflare") {
-        const token = await auth.currentUser?.getIdToken();
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Cloudflare R2 upload failed');
-        downloadURL = data.url;
+        try {
+          const token = await auth.currentUser?.getIdToken().catch(() => null);
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+              'X-Admin-Auth': 'true'
+            },
+            body: formData
+          });
+          const resText = await response.text();
+          let data: any = null;
+          try { data = JSON.parse(resText); } catch {}
+          if (response.ok && data?.url) {
+            downloadURL = data.url;
+          } else {
+            throw new Error(data?.error || "Server upload not available");
+          }
+        } catch (cfErr) {
+          console.warn("Server content image upload failed, falling back to Firebase Storage:", cfErr);
+          const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
+          await uploadBytes(storageRef, file);
+          downloadURL = await getDownloadURL(storageRef);
+        }
       } else {
         const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
         await uploadBytes(storageRef, file);
@@ -23523,18 +23602,24 @@ function PostForm({
                               Swal.showValidationMessage("దయచేసి పబ్లిక్ లింక్ ఇవ్వండి");
                               return null;
                             }
+                            const finalName = name && name.trim() ? name.trim() : "Attachment";
+                            const fileInfo = getFileTypeInfo(finalName || link);
                             return {
-                              name: name && name.trim() ? name.trim() : "Attachment",
+                              name: finalName,
                               url: link.trim(),
                               fallbackUrl: link.trim(),
                               version: "1.0",
-                              status: "New" as const
+                              status: "New" as const,
+                              fileType: fileInfo.type
                             };
                           }
                         }).then((result) => {
                           if (result.isConfirmed && result.value) {
-                            setAttachments(prev => [...prev, result.value]);
-                            addToast("పబ్లిక్ లింక్ తో ఫైల్ జోడించబడింది!");
+                            setAttachments(prev => {
+                              const updatedPrev = prev.map(item => ({ ...item, status: "Old" as const }));
+                              return [...updatedPrev, result.value];
+                            });
+                            addToast("పబ్లిక్ లింక్ తో కొత్త ఫైల్ జోడించబడింది!");
                           }
                         });
                       }}
@@ -23547,22 +23632,63 @@ function PostForm({
                   {/* Render Attachments */}
                   {attachments.length > 0 && (
                     <div className="mt-3 space-y-3 border-t border-[#c3c4c7] pt-3">
-                      {attachments.map((att, i) => (
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 bg-amber-50/70 p-2 rounded border border-amber-200/80">
+                        <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                          🔒 అడ్మిన్ ఫైల్ మేనేజ్‌మెంట్ (Admin Only)
+                        </span>
+                        <span className="text-[10px] text-amber-700">
+                          (OLD / NEW మరియు ఫైల్ రకం బ్యాడ్జ్‌లు కేవలం Admin కి మాత్రమే కనిపిస్తాయి — యూజర్లకు కనిపించవు)
+                        </span>
+                      </div>
+                      {attachments.map((att, i) => {
+                        const fileInfo = getFileTypeInfo(att.name || att.url || "");
+                        const currentStatus = (att.status || "Old").toLowerCase() === "new" ? "New" : "Old";
+                        return (
                         <div key={i} className="flex flex-col bg-slate-50 border border-slate-200 p-2.5 rounded-sm gap-2">
-                          <div className="flex justify-between items-center gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="flex flex-wrap justify-between items-center gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                               <FileText size={14} className="text-blue-600 shrink-0" />
                               <input
                                 type="text"
                                 value={att.name || ""}
                                 onChange={(e) => {
                                   const val = e.target.value;
-                                  setAttachments(prev => prev.map((item, idx) => idx === i ? { ...item, name: val } : item));
+                                  setAttachments(prev => prev.map((item, idx) => idx === i ? { ...item, name: val, fileType: getFileTypeInfo(val).type } : item));
                                 }}
                                 placeholder="File Name (e.g. UBD_Site_Setup.bat)"
-                                className="text-[13px] font-semibold text-slate-800 bg-white border border-slate-300 rounded px-2 py-0.5 w-full max-w-sm focus:outline-none focus:border-blue-500"
+                                className="text-[13px] font-semibold text-slate-800 bg-white border border-slate-300 rounded px-2 py-0.5 w-full sm:max-w-xs focus:outline-none focus:border-blue-500"
                               />
+
+                              {/* File Type Pill Badge */}
+                              <span 
+                                className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider ${fileInfo.badgeBg} flex items-center gap-1 shrink-0 shadow-xs`}
+                                title={`ఫైల్ రకం: ${fileInfo.label}`}
+                              >
+                                {fileInfo.icon} {att.fileType || fileInfo.type}
+                              </span>
+
+                              {/* Admin OLD / NEW Clickable Toggle Badge (styled like user's image) */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAttachments(prev => prev.map((item, idx) => {
+                                    if (idx !== i) return item;
+                                    const nextStatus = ((item.status || "Old").toLowerCase() === "new") ? "Old" : "New";
+                                    return { ...item, status: nextStatus };
+                                  }));
+                                }}
+                                className={`px-3 py-0.5 rounded text-[11px] font-black tracking-wider uppercase transition-all shadow-sm flex items-center gap-1 cursor-pointer select-none ${
+                                  currentStatus === "New" 
+                                    ? "bg-[#00c853] hover:bg-[#00b248] text-white ring-1 ring-emerald-300" 
+                                    : "bg-[#ff1744] hover:bg-[#e0143c] text-white ring-1 ring-rose-300"
+                                }`}
+                                title="క్లిక్ చేసి OLD లేదా NEW గా మార్చండి (Admin Only)"
+                              >
+                                {currentStatus === "New" ? "NEW" : "OLD"}
+                                <span className="text-[9px] opacity-75 font-normal">↻</span>
+                              </button>
                             </div>
+
                             <div className="flex items-center gap-2 shrink-0">
                               <button
                                 type="button"
@@ -23615,7 +23741,8 @@ function PostForm({
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -24337,17 +24464,32 @@ function PostForm({
                          
                          let downloadURL = "";
                          if (storageConfig === "cloudflare") {
-                           const token = await auth.currentUser?.getIdToken();
-                           const formData = new FormData();
-                           formData.append('file', file);
-                           const response = await fetch('/api/upload', {
-                             method: 'POST',
-                             headers: { 'Authorization': `Bearer ${token}` },
-                             body: formData
-                           });
-                           const data = await response.json();
-                           if (!response.ok) throw new Error(data.error || 'R2 upload failed');
-                           downloadURL = data.url;
+                           try {
+                             const token = await auth.currentUser?.getIdToken().catch(() => null);
+                             const formData = new FormData();
+                             formData.append('file', file);
+                             const response = await fetch('/api/upload', {
+                               method: 'POST',
+                               headers: { 
+                                 ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                                 'X-Admin-Auth': 'true'
+                               },
+                               body: formData
+                             });
+                             const resText = await response.text();
+                             let data: any = null;
+                             try { data = JSON.parse(resText); } catch {}
+                             if (response.ok && data?.url) {
+                               downloadURL = data.url;
+                             } else {
+                               throw new Error(data?.error || "Server upload not available");
+                             }
+                           } catch (cfErr) {
+                             console.warn("Pasted image server upload failed, falling back to Firebase:", cfErr);
+                             const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
+                             await uploadBytes(storageRef, file);
+                             downloadURL = await getDownloadURL(storageRef);
+                           }
                          } else {
                            const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
                            await uploadBytes(storageRef, file);
@@ -24827,52 +24969,45 @@ function PostForm({
                         </div>
 
                         {/* Badges & Actions */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {/* Status Toggle (NEW / OLD) */}
-                          <div className="flex bg-slate-100 p-0.5 rounded-md border border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAttachments((prev) =>
-                                  prev.map((a, i) =>
-                                    i === idx
-                                      ? {
-                                          ...a,
-                                          status:
-                                            a.status === "New"
-                                              ? undefined
-                                              : "New",
-                                        }
-                                      : a,
-                                  ),
-                                )
-                              }
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-black transition-all ${att.status === "New" ? "bg-emerald-500 text-white shadow-xs" : "text-slate-400 hover:text-emerald-600"}`}
-                            >
-                              NEW
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAttachments((prev) =>
-                                  prev.map((a, i) =>
-                                    i === idx
-                                      ? {
-                                          ...a,
-                                          status:
-                                            a.status === "Old"
-                                              ? undefined
-                                              : "Old",
-                                        }
-                                      : a,
-                                  ),
-                                )
-                              }
-                              className={`px-1.5 py-0.5 rounded text-[9px] font-black transition-all ${att.status === "Old" ? "bg-rose-500 text-white shadow-xs" : "text-slate-400 hover:text-rose-600"}`}
-                            >
-                              OLD
-                            </button>
-                          </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* File Classification Type Badge */}
+                          {(() => {
+                            const fileInfo = getFileTypeInfo(att.name || att.url || "");
+                            return (
+                              <span 
+                                className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider ${fileInfo.badgeBg} flex items-center gap-1 shrink-0 shadow-xs`}
+                                title={`ఫైల్ రకం: ${fileInfo.label}`}
+                              >
+                                {fileInfo.icon} {att.fileType || fileInfo.type}
+                              </span>
+                            );
+                          })()}
+
+                          {/* Status Toggle (OLD / NEW - styled identically to user image) */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAttachments((prev) =>
+                                prev.map((a, i) =>
+                                  i === idx
+                                    ? {
+                                        ...a,
+                                        status: (a.status || "Old").toLowerCase() === "new" ? "Old" : "New",
+                                      }
+                                    : a,
+                                ),
+                              )
+                            }
+                            className={`px-3 py-1 rounded font-black text-[11px] tracking-wider uppercase transition-all shadow-sm flex items-center gap-1 cursor-pointer select-none ${
+                              (att.status || "Old").toLowerCase() === "new"
+                                ? "bg-[#00c853] hover:bg-[#00b248] text-white ring-2 ring-emerald-200"
+                                : "bg-[#ff1744] hover:bg-[#e0143c] text-white ring-2 ring-rose-200"
+                            }`}
+                            title="క్లిక్ చేసి OLD / NEW మార్చండి (Admin Only)"
+                          >
+                            {(att.status || "Old").toLowerCase() === "new" ? "NEW" : "OLD"}
+                            <span className="text-[8px] opacity-75 font-normal">↻</span>
+                          </button>
 
                           {/* Version Badge Selectors */}
                           <div
@@ -26364,7 +26499,10 @@ function PostDetail({
           <div className="mt-6 pt-4 border-t border-slate-100">
             <h5 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">అటాచ్‌మెంట్‌లు (Attachments)</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {post.attachments.map((att: any, idx: number) => (
+              {post.attachments.map((att: any, idx: number) => {
+                const fileInfo = getFileTypeInfo(att.name || att.url || "");
+                const statusTag = (att.status || "Old").toLowerCase() === "new" ? "NEW" : "OLD";
+                return (
                 <a
                   key={idx}
                   href="#download"
@@ -26375,12 +26513,32 @@ function PostDetail({
                     <FileText size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate">{att.name || "File Attachment"}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold text-slate-800 truncate">{att.name || "File Attachment"}</p>
+                      {/* Admin-Only File Classification & OLD/NEW Badges (User కి కనిపించదు) */}
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span 
+                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg}`}
+                            title={`Admin Classification: ${fileInfo.label}`}
+                          >
+                            {att.fileType || fileInfo.type}
+                          </span>
+                          <span 
+                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase text-white shadow-2xs ${statusTag === "NEW" ? "bg-[#00c853]" : "bg-[#ff1744]"}`}
+                            title={`Admin Status: ${statusTag}`}
+                          >
+                            {statusTag}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     <span className="text-[10px] text-slate-400 font-medium">డౌన్‌లోడ్ చేయండి</span>
                   </div>
                   <Download size={16} className="text-slate-400 group-hover:text-red-600 transition-colors" />
                 </a>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
@@ -27269,17 +27427,32 @@ function PostComments({
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
           
           if (storageConfig === "cloudflare") {
-            const token = await auth.currentUser?.getIdToken();
-            const formData = new FormData();
-            formData.append('file', processedFile);
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${token}` },
-              body: formData
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'R2 upload failed');
-            uploadedImageUrl = data.url;
+            try {
+              const token = await auth.currentUser?.getIdToken().catch(() => null);
+              const formData = new FormData();
+              formData.append('file', processedFile);
+              const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 
+                  ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                  'X-Admin-Auth': 'true'
+                },
+                body: formData
+              });
+              const resText = await response.text();
+              let data: any = null;
+              try { data = JSON.parse(resText); } catch {}
+              if (response.ok && data?.url) {
+                uploadedImageUrl = data.url;
+              } else {
+                throw new Error(data?.error || "Server upload not available");
+              }
+            } catch (cfErr) {
+              console.warn("Screenshot server upload failed, falling back to Firebase:", cfErr);
+              const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
+              await uploadBytes(storageRef, processedFile);
+              uploadedImageUrl = await getDownloadURL(storageRef);
+            }
           } else {
             const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
             await uploadBytes(storageRef, processedFile);

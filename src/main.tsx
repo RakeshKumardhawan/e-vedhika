@@ -5,6 +5,8 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App.tsx';
 import { registerSW } from 'virtual:pwa-register';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 
 // Automatically check for updates and update the service worker
 if ('serviceWorker' in navigator) {
@@ -66,10 +68,70 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error, countdown: 10 };
   }
+  async logErrorToFirestore(error: Error, errorInfo: React.ErrorInfo) {
+    try {
+      const user = auth.currentUser;
+      let userId = 'Anonymous';
+      let userEmail = 'Anonymous User';
+      let userRole = 'User';
+
+      if (user) {
+        userId = user.uid;
+        userEmail = user.email || user.displayName || 'No Email';
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            userRole = userDoc.data().role || 'User';
+          }
+        } catch (e) {
+          console.warn("Failed to fetch user role for error boundary:", e);
+        }
+      }
+
+      const errorMsg = error.message || 'Unknown Runtime Exception';
+      const errorStack = error.stack || '';
+      const compStack = errorInfo.componentStack || '';
+
+      // Auto generate possible fix
+      let fix = '';
+      if (errorMsg.includes('permission') || errorMsg.includes('insufficient')) {
+        fix = 'Check Firestore Security Rules or verify user RBAC role permissions.';
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch') || errorMsg.includes('unreachable')) {
+        fix = 'Verify server connectivity, API endpoint status, or internet connection.';
+      } else if (errorMsg.includes('null') || errorMsg.includes('undefined')) {
+        fix = 'Ensure proper state initialization and optional chaining before property access.';
+      } else {
+        fix = 'Review module stack trace, inspect payload schema, or clear browser local state.';
+      }
+
+      await addDoc(collection(db, 'system_errors'), {
+        error: errorMsg,
+        reason: errorStack.substring(0, 200) || 'Unhandled runtime execution error',
+        module: 'Global Error Boundary (Client)',
+        time: Date.now(),
+        timestamp: Date.now(),
+        user: userEmail,
+        userId: userId,
+        userRole: userRole,
+        ip: '127.0.0.1 (Cloud Run Proxy)',
+        possibleFix: fix,
+        status: 'Unresolved',
+        severity: 'Critical',
+        stackTrace: errorStack,
+        componentStack: compStack,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        retryCount: 0
+      });
+      console.log('Exception successfully logged to system_errors collection.');
+    } catch (e) {
+      console.error('Failed to log runtime exception to Firestore:', e);
+    }
+  }
+
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
-    // Auto-recovery mechanism - only clear things if it's likely a persistent issue
-    // but don't do it on every minor issue if we want to be less "over"
+    console.error("Uncaught error caught by global ErrorBoundary:", error, errorInfo);
+    this.logErrorToFirestore(error, errorInfo);
   }
 
   componentDidUpdate(prevProps: any, prevState: any) {
