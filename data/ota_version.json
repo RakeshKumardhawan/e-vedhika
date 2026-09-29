@@ -1,7 +1,15 @@
 {
-  "latestVersion": "v1.0.2",
-  "versionCode": 101,
-  "downloadUrl": "https://pub-2d32ebfde6944c47b68f97cd3ffdeb39.r2.dev/releases/1790615668575-1790615668563-526315360-EVedhika_Setup_v1.0.1.exe",
-  "releaseNotes": "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements.",
-  "updatedAt": "2026-09-28T17:14:28.990Z"
+  "latestVersion": "v1.0.2 Official Setup",
+  "versionCode": 202,
+  "downloadUrl": "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/v1.0.2/EVedhika_Setup_v1.0.2.exe",
+  "releaseNotes": "E-Vedhika UBD Tool v1.0.2 Official Release - FIXED: \"Automation server can't create object\" error in UBD Portal. Comprehensive ActiveX & DigiSigner auto-heal engine updated.",
+  "updatedAt": "2026-09-29T11:57:28.467Z",
+  "success": true,
+  "executableName": "EVedhika_Setup_v1.0.2.exe",
+  "currentVersion": "v1.0.2 Official Setup",
+  "releaseDate": "2026-09-29",
+  "githubRepo": "https://github.com/RakeshKumardhawan/UBDTOOLS",
+  "updateRequired": false,
+  "silent": true,
+  "publisher": "E-Vedhika (Rakesh Dhawan)"
 }

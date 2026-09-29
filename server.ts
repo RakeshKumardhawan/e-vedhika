@@ -106,6 +106,7 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json({ limit: '15mb' }));
+  app.use(express.text({ limit: '15mb', type: ['text/*', 'application/json'] }));
   app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
   const proxyOptions = (targetUrl: string) => ({
@@ -1246,40 +1247,48 @@ app.get(telemetryGetRoutes, async (req, res) => {
     if (initFirebaseAdmin()) {
       try {
         const db = admin.firestore();
-        const snapshot = await db.collection("telemetryLogs").limit(100).get();
-        const logs: any[] = [];
+        // Fetch last 100 logs from Firestore
+        const snapshot = await db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
+        const firestoreLogs: any[] = [];
         snapshot.forEach(doc => {
           const d = doc.data();
-          // Exclude any fake seeds or mock data from Firestore as well
+          // Exclude seeds and Test-PC
           if (d && d.id && !String(d.id).startsWith("TEL-SEED") && d.pcName !== "Test-PC") {
-            logs.push(d);
+            firestoreLogs.push({ ...d, id: d.id || doc.id });
           }
         });
-        if (logs.length > 0) {
-          const merged = [...logs];
-          for (const m of telemetryLogsStore) {
-            if (!merged.find(x => x.id === m.id)) {
-              merged.push(m);
-            }
+
+        // Merge memory store with Firestore logs
+        const merged = [...firestoreLogs];
+        for (const m of telemetryLogsStore) {
+          if (!merged.find(x => x.id === m.id)) {
+            merged.push(m);
           }
-          merged.sort((a, b) => {
-            const timeA = new Date(`${a.date || ''} ${a.time || ''}`).getTime() || 0;
-            const timeB = new Date(`${b.date || ''} ${b.time || ''}`).getTime() || 0;
-            return timeB - timeA;
-          });
-          return res.json({
-            success: true,
-            count: merged.length,
-            timestamp,
-            serverTime,
-            serverDate,
-            liveFrequency: "1-second real-time streaming active",
-            logs: merged,
-            telemetry: merged
-          });
         }
-      } catch (fsErr) {
-        // Fall through to memory store if firestore fails
+
+        // Sort by date and time
+        merged.sort((a, b) => {
+          try {
+            const timeA = new Date(`${a.date || a.serverReceivedDate} ${a.time || a.serverReceivedTime}`).getTime() || 0;
+            const timeB = new Date(`${b.date || b.serverReceivedDate} ${b.time || b.serverReceivedTime}`).getTime() || 0;
+            return timeB - timeA;
+          } catch {
+            return 0;
+          }
+        });
+
+        return res.json({
+          success: true,
+          count: merged.length,
+          timestamp,
+          serverTime,
+          serverDate,
+          liveFrequency: "1-second real-time streaming active",
+          logs: merged,
+          telemetry: merged
+        });
+      } catch (fsErr: any) {
+        console.warn("Firestore telemetry fetch error, falling back to memory store:", fsErr?.message);
       }
     }
   } catch (e) {
