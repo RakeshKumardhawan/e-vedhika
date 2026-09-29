@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { pushPostToSupportSystem } from '../services/supportTicketService';
+import { notifyPostUpdate, notifyEmergencyBroadcast } from '../services/telegramService';
 import { 
   AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend
 } from 'recharts';
@@ -303,6 +304,15 @@ export function SuperAdminDashboard({
         await updateDoc(doc(db, 'posts', post.id), { status: newStatus, verified: newStatus === 'published' });
         setPostsList(prev => prev.map(p => p.id === post.id ? { ...p, status: newStatus, verified: newStatus === 'published' } : p));
         if (addToast) addToast(`Post status updated to ${newStatus}`, "success");
+
+        notifyPostUpdate({
+          action: newStatus === 'published' ? 'approved' : newStatus === 'rejected' ? 'rejected' : 'updated',
+          postTitle: post.title || 'Post Update',
+          author: post.userName || post.author || 'User',
+          category: post.category || 'General',
+          postId: post.id,
+          status: newStatus
+        }).catch(() => {});
       }
     } catch (e) {
       console.error(e);
@@ -314,6 +324,12 @@ export function SuperAdminDashboard({
     try {
       await deleteDoc(doc(db, 'posts', postId));
       if (addToast) addToast("Post removed permanently", "success");
+      notifyPostUpdate({
+        action: 'deleted',
+        postTitle: 'Deleted Post',
+        postId: postId,
+        status: 'deleted'
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
       if (addToast) addToast("Failed to delete post", "error");
@@ -332,6 +348,11 @@ export function SuperAdminDashboard({
       });
       setBroadcastActive(true);
       if (addToast) addToast("Broadcast alert dispatched successfully!", "success");
+
+      notifyEmergencyBroadcast({
+        message: broadcastText,
+        adminName: user?.fullName || user?.name || 'Admin'
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
       if (addToast) addToast("Failed to broadcast alert", "error");

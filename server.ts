@@ -1248,45 +1248,40 @@ app.get(telemetryGetRoutes, async (req, res) => {
       try {
         const db = admin.firestore();
         // Fetch last 100 logs from Firestore
-        const snapshot = await db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
-        const firestoreLogs: any[] = [];
-        snapshot.forEach(doc => {
-          const d = doc.data();
-          // Exclude seeds and Test-PC
-          if (d && d.id && !String(d.id).startsWith("TEL-SEED") && d.pcName !== "Test-PC") {
-            firestoreLogs.push({ ...d, id: d.id || doc.id });
-          }
-        });
+        try {
+          const snapshot = await db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
+          const firestoreLogs: any[] = [];
+          snapshot.forEach(doc => {
+            const d = doc.data();
+            // Exclude seeds and Test-PC
+            if (d && d.id && !String(d.id).startsWith("TEL-SEED") && d.pcName !== "Test-PC") {
+              firestoreLogs.push({ ...d, id: d.id || doc.id });
+            }
+          });
 
-        // Merge memory store with Firestore logs
-        const merged = [...firestoreLogs];
-        for (const m of telemetryLogsStore) {
-          if (!merged.find(x => x.id === m.id)) {
-            merged.push(m);
+          // Merge memory store with Firestore logs
+          const merged = [...firestoreLogs];
+          for (const m of telemetryLogsStore) {
+            if (!merged.find(x => x.id === m.id)) {
+              merged.push(m);
+            }
           }
+          // Sort by date and time
+          merged.sort((a, b) => {
+            try {
+              const timeA = new Date(`${a.date || a.serverReceivedDate} ${a.time || a.serverReceivedTime}`).getTime() || 0;
+              const timeB = new Date(`${b.date || b.serverReceivedDate} ${b.time || b.serverReceivedTime}`).getTime() || 0;
+              return timeB - timeA;
+            } catch {
+              return 0;
+            }
+          });
+          return res.json({ success: true, logs: merged });
+        } catch (fsErr) {
+          console.error("Firestore telemetry fetch error, falling back to memory store:", fsErr);
+          // Fallback to memory store
+          return res.json({ success: true, logs: telemetryLogsStore });
         }
-
-        // Sort by date and time
-        merged.sort((a, b) => {
-          try {
-            const timeA = new Date(`${a.date || a.serverReceivedDate} ${a.time || a.serverReceivedTime}`).getTime() || 0;
-            const timeB = new Date(`${b.date || b.serverReceivedDate} ${b.time || b.serverReceivedTime}`).getTime() || 0;
-            return timeB - timeA;
-          } catch {
-            return 0;
-          }
-        });
-
-        return res.json({
-          success: true,
-          count: merged.length,
-          timestamp,
-          serverTime,
-          serverDate,
-          liveFrequency: "1-second real-time streaming active",
-          logs: merged,
-          telemetry: merged
-        });
       } catch (fsErr: any) {
         console.warn("Firestore telemetry fetch error, falling back to memory store:", fsErr?.message);
       }
@@ -1691,7 +1686,7 @@ app.get('/api/remote-commands', (req, res) => {
   // Telegram Bot Notification API
   app.post("/api/telegram/notify", async (req, res) => {
     try {
-      const { message, type } = req.body;
+      const { message, details, title, type, category } = req.body;
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       const chatId = process.env.TELEGRAM_CHAT_ID;
 
@@ -1699,8 +1694,13 @@ app.get('/api/remote-commands', (req, res) => {
         return res.status(500).json({ error: "Telegram config (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID) is missing" });
       }
 
-      if (!message) {
-        return res.status(400).json({ error: "Message is required" });
+      let textToSend = details || message;
+      if (!textToSend && title) {
+        textToSend = `📢 <b>[E-VEDHIKA] ${title}</b>\n\n${details || message || ''}`;
+      }
+
+      if (!textToSend) {
+        return res.status(400).json({ error: "Message or details is required" });
       }
 
       const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -1709,8 +1709,9 @@ app.get('/api/remote-commands', (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: message,
-          parse_mode: 'HTML'
+          text: textToSend,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
         })
       });
 
@@ -1720,7 +1721,7 @@ app.get('/api/remote-commands', (req, res) => {
         return res.status(500).json({ error: data.description || "Failed to send Telegram message" });
       }
 
-      res.json({ success: true });
+      res.json({ success: true, messageId: data.result?.message_id });
     } catch (err: any) {
       console.error("Error sending Telegram message:", err);
       res.status(500).json({ error: err.message });
@@ -3871,6 +3872,15 @@ app.get('/api/remote-commands', (req, res) => {
         const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
         const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
 
+        const recordCount = Array.isArray(req.body) ? req.body.length : 0;
+        const ubdTelegramMsg = `🏛️ <b>[E-VEDHIKA] UBD మాస్టర్ డేటా అప్‌డేట్ (UBD Master Data Synced)</b>\n\n` +
+          `👤 <b>ఆపరేటర్ / అడ్మిన్:</b> ${(req as any).user?.email || 'Admin'}\n` +
+          `📊 <b>మొత్తం రికార్డులు:</b> <b>${recordCount}</b> GP Office Codes\n` +
+          `💾 <b>స్టోరేజ్:</b> ${accountId ? 'Cloudflare R2 Bucket' : 'Server Data Disk'}\n` +
+          `🕒 <b>సమయం:</b> ${new Date().toLocaleDateString('te-IN')} ${new Date().toLocaleTimeString()}\n\n` +
+          `✅ e-Vedhika వెబ్‌సైట్‌లోని UBD Tool డేటా విజయవంతంగా అప్‌డేట్ చేయబడింది!`;
+        sendTelegramServerAlert(ubdTelegramMsg).catch((err) => console.error("Error sending UBD Telegram alert:", err));
+
         if (accountId && accessKeyId && secretAccessKey && bucketName) {
             console.log("Saving UBD data to Cloudflare R2...");
             const r2Client = new S3Client({
@@ -3897,6 +3907,28 @@ app.get('/api/remote-commands', (req, res) => {
     } catch(e) {
         console.error("Failed to save UBD data:", e);
         res.status(500).json({error: "Failed to save"});
+    }
+  });
+
+  app.post('/api/ubd/event', async (req, res) => {
+    try {
+      const { action, officeCode, gpName, mandal, district, registerType, userName } = req.body || {};
+      const regName = registerType === 'BIR' ? 'Birth Registration' : registerType === 'DEA' ? 'Death Registration' : 'General Activity';
+      const loc = [gpName, mandal, district].filter(Boolean).join(', ') || 'N/A';
+      
+      const msg = `🏛️ <b>[E-VEDHIKA] UBD టూల్ యాక్టివిటీ (UBD Tool Activity)</b>\n\n` +
+        `📌 <b>యాక్షన్:</b> ${action || 'ఆఫీస్ కోడ్ శోధన'}\n` +
+        (officeCode ? `🏢 <b>Office ID / కోడ్:</b> <code>${officeCode}</code>\n` : '') +
+        `📍 <b>గ్రామ పంచాయతీ:</b> <b>${loc}</b>\n` +
+        `📋 <b>రిజిస్టర్ రకం:</b> ${regName}\n` +
+        (userName ? `👤 <b>ఆపరేటర్/యూజర్:</b> ${userName}\n` : '') +
+        `🕒 <b>సమయం:</b> ${new Date().toLocaleDateString('te-IN')} ${new Date().toLocaleTimeString()}\n\n` +
+        `🔗 <a href="https://www.e-vedhika.in/?tab=ubd_tracker">UBD Tool లైవ్ ట్రాకర్‌లో చూడండి</a>`;
+      
+      sendTelegramServerAlert(msg).catch(() => {});
+      res.json({ success: true });
+    } catch(e: any) {
+      res.status(500).json({ error: e?.message });
     }
   });
 

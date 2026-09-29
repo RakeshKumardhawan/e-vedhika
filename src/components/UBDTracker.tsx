@@ -288,6 +288,22 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
     }
   };
 
+  const notifyUbdActivity = (action: string, officeCode?: string, gpName?: string, mandal?: string, district?: string) => {
+    fetch('/api/ubd/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        officeCode,
+        gpName,
+        mandal,
+        district,
+        registerType,
+        userName: user?.displayName || user?.email || 'User'
+      })
+    }).catch(() => {});
+  };
+
   const handleOpenByOfficeCode = (code: string, gpName?: string, mandal?: string, district?: string) => {
     if (!code || !code.trim()) {
       addToast("దయచేసి సరైన Reg.Unit Id ఎంటర్ చేయండి!");
@@ -315,6 +331,7 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
     const targetUrl = `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus${registerType}_Details.do?officeCode=${cleanCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
     setIframeSrc(targetUrl);
     addToast(`Reg.Unit Id [${cleanCode}] తో రిజిస్టర్ ఓపెన్ చేయబడింది!`);
+    notifyUbdActivity("ఆఫీస్ కోడ్ శోధన (Office Code Opened)", cleanCode, gpName, mandal, district);
   };
 
   const handleFetch = () => {
@@ -385,6 +402,7 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
     });
 
     doc.save(`${effGpName}_${regTypeName}.pdf`);
+    notifyUbdActivity("UBD సర్టిఫికేట్ డౌన్‌లోడ్ (PDF Generated)", effOfficeCode, effGpName, effMandal, selectedDistrict);
   };
 
   return (

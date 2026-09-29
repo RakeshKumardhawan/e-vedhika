@@ -77,7 +77,7 @@ export const UBDLiveMonitoring: React.FC = () => {
 
   useEffect(() => {
     fetchLiveCloudData();
-    const interval = setInterval(fetchLiveCloudData, 5000);
+    const interval = setInterval(fetchLiveCloudData, 30000);
     return () => clearInterval(interval);
   }, []);
 

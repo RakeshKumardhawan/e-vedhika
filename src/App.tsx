@@ -179,6 +179,7 @@ import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
 import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
 import { notifySupportTicketToTelegram, pushPostToSupportSystem } from "./services/supportTicketService";
+import { notifyPostUpdate, notifyUserProfileUpdate, notifyWebsiteUpdate, notifyEmergencyBroadcast } from "./services/telegramService";
 
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
@@ -3936,6 +3937,16 @@ E-Vedhika Team`;
             role: isDev ? "super_admin" : "user",
             time: Date.now(),
           });
+
+          notifyUserProfileUpdate({
+            action: "registered",
+            user: {
+              name: result.user.displayName || "User",
+              email: result.user.email || "",
+              role: isDev ? "super_admin" : "user",
+              uid: result.user.uid
+            }
+          }).catch(() => {});
         } else {
           const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
           const existingData = docSnap.data();
@@ -9217,6 +9228,24 @@ function EditProfileModal({
         },
         { merge: true },
       );
+
+      notifyUserProfileUpdate({
+        action: "profile_updated",
+        user: {
+          name,
+          surname,
+          username,
+          gender,
+          district,
+          mandal,
+          village,
+          designation,
+          mobile,
+          email,
+          role: userProfile?.role || "user",
+          uid: user.uid
+        }
+      }).catch(() => {});
 
       if (designation === "Citizen") {
         Swal.fire({
@@ -23374,6 +23403,15 @@ function PostForm({
         addToast("Update Saved!");
         
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
+        notifyPostUpdate({
+          action: "updated",
+          postTitle: title,
+          author: postAuthor,
+          category: selectedCategories.join(", "),
+          postId: editingPost.id,
+          status: editingPost.status || "published"
+        }).catch(() => {});
+
         if (isAdmin || isEditor || editingPost.status === "published") {
           await addDoc(collection(db, "notifications"), {
             uid: "all",
@@ -23429,6 +23467,15 @@ function PostForm({
         const postAuthor = isEditor || isAdmin ? "Admin" : (currentUserProfile?.username || auth.currentUser.displayName || "User");
 
         if (isEditor || isAdmin) {
+          notifyPostUpdate({
+            action: "created",
+            postTitle: title,
+            author: postAuthor,
+            category: selectedCategories.join(", "),
+            postId: docRef.id,
+            status: "published"
+          }).catch(() => {});
+
           if (hasUpdateTag) {
             await addDoc(collection(db, "notifications"), {
               uid: "all",
@@ -23455,7 +23502,14 @@ function PostForm({
           addToast("పోస్ట్ ప్రచురించబడింది (Post Published)!");
         } else {
           // Regular user post: Send notification for Admin Review only
-          sendTelegramNotification(`⚠️ <b>New Post Pending Approval</b>\n\n<b>Title:</b> ${title}\n<b>Author:</b> ${postAuthor}\n\n<i>Please review and approve in the Admin Panel.</i>`, "system");
+          notifyPostUpdate({
+            action: "created",
+            postTitle: title,
+            author: postAuthor,
+            category: selectedCategories.join(", "),
+            postId: docRef.id,
+            status: "pending"
+          }).catch(() => {});
           await addDoc(collection(db, "notifications"), {
             uid: "all",
             title: "📢 కొత్త పోస్ట్ ఆమోదం కోసం వచ్చింది (Post Pending Approval)",
