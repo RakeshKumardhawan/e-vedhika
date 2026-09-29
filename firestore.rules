@@ -44,7 +44,7 @@ service cloud.firestore {
     match /system_errors/{id} { allow read, write: if true; }
     match /systemAlerts/{id} { allow read, write: if true; }
     match /visitor_logs/{id} { allow read, write: if true; }
-    match /telemetry_records/{id} { allow read, write: if true; }
+    match /telemetryLogs/{id} { allow read, write: if true; }
     match /deploymentLogs/{id} { allow read, write: if true; }
 
     // Posts & Problems & Suggestions

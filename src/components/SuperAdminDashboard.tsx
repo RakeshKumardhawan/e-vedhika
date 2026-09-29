@@ -18,7 +18,6 @@ import { LiveSystemHealthCenter } from './LiveSystemHealthCenter';
 import { SecurityLogsSection } from './SecurityLogsSection';
 import { SystemErrorCenter } from './SystemErrorCenter';
 import { AdminGlobalSearchModal } from './AdminGlobalSearchModal';
-import { ExeUbdLiveMonitoring } from './ExeUbdLiveMonitoring';
 import { AdminInbox } from './admin/AdminInbox';
 import { UserChatManagement } from './admin/UserChatManagement';
 import { DeploymentTerminal } from './admin/DeploymentTerminal';
@@ -42,6 +41,7 @@ import { SupportCenter } from './admin/SupportCenter';
 import { PublicVisitorLogs } from './PublicVisitorLogs';
 import { CloudStorageManager } from './CloudStorageManager';
 import { AdminSoftwareHub } from './admin/AdminSoftwareHub';
+import { UBDLiveMonitoring } from './UBDLiveMonitoring';
 
 interface SuperAdminDashboardProps {
   user?: any;
@@ -405,8 +405,6 @@ export function SuperAdminDashboard({
         <UserChatManagement users={usersList} />
       ) : effectiveTab === "db_backup" ? (
         <DatabaseBackupHub />
-      ) : effectiveTab === "exe_ubd_live" || effectiveTab === "exe_ubd" ? (
-        <ExeUbdLiveMonitoring />
       ) : effectiveTab === "ci_cd" ? (
         <DeploymentTerminal />
       ) : effectiveTab === "ai_copilot" ? (
@@ -427,6 +425,8 @@ export function SuperAdminDashboard({
         <LocalizationManager />
       ) : effectiveTab === "exe_release" ? (
         <ExeDeploymentManager />
+      ) : effectiveTab === "exe_ubd_live" ? (
+        <UBDLiveMonitoring />
       ) : effectiveTab === "health" ? (
         <LiveSystemHealthCenter />
       ) : effectiveTab === "ddos" ? (

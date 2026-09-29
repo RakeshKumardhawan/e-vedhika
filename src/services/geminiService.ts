@@ -27,7 +27,7 @@ export async function askMana(prompt: string, context: string = ""): Promise<Man
        ${EVEDHIKA_KNOWLEDGE_BASE}
 
     2. STRICT UNRELATED QUERY REJECTION:
-       If the user asks any question NOT related to E-Vedhika, Panchayat Secretaries, Telangana Panchayat Raj Act 2018, GOs, UBD tracker, Farmer Registry, C# PC Diagnostics, or Gram Panchayat services (e.g., movies, general entertainment, unrelated coding, generic recipes, weather, general sports), you MUST IMMEDIATELY refuse politely in Telugu:
+       If the user asks any question NOT related to E-Vedhika, Panchayat Secretaries, Telangana Panchayat Raj Act 2018, GOs, UBD tracker, Farmer Registry, or Gram Panchayat services (e.g., movies, general entertainment, unrelated coding, generic recipes, weather, general sports), you MUST IMMEDIATELY refuse politely in Telugu:
        "క్షమించాలి! నేను కేవలం E-Vedhika పోర్టల్, పంచాయతీ కార్యదర్శుల విధులు, జీవోలు, UBD ట్రాకర్, రైతు రిజిస్ట్రీ మరియు గ్రామ పంచాయతీ సేవలకు సంబంధించిన ప్రశ్నలకు మాత్రమే సమాధానం ఇవ్వగలను. దయచేసి E-Vedhika కు సంబంధించిన ప్రశ్నను అడగండి."
 
     3. LANGUAGE & TONE:

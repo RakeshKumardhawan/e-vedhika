@@ -78,12 +78,9 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
   }
 
   let adminSubTab = "dash";
-  if (mainTab === "admin" || mainTab === "exe_ubd_live") {
-    if (mainTab === "exe_ubd_live") {
-      mainTab = "admin";
-      adminSubTab = "exe_ubd_live";
-    } else if (subToolFromUrl) {
-      adminSubTab = subToolFromUrl === "UBDLiveMonitoring" ? "exe_ubd_live" : subToolFromUrl;
+  if (mainTab === "admin") {
+    if (subToolFromUrl) {
+      adminSubTab = subToolFromUrl;
     }
   }
 
@@ -211,7 +208,7 @@ export function useDeepLink({
 
     if (currentTab === "home") {
       targetPath = "/";
-    } else if (currentTab === "admin" || currentTab === "exe_ubd_live") {
+    } else if (currentTab === "admin") {
       targetPath = "/admin"; // Clean URL for Admin Panel
     } else if (currentTab === "workspace" && workspaceActiveTool) {
       targetPath = `/workspace/${workspaceActiveTool}`;

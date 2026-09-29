@@ -16,3 +16,14 @@ export interface DeploymentLog {
   errorMessage: string;
   createdAt: any;
 }
+
+export interface BackupSnapshot {
+  id: string;
+  title: string;
+  notes: string;
+  timestamp: number;
+  size: string;
+  recordCount?: number;
+  createdBy?: string;
+  collections?: string[];
+}

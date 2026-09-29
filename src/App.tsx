@@ -177,7 +177,6 @@ import { PollsScreen } from "./components/PollsScreen";
 import { PdfCompressTool } from "./components/PdfCompressTool";
 import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
 import { UBDTracker } from "./components/UBDTracker";
-import { ExeUbdLiveMonitoring } from "./components/ExeUbdLiveMonitoring";
 import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
 import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
@@ -5970,9 +5969,9 @@ E-Vedhika Team`;
                       Monitoring & Logs
                     </h3>
                     {[
-                      { id: "exe_ubd_live", label: "EXE & UBD Live Monitoring", icon: Radio },
                       { id: "logs", label: "Security Logs", icon: ShieldAlert },
                       { id: "visitor_logs", label: "Visitor Logs (పబ్లిక్)", icon: Globe },
+                      { id: "exe_ubd_live", label: "UBD Live Monitoring", icon: Activity },
                       { id: "farmer_registry_logs", label: "Farmer Registry Logs", icon: FileText },
                       { id: "survey_reports", label: "Survey Reports", icon: Database },
                       { id: "health", label: "Live System Health", icon: HeartPulse },
@@ -11645,11 +11644,6 @@ function AdminPanel({
           {
             title: "Monitoring & Logs",
             items: [
-              {
-                id: "exe_ubd_live",
-                label: "EXE & UBD Live Monitoring",
-                icon: <Radio size={18} />,
-              },
               ...(hasViewPermission("logs") && isEffectiveAdmin
                 ? [
                     {
@@ -11661,6 +11655,11 @@ function AdminPanel({
                       id: "visitor_logs",
                       label: "Visitor Logs (పబ్లిక్)",
                       icon: <Globe size={18} />,
+                    },
+                    {
+                      id: "exe_ubd_live",
+                      label: "UBD Live Monitoring",
+                      icon: <Activity size={18} />,
                     },
                     {
                       id: "farmer_registry_logs",
@@ -12451,7 +12450,7 @@ function AdminPanel({
             
             
             
-            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles"].includes(activeSubTab) && (
+            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles"].includes(activeSubTab) && (
               <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} activeTab={activeSubTab} />
             )}
 
