@@ -292,17 +292,24 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
 
     if (!matchesSearch) return false;
 
+    const isDev = email === "rakeshkumardhawan123@gmail.com";
+    const effectiveRole = isDev ? "super_admin" : role;
+
     if (roleFilter === "all") return true;
-    if (roleFilter === "super_admin") return role === "super_admin" || role === "superadmin";
-    if (roleFilter === "admin") return role === "admin";
-    if (roleFilter === "editor") return role === "editor";
-    if (roleFilter === "moderator") return role === "moderator";
-    if (roleFilter === "user") return role === "user" || role === "citizen" || !role;
-    if (roleFilter === "staff") return ["super_admin", "admin", "editor", "moderator"].includes(role);
+    if (roleFilter === "super_admin") return effectiveRole === "super_admin" || effectiveRole === "superadmin";
+    if (roleFilter === "admin") return effectiveRole === "admin";
+    if (roleFilter === "editor") return effectiveRole === "editor";
+    if (roleFilter === "moderator") return effectiveRole === "moderator";
+    if (roleFilter === "user") return (effectiveRole === "user" || effectiveRole === "citizen" || !effectiveRole) && !isDev;
+    if (roleFilter === "staff") return ["super_admin", "admin", "editor", "moderator"].includes(effectiveRole) || isDev;
     return true;
   });
 
-  const staffCount = users.filter(u => ["super_admin", "admin", "editor", "moderator"].includes((u.role || "").toLowerCase())).length;
+  const staffCount = users.filter(u => {
+    const isDev = (u.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+    const r = (u.role || "").toLowerCase();
+    return ["super_admin", "admin", "editor", "moderator"].includes(r) || isDev;
+  }).length;
 
   return (
     <div className="space-y-8 pb-16 text-left max-w-7xl mx-auto animate-in fade-in duration-300">
@@ -392,11 +399,11 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
               {[
                 { id: "all", label: "All Users", count: users.length },
                 { id: "staff", label: "All Staff", count: staffCount },
-                { id: "super_admin", label: "Super Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'super_admin').length },
+                { id: "super_admin", label: "Super Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'super_admin' || (u.email && u.email.toLowerCase() === 'rakeshkumardhawan123@gmail.com')).length },
                 { id: "admin", label: "Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'admin').length },
                 { id: "editor", label: "Editor", count: users.filter(u => (u.role || '').toLowerCase() === 'editor').length },
                 { id: "moderator", label: "Moderator", count: users.filter(u => (u.role || '').toLowerCase() === 'moderator').length },
-                { id: "user", label: "User / Citizen", count: users.filter(u => !['super_admin', 'admin', 'editor', 'moderator'].includes((u.role || '').toLowerCase())).length },
+                { id: "user", label: "User / Citizen", count: users.filter(u => !['super_admin', 'admin', 'editor', 'moderator'].includes((u.role || '').toLowerCase()) && (u.email || '').toLowerCase() !== 'rakeshkumardhawan123@gmail.com').length },
               ].map((rf) => (
                 <button
                   key={rf.id}

@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { pushPostToSupportSystem } from '../services/supportTicketService';
-import { motion, AnimatePresence } from 'motion/react';
 import { 
   AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend
 } from 'recharts';
@@ -445,7 +444,7 @@ export function SuperAdminDashboard({
         <SupportCenter currentUser={user} addToast={addToast} />
       ) : effectiveTab === "admin_software_hub" ? (
         <AdminSoftwareHub user={user} addToast={addToast} />
-      ) : effectiveTab === "roles" || effectiveTab === "staff_management" ? (
+      ) : effectiveTab === "roles" || effectiveTab === "staff_management" || effectiveTab === "users" ? (
         <RolesAndPermissionsControl currentUser={user} addToast={addToast} />
       ) : effectiveTab === "notifications" ? (
         <div className="space-y-6">

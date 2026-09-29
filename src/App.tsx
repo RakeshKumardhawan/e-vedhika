@@ -10,10 +10,8 @@ import { DsrTables } from "./components/DsrTables";
  */
 
 import React, { useState, useEffect, useRef, useMemo, startTransition } from "react";
-const LazyGPDPSetup = React.lazy(() => import("./components/GPDPSetup"));
-const GPDPSetup = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading GPDP Setup...</div>}><LazyGPDPSetup {...props} /></React.Suspense>;
-const LazySuperAdminDashboard = React.lazy(() => import("./components/SuperAdminDashboard"));
-const SuperAdminDashboard = (props: any) => <React.Suspense fallback={<div className="p-4 text-center">Loading Dashboard...</div>}><LazySuperAdminDashboard {...props} /></React.Suspense>;
+import GPDPSetup from "./components/GPDPSetup";
+import { SuperAdminDashboard } from "./components/SuperAdminDashboard";
 import { createPortal } from "react-dom";
 import {
   useSearchParams,
@@ -2969,10 +2967,6 @@ export default function App() {
   }, [currentTab]);
 
   useEffect(() => {
-    if (!user) {
-      setAllUsers([]);
-      return;
-    }
     const unsub = onSnapshot(
       collection(db, "users"),
       (snap) => {
@@ -2985,7 +2979,7 @@ export default function App() {
       (e) => console.error("Users List Error:", e),
     );
     return () => unsub();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     let interval: any;
@@ -3932,14 +3926,22 @@ E-Vedhika Team`;
         let isNewUser = false;
         if (!docSnap.exists()) {
           isNewUser = true;
+          const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
           await setDoc(docRef, {
             name: result.user.displayName || "System User",
             email: result.user.email,
             photoURL: result.user.photoURL,
             gender: "",
             designation: "",
+            role: isDev ? "super_admin" : "user",
             time: Date.now(),
           });
+        } else {
+          const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+          const existingData = docSnap.data();
+          if (isDev && existingData?.role !== "super_admin") {
+            await updateDoc(docRef, { role: "super_admin" }).catch(() => {});
+          }
 
           const WELCOME_MESSAGE = `నమస్కారం! 🙏
 
@@ -13324,8 +13326,12 @@ function AdminPanel({
                         if (!userSearchTerm) return true;
                         const term = userSearchTerm.toLowerCase();
                         return (
+                          (u.name || "").toLowerCase().includes(term) ||
+                          (u.surname || "").toLowerCase().includes(term) ||
+                          (u.displayName || "").toLowerCase().includes(term) ||
                           (u.username || "").toLowerCase().includes(term) ||
                           (u.email || "").toLowerCase().includes(term) ||
+                          (u.mobile || u.phone || "").toLowerCase().includes(term) ||
                           (u.role || "").toLowerCase().includes(term) ||
                           (u.id || "").toLowerCase().includes(term)
                         );
@@ -13753,8 +13759,12 @@ function AdminPanel({
                     if (!userSearchTerm) return true;
                     const term = userSearchTerm.toLowerCase();
                     return (
+                      (u.name || "").toLowerCase().includes(term) ||
+                      (u.surname || "").toLowerCase().includes(term) ||
+                      (u.displayName || "").toLowerCase().includes(term) ||
                       (u.username || "").toLowerCase().includes(term) ||
                       (u.email || "").toLowerCase().includes(term) ||
+                      (u.mobile || u.phone || "").toLowerCase().includes(term) ||
                       (u.role || "").toLowerCase().includes(term) ||
                       (u.id || "").toLowerCase().includes(term)
                     );

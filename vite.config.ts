@@ -117,7 +117,7 @@ export default defineConfig(({mode}) => {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-            'vendor-ui': ['lucide-react', 'framer-motion', 'sweetalert2'],
+            'vendor-ui': ['lucide-react', 'sweetalert2', 'motion/react'],
             'vendor-charts': ['recharts'],
             'vendor-excel': ['xlsx', 'exceljs'],
             'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
@@ -129,7 +129,21 @@ export default defineConfig(({mode}) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        react: path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },
+      dedupe: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
+    },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'lucide-react',
+        'recharts',
+        'motion/react',
+      ],
     },
     define: {
     },
