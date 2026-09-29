@@ -769,17 +769,19 @@ export async function escalatePostToSupportTicket({
       return;
     }
 
-    // Verify permission against direct Firestore user document (role validation)
-    let hasValidPermission = isAdmin;
+    // 1. Robust Permission Validation
+    let hasValidPermission = false;
     try {
       const userDoc = await getDoc(doc(db, "users", currentUser.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const userRole = userData?.role || "";
-        hasValidPermission = ["admin", "super_admin", "editor"].includes(userRole) || isAdmin;
+        // Allow admins, super_admins, editors, and moderators
+        hasValidPermission = ["admin", "super_admin", "editor", "moderator"].includes(userRole);
       }
     } catch (err) {
-      console.warn("Failed to securely verify user role from Firestore, falling back to client-provided state:", err);
+      console.warn("Failed to securely verify user role from Firestore:", err);
+      hasValidPermission = isAdmin; // Fallback to client state
     }
 
     if (!hasValidPermission) {
@@ -787,12 +789,18 @@ export async function escalatePostToSupportTicket({
         Swal.fire({
           icon: "error",
           title: "యాక్సెస్ లేదు",
-          text: "ఈ ఆప్షన్ కేవలం అడ్మిన్లకు లేదా సరైన अनुमति ఉన్న అధికారులకు మాత్రమే అందుబాటులో ఉంటుంది.",
+          text: "ఈ ఆప్షన్ కేవలం అడ్మిన్లకు లేదా సరైన అనుమతి ఉన్న అధికారులకు మాత్రమే అందుబాటులో ఉంటుంది.",
           confirmButtonColor: "#0d3b66"
         });
       } else if (addToast) {
         addToast("ఈ చర్యను చేయడానికి అడ్మిన్ అనుమతులు అవసరం.");
       }
+      return;
+    }
+
+    // 2. Prevent double escalation
+    if (post.status === "private_support" || post.trackingNumber) {
+      if (addToast) addToast("ఈ పోస్ట్ ఇప్పటికే సపోర్ట్ సిస్టమ్‌కి పంపబడింది.");
       return;
     }
 
@@ -813,12 +821,12 @@ export async function escalatePostToSupportTicket({
               <p><strong>శీర్షిక:</strong> ${postTitle}</p>
               ${postCategory ? `<p><strong>కేటగిరీ:</strong> ${postCategory}</p>` : ""}
             </div>
-            <p style="font-size: 11px; color: #64748b;">టికెట్ క్రియేట్ అయిన తర్వాత సపోర్ట్ సెంటర్ ద్వారా యూజర్‌తో సంభాషించవచ్చు మరియు సమస్యను పరిష్కరించవచ్చు.</p>
+            <p style="font-size: 11px; color: #64748b; font-weight: 500; background: #fff1f2; padding: 8px; border-radius: 6px; border: 1px solid #fecdd3;">గమనిక: సపోర్ట్ టికెట్‌గా మారిన తర్వాత, ఈ పోస్ట్ పబ్లిక్ ఫీడ్ నుండి ఆటోమేటిక్‌గా మరుగున పడుతుంది.</p>
           </div>
         `,
         icon: "question",
         showCancelButton: true,
-        confirmButtonText: "అవును, సపోర్ట్‌కి పంపు",
+        confirmButtonText: "అవును, పంపు",
         cancelButtonText: "రద్దు",
         confirmButtonColor: "#2563eb",
         cancelButtonColor: "#64748b"
@@ -826,51 +834,26 @@ export async function escalatePostToSupportTicket({
       if (!confirmPrompt.isConfirmed) return;
     }
 
+    if (addToast) addToast("సపోర్ట్ టికెట్ క్రియేట్ చేయబడుతోంది...");
+
     const result = await pushPostToSupportSystem(post, {
       uid: currentUser.uid,
-      fullName: currentUser.displayName || "Admin/Authorized User",
-      username: currentUser.email?.split("@")[0] || "AuthorizedUser"
+      fullName: currentUser.displayName || "Authorized User",
+      username: currentUser.email?.split("@")[0] || "User"
     });
 
     if (result.success) {
-      // Force status update to private_support to ensure it gets hidden from the public feed immediately
-      const postId = post.id;
-      if (postId) {
-        try {
-          await updateDoc(doc(db, "posts", postId), {
-            status: "private_support",
-            verified: false,
-            pushedToSupportAt: Date.now()
-          });
-        } catch (ePosts) {
-          try {
-            await updateDoc(doc(db, "problems", postId), {
-              status: "private_support",
-              pushedToSupportAt: Date.now()
-            });
-          } catch {
-            // ignore
-          }
-        }
-      }
-
-      if (onSuccess) {
-        onSuccess(result.ticketId);
-      }
-      if (addToast) {
-        addToast(`సపోర్ట్ సిస్టమ్‌కి విజయవంతంగా పంపబడింది! #${result.trackingNumber}`);
-      }
       if (typeof Swal !== "undefined" && Swal.fire) {
         await Swal.fire({
-          title: "సపోర్ట్ సిస్టమ్‌కి పంపబడింది! (Pushed to Support)",
+          title: "విజయవంతమైంది! (Pushed to Support)",
           html: `
             <div style="text-align: left; font-size: 13px; color: #334155; line-height: 1.6;">
-              <p style="margin-bottom: 8px;">పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ & ఇన్క్వైరీస్ లోకి బదిలీ చేయబడింది.</p>
+              <p style="margin-bottom: 8px;">పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ లోకి బదిలీ చేయబడింది.</p>
               <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 12px; text-align: center; margin: 10px 0;">
                 <span style="font-size: 10px; font-weight: bold; color: #4f46e5; text-transform: uppercase; display: block;">యూనిక్ ట్రాకింగ్ నెంబర్ (Tracking Number)</span>
                 <span style="font-size: 20px; font-weight: 900; color: #3730a3; display: block; font-family: monospace; margin-top: 4px;">#${result.trackingNumber}</span>
               </div>
-              <p style="font-size: 11px; color: #64748b;">ఈ పోస్ట్ పబ్లిక్ ఫీడ్ నుండి తీసివేయబడింది మరియు కేవలం సపోర్ట్ సెంటర్‌లో మాత్రమే సురక్షితంగా ఉంటుంది.</p>
+              <p style="font-size: 11px; color: #64748b;">ఈ పోస్ట్ ఇప్పుడు పబ్లిక్ ఫీడ్ నుండి తీసివేయబడింది మరియు సపోర్ట్ సెంటర్ లో మాత్రమే సురక్షితంగా ఉంటుంది.</p>
             </div>
           `,
           icon: "success",
@@ -878,12 +861,24 @@ export async function escalatePostToSupportTicket({
           confirmButtonColor: "#4f46e5"
         });
       }
+      
+      if (onSuccess) {
+        onSuccess(result.ticketId);
+      }
     } else {
       if (addToast) addToast("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం: " + (result.error || ""));
+      throw new Error(result.error || "Failed to push to support system");
     }
   } catch (err: any) {
     console.error("Error escalating post to support ticket:", err);
-    if (addToast) {
+    if (typeof Swal !== "undefined" && Swal.fire) {
+      Swal.fire({
+        icon: "error",
+        title: "లోపం ఏర్పడింది",
+        text: `క్షమించండి! పోస్ట్‌ను ఎస్కలేట్ చేయడంలో సమస్య ఏర్పడింది: ${err?.message || "Internal Error"}`,
+        confirmButtonColor: "#ef4444"
+      });
+    } else if (addToast) {
       addToast("సపోర్ట్ సిస్టమ్‌కి పంపడంలో లోపం ఏర్పడింది: " + (err?.message || ""));
     }
   }

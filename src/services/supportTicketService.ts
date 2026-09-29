@@ -57,33 +57,37 @@ export async function pushPostToSupportSystem(
 
   // 2. Direct Firestore Client Fallback
   try {
-    // Update the Post in Firestore (try posts, fallback to problems/suggestions)
+    // A. First priority: Hide the post from public view immediately
     if (postId) {
+      let updateSuccessful = false;
+      const updatePayload = {
+        status: "private_support",
+        trackingNumber: trackingNumber,
+        ticketNumber: trackingNumber,
+        pushedToSupportAt: Date.now(),
+        pushedBy: adminUser?.fullName || adminUser?.username || "Admin",
+        verified: false
+      };
+
       try {
-        await updateDoc(doc(db, "posts", postId), {
-          status: "private_support",
-          trackingNumber: trackingNumber,
-          ticketNumber: trackingNumber,
-          pushedToSupportAt: Date.now(),
-          pushedBy: adminUser?.fullName || adminUser?.username || "Admin",
-          verified: false
-        });
+        await updateDoc(doc(db, "posts", postId), updatePayload);
+        updateSuccessful = true;
       } catch (ePosts) {
         try {
-          await updateDoc(doc(db, "problems", postId), {
-            status: "private_support",
-            trackingNumber: trackingNumber,
-            ticketNumber: trackingNumber,
-            pushedToSupportAt: Date.now(),
-            pushedBy: adminUser?.fullName || adminUser?.username || "Admin"
-          });
-        } catch {
-          // ignore
+          await updateDoc(doc(db, "problems", postId), updatePayload);
+          updateSuccessful = true;
+        } catch (eProbs) {
+          console.warn("Could not find post in 'posts' or 'problems' collections to hide it:", eProbs);
         }
+      }
+      
+      if (!updateSuccessful) {
+        // If we can't hide the post, we should probably still try to create the ticket,
+        // but it's a warning sign.
       }
     }
 
-    // Create the Support Ticket in Firestore
+    // B. Create the Support Ticket in Firestore
     const ticketPayload = {
       trackingNumber: trackingNumber,
       ticketNumber: trackingNumber,
@@ -158,11 +162,11 @@ export async function pushPostToSupportSystem(
     };
   } catch (error: any) {
     console.error("Error pushing post to support system:", error);
-    // Even if local firestore threw an error, return success with unique tracking number to not block user flow
     return {
-      success: true,
-      trackingNumber,
-      ticketId: `tk_${Date.now()}`
+      success: false,
+      trackingNumber: "",
+      ticketId: "",
+      error: error?.message || "Failed to push to support system"
     };
   }
 }
