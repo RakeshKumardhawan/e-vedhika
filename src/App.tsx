@@ -637,6 +637,8 @@ interface Post {
   userPhone?: string;
   supportTicketId?: string;
   sentToSupportAt?: number;
+  trackingNumber?: string;
+  ticketNumber?: string;
 }
 
 interface Comment {
@@ -752,14 +754,44 @@ export async function escalatePostToSupportTicket({
   onSuccess?: (ticketId: string) => void;
 }) {
   try {
-    if (!isAdmin) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      if (typeof Swal !== "undefined" && Swal.fire) {
+        Swal.fire({
+          icon: "error",
+          title: "లాగిన్ అవసరం",
+          text: "ఈ చర్యను చేయడానికి దయచేసి మొదట లాగిన్ అవ్వండి.",
+          confirmButtonColor: "#0d3b66"
+        });
+      } else if (addToast) {
+        addToast("దయచేసి మొదట లాగిన్ అవ్వండి.");
+      }
+      return;
+    }
+
+    // Verify permission against direct Firestore user document (role validation)
+    let hasValidPermission = isAdmin;
+    try {
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const userRole = userData?.role || "";
+        hasValidPermission = ["admin", "super_admin", "editor"].includes(userRole) || isAdmin;
+      }
+    } catch (err) {
+      console.warn("Failed to securely verify user role from Firestore, falling back to client-provided state:", err);
+    }
+
+    if (!hasValidPermission) {
       if (typeof Swal !== "undefined" && Swal.fire) {
         Swal.fire({
           icon: "error",
           title: "యాక్సెస్ లేదు",
-          text: "ఈ ఆప్షన్ కేవలం అడ్మిన్లకు మాత్రమే అందుబాటులో ఉంటుంది.",
+          text: "ఈ ఆప్షన్ కేవలం అడ్మిన్లకు లేదా సరైన अनुमति ఉన్న అధికారులకు మాత్రమే అందుబాటులో ఉంటుంది.",
           confirmButtonColor: "#0d3b66"
         });
+      } else if (addToast) {
+        addToast("ఈ చర్యను చేయడానికి అడ్మిన్ అనుమతులు అవసరం.");
       }
       return;
     }
@@ -795,12 +827,33 @@ export async function escalatePostToSupportTicket({
     }
 
     const result = await pushPostToSupportSystem(post, {
-      uid: auth.currentUser?.uid || "admin",
-      fullName: auth.currentUser?.displayName || "Admin",
-      username: auth.currentUser?.email?.split("@")[0] || "Admin"
+      uid: currentUser.uid,
+      fullName: currentUser.displayName || "Admin/Authorized User",
+      username: currentUser.email?.split("@")[0] || "AuthorizedUser"
     });
 
     if (result.success) {
+      // Force status update to private_support to ensure it gets hidden from the public feed immediately
+      const postId = post.id;
+      if (postId) {
+        try {
+          await updateDoc(doc(db, "posts", postId), {
+            status: "private_support",
+            verified: false,
+            pushedToSupportAt: Date.now()
+          });
+        } catch (ePosts) {
+          try {
+            await updateDoc(doc(db, "problems", postId), {
+              status: "private_support",
+              pushedToSupportAt: Date.now()
+            });
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       if (onSuccess) {
         onSuccess(result.ticketId);
       }
@@ -817,7 +870,7 @@ export async function escalatePostToSupportTicket({
                 <span style="font-size: 10px; font-weight: bold; color: #4f46e5; text-transform: uppercase; display: block;">యూనిక్ ట్రాకింగ్ నెంబర్ (Tracking Number)</span>
                 <span style="font-size: 20px; font-weight: 900; color: #3730a3; display: block; font-family: monospace; margin-top: 4px;">#${result.trackingNumber}</span>
               </div>
-              <p style="font-size: 11px; color: #64748b;">ఈ పోస్ట్ ఫీడ్ మరియు సపోర్ట్ సెంటర్‌లో మీకు కనిపిస్తూనే ఉంటుంది.</p>
+              <p style="font-size: 11px; color: #64748b;">ఈ పోస్ట్ పబ్లిక్ ఫీడ్ నుండి తీసివేయబడింది మరియు కేవలం సపోర్ట్ సెంటర్‌లో మాత్రమే సురక్షితంగా ఉంటుంది.</p>
             </div>
           `,
           icon: "success",
@@ -1328,8 +1381,14 @@ export const getSiteDisplayHost = () => {
   return host;
 };
 
+// Utility function to generate shortened post URLs in the format 'e-vedhika.in/post/[ID]'
+export const getShortenedPostUrl = (postId: string): string => {
+  if (!postId) return "e-vedhika.in";
+  return `e-vedhika.in/post/${postId}`;
+};
+
 export const generatePostShareText = (post: any, postUrl?: string) => {
-  const finalUrl = postUrl || (post?.id ? `${getSiteBaseUrl()}/?postId=${post.id}` : getSiteBaseUrl());
+  const finalUrl = post?.id ? getShortenedPostUrl(post.id) : (postUrl || "e-vedhika.in");
   if (!post) return `E-Vedhika: ${finalUrl}`;
   
   const rawContent = post.content || "";
@@ -1410,7 +1469,7 @@ export function PosterShareModal({
     };
   }, [post.mediaUrl, post.mediaType]);
 
-  const postUrl = `${getSiteBaseUrl()}/?postId=${post.id}`;
+  const postUrl = getShortenedPostUrl(post.id);
   const plainContent = post.content
     ? post.content
         .replace(/<[^>]*>?/gm, "")
@@ -1574,7 +1633,7 @@ export function PosterShareModal({
                   పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
                 </p>
                 <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
-                  {getSiteDisplayHost()}/?postId={post.id}
+                  e-vedhika.in/post/{post.id}
                 </div>
               </div>
               {/* QR Code */}
@@ -4054,7 +4113,7 @@ E-Vedhika Team`;
     const isSupportPost = ["sent to support", "sent-to-support", "private_support", "support"].includes(pStatus);
 
     if (isSupportPost) {
-      if (!isAuthor && !canSeePending) return false;
+      return false;
     } else if (!canSeePending && !isApproved && !isAuthor) {
       return false;
     }
@@ -6145,6 +6204,7 @@ E-Vedhika Team`;
               <AdminPanel
                 addToast={addToast}
                 posts={posts}
+                setPosts={setPosts}
                 problems={problemsGlobal}
                 suggestions={suggestions}
                 suggestionCategories={suggestionCategories}
@@ -6329,6 +6389,7 @@ E-Vedhika Team`;
                                               allUsers={allUsers}
                                               userProfile={userProfile}
                                               storageConfig={storageConfig}
+                                              setPosts={setPosts}
                                             />
                                           </motion.div>
                                         ))}
@@ -6940,6 +7001,7 @@ E-Vedhika Team`;
                                                   allUsers={allUsers}
                                                   userProfile={userProfile}
                                                   storageConfig={storageConfig}
+                                                  setPosts={setPosts}
                                                 />
                                               </motion.div>,
                                             ];
@@ -11232,6 +11294,7 @@ function CustomMenuAdmin({ customMenus, customMenuCards, addToast }: any) {
 function AdminPanel({
   addToast,
   posts: rawPosts,
+  setPosts,
   problems: rawProblems,
   suggestions,
   users,
@@ -12578,7 +12641,10 @@ function AdminPanel({
                       {(() => {
                         const filteredItems = (activeSubTab === "reports"
                           ? reportsType === "posts"
-                            ? posts
+                            ? posts.filter((p) => {
+                                const s = (p.status || "").toLowerCase();
+                                return !["sent to support", "sent-to-support", "private_support", "support"].includes(s);
+                              })
                             : allProblems
                           : suggestions
                         ).filter((item) => {
@@ -12877,7 +12943,15 @@ function AdminPanel({
                                         post: item,
                                         isAdmin,
                                         addToast,
-                                        onSuccess: () => {}
+                                        onSuccess: (ticketId) => {
+                                          setPosts((prev) =>
+                                            prev.map((p) =>
+                                              p.id === item.id
+                                                ? { ...p, status: "private_support", supportTicketId: ticketId }
+                                                : p
+                                            )
+                                          );
+                                        }
                                       });
                                     }}
                                     className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all whitespace-nowrap cursor-pointer shrink-0"
@@ -21147,6 +21221,7 @@ function PostCard({
   storageConfig,
   setShowDirectMessages,
   setActiveDmUser,
+  setPosts,
 }: {
   post: Post;
   isExpanded: boolean;
@@ -21159,6 +21234,7 @@ function PostCard({
   storageConfig?: "cloudflare" | "firebase";
   setShowDirectMessages?: (show: boolean) => void;
   setActiveDmUser?: (user: any) => void;
+  setPosts?: React.Dispatch<React.SetStateAction<Post[]>>;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
@@ -21483,7 +21559,17 @@ function PostCard({
                         post,
                         isAdmin,
                         addToast,
-                        onSuccess: () => {}
+                        onSuccess: (ticketId) => {
+                          if (setPosts) {
+                            setPosts((prev) =>
+                              prev.map((p) =>
+                                p.id === post.id
+                                  ? { ...p, status: "private_support", supportTicketId: ticketId, trackingNumber: post.trackingNumber || `EV-Sup-${Math.floor(1 + Math.random() * 999).toString().padStart(2, '0')}` }
+                                  : p
+                              )
+                            );
+                          }
+                        }
                       });
                     }}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
@@ -22481,7 +22567,7 @@ function PostCard({
             aria-label="Share Post"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
+              const url = getShortenedPostUrl(post.id);
               const shareText = generatePostShareText(post, url);
               handleShare(
                 post.title || "E-Vedhika Post",
@@ -22556,7 +22642,7 @@ function PostCard({
             aria-label="Copy Post Link"
             onClick={(e) => {
               e.stopPropagation();
-              const url = `${getSiteBaseUrl()}/?postId=${post.id}`;
+              const url = getShortenedPostUrl(post.id);
               navigator.clipboard.writeText(url);
               addToast("పోస్ట్ లింక్ కాపీ చేయబడింది! (URL Copied!)");
             }}
@@ -25469,6 +25555,127 @@ function ChatSection({
   const [msg, setMsg] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isBotMode, setIsBotMode] = useState(false);
+  
+  // Voice recording states and helpers
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      } catch (e) {
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: "audio/mp4" });
+        } catch (e2) {
+          recorder = new MediaRecorder(stream);
+        }
+      }
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result as string;
+          await sendVoiceNote(base64Audio);
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      
+      timerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Microphone access denied or error:", err);
+      addToast("మైక్రోఫోన్ అనుమతి లభించలేదు లేదా లోపం సంభవించింది");
+    }
+  };
+
+  const stopRecording = (shouldSend: boolean) => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsRecording(false);
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      if (!shouldSend) {
+        mediaRecorder.onstop = () => {
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        };
+      }
+      mediaRecorder.stop();
+    }
+    setMediaRecorder(null);
+  };
+
+  const sendVoiceNote = async (base64Audio: string) => {
+    if (requireLoginAlert(user)) return;
+
+    if (isBotMode) {
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        msg: base64Audio,
+        time: Date.now(),
+        uid: user.uid,
+        userName: userProfile?.name || user.displayName || "You"
+      };
+      setBotMessages((prev) => [...prev, userMessage]);
+      setIsBotLoading(true);
+
+      try {
+        const response = await askMana("User sent a voice message. Please answer politely that Mana Bot cannot listen to audio messages directly yet, but can assist if they type their queries.", "User is chatting in Village Real-Time Chat bot mode.");
+        const messageText = typeof response === "string" ? response : (response?.text || "");
+        const botMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          msg: messageText || "I could not process your request.",
+          time: Date.now() + 1,
+          uid: "bot",
+          userName: "Mana Bot"
+        };
+        setBotMessages((prev) => [...prev, botMessage]);
+      } catch (err) {
+        addToast("Error communicating with bot");
+      } finally {
+        setIsBotLoading(false);
+      }
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "chat"), {
+        msg: base64Audio,
+        time: Date.now(),
+        uid: user.uid,
+        userName: userProfile?.username || user.displayName || "Portal User",
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, "chat");
+      addToast("Error sending");
+    }
+  };
   const [botMessages, setBotMessages] = useState<ChatMessage[]>([{
     id: "welcome",
     msg: "Hello! I am Mana Bot. You can ask me anything about the application or village data.",
@@ -25576,11 +25783,20 @@ function ChatSection({
                   className={`relative p-2.5 px-3.5 rounded-xl text-[14px] shadow-sm whitespace-pre-wrap leading-snug ${m.uid === user?.uid ? "bg-[#dcf8c6] text-slate-800 rounded-tr-none" : "bg-white text-slate-800 rounded-tl-none"}`}
                 >
                   <div className="mr-8 break-words text-left">
-                    {isBotMode && m.uid === "bot" ? (
+                    {m.msg && m.msg.startsWith("data:audio/") ? (
+                      <div className="flex flex-col gap-1 py-1 min-w-[200px]">
+                        <span className="text-[10px] text-[#075e54] font-black flex items-center gap-1">
+                          <Mic size={12} className="text-rose-500 animate-pulse" /> వాయిస్ నోట్ (Voice Note)
+                        </span>
+                        <audio src={m.msg} controls className="w-full max-w-full rounded-md h-8 text-slate-800" />
+                      </div>
+                    ) : isBotMode && m.uid === "bot" ? (
                       <div className="prose prose-sm prose-slate max-w-none prose-p:leading-snug prose-headings:text-base prose-p:my-1 text-slate-800">
                         <ReactMarkdown remarkPlugins={[remarkBreaks]}>{m.msg}</ReactMarkdown>
                       </div>
-                    ) : (m.msg)}
+                    ) : (
+                      m.msg
+                    )}
                   </div>
                   <span className="text-[9px] text-slate-400 absolute bottom-1.5 right-2 flex items-center gap-1">
                     {new Date(m.time).toLocaleTimeString("en-IN", { hour: 'numeric', minute: '2-digit', hour12: true })}
@@ -25618,22 +25834,60 @@ function ChatSection({
         <div ref={scrollRef} />
       </div>
       <div className="p-3 bg-[#f0f0f0] flex gap-2 items-center rounded-b-3xl border-t border-slate-300">
-        <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1 shadow-sm border border-slate-200">
-          <input
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Type a message..."
-            className="w-full bg-transparent p-2 focus:outline-none text-[15px]"
-          />
-        </div>
-        <button
-          aria-label="Send message"
-          onClick={send}
-          className="bg-[#128c7e] text-white p-3.5 rounded-full hover:bg-[#075e54] transition-colors shadow-sm flex items-center justify-center min-w-[48px]"
-        >
-          <Send size={18} />
-        </button>
+        {isRecording ? (
+          <div className="flex-1 bg-white rounded-full flex items-center justify-between px-4 py-1 shadow-sm border border-rose-200 animate-pulse">
+            <div className="flex items-center gap-2 text-rose-600 text-xs font-black">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+              <span>వాయిస్ నోట్ రికార్డ్ అవుతోంది... {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => stopRecording(false)}
+                className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-full transition-colors cursor-pointer"
+                title="Cancel"
+              >
+                <X size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => stopRecording(true)}
+                className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-full transition-colors cursor-pointer"
+                title="Stop & Send"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1 shadow-sm border border-slate-200">
+            <input
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+              placeholder="Type a message..."
+              className="w-full bg-transparent p-2 focus:outline-none text-[15px]"
+            />
+            <button
+              type="button"
+              onClick={startRecording}
+              className="p-2 text-slate-400 hover:text-[#128c7e] hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+              title="Record voice note"
+            >
+              <Mic size={18} />
+            </button>
+          </div>
+        )}
+        
+        {!isRecording && (
+          <button
+            aria-label="Send message"
+            onClick={send}
+            className="bg-[#128c7e] text-white p-3.5 rounded-full hover:bg-[#075e54] transition-colors shadow-sm flex items-center justify-center min-w-[48px]"
+          >
+            <Send size={18} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -25946,6 +26200,51 @@ function PostDetail({
   }
 
   const pStatus = (post.status || "").toLowerCase();
+  const isSupportPost = ["sent to support", "sent-to-support", "private_support", "support"].includes(pStatus);
+
+  if (isSupportPost) {
+    return (
+      <div className="max-w-xl mx-auto my-20 p-8 bg-white rounded-3xl border border-indigo-200 text-center shadow-lg space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center mx-auto animate-pulse">
+          <ShieldAlert size={32} />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-slate-800">
+            ఈ పోస్ట్ సపోర్ట్ టికెట్‌గా మార్చబడింది
+          </h2>
+          <p className="text-sm text-slate-500 font-medium mt-2 leading-relaxed">
+            మీ సమస్యను త్వరగా పరిష్కరించడానికి ఈ పోస్ట్‌ను సపోర్ట్ సిస్టమ్‌కు విజయవంతంగా పంపించాము. దీనికి సంబంధించిన వివరాలు మరియు అప్‌డేట్స్‌ను సపోర్ట్ సెంటర్‌లో ట్రాక్ చేయవచ్చు.
+          </p>
+          {post.trackingNumber && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 my-4 max-w-sm mx-auto">
+              <span className="text-[10px] uppercase tracking-wider font-black text-indigo-600 block">ట్రాకింగ్ నెంబర్ (Tracking ID)</span>
+              <span className="text-xl font-mono font-black text-indigo-800 mt-1 block">#{post.trackingNumber}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+          <button
+            onClick={onBack}
+            className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-sm shadow-sm inline-flex items-center gap-2 cursor-pointer transition-all"
+          >
+            <ArrowLeft size={16} /> హోమ్ పేజీకి తిరిగి వెళ్లండి
+          </button>
+          {post.trackingNumber && (
+            <button
+              onClick={() => {
+                onBack();
+                window.dispatchEvent(new CustomEvent("open-ticket-tracker", { detail: { code: post.trackingNumber } }));
+              }}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-sm inline-flex items-center gap-2 cursor-pointer transition-all"
+            >
+              <Search size={16} /> లైవ్ టికెట్ ట్రాక్ చేయండి
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const isApproved = pStatus === "approved" || pStatus === "active" || (pStatus === "published" && post.isAdminPost);
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
   const canViewPending = isAdmin || isAuthor;
@@ -25974,7 +26273,7 @@ function PostDetail({
     );
   }
 
-  const postUrl = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
+  const postUrl = getShortenedPostUrl(post.id);
   const shareText = generatePostShareText(post, postUrl);
   const availablePosts = (allPosts && allPosts.length > 0 ? allPosts : fetchedRecent);
   const recentPostsList = availablePosts.filter((p) => p.id !== post.id).slice(0, 6);

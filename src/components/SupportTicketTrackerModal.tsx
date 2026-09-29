@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   X, Search, LifeBuoy, Clock, CheckCircle2, AlertCircle, 
   Send, Copy, Check, MessageSquare, ArrowRight, ShieldCheck,
-  FileText, CornerDownRight, RefreshCw, ExternalLink
+  FileText, CornerDownRight, RefreshCw, ExternalLink, Mic
 } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -30,6 +30,133 @@ export function SupportTicketTrackerModal({
   const [copied, setCopied] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
+
+  // Voice recording states and helpers
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const voiceTimerRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (voiceTimerRef.current) {
+        clearInterval(voiceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      } catch (e) {
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: "audio/mp4" });
+        } catch (e2) {
+          recorder = new MediaRecorder(stream);
+        }
+      }
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result as string;
+          await sendAudioFollowUp(base64Audio);
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      
+      voiceTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Microphone access denied or error:", err);
+      if (addToast) addToast("మైక్రోఫోన్ అనుమతి లభించలేదు లేదా లోపం సంభవించింది", "error");
+    }
+  };
+
+  const stopRecording = (shouldSend: boolean) => {
+    if (voiceTimerRef.current) {
+      clearInterval(voiceTimerRef.current);
+      voiceTimerRef.current = null;
+    }
+    setIsRecording(false);
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      if (!shouldSend) {
+        mediaRecorder.onstop = () => {
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        };
+      }
+      mediaRecorder.stop();
+    }
+    setMediaRecorder(null);
+  };
+
+  const sendAudioFollowUp = async (base64Audio: string) => {
+    if (!ticketData?.id || isSendingReply) return;
+    setIsSendingReply(true);
+
+    const senderName = user?.displayName || user?.email?.split("@")[0] || "Citizen";
+
+    // Optimistic message update
+    const tempId = `citizen_opt_audio_${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      senderId: user?.uid || "citizen",
+      senderName: senderName,
+      text: base64Audio,
+      time: Date.now()
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    try {
+      await addDoc(collection(db, "support_tickets", ticketData.id, "messages"), {
+        senderId: user?.uid || "citizen",
+        senderName: senderName,
+        text: base64Audio,
+        time: Date.now()
+      });
+
+      await updateDoc(doc(db, "support_tickets", ticketData.id), {
+        updatedAt: Date.now(),
+        lastReplyBy: senderName,
+        lastReplyTime: Date.now(),
+        status: ticketData.status === "resolved" ? "open" : ticketData.status
+      });
+
+      notifySupportTicketToTelegram({
+        ticketId: ticketData.id,
+        trackingNumber: ticketData.trackingNumber || ticketData.ticketNumber,
+        userName: senderName,
+        userEmail: user?.email,
+        subject: ticketData.subject || ticketData.problem || "Follow-up Inquiry",
+        category: ticketData.category || "Citizen Follow-up",
+        message: "[Voice Note / వాయిస్ సందేశం పంపబడింది]",
+        isFollowUp: true
+      }).catch(console.error);
+
+      if (addToast) addToast("మీ వాయిస్ సందేశం సపోర్ట్ టీమ్‌కు పంపబడింది!", "success");
+    } catch (err: any) {
+      console.error("Error sending follow-up voice note:", err);
+      if (addToast) addToast("వాయిస్ సందేశం పంపడంలో లోపం ఏర్పడింది", "error");
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
 
   const handleTrack = async (codeToSearch?: string) => {
     const code = (codeToSearch || trackingInput).trim();
@@ -66,12 +193,49 @@ export function SupportTicketTrackerModal({
     }
   }, [initialTrackingCode]);
 
-  // Real-time messages listener when ticketData is active
+  // Real-time messages listener & background server polling when ticketData is active
   useEffect(() => {
     if (!ticketData?.id) return;
+    const ticketId = ticketData.id;
+
+    // Polling fallback to get Telegram/server replies in real-time
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/support/offline-messages/${encodeURIComponent(ticketId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
+            setMessages((prev) => {
+              const combined = [...prev];
+              let hasNew = false;
+              for (const m of data.messages) {
+                const isDup = prev.some(
+                  (p) => p.id === m.id || (p.text === m.text && Math.abs((p.time || 0) - (m.time || 0)) < 3000)
+                );
+                if (!isDup) {
+                  combined.push(m);
+                  hasNew = true;
+                }
+              }
+              if (hasNew) {
+                combined.sort((a, b) => (a.time || 0) - (b.time || 0));
+                return combined;
+              }
+              return prev;
+            });
+            if (data.status) {
+              setTicketData((prev: any) => (prev ? { ...prev, status: data.status } : prev));
+            }
+          }
+        }
+      } catch {
+        // silent
+      }
+    }, 2000);
+
     try {
       const q = query(
-        collection(db, "support_tickets", ticketData.id, "messages"),
+        collection(db, "support_tickets", ticketId, "messages"),
         orderBy("time", "asc")
       );
       const unsub = onSnapshot(q, (snap) => {
@@ -79,7 +243,7 @@ export function SupportTicketTrackerModal({
       }, () => {
         // Fallback without ordering
         const fallbackUnsub = onSnapshot(
-          collection(db, "support_tickets", ticketData.id, "messages"),
+          collection(db, "support_tickets", ticketId, "messages"),
           (snap) => {
             const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
             list.sort((a: any, b: any) => (a.time || 0) - (b.time || 0));
@@ -88,9 +252,12 @@ export function SupportTicketTrackerModal({
         );
         return () => fallbackUnsub();
       });
-      return () => unsub();
+      return () => {
+        unsub();
+        clearInterval(pollInterval);
+      };
     } catch {
-      // ignore
+      return () => clearInterval(pollInterval);
     }
   }, [ticketData?.id]);
 
@@ -111,21 +278,33 @@ export function SupportTicketTrackerModal({
     const text = replyText.trim();
     setReplyText("");
 
+    const senderName = user?.displayName || user?.email?.split("@")[0] || "Citizen";
+
+    // ⚡ INSTANT OPTIMISTIC DISPLAY
+    const tempId = `citizen_opt_${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      senderId: user?.uid || "citizen",
+      senderName: senderName,
+      text: text,
+      time: Date.now()
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+
     try {
-      const senderName = user?.displayName || user?.email?.split("@")[0] || "Citizen";
       await addDoc(collection(db, "support_tickets", ticketData.id, "messages"), {
         senderId: user?.uid || "citizen",
         senderName: senderName,
         text: text,
         time: Date.now()
-      });
+      }).catch(console.error);
 
       await updateDoc(doc(db, "support_tickets", ticketData.id), {
         updatedAt: Date.now(),
         lastReplyBy: senderName,
         lastReplyTime: Date.now(),
         status: ticketData.status === "resolved" ? "open" : ticketData.status
-      });
+      }).catch(console.error);
 
       // Instant Telegram Alert with Spot Reply buttons
       notifySupportTicketToTelegram({
@@ -142,7 +321,6 @@ export function SupportTicketTrackerModal({
       if (addToast) addToast("మీ సందేశం సపోర్ట్ టీమ్‌కు పంపబడింది!", "success");
     } catch (err: any) {
       console.error("Error sending follow-up message:", err);
-      setReplyText(text);
       if (addToast) addToast("సందేశం పంపడంలో లోపం ఏర్పడింది", "error");
     } finally {
       setIsSendingReply(false);
@@ -406,9 +584,18 @@ export function SupportTicketTrackerModal({
                               {new Date(m.time || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-xs leading-relaxed font-normal whitespace-pre-wrap">
-                            {m.text}
-                          </p>
+                          {m.text && m.text.startsWith("data:audio/") ? (
+                            <div className="flex flex-col gap-1 py-1">
+                              <span className="text-[10px] text-rose-600 font-bold flex items-center gap-1">
+                                <Mic size={12} className="animate-pulse" /> వాయిస్ సందేశం (Voice Message)
+                              </span>
+                              <audio src={m.text} controls className="w-full max-w-full rounded-md h-8 text-slate-800" />
+                            </div>
+                          ) : (
+                            <p className="text-xs leading-relaxed font-normal whitespace-pre-wrap">
+                              {m.text}
+                            </p>
+                          )}
                         </div>
                       );
                     })
@@ -416,22 +603,59 @@ export function SupportTicketTrackerModal({
                 </div>
 
                 {/* Follow-up Message Input */}
-                <form onSubmit={handleSendFollowUp} className="pt-2 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="సపోర్ట్ టీమ్‌కు అదనపు సమాచారం లేదా సందేశం రాయండి..."
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSendingReply || !replyText.trim()}
-                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50 shrink-0"
-                  >
-                    <Send size={13} /> పంపండి
-                  </button>
-                </form>
+                {isRecording ? (
+                  <div className="pt-2 flex-1 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 flex items-center justify-between text-xs animate-pulse">
+                    <div className="flex items-center gap-2 text-rose-700 font-bold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+                      <span>వాయిస్ సందేశం రికార్డ్ అవుతోంది... {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(false)}
+                        className="p-1 text-slate-500 hover:text-slate-700 hover:bg-rose-100 rounded-full transition-colors cursor-pointer"
+                        title="Cancel"
+                      >
+                        <X size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(true)}
+                        className="p-1 text-rose-600 hover:text-rose-800 hover:bg-rose-100 rounded-full transition-colors cursor-pointer"
+                        title="Stop & Send"
+                      >
+                        <Check size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSendFollowUp} className="pt-2 flex items-center gap-2 w-full">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex items-center shadow-inner">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="సపోర్ట్ టీమ్‌కు అదనపు సమాచారం లేదా సందేశం రాయండి..."
+                        className="flex-1 bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none font-medium pr-2"
+                      />
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer shrink-0"
+                        title="వాయిస్ నోట్ రికార్డ్ చేయండి"
+                      >
+                        <Mic size={15} />
+                      </button>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSendingReply || !replyText.trim()}
+                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      <Send size={13} /> పంపండి
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           ) : !loading && !errorMessage ? (

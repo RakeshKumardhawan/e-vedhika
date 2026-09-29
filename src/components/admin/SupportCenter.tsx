@@ -4,7 +4,7 @@ import {
   Search, RefreshCw, Filter, User, Check, X, ShieldAlert,
   ArrowRight, ChevronRight, MessageCircle, AlertTriangle, Sparkles, Inbox,
   ExternalLink, Mail, Calendar, Hash, Flag, ShieldCheck, Phone, Paperclip, Image as ImageIcon,
-  FileText, Zap, Radio
+  FileText, Zap, Radio, Mic
 } from 'lucide-react';
 import { 
   collection, query, orderBy, onSnapshot, updateDoc, 
@@ -80,6 +80,150 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
   const [isSending, setIsSending] = useState(false);
   const [showUserInfo, setShowUserInfo] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Voice recording states and helpers
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const voiceTimerRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (voiceTimerRef.current) {
+        clearInterval(voiceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      } catch (e) {
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: "audio/mp4" });
+        } catch (e2) {
+          recorder = new MediaRecorder(stream);
+        }
+      }
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result as string;
+          await sendAdminVoiceNote(base64Audio);
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      
+      voiceTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Microphone access denied or error:", err);
+      if (addToast) addToast("మైక్రోఫోన్ అనుమతి లభించలేదు లేదా లోపం సంభవించింది", "error");
+    }
+  };
+
+  const stopRecording = (shouldSend: boolean) => {
+    if (voiceTimerRef.current) {
+      clearInterval(voiceTimerRef.current);
+      voiceTimerRef.current = null;
+    }
+    setIsRecording(false);
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      if (!shouldSend) {
+        mediaRecorder.onstop = () => {
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        };
+      }
+      mediaRecorder.stop();
+    }
+    setMediaRecorder(null);
+  };
+
+  const sendAdminVoiceNote = async (base64Audio: string) => {
+    if (!selectedTicket?.id || isSending) return;
+    setIsSending(true);
+
+    // Optimistic message update
+    const tempId = `opt_audio_${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      senderId: currentUser?.uid || "admin",
+      senderName: "e-Vedika Team",
+      text: base64Audio,
+      time: Date.now(),
+      isAdminComment: true
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    const nextStatus = selectedTicket.status === "resolved" || selectedTicket.status === "closed" ? "open" : "in_progress";
+    setSelectedTicket((prev: any) => prev ? { ...prev, status: nextStatus, lastReplyTime: Date.now(), lastReplyBy: "e-Vedika Team" } : null);
+
+    try {
+      // Send via primary API
+      const res = await fetch("/api/support/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: selectedTicket.id,
+          text: base64Audio,
+          status: nextStatus
+        })
+      });
+      const data = await res.json().catch(() => ({ success: true }));
+      if (data.success) {
+        if (addToast) addToast("వాయిస్ ప్రత్యుత్తరం విజయవంతంగా పంపబడింది! (Voice Reply Sent)", "success");
+        return;
+      }
+
+      // Client fallback
+      if (selectedTicket.isPostSource) {
+        await addDoc(collection(db, "posts", selectedTicket.id, "comments"), {
+          uid: currentUser?.uid || "admin",
+          userName: "e-Vedika Team",
+          text: base64Audio,
+          time: Date.now(),
+          isAdminComment: true
+        });
+        await updateDoc(doc(db, "posts", selectedTicket.id), { updatedAt: Date.now() });
+      } else {
+        await addDoc(collection(db, "support_tickets", selectedTicket.id, "messages"), {
+          senderId: currentUser?.uid || "admin",
+          senderName: "e-Vedika Team",
+          text: base64Audio,
+          time: Date.now(),
+          isAdminComment: true
+        });
+        await updateDoc(doc(db, "support_tickets", selectedTicket.id), {
+          status: nextStatus,
+          updatedAt: Date.now(),
+          lastReplyBy: "e-Vedika Team",
+          lastReplyTime: Date.now()
+        });
+      }
+      if (addToast) addToast("వాయిస్ ప్రత్యుత్తరం విజయవంతంగా పంపబడింది! (Voice Reply Sent)", "success");
+    } catch (e: any) {
+      console.error("Error sending admin voice note:", e);
+      if (addToast) addToast(`Voice Reply error: ${e.message}`, "error");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   // 1. Listen to Real Firestore support_tickets Collection & private_support posts
   useEffect(() => {
@@ -176,17 +320,68 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     }
   }, [selectedTicket?.id]);
 
-  // 2. Listen to Messages for the Selected Ticket (handles both sources)
+  // 2. Listen to Messages for the Selected Ticket (handles both sources & realtime offline store sync)
   useEffect(() => {
     if (!selectedTicket?.id) {
       setMessages([]);
       return;
     }
 
+    const currentTicketId = selectedTicket.id;
+    const trackingCode = selectedTicket.trackingNumber || selectedTicket.ticketNumber || currentTicketId;
+
+    // Helper to merge new messages without duplicates
+    const mergeNewMessages = (incomingList: any[]) => {
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const combined = [...prev];
+        let hasNew = false;
+
+        for (const item of incomingList) {
+          const isDup = prev.some(
+            (p) =>
+              p.id === item.id ||
+              (p.text === item.text && Math.abs((p.time || 0) - (item.time || 0)) < 3000)
+          );
+          if (!isDup) {
+            combined.push(item);
+            hasNew = true;
+          }
+        }
+
+        if (hasNew) {
+          combined.sort((a, b) => (a.time || 0) - (b.time || 0));
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+          return combined;
+        }
+        return prev;
+      });
+    };
+
+    // Live Server/Telegram Polling Fallback (every 2 seconds)
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/support/offline-messages/${encodeURIComponent(currentTicketId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
+            mergeNewMessages(data.messages);
+            if (data.status) {
+              setSelectedTicket((prev: any) => (prev && prev.id === currentTicketId ? { ...prev, status: data.status } : prev));
+            }
+          }
+        }
+      } catch {
+        // silent
+      }
+    }, 2000);
+
     if (selectedTicket.isPostSource) {
       // Use comments subcollection for posts
       const commentsQuery = query(
-        collection(db, "posts", selectedTicket.id, "comments"),
+        collection(db, "posts", currentTicketId, "comments"),
         orderBy("time", "asc")
       );
       const unsubComments = onSnapshot(commentsQuery, (snapshot) => {
@@ -201,7 +396,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
       }, () => {
-        onSnapshot(collection(db, "posts", selectedTicket.id, "comments"), (snap) => {
+        onSnapshot(collection(db, "posts", currentTicketId, "comments"), (snap) => {
           const msgList = snap.docs.map(d => ({ 
             id: d.id, 
             ...d.data(),
@@ -212,11 +407,14 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           setMessages(msgList);
         });
       });
-      return () => unsubComments();
+      return () => {
+        unsubComments();
+        clearInterval(pollInterval);
+      };
     } else {
       // Use messages subcollection for support_tickets
       const messagesQuery = query(
-        collection(db, "support_tickets", selectedTicket.id, "messages"),
+        collection(db, "support_tickets", currentTicketId, "messages"),
         orderBy("time", "asc")
       );
 
@@ -227,7 +425,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
       }, () => {
-        onSnapshot(collection(db, "support_tickets", selectedTicket.id, "messages"), (snap) => {
+        onSnapshot(collection(db, "support_tickets", currentTicketId, "messages"), (snap) => {
           const msgList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           msgList.sort((a: any, b: any) => (a.time || 0) - (b.time || 0));
           setMessages(msgList);
@@ -236,14 +434,17 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
 
       // Auto mark as read/open if new (only for support_tickets)
       if (selectedTicket.status === "new") {
-        updateDoc(doc(db, "support_tickets", selectedTicket.id), { status: "open" }).catch(console.error);
+        updateDoc(doc(db, "support_tickets", currentTicketId), { status: "open" }).catch(console.error);
       }
 
-      return () => unsubMessages();
+      return () => {
+        unsubMessages();
+        clearInterval(pollInterval);
+      };
     }
   }, [selectedTicket?.id]);
 
-  // Handle Sending a Reply as "e-Vedika Team"
+  // Handle Sending a Reply as "e-Vedika Team" (Instant Optimistic UI + Server/Telegram Sync)
   const handleSendReply = async () => {
     if (!replyText.trim() || !selectedTicket?.id || isSending) return;
 
@@ -251,24 +452,41 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     const text = replyText.trim();
     setReplyText("");
 
+    // ⚡ 1. INSTANT OPTIMISTIC DISPLAY IN CHAT THREAD
+    const tempId = `opt_${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      senderId: currentUser?.uid || "admin",
+      senderName: "e-Vedika Team",
+      text: text,
+      time: Date.now(),
+      isAdminComment: true
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    const nextStatus = selectedTicket.status === "resolved" || selectedTicket.status === "closed" ? "open" : "in_progress";
+    setSelectedTicket((prev: any) => prev ? { ...prev, status: nextStatus, lastReplyTime: Date.now(), lastReplyBy: "e-Vedika Team" } : null);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+
     try {
-      // 1. Primary: Use Server API with Admin SDK (zero permission issues)
+      // 2. Primary: Use Server API with Admin SDK (zero permission issues & instant Telegram alert)
       const res = await fetch("/api/support/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ticketId: selectedTicket.id,
           text: text,
-          status: selectedTicket.status === "resolved" || selectedTicket.status === "closed" ? "open" : "in_progress"
+          status: nextStatus
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: true }));
       if (data.success) {
-        if (addToast) addToast("Reply sent to citizen as e-Vedika Team!", "success");
+        if (addToast) addToast("ప్రత్యుత్తరం పంపబడింది! (Reply sent & synced to Telegram)", "success");
         return;
       }
 
-      // 2. Client fallback if API route not reached
+      // 3. Client fallback if API route failed
       if (selectedTicket.isPostSource) {
         await addDoc(collection(db, "posts", selectedTicket.id, "comments"), {
           uid: currentUser?.uid || "admin",
@@ -283,9 +501,9 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           senderId: currentUser?.uid || "admin",
           senderName: "e-Vedika Team",
           text: text,
-          time: Date.now()
+          time: Date.now(),
+          isAdminComment: true
         });
-        const nextStatus = selectedTicket.status === "resolved" || selectedTicket.status === "closed" ? "open" : "in_progress";
         await updateDoc(doc(db, "support_tickets", selectedTicket.id), {
           status: nextStatus,
           updatedAt: Date.now(),
@@ -294,22 +512,39 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
         });
       }
 
-      if (addToast) addToast("Reply sent to citizen as e-Vedika Team!", "success");
+      if (addToast) addToast("ప్రత్యుత్తరం పంపబడింది! (Reply sent to citizen)", "success");
     } catch (e: any) {
       console.error("Error sending reply:", e);
-      if (addToast) addToast(`Failed to send reply: ${e.message}`, "error");
-      setReplyText(text); // restore on failure
+      if (addToast) addToast(`Reply error: ${e.message}`, "error");
     } finally {
       setIsSending(false);
     }
   };
 
-  // Handle 1-Click Spot Reply
+  // Handle 1-Click Spot Reply (Instant Optimistic UI + Server/Telegram Sync)
   const handleSendSpotReply = async (spot: typeof SPOT_REPLIES_DATA[0]) => {
     if (!selectedTicket?.id || isSending) return;
     setIsSending(true);
+
+    // ⚡ 1. INSTANT OPTIMISTIC DISPLAY IN CHAT THREAD
+    const tempId = `spot_${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      senderId: currentUser?.uid || "admin",
+      senderName: "e-Vedika Team",
+      text: spot.text,
+      time: Date.now(),
+      isAdminComment: true,
+      spotLabel: spot.label
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setSelectedTicket((prev: any) => prev ? { ...prev, status: spot.status, lastReplyTime: Date.now(), lastReplyBy: "e-Vedika Team" } : null);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+
     try {
-      // 1. Primary: Use Server API with Admin SDK (guarantees 100% permission pass & instant Telegram sync)
+      // 2. Primary: Use Server API with Admin SDK (guarantees 100% permission pass & instant Telegram sync)
       const res = await fetch("/api/support/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -319,13 +554,13 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           status: spot.status
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: true }));
       if (data.success) {
         if (addToast) addToast(`⚡ Spot Reply [${spot.label}] విజయవంతంగా పంపబడింది!`, "success");
         return;
       }
 
-      // 2. Client fallback
+      // 3. Client fallback
       if (selectedTicket.isPostSource) {
         await addDoc(collection(db, "posts", selectedTicket.id, "comments"), {
           uid: currentUser?.uid || "admin",
@@ -755,9 +990,18 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                             {m.time ? new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>
                         </div>
-                        <p className={`text-xs leading-relaxed whitespace-pre-wrap ${isAdminMsg ? 'text-blue-50' : 'text-slate-700'}`}>
-                          {m.text}
-                        </p>
+                        {m.text && m.text.startsWith("data:audio/") ? (
+                          <div className="flex flex-col gap-1 py-1 min-w-[200px]">
+                            <span className={`text-[10px] font-bold flex items-center gap-1 ${isAdminMsg ? 'text-blue-200' : 'text-slate-500'}`}>
+                              <Mic size={12} className="text-rose-400 animate-pulse" /> వాయిస్ సందేశం (Voice Message)
+                            </span>
+                            <audio src={m.text} controls className="w-full max-w-full rounded-md h-8 text-black" />
+                          </div>
+                        ) : (
+                          <p className={`text-xs leading-relaxed whitespace-pre-wrap ${isAdminMsg ? 'text-blue-50' : 'text-slate-700'}`}>
+                            {m.text}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );
@@ -811,33 +1055,72 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
 
               {/* Reply Input Area */}
               <div className="p-4 bg-white border-t border-slate-200 flex flex-col gap-2">
-                <textarea
-                  rows={2}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Type an official response as 'e-Vedika Team' to this citizen..."
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault();
-                      handleSendReply();
-                    }
-                  }}
-                />
+                {isRecording ? (
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center justify-between text-xs animate-pulse">
+                    <div className="flex items-center gap-2 text-rose-700 font-bold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+                      <span>వాయిస్ ప్రత్యుత్తరం రికార్డ్ అవుతోంది... {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(false)}
+                        className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-black transition-all cursor-pointer"
+                        title="Cancel"
+                      >
+                        రద్దు (Cancel)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(true)}
+                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer"
+                        title="Stop & Send"
+                      >
+                        పంపండి (Stop & Send)
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      rows={2}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Type an official response as 'e-Vedika Team' to this citizen..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 resize-none"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                          e.preventDefault();
+                          handleSendReply();
+                        }
+                      }}
+                    />
 
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    Press <kbd className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Ctrl+Enter</kbd> to send
-                  </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={startRecording}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
+                          title="Record voice note"
+                        >
+                          <Mic size={14} /> Record Voice Note (వాయిస్ నోట్)
+                        </button>
+                        <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+                          Press <kbd className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Ctrl+Enter</kbd> to send
+                        </span>
+                      </div>
 
-                  <button
-                    onClick={handleSendReply}
-                    disabled={!replyText.trim() || isSending}
-                    className="px-6 py-2.5 bg-[#0B3D91] hover:bg-blue-900 disabled:opacity-50 text-white rounded-2xl text-xs font-black transition-all shadow-md shadow-blue-900/20 flex items-center gap-2"
-                  >
-                    <Send size={14} /> {isSending ? "Sending..." : "Reply as e-Vedika Team"}
-                  </button>
-                </div>
+                      <button
+                        onClick={handleSendReply}
+                        disabled={!replyText.trim() || isSending}
+                        className="px-6 py-2.5 bg-[#0B3D91] hover:bg-blue-900 disabled:opacity-50 text-white rounded-2xl text-xs font-black transition-all shadow-md shadow-blue-900/20 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Send size={14} /> {isSending ? "Sending..." : "Reply as e-Vedika Team"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           ) : (

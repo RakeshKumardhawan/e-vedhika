@@ -573,22 +573,19 @@ async function addAdminReplyToTicket(
     // Look up doc by ID or by trackingNumber
     let targetDocRef = db.collection("support_tickets").doc(ticketId);
     let docSnap: any = null;
+    let actualTicketId = ticketId;
+    let ticketData: any = null;
+
     try {
       docSnap = await targetDocRef.get();
+      if (docSnap?.exists) {
+        ticketData = docSnap.data();
+      }
     } catch (e: any) {
-      console.warn("[FIRESTORE GET WARNING] Memory fallback used for ticket:", ticketId, e?.message);
-      return {
-        success: true,
-        message: `Reply saved in server storage`,
-        trackingNumber: ticketId,
-        isQuotaFallback: true
-      };
+      console.warn("[FIRESTORE GET WARNING] Attempting queries for ticket:", ticketId);
     }
 
-    let actualTicketId = ticketId;
-    let ticketData: any = docSnap?.exists ? docSnap.data() : null;
-
-    if (!docSnap?.exists) {
+    if (!ticketData) {
       try {
         const q = await db.collection("support_tickets").where("trackingNumber", "==", ticketId).limit(1).get();
         if (!q.empty) {
@@ -604,12 +601,18 @@ async function addAdminReplyToTicket(
           }
         }
       } catch (err: any) {
-        return {
-          success: true,
-          message: `Reply saved in server storage`,
-          trackingNumber: ticketId,
-          isQuotaFallback: true
-        };
+        console.warn("[FIRESTORE QUERY WARNING]", err?.message);
+      }
+    }
+
+    // Also mirror to actualTicketId in offline store
+    if (actualTicketId !== ticketId) {
+      if (!supportOfflineMessagesStore[actualTicketId]) {
+        supportOfflineMessagesStore[actualTicketId] = [];
+      }
+      supportOfflineMessagesStore[actualTicketId].push(replyItem);
+      if (statusOverride) {
+        supportOfflineStatusStore[actualTicketId] = statusOverride;
       }
     }
 
@@ -621,10 +624,17 @@ async function addAdminReplyToTicket(
         if (postSnap.exists) {
           await postRef.collection("comments").add(replyItem).catch(() => {});
           await postRef.update({ updatedAt: Date.now() }).catch(() => {});
+          if (isFromWeb) {
+            sendTelegramServerAlert(
+              `💬 <b>[E-VEDHIKA] పోస్ట్ సపోర్ట్ రిప్లై పంపబడింది</b>\n\n` +
+              `🎫 <b>పోస్ట్ ID / టికెట్:</b> <code>#${ticketId}</code>\n` +
+              `💬 <b>సందేశం:</b>\n<i>"${replyText}"</i>`
+            ).catch(() => {});
+          }
           return { success: true, message: `Reply added to post #${ticketId}`, trackingNumber: ticketId };
         }
       } catch (err: any) {
-        return { success: true, message: `Reply saved in server cache`, trackingNumber: ticketId, isQuotaFallback: true };
+        console.warn("[POST REF WARNING]", err?.message);
       }
       return { success: true, message: `Reply saved in memory cache for ticket ${ticketId}`, trackingNumber: ticketId, isQuotaFallback: true };
     }
