@@ -14,6 +14,21 @@ import ExcelJS from "exceljs";
 import admin from 'firebase-admin';
 
 let isFirebaseAdminInitialized = false;
+let firestoreQuotaExceededUntil = 0;
+const QUOTA_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
+
+function handleFirestoreQuotaError(err: any) {
+  if (err?.code === 8 || (err?.message && String(err.message).includes("RESOURCE_EXHAUSTED"))) {
+    console.warn("Firestore Quota Exceeded detected in server. Cooling down for 5 minutes.");
+    firestoreQuotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
+    return true;
+  }
+  return false;
+}
+
+function isFirestoreInCooldown() {
+  return Date.now() < firestoreQuotaExceededUntil;
+}
 
 function initFirebaseAdmin() {
   if (isFirebaseAdminInitialized) return true;
@@ -1098,19 +1113,21 @@ const processIncomingTelemetry = (req: express.Request) => {
 
   // Save to Firestore asynchronously
   try {
-    if (initFirebaseAdmin()) {
+    if (!isFirestoreInCooldown() && initFirebaseAdmin()) {
       const db = admin.firestore();
       db.collection("telemetryLogs").doc(newRecord.id).set({
         ...newRecord,
         ip: req.ip || "",
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(e => console.error("Firestore telemetry error:", e));
+      }).catch(e => handleFirestoreQuotaError(e));
       db.collection("deploymentLogs").doc(newRecord.id).set({
         ...newRecord,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(() => {});
+      }).catch(e => handleFirestoreQuotaError(e));
     }
-  } catch(e) {}
+  } catch(e) {
+    handleFirestoreQuotaError(e);
+  }
 
   // Broadcast to all active SSE streaming clients in real-time
   try {
@@ -1244,62 +1261,56 @@ app.get(telemetryGetRoutes, async (req, res) => {
       return true;
     });
 
-    if (initFirebaseAdmin()) {
+    if (!isFirestoreInCooldown() && initFirebaseAdmin()) {
       try {
         const db = admin.firestore();
         // Fetch last 100 logs from Firestore
-        try {
-          const snapshot = await db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
-          const firestoreLogs: any[] = [];
-          snapshot.forEach(doc => {
-            const d = doc.data();
-            // Exclude seeds and Test-PC
-            if (d && d.id && !String(d.id).startsWith("TEL-SEED") && d.pcName !== "Test-PC") {
-              firestoreLogs.push({ ...d, id: d.id || doc.id });
-            }
-          });
-
-          // Merge memory store with Firestore logs
-          const merged = [...firestoreLogs];
-          for (const m of telemetryLogsStore) {
-            if (!merged.find(x => x.id === m.id)) {
-              merged.push(m);
-            }
+        const snapshot = await db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
+        const firestoreLogs: any[] = [];
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          // Exclude seeds and Test-PC
+          if (d && d.id && !String(d.id).startsWith("TEL-SEED") && d.pcName !== "Test-PC") {
+            firestoreLogs.push({ ...d, id: d.id || doc.id });
           }
-          // Sort by date and time
-          merged.sort((a, b) => {
-            try {
-              const timeA = new Date(`${a.date || a.serverReceivedDate} ${a.time || a.serverReceivedTime}`).getTime() || 0;
-              const timeB = new Date(`${b.date || b.serverReceivedDate} ${b.time || b.serverReceivedTime}`).getTime() || 0;
-              return timeB - timeA;
-            } catch {
-              return 0;
-            }
-          });
-          return res.json({ success: true, logs: merged });
-        } catch (fsErr) {
-          console.error("Firestore telemetry fetch error, falling back to memory store:", fsErr);
-          // Fallback to memory store
-          return res.json({ success: true, logs: telemetryLogsStore });
+        });
+
+        // Merge memory store with Firestore logs
+        const merged = [...firestoreLogs];
+        for (const m of telemetryLogsStore) {
+          if (!merged.find(x => x.id === m.id)) {
+            merged.push(m);
+          }
         }
-      } catch (fsErr: any) {
-        console.warn("Firestore telemetry fetch error, falling back to memory store:", fsErr?.message);
+        // Sort by date and time
+        merged.sort((a, b) => {
+          try {
+            const timeA = new Date(`${a.date || a.serverReceivedDate} ${a.time || a.serverReceivedTime}`).getTime() || 0;
+            const timeB = new Date(`${b.date || b.serverReceivedDate} ${b.time || b.serverReceivedTime}`).getTime() || 0;
+            return timeB - timeA;
+          } catch {
+            return 0;
+          }
+        });
+        return res.json({ success: true, logs: merged });
+      } catch (fsErr) {
+        if (!handleFirestoreQuotaError(fsErr)) {
+          console.error("Firestore telemetry fetch error, falling back to memory store:", fsErr);
+        }
+        // Fallback to memory store
+        return res.json({ success: true, logs: telemetryLogsStore });
       }
     }
+    
+    // If in cooldown or initFirebaseAdmin returns false
+    return res.json({ success: true, logs: telemetryLogsStore });
   } catch (e) {
-    console.error("Error fetching telemetry:", e);
+    if (!handleFirestoreQuotaError(e)) {
+      console.error("Error fetching telemetry:", e);
+    }
+    // Return memory store even on general error
+    return res.json({ success: true, logs: telemetryLogsStore });
   }
-
-  return res.json({
-    success: true,
-    count: telemetryLogsStore.length,
-    timestamp,
-    serverTime,
-    serverDate,
-    liveFrequency: "1-second real-time streaming active",
-    logs: telemetryLogsStore,
-    telemetry: telemetryLogsStore
-  });
 });
 
 // Real-Time Server-Sent Events (SSE) Stream Endpoint for Instant 1-Second Updates
