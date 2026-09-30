@@ -44,7 +44,21 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
     normMain === "sysadmin" ||
     normMain === "admin"
   ) {
-    mainTab = "admin","evdka","adminpanel";
+    mainTab = "admin";
+  } else if (normMain === "farmerregistry" || normMain === "farmer_registry" || normMain === "farmer-registry") {
+    mainTab = "farmer_registry";
+  } else if (normMain === "excelprint" || normMain === "excel_print") {
+    mainTab = "excel_print";
+  } else if (normMain === "pdfcompress" || normMain === "pdf_compress") {
+    mainTab = "pdf_compress";
+  } else if (normMain === "gpdpsetup" || normMain === "gpdp_setup") {
+    mainTab = "gpdp_setup";
+  } else if (normMain === "ubdtracker" || normMain === "ubd_tracker" || normMain === "ubd") {
+    mainTab = "ubd_tracker";
+  } else if (normMain === "softwarehub" || normMain === "software_hub" || normMain === "software") {
+    mainTab = "software_hub";
+  } else if (normMain === "usefullinks" || normMain === "useful_links") {
+    mainTab = "useful_links";
   }
 
   let workspaceTool: string | null = null;

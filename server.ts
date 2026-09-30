@@ -14,10 +14,16 @@ import ExcelJS from "exceljs";
 import admin from 'firebase-admin';
 
 let isFirebaseAdminInitialized = false;
+let isFirestoreAdminWorking = true;
 let firestoreQuotaExceededUntil = 0;
 const QUOTA_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
 
 function handleFirestoreQuotaError(err: any) {
+  if (err?.code === 7 || (err?.message && String(err.message).includes("PERMISSION_DENIED"))) {
+    // Admin SDK does not have GCP service account in this runtime, fallback to persistent disk/memory store
+    isFirestoreAdminWorking = false;
+    return true;
+  }
   if (err?.code === 8 || (err?.message && String(err.message).includes("RESOURCE_EXHAUSTED"))) {
     console.warn("Firestore Quota Exceeded detected in server. Cooling down for 5 minutes.");
     firestoreQuotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
@@ -27,7 +33,7 @@ function handleFirestoreQuotaError(err: any) {
 }
 
 function isFirestoreInCooldown() {
-  return Date.now() < firestoreQuotaExceededUntil;
+  return !isFirestoreAdminWorking || Date.now() < firestoreQuotaExceededUntil;
 }
 
 function initFirebaseAdmin() {
@@ -1628,6 +1634,25 @@ app.post('/api/remote-queue', (req, res) => {
   } catch(e) {}
 
   res.json({ success: true, item: newItem });
+});
+
+app.get('/api/system/stats', (req, res) => {
+  res.json({
+    success: true,
+    firestore: {
+      initialized: isFirebaseAdminInitialized,
+      quotaExceededUntil: firestoreQuotaExceededUntil,
+      inCooldown: Date.now() < firestoreQuotaExceededUntil,
+      remainingCooldownMs: Math.max(0, firestoreQuotaExceededUntil - Date.now())
+    },
+    memory: {
+      telemetryLogs: telemetryLogsStore.length,
+      remoteQueue: remoteQueueStore.length,
+      systemAlerts: systemAlertsStore.length
+    },
+    uptime: process.uptime(),
+    timestamp: Date.now()
+  });
 });
 
 app.get('/api/remote-queue', (req, res) => {

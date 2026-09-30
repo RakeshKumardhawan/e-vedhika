@@ -12,6 +12,16 @@ export interface UpdateEntry {
 
 export const SYSTEM_UPDATES: UpdateEntry[] = [
   {
+    id: "sys_v169",
+    version: "V1.6.9",
+    time: Date.now(),
+    date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "UPDATE",
+    title: "వైట్ స్క్రీన్ & పెర్ఫార్మెన్స్ ఫిక్స్ 🚀",
+    description: "వెబ్‌సైట్ ఓపెన్ చేసేటప్పుడు వస్తున్న తెల్ల స్క్రీన్ (White Screen) సమస్యను పూర్తిగా పరిష్కరించాము. సర్వర్ కోటా ఇబ్బందులు ఉన్నా కూడా ఇప్పుడు పోర్టల్ లోడ్ అవుతుంది. వేగం మరియు స్థిరత్వం మెరుగుపరచబడ్డాయి.",
+    color: "bg-blue-600",
+  },
+  {
     id: "sys_v168",
     version: "V1.6.8",
     time: Date.now(),

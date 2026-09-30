@@ -73,6 +73,7 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
     fetchMasterData();
   }, []);
 
+  const [selectedState, setSelectedState] = useState<'TS' | 'AP'>('TS');
   const [registerType, setRegisterType] = useState<'BIR' | 'DEA'>('BIR');
   const [entryMode, setEntryMode] = useState<'direct' | 'dropdown'>('dropdown');
   const [searchTerm, setSearchTerm] = useState('');
@@ -135,10 +136,14 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
   };
 
   const copyOrShareUrl = (officeCode: string, gpName?: string) => {
-    const targetUrl = `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus${registerType}_Details.do?officeCode=${officeCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+    const baseUrl = selectedState === 'TS' 
+      ? 'https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus' 
+      : 'https://epanchayat.ap.gov.in/UBDMIS/ubdmisAPTotalStatus';
+    const targetUrl = `${baseUrl}${registerType}_Details.do?officeCode=${officeCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+    
     if (navigator.share) {
       navigator.share({
-        title: `Telangana UBD MIS - ${gpName || officeCode}`,
+        title: `${selectedState === 'TS' ? 'Telangana' : 'Andhra Pradesh'} UBD MIS - ${gpName || officeCode}`,
         text: `${gpName || officeCode} గ్రామ పంచాయతీ UBD ${registerType === 'BIR' ? 'Birth' : 'Death'} రిజిస్టర్ లింక్:`,
         url: targetUrl
       }).catch(() => {
@@ -328,9 +333,12 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
       district: district || selectedDistrict
     });
 
-    const targetUrl = `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus${registerType}_Details.do?officeCode=${cleanCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+    const baseUrl = selectedState === 'TS' 
+      ? 'https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus' 
+      : 'https://epanchayat.ap.gov.in/UBDMIS/ubdmisAPTotalStatus';
+    const targetUrl = `${baseUrl}${registerType}_Details.do?officeCode=${cleanCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
     setIframeSrc(targetUrl);
-    addToast(`Reg.Unit Id [${cleanCode}] తో రిజిస్టర్ ఓపెన్ చేయబడింది!`);
+    addToast(`Reg.Unit Id [${cleanCode}] (${selectedState}) తో రిజిస్టర్ ఓపెన్ చేయబడింది!`);
     notifyUbdActivity("ఆఫీస్ కోడ్ శోధన (Office Code Opened)", cleanCode, gpName, mandal, district);
   };
 
@@ -358,7 +366,10 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
       district: selectedDistrict
     });
 
-    const targetUrl = `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus${registerType}_Details.do?officeCode=${effOfficeCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+    const baseUrl = selectedState === 'TS' 
+      ? 'https://ubdmis.telangana.gov.in/ubdmisTGTotalStatus' 
+      : 'https://epanchayat.ap.gov.in/UBDMIS/ubdmisAPTotalStatus';
+    const targetUrl = `${baseUrl}${registerType}_Details.do?officeCode=${effOfficeCode}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
     setIframeSrc(targetUrl);
   };
   
@@ -471,10 +482,27 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
       </div>)}
 
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden mb-6 p-6">
-        <div className="text-center mb-6 flex flex-col items-center">
-          <h2 className="text-2xl font-black text-emerald-800 mb-2 border border-emerald-100 bg-emerald-50 px-6 py-2 rounded-xl">
-            {registerType === 'BIR' ? 'Birth Register (జనన నమోదు)' : 'Death Register (మరణ నమోదు)'}
-          </h2>
+        <div className="flex flex-col items-center mb-6">
+          <div className="flex items-center gap-2 mb-6 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+            <button
+              onClick={() => setSelectedState('TS')}
+              className={`px-8 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 ${selectedState === 'TS' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <MapPin size={16} /> Telangana
+            </button>
+            <button
+              onClick={() => setSelectedState('AP')}
+              className={`px-8 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 ${selectedState === 'AP' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+            >
+              <MapPin size={16} /> Andhra Pradesh
+            </button>
+          </div>
+          
+          <div className="text-center mb-6 flex flex-col items-center">
+            <h2 className="text-2xl font-black text-emerald-800 mb-2 border border-emerald-100 bg-emerald-50 px-6 py-2 rounded-xl">
+              {selectedState} UBD {registerType === 'BIR' ? 'Birth Register (జనన నమోదు)' : 'Death Register (మరణ నమోదు)'}
+            </h2>
+          </div>
         </div>
 
         {/* Quick Favorites & Recent Visits Bar */}

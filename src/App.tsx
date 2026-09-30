@@ -183,6 +183,11 @@ import { notifyPostUpdate, notifyUserProfileUpdate, notifyWebsiteUpdate, notifyE
 
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
+import { CloudStorageManager } from "./components/CloudStorageManager";
+import { SoftwareHub } from "./components/SoftwareHub";
+import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
+import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
 
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
@@ -331,8 +336,15 @@ function handleFirestoreError(
     return;
   }
 
+  if (lowerErr.includes("quota exceeded") || lowerErr.includes("resource_exhausted") || lowerErr.includes("limit exceeded")) {
+    console.error("Firestore Quota Exceeded! Switching to optimized data mode.");
+    // We don't want to spam toast here as it's a global listener
+    return;
+  }
+
   console.error("Firestore Error: ", JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  // Not throwing here to prevent white-screen crashes in production
+  // throw new Error(JSON.stringify(errInfo));
 }
 
 export function getFriendlyError(err: any): string {
@@ -342,6 +354,9 @@ export function getFriendlyError(err: any): string {
     if (parsed.error) msg = parsed.error;
   } catch (e) {}
 
+  if (msg.includes("Quota exceeded") || msg.includes("RESOURCE_EXHAUSTED")) {
+    return "సర్వర్ కోటా పరిమితి మించినది. దయచేసి కాసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి. / Server quota exceeded. Please try again after some time.";
+  }
   if (msg.includes("Missing or insufficient permissions")) {
     return "మీకు ఈ యాక్షన్‌ని చేయడానికి పర్మిషన్ లేదు / You don't have permission to perform this action.";
   }
@@ -2303,11 +2318,7 @@ function LandingPage({
   );
 }
 
-import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
-import { CloudStorageManager } from "./components/CloudStorageManager";
-import { SoftwareHub } from "./components/SoftwareHub";
-import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
-import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
+
 
 export default function App() {
   const navigate = useNavigate();
@@ -2341,6 +2352,50 @@ export default function App() {
     };
     window.addEventListener("open-ticket-tracker", handleOpenTracker);
     return () => window.removeEventListener("open-ticket-tracker", handleOpenTracker);
+  }, []);
+
+  // 🌟 Cursor Round Spotlight Lighting Effect on Hovered Boxes/Cards with Center Proximity
+  useEffect(() => {
+    let rafId: number | null = null;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const target = (e.target as HTMLElement)?.closest(
+          '.spotlight-card, .spotlight-box, .interactive-card, .card-glow, [data-spotlight="true"], .bg-white.rounded-2xl, .bg-white.rounded-3xl, .bg-slate-900.rounded-2xl, .bg-slate-900.rounded-3xl, .bg-slate-800.rounded-2xl, article'
+        ) as HTMLElement | null;
+
+        if (target) {
+          if (!target.classList.contains('spotlight-card')) {
+            target.classList.add('spotlight-card');
+          }
+          const rect = target.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          
+          // Calculate distance to center
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+          const maxDist = Math.max(1, Math.sqrt(centerX * centerX + centerY * centerY));
+          const currentDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+          
+          // Proximity factor: 1.0 (center) to ~0.35 (edges/corners)
+          const proximity = Math.max(0.35, Math.min(1.0, 1 - (currentDist / maxDist) * 0.65));
+          const glowSize = Math.round(240 + proximity * 140); // 240px to 380px
+
+          target.style.setProperty('--mouse-x', `${x}px`);
+          target.style.setProperty('--mouse-y', `${y}px`);
+          target.style.setProperty('--glow-proximity', proximity.toFixed(3));
+          target.style.setProperty('--glow-size', `${glowSize}px`);
+        }
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const scrollToTop = () => {
@@ -3497,8 +3552,13 @@ export default function App() {
       }
     };
 
+    // Safety timeout to ensure app renders even if Firestore hangs
+    const loadingTimeout = setTimeout(() => {
+      setDataLoading(false);
+    }, 8000);
+
     const unsubUpdates = onSnapshot(
-      collection(db, "updates"),
+      query(collection(db, "updates"), orderBy("time", "desc"), limit(30)),
       (snap) => {
         const uArr: Update[] = [];
         snap.forEach((d) =>
@@ -3529,11 +3589,14 @@ export default function App() {
           }
         }
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, "updates"),
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, "updates");
+        setDataLoading(false);
+      },
     );
 
     const unsubSuggestions = onSnapshot(
-      collection(db, "suggestions"),
+      query(collection(db, "suggestions"), orderBy("time", "desc"), limit(30)),
       (snap) => {
         const sArr: Suggestion[] = [];
         snap.forEach((d) =>
@@ -3546,7 +3609,7 @@ export default function App() {
     );
 
     const unsubPosts = onSnapshot(
-      query(collection(db, "posts")),
+      query(collection(db, "posts"), orderBy("time", "desc"), limit(50)),
       (snap) => {
         const pArr: Post[] = [];
         snap.forEach((d) => {
@@ -3591,7 +3654,10 @@ export default function App() {
           }
         }
       },
-      (err) => handleFirestoreError(err, OperationType.LIST, "posts"),
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, "posts");
+        setDataLoading(false);
+      },
     );
 
     const unsubCustomMenus = onSnapshot(collection(db, "customMenus"), (snap) => {
@@ -3607,6 +3673,7 @@ export default function App() {
     });
 
     return () => {
+      clearTimeout(loadingTimeout);
       unsubVisits();
       unsubUpdates();
       unsubSuggestions();
@@ -4671,7 +4738,7 @@ E-Vedhika Team`;
         reason={siteConfig?.maintenanceReason || "షెడ్యూల్డ్ సిస్టమ్ అప్‌గ్రేడ్ & గవర్నెన్స్ క్లౌడ్ సెక్యూరిటీ అప్‌డేట్"}
         contactEmail={siteConfig?.supportEmail || "evedhikasupport@gmail.com"}
         contactPhone={siteConfig?.supportPhone || "+91 1800-425-2244"}
-        version={siteConfig?.portalVersion || "V1.4.8 Enterprise"}
+        version={siteConfig?.portalVersion || "V1.6.9 Enterprise"}
         onRefreshCheck={() => {
           addToast("Refreshing live system status...");
         }}

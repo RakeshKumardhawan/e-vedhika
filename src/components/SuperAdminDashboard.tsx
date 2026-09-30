@@ -178,21 +178,25 @@ export function SuperAdminDashboard({
   };
 
   useEffect(() => {
-    // Users count & list
+    // Users count & list (Fetch all registered users for accurate statistics)
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
       setLiveUsersCount(snap.size);
       const u: any[] = [];
       snap.forEach(doc => u.push({ id: doc.id, ...doc.data() }));
       setUsersList(u);
-    }, () => {});
+    }, (err) => {
+      console.warn("Failed to listen to users collection in SuperAdminDashboard:", err);
+    });
 
     // Posts count & list
-    const unsubPosts = onSnapshot(collection(db, 'posts'), (snap) => {
+    const unsubPosts = onSnapshot(query(collection(db, 'posts'), orderBy('time', 'desc')), (snap) => {
       setLivePostsCount(snap.size);
       const p: any[] = [];
       snap.forEach(doc => p.push({ id: doc.id, ...doc.data() }));
       setPostsList(p);
-    }, () => {});
+    }, (err) => {
+      console.warn("Failed to listen to posts collection in SuperAdminDashboard:", err);
+    });
 
     // Security logs query
     let unsubLogs = () => {};
@@ -401,8 +405,8 @@ export function SuperAdminDashboard({
 
   // Calculated Metrics
   const activeUsersCount = usersList.filter(u => !u.isDeleted && !u.banned).length || liveUsersCount;
-  const pendingPostsCount = postsList.filter(p => (p.status || 'pending').toLowerCase() === 'pending').length;
-  const publishedPostsCount = postsList.filter(p => (p.status || '').toLowerCase() === 'published').length;
+  const pendingPostsCount = postsList.filter(p => (p.status || '').toLowerCase() === 'pending').length;
+  const publishedPostsCount = postsList.filter(p => !p.status || p.status.toLowerCase() === 'published' || p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'active').length;
   const rejectedPostsCount = postsList.filter(p => (p.status || '').toLowerCase() === 'rejected').length;
   const unreadInboxCount = inboxMessages.filter(m => !m.read && !m.isRead).length;
   const openSupportCount = supportTickets.filter(t => t.status !== 'closed' && t.status !== 'resolved').length;

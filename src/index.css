@@ -659,3 +659,101 @@ html, body, #root {
   }
 }
 
+/* --- CURSOR ROUND SPOTLIGHT / LIGHTING GLOW EFFECT --- */
+.spotlight-card,
+.spotlight-box,
+.interactive-card,
+.card-glow,
+[data-spotlight="true"] {
+  position: relative;
+  --mouse-x: -999px;
+  --mouse-y: -999px;
+  --glow-proximity: 0.5;
+  --glow-size: 280px;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s ease,
+              border-radius 0.3s ease;
+  will-change: transform, box-shadow;
+}
+
+/* On hover: subtle scale transform and increased box-shadow to give it a 'lifted' feel */
+.spotlight-card:hover,
+.spotlight-box:hover,
+.interactive-card:hover,
+.card-glow:hover,
+[data-spotlight="true"]:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.15),
+              0 10px 24px -4px rgba(59, 130, 246, 0.22),
+              0 0 0 1px rgba(99, 102, 241, 0.25);
+  z-index: 10;
+}
+
+/* Radial spotlight glow overlay with dynamic center proximity intensity */
+.spotlight-card::before,
+.spotlight-box::before,
+.interactive-card::before,
+.card-glow::before,
+[data-spotlight="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    var(--glow-size, 280px) circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    rgba(59, 130, 246, calc(0.12 + 0.16 * var(--glow-proximity, 0.5))),
+    rgba(99, 102, 241, calc(0.06 + 0.12 * var(--glow-proximity, 0.5))) 45%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.15s ease-out;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.spotlight-card:hover::before,
+.spotlight-box:hover::before,
+.interactive-card:hover::before,
+.card-glow:hover::before,
+[data-spotlight="true"]:hover::before {
+  opacity: 1;
+}
+
+/* Glowing border trail with dynamic proximity */
+.spotlight-card::after,
+.spotlight-box::after,
+.interactive-card::after,
+.card-glow::after,
+[data-spotlight="true"]::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    calc(var(--glow-size, 280px) * 0.75) circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    rgba(99, 102, 241, calc(0.45 + 0.35 * var(--glow-proximity, 0.5))),
+    rgba(59, 130, 246, calc(0.25 + 0.25 * var(--glow-proximity, 0.5))) 50%,
+    transparent 80%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1.5px;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.15s ease-out;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.spotlight-card:hover::after,
+.spotlight-box:hover::after,
+.interactive-card:hover::after,
+.card-glow:hover::after,
+[data-spotlight="true"]:hover::after {
+  opacity: 1;
+}
+
+
