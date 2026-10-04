@@ -22,11 +22,12 @@ export function EmergencyBroadcast() {
     try {
       await addDoc(collection(db, "notifications"), {
         uid: targetType === 'all' ? 'all' : targetUid,
-        title: "📢 Official Broadcast",
+        title: "📢 ముఖ్య ప్రకటన (Official Broadcast Alert)",
         message: message,
         type: "broadcast",
         senderName: "e-Vedika Team",
         read: false,
+        readBy: [],
         time: Date.now()
       });
 

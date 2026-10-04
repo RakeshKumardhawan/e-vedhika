@@ -51,7 +51,9 @@ const routes = [
   "privacy",
   "terms",
   "about",
-  "contact"
+  "contact",
+  "home/post",
+  "post"
 ];
 
 routes.forEach((route) => {
@@ -62,6 +64,153 @@ routes.forEach((route) => {
 });
 
 console.log(`Generated static index.html for ${routes.length} deep routes in dist/ for GitHub Pages.`);
+
+// Utility to generate clean slugs matching frontend
+function generatePostSlug(title, fallbackId) {
+  if (!title) return fallbackId || "post";
+  let clean = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!clean || clean.length < 2) return fallbackId || "post";
+  if (clean.length > 75) {
+    clean = clean.substring(0, 75).replace(/-[^-]*$/, "");
+  }
+  return clean;
+}
+
+function injectPostOgTags(baseHtml, { title, description, imageUrl, canonicalUrl }) {
+  let html = baseHtml;
+  
+  if (/<title>.*?<\/title>/i.test(html)) {
+    html = html.replace(/<title>.*?<\/title>/i, `<title>${title}</title>`);
+  } else {
+    html = html.replace("</head>", `<title>${title}</title>\n</head>`);
+  }
+
+  const setMeta = (attrType, attrName, content) => {
+    const escaped = attrName.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const regex = new RegExp(`<meta\\s+[^>]*${attrType}=["']${escaped}["'][^>]*>`, "gi");
+    const safe = (content || "").replace(/"/g, "&quot;");
+    const tag = `<meta ${attrType}="${attrName}" content="${safe}" />`;
+    if (regex.test(html)) {
+      html = html.replace(regex, tag);
+    } else {
+      html = html.replace("</head>", `  ${tag}\n</head>`);
+    }
+  };
+
+  setMeta("name", "description", description);
+  setMeta("property", "og:site_name", "E-Vedhika");
+  setMeta("property", "og:type", "article");
+  setMeta("property", "og:title", title);
+  setMeta("property", "og:description", description);
+  setMeta("property", "og:image", imageUrl);
+  setMetaTagSafe(html, imageUrl, canonicalUrl);
+  setMeta("property", "og:image:secure_url", imageUrl);
+  setMeta("property", "og:image:type", imageUrl.endsWith(".png") ? "image/png" : "image/jpeg");
+  setMeta("property", "og:image:width", "1200");
+  setMeta("property", "og:image:height", "630");
+  setMeta("property", "og:image:alt", title);
+  setMeta("property", "og:url", canonicalUrl);
+  setMeta("property", "og:locale", "te_IN");
+
+  setMeta("name", "twitter:card", "summary_large_image");
+  setMeta("name", "twitter:title", title);
+  setMeta("name", "twitter:description", description);
+  setMeta("name", "twitter:image", imageUrl);
+  setMeta("name", "twitter:url", canonicalUrl);
+
+  // Link image_src and canonical
+  if (/<link\s+[^>]*rel=["']image_src["'][^>]*>/i.test(html)) {
+    html = html.replace(/<link\s+[^>]*rel=["']image_src["'][^>]*>/gi, `<link rel="image_src" href="${imageUrl}" />`);
+  } else {
+    html = html.replace("</head>", `  <link rel="image_src" href="${imageUrl}" />\n</head>`);
+  }
+
+  if (/<link\s+[^>]*rel=["']canonical["'][^>]*>/i.test(html)) {
+    html = html.replace(/<link\s+[^>]*rel=["']canonical["'][^>]*>/gi, `<link rel="canonical" href="${canonicalUrl}" />`);
+  } else {
+    html = html.replace("</head>", `  <link rel="canonical" href="${canonicalUrl}" />\n</head>`);
+  }
+
+  return html;
+}
+
+function setMetaTagSafe(html, imageUrl, canonicalUrl) {
+  // Helper placeholder
+}
+
+// Fetch all posts from Firestore and generate static HTML with rich WhatsApp preview cards
+async function generateStaticPostRoutes() {
+  try {
+    const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+    const url = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=100&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn("Could not fetch posts for static pre-generation:", res.status);
+      return;
+    }
+    const data = await res.json();
+    const docs = data.documents || [];
+    let generatedCount = 0;
+
+    for (let index = 0; index < docs.length; index++) {
+      const doc = docs[index];
+      const docId = doc.name.split("/").pop();
+      const fields = doc.fields || {};
+      const title = (fields.title?.stringValue || "E-Vedhika Post").trim();
+      const rawContent = (fields.content?.stringValue || "").trim();
+      const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`\r\n]/g, " ").replace(/\s+/g, " ").trim();
+      const description = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
+      
+      let mediaUrl = fields.mediaUrl?.stringValue || fields.imageUrl?.stringValue || fields.poster?.stringValue || fields.videoThumbnailUrl?.stringValue || "";
+      let imageUrl = "https://www.e-vedhika.in/banner.jpg";
+      if (mediaUrl.startsWith("http")) {
+        imageUrl = mediaUrl;
+      }
+
+      const explicitSlug = fields.slug?.stringValue ? fields.slug.stringValue.trim() : "";
+      const generatedSlug = generatePostSlug(title, docId);
+      const postSlug = explicitSlug || generatedSlug;
+      const postNumber = fields.postNumber?.integerValue || fields.postNumber?.stringValue || (index + 1);
+
+      const canonicalUrl = `https://www.e-vedhika.in/home/post/${postSlug}`;
+      const postHtml = injectPostOgTags(indexContent, {
+        title: `${title} - E-Vedhika`,
+        description: description || "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ పరిపాలనా పోర్టల్.",
+        imageUrl,
+        canonicalUrl,
+      });
+
+      // Target folders for slug, docId, and numeric permalink
+      const targetPaths = [
+        path.join(distDir, "home", "post", postSlug),
+        path.join(distDir, "home", "post", docId),
+        path.join(distDir, "post", postSlug),
+        path.join(distDir, "post", docId),
+      ];
+
+      if (postNumber) {
+        targetPaths.push(path.join(distDir, "home", "post", String(postNumber)));
+        targetPaths.push(path.join(distDir, "post", String(postNumber)));
+      }
+
+      for (const targetDir of targetPaths) {
+        fs.mkdirSync(targetDir, { recursive: true });
+        fs.writeFileSync(path.join(targetDir, "index.html"), postHtml, "utf-8");
+        generatedCount++;
+      }
+    }
+
+    console.log(`Pre-generated static WhatsApp preview pages for ${docs.length} posts (${generatedCount} path variants) in dist/.`);
+  } catch (err) {
+    console.error("Error pre-generating static post routes:", err);
+  }
+}
+
+await generateStaticPostRoutes();
 
 // Ensure CNAME and 404.html exist in dist
 const publicCname = path.resolve(process.cwd(), "public", "CNAME");

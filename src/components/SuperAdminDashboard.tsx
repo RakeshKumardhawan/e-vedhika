@@ -4,7 +4,8 @@ import {
   AlertTriangle, CheckCircle, Clock, Search, Bell, Settings,
   Download, FileText, BarChart2, Shield, Radio, Zap, Box, MessageSquare, 
   MapPin, UserCheck, ShieldAlert, Wifi, Cpu, ActivitySquare,
-  HeartPulse, Megaphone, RefreshCw, Sliders, ShieldCheck, Terminal, TrendingUp, DollarSign, LayoutDashboard, Rss, Palette, Bot, Sparkles, Languages, Package, Inbox, CheckSquare, MessageCircle, ArrowRight, Eye, Check, X, Filter, LifeBuoy
+  HeartPulse, Megaphone, RefreshCw, Sliders, ShieldCheck, Terminal, TrendingUp, DollarSign, LayoutDashboard, Rss, Palette, Bot, Sparkles, Languages, Package, Inbox, CheckSquare, MessageCircle, ArrowRight, Eye, Check, X, Filter, LifeBuoy,
+  Edit3, Trash2
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { pushPostToSupportSystem } from '../services/supportTicketService';
@@ -49,6 +50,7 @@ interface SuperAdminDashboardProps {
   setActiveSubTab?: (tab: string) => void;
   addToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   activeTab?: string;
+  onEditPost?: (post: any) => void;
 }
 
 export function SuperAdminDashboard({ 
@@ -56,7 +58,8 @@ export function SuperAdminDashboard({
   stats = [], 
   setActiveSubTab, 
   addToast, 
-  activeTab: propActiveTab = "overview" 
+  activeTab: propActiveTab = "overview",
+  onEditPost
 }: SuperAdminDashboardProps) {
   const currentActiveTab = (propActiveTab === "super_admin" || propActiveTab === "dash" || !propActiveTab) ? "overview" : propActiveTab;
   const [localActiveTab, setLocalActiveTab] = useState<string>(currentActiveTab);
@@ -306,17 +309,74 @@ export function SuperAdminDashboard({
           if (addToast) addToast("సపోర్ట్ సిస్టమ్‌కు పంపడంలో లోపం: " + res.error, "error");
         }
       } else {
-        await updateDoc(doc(db, 'posts', post.id), { status: newStatus, verified: newStatus === 'published' });
-        setPostsList(prev => prev.map(p => p.id === post.id ? { ...p, status: newStatus, verified: newStatus === 'published' } : p));
-        if (addToast) addToast(`Post status updated to ${newStatus}`, "success");
+        const isApproving = newStatus === 'published' || newStatus === 'Approved';
+        const finalStatus = isApproving ? 'Approved' : newStatus === 'rejected' ? 'Rejected' : newStatus;
+
+        await updateDoc(doc(db, 'posts', post.id), { 
+          status: finalStatus, 
+          verified: isApproving,
+          isAdminPost: isApproving ? true : (post.isAdminPost || false)
+        });
+        setPostsList(prev => prev.map(p => p.id === post.id ? { 
+          ...p, 
+          status: finalStatus, 
+          verified: isApproving,
+          isAdminPost: isApproving ? true : (p.isAdminPost || false)
+        } : p));
+
+        if (isApproving) {
+          if (addToast) addToast("పోస్ట్ విజయవంతంగా ఆమోదించబడింది (Post Approved)!", "success");
+
+          const postAuthor = post.userName || post.author || "User";
+          const title = post.title || post.content || "కొత్త పోస్ట్";
+          await addDoc(collection(db, "notifications"), {
+            uid: "all",
+            title: "📢 కొత్త పోస్ట్ (New Post Approved)",
+            message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
+            type: "post",
+            read: false,
+            readBy: [],
+            time: Date.now(),
+            postId: post.id,
+            senderUid: user?.uid || ""
+          }).catch(() => {});
+
+          if (post.uid) {
+            await addDoc(collection(db, "notifications"), {
+              uid: post.uid,
+              title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
+              message: `మీరు సమర్పించిన '${title.substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ అందుబాటులో ఉంది.`,
+              type: "post_approved",
+              read: false,
+              time: Date.now(),
+              postId: post.id
+            }).catch(() => {});
+          }
+        } else if (newStatus === 'rejected') {
+          if (addToast) addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)", "info");
+          if (post.uid) {
+            const title = post.title || post.content || "పోస్ట్";
+            await addDoc(collection(db, "notifications"), {
+              uid: post.uid,
+              title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
+              message: `మీరు సమర్పించిన '${title.substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు.`,
+              type: "post_rejected",
+              read: false,
+              time: Date.now(),
+              postId: post.id
+            }).catch(() => {});
+          }
+        } else {
+          if (addToast) addToast(`Post status updated to ${finalStatus}`, "success");
+        }
 
         notifyPostUpdate({
-          action: newStatus === 'published' ? 'approved' : newStatus === 'rejected' ? 'rejected' : 'updated',
+          action: isApproving ? 'approved' : newStatus === 'rejected' ? 'rejected' : 'updated',
           postTitle: post.title || 'Post Update',
           author: post.userName || post.author || 'User',
           category: post.category || 'General',
           postId: post.id,
-          status: newStatus
+          status: finalStatus
         }).catch(() => {});
       }
     } catch (e) {
@@ -327,8 +387,20 @@ export function SuperAdminDashboard({
 
   const handleDeletePost = async (postId: string) => {
     try {
+      const res = await Swal.fire({
+        title: "పోస్ట్‌ను తొలగించాలా?",
+        text: "ఈ పోస్ట్‌ను శాశ్వతంగా తొలగించాలనుకుంటున్నారా? ఈ చర్యను రద్దు చేయలేరు.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#ef4444",
+        confirmButtonText: "అవును, తొలగించు (Delete)",
+        cancelButtonText: "రద్దు చేయి (Cancel)"
+      });
+      if (!res.isConfirmed) return;
+
       await deleteDoc(doc(db, 'posts', postId));
-      if (addToast) addToast("Post removed permanently", "success");
+      setPostsList(prev => prev.filter(p => p.id !== postId));
+      if (addToast) addToast("పోస్ట్ శాశ్వతంగా తొలగించబడింది (Post Deleted)!", "success");
       notifyPostUpdate({
         action: 'deleted',
         postTitle: 'Deleted Post',
@@ -345,19 +417,36 @@ export function SuperAdminDashboard({
     if (!broadcastText.trim()) return;
     setIsBroadcasting(true);
     try {
+      const now = Date.now();
+      const adminDisplayName = user?.fullName || user?.name || 'Admin';
+
       await setDoc(doc(db, 'system_config', 'emergency_broadcast'), {
         message: broadcastText,
         active: true,
-        timestamp: Date.now(),
-        adminName: user?.fullName || 'Admin'
+        timestamp: now,
+        adminName: adminDisplayName
       });
+
+      // Dispatch real-time notification to all logged in users
+      await addDoc(collection(db, "notifications"), {
+        uid: "all",
+        title: "📢 ముఖ్య ప్రకటన (Official Broadcast Alert)",
+        message: broadcastText,
+        type: "broadcast",
+        senderName: adminDisplayName,
+        read: false,
+        readBy: [],
+        time: now
+      }).catch(err => console.error("Failed to add broadcast notification document:", err));
+
       setBroadcastActive(true);
-      if (addToast) addToast("Broadcast alert dispatched successfully!", "success");
+      if (addToast) addToast("అందరి యూజర్లకు అలర్ట్ పంపబడింది (Broadcast sent to all users)!", "success");
 
       notifyEmergencyBroadcast({
         message: broadcastText,
-        adminName: user?.fullName || user?.name || 'Admin'
+        adminName: adminDisplayName
       }).catch(() => {});
+      setBroadcastText('');
     } catch (e) {
       console.error(e);
       if (addToast) addToast("Failed to broadcast alert", "error");
@@ -719,8 +808,8 @@ export function SuperAdminDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
-                  {postsList.filter(p => (p.title || p.content || "").toLowerCase().includes(postSearchQuery.toLowerCase())).slice(0, 5).length > 0 ? (
-                    postsList.filter(p => (p.title || p.content || "").toLowerCase().includes(postSearchQuery.toLowerCase())).slice(0, 5).map((p: any, i: number) => (
+                  {postsList.filter(p => (p.title || p.content || "").toLowerCase().includes(postSearchQuery.toLowerCase())).slice(0, 50).length > 0 ? (
+                    postsList.filter(p => (p.title || p.content || "").toLowerCase().includes(postSearchQuery.toLowerCase())).slice(0, 50).map((p: any, i: number) => (
                       <tr key={p.id || i} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3.5 font-bold text-slate-900 max-w-xs">
                           <p className="truncate font-black">{p.title || p.subject || "Untitled Post"}</p>
@@ -739,33 +828,35 @@ export function SuperAdminDashboard({
                             </span>
                           ) : (
                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
-                              p.status === 'published' ? 'bg-emerald-50 text-emerald-700' :
-                              p.status === 'rejected' ? 'bg-amber-50 text-amber-700' :
+                              p.status === 'published' || p.status === 'Approved' ? 'bg-emerald-50 text-emerald-700' :
+                              p.status === 'rejected' || p.status === 'Rejected' ? 'bg-amber-50 text-amber-700' :
                               'bg-slate-100 text-slate-700'
                             }`}>
                               {p.status || 'pending'}
                             </span>
                           )}
                         </td>
-                        <td className="p-3.5 text-right space-x-1.5">
+                        <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
                           {p.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleUpdatePostStatus(p, 'published')}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors"
+                                onClick={() => handleUpdatePostStatus(p, 'Approved')}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                                title="పోస్ట్‌ను ఆమోదించి పబ్లిష్ చేయండి (Approve Post)"
                               >
-                                Publish
+                                Approve
                               </button>
                               <button
                                 onClick={() => handleUpdatePostStatus(p, 'private_support')}
-                                className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-black transition-all inline-flex items-center gap-1 shadow-xs"
+                                className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-black transition-all inline-flex items-center gap-1 shadow-xs cursor-pointer"
                                 title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
                               >
                                 <LifeBuoy size={11} /> పుష్ టు సపోర్ట్ సిస్టమ్
                               </button>
                               <button
                                 onClick={() => handleUpdatePostStatus(p, 'rejected')}
-                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black transition-colors"
+                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                                title="తిరస్కరించు (Reject Post)"
                               >
                                 Reject
                               </button>
@@ -774,23 +865,33 @@ export function SuperAdminDashboard({
                           {p.status === 'private_support' && (
                             <>
                               <button
-                                onClick={() => handleUpdatePostStatus(p, 'published')}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors"
+                                onClick={() => handleUpdatePostStatus(p, 'Approved')}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
                                 title="తిరిగి ఫీడ్‌లో పబ్లిష్ చేయండి"
                               >
                                 పబ్లిష్ చేయి
                               </button>
                               <button
                                 onClick={() => navigateToTab('support')}
-                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-black transition-colors inline-flex items-center gap-1"
+                                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-black transition-colors inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <LifeBuoy size={11} /> సపోర్ట్ సెంటర్
                               </button>
                             </>
                           )}
+                          {onEditPost && (
+                            <button
+                              onClick={() => onEditPost(p)}
+                              className="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-[10px] font-black transition-colors inline-flex items-center gap-1 cursor-pointer"
+                              title="పోస్ట్ సవరించు (Edit Post)"
+                            >
+                              <Edit3 size={11} /> Edit
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeletePost(p.id)}
-                            className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[10px] font-black transition-colors"
+                            className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                            title="పోస్ట్‌ను తొలగించు (Delete Post)"
                           >
                             Delete
                           </button>

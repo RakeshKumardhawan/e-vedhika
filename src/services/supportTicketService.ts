@@ -155,6 +155,22 @@ export async function pushPostToSupportSystem(
       message: initialMessage
     }).catch(console.error);
 
+    if (authorUid && authorUid !== "community_user") {
+      await addDoc(collection(db, "notifications"), {
+        uid: authorUid,
+        title: "🎧 సపోర్ట్ రిక్వెస్ట్ అప్‌డేట్ (Support Request Sent)",
+        message: `మీరు చేసిన సపోర్ట్ రిక్వెస్ట్ ను అడ్మిన్ సపోర్ట్ టీం కి పంపారు. ట్రాకింగ్ ID: #${trackingNumber}. మీ రిక్వెస్ట్ స్టేటస్ ను ఇక్కడ ట్రాక్ చేసుకోవచ్చు.`,
+        type: "support_ticket_created",
+        read: false,
+        readBy: [],
+        time: Date.now(),
+        ticketId: ticketRef.id,
+        postId: postId || null,
+        trackingNumber: trackingNumber,
+        senderUid: adminUser?.uid || "admin"
+      }).catch(console.error);
+    }
+
     return {
       success: true,
       trackingNumber,

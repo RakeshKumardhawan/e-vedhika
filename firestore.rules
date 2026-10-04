@@ -103,12 +103,17 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if true;
       allow create: if isSignedIn();
+      // Admin has full control to edit, approve, reject, pin any post. Regular users cannot self-approve.
       allow update: if isAdmin() || (
         isSignedIn() && (
-          resource.data.uid == request.auth.uid ||
+          (resource.data.uid == request.auth.uid && (
+            (!('status' in request.resource.data) || request.resource.data.status == resource.data.status || request.resource.data.status == 'pending' || request.resource.data.status == 'Pending') &&
+            (!('isAdminPost' in request.resource.data) || request.resource.data.isAdminPost == resource.data.isAdminPost)
+          )) ||
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'views', 'viewedBy', 'reactions', 'shares'])
         )
       );
+      // Admin has full right to delete any post permanently or move to trash.
       allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
 
       match /comments/{commentId} {
@@ -156,19 +161,11 @@ service cloud.firestore {
     // 4. NOTIFICATIONS & INBOX
     // -------------------------------------------------------------------------
     match /notifications/{notifId} {
-      allow read: if isSignedIn() && (
-        resource.data.uid == request.auth.uid || 
-        resource.data.uid == 'all' || 
-        isAdmin()
-      );
+      // Allow reading notifications so every logged-in user receives broadcast and personal alerts
+      allow read: if true;
       allow create: if isSignedIn() || isAdmin();
-      allow update: if isAdmin() || (
-        isSignedIn() && (
-          resource.data.uid == request.auth.uid ||
-          (resource.data.uid == 'all' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']))
-        )
-      );
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isSignedIn() || isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.senderUid == request.auth.uid));
     }
 
     match /admin_notifications/{id} {

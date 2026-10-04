@@ -1896,14 +1896,16 @@ app.get('/api/remote-commands', (req, res) => {
         if (authorUid && authorUid !== "community_user") {
           await db.collection("notifications").add({
             uid: authorUid,
-            title: "🎧 మీ పోస్ట్ సపోర్ట్ సిస్టమ్‌కి పంపబడింది!",
-            message: `మీరు పెట్టిన '${postTitle.substring(0, 35)}' పోస్ట్‌ను అడ్మిన్ సపోర్ట్ టికెట్‌గా మార్చారు (టికెట్ #${trackingNumber}). సపోర్ట్ టీమ్ త్వరలోనే పరిశీలిస్తుంది.`,
+            title: "🎧 సపోర్ట్ రిక్వెస్ట్ అప్‌డేట్ (Support Request Sent)",
+            message: `మీరు చేసిన సపోర్ట్ రిక్వెస్ట్ ను అడ్మిన్ సపోర్ట్ టీం కి పంపారు. ట్రాకింగ్ ID: #${trackingNumber}. మీ రిక్వెస్ట్ స్టేటస్ ను ఇక్కడ ట్రాక్ చేసుకోవచ్చు.`,
             type: "support_ticket_created",
             read: false,
+            readBy: [],
             time: Date.now(),
             ticketId: finalTicketId,
             postId: postId || null,
-            trackingNumber: trackingNumber
+            trackingNumber: trackingNumber,
+            senderUid: adminUser?.uid || "admin"
           }).catch(() => {});
         }
       } catch (firestoreErr: any) {
@@ -4256,7 +4258,14 @@ app.get('/api/remote-commands', (req, res) => {
     const fullBaseUrl = isPublicHost ? `${protocol}://${host}` : "https://www.e-vedhika.in";
     const canonicalUrl = `${fullBaseUrl}${req.originalUrl}`;
 
-    const postId = (req.query.postId as string) || (req.path.startsWith("/post/") ? req.path.split("/post/")[1].split("?")[0] : null);
+    let postId = (req.query.postId as string) || null;
+    if (!postId) {
+      if (req.path.startsWith("/home/post/")) {
+        postId = decodeURIComponent(req.path.split("/home/post/")[1].split("?")[0]);
+      } else if (req.path.startsWith("/post/")) {
+        postId = decodeURIComponent(req.path.split("/post/")[1].split("?")[0]);
+      }
+    }
     const rawTab = ((req.query.tab as string) || "").toLowerCase();
     const cleanPath = req.path.toLowerCase().replace(/\/+$/, "");
 
@@ -4265,15 +4274,109 @@ app.get('/api/remote-commands', (req, res) => {
     let imageUrl = `${fullBaseUrl}/banner.jpg`;
     let type = "website";
 
-    // 1. Post Preview (Individual News / Notification / Issue)
+    // 1. Post Preview (Individual News / Notification / Issue / Slug / Numeric Permalink)
     if (postId) {
       try {
         const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+        let fields: any = null;
+        let actualDocId = postId;
+        let actualSlug = postId;
+
+        // 1. Try direct doc ID lookup
         const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
         const firestoreResp = await fetch(firestoreUrl);
         if (firestoreResp.ok) {
           const data = await firestoreResp.json();
-          const fields = data.fields || {};
+          fields = data.fields || {};
+          actualDocId = postId;
+          actualSlug = fields.slug?.stringValue || postId;
+        } else {
+          // 2. Query Firestore by slug field
+          const queryUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents:runQuery?key=${apiKey}`;
+          const qResp = await fetch(queryUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              structuredQuery: {
+                from: [{ collectionId: "posts" }],
+                where: {
+                  fieldFilter: {
+                    field: { fieldPath: "slug" },
+                    op: "EQUAL",
+                    value: { stringValue: postId }
+                  }
+                },
+                limit: 1
+              }
+            })
+          });
+          if (qResp.ok) {
+            const results = await qResp.json();
+            if (Array.isArray(results) && results[0]?.document) {
+              fields = results[0].document.fields || {};
+              const nameParts = (results[0].document.name || "").split("/");
+              actualDocId = nameParts[nameParts.length - 1] || postId;
+              actualSlug = fields.slug?.stringValue || postId;
+            }
+          }
+
+          // 3. If still not found and postId is numeric or permalink, query by postNumber
+          if (!fields && !isNaN(Number(postId))) {
+            const numVal = Number(postId);
+            const qNumResp = await fetch(queryUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                structuredQuery: {
+                  from: [{ collectionId: "posts" }],
+                  where: {
+                    fieldFilter: {
+                      field: { fieldPath: "postNumber" },
+                      op: "EQUAL",
+                      value: { integerValue: numVal }
+                    }
+                  },
+                  limit: 1
+                }
+              })
+            });
+            if (qNumResp.ok) {
+              const numResults = await qNumResp.json();
+              if (Array.isArray(numResults) && numResults[0]?.document) {
+                fields = numResults[0].document.fields || {};
+                const nameParts = (numResults[0].document.name || "").split("/");
+                actualDocId = nameParts[nameParts.length - 1] || postId;
+                actualSlug = fields.slug?.stringValue || String(numVal);
+              }
+            }
+          }
+
+          // 4. Fallback search over recent posts for title slug or numeric match
+          if (!fields) {
+            const recentResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=50&key=${apiKey}`);
+            if (recentResp.ok) {
+              const recentData = await recentResp.json();
+              const normTarget = postId.toLowerCase();
+              for (const item of (recentData.documents || [])) {
+                const f = item.fields || {};
+                const docName = item.name.split("/").pop();
+                const itemTitle = (f.title?.stringValue || "").trim().toLowerCase();
+                const generatedSlug = itemTitle.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+                const itemSlug = (f.slug?.stringValue || "").trim().toLowerCase();
+                const itemPostNum = f.postNumber?.integerValue || f.postNumber?.stringValue;
+
+                if (docName === postId || itemSlug === normTarget || generatedSlug === normTarget || String(itemPostNum) === postId) {
+                  fields = f;
+                  actualDocId = docName;
+                  actualSlug = f.slug?.stringValue || generatedSlug || docName;
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        if (fields) {
           const postTitle = (fields.title?.stringValue || "E-Vedhika Post").trim();
           const rawContent = (fields.content?.stringValue || "").trim();
           const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`\r\n]/g, " ").replace(/\s+/g, " ").trim();
@@ -4285,11 +4388,13 @@ app.get('/api/remote-commands', (req, res) => {
           type = "article";
 
           if (mediaUrl.startsWith("data:image/")) {
-            imageUrl = `${fullBaseUrl}/api/og-image/${postId}`;
+            imageUrl = `${fullBaseUrl}/api/og-image/${actualDocId}`;
           } else if (mediaUrl.startsWith("http")) {
             imageUrl = mediaUrl;
           } else if (mediaUrl) {
             imageUrl = `${fullBaseUrl}${mediaUrl.startsWith("/") ? "" : "/"}${mediaUrl}`;
+          } else {
+            imageUrl = `${fullBaseUrl}/banner.jpg`;
           }
         }
       } catch (e) {
@@ -4422,6 +4527,18 @@ app.get('/api/remote-commands', (req, res) => {
     setMetaTag("itemprop", "description", description);
     setMetaTag("itemprop", "image", imageUrl);
 
+    if (/<link\s+[^>]*rel=["']image_src["'][^>]*>/i.test(html)) {
+      html = html.replace(/<link\s+[^>]*rel=["']image_src["'][^>]*>/gi, `<link rel="image_src" href="${imageUrl}" />`);
+    } else {
+      html = html.replace("</head>", `  <link rel="image_src" href="${imageUrl}" />\n</head>`);
+    }
+
+    if (/<link\s+[^>]*rel=["']canonical["'][^>]*>/i.test(html)) {
+      html = html.replace(/<link\s+[^>]*rel=["']canonical["'][^>]*>/gi, `<link rel="canonical" href="${canonicalUrl}" />`);
+    } else {
+      html = html.replace("</head>", `  <link rel="canonical" href="${canonicalUrl}" />\n</head>`);
+    }
+
     html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
     return html;
   }
@@ -4444,8 +4561,8 @@ app.get('/api/remote-commands', (req, res) => {
 
     // Intercept social media crawlers & direct HTML preview requests in dev / preview
     app.use(async (req, res, next) => {
-      // Never intercept non-GET or API/proxy/uploads requests
-      if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/proxy') || req.path.startsWith('/uploads')) {
+      // Never intercept non-GET/HEAD or API/proxy/uploads requests
+      if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path.startsWith('/api') || req.path.startsWith('/proxy') || req.path.startsWith('/uploads')) {
         return next();
       }
 

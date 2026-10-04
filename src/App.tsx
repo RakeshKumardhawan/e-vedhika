@@ -632,8 +632,10 @@ interface Post {
   updatedAt?: any;
   uid: string;
   status?: string;
+  postNumber?: number;
   pinned?: boolean;
   isAdminPost?: boolean;
+  verified?: boolean;
   version?: string;
   versionStatus?: "New" | "Old";
   attachments?: {
@@ -1390,14 +1392,43 @@ export const getSiteDisplayHost = () => {
   return host;
 };
 
-// Utility function to generate shortened post URLs in the format 'e-vedhika.in/post/[ID]'
-export const getShortenedPostUrl = (postId: string): string => {
-  if (!postId) return "e-vedhika.in";
-  return `e-vedhika.in/post/${postId}`;
+// Utility function to generate clean, SEO-friendly slugs from post titles
+export function generatePostSlug(title: string, fallbackId?: string): string {
+  if (!title) return fallbackId || "post";
+  let clean = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!clean || clean.length < 2) return fallbackId || "post";
+  if (clean.length > 75) {
+    clean = clean.substring(0, 75).replace(/-[^-]*$/, "");
+  }
+  return clean;
+}
+
+// Extract human-friendly slug, numeric permalink, or document ID
+export function getPostSlugOrId(postOrId: any): string {
+  if (!postOrId) return "post";
+  if (typeof postOrId === "string") return postOrId.trim();
+  if (postOrId.slug && String(postOrId.slug).trim()) return String(postOrId.slug).trim();
+  if (postOrId.postNumber) return String(postOrId.postNumber);
+  if (postOrId.title) {
+    const slug = generatePostSlug(postOrId.title, postOrId.id);
+    if (slug) return slug;
+  }
+  return postOrId.id || "post";
+}
+
+// Utility function to generate clean post URLs in the format 'https://www.e-vedhika.in/home/post/[slug-or-id]'
+export const getShortenedPostUrl = (postOrId: any): string => {
+  if (!postOrId) return "https://www.e-vedhika.in";
+  const slugOrId = getPostSlugOrId(postOrId);
+  return `https://www.e-vedhika.in/home/post/${slugOrId}`;
 };
 
 export const generatePostShareText = (post: any, postUrl?: string) => {
-  const finalUrl = post?.id ? getShortenedPostUrl(post.id) : (postUrl || "e-vedhika.in");
+  const finalUrl = postUrl || (post ? getShortenedPostUrl(post) : "https://www.e-vedhika.in");
   if (!post) return `E-Vedhika: ${finalUrl}`;
   
   const rawContent = post.content || "";
@@ -1430,8 +1461,8 @@ export const generatePostShareText = (post: any, postUrl?: string) => {
     `📂 *విభాగం / Category:* ${category}\n` +
     (formattedDate ? `📅 *తేదీ / Date:* ${formattedDate}\n` : "") +
     (summary ? `\n📝 *వివరాలు / Summary:*\n_"${summary}"_\n` : "") +
-    `\n👇 *పూర్తి వివరాలు & జిఓల కోసం క్రింది లింక్ క్లిక్ చేయండి:*` +
-    `\n🔗 ${finalUrl}\n\n` +
+    `\n👇 *పూర్తి వివరాలు & సమాచారం కోసం క్రింది లింక్ ఓపెన్ చేయండి:*\n` +
+    `${finalUrl}\n\n` +
     `________________________\n` +
     `✨ *E-Vedhika - పంచాయతీ ముఖ్యాంశాలు & డిజిటల్ సేవల పోర్టల్*`
   );
@@ -1478,7 +1509,7 @@ export function PosterShareModal({
     };
   }, [post.mediaUrl, post.mediaType]);
 
-  const postUrl = getShortenedPostUrl(post.id);
+  const postUrl = getShortenedPostUrl(post);
   const plainContent = post.content
     ? post.content
         .replace(/<[^>]*>?/gm, "")
@@ -1642,7 +1673,7 @@ export function PosterShareModal({
                   పూర్తి జీవో సర్క్యులర్లు మరియు సమాచారం కోసం క్రింది లింక్ ఉపయోగించండి.
                 </p>
                 <div className="mt-2 bg-slate-50 border border-slate-200/50 rounded-lg px-2 py-1 text-[8px] font-mono font-black text-primary truncate max-w-[200px]">
-                  e-vedhika.in/post/{post.id}
+                  evedhika.in/home/post/{getPostSlugOrId(post)}
                 </div>
               </div>
               {/* QR Code */}
@@ -1766,7 +1797,7 @@ export const handleShare = async (
   }
 
   const fullShareText = text
-    ? (text.includes(url) ? text : `${text}\n\n🔗 ${url}`)
+    ? (text.includes(url) ? text : `${text}\n\n${url}`)
     : url;
 
   if (navigator.share) {
@@ -1774,8 +1805,11 @@ export const handleShare = async (
       const shareData: any = {
         title: title || "E-Vedhika",
         text: fullShareText,
-        url: url,
       };
+
+      if (!fullShareText.includes(url)) {
+        shareData.url = url;
+      }
 
       if (filesToShare && filesToShare.length > 0) {
         shareData.files = filesToShare;
@@ -2325,7 +2359,20 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const postIdFromUrl = searchParams.get("postId");
+
+  // Extract post identifier from URL query param (?postId=...) or pathname (/home/post/... or /post/...)
+  const postIdentifierFromPath = useMemo(() => {
+    const rawPath = decodeURIComponent(location.pathname || "").replace(/\/+$/, "");
+    if (rawPath.startsWith("/home/post/")) {
+      return rawPath.replace(/^\/home\/post\//, "").trim();
+    }
+    if (rawPath.startsWith("/post/")) {
+      return rawPath.replace(/^\/post\//, "").trim();
+    }
+    return null;
+  }, [location.pathname]);
+
+  const postIdFromUrl = searchParams.get("postId") || postIdentifierFromPath;
   const sidebarRef = useRef<HTMLDivElement>(null);
   const navScrollRef = useRef<HTMLDivElement>(null);
 
@@ -3378,8 +3425,11 @@ export default function App() {
       const post = posts.find((p) => {
         if (p.id === postIdFromUrl || p.id === rawParam) return true;
         if (p.slug && p.slug.toLowerCase() === rawParam) return true;
+        if (p.postNumber && String(p.postNumber) === rawParam) return true;
         const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
         if (slugFromTitle && slugFromTitle === rawParam) return true;
+        const generated = generatePostSlug(p.title || "", p.id);
+        if (generated && generated.toLowerCase() === rawParam) return true;
         const cleanTitle = (p.title || "").trim().toLowerCase();
         if (cleanTitle === rawParam) return true;
         return false;
@@ -3392,7 +3442,7 @@ export default function App() {
           .replace(/[#*`]/g, "")
           .trim()
           .substring(0, 160) || "ఈ-వేదిక పోర్టల్ ద్వారా పంచాయతీ ముఖ్యాంశాలు మరియు డిజిటల్ సేవలను పొందండి.";
-        const postUrl = `${getSiteBaseUrl()}/?postId=${post.slug || post.id}`;
+        const postUrl = getShortenedPostUrl(post);
         const imageUrl = post.mediaUrl || "https://www.e-vedhika.in/banner.jpg";
 
         updateDOMMetaTags({
@@ -3676,7 +3726,7 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newPost = addedChanges[0].doc.data() as any;
-            const isApproved = ["approved", "active"].includes((newPost.status || "").toLowerCase()) || (((newPost.status || "").toLowerCase() === "published") && newPost.isAdminPost);
+            const isApproved = ["approved", "active"].includes((newPost.status || "").toLowerCase()) || (((newPost.status || "").toLowerCase() === "published") && (newPost.isAdminPost || newPost.verified));
             const isRecent = !newPost.time || (Date.now() - newPost.time < 60000);
             if (isRecent && isApproved) {
               triggerNotification(
@@ -3910,11 +3960,15 @@ E-Vedhika Team`;
         });
         setNotifications(nArr.sort((a, b) => b.time - a.time));
         setUnreadCount(
-          nArr.filter((n) =>
-            n.senderUid !== user?.uid && 
-            !readNotifIds.has(n.id) &&
-            (n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read)
-          ).length,
+          nArr.filter((n) => {
+            if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
+            if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
+            if (readNotifIds.has(n.id)) return false;
+            if (n.uid === "all") {
+              return !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false);
+            }
+            return !n.read;
+          }).length,
         );
 
         if (!initialNotificationsLoadedLocal) {
@@ -3924,26 +3978,28 @@ E-Vedhika Team`;
             .docChanges()
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
-            const newNotif = addedChanges[0].doc.data() as any;
-            const isRecent = !newNotif.time || (Date.now() - newNotif.time < 60000);
-            if (isRecent) {
-              triggerNotification(
-                newNotif.title || "New Notification",
-                newNotif.message || newNotif.msg || "You have a new notification",
-                notifSoundConfig.general
-              );
-            }
+            addedChanges.forEach((change) => {
+              const newNotif = change.doc.data() as any;
+              const isOwnAction = newNotif.senderUid && user && newNotif.senderUid === user.uid;
+              const isAdminAlert = newNotif.type === "admin_alert" || newNotif.uid === "admin_only";
+              if (isAdminAlert && userRole !== "admin") return;
+              if (isOwnAction) return;
+
+              const isRecent = !newNotif.time || (Date.now() - newNotif.time < 300000);
+              if (isRecent) {
+                triggerNotification(
+                  newNotif.title || "కొత్త నోటిఫికేషన్ (New Notification)",
+                  newNotif.message || newNotif.msg || "మీకు ఒక కొత్త నోటిఫికేషన్ వచ్చింది.",
+                  notifSoundConfig.general
+                );
+                addToast(`🔔 ${newNotif.title || "కొత్త నోటిఫికేషన్"}: ${newNotif.message?.substring(0, 60) || ""}`);
+              }
+            });
           }
         }
       },
       (err) => {
-        if (err.message.toLowerCase().includes("permission")) {
-          console.warn(
-            "Notifications permission denied - check firestore.rules",
-          );
-          return;
-        }
-        handleFirestoreError(err, OperationType.LIST, "notifications");
+        console.warn("Notifications listener note:", err?.message || err);
       },
     );
 
@@ -4219,7 +4275,7 @@ E-Vedhika Team`;
     const pStatus = (p.status || "").toLowerCase();
     if (pStatus === "deleted") return false;
 
-    const isApproved = ["approved", "active"].includes(pStatus) || (pStatus === "published" && p.isAdminPost);
+    const isApproved = ["approved", "active"].includes(pStatus) || (pStatus === "published" && (p.isAdminPost || p.verified));
     const isAuthor = Boolean(user?.uid && (p.uid === user.uid || (p as any).userId === user.uid || (p as any).authorId === user.uid));
     const canSeePending = isAdmin || isEditor || isDevEmail;
     const isSupportPost = ["sent to support", "sent-to-support", "private_support", "support"].includes(pStatus);
@@ -5253,6 +5309,29 @@ E-Vedhika Team`;
                     </div>
                   </div>
 
+                  {/* Browser Push Permission Banner */}
+                  {"Notification" in window && Notification.permission === "default" && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-2.5 border-b border-blue-100 flex items-center justify-between gap-2">
+                      <div className="text-[11px] font-bold text-blue-900 leading-tight">
+                        🔔 లైవ్ నోటిఫికేషన్లను పొందండి
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await Notification.requestPermission();
+                            if (res === "granted") {
+                              addToast("నోటిఫికేషన్‌లు ప్రారంభించబడ్డాయి (Notifications Enabled)!");
+                              triggerNotification("🏛️ ఈ-వేదిక (E-Vedhika)", "నోటిఫికేషన్‌లు విజయవంతంగా ప్రారంభించబడ్డాయి!", true);
+                            }
+                          } catch (e) {}
+                        }}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-[10px] font-bold shrink-0 transition-all shadow-xs cursor-pointer"
+                      >
+                        Enable
+                      </button>
+                    </div>
+                  )}
+
                   {/* Category Filter Tabs */}
                   <div className="flex gap-1 p-2 bg-slate-100/80 overflow-x-auto scrollbar-none border-b border-slate-200/60">
                     {[
@@ -5263,10 +5342,14 @@ E-Vedhika Team`;
                       { id: "messages", label: "Messages" },
                     ].map((tab) => {
                       const count = notifications
-                        .filter((n) => n.senderUid !== user?.uid)
+                        .filter((n) => {
+                          if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
+                          if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
+                          return true;
+                        })
                         .filter((n) => {
                           const type = (n.type || "").toLowerCase();
-                          if (tab.id === "system") return type.includes("system") || type.includes("update") || type.includes("flash") || type.includes("admin");
+                          if (tab.id === "system") return type.includes("system") || type.includes("update") || type.includes("flash") || type.includes("admin") || type.includes("broadcast") || type.includes("post");
                           if (tab.id === "likes") return type.includes("like");
                           if (tab.id === "comments") return type.includes("comment");
                           if (tab.id === "messages") return type.includes("message");
@@ -5297,10 +5380,14 @@ E-Vedhika Team`;
                   <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
                     {(() => {
                       const filteredNotifs = notifications
-                        .filter((n) => n.senderUid !== user?.uid)
+                        .filter((n) => {
+                          if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
+                          if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
+                          return true;
+                        })
                         .filter((n) => {
                           const type = (n.type || "").toLowerCase();
-                          if (notifTab === "system") return type.includes("system") || type.includes("update") || type.includes("flash") || type.includes("admin");
+                          if (notifTab === "system") return type.includes("system") || type.includes("update") || type.includes("flash") || type.includes("admin") || type.includes("broadcast") || type.includes("post");
                           if (notifTab === "likes") return type.includes("like");
                           if (notifTab === "comments") return type.includes("comment");
                           if (notifTab === "messages") return type.includes("message");
@@ -5431,7 +5518,11 @@ E-Vedhika Team`;
                   </div>
 
                   {/* Footer Actions */}
-                  {notifications.filter((n) => n.senderUid !== user?.uid).length > 0 && (
+                  {notifications.filter((n) => {
+                    if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
+                    if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
+                    return true;
+                  }).length > 0 && (
                     <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50">
                       <button
                         onClick={async () => {
@@ -6510,12 +6601,15 @@ E-Vedhika Team`;
               <PostDetail
                 postId={postIdFromUrl}
                 onBack={() => {
+                  if (location.pathname.startsWith("/home/post/") || location.pathname.startsWith("/post/")) {
+                    navigate("/home");
+                  }
                   setSearchParams(prev => {
-    const next = new URLSearchParams(prev);
-    next.delete("postId");
-    return next;
-  });
-  window.scrollTo({ top: 0, behavior: "smooth" });
+                    const next = new URLSearchParams(prev);
+                    next.delete("postId");
+                    return next;
+                  });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 isAdmin={isAdmin}
                 addToast={addToast}
@@ -12525,12 +12619,14 @@ function AdminPanel({
 
             await addDoc(collection(db, "notifications"), {
               uid: "all",
-              title: " కొత్త పోస్ట్ (New Post Approved)",
+              title: "📢 కొత్త పోస్ట్ (New Post Approved)",
               message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
               type: "post",
               read: false,
+              readBy: [],
               time: Date.now(),
-              postId: id
+              postId: id,
+              senderUid: auth.currentUser?.uid || ""
             }).catch(()=>console.error("Failed to add post approval notif in bulk"));
           }
         }
@@ -12851,7 +12947,14 @@ function AdminPanel({
             
             
             {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles"].includes(activeSubTab) && (
-              <SuperAdminDashboard user={userProfile || user} stats={stats} setActiveSubTab={setActiveSubTab} addToast={addToast} activeTab={activeSubTab} />
+              <SuperAdminDashboard 
+                user={userProfile || user} 
+                stats={stats} 
+                setActiveSubTab={setActiveSubTab} 
+                addToast={addToast} 
+                activeTab={activeSubTab} 
+                onEditPost={onEditPost}
+              />
             )}
 
             {activeSubTab === "admin_software_hub" && (
@@ -13249,8 +13352,10 @@ function AdminPanel({
                                           message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
                                           type: "post",
                                           read: false,
+                                          readBy: [],
                                           time: Date.now(),
-                                          postId: item.id
+                                          postId: item.id,
+                                          senderUid: auth.currentUser?.uid || ""
                                         }).catch(() => {});
                                         if (item.uid) {
                                           await addDoc(collection(db, "notifications"), {
@@ -17441,6 +17546,162 @@ function FloatingReactionBursts({ bursts }: { bursts: { id: number; emoji: strin
   );
 }
 
+function UsersListPopover({
+  title,
+  uids,
+  allUsers,
+  onClose,
+  anonymousCount = 0,
+  reactions,
+  align = "right",
+}: {
+  title: string;
+  uids: string[];
+  allUsers: UserProfile[];
+  onClose: () => void;
+  anonymousCount?: number;
+  reactions?: Record<string, string[]>;
+  align?: "left" | "right" | "center";
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  const usersList = uids.map(
+    (uid) =>
+      allUsers.find((u) => u.id === uid) || {
+        id: uid,
+        username: "Unknown User",
+        name: "",
+        surname: "",
+        designation: "",
+        email: "",
+      },
+  );
+
+  const alignClasses =
+    align === "left"
+      ? "left-0"
+      : align === "center"
+      ? "left-1/2 -translate-x-1/2"
+      : "right-0 sm:left-auto";
+
+  return (
+    <motion.div
+      ref={popoverRef}
+      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 6, scale: 0.96 }}
+      transition={{ duration: 0.15 }}
+      onClick={(e) => e.stopPropagation()}
+      className={`absolute bottom-full mb-2 ${alignClasses} z-50 w-72 sm:w-80 max-h-[300px] flex flex-col bg-white rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.18)] border border-slate-200 overflow-hidden text-left`}
+    >
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/90 shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Eye size={13} className="text-blue-600 shrink-0" />
+          <h4 className="font-bold text-slate-800 text-xs tracking-wide truncate">
+            {title}
+          </h4>
+          <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full shrink-0">
+            {uids.length}{anonymousCount > 0 ? ` + ${anonymousCount}` : ""}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-full transition-all cursor-pointer shrink-0"
+        >
+          <X size={12} />
+        </button>
+      </div>
+
+      <div className="overflow-y-auto p-2 space-y-1.5 custom-scrollbar flex-1 max-h-[240px]">
+        {usersList.length === 0 && anonymousCount === 0 && (
+          <p className="text-slate-400 text-xs font-bold text-center py-5">
+            ఎవరూ లేరు (No users found)
+          </p>
+        )}
+        {anonymousCount > 0 && (
+          <div className="flex items-center justify-between p-2 bg-slate-50/80 hover:bg-slate-100 transition-colors rounded-xl border border-slate-200/60">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase text-xs">
+                <User size={13} />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 leading-tight">
+                  Anonymous Visitors
+                </h4>
+                <p className="text-[9px] font-medium text-slate-400">
+                  Session Views
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+              +{anonymousCount}
+            </span>
+          </div>
+        )}
+        {usersList.map((u, i) => {
+          const userReactionEmojis = reactions
+            ? Object.entries(reactions)
+                .filter(([_, list]) => Array.isArray(list) && list.includes(u.id))
+                .map(([em]) => em)
+            : [];
+          return (
+            <div
+              key={i}
+              className="flex items-center justify-between p-2 bg-slate-50/80 hover:bg-blue-50/50 transition-colors rounded-xl border border-slate-100"
+            >
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="w-7 h-7 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs border border-blue-200 shrink-0">
+                  {(u as any).photoURL ? (
+                    <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    u.name?.[0] || u.username?.[0] || u.email?.[0] || "U"
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-slate-800 leading-tight truncate">
+                    {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "User"}
+                  </h4>
+                  <p className="text-[9px] font-medium text-slate-400 truncate">
+                    {u.designation || "Member"}
+                  </p>
+                </div>
+              </div>
+              {userReactionEmojis.length > 0 && (
+                <div className="flex items-center gap-1 text-xs shrink-0 ml-1">
+                  {userReactionEmojis.map((em, idx) => (
+                    <span key={idx}>{em}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
 function UsersListModal({
   title,
   uids,
@@ -17468,43 +17729,43 @@ function UsersListModal({
       },
   );
 
-  return (
+  return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[4000] bg-slate-950/30 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-4 transition-all"
+      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[380px] sm:max-w-[400px] max-h-[70vh] flex flex-col bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-hidden relative border border-slate-200"
+        className="w-full max-w-[320px] sm:max-w-[340px] max-h-[380px] flex flex-col bg-white rounded-2xl shadow-[0_15px_50px_rgba(0,0,0,0.2)] overflow-hidden relative border border-slate-200 animate-in fade-in zoom-in-95 duration-150"
       >
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 sticky top-0 z-10">
-          <div className="flex items-center gap-2">
-            <h3 className="font-black text-slate-800 text-sm tracking-wide flex items-center gap-1.5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-10">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="font-bold text-slate-800 text-xs tracking-wide truncate">
               {title}
             </h3>
-            <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+            <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded-full shrink-0">
               {uids.length}{anonymousCount > 0 ? ` + ${anonymousCount}` : ""}
             </span>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-1.5 bg-white hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-full border border-slate-200 transition-all cursor-pointer shadow-2xs"
+            className="p-1 bg-white hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-full border border-slate-200 transition-all cursor-pointer shadow-2xs shrink-0"
           >
-            <X size={15} />
+            <X size={13} />
           </button>
         </div>
-        <div className="overflow-y-auto p-3.5 space-y-2 custom-scrollbar flex-1">
+        <div className="overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar flex-1">
           {usersList.length === 0 && anonymousCount === 0 && (
             <p className="text-slate-400 text-xs font-bold text-center py-6">
               ఎవరూ లేరు (No users found)
             </p>
           )}
           {anonymousCount > 0 && (
-            <div className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-200/60">
-               <div className="flex items-center gap-2.5">
-                 <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase text-xs">
-                   <User size={14} />
+            <div className="flex items-center justify-between p-2 bg-slate-50/80 hover:bg-slate-100 transition-colors rounded-xl border border-slate-200/60">
+               <div className="flex items-center gap-2">
+                 <div className="w-7 h-7 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase text-xs">
+                   <User size={13} />
                  </div>
                  <div>
                    <h4 className="text-xs font-bold text-slate-800 leading-tight">
@@ -17515,7 +17776,7 @@ function UsersListModal({
                    </p>
                  </div>
                </div>
-               <span className="text-[11px] font-black bg-slate-200 text-slate-600 px-2.5 py-0.5 rounded-lg">
+               <span className="text-[10px] font-black bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
                  +{anonymousCount}
                </span>
             </div>
@@ -17529,10 +17790,10 @@ function UsersListModal({
             return (
               <div
                 key={i}
-                className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-blue-50/50 transition-colors rounded-2xl border border-slate-100"
+                className="flex items-center justify-between p-2 bg-slate-50/80 hover:bg-blue-50/50 transition-colors rounded-xl border border-slate-100"
               >
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <div className="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs border border-blue-200">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <div className="w-7 h-7 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs border border-blue-200">
                     {(u as any).photoURL ? (
                       <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -17549,7 +17810,7 @@ function UsersListModal({
                   </div>
                 </div>
                 {userReactionEmojis.length > 0 && (
-                  <div className="flex items-center gap-1 text-sm shrink-0 ml-2">
+                  <div className="flex items-center gap-1 text-xs shrink-0 ml-1">
                     {userReactionEmojis.map((em, idx) => (
                       <span key={idx}>{em}</span>
                     ))}
@@ -17560,7 +17821,8 @@ function UsersListModal({
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -21654,9 +21916,20 @@ function PostCard({
   setActiveDmUser?: (user: any) => void;
   setPosts?: React.Dispatch<React.SetStateAction<Post[]>>;
 }) {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
+
+  const openPostDetail = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const targetSlug = getPostSlugOrId(post);
+    navigate(`/home/post/${targetSlug}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   
   const [commentPulse, setCommentPulse] = useState(false);
   const prevCommentCount = useRef(post?.commentCount || 0);
@@ -22227,12 +22500,7 @@ function PostCard({
       </div>
 
       <h4
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setSearchParams({ postId: post.id });
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
+        onClick={openPostDetail}
         className="post-title !mt-0 flex flex-wrap items-center gap-2 cursor-pointer hover:text-red-600 transition-colors group"
       >
         <span className="group-hover:underline">{formatPostTitle(post.title) || "Platform Update"}</span>
@@ -22344,12 +22612,7 @@ function PostCard({
 
             {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
               <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSearchParams({ postId: post.id });
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
+                onClick={openPostDetail}
                 className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
               >
                 <ChevronRight size={14} strokeWidth={2.5} /> మొత్తం చదవండి (Read More)
@@ -22866,7 +23129,7 @@ function PostCard({
       </AnimatePresence>
 
       {/* Main Like / Reaction Button */}
-      <div className="flex items-center">
+      <div className="flex items-center relative">
         <motion.button
           whileTap={{ scale: 0.85 }}
           aria-label="Like or React to Post"
@@ -22887,7 +23150,7 @@ function PostCard({
             onClick={(e) => {
               if (post.likes > 0) {
                 e.stopPropagation();
-                setShowLikesModal(true);
+                setShowLikesModal(!showLikesModal);
               }
             }}
             className={`text-sm font-black ${post.likes > 0 ? "hover:underline cursor-pointer" : ""}`}
@@ -22908,6 +23171,19 @@ function PostCard({
         >
           <Smile size={14} />
         </button>
+
+        <AnimatePresence>
+          {showLikesModal && (
+            <UsersListPopover
+              title="స్పందించిన వారు (Liked / Reacted By)"
+              uids={post.likedBy || []}
+              allUsers={allUsers}
+              onClose={() => setShowLikesModal(false)}
+              reactions={post.reactions}
+              align="left"
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Recent Likers Avatar Stack */}
@@ -22959,13 +23235,13 @@ function PostCard({
           </div>
 
           {/* Views - Visible to all, clickable only by admin */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
             <div
               onClick={(e) => {
                 const displayViews = getPostDisplayViews(post, isAdmin);
                 if (isAdmin && displayViews > 0) {
                   e.stopPropagation();
-                  setShowViewsModal(true);
+                  setShowViewsModal(!showViewsModal);
                 }
               }}
               className={`flex items-center gap-2 p-2 text-slate-400 rounded-xl transition-all ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "cursor-pointer hover:bg-slate-50" : ""}`}
@@ -22977,6 +23253,19 @@ function PostCard({
                 {getPostDisplayViews(post, isAdmin)}
               </span>
             </div>
+
+            <AnimatePresence>
+              {showViewsModal && (
+                <UsersListPopover
+                  title="వీక్షించిన వారు (Viewed By)"
+                  uids={post.viewedBy || []}
+                  allUsers={allUsers}
+                  onClose={() => setShowViewsModal(false)}
+                  anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
+                  align="right"
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -22985,7 +23274,7 @@ function PostCard({
             aria-label="Share Post"
             onClick={(e) => {
               e.stopPropagation();
-              const url = getShortenedPostUrl(post.id);
+              const url = getShortenedPostUrl(post);
               const shareText = generatePostShareText(post, url);
               handleShare(
                 post.title || "E-Vedhika Post",
@@ -23046,11 +23335,8 @@ function PostCard({
 
           <button
             aria-label="Read Post"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSearchParams({ postId: post.id });
-            }}
-            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all"
+            onClick={openPostDetail}
+            className="flex items-center gap-2 p-2 px-4 rounded-xl text-primary font-black text-xs uppercase bg-slate-50 hover:bg-primary hover:text-white transition-all cursor-pointer"
           >
             <Eye size={16} strokeWidth={2.5} />
             <span>Read post</span>
@@ -23060,7 +23346,7 @@ function PostCard({
             aria-label="Copy Post Link"
             onClick={(e) => {
               e.stopPropagation();
-              const url = getShortenedPostUrl(post.id);
+              const url = getShortenedPostUrl(post);
               navigator.clipboard.writeText(url);
               addToast("పోస్ట్ లింక్ కాపీ చేయబడింది! (URL Copied!)");
             }}
@@ -23112,25 +23398,6 @@ function PostCard({
           })}
         </div>
       )}
-
-      {showLikesModal && (
-        <UsersListModal
-          title="స్పందించిన వారు (Liked / Reacted By)"
-          uids={post.likedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowLikesModal(false)}
-          reactions={post.reactions}
-        />
-      )}
-      {showViewsModal && (
-        <UsersListModal
-          title="వీక్షించిన వారు (Viewed By)"
-          uids={post.viewedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowViewsModal(false)}
-          anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
-        />
-      )}
     </motion.div>
   );
 }
@@ -23167,7 +23434,7 @@ function PostForm({
   const [title, setTitle] = useState(editingPost?.title || "");
   const [customSlug, setCustomSlug] = useState(editingPost?.slug || "");
   const [isEditingSlug, setIsEditingSlug] = useState(false);
-  const derivedSlug = title.trim().replace(/\s+/g, '-').toLowerCase();
+  const derivedSlug = generatePostSlug(title);
   const displaySlug = customSlug || derivedSlug;
   const [content, setContent] = useState(editingPost?.content || "");
   const [version, setVersion] = useState(editingPost?.version || "");
@@ -23885,7 +24152,9 @@ function PostForm({
             message: `${postAuthor} వారు ఒక పోస్ట్‌ను అప్డేట్ చేశారు: ${title.substring(0, 50)}`,
             time: Date.now(),
             read: false,
-            postId: editingPost.id
+            readBy: [],
+            postId: editingPost.id,
+            senderUid: auth.currentUser?.uid || ""
           }).catch(()=>console.error("Failed to add post update notif"));
         }
       } else {
@@ -23951,6 +24220,7 @@ function PostForm({
               read: false,
               readBy: [],
               postId: docRef.id,
+              senderUid: auth.currentUser.uid,
             }).catch(() => {});
           } else {
             await addDoc(collection(db, "notifications"), {
@@ -23962,6 +24232,7 @@ function PostForm({
               read: false,
               readBy: [],
               postId: docRef.id,
+              senderUid: auth.currentUser.uid,
             }).catch(() => {});
           }
           addToast("పోస్ట్ ప్రచురించబడింది (Post Published)!");
@@ -23976,13 +24247,14 @@ function PostForm({
             status: "pending"
           }).catch(() => {});
           await addDoc(collection(db, "notifications"), {
-            uid: "all",
+            uid: "admin_only",
             title: "📢 కొత్త పోస్ట్ ఆమోదం కోసం వచ్చింది (Post Pending Approval)",
             message: `${postAuthor} వారు కొత్త పోస్ట్ సమర్పించారు: ${title.substring(0, 50)}. దయచేసి అడ్మిన్ ప్యానెల్‌లో పరిశీలించి ఆమోదించండి.`,
             type: "admin_alert",
             read: false,
             time: Date.now(),
-            postId: docRef.id
+            postId: docRef.id,
+            senderUid: auth.currentUser.uid
           }).catch(() => {});
 
           await Swal.fire({
@@ -24094,7 +24366,7 @@ function PostForm({
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-[#2271b1] underline truncate max-w-[300px] sm:max-w-md">
-                        https://evedhika.in/{displaySlug}
+                        https://www.e-vedhika.in/home/post/{displaySlug}
                       </span>
                       <button type="button" onClick={() => {
                         if (!customSlug) { setCustomSlug(derivedSlug); }
@@ -26458,6 +26730,8 @@ function PostDetail({
   siteConfig?: any;
   allPosts?: Post[];
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26572,6 +26846,23 @@ function PostDetail({
   );
 
   useEffect(() => {
+    if (post && post.id) {
+      const preferredSlug = getPostSlugOrId(post);
+      const cleanPath = `/home/post/${preferredSlug}`;
+      if (!location.pathname.endsWith(`/${preferredSlug}`) || searchParams.has("postId")) {
+        window.history.replaceState(null, "", cleanPath);
+        if (searchParams.has("postId")) {
+          setSearchParams(prev => {
+            const next = new URLSearchParams(prev);
+            next.delete("postId");
+            return next;
+          }, { replace: true });
+        }
+      }
+    }
+  }, [post?.id, post?.slug, post?.title, post?.postNumber, searchParams]);
+
+  useEffect(() => {
     let isInitial = true;
     let unsub: () => void = () => {};
 
@@ -26586,8 +26877,11 @@ function PostDetail({
           const matchedFromProp = allPosts.find((p) => {
             if (p.id === target) return true;
             if (p.slug && p.slug.toLowerCase() === normTarget) return true;
+            if (p.postNumber && String(p.postNumber) === target) return true;
             const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
             if (slugFromTitle && slugFromTitle === normTarget) return true;
+            const generated = generatePostSlug(p.title || "", p.id);
+            if (generated && generated.toLowerCase() === normTarget) return true;
             const cleanTitle = (p.title || "").trim().toLowerCase();
             if (cleanTitle === normTarget) return true;
             return false;
@@ -26609,7 +26903,20 @@ function PostDetail({
           return;
         }
 
-        // 3. Fallback: fetch recent posts from Firestore and search
+        // 3. If target is numeric permalink, query Firestore by postNumber
+        if (!isNaN(Number(target))) {
+          const numVal = Number(target);
+          const qNum = query(collection(db, "posts"), where("postNumber", "==", numVal), limit(1));
+          const snapNum = await getDocs(qNum);
+          if (!snapNum.empty) {
+            const found = snapNum.docs[0];
+            setPost({ id: found.id, ...found.data() } as Post);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // 4. Fallback: fetch recent posts from Firestore and search
         const qRecent = query(collection(db, "posts"), limit(100));
         const snapRecent = await getDocs(qRecent);
         const docs = snapRecent.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
@@ -26617,8 +26924,11 @@ function PostDetail({
         const matched = docs.find((p) => {
           if (p.id === target) return true;
           if (p.slug && p.slug.toLowerCase() === normTarget) return true;
+          if (p.postNumber && String(p.postNumber) === target) return true;
           const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
           if (slugFromTitle && slugFromTitle === normTarget) return true;
+          const generated = generatePostSlug(p.title || "", p.id);
+          if (generated && generated.toLowerCase() === normTarget) return true;
           const cleanTitle = (p.title || "").trim().toLowerCase();
           if (cleanTitle === normTarget) return true;
           return false;
@@ -26783,7 +27093,7 @@ function PostDetail({
     );
   }
 
-  const isApproved = pStatus === "approved" || pStatus === "active" || (pStatus === "published" && post.isAdminPost);
+  const isApproved = pStatus === "approved" || pStatus === "active" || (pStatus === "published" && (post.isAdminPost || post.verified));
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
   const canViewPending = isAdmin || isAuthor;
 
@@ -26811,7 +27121,7 @@ function PostDetail({
     );
   }
 
-  const postUrl = getShortenedPostUrl(post.id);
+  const postUrl = getShortenedPostUrl(post);
   const shareText = generatePostShareText(post, postUrl);
   const availablePosts = (allPosts && allPosts.length > 0 ? allPosts : fetchedRecent);
   const recentPostsList = availablePosts.filter((p) => p.id !== post.id).slice(0, 6);
@@ -26855,17 +27165,78 @@ function PostDetail({
         </button>
 
         {isOwner && (
-          <button
-            aria-label="Edit Post"
-            onClick={() => onEdit(post)}
-            className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors font-bold text-xs sm:text-sm group cursor-pointer"
-          >
-            <Edit3
-              size={14}
-              className="group-hover:scale-110 transition-transform"
-            />
-            పోస్ట్ సవరించు (Edit)
-          </button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <button
+                type="button"
+                aria-label={post.pinned ? "Unpin Post" : "Pin Post"}
+                onClick={async () => {
+                  try {
+                    const newPinned = !post.pinned;
+                    await updateDoc(doc(db, "posts", post.id), {
+                      pinned: newPinned,
+                    });
+                    setPost((prev) => prev ? { ...prev, pinned: newPinned } : null);
+                    addToast(newPinned ? "పోస్ట్ పిన్ చేయబడింది (Post Pinned)!" : "పోస్ట్ అన్‌పిన్ చేయబడింది (Post Unpinned)!");
+                  } catch (e: any) {
+                    addToast(getFriendlyError(e));
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border transition-colors font-bold text-xs sm:text-sm cursor-pointer ${
+                  post.pinned
+                    ? "bg-amber-100 border-amber-300 text-amber-800"
+                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                }`}
+                title={post.pinned ? "అన్‌పిన్ చేయండి" : "టాప్‌లో పిన్ చేయండి"}
+              >
+                <Pin size={14} fill={post.pinned ? "currentColor" : "none"} />
+                {post.pinned ? "పిన్ చేయబడింది" : "పిన్ చేయి"}
+              </button>
+            )}
+            <button
+              aria-label="Edit Post"
+              onClick={() => onEdit(post)}
+              className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg text-blue-600 hover:bg-blue-100 transition-colors font-bold text-xs sm:text-sm group cursor-pointer"
+            >
+              <Edit3
+                size={14}
+                className="group-hover:scale-110 transition-transform"
+              />
+              పోస్ట్ సవరించు (Edit)
+            </button>
+            <button
+              aria-label="Delete Post"
+              onClick={async () => {
+                const res = await Swal.fire({
+                  title: "పోస్ట్‌ను తొలగించాలా?",
+                  text: isAdmin
+                    ? "అడ్మిన్ ద్వారా ఈ పోస్ట్‌ను శాశ్వతంగా తొలగించాలనుకుంటున్నారా?"
+                    : "ఈ పోస్ట్‌ను తొలగించాలనుకుంటున్నారా?",
+                  icon: "warning",
+                  showCancelButton: true,
+                  confirmButtonColor: "#ef4444",
+                  confirmButtonText: "అవును, తొలగించు (Delete)",
+                  cancelButtonText: "రద్దు చేయి (Cancel)"
+                });
+                if (res.isConfirmed) {
+                  try {
+                    await deleteDoc(doc(db, "posts", post.id));
+                    addToast("పోస్ట్ విజయవంతంగా తొలగించబడింది (Post Deleted)!");
+                    onBack();
+                  } catch (e: any) {
+                    addToast(getFriendlyError(e));
+                  }
+                }
+              }}
+              className="flex items-center gap-1.5 bg-red-50 border border-red-100 px-3 py-1 rounded-lg text-red-600 hover:bg-red-100 transition-colors font-bold text-xs sm:text-sm group cursor-pointer"
+            >
+              <Trash2
+                size={14}
+                className="group-hover:scale-110 transition-transform"
+              />
+              తొలగించు (Delete)
+            </button>
+          </div>
         )}
       </div>
 
@@ -26914,8 +27285,10 @@ function PostDetail({
                         message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
                         type: "post",
                         read: false,
+                        readBy: [],
                         time: Date.now(),
-                        postId: post.id
+                        postId: post.id,
+                        senderUid: auth.currentUser?.uid || ""
                       }).catch(() => {});
                       if (post.uid) {
                         await addDoc(collection(db, "notifications"), {
@@ -27466,7 +27839,7 @@ function PostDetail({
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowLikesModal(true);
+                    setShowLikesModal(!showLikesModal);
                   }}
                   className="hidden sm:flex items-center -space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity pl-1"
                   title="స్పందించిన వారి జాబితా (View Likers)"
@@ -27491,19 +27864,48 @@ function PostDetail({
                   )}
                 </div>
               )}
+
+              <AnimatePresence>
+                {showLikesModal && (
+                  <UsersListPopover
+                    title="స్పందించిన వారు (Liked / Reacted By)"
+                    uids={post.likedBy || []}
+                    allUsers={allUsers}
+                    onClose={() => setShowLikesModal(false)}
+                    reactions={post.reactions}
+                    align="left"
+                  />
+                )}
+              </AnimatePresence>
             </div>
 
-            <button
-              onClick={() => {
-                const displayViews = getPostDisplayViews(post, isAdmin);
-                if (isAdmin && displayViews > 0) setShowViewsModal(true);
-              }}
-              className={`flex items-center gap-2 text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 transition-colors ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:bg-slate-200 cursor-pointer" : "cursor-default"}`}
-            >
-              <Eye size={18} />
-              <span className="font-black text-sm">{getPostDisplayViews(post, isAdmin)}</span>
-              <span className="text-xs uppercase font-bold hidden sm:inline">Views</span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const displayViews = getPostDisplayViews(post, isAdmin);
+                  if (isAdmin && displayViews > 0) setShowViewsModal(!showViewsModal);
+                }}
+                className={`flex items-center gap-2 text-slate-600 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 transition-colors ${isAdmin && getPostDisplayViews(post, isAdmin) > 0 ? "hover:bg-slate-200 cursor-pointer" : "cursor-default"}`}
+              >
+                <Eye size={18} />
+                <span className="font-black text-sm">{getPostDisplayViews(post, isAdmin)}</span>
+                <span className="text-xs uppercase font-bold hidden sm:inline">Views</span>
+              </button>
+
+              <AnimatePresence>
+                {showViewsModal && (
+                  <UsersListPopover
+                    title="వీక్షించిన వారు (Viewed By)"
+                    uids={post.viewedBy || []}
+                    allUsers={allUsers}
+                    onClose={() => setShowViewsModal(false)}
+                    anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
+                    align="right"
+                  />
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           <button
@@ -27555,7 +27957,7 @@ function PostDetail({
                 <div
                   key={rp.id}
                   onClick={() => {
-                    setSearchParams({ postId: rp.slug || rp.id });
+                    navigate(`/home/post/${getPostSlugOrId(rp)}`);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className="group bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md transition-all overflow-hidden cursor-pointer flex flex-col h-full hover:border-red-300"
@@ -27620,25 +28022,6 @@ function PostDetail({
           })}
         </div>
       )}
-
-      {showLikesModal && (
-        <UsersListModal
-          title="స్పందించిన వారు (Liked / Reacted By)"
-          uids={post.likedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowLikesModal(false)}
-          reactions={post.reactions}
-        />
-      )}
-      {showViewsModal && (
-        <UsersListModal
-          title="వీక్షించిన వారు (Viewed By)"
-          uids={post.viewedBy || []}
-          allUsers={allUsers}
-          onClose={() => setShowViewsModal(false)}
-          anonymousCount={Math.max(0, (getPostDisplayViews(post, isAdmin) || 0) - (post.viewedBy?.length || 0))}
-        />
-      )}
       </motion.div>
 
       {/* Right Column - Sidebar */}
@@ -27657,7 +28040,7 @@ function PostDetail({
                   <div
                     key={rp.id}
                     onClick={() => {
-                      setSearchParams({ postId: rp.slug || rp.id });
+                      navigate(`/home/post/${getPostSlugOrId(rp)}`);
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                     className="flex gap-3 cursor-pointer group"
@@ -27703,7 +28086,7 @@ function PostDetail({
                   <div
                     key={rp.id}
                     onClick={() => {
-                      setSearchParams({ postId: rp.slug || rp.id });
+                      navigate(`/home/post/${getPostSlugOrId(rp)}`);
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
                     className="flex gap-3 cursor-pointer group"
