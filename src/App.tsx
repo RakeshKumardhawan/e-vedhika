@@ -17469,45 +17469,53 @@ function UsersListModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-slate-100">
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-white sticky top-0 z-10">
-          <h3 className="font-black text-primary text-lg uppercase tracking-widest flex items-center gap-2">
-            {title}{" "}
-            <span className="text-slate-400 text-xs bg-slate-100 px-2 py-1 rounded-lg">
-              {uids.length}{anonymousCount > 0 ? ` + ${anonymousCount} Anon` : ""}
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[4000] bg-slate-950/30 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-4 transition-all"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[380px] sm:max-w-[400px] max-h-[70vh] flex flex-col bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] overflow-hidden relative border border-slate-200"
+      >
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 sticky top-0 z-10">
+          <div className="flex items-center gap-2">
+            <h3 className="font-black text-slate-800 text-sm tracking-wide flex items-center gap-1.5">
+              {title}
+            </h3>
+            <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+              {uids.length}{anonymousCount > 0 ? ` + ${anonymousCount}` : ""}
             </span>
-          </h3>
+          </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-all cursor-pointer"
+            className="p-1.5 bg-white hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-full border border-slate-200 transition-all cursor-pointer shadow-2xs"
           >
-            <X size={18} />
+            <X size={15} />
           </button>
         </div>
-        <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1">
+        <div className="overflow-y-auto p-3.5 space-y-2 custom-scrollbar flex-1">
           {usersList.length === 0 && anonymousCount === 0 && (
-            <p className="text-slate-400 text-xs font-bold text-center py-8 uppercase">
-              No users found
+            <p className="text-slate-400 text-xs font-bold text-center py-6">
+              ఎవరూ లేరు (No users found)
             </p>
           )}
           {anonymousCount > 0 && (
-            <div className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-dashed border-slate-200">
-               <div className="flex items-center gap-3">
-                 <div className="w-10 h-10 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase overflow-hidden text-sm">
-                   <User size={16} />
+            <div className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-200/60">
+               <div className="flex items-center gap-2.5">
+                 <div className="w-8 h-8 shrink-0 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center uppercase text-xs">
+                   <User size={14} />
                  </div>
                  <div>
-                   <h4 className="text-sm font-black text-slate-800 leading-tight">
+                   <h4 className="text-xs font-bold text-slate-800 leading-tight">
                      Anonymous Visitors
                    </h4>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                   <p className="text-[9px] font-medium text-slate-400">
                      Session Views
                    </p>
                  </div>
                </div>
-               <span className="text-xs font-black bg-slate-200 text-slate-600 px-3 py-1 rounded-xl">
+               <span className="text-[11px] font-black bg-slate-200 text-slate-600 px-2.5 py-0.5 rounded-lg">
                  +{anonymousCount}
                </span>
             </div>
@@ -17521,10 +17529,10 @@ function UsersListModal({
             return (
               <div
                 key={i}
-                className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-2xl border border-slate-100/50"
+                className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-blue-50/50 transition-colors rounded-2xl border border-slate-100"
               >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-10 h-10 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-sm border border-blue-200">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center uppercase overflow-hidden text-xs border border-blue-200">
                     {(u as any).photoURL ? (
                       <img src={(u as any).photoURL} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -17532,18 +17540,18 @@ function UsersListModal({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-black text-slate-800 leading-tight truncate">
-                      {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "Unknown User"}
+                    <h4 className="text-xs font-bold text-slate-800 leading-tight truncate">
+                      {(`${u.name || ""} ${u.surname || ""}`.trim()) || u.username || (u.email ? u.email.split("@")[0] : null) || "User"}
                     </h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5">
-                      {u.designation || "User"}
+                    <p className="text-[9px] font-medium text-slate-400 truncate">
+                      {u.designation || "Member"}
                     </p>
                   </div>
                 </div>
                 {userReactionEmojis.length > 0 && (
-                  <div className="flex items-center gap-1 text-base shrink-0 ml-2">
+                  <div className="flex items-center gap-1 text-sm shrink-0 ml-2">
                     {userReactionEmojis.map((em, idx) => (
-                      <span key={idx} className="filter drop-shadow-2xs">{em}</span>
+                      <span key={idx}>{em}</span>
                     ))}
                   </div>
                 )}
