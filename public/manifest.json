@@ -1,0 +1,36 @@
+{
+  "name": "E-Vedhika",
+  "short_name": "E-Vedhika",
+  "description": "E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d3b66",
+  "theme_color": "#0d3b66",
+  "icons": [
+    {
+      "src": "/ev-logo-v2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ev-logo-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/ev-logo-v2.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/ev-logo-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

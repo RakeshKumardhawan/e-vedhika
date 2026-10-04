@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <base href="/" />
+    <script>window.addEventListener("unhandledrejection", function(e) { var m = (e.reason && (e.reason.message || e.reason.toString())) || ""; if (m.includes("WebSocket") || m.includes("closed without opened")) { e.preventDefault(); } });</script>
+    <!-- Single Page Apps for GitHub Pages Redirect Handler -->
+    <script type="text/javascript">
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&');
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        } else {
+          try {
+            var saved = sessionStorage.getItem('spa_redirect_target');
+            if (saved) {
+              sessionStorage.removeItem('spa_redirect_target');
+              if (saved !== l.pathname + l.search + l.hash) {
+                window.history.replaceState(null, null, saved);
+              }
+            }
+          } catch (e) {}
+        }
+      }(window.location));
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d3b66" />
+    <meta name="description" content="ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు &amp; పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు &amp; ఫార్మాట్లు." />
+    <meta name="keywords" content="E-Vedhika, Governance, Digital Solutions, Portal, Problem Solving, Telangana Panchayath, DSR Analyzer, Farmer Registry" />
+    <meta name="author" content="E-Vedhika Team" />
+    <meta name="robots" content="index, follow" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="E-Vedhika" />
+    <meta name="msapplication-TileColor" content="#0d3b66" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:site_name" content="E-Vedhika" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.e-vedhika.in/" />
+    <meta property="og:title" content="🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్" />
+    <meta property="og:description" content="ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు &amp; ఆపరేటర్ల సమగ్ర వేదిక. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు &amp; ఫార్మాట్లు." />
+    <meta property="og:image" content="https://www.e-vedhika.in/banner.jpg" />
+    <meta property="og:image:secure_url" content="https://www.e-vedhika.in/banner.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="E-Vedhika Banner" />
+    <meta itemprop="name" content="🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్" />
+    <meta itemprop="description" content="ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు &amp; ఆపరేటర్ల సమగ్ర వేదిక. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు &amp; ఫార్మాట్లు." />
+    <meta itemprop="image" content="https://www.e-vedhika.in/banner.jpg" />
+    <meta property="og:locale" content="te_IN" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్" />
+    <meta name="twitter:description" content="ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు &amp; ఆపరేటర్ల సమగ్ర వేదిక. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు &amp; ఫార్మాట్లు." />
+    <meta name="twitter:image" content="https://www.e-vedhika.in/banner.jpg" />
+    <meta name="twitter:site" content="@EVedhika" />
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="E-Vedhika" />
+    <link rel="apple-touch-icon" href="/ev-logo-v2.png" />
+
+        <meta name="google-adsense-account" content="ca-pub-4602643637986053">
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/ev-logo-v2.png" />
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Righteous&display=swap" rel="stylesheet">
+    <title>🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్</title>
+</head>
+  <body>
+    <div id="root"></div>
+    <!-- SEO / AdSense Content Block (Visible to Crawlers) -->
+    <div style="display:none;" id="seo-content">
+      <h1>E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries</h1>
+      <p>E-Vedhika is an innovative digital platform designed to assist Panchayat Secretaries in Telangana. Our portal simplifies the management of village-level data, bringing various departmental formats, UBD trackers, and farmer registries into a single unified workspace.</p>
+      <p>By automating calculations and generating instant reports, E-Vedhika bridges the gap between complex governmental requirements and efficient local administration. Discover how we can help streamline your daily workflow.</p>
+      <ul>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Terms & Conditions</a></li>
+        <li><a href="/about">About Us</a></li>
+        <li><a href="/contact">Contact Us</a></li>
+      </ul>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

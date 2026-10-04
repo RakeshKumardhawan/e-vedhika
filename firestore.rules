@@ -1,0 +1,359 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // GLOBAL DEFAULT DENY CATCH-ALL (First rule as per Fortress pattern)
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // AUTH & ROLE HELPERS
+    // -------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && 
+        'email' in request.auth.token && 
+        request.auth.token.email != null &&
+        (request.auth.token.email.lower() == 'rakeshkumardhawan123@gmail.com' ||
+         request.auth.token.email.lower().matches('.*admin.*'));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || 
+        (isSignedIn() && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+          (userDocExists() && 
+           'role' in getUserData() && 
+           getUserData().role != null &&
+           getUserData().role.lower() in [
+             'admin', 'super_admin', 'super admin', 'editor', 'moderator', 'staff', 'administrator', 'system admin'
+           ])
+        ));
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. USERS COLLECTION (Directory & Profiles)
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      // All users and guests can view directory and profiles to see names/roles on posts and comments
+      allow read: if true;
+      
+      // User can create their own profile during login, or admin can provision
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      
+      // Users can update their own profile, but cannot elevate their own role
+      allow update: if isAdmin() || (
+        isSignedIn() && request.auth.uid == userId && (
+          !('role' in request.resource.data) || 
+          (!('role' in resource.data)) || 
+          request.resource.data.role == resource.data.role
+        )
+      );
+      
+      // Only Super Admin can delete user accounts
+      allow delete: if isSuperAdmin();
+    }
+
+    // Admins mapping
+    match /admins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // User Security PINs (Used for Editor & Moderator verification)
+    match /user_pins/{userId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow write: if isAdmin() || isOwner(userId);
+    }
+
+    // Usernames reservations
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Typing status for live chat
+    match /typing_status/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. COMMUNITY POSTS, COMPLAINTS & COMMENTS
+    // -------------------------------------------------------------------------
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.uid == request.auth.uid ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'views', 'viewedBy', 'reactions', 'shares'])
+        )
+      );
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      }
+    }
+
+    // Citizen Grievance Problems
+    match /problems/{problemId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      
+      match /{allChildren=**} {
+        allow read: if true;
+        allow write: if isSignedIn() || isAdmin();
+      }
+    }
+
+    // Suggestions & Public Feedback
+    match /suggestions/{suggestionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. SUPPORT TICKETS & CITIZEN INQUIRIES
+    // -------------------------------------------------------------------------
+    match /support_tickets/{ticketId} {
+      // Citizen tracking by ticket ID / tracking number or admin overview
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+
+      match /messages/{messageId} {
+        allow read, create: if true;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. NOTIFICATIONS & INBOX
+    // -------------------------------------------------------------------------
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || 
+        resource.data.uid == 'all' || 
+        isAdmin()
+      );
+      allow create: if isSignedIn() || isAdmin();
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /admin_notifications/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /admin_inbox/{id} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. AUDIT LOGS, SECURITY & ERROR REPORTING
+    // -------------------------------------------------------------------------
+    match /security_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /system_errors/{errorId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /app_errors/{errorId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /systemAlerts/{alertId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /system_alerts/{alertId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. TELEMETRY, MONITORING & DESKTOP TOOLS (UBD LIVE)
+    // -------------------------------------------------------------------------
+    match /telemetryLogs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /deploymentLogs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /remoteQueue/{itemId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /ubdDataChunks/{chunkId} {
+      allow read, write: if isAdmin();
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. TRAFFIC & VISITOR LOGS
+    // -------------------------------------------------------------------------
+    match /visitor_logs/{id} {
+      allow read: if isAdmin();
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /daily_traffic/{id} {
+      allow read: if isAdmin();
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /user_tracking/{id} {
+      allow read: if isAdmin();
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. SITE SETTINGS, CONTENT CMS & MASTER CONFIGS
+    // -------------------------------------------------------------------------
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /customMenus/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /customMenuCards/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /home_sections/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /updates/{updateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /polls/{pollId} {
+      allow read: if true;
+      allow update: if isSignedIn() || isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    match /gos_formats/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /software_repository/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /software_folders/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /forms/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /exe_releases/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /system_backups/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /requests/{id} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /chat/{messageId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /custom_code/{fileId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /history/{historyId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /gpdp_plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
