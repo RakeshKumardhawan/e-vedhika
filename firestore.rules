@@ -162,7 +162,13 @@ service cloud.firestore {
         isAdmin()
       );
       allow create: if isSignedIn() || isAdmin();
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin() || (
+        isSignedIn() && (
+          resource.data.uid == request.auth.uid ||
+          (resource.data.uid == 'all' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']))
+        )
+      );
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
     }
 
     match /admin_notifications/{id} {

@@ -2806,6 +2806,22 @@ export default function App() {
   }, [suggestions]);
   const [problemsGlobal, setProblemsGlobal] = useState<ProblemReport[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("evedhika_read_notifs");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [dismissedNotifIds, setDismissedNotifIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("evedhika_dismissed_notifs");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [aboutContent, setAboutContent] = useState<{
     title: string;
     content: string;
@@ -2887,6 +2903,7 @@ export default function App() {
   const [showContactAdmin, setShowContactAdmin] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
   const [isSuggestionsHovered, setIsSuggestionsHovered] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
@@ -3068,6 +3085,12 @@ export default function App() {
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setShowProfileDropdown(false);
+      }
+      if (
+        notifDropdownRef.current &&
+        !notifDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowNotifications(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -3870,13 +3893,17 @@ E-Vedhika Team`;
       ),
       (snap) => {
         const nArr: Notification[] = [];
-        snap.forEach((d) =>
-          nArr.push({ id: d.id, ...(d.data() as any) } as Notification),
-        );
+        snap.forEach((d) => {
+          if (!dismissedNotifIds.has(d.id)) {
+            nArr.push({ id: d.id, ...(d.data() as any) } as Notification);
+          }
+        });
         setNotifications(nArr.sort((a, b) => b.time - a.time));
         setUnreadCount(
           nArr.filter((n) =>
-            n.senderUid !== user?.uid && (n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read)
+            n.senderUid !== user?.uid && 
+            !readNotifIds.has(n.id) &&
+            (n.uid === "all" ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false) : !n.read)
           ).length,
         );
 
@@ -5146,7 +5173,7 @@ E-Vedhika Team`;
               )}
             </div>
 
-          <div className="relative">
+          <div className="relative" ref={notifDropdownRef}>
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0 sm:mr-3 rounded-full hover:bg-white/10"
               onClick={() => setShowNotifications(!showNotifications)}
@@ -5173,16 +5200,46 @@ E-Vedhika Team`;
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-12 max-w-[360px] mx-auto sm:mx-0 sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[2000] overflow-hidden"
                 >
-                  <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
-                      <Bell size={14} /> Notification Center
-                    </h3>
-                    <button
-                      onClick={() => setShowNotifications(false)}
-                      className="text-slate-400 hover:text-danger cursor-pointer"
-                    >
-                      <X size={14} />
-                    </button>
+                  <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
+                        <Bell size={14} /> Notification Center
+                      </h3>
+                      {notifications.length > 0 && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                          {notifications.length}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={() => {
+                            const allIds = notifications.map(n => n.id);
+                            setDismissedNotifIds(prev => {
+                              const next = new Set([...prev, ...allIds]);
+                              try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
+                              return next;
+                            });
+                            setNotifications([]);
+                            setUnreadCount(0);
+                            addToast("అన్ని నోటిఫికేషన్‌లు తొలగించబడ్డాయి (Cleared all)");
+                          }}
+                          className="text-[10px] font-bold text-slate-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 flex items-center gap-1 transition-colors cursor-pointer"
+                          title="అన్నీ క్లియర్ చేయండి"
+                        >
+                          <Trash2 size={12} />
+                          <span className="hidden min-[360px]:inline">Clear</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setShowNotifications(false)}
+                        className="text-slate-400 hover:text-danger cursor-pointer p-1 rounded-full hover:bg-slate-100 transition-colors"
+                        title="Close"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Category Filter Tabs */}
@@ -5193,19 +5250,37 @@ E-Vedhika Team`;
                       { id: "likes", label: "Likes" },
                       { id: "comments", label: "Comments" },
                       { id: "messages", label: "Messages" },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setNotifTab(tab.id as any)}
-                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
-                          notifTab === tab.id
-                            ? "bg-primary text-white shadow-sm"
-                            : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
+                    ].map((tab) => {
+                      const count = notifications
+                        .filter((n) => n.senderUid !== user?.uid)
+                        .filter((n) => {
+                          const type = (n.type || "").toLowerCase();
+                          if (tab.id === "system") return type.includes("system") || type.includes("update") || type.includes("flash") || type.includes("admin");
+                          if (tab.id === "likes") return type.includes("like");
+                          if (tab.id === "comments") return type.includes("comment");
+                          if (tab.id === "messages") return type.includes("message");
+                          return true;
+                        }).length;
+
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setNotifTab(tab.id as any)}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
+                            notifTab === tab.id
+                              ? "bg-primary text-white shadow-sm"
+                              : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                          {count > 0 && (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${notifTab === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"}`}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
@@ -5214,7 +5289,7 @@ E-Vedhika Team`;
                         .filter((n) => n.senderUid !== user?.uid)
                         .filter((n) => {
                           const type = (n.type || "").toLowerCase();
-                          if (notifTab === "system") return type.includes("system") || type.includes("update") || type.includes("flash");
+                          if (notifTab === "system") return type.includes("system") || type.includes("update") || type.includes("flash") || type.includes("admin");
                           if (notifTab === "likes") return type.includes("like");
                           if (notifTab === "comments") return type.includes("comment");
                           if (notifTab === "messages") return type.includes("message");
@@ -5223,28 +5298,36 @@ E-Vedhika Team`;
 
                       if (filteredNotifs.length > 0) {
                         return (
-                          <div className="divide-y divide-slate-50">
+                          <div className="divide-y divide-slate-100">
                             {filteredNotifs.map((n) => {
                               const isUnread =
-                                n.uid === "all"
+                                !readNotifIds.has(n.id) &&
+                                (n.uid === "all"
                                   ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
-                                  : !n.read;
+                                  : !n.read);
                               return (
                                 <div
                                   key={n.id}
                                   onClick={async () => {
                                     if (isUnread) {
+                                      setReadNotifIds(prev => {
+                                        const next = new Set(prev);
+                                        next.add(n.id);
+                                        try { localStorage.setItem("evedhika_read_notifs", JSON.stringify(Array.from(next))); } catch {}
+                                        return next;
+                                      });
+                                      setUnreadCount(prev => Math.max(0, prev - 1));
                                       try {
                                         if (n.uid === "all") {
-                                          await updateDoc(
+                                          updateDoc(
                                             doc(db, "notifications", n.id),
                                             { readBy: arrayUnion(user?.uid) },
-                                          );
+                                          ).catch(() => {});
                                         } else {
-                                          await updateDoc(
+                                          updateDoc(
                                             doc(db, "notifications", n.id),
                                             { read: true },
-                                          );
+                                          ).catch(() => {});
                                         }
                                       } catch (e) {}
                                     }
@@ -5255,22 +5338,59 @@ E-Vedhika Team`;
                                     }
                                     setShowNotifications(false);
                                   }}
-                                  className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${isUnread ? "bg-blue-50/40" : ""}`}
+                                  className={`p-3.5 cursor-pointer hover:bg-slate-50/80 transition-all relative group ${isUnread ? "bg-blue-50/50 border-l-4 border-primary" : "border-l-4 border-transparent"}`}
                                 >
-                                  <div className="flex justify-between items-start mb-1">
+                                  <div className="flex justify-between items-start mb-1 gap-2">
                                     <span
-                                      className={`text-[9px] font-black uppercase tracking-wider ${n.type === "flash_update" ? "text-amber-500" : "text-primary"}`}
+                                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                        n.type === "flash_update"
+                                          ? "bg-amber-100 text-amber-700"
+                                          : n.type?.includes("admin")
+                                          ? "bg-red-100 text-red-700"
+                                          : n.type?.includes("like")
+                                          ? "bg-pink-100 text-pink-700"
+                                          : n.type?.includes("comment")
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-blue-100 text-primary"
+                                      }`}
                                     >
                                       {n.type?.replace("_", " ")}
                                     </span>
-                                    <span className="text-[8px] font-bold text-slate-400">
-                                      {new Date(n.time).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {isUnread && (
+                                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                                      )}
+                                      <span className="text-[8px] font-bold text-slate-400">
+                                        {new Date(n.time).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </span>
+                                      {/* Individual Dismiss/Delete Button */}
+                                      <button
+                                        type="button"
+                                        title="తొలగించు (Delete)"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDismissedNotifIds(prev => {
+                                            const next = new Set(prev);
+                                            next.add(n.id);
+                                            try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
+                                            return next;
+                                          });
+                                          setNotifications(prev => prev.filter(item => item.id !== n.id));
+                                          if (isUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+                                          if (n.uid === user?.uid) {
+                                            deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+                                          }
+                                        }}
+                                        className="opacity-60 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all ml-1"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
                                   </div>
-                                  <h4 className="text-xs font-black text-slate-800 leading-tight mb-1">
+                                  <h4 className="text-xs font-black text-slate-800 leading-tight mb-1 pr-4">
                                     {n.title}
                                   </h4>
                                   <p className="text-[10px] font-medium text-slate-500 line-clamp-2">
@@ -5283,12 +5403,14 @@ E-Vedhika Team`;
                         );
                       } else {
                         return (
-                          <div className="p-10 text-center">
-                            <Zap
-                              size={24}
-                              className="mx-auto text-slate-200 mb-2"
-                            />
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          <div className="p-10 text-center space-y-2">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                              <Bell size={20} className="opacity-40" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-600">
+                              నోటిఫికేషన్‌లు ఏమీ లేవు
+                            </p>
+                            <p className="text-[10px] text-slate-400">
                               No notifications in this category
                             </p>
                           </div>
@@ -5296,43 +5418,80 @@ E-Vedhika Team`;
                       }
                     })()}
                   </div>
+
+                  {/* Footer Actions */}
                   {notifications.filter((n) => n.senderUid !== user?.uid).length > 0 && (
-                    <button
-                      onClick={async () => {
-                        const unread = notifications.filter(n => n.senderUid !== user?.uid).filter((n) =>
-                          n.uid === "all"
-                            ? !n.readBy?.includes(user?.uid || "")
-                            : !n.read,
-                        );
-                        try {
-                          await Promise.all(
-                            unread.map((n) => {
-                              if (n.uid === "all") {
-                                return updateDoc(
-                                  doc(db, "notifications", n.id),
-                                  {
-                                    readBy: arrayUnion(user?.uid),
-                                  },
-                                );
-                              } else {
-                                return updateDoc(
-                                  doc(db, "notifications", n.id),
-                                  {
-                                    read: true,
-                                  },
-                                );
-                              }
-                            }),
+                    <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50">
+                      <button
+                        onClick={async () => {
+                          const allIds = notifications.map(n => n.id);
+                          setReadNotifIds(prev => {
+                            const next = new Set([...prev, ...allIds]);
+                            try { localStorage.setItem("evedhika_read_notifs", JSON.stringify(Array.from(next))); } catch {}
+                            return next;
+                          });
+                          setUnreadCount(0);
+                          setNotifications(prev => prev.map(n => ({
+                            ...n,
+                            read: true,
+                            readBy: Array.isArray((n as any).readBy)
+                              ? [...new Set([...(n as any).readBy, user?.uid || ""])]
+                              : [user?.uid || ""]
+                          })));
+                          addToast("అన్నీ చదివినట్లుగా గుర్తించబడింది (Marked all read)");
+
+                          const unread = notifications.filter(n => n.senderUid !== user?.uid).filter((n) =>
+                            n.uid === "all"
+                              ? !n.readBy?.includes(user?.uid || "")
+                              : !n.read,
                           );
-                          addToast("Marked all as read");
-                        } catch (e) {
-                          console.error("Failed marking all notifications as read:", e);
-                        }
-                      }}
-                      className="w-full p-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-primary bg-slate-50 border-t border-slate-100 transition-colors cursor-pointer"
-                    >
-                      Mark all as read
-                    </button>
+                          try {
+                            await Promise.all(
+                              unread.map((n) => {
+                                if (n.uid === "all") {
+                                  return updateDoc(
+                                    doc(db, "notifications", n.id),
+                                    {
+                                      readBy: arrayUnion(user?.uid),
+                                    },
+                                  ).catch(() => {});
+                                } else {
+                                  return updateDoc(
+                                    doc(db, "notifications", n.id),
+                                    {
+                                      read: true,
+                                    },
+                                  ).catch(() => {});
+                                }
+                              }),
+                            );
+                          } catch (e) {
+                            console.error("Failed marking all notifications as read:", e);
+                          }
+                        }}
+                        className="flex-1 p-2.5 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <CheckCheck size={13} className="text-emerald-500" />
+                        Mark all as read
+                      </button>
+                      <button
+                        onClick={() => {
+                          const allIds = notifications.map(n => n.id);
+                          setDismissedNotifIds(prev => {
+                            const next = new Set([...prev, ...allIds]);
+                            try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
+                            return next;
+                          });
+                          setNotifications([]);
+                          setUnreadCount(0);
+                          addToast("అన్ని నోటిఫికేషన్‌లు తొలగించబడ్డాయి (Cleared all)");
+                        }}
+                        className="px-4 p-2.5 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Trash2 size={12} />
+                        Clear All
+                      </button>
+                    </div>
                   )}
                 </motion.div>
               )}
