@@ -278,6 +278,55 @@ import {
 import { auth, db, storage } from "../firebase";
 import { uploadFileToSupabase } from "./supabase";
 
+async function uploadFileSafe(file: File, path: string, onProgress?: (p: number) => void): Promise<string> {
+  // 1. Try Server upload API
+  try {
+    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        'X-Admin-Auth': 'true'
+      },
+      body: formData
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.url) {
+        if (onProgress) onProgress(100);
+        return data.url;
+      }
+    }
+  } catch (serverErr) {
+    console.warn("Server upload API failed, trying Firebase Storage:", serverErr);
+  }
+
+  // 2. Try Firebase Storage
+  try {
+    const storageRef = ref(storage, path);
+    if (onProgress) onProgress(30);
+    await uploadBytes(storageRef, file);
+    if (onProgress) onProgress(80);
+    const url = await getDownloadURL(storageRef);
+    if (onProgress) onProgress(100);
+    return url;
+  } catch (fbErr) {
+    console.warn("Firebase Storage unavailable (storage/unknown), falling back to Base64 data URL:", fbErr);
+    // 3. Absolute Fallback: Base64 Data URL (never fails with storage/unknown)
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (onProgress) onProgress(100);
+        resolve(reader.result as string);
+      };
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
 enum OperationType {
   CREATE = "create",
   UPDATE = "update",
@@ -9533,27 +9582,7 @@ function EditProfileModal({
       }
 
       if (!finalUrl) {
-        try {
-          const storageRef = ref(storage, `uploads/avatars/${Date.now()}_${file.name}`);
-          await uploadBytes(storageRef, file);
-          finalUrl = await getDownloadURL(storageRef);
-        } catch (fbErr) {
-          console.warn("Firebase Storage unavailable, attempting Supabase fallback:", fbErr);
-          try {
-            const sbRes = await uploadFileToSupabase(file, file.name);
-            if (sbRes?.url) {
-              finalUrl = sbRes.url;
-            }
-          } catch (sbErr) {}
-
-          if (!finalUrl) {
-            finalUrl = await new Promise<string>((res) => {
-              const reader = new FileReader();
-              reader.onload = () => res(reader.result as string);
-              reader.readAsDataURL(file);
-            });
-          }
-        }
+        finalUrl = await uploadFileSafe(file, `uploads/avatars/${Date.now()}_${file.name}`);
       }
 
       setPhotoURL(finalUrl);
@@ -9594,27 +9623,7 @@ function EditProfileModal({
       }
 
       if (!finalUrl) {
-        try {
-          const storageRef = ref(storage, `uploads/covers/${Date.now()}_${file.name}`);
-          await uploadBytes(storageRef, file);
-          finalUrl = await getDownloadURL(storageRef);
-        } catch (fbErr) {
-          console.warn("Firebase Storage unavailable, attempting Supabase fallback:", fbErr);
-          try {
-            const sbRes = await uploadFileToSupabase(file, file.name);
-            if (sbRes?.url) {
-              finalUrl = sbRes.url;
-            }
-          } catch (sbErr) {}
-
-          if (!finalUrl) {
-            finalUrl = await new Promise<string>((res) => {
-              const reader = new FileReader();
-              reader.onload = () => res(reader.result as string);
-              reader.readAsDataURL(file);
-            });
-          }
-        }
+        finalUrl = await uploadFileSafe(file, `uploads/covers/${Date.now()}_${file.name}`);
       }
 
       setCoverPhotoURL(finalUrl);

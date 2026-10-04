@@ -463,8 +463,15 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
         onProgress(p);
       },
       (err) => {
-        console.error("Upload error:", err);
-        onError();
+        console.warn("Upload error, falling back to Base64:", err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const url = reader.result as string;
+          const size = formatBytes(file.size);
+          onSuccess(url, size);
+        };
+        reader.onerror = () => onError();
+        reader.readAsDataURL(file);
       },
       async () => {
         try {

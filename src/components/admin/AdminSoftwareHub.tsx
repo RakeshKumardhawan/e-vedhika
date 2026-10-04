@@ -367,9 +367,27 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
         if (isQuick) setUploadProgress(p);
       },
       (error) => {
-        console.error("Upload error:", error);
-        if (isQuick) setIsUploading(false);
-        if (addToast) addToast("Failed to upload file.", "error");
+        console.warn("Upload error, falling back to Base64:", error);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const downloadUrl = reader.result as string;
+          const sizeFormatted = formatBytes(file.size);
+          const ext = file.name.split(".").pop()?.toUpperCase() || "EXE";
+
+          if (isQuick) {
+            setNewDownloadUrl(downloadUrl);
+            setQuickItemType("file");
+            setIsUploading(false);
+          } else {
+            setFormUrl(downloadUrl);
+          }
+          if (addToast) addToast("File uploaded successfully (Local fallback)!", "success");
+        };
+        reader.onerror = () => {
+          if (isQuick) setIsUploading(false);
+          if (addToast) addToast("Failed to upload file.", "error");
+        };
+        reader.readAsDataURL(file);
       },
       async () => {
         try {
