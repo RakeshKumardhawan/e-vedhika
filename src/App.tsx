@@ -2913,7 +2913,17 @@ export default function App() {
 
   const [showPWABanner, setShowPWABanner] = useState(false);
   const [showPWAGuide, setShowPWAGuide] = useState<"ios" | "android_manual" | "desktop_manual" | null>(null);
+  const [hasPWAUpdate, setHasPWAUpdate] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setHasPWAUpdate(true);
+      addToast("🚀 కొత్త అప్‌డేట్ సిద్ధంగా ఉంది! (New App Update Available)");
+    };
+    window.addEventListener("pwa-update-available", handleUpdate);
+    return () => window.removeEventListener("pwa-update-available", handleUpdate);
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -5195,10 +5205,11 @@ E-Vedhika Team`;
             <AnimatePresence>
               {showNotifications && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-12 max-w-[360px] mx-auto sm:mx-0 sm:w-[360px] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[2000] overflow-hidden"
+                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-20 sm:top-full sm:mt-2.5 max-w-[380px] mx-auto sm:mx-0 sm:w-[380px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-slate-200 z-[2000] overflow-hidden"
                 >
                   <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                     <div className="flex items-center gap-2">
@@ -9076,6 +9087,49 @@ E-Vedhika Team`;
           addToast={addToast}
         />
       )}
+
+      {/* PWA New Version Update Floating Toast/Banner */}
+      <AnimatePresence>
+        {hasPWAUpdate && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed bottom-6 right-6 left-6 sm:left-auto sm:w-[400px] z-[9999] bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-blue-400/40 flex flex-col gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-900 flex items-center justify-center shrink-0 shadow-lg shadow-amber-400/30">
+                <Sparkles size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-black text-white text-left">
+                  కొత్త అప్‌డేట్ సిద్ధంగా ఉంది! 🚀
+                </h4>
+                <p className="text-[11px] text-blue-200 text-left">
+                  E-Vedhika తాజా వెర్షన్ అప్‌డేట్‌లను లోడ్ చేయడానికి ఇప్పుడే రీలోడ్ చేయండి.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setHasPWAUpdate(false)}
+                className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition-all text-slate-300 cursor-pointer"
+              >
+                తర్వాత
+              </button>
+              <button
+                onClick={() => {
+                  (window as any).__triggerPWAUpdate?.();
+                }}
+                className="flex-1 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-black shadow-md shadow-emerald-500/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw size={13} className="animate-spin" />
+                ఇప్పుడే అప్‌డేట్ చేయండి (Update Now)
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* PWA Mobile Installation Banner */}
       <AnimatePresence>

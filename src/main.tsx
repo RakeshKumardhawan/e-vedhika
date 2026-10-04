@@ -8,21 +8,28 @@ import { registerSW } from 'virtual:pwa-register';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
-// Automatically check for updates and update the service worker
-if ('serviceWorker' in navigator) {
+// Global PWA Update Handler & Registration
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   let refreshing = false;
-  
-  // Clean up any stale/broken legacy service workers registered on root
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    const currentSWUrl = window.location.origin + '/sw.js';
-    for (let registration of registrations) {
-      if (registration.active && !registration.active.scriptURL.includes('sw.js')) {
-        registration.unregister();
-      }
-    }
-  }).catch(() => {});
 
-  // When the service worker updates and takes control, reload the page instantly
+  // Global helper for manual PWA update
+  (window as any).__triggerPWAUpdate = async () => {
+    try {
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      }
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.update();
+      }
+      window.location.reload();
+    } catch (e) {
+      window.location.reload();
+    }
+  };
+
+  // When the service worker updates and takes control, reload the page cleanly
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!refreshing) {
       refreshing = true;
@@ -30,31 +37,32 @@ if ('serviceWorker' in navigator) {
     }
   });
 
-  // Check for updates proactively when the app is resumed (opened again)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.update().catch(() => {});
-      });
-    }
-  });
-
-  // Also check for updates every 2 minutes automatically in the background
-  setInterval(() => {
-    navigator.serviceWorker.ready.then((registration) => {
-      if (registration) {
-        registration.update().catch(() => {});
-      }
-    });
-  }, 2 * 60 * 1000);
-
   const updateSW = registerSW({
     immediate: true,
     onNeedRefresh() {
+      console.log('New PWA version detected! Updating service worker cache...');
+      window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { updateSW } }));
       updateSW(true);
     },
     onOfflineReady() {
       console.log('E-Vedhika PWA ready for offline use');
+    },
+    onRegisteredSW(swUrl, r) {
+      if (r) {
+        // Proactive update check every 30s in foreground
+        setInterval(() => {
+          r.update().catch(() => {});
+        }, 30 * 1000);
+      }
+    }
+  });
+
+  // Check on tab focus / visibility resume
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.update().catch(() => {});
+      }).catch(() => {});
     }
   });
 }
