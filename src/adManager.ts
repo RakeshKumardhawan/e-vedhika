@@ -1,4 +1,11 @@
+export const isLegacyWindows = (): boolean => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || "";
+    return ua.includes("Windows NT 6.") || ua.includes("Windows NT 5.") || ua.includes("MSIE") || ua.includes("Trident") || ua.includes("Windows 7") || ua.includes("Windows 8");
+};
+
 export const isAdsMuted = (siteConfig?: any): boolean => {
+    if (isLegacyWindows()) return true;
     // 1. Check local storage override first
     try {
         const localMute = localStorage.getItem("e_vedhika_ad_mute_until");
@@ -73,6 +80,7 @@ export const unmuteAdsLocally = (): void => {
 };
 
 export const canShowAds = (siteConfig?: any): boolean => {
+    if (isLegacyWindows()) return false;
     if (isAdsMuted(siteConfig)) return false;
 
     const limit = siteConfig?.ads?.adLimitPerUser;
