@@ -58,28 +58,59 @@
     <link rel="canonical" href="https://www.e-vedhika.in/" />
 
     <!-- Polyfills for Windows 7 & 8 Browsers -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.32.2/minified.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.39.0/minified.js"></script>
     <script>
-      if (typeof globalThis === 'undefined') { window.globalThis = window; }
-      if (!window.Iterator) { window.Iterator = function() {}; } 
-      if (typeof Reflect === 'undefined') { window.Reflect = { get: function(t,k){return t[k];}, set: function(t,k,v){t[k]=v;return true;} }; }
-      if (!window.requestAnimationFrame) {
-        window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
-        window.cancelAnimationFrame = function(id) { clearTimeout(id); };
-      }
+      // Global Polyfills
+      (function() {
+        if (typeof globalThis === 'undefined') { window.globalThis = window; }
+        
+        // Mock Iterator if missing (ES2023 helpers)
+        if (typeof window.Iterator === 'undefined') {
+          window.Iterator = function() {};
+          window.Iterator.prototype = {};
+        }
+
+        // Transpilation helpers
+        if (typeof Reflect === 'undefined') { 
+          window.Reflect = { 
+            get: function(t,k){return t[k];}, 
+            set: function(t,k,v){t[k]=v;return true;},
+            construct: function(Parent, args, Class) {
+              var a = [null]; a.push.apply(a, args);
+              var Constructor = Function.bind.apply(Parent, a);
+              var instance = new Constructor();
+              if (Class) { instance.__proto__ = Class.prototype; }
+              return instance;
+            }
+          }; 
+        }
+
+        if (!window.requestAnimationFrame) {
+          window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
+          window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+        }
+      })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/intersection-observer@0.12.2/intersection-observer.js"></script>
+
+    <!-- Legacy Browser (IE11) Detection -->
+    <script nomodule>
+      window.addEventListener('load', function() {
+        var root = document.getElementById('root');
+        root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.1);max-width:480px;border:1px solid #cbd5e1;"><div style="font-size:48px;margin-bottom:16px;">🚫</div><h2 style="color:#0f172a;margin-bottom:12px;font-size:22px;font-weight:900;">బ్రౌజర్ సపోర్ట్ లేదు (Not Supported)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:24px;">మీరు వాడుతున్న ఇంటర్నెట్ ఎక్స్‌ప్లోరర్ (IE11) లేదా పాత బ్రౌజర్ ఈ ఆధునిక వెబ్‌సైట్‌ను సపోర్ట్ చేయదు. <br><br>దయచేసి విండోస్ 7/8 లో <strong>Google Chrome</strong> లేదా <strong>Firefox</strong> లేటెస్ట్ వెర్షన్‌ను ఇన్‌స్టాల్ చేసుకోండి.</p><a href="https://www.google.com/chrome/" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:bold;font-size:14px;box-shadow:0 4px 12px rgba(37,99,235,0.2);">Chrome డౌన్‌లోడ్ చేయండి</a></div></div>';
+      });
+    </script>
 
     <script>
       // Debug helper for white screen
       window.addEventListener('load', function() {
         setTimeout(function() {
           var root = document.getElementById('root');
-          if (root && root.innerHTML.trim() === '') {
+          var isIE = !!window.MSInputMethodContext && !!document.documentMode;
+          if (root && root.innerHTML.trim() === '' && !isIE) {
             console.error("App failed to mount.");
-            // Show diagnostic info if still white after 5 seconds
             var diagnostic = document.createElement('div');
             diagnostic.style.cssText = 'position:fixed;bottom:10px;left:10px;font-size:10px;color:#94a3b8;z-index:9999;background:rgba(255,255,255,0.8);padding:5px;border-radius:4px;';
             diagnostic.innerHTML = 'UA: ' + navigator.userAgent;
