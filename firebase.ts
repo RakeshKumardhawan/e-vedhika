@@ -4,23 +4,30 @@ import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import firebaseConfig from './firebase-applet-config.json';
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+let appInstance: any = null;
+let authInstance: any = null;
+let dbInstance: any = null;
+let storageInstance: any = null;
 
-// Use initializeFirestore with long polling for better connectivity in proxied environments
-const rawDatabaseId = firebaseConfig.firestoreDatabaseId;
-const firestoreDatabaseId = !rawDatabaseId || rawDatabaseId === "(default)" ? undefined : rawDatabaseId;
+try {
+  appInstance = initializeApp(firebaseConfig);
+  authInstance = getAuth(appInstance);
+  
+  const rawDatabaseId = firebaseConfig.firestoreDatabaseId;
+  const firestoreDatabaseId = !rawDatabaseId || rawDatabaseId === "(default)" ? undefined : rawDatabaseId;
 
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-}, firestoreDatabaseId);
+  dbInstance = initializeFirestore(appInstance, {
+    experimentalForceLongPolling: true,
+  }, firestoreDatabaseId);
 
-import { getFirestore } from "firebase/firestore";
-export const analyticsDb = db;
+  storageInstance = getStorage(appInstance);
+  console.log("Firebase App Initialized successfully.");
+} catch (error) {
+  console.error("Firebase initialization failed, running in resilient fallback mode:", error);
+}
 
-export const storage = getStorage(app);
-console.log("Firebase App Initialized with storage bucket:", storage.app.options.storageBucket);
-
-
-
-
+export const app = appInstance;
+export const auth = authInstance || { currentUser: null, onAuthStateChanged: () => {} };
+export const db = dbInstance || {};
+export const analyticsDb = dbInstance || {};
+export const storage = storageInstance || {};

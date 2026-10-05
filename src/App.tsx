@@ -2452,6 +2452,7 @@ function LandingPage({
             <div className="flex gap-6 text-sm font-bold text-slate-500">
               <button onClick={() => onShowFooter("privacy")} className="hover:text-blue-600 transition-colors">Privacy Policy</button>
               <button onClick={() => onShowFooter("about")} className="hover:text-blue-600 transition-colors">About Us</button>
+              <button onClick={() => onShowFooter("terms")} className="hover:text-blue-600 transition-colors">Terms</button>
               <button onClick={() => onShowFooter("contact")} className="hover:text-blue-600 transition-colors">Contact Us</button>
             </div>
             <div className="text-sm text-slate-400 font-medium">
@@ -3066,7 +3067,7 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [showFooterModal, setShowFooterModal] = useState<
-    "privacy" | "about" | "contact" | null
+    "privacy" | "about" | "contact" | "terms" | null
   >(null);
 
   const [showPWABanner, setShowPWABanner] = useState(false);
@@ -4988,10 +4989,11 @@ E-Vedhika Team`;
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h2 className="text-3xl font-black text-slate-800 tracking-tighter uppercase mb-1">
-                    {showFooterModal === "privacy" && "Privacy Policy"}
+                    {showFooterModal === "privacy" && "గోప్యతా విధానం (Privacy)"}
                     {showFooterModal === "about" &&
-                      (aboutContent?.title || "About Us")}
-                    {showFooterModal === "contact" && "Contact Us"}
+                      (aboutContent?.title || "మా గురించి (About)")}
+                    {showFooterModal === "terms" && "నిబంధనలు & షరతులు (Terms)"}
+                    {showFooterModal === "contact" && "సంప్రదించండి (Contact)"}
                   </h2>
                 </div>
                 <button
@@ -5011,18 +5013,40 @@ E-Vedhika Team`;
                         size={24}
                       />
                       <p className="text-sm font-bold text-blue-700 leading-relaxed">
-                        Please read our data protection policies. Your personal
-                        information is completely secure with us.
+                        దయచేసి మా డేటా రక్షణ విధానాలను చదవండి. మీ వ్యక్తిగత సమాచారం మాతో పూర్తిగా సురక్షితం. (Please read our data protection policies.)
                       </p>
                     </div>
-                    <div className="space-y-4 text-slate-600 font-medium">
+                    <div className="space-y-4 text-slate-600 font-medium leading-relaxed">
                       <p>
-                        We are committed to transparency and accountability. The
-                        information collected through this portal will only be
-                        used for government services and community improvement.
+                        మేము పారదర్శకత మరియు జవాబుదారీతనానికి కట్టుబడి ఉన్నాము. ఈ పోర్టల్ ద్వారా సేకరించిన సమాచారం కేవలం ప్రభుత్వ సేవలు మరియు కమ్యూనిటీ అభివృద్ధి కోసం మాత్రమే ఉపయోగించబడుతుంది.
                       </p>
                       <p className="border-l-4 border-slate-100 pl-4 italic">
-                        "Your privacy is our primary responsibility."
+                        "మీ గోప్యత మా ప్రాథమిక బాధ్యత."
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {showFooterModal === "terms" && (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100 flex gap-4">
+                      <ClipboardList
+                        className="text-amber-600 shrink-0"
+                        size={24}
+                      />
+                      <p className="text-sm font-bold text-amber-700 leading-relaxed">
+                        ఈ-వేదిక పోర్టల్ వినియోగ నిబంధనలు మరియు షరతులు. (Terms and conditions for using E-Vedhika portal.)
+                      </p>
+                    </div>
+                    <div className="space-y-4 text-slate-600 font-medium leading-relaxed">
+                      <p>
+                        1. ఈ వేదికను చట్టబద్ధమైన మరియు అధికారిక ప్రయోజనాల కోసం మాత్రమే ఉపయోగించాలి.
+                      </p>
+                      <p>
+                        2. అడ్మిన్ అనుమతి లేకుండా సిస్టమ్ డేటాను మార్చడం లేదా దుర్వినియోగం చేయడం నిషేధం.
+                      </p>
+                      <p>
+                        3. మా ప్లాట్‌ఫారమ్ గరిష్ట భద్రతను అందిస్తుంది, కానీ యూజర్లు తమ లాగిన్ వివరాలను సురక్షితంగా ఉంచుకోవాలి.
                       </p>
                     </div>
                   </div>
@@ -5076,7 +5100,7 @@ E-Vedhika Team`;
                     <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 flex gap-4">
                       <Mail className="text-emerald-500 shrink-0" size={24} />
                       <p className="text-sm font-bold text-emerald-700 leading-relaxed">
-                        Use the information provided below to contact us.
+                        మమ్మల్ని సంప్రదించడానికి క్రింది సమాచారాన్ని ఉపయోగించండి. (Use the information below to contact us.)
                       </p>
                     </div>
                     <div className="space-y-6">
@@ -5087,7 +5111,7 @@ E-Vedhika Team`;
                         >
                           <Mail size={28} className="text-rose-500" />
                           <span className="font-bold text-slate-800 text-sm">
-                            Email Support
+                            Email Support (ఈమెయిల్)
                           </span>
                         </a>
                         <a
@@ -5127,9 +5151,9 @@ E-Vedhika Team`;
                             setShowFooterModal(null);
                             setCurrentTab("suggestions");
                           }}
-                          className="w-full py-2 bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-emerald-600 transition-colors"
+                          className="w-full py-2 bg-emerald-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-emerald-600 transition-all shadow-lg active:scale-95"
                         >
-                          Go to Suggestions Panel
+                          సూచనలు / మద్దతు ప్యానెల్‌కు వెళ్లండి (Go to Suggestions)
                         </button>
                       </div>
                     </div>
@@ -5142,7 +5166,7 @@ E-Vedhika Team`;
                   onClick={() => setShowFooterModal(null)}
                   className="px-10 py-3 bg-slate-900 text-white rounded-[20px] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-slate-900/20"
                 >
-                  Close Window
+                  ముసివేయి (Close)
                 </button>
               </div>
             </div>
@@ -6718,14 +6742,7 @@ E-Vedhika Team`;
               <PostDetail
                 postId={postIdFromUrl}
                 onBack={() => {
-                  if (location.pathname.startsWith("/home/post/") || location.pathname.startsWith("/post/")) {
-                    navigate("/home");
-                  }
-                  setSearchParams(prev => {
-                    const next = new URLSearchParams(prev);
-                    next.delete("postId");
-                    return next;
-                  });
+                  navigate("/", { replace: true });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 isAdmin={isAdmin}
@@ -26935,18 +26952,22 @@ function PostDetail({
     if (post && post.id) {
       const preferredSlug = getPostSlugOrId(post);
       const cleanPath = `/home/post/${preferredSlug}`;
-      if (!location.pathname.endsWith(`/${preferredSlug}`) || searchParams.has("postId")) {
-        window.history.replaceState(null, "", cleanPath);
-        if (searchParams.has("postId")) {
-          setSearchParams(prev => {
-            const next = new URLSearchParams(prev);
-            next.delete("postId");
-            return next;
-          }, { replace: true });
+      const hasPostIdParam = searchParams.has("postId");
+      const isWrongPath = !location.pathname.endsWith(`/${preferredSlug}`);
+      
+      if (isWrongPath || hasPostIdParam) {
+        if (hasPostIdParam) {
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.delete("postId");
+          const searchStr = nextParams.toString();
+          const finalPath = searchStr ? `${cleanPath}?${searchStr}` : cleanPath;
+          navigate(finalPath, { replace: true });
+        } else if (isWrongPath) {
+          navigate(cleanPath, { replace: true });
         }
       }
     }
-  }, [post?.id, post?.slug, post?.title, post?.postNumber, searchParams]);
+  }, [post?.id, post?.slug, post?.title, post?.postNumber, location.pathname]);
 
   useEffect(() => {
     let isInitial = true;
@@ -26956,12 +26977,22 @@ function PostDetail({
 
     async function fetchPostBySlugOrTitle(target: string) {
       try {
-        const normTarget = target.toLowerCase();
+        const normTarget = decodeURIComponent(target).trim().toLowerCase();
 
-        // 1. Check if post exists in allPosts prop
-        if (allPosts && allPosts.length > 0) {
-          const matchedFromProp = allPosts.find((p) => {
-            if (p.id === target) return true;
+        // 1. Check if post exists in allPosts prop or fetch all posts if needed
+        let candidatePosts = allPosts;
+        if (!candidatePosts || candidatePosts.length === 0) {
+          try {
+            const allSnap = await getDocs(query(collection(db, "posts"), limit(500)));
+            candidatePosts = allSnap.docs.map(d => ({ id: d.id, ...d.data() } as Post));
+          } catch (e) {
+            console.warn("Failed to fetch all posts in fallback:", e);
+          }
+        }
+
+        if (candidatePosts && candidatePosts.length > 0) {
+          const matchedFromProp = candidatePosts.find((p) => {
+            if (p.id === target || p.id.toLowerCase() === normTarget) return true;
             if (p.slug && p.slug.toLowerCase() === normTarget) return true;
             if (p.postNumber && String(p.postNumber) === target) return true;
             const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
@@ -26969,7 +27000,7 @@ function PostDetail({
             const generated = generatePostSlug(p.title || "", p.id);
             if (generated && generated.toLowerCase() === normTarget) return true;
             const cleanTitle = (p.title || "").trim().toLowerCase();
-            if (cleanTitle === normTarget) return true;
+            if (cleanTitle === normTarget || cleanTitle.includes(normTarget)) return true;
             return false;
           });
           if (matchedFromProp) {
@@ -27002,13 +27033,13 @@ function PostDetail({
           }
         }
 
-        // 4. Fallback: fetch recent posts from Firestore and search
-        const qRecent = query(collection(db, "posts"), limit(100));
+        // 4. Final Fallback: fetch up to 500 posts from Firestore and search
+        const qRecent = query(collection(db, "posts"), limit(500));
         const snapRecent = await getDocs(qRecent);
         const docs = snapRecent.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
 
         const matched = docs.find((p) => {
-          if (p.id === target) return true;
+          if (p.id === target || p.id.toLowerCase() === normTarget) return true;
           if (p.slug && p.slug.toLowerCase() === normTarget) return true;
           if (p.postNumber && String(p.postNumber) === target) return true;
           const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
@@ -27016,7 +27047,7 @@ function PostDetail({
           const generated = generatePostSlug(p.title || "", p.id);
           if (generated && generated.toLowerCase() === normTarget) return true;
           const cleanTitle = (p.title || "").trim().toLowerCase();
-          if (cleanTitle === normTarget) return true;
+          if (cleanTitle === normTarget || cleanTitle.includes(normTarget)) return true;
           return false;
         });
 

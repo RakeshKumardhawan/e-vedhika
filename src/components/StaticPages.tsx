@@ -70,39 +70,39 @@ function PageTemplate({ pageId, defaultTitle, defaultContent, extraHeader }: { p
 
 export function PrivacyPolicyPage() {
   return <PageTemplate pageId="privacy" defaultTitle="Privacy Policy" defaultContent={`
-### 1. Information We Collect
-At **E-VEDHIKA** (e-vedhika.in), we respect your privacy and are committed to protecting your personal data. We collect basic account details, telemetry logs, and user preferences necessary to provide our services.
+### 1. మేము సేకరించే సమాచారం (Information We Collect)
+**E-VEDHIKA** (e-vedhika.in) వద్ద, మేము మీ గోప్యతను గౌరవిస్తాము. మీ ఖాతా వివరాలు, సిస్టమ్ లాగ్‌లు మరియు మెరుగైన సేవలను అందించడానికి అవసరమైన ప్రాధాన్యతలను మాత్రమే మేము సేకరిస్తాము.
 
-### 2. How We Use Data
-- To provide, maintain, and improve our deployment tools and administrative features.
-- To send important system notifications, updates, and announcements.
-- To ensure platform security and troubleshoot technical issues.
+### 2. మేము డేటాను ఎలా ఉపయోగిస్తాము (How We Use Data)
+- మా డిప్లాయ్‌మెంట్ టూల్స్ మరియు అడ్మినిస్ట్రేటివ్ ఫీచర్లను నిర్వహించడానికి మరియు మెరుగుపరచడానికి.
+- ముఖ్యమైన సిస్టమ్ నోటిఫికేషన్లు, అప్‌డేట్లు మరియు ప్రకటనలను పంపడానికి.
+- ప్లాట్‌ఫారమ్ భద్రతను నిర్ధారించడానికి మరియు సాంకేతిక సమస్యలను పరిష్కరించడానికి.
 
-### 3. Data Security
-We implement robust security measures, encryption, and secure cloud storage to protect your data against unauthorized access, alteration, or disclosure.
+### 3. డేటా భద్రత (Data Security)
+మీ డేటాను అనధికారిక యాక్సెస్ నుండి రక్షించడానికి మేము బలమైన భద్రతా చర్యలు, ఎన్క్రిప్షన్ మరియు సురక్షిత క్లౌడ్ స్టోరేజ్‌ని ఉపయోగిస్తాము.
 
-### 4. Third-Party Services
-We do not sell or rent your personal information to third parties. Data is only processed securely through trusted infrastructure providers (Firebase, Cloud Run).
+### 4. థర్డ్-పార్టీ సేవలు (Third-Party Services)
+మేము మీ వ్యక్తిగత సమాచారాన్ని ఇతరులకు విక్రయించము. డేటా కేవలం విశ్వసనీయ క్లౌడ్ ప్రొవైడర్ల (Firebase, Cloud Run) ద్వారా మాత్రమే ప్రాసెస్ చేయబడుతుంది.
   `} />;
 }
 
 export function TermsPage() {
   return <PageTemplate pageId="terms" defaultTitle="Terms & Conditions" defaultContent={`
-### 1. Introduction & Independence
-Welcome to **E-VEDHIKA** (e-vedhika.in) - All Problems One Solution & Deployment Tool. **E-Vedhika is an independent private platform and has no affiliation, connection, or endorsement from any government agency.** By accessing or using our platform, website, applications, and tools, you agree to comply with and be bound by the following terms and conditions.
+### 1. పరిచయం (Introduction)
+**E-VEDHIKA** (e-vedhika.in) కు స్వాగతం. ఈ వేదికను ఉపయోగించడం ద్వారా, మీరు మా నిబంధనలు మరియు షరతులకు కట్టుబడి ఉండటానికి అంగీకరిస్తున్నారు. **ఈ-వేదిక ఒక ప్రైవేట్ సాంకేతిక వేదిక మరియు దీనికి ఎటువంటి ప్రభుత్వ సంస్థతో సంబంధం లేదు.**
 
-### 2. Usage Policy
-- Users must use the platform responsibly and for legitimate technical or administrative utility purposes.
-- Unauthorized attempts to modify, disrupt, or bypass system security, deployment tools, or API endpoints are strictly prohibited.
+### 2. వినియోగ విధానం (Usage Policy)
+- వినియోగదారులు ప్లాట్‌ఫారమ్‌ను బాధ్యతాయుతంగా మరియు చట్టబద్ధమైన సాంకేతిక ప్రయోజనాల కోసం మాత్రమే ఉపయోగించాలి.
+- సిస్టమ్ భద్రతను ఉల్లంఘించడానికి లేదా అనధికారికంగా యాక్సెస్ చేయడానికి ప్రయత్నించడం ఖచ్చితంగా నిషేధించబడింది.
 
-### 3. Intellectual Property
-All content, tools, source code, designs, and documentation on E-Vedhika are protected by intellectual property rights. Redistribution or commercial exploitation without prior permission is prohibited.
+### 3. మేధో సంపత్తి (Intellectual Property)
+ఈ-వేదికలోని అన్ని కంటెంట్, సాధనాలు, కోడ్ మరియు డిజైన్లు మా మేధో సంపత్తి హక్కుల ద్వారా రక్షించబడతాయి. ముందస్తు అనుమతి లేకుండా వీటిని వాణిజ్యపరంగా ఉపయోగించడం నిషేధం.
 
-### 4. Limitation of Liability
-E-Vedhika provides deployment tools, guides, and monitoring features on an "as is" basis without warranties of any kind. We strive for maximum reliability but are not liable for external network issues or third-party service downtime.
+### 4. బాధ్యత పరిమితి (Limitation of Liability)
+మేము గరిష్ట విశ్వసనీయత కోసం ప్రయత్నిస్తాము, కానీ బాహ్య నెట్‌వర్క్ సమస్యలు లేదా థర్డ్-పార్టీ సేవల డౌన్‌టైమ్‌కు మేము బాధ్యత వహించము.
 
-### 5. Contact Information
-For any questions regarding these terms, please reach out via our official support portal or contact channels.
+### 5. సంప్రదించండి (Contact Information)
+ఈ నిబంధనలకు సంబంధించి ఏవైనా ప్రశ్నలు ఉంటే, దయచేసి మా అధికారిక సపోర్ట్ ఛానెల్స్ ద్వారా సంప్రదించండి.
   `} />;
 }
 
@@ -176,21 +176,20 @@ export function AboutPage({ landingPageData }: { landingPageData?: any }) {
       defaultTitle="About E-Vedhika"
       extraHeader={overviewSection}
       defaultContent={`
-### 🌟 E-Vedhika: All Problems One Solution & Deployment Tool
-**E-Vedhika** is an independent advanced administrative and technical utility platform designed to streamline software configurations, digital signature setups, system telemetry monitoring, and IT support services.
+### 🌟 ఈ-వేదిక: ఆల్ ప్రాబ్లమ్స్ వన్ సొల్యూషన్ (About Us)
+**E-Vedhika** అనేది సాఫ్ట్‌వేర్ కాన్ఫిగరేషన్‌లు, డిజిటల్ సిగ్నేచర్ సెటప్‌లు మరియు ఐటీ సపోర్ట్ సేవలను సులభతరం చేయడానికి రూపొందించబడిన ఒక స్వతంత్ర అడ్మినిస్ట్రేటివ్ మరియు టెక్నికల్ ప్లాట్‌ఫారమ్.
 
-**Official Notice:** E-Vedhika is an independent private platform and is **not affiliated with, endorsed by, or connected to any government agency.**
+**ముఖ్య గమనిక:** ఈ-వేదిక ఒక స్వతంత్ర ప్రైవేట్ ప్లాట్‌ఫారమ్. దీనికి ఎటువంటి ప్రభుత్వ సంస్థతో సంబంధం లేదు.
 
-### 🚀 Key Features & Capabilities
-- **Deployment Tools & Code Management**: Automated configuration assistants and deployment gateways.
-- **Real-time Monitoring**: Live status tracking of system telemetry, server health, and platform availability.
-- **Secure Collaboration & Admin Controls**: Role-based access, audit logs, and direct administrative communication.
-- **Comprehensive Guides & Formats**: Quick access to utility formats, guides, and troubleshooting documentation.
+### 🚀 ప్రధాన ఫీచర్లు (Key Features)
+- **డిప్లాయ్‌మెంట్ టూల్స్**: ఆటోమేటెడ్ కాన్ఫిగరేషన్ మరియు సిస్టమ్ మానిటరింగ్.
+- **రియల్-టైమ్ మానిటరింగ్**: సర్వర్ ఆరోగ్యం మరియు ప్లాట్‌ఫారమ్ లభ్యత యొక్క ప్రత్యక్ష స్థితి ట్రాకింగ్.
+- **సురక్షిత అడ్మిన్ కంట్రోల్స్**: ఆడిట్ లాగ్‌లు మరియు నేరుగా అడ్మినిస్ట్రేటివ్ కమ్యూనికేషన్.
+- **సమగ్ర గైడ్లు**: యూటిలిటీ ఫార్మాట్లు మరియు ట్రబుల్షూటింగ్ డాక్యుమెంటేషన్.
 
-### 📞 Contact & Support
+### 📞 సంప్రదించండి (Contact & Support)
 - **Email**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
-- **Telegram Chat**: Contact via Telegram for quick assistance and support.
-- **Screen Sharing Requests**: If anyone requests screen sharing or remote assistance, please connect and contact me via **UltraViewer**.
+- **Telegram**: త్వరిత సహాయం కోసం టెలిగ్రామ్ ద్వారా సంప్రదించండి.
   `}
     />
   );
@@ -198,11 +197,11 @@ export function AboutPage({ landingPageData }: { landingPageData?: any }) {
 
 export function ContactPage() {
   return <PageTemplate pageId="contact" defaultTitle="Contact Us" defaultContent={`
-### 📞 Get in Touch
-Have questions, suggestions, or technical support requests regarding **E-VEDHIKA**? We are here to help!
+### 📞 మమ్మల్ని సంప్రదించండి (Get in Touch)
+**E-VEDHIKA** కు సంబంధించి మీకు ఏవైనా ప్రశ్నలు, సూచనలు లేదా సాంకేతిక మద్దతు అభ్యర్థనలు ఉంటే, మేము సహాయం చేయడానికి ఇక్కడ ఉన్నాము!
 
-- **Official Website**: [https://e-vedhika.in](https://e-vedhika.in)
-- **Support Channels**: Use the **Suggestions / Support** panel inside the app or the Direct Message system to reach out to administrators.
-- **Response Time**: Our support team reviews queries regularly and provides timely assistance for technical and deployment issues.
+- **అధికారిక వెబ్‌సైట్**: [https://e-vedhika.in](https://e-vedhika.in)
+- **సపోర్ట్ ఛానెల్స్**: అడ్మిన్‌లను సంప్రదించడానికి యాప్‌లోని **Suggestions / Support** ప్యానెల్ లేదా డైరెక్ట్ మెసేజ్ సిస్టమ్‌ను ఉపయోగించండి.
+- **మెయిల్**: evedhikasupport@gmail.com
   `} />;
 }

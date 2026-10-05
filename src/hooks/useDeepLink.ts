@@ -219,8 +219,13 @@ export function useDeepLink({
     if (isFarmerRegistry) return;
 
     let targetPath = "/" + currentTab;
+    const isPostDetailPath = location.pathname.startsWith("/home/post/") || location.pathname.startsWith("/post/");
 
-    if (currentTab === "home") {
+    if (isPostDetailPath) {
+      // If we are on a post detail path, don't force a redirect to the main tab path
+      // but still clear any legacy ?tab= query if it exists
+      targetPath = location.pathname;
+    } else if (currentTab === "home") {
       targetPath = "/";
     } else if (currentTab === "admin") {
       targetPath = "/admin"; // Clean URL for Admin Panel
