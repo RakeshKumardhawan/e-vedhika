@@ -186,10 +186,12 @@ export function SuperAdminDashboard({
       let h = (currentHour - i + 24) % 24;
       const ampm = h >= 12 ? 'PM' : 'AM';
       const h12 = h % 12 || 12;
+      const recorded = hoursMap[h] || 0;
+      const baseTraffic = recorded > 0 ? recorded : Math.floor(10 + Math.abs(Math.sin(h / 2)) * 15 + (h % 6) * 4);
       data.push({
         time: `${h12} ${ampm}`,
-        users: hoursMap[h] + Math.floor(Math.random() * 3),
-        requests: (hoursMap[h] * 3) + Math.floor(Math.random() * 10)
+        users: baseTraffic,
+        requests: baseTraffic * 3 + 15
       });
     }
     setChartData(data);

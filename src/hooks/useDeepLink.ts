@@ -228,7 +228,7 @@ export function useDeepLink({
     } else if (currentTab === "home") {
       targetPath = "/";
     } else if (currentTab === "admin") {
-      targetPath = "/admin"; // Clean URL for Admin Panel
+      targetPath = activeAdminSubTab && activeAdminSubTab !== "dash" ? `/admin/${activeAdminSubTab}` : "/admin";
     } else if (currentTab === "workspace" && workspaceActiveTool) {
       targetPath = `/workspace/${workspaceActiveTool}`;
     } else if (currentTab === "gos_formats" && gosActiveSubTab) {
@@ -256,6 +256,7 @@ export function useDeepLink({
     }
   }, [
     currentTab,
+    activeAdminSubTab,
     workspaceActiveTool,
     gosActiveSubTab,
     suggestionsActiveSubTab,
@@ -268,7 +269,7 @@ export function useDeepLink({
   const getDeepLink = (mainTab: string, subTool?: string) => {
     const baseUrl = window.location.origin;
     if (mainTab === "admin") {
-      return `${baseUrl}/admin`;
+      return subTool && subTool !== "dash" ? `${baseUrl}/admin/${subTool}` : `${baseUrl}/admin`;
     }
     if (mainTab === "home") {
       return `${baseUrl}/`;

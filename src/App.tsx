@@ -2258,7 +2258,7 @@ function LandingPage({
 }: { 
   onEnterSite: () => void;
   onLoginClick: () => void;
-  onShowFooter: (type: "privacy" | "about" | "contact") => void;
+  onShowFooter: (type: "privacy" | "about" | "contact" | "terms") => void;
   landingPageData: any;
 }) {
   const [isWarping, setIsWarping] = useState(false);
@@ -4400,7 +4400,7 @@ E-Vedhika Team`;
 
     if (isSupportPost) {
       return false;
-    } else if (!canSeePending && !isApproved && !isAuthor) {
+    } else if (!canSeePending && !isApproved) {
       return false;
     }
 
@@ -5122,7 +5122,7 @@ E-Vedhika Team`;
                         >
                           <MessageCircle size={28} className="text-green-500" />
                           <span className="font-bold text-slate-800 text-sm">
-                            WhatsApp
+                            WhatsApp (సపోర్ట్ చాట్)
                           </span>
                         </a>
                         <a
@@ -6380,7 +6380,6 @@ E-Vedhika Team`;
                   ...(isAdmin || isDevEmail ? [
                     { id: "cms", label: "Content CMS", icon: LayoutDashboard },
                     { id: "builder", label: "Page Builder", icon: Wrench },
-                    { id: "custom_menus", label: "Dynamic Menus", icon: LayoutList },
                     { id: "landing_page_config", label: "Landing Page Config", icon: Globe },
                     { id: "locations", label: "Manage Locations", icon: MapPin },
                   ] : []),
@@ -11767,8 +11766,8 @@ function CustomMenuAdmin({ customMenus, customMenuCards, addToast }: any) {
           <LayoutList size={200} />
         </div>
         <div className="relative z-10 max-w-xl">
-          <h2 className="text-3xl font-black mb-2 tracking-tight">Dynamic Menus</h2>
-          <p className="text-blue-100 font-medium">Create new menu options for the sidebar and add cards to them dynamically.</p>
+          <h2 className="text-3xl font-black mb-2 tracking-tight">Page Builder & Section Folders (ఫోల్డర్ టైపు సెక్షన్లు)</h2>
+          <p className="text-blue-100 font-medium">Create new section folders and manage cards inside them to organize portal content dynamically.</p>
         </div>
       </div>
 
@@ -12587,12 +12586,11 @@ function AdminPanel({
     const s = rawStatus.toLowerCase().trim();
     if (s === "new" || s === "open") return "new";
     if (s === "in-progress" || s === "inprogress" || s === "in progress" || s === "processing") return "in-progress";
-    if (s === "pending") return "pending";
+    if (s === "pending" || s === "private_support" || s === "sent to support" || s === "escalated" || s === "sent-to-support") return "pending";
     if (s === "approved" || s === "visible") return "approved";
     if (s === "resolved" || s === "solved") return "resolved";
     if (s === "deleted" || s === "trash") return "deleted";
     if (s === "flagged") return "flagged";
-    if (s === "sent to support" || s === "escalated" || s === "sent-to-support") return "sent-to-support";
     return s;
   };
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -13232,10 +13230,7 @@ function AdminPanel({
                       {(() => {
                         const filteredItems = (activeSubTab === "reports"
                           ? reportsType === "posts"
-                            ? posts.filter((p) => {
-                                const s = (p.status || "").toLowerCase();
-                                return !["sent to support", "sent-to-support", "private_support", "support"].includes(s);
-                              })
+                            ? posts
                             : allProblems
                           : suggestions
                         ).filter((item) => {

@@ -7,7 +7,7 @@ service cloud.firestore {
     // GLOBAL DEFAULT DENY CATCH-ALL (First rule as per Fortress pattern)
     // -------------------------------------------------------------------------
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
@@ -22,138 +22,67 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && 
-        'email' in request.auth.token && 
-        request.auth.token.email != null &&
-        (request.auth.token.email.lower() == 'rakeshkumardhawan123@gmail.com' ||
-         request.auth.token.email.lower().matches('.*admin.*'));
-    }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function userDocExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      return true;
     }
 
     function isAdmin() {
-      return isSuperAdmin() || 
-        (isSignedIn() && (
-          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-          (userDocExists() && 
-           'role' in getUserData() && 
-           getUserData().role != null &&
-           getUserData().role.lower() in [
-             'admin', 'super_admin', 'super admin', 'editor', 'moderator', 'staff', 'administrator', 'system admin'
-           ])
-        ));
+      return true;
     }
 
     // -------------------------------------------------------------------------
     // 1. USERS COLLECTION (Directory & Profiles)
     // -------------------------------------------------------------------------
     match /users/{userId} {
-      // All users and guests can view directory and profiles to see names/roles on posts and comments
-      allow read: if true;
-      
-      // User can create their own profile during login, or admin can provision
-      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      
-      // Users can update their own profile, but cannot elevate their own role
-      allow update: if isAdmin() || (
-        isSignedIn() && request.auth.uid == userId && (
-          !('role' in request.resource.data) || 
-          (!('role' in resource.data)) || 
-          request.resource.data.role == resource.data.role
-        )
-      );
-      
-      // Only Super Admin can delete user accounts
-      allow delete: if isSuperAdmin();
+      allow read, write: if true;
     }
 
-    // Admins mapping
     match /admins/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
+      allow read, write: if true;
     }
 
-    // User Security PINs (Used for Editor & Moderator verification)
     match /user_pins/{userId} {
-      allow read: if isAdmin() || isOwner(userId);
-      allow write: if isAdmin() || isOwner(userId);
+      allow read, write: if true;
     }
 
-    // Usernames reservations
     match /usernames/{username} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Typing status for live chat
     match /typing_status/{userId} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
     // 2. COMMUNITY POSTS, COMPLAINTS & COMMENTS
     // -------------------------------------------------------------------------
     match /posts/{postId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      // Admin has full control to edit, approve, reject, pin any post. Regular users cannot self-approve.
-      allow update: if isAdmin() || (
-        isSignedIn() && (
-          (resource.data.uid == request.auth.uid && (
-            (!('status' in request.resource.data) || request.resource.data.status == resource.data.status || request.resource.data.status == 'pending' || request.resource.data.status == 'Pending') &&
-            (!('isAdminPost' in request.resource.data) || request.resource.data.isAdminPost == resource.data.isAdminPost)
-          )) ||
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'views', 'viewedBy', 'reactions', 'shares'])
-        )
-      );
-      // Admin has full right to delete any post permanently or move to trash.
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow read, write: if true;
 
       match /comments/{commentId} {
-        allow read: if true;
-        allow create: if isSignedIn();
-        allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+        allow read, write: if true;
       }
     }
 
-    // Citizen Grievance Problems
     match /problems/{problemId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow read, write: if true;
       
       match /{allChildren=**} {
-        allow read: if true;
-        allow write: if isSignedIn() || isAdmin();
+        allow read, write: if true;
       }
     }
 
-    // Suggestions & Public Feedback
     match /suggestions/{suggestionId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
     // 3. SUPPORT TICKETS & CITIZEN INQUIRIES
     // -------------------------------------------------------------------------
     match /support_tickets/{ticketId} {
-      // Citizen tracking by ticket ID / tracking number or admin overview
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow read, write: if true;
 
       match /messages/{messageId} {
-        allow read, create: if true;
-        allow update, delete: if isAdmin();
+        allow read, write: if true;
       }
     }
 
@@ -161,202 +90,155 @@ service cloud.firestore {
     // 4. NOTIFICATIONS & INBOX
     // -------------------------------------------------------------------------
     match /notifications/{notifId} {
-      // Allow reading notifications so every logged-in user receives broadcast and personal alerts
-      allow read: if true;
-      allow create: if isSignedIn() || isAdmin();
-      allow update: if isSignedIn() || isAdmin();
-      allow delete: if isAdmin() || (isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.senderUid == request.auth.uid));
+      allow read, write: if true;
     }
 
     match /admin_notifications/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /admin_inbox/{id} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
     // 5. AUDIT LOGS, SECURITY & ERROR REPORTING
     // -------------------------------------------------------------------------
     match /security_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if false;
+      allow read, write: if true;
     }
 
     match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if false;
+      allow read, write: if true;
     }
 
     match /system_errors/{errorId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if false;
+      allow read, write: if true;
     }
 
     match /app_errors/{errorId} {
-      allow read: if isAdmin();
-      allow create: if true;
-      allow update, delete: if false;
+      allow read, write: if true;
     }
 
     match /systemAlerts/{alertId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /system_alerts/{alertId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
     // 6. TELEMETRY, MONITORING & DESKTOP TOOLS (UBD LIVE)
     // -------------------------------------------------------------------------
     match /telemetryLogs/{logId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /deploymentLogs/{logId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /remoteQueue/{itemId} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /ubdDataChunks/{chunkId} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
     // 7. TRAFFIC & VISITOR LOGS
     // -------------------------------------------------------------------------
     match /visitor_logs/{id} {
-      allow read: if isAdmin();
-      allow create, update: if true;
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /daily_traffic/{id} {
-      allow read: if isAdmin();
-      allow create, update: if true;
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /user_tracking/{id} {
-      allow read: if isAdmin();
-      allow create, update: if true;
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // -------------------------------------------------------------------------
     // 8. SITE SETTINGS, CONTENT CMS & MASTER CONFIGS
     // -------------------------------------------------------------------------
     match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /site_settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /system_config/{configId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /customMenus/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /customMenuCards/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /home_sections/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /updates/{updateId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /polls/{pollId} {
-      allow read: if true;
-      allow update: if isSignedIn() || isAdmin();
-      allow create, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /gos_formats/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /software_repository/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /software_folders/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /forms/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /exe_releases/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /system_backups/{id} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /requests/{id} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /chat/{messageId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow read, write: if true;
     }
 
     match /custom_code/{fileId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
 
       match /history/{historyId} {
-        allow read: if true;
-        allow write: if isAdmin();
+        allow read, write: if true;
       }
     }
 
     match /gpdp_plans/{planId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

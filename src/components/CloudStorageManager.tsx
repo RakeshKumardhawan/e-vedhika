@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth, storage } from "../../firebase";
 import { ref, listAll, getDownloadURL, getMetadata, deleteObject } from "firebase/storage";
 import { supabase, SUPABASE_DEFAULT_BUCKET } from "../supabase";
-import { Trash2, ExternalLink, HardDrive, File, Image as ImageIcon, Archive, FileText, FileCode2, Copy, RefreshCw, AlertCircle, Database, Upload } from "lucide-react";
+import { Trash2, ExternalLink, HardDrive, File as FileIcon, Image as ImageIcon, Archive, FileText, FileCode2, Copy, RefreshCw, AlertCircle, Database, Upload } from "lucide-react";
 import Swal from "sweetalert2";
 
 interface StorageFile {
@@ -58,10 +58,8 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
           const res = await fetch(file.url);
           const blob = await res.blob();
           const fileName = file.key.split('/').pop() || `migrated_${Date.now()}`;
-          const migrationFile = new File([blob], fileName, { type: blob.type });
-
           const formData = new FormData();
-          formData.append("file", migrationFile);
+          formData.append("file", blob, fileName);
           
           const uploadRes = await fetch("/api/upload", {
             method: "POST",
@@ -328,7 +326,7 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
     if (['zip', 'rar', 'tar', 'gz', 'exe', 'msi'].includes(ext || '')) return <Archive size={20} className="text-amber-500" />;
     if (['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(ext || '')) return <FileText size={20} className="text-red-500" />;
     if (['js', 'jsx', 'ts', 'tsx', 'json', 'bat', 'sh'].includes(ext || '')) return <FileCode2 size={20} className="text-emerald-500" />;
-    return <File size={20} className="text-slate-500" />;
+    return <FileIcon size={20} className="text-slate-500" />;
   };
 
   const formatSize = (bytes: number) => {

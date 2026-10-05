@@ -189,7 +189,8 @@ export function AboutPage({ landingPageData }: { landingPageData?: any }) {
 
 ### 📞 సంప్రదించండి (Contact & Support)
 - **Email**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
-- **Telegram**: త్వరిత సహాయం కోసం టెలిగ్రామ్ ద్వారా సంప్రదించండి.
+- **Telegram**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
+- **WhatsApp**: [WhatsApp సపోర్ట్](https://wa.me/919985402310) (నెంబర్ గోప్యంగా ఉంచబడింది)
   `}
     />
   );
@@ -202,6 +203,8 @@ export function ContactPage() {
 
 - **అధికారిక వెబ్‌సైట్**: [https://e-vedhika.in](https://e-vedhika.in)
 - **సపోర్ట్ ఛానెల్స్**: అడ్మిన్‌లను సంప్రదించడానికి యాప్‌లోని **Suggestions / Support** ప్యానెల్ లేదా డైరెక్ట్ మెసేజ్ సిస్టమ్‌ను ఉపయోగించండి.
-- **మెయిల్**: evedhikasupport@gmail.com
+- **మెయిల్**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
+- **టెలిగ్రామ్**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
+- **వాట్సాప్**: [WhatsApp సపోర్ట్](https://wa.me/919985402310) (నెంబర్ గోప్యంగా ఉంచబడింది)
   `} />;
 }

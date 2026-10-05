@@ -1966,6 +1966,67 @@ app.get('/api/remote-commands', (req, res) => {
     return res.json({ success: true, messages, status });
   });
 
+  // Create Test Support Ticket endpoint
+  app.post("/api/support/create-test-ticket", (req, res) => {
+    try {
+      const trackingNumber = `EV-Sup-${Math.floor(10 + Math.random() * 89)}`;
+      const generatedTicketId = `tk_${Date.now()}`;
+      const ticketPayload = {
+        id: generatedTicketId,
+        trackingNumber,
+        ticketNumber: trackingNumber,
+        subject: "టెస్ట్ సమస్య / సాఫ్ట్‌వేర్ సహాయ విజ్ఞప్తి (Test Inquiry)",
+        problem: "ఇది సిస్టమ్ పరీక్షించడానికి సృష్టించిన టెస్ట్ సపోర్ట్ టికెట్.",
+        category: "Technical Support",
+        status: "open",
+        priority: "medium",
+        userName: "Admin Test User",
+        userEmail: "test@e-vedhika.in",
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      supportOfflineTicketsStore[generatedTicketId] = ticketPayload;
+      supportOfflineMessagesStore[generatedTicketId] = [
+        { id: `m_${Date.now()}`, senderId: "citizen", senderName: "Admin Test User", text: "నమస్కారం, ఇది టెస్ట్ సమస్య.", time: Date.now() }
+      ];
+      return res.json({ success: true, ticketId: generatedTicketId, trackingNumber });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Delete Support Ticket endpoint
+  app.post("/api/support/delete-ticket", async (req, res) => {
+    try {
+      const { ticketId, isPostSource } = req.body || {};
+      if (!ticketId) {
+        return res.status(400).json({ success: false, error: "ticketId is required" });
+      }
+
+      if (supportOfflineTicketsStore[ticketId]) {
+        delete supportOfflineTicketsStore[ticketId];
+      }
+      if (supportOfflineMessagesStore[ticketId]) {
+        delete supportOfflineMessagesStore[ticketId];
+      }
+
+      try {
+        const targetCol = isPostSource ? "posts" : "support_tickets";
+        if (isPostSource) {
+          await dbAdmin.collection(targetCol).doc(ticketId).update({ status: "deleted" });
+        } else {
+          await dbAdmin.collection(targetCol).doc(ticketId).delete();
+        }
+      } catch (firestoreErr) {
+        console.warn("Firestore delete warning:", firestoreErr);
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Get in-memory offline cached tickets
   app.get("/api/support/offline-tickets", (req, res) => {
     return res.json({

@@ -4,11 +4,11 @@ import {
   Search, RefreshCw, Filter, User, Check, X, ShieldAlert,
   ArrowRight, ChevronRight, MessageCircle, AlertTriangle, Sparkles, Inbox,
   ExternalLink, Mail, Calendar, Hash, Flag, ShieldCheck, Phone, Paperclip, Image as ImageIcon,
-  FileText, Zap, Radio, Mic
+  FileText, Zap, Radio, Mic, Trash2
 } from 'lucide-react';
 import { 
   collection, query, orderBy, onSnapshot, updateDoc, 
-  doc, addDoc, getDocs, limit, where, getDoc
+  doc, addDoc, getDocs, limit, where, getDoc, deleteDoc
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import Swal from 'sweetalert2';
@@ -225,47 +225,113 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     }
   };
 
+  const handleCreateTestTicket = async () => {
+    try {
+      const res = await fetch("/api/support/create-test-ticket", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        if (addToast) addToast("టెస్ట్ టికెట్ విజయవంతంగా సృష్టించబడింది! (Test Ticket Created)", "success");
+        const newTicket = {
+          id: data.ticketId,
+          trackingNumber: data.trackingNumber,
+          ticketNumber: data.trackingNumber,
+          subject: "టెస్ట్ సమస్య / సాఫ్ట్‌వేర్ సహాయ విజ్ఞప్తి (Test Inquiry)",
+          problem: "ఇది సిస్టమ్ పరీక్షించడానికి సృష్టించిన టెస్ట్ సపోర్ట్ టికెట్.",
+          category: "Technical Support",
+          status: "open",
+          priority: "medium",
+          userName: currentUser?.fullName || currentUser?.username || "Admin Test User",
+          userEmail: currentUser?.email || "test@e-vedhika.in",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          _source: 'server_memory'
+        };
+        updateCombinedTickets([newTicket], 'support_tickets');
+      } else {
+        throw new Error(data.error || "Failed");
+      }
+    } catch (e: any) {
+      if (addToast) addToast("Error creating test ticket: " + e.message, "error");
+    }
+  };
+
+  const handleDeleteTicket = async (e: React.MouseEvent, ticketId: string, isPostSource?: boolean) => {
+    e.stopPropagation();
+    const res = await Swal.fire({
+      title: "టికెట్‌ను తొలగించాలా? (Delete Ticket?)",
+      text: "ఈ సపోర్ట్ టికెట్ లేదా డమ్మీ డేటా శాశ్వతంగా తొలగించబడుతుంది.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "అవును, తొలగించు (Delete)"
+    });
+    if (res.isConfirmed) {
+      try {
+        const response = await fetch("/api/support/delete-ticket", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketId, isPostSource })
+        });
+        const data = await response.json();
+        if (data.success) {
+          setTickets(prev => prev.filter(t => t.id !== ticketId));
+          if (selectedTicket?.id === ticketId) {
+            setSelectedTicket(null);
+          }
+          if (addToast) addToast("టికెట్ విజయవంతంగా తొలగించబడింది! (Ticket deleted)", "success");
+        } else {
+          throw new Error(data.error || "Failed");
+        }
+      } catch (err: any) {
+        if (addToast) addToast("Error deleting ticket: " + err.message, "error");
+      }
+    }
+  };
+
   // 1. Listen to Real Firestore support_tickets Collection & private_support posts
   useEffect(() => {
+    fetch("/api/support/offline-tickets")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.tickets) && data.tickets.length > 0) {
+          updateCombinedTickets(data.tickets.map((t: any) => ({ ...t, _source: 'server_memory' })), 'support_tickets');
+        }
+      })
+      .catch(() => {});
+
     // Listener for support_tickets
-    const q = query(collection(db, "support_tickets"), orderBy("updatedAt", "desc"));
-    const unsubTickets = onSnapshot(q, (snapshot) => {
+    const unsubTickets = onSnapshot(collection(db, "support_tickets"), (snapshot) => {
       const tList = snapshot.docs.map(d => ({ id: d.id, ...d.data(), _source: 'support_tickets' }));
       updateCombinedTickets(tList, 'support_tickets');
       setLoading(false);
     }, (err) => {
-      console.warn("Tickets ordered query failed:", err);
-      onSnapshot(collection(db, "support_tickets"), (snap) => {
-        const tList = snap.docs.map(d => ({ id: d.id, ...d.data(), _source: 'support_tickets' }));
-        updateCombinedTickets(tList, 'support_tickets');
-        setLoading(false);
-      });
+      console.warn("Tickets collection error:", err);
+      setLoading(false);
     });
 
     // Listener for private_support posts
-    const postsQuery = query(collection(db, "posts"), orderBy("time", "desc"));
-    const unsubPosts = onSnapshot(postsQuery, (snapshot) => {
+    const unsubPosts = onSnapshot(collection(db, "posts"), (snapshot) => {
       const privatePosts = snapshot.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter((p: any) => {
           const s = (p.status || "").toLowerCase();
-          return s === "private_support" || s === "sent to support" || s === "sent-to-support";
+          return ["sent to support", "sent-to-support", "private_support", "support"].includes(s);
         })
         .map((p: any) => ({
           ...p,
           id: p.id,
-          subject: p.title || "Private Post Support Inquiry",
-          message: p.content,
-          userName: p.userName || "User",
-          userId: p.uid,
-          createdAt: p.time,
-          updatedAt: p.updatedAt || p.time,
+          subject: p.title || p.subject || "Private Post Support Inquiry",
+          message: p.content || p.desc || "",
+          userName: p.userName || p.authorName || p.author || "User",
+          userId: p.uid || p.authorId,
+          createdAt: p.time || p.createdAt || Date.now(),
+          updatedAt: p.updatedAt || p.time || p.createdAt || Date.now(),
           _source: 'posts',
           isPostSource: true
         }));
       updateCombinedTickets(privatePosts, 'posts');
     }, (err) => {
-      console.warn("Posts query failed in support:", err);
+      console.warn("Posts query error in support:", err);
     });
 
     return () => {
@@ -730,7 +796,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       </div>
 
       {/* Main Support Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[720px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[400px]">
         {/* LEFT COLUMN: TICKET LIST (3 COLS) */}
         <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-200/80 shadow-sm flex flex-col overflow-hidden">
           {/* Filter and Search */}
@@ -777,9 +843,15 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                 Loading requests...
               </div>
             ) : filteredTickets.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-[10px] font-bold space-y-2">
-                <MessageSquare className="mx-auto text-slate-200" size={32} />
-                <p>No tickets found.</p>
+              <div className="p-8 text-center text-slate-400 text-[11px] font-bold space-y-3">
+                <MessageSquare className="mx-auto text-slate-300" size={32} />
+                <p>ఎటువంటి సపోర్ట్ టికెట్లు లేవు (No tickets found)</p>
+                <button
+                  onClick={handleCreateTestTicket}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black shadow-sm hover:bg-blue-700 transition-all inline-block cursor-pointer"
+                >
+                  + Create Test Ticket (టెస్ట్ టికెట్ సృష్టించు)
+                </button>
               </div>
             ) : (
               filteredTickets.map((t) => {
@@ -806,7 +878,16 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                           #{t.trackingNumber || t.ticketNumber || t.id.substring(0, 8).toUpperCase()}
                         </span>
                       </div>
-                      <span className="text-[9px] font-bold text-slate-400 shrink-0">{dateStr}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] font-bold text-slate-400 shrink-0">{dateStr}</span>
+                        <button
+                          onClick={(e) => handleDeleteTicket(e, t.id, t.isPostSource)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                          title="తొలగించు (Delete Ticket)"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
 
                     <h5 className="font-black text-[11px] text-slate-900 truncate leading-tight mb-1">
@@ -886,6 +967,14 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                           <Inbox size={10} /> Support Portal
                         </span>
                       )}
+
+                      <button
+                        onClick={(e) => handleDeleteTicket(e, selectedTicket.id, selectedTicket.isPostSource)}
+                        className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 rounded-lg text-[9px] font-black uppercase flex items-center gap-1 transition-colors ml-auto cursor-pointer"
+                        title="టికెట్ తొలగించు (Delete Ticket)"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
                     </div>
 
                     <h3 className="text-lg font-black text-slate-900 leading-tight">
