@@ -57,9 +57,34 @@
     <link rel="image_src" href="https://www.e-vedhika.in/banner.jpg" />
     <link rel="canonical" href="https://www.e-vedhika.in/" />
 
-    <!-- Polyfills for Windows 7 & 8 Browsers (Promise & Fetch) -->
+    <!-- Polyfills for Windows 7 & 8 Browsers -->
+    <script>
+      if (typeof globalThis === 'undefined') { window.globalThis = window; }
+      if (!window.requestAnimationFrame) {
+        window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
+        window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+      }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/intersection-observer@0.12.2/intersection-observer.js"></script>
+
+    <script>
+      // Debug helper for white screen
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          if (root && root.innerHTML.trim() === '') {
+            console.error("App failed to mount.");
+            // Show diagnostic info if still white after 5 seconds
+            var diagnostic = document.createElement('div');
+            diagnostic.style.cssText = 'position:fixed;bottom:10px;left:10px;font-size:10px;color:#94a3b8;z-index:9999;background:rgba(255,255,255,0.8);padding:5px;border-radius:4px;';
+            diagnostic.innerHTML = 'UA: ' + navigator.userAgent;
+            document.body.appendChild(diagnostic);
+          }
+        }, 5000);
+      });
+    </script>
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -95,15 +120,25 @@
         <li><a href="/contact">Contact Us</a></li>
       </ul>
     </div>
+    <script>
+      // Disable Service Worker for Legacy Browsers
+      if (typeof navigator !== 'undefined' && (navigator.userAgent.includes("Windows NT 6.") || navigator.userAgent.includes("Windows NT 5."))) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) { registrations[i].unregister(); }
+          });
+        }
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       window.addEventListener('error', function(e) {
-        var m = (e && (e.message || e.toString())) || "";
-        if (m.includes('SyntaxError') || m.includes('import') || m.includes('module') || m.includes('Unexpected')) {
-          var root = document.getElementById('root');
-          if (root && root.innerHTML.trim() === '') {
-            root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.08);max-width:480px;border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px;">⚠️</div><h2 style="color:#b91c1c;margin-bottom:12px;font-size:20px;font-weight:900;">బ్రౌజర్ అనుకూలత లోపం (Compatibility Notice)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:20px;">Windows 7 మరియు 8 లోని కొన్ని పాత బ్రౌజర్‌లు (Internet Explorer లేదా పాత వెర్షన్లు) ఆధునిక వెబ్ టెక్నాలజీలను సపోర్ట్ చేయవు. దయచేసి మెరుగైన అనుభవం కోసం <strong>Google Chrome</strong> లేదా <strong>Mozilla Firefox</strong> యొక్క లేటెస్ట్ వెర్షన్‌కు అప్‌డేట్ చేయండి.</p><button onclick="window.location.reload()" style="background:#0d3b66;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:bold;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(13,59,102,0.3);">మళ్ళీ ప్రయత్నించండి (Retry)</button></div></div>';
-          }
+        var m = (e && (e.message || e.toString())) || "Unknown Error";
+        var isCompatError = m.includes('SyntaxError') || m.includes('import') || m.includes('module') || m.includes('Unexpected');
+        
+        var root = document.getElementById('root');
+        if (root && (root.innerHTML.trim() === '' || isCompatError)) {
+          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.08);max-width:480px;border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px;">⚠️</div><h2 style="color:#b91c1c;margin-bottom:12px;font-size:20px;font-weight:900;">బ్రౌజర్ అనుకూలత లోపం (Compatibility Notice)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:10px;">మీ బ్రౌజర్‌లో ఈ క్రింది లోపం కారణంగా అప్లికేషన్ లోడ్ కాలేదు:</p><div style="background:#fef2f2;padding:12px;border-radius:10px;font-family:monospace;font-size:11px;color:#991b1b;margin-bottom:20px;word-break:break-all;text-align:left;border:1px solid #fee2e2;">' + m + '</div><p style="font-size:13px;color:#64748b;margin-bottom:20px;">Windows 7/8 పాత బ్రౌజర్‌లలో ఈ సమస్య రావచ్చు. దయచేసి <strong>Google Chrome</strong> లేదా <strong>Firefox</strong> లేటెస్ట్ వెర్షన్‌కు అప్‌డేట్ చేయండి.</p><button onclick="window.location.reload()" style="background:#0d3b66;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:bold;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(13,59,102,0.3);">మళ్ళీ ప్రయత్నించండి (Retry)</button></div></div>';
         }
       });
     </script>

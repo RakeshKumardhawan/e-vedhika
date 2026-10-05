@@ -1,4 +1,4 @@
-import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmuteAdsLocally, recordAdImpression } from "./adManager";
+import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmuteAdsLocally, recordAdImpression, isLegacyWindows } from "./adManager";
 import { StaticPagesAdmin } from "./components/StaticPagesAdmin";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
@@ -10968,7 +10968,7 @@ function AdsenseUnit({
   const isPushed = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !client || !slot || !canShowAds()) return;
+    if (typeof window === "undefined" || !client || !slot || !canShowAds() || isLegacyWindows()) return;
     
     // Dynamically ensure Google AdSense script is present when allowed
     if (!document.querySelector('script[src*="pagead2.googlesyndication.com"]')) {

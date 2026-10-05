@@ -1,7 +1,18 @@
 export const isLegacyWindows = (): boolean => {
     if (typeof navigator === 'undefined') return false;
     const ua = navigator.userAgent || "";
-    return ua.includes("Windows NT 6.") || ua.includes("Windows NT 5.") || ua.includes("MSIE") || ua.includes("Trident") || ua.includes("Windows 7") || ua.includes("Windows 8");
+    const isLegacy = ua.includes("Windows NT 6.") || 
+                     ua.includes("Windows NT 5.") || 
+                     ua.includes("MSIE") || 
+                     ua.includes("Trident") || 
+                     ua.includes("Windows 7") || 
+                     ua.includes("Windows 8") ||
+                     ua.includes("Chrome/10") || // Chrome 100-109
+                     ua.includes("Chrome/9") ||  // Chrome 90-99
+                     ua.includes("Chrome/8") ||  // Chrome 80-89
+                     ua.includes("Chrome/7");    // Chrome 70-79
+    if (isLegacy) console.log("Legacy environment detected: Ads disabled for stability.");
+    return isLegacy;
 };
 
 export const isAdsMuted = (siteConfig?: any): boolean => {
