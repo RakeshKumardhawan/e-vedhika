@@ -163,6 +163,7 @@ export default defineConfig(({mode}) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
+      target: ['es2015', 'chrome75', 'firefox68'],
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {

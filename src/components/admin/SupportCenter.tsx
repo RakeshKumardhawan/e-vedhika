@@ -7,7 +7,7 @@ import {
   FileText, Zap, Radio, Mic, Trash2
 } from 'lucide-react';
 import { 
-  collection, query, orderBy, onSnapshot, updateDoc, 
+  collection, query, orderBy, onSnapshot, updateDoc, setDoc,
   doc, addDoc, getDocs, limit, where, getDoc, deleteDoc
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -686,15 +686,24 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     if (!selectedTicket?.id) return;
     try {
       const col = selectedTicket.isPostSource ? "posts" : "support_tickets";
-      await updateDoc(doc(db, col, selectedTicket.id), {
+      await setDoc(doc(db, col, selectedTicket.id), {
         status: newStatus,
         updatedAt: Date.now()
-      });
+      }, { merge: true });
       setSelectedTicket({ ...selectedTicket, status: newStatus });
       if (addToast) addToast(`Status updated to ${newStatus.toUpperCase()}`, "success");
     } catch (e: any) {
       console.error(e);
-      if (addToast) addToast(`Error updating status: ${e.message}`, "error");
+      try {
+        await setDoc(doc(db, "support_tickets", selectedTicket.id), {
+          status: newStatus,
+          updatedAt: Date.now()
+        }, { merge: true });
+        setSelectedTicket({ ...selectedTicket, status: newStatus });
+        if (addToast) addToast(`Status updated to ${newStatus.toUpperCase()}`, "success");
+      } catch (err: any) {
+        if (addToast) addToast(`Error updating status: ${err.message}`, "error");
+      }
     }
   };
 
@@ -703,10 +712,10 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
     if (!selectedTicket?.id) return;
     try {
       const col = selectedTicket.isPostSource ? "posts" : "support_tickets";
-      await updateDoc(doc(db, col, selectedTicket.id), {
+      await setDoc(doc(db, col, selectedTicket.id), {
         priority: newPriority,
         updatedAt: Date.now()
-      });
+      }, { merge: true });
       setSelectedTicket({ ...selectedTicket, priority: newPriority });
       if (addToast) addToast(`Priority set to ${newPriority.toUpperCase()}`, "success");
     } catch (e: any) {

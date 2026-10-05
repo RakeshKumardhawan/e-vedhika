@@ -4392,15 +4392,10 @@ E-Vedhika Team`;
 
     const isApproved = 
       p.isAdminPost || 
-      ["approved", "active"].includes(pStatus) || 
-      (pStatus === "published" && p.verified);
-    const isAuthor = Boolean(user?.uid && (p.uid === user.uid || (p as any).userId === user.uid || (p as any).authorId === user.uid));
-    const canSeePending = isAdmin || isEditor || isDevEmail;
-    const isSupportPost = ["sent to support", "sent-to-support", "private_support", "support"].includes(pStatus);
+      ["approved", "active", "published"].includes(pStatus);
 
-    if (isSupportPost) {
-      return false;
-    } else if (!canSeePending && !isApproved) {
+    // On Home feed, never show pending, draft, or support posts to anyone (even admins)
+    if (!isApproved) {
       return false;
     }
 
