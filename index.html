@@ -57,6 +57,10 @@
     <link rel="image_src" href="https://www.e-vedhika.in/banner.jpg" />
     <link rel="canonical" href="https://www.e-vedhika.in/" />
 
+    <!-- Polyfills for Windows 7 & 8 Browsers (Promise & Fetch) -->
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
+
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్" />
@@ -95,6 +99,13 @@
     </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
+      setTimeout(function() {
+        var root = document.getElementById('root');
+        if (root && root.innerHTML.trim() === '') {
+          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.08);max-width:480px;border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px;">⏳</div><h2 style="color:#0d3b66;margin-bottom:12px;font-size:20px;font-weight:900;">వెబ్‌సైట్ లోడ్ అవుతోంది... (Loading...)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:20px;">Windows 7/8 సిస్టమ్‌లలో జావాస్క్రిప్ట్ మరియు పాలిఫిల్స్ లోడ్ కావడానికి కొంచెం సమయం పట్టవచ్చు. దయచేసి వేచి ఉండండి లేదా బ్రౌజర్ రిఫ్రెష్ చేయండి.</p><button onclick="window.location.reload()" style="background:#0d3b66;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:bold;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(13,59,102,0.3);">రీఫ్రెష్ చేయండి (Refresh)</button></div></div>';
+        }
+      }, 3500);
+
       window.addEventListener('error', function(e) {
         var m = (e && (e.message || e.toString())) || "";
         if (m.includes('SyntaxError') || m.includes('import') || m.includes('module') || m.includes('Unexpected')) {
