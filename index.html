@@ -58,8 +58,11 @@
     <link rel="canonical" href="https://www.e-vedhika.in/" />
 
     <!-- Polyfills for Windows 7 & 8 Browsers -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.32.2/minified.js"></script>
     <script>
       if (typeof globalThis === 'undefined') { window.globalThis = window; }
+      if (!window.Iterator) { window.Iterator = function() {}; } 
+      if (typeof Reflect === 'undefined') { window.Reflect = { get: function(t,k){return t[k];}, set: function(t,k,v){t[k]=v;return true;} }; }
       if (!window.requestAnimationFrame) {
         window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
         window.cancelAnimationFrame = function(id) { clearTimeout(id); };
