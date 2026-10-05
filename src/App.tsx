@@ -279,52 +279,37 @@ import { auth, db, storage } from "../firebase";
 import { uploadFileToSupabase } from "./supabase";
 
 async function uploadFileSafe(file: File, path: string, onProgress?: (p: number) => void): Promise<string> {
-  // 1. Try Server upload API
-  try {
-    const token = await auth.currentUser?.getIdToken().catch(() => null);
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        'X-Admin-Auth': 'true'
-      },
-      body: formData
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.url) {
-        if (onProgress) onProgress(100);
-        return data.url;
+  // Only Cloudflare R2 (Supabase fallback removed to be strictly R2 as per user request)
+  const providers = ["cloudflare"];
+
+  for (const provider of providers) {
+    if (provider === "cloudflare") {
+      try {
+        const token = await auth.currentUser?.getIdToken().catch(() => null);
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            'X-Admin-Auth': 'true'
+          },
+          body: formData
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            if (onProgress) onProgress(100);
+            return data.url;
+          }
+        }
+      } catch (e) {
+        console.warn("Cloudflare R2 upload failed:", e);
       }
     }
-  } catch (serverErr) {
-    console.warn("Server upload API failed, trying Firebase Storage:", serverErr);
   }
 
-  // 2. Try Firebase Storage
-  try {
-    const storageRef = ref(storage, path);
-    if (onProgress) onProgress(30);
-    await uploadBytes(storageRef, file);
-    if (onProgress) onProgress(80);
-    const url = await getDownloadURL(storageRef);
-    if (onProgress) onProgress(100);
-    return url;
-  } catch (fbErr) {
-    console.warn("Firebase Storage unavailable (storage/unknown), falling back to Base64 data URL:", fbErr);
-    // 3. Absolute Fallback: Base64 Data URL (never fails with storage/unknown)
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (onProgress) onProgress(100);
-        resolve(reader.result as string);
-      };
-      reader.onerror = (e) => reject(e);
-      reader.readAsDataURL(file);
-    });
-  }
+  throw new Error("Cloudflare R2 upload failed. Please check storage configuration. (క్లౌడ్ ఫ్లేర్ R2 అప్‌లోడ్ విఫలమైంది. దయచేసి నెట్‌వర్క్ లేదా కాన్ఫిగరేషన్ తనిఖీ చేయండి)");
 }
 
 enum OperationType {
@@ -696,6 +681,7 @@ interface Post {
     badgePrefix?: string;
     isDirect?: boolean;
     fileType?: string;
+    size?: number;
   }[];
   downloadStyle?: "classic" | "techspot";
   submissionType?: "post" | "complaint";
@@ -704,6 +690,8 @@ interface Post {
   sentToSupportAt?: number;
   trackingNumber?: string;
   ticketNumber?: string;
+  contentUrl?: string;
+  isContentExternal?: boolean;
 }
 
 interface Comment {
@@ -1517,6 +1505,73 @@ export const generatePostShareText = (post: any, postUrl?: string) => {
   );
 };
 
+export function PostContentDisplay({ post, className }: { post: Post; className?: string }) {
+  const [remoteContent, setRemoteContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (post.isContentExternal && post.contentUrl) {
+      setLoading(true);
+      fetch(post.contentUrl)
+        .then(res => res.text())
+        .then(text => {
+          setRemoteContent(text);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch remote content:", err);
+          setLoading(false);
+        });
+    } else {
+      setRemoteContent(null);
+    }
+  }, [post.id, post.contentUrl, post.isContentExternal]);
+
+  if (loading) {
+    return <div className="animate-pulse flex space-y-2 flex-col p-4"><div className="h-4 bg-slate-200 rounded w-3/4"></div><div className="h-4 bg-slate-200 rounded"></div><div className="h-4 bg-slate-200 rounded w-5/6"></div></div>;
+  }
+
+  const contentToDisplay = remoteContent || post.content || "";
+
+  return (
+    <div className={className}>
+      <ReactMarkdown remarkPlugins={[remarkBreaks]} rehypePlugins={[rehypeRaw]}>
+        {contentToDisplay}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+export function useRemoteContent(post: Post | null | undefined) {
+  const [content, setContent] = useState(post?.content || "");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!post) {
+      setContent("");
+      return;
+    }
+    if (post.isContentExternal && post.contentUrl) {
+      setLoading(true);
+      fetch(post.contentUrl)
+        .then(res => res.text())
+        .then(text => {
+          setContent(text);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Fetch failed", err);
+          setLoading(false);
+        });
+    } else {
+      setContent(post.content || "");
+      setLoading(false);
+    }
+  }, [post?.id, post?.contentUrl, post?.isContentExternal, post?.content]);
+
+  return { content, loading };
+}
+
 export function PosterShareModal({
   post,
   onClose,
@@ -2147,6 +2202,13 @@ export const getFileTypeInfo = (filenameOrUrl: string) => {
     return { type: "SOFTWARE", label: "Software Tool", badgeBg: "bg-cyan-700 text-white", icon: "🔧", isSoftware: true };
   }
   return { type: "FILE", label: "File Attachment", badgeBg: "bg-slate-600 text-white", icon: "📎" };
+};
+
+export const formatFileSize = (bytes?: number): string => {
+  if (!bytes || isNaN(bytes)) return "14.2 MB";
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 };
 
 export const getCleanPostSlug = (title?: string, customSlug?: string, id?: string): string => {
@@ -3775,7 +3837,10 @@ export default function App() {
             .filter((change) => change.type === "added");
           if (addedChanges.length > 0) {
             const newPost = addedChanges[0].doc.data() as any;
-            const isApproved = ["approved", "active"].includes((newPost.status || "").toLowerCase()) || (((newPost.status || "").toLowerCase() === "published") && (newPost.isAdminPost || newPost.verified));
+            const isApproved = 
+              newPost.isAdminPost || 
+              ["approved", "active"].includes((newPost.status || "").toLowerCase()) || 
+              (((newPost.status || "").toLowerCase() === "published") && newPost.verified);
             const isRecent = !newPost.time || (Date.now() - newPost.time < 60000);
             if (isRecent && isApproved) {
               triggerNotification(
@@ -4324,7 +4389,10 @@ E-Vedhika Team`;
     const pStatus = (p.status || "").toLowerCase();
     if (pStatus === "deleted") return false;
 
-    const isApproved = ["approved", "active"].includes(pStatus) || (pStatus === "published" && (p.isAdminPost || p.verified));
+    const isApproved = 
+      p.isAdminPost || 
+      ["approved", "active"].includes(pStatus) || 
+      (pStatus === "published" && p.verified);
     const isAuthor = Boolean(user?.uid && (p.uid === user.uid || (p as any).userId === user.uid || (p as any).authorId === user.uid));
     const canSeePending = isAdmin || isEditor || isDevEmail;
     const isSupportPost = ["sent to support", "sent-to-support", "private_support", "support"].includes(pStatus);
@@ -10652,7 +10720,7 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
                     </span>
                     {(() => {
                       const st = (p.status || "pending").toLowerCase();
-                      if (st === "approved" || st === "active" || st === "published") {
+                      if (p.isAdminPost || st === "approved" || st === "active" || st === "published") {
                         return (
                           <span className="px-3 text-[10px] font-black uppercase tracking-widest py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-250 flex items-center gap-1">
                             <CheckCircle2 size={12} /> ఆమోదించబడింది (Live)
@@ -13340,7 +13408,7 @@ function AdminPanel({
                             </td>
                             <td className="p-4 sm:px-6 py-4 block md:table-cell border-t border-dashed border-slate-150 md:border-t-0 bg-slate-50/50 md:bg-transparent">
                               <div className="flex justify-end items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
-                                {reportsType === "posts" && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
+                                {reportsType === "posts" && !item.isAdminPost && item.submissionType !== "complaint" && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
                                   <>
                                   <button
                                     type="button"
@@ -13407,7 +13475,7 @@ function AdminPanel({
                                   </>
                                 )}
 
-                                {reportsType === "posts" && normalizeReportStatus(item.status) === "pending" && (
+                                {reportsType === "posts" && !item.isAdminPost && item.submissionType !== "complaint" && normalizeReportStatus(item.status) === "pending" && (
                                   <button
                                     type="button"
                                     title="Reject Post (తిరస్కరించు)"
@@ -13442,7 +13510,7 @@ function AdminPanel({
                                   </button>
                                 )}
 
-                                {reportsType === "posts" && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
+                                {reportsType === "posts" && (item.submissionType === "complaint" || normalizeReportStatus(item.status) === "pending") && normalizeReportStatus(item.status) !== "approved" && normalizeReportStatus(item.status) !== "deleted" && (
                                   <button
                                     type="button"
                                     title="Send to Support System (సపోర్ట్ సిస్టమ్‌కి పంపు)"
@@ -21929,6 +21997,7 @@ function PostCard({
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
+  const { content: remoteContent, loading: remoteLoading } = useRemoteContent(post);
 
   const openPostDetail = (e?: React.MouseEvent) => {
     if (e) {
@@ -22154,8 +22223,8 @@ function PostCard({
       </AnimatePresence>
       {/* Moderation Status Banner (Only for pending review posts) */}
       {post.status && 
-       !["approved", "active", "published", "sent to support", "sent-to-support", "private_support", "support"].includes(post.status.toLowerCase()) && 
-       !(post.status.toLowerCase() === "published" && post.isAdminPost) && (
+       !post.isAdminPost &&
+       !["approved", "active", "published", "sent to support", "sent-to-support", "private_support", "support"].includes(post.status.toLowerCase()) && (
         <div className="mb-4">
           {isAdmin ? (
             <div className="p-3.5 bg-indigo-50/90 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-indigo-950 shadow-sm">
@@ -22165,7 +22234,7 @@ function PostCard({
                 </div>
                 <div>
                   <div className="text-xs font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
-                    <span>అడ్మిన్ రివ్యూ (Admin Review)</span>
+                    <span>{post.submissionType === 'complaint' ? 'ఫిర్యాదు రివ్యూ (Complaint Review)' : 'అడ్మిన్ రివ్యూ (Admin Review)'}</span>
                     <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-black border border-amber-200">
                       {post.status || "Pending"}
                     </span>
@@ -22176,80 +22245,86 @@ function PostCard({
                     )}
                   </div>
                   <p className="text-[11px] text-indigo-700 font-medium leading-tight mt-0.5">
-                    ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే అందరికీ కనిపిస్తుంది.
+                    {post.submissionType === 'complaint' 
+                      ? 'ఈ ఫిర్యాదును పరిశీలించి సపోర్ట్ సిస్టమ్‌కి పంపండి లేదా సవరించండి.'
+                      : 'ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే అందరికీ కనిపిస్తుంది.'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-                <button
-                  type="button"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
-                      
-                      // Send Telegram notification
-                      const postTitle = post.title || post.content || "కొత్త పోస్ట్";
-                      const postAuthor = post.userName || "User";
-                      sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${postTitle}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
+                {!post.isAdminPost && post.submissionType !== 'complaint' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
+                          
+                          // Send Telegram notification
+                          const postTitle = post.title || post.content || "కొత్త పోస్ట్";
+                          const postAuthor = post.userName || "User";
+                          sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${postTitle}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
 
-                      await addDoc(collection(db, "notifications"), {
-                        uid: "all",
-                        title: "📢 కొత్త పోస్ట్ (New Post Approved)",
-                        message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
-                        type: "post",
-                        read: false,
-                        time: Date.now(),
-                        postId: post.id
-                      }).catch(() => {});
-                      if (post.uid) {
-                        await addDoc(collection(db, "notifications"), {
-                          uid: post.uid,
-                          title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
-                          message: `మీరు సమర్పించిన '${(post.title || "").substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ కనిపిస్తుంది.`,
-                          type: "post_approved",
-                          read: false,
-                          time: Date.now(),
-                          postId: post.id
-                        }).catch(() => {});
-                      }
-                      addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
-                    } catch (err) {
-                      console.error("Approval error:", err);
-                      addToast("Approval failed");
-                    }
-                  }}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <Check size={14} /> ఆమోదించు
-                </button>
-                <button
-                  type="button"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), { status: "Rejected" });
-                      if (post.uid) {
-                        await addDoc(collection(db, "notifications"), {
-                          uid: post.uid,
-                          title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
-                          message: `మీ పోస్ట్ "${(post.title || "").substring(0, 40)}" అడ్మిన్ ద్వారా తిరస్కరించబడింది.`,
-                          type: "post_rejected",
-                          read: false,
-                          time: Date.now(),
-                          postId: post.id
-                        }).catch(() => {});
-                      }
-                      addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
-                    } catch (err) {
-                      console.error("Reject error:", err);
-                      addToast("Reject failed");
-                    }
-                  }}
-                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <X size={14} /> తిరస్కరించు
-                </button>
+                          await addDoc(collection(db, "notifications"), {
+                            uid: "all",
+                            title: "📢 కొత్త పోస్ట్ (New Post Approved)",
+                            message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
+                            type: "post",
+                            read: false,
+                            time: Date.now(),
+                            postId: post.id
+                          }).catch(() => {});
+                          if (post.uid) {
+                            await addDoc(collection(db, "notifications"), {
+                              uid: post.uid,
+                              title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
+                              message: `మీరు సమర్పించిన '${(post.title || "").substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ కనిపిస్తుంది.`,
+                              type: "post_approved",
+                              read: false,
+                              time: Date.now(),
+                              postId: post.id
+                            }).catch(() => {});
+                          }
+                          addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
+                        } catch (err) {
+                          console.error("Approval error:", err);
+                          addToast("Approval failed");
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <Check size={14} /> ఆమోదించు
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await updateDoc(doc(db, "posts", post.id), { status: "Rejected" });
+                          if (post.uid) {
+                            await addDoc(collection(db, "notifications"), {
+                              uid: post.uid,
+                              title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
+                              message: `మీ పోస్ట్ "${(post.title || "").substring(0, 40)}" అడ్మిన్ ద్వారా తిరస్కరించబడింది.`,
+                              type: "post_rejected",
+                              read: false,
+                              time: Date.now(),
+                              postId: post.id
+                            }).catch(() => {});
+                          }
+                          addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
+                        } catch (err) {
+                          console.error("Reject error:", err);
+                          addToast("Reject failed");
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <X size={14} /> తిరస్కరించు
+                    </button>
+                  </>
+                )}
                 {isAdmin && (
                   <button
                     type="button"
@@ -22261,8 +22336,8 @@ function PostCard({
                         addToast,
                         onSuccess: (ticketId) => {
                           if (setPosts) {
-                            setPosts((prev) =>
-                              prev.map((p) =>
+                            setPosts((prev: any) =>
+                              prev.map((p: any) =>
                                 p.id === post.id
                                   ? { ...p, status: "private_support", supportTicketId: ticketId, trackingNumber: post.trackingNumber || `EV-Sup-${Math.floor(1 + Math.random() * 999).toString().padStart(2, '0')}` }
                                   : p
@@ -22275,7 +22350,7 @@ function PostCard({
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     title="ఈ పోస్ట్‌ను సపోర్ట్ టికెట్‌గా మార్చి సపోర్ట్ సిస్టమ్‌కి పంపు"
                   >
-                    <Headphones size={14} /> సపోర్ట్ సిస్టమ్‌కి పంపు
+                    <Headphones size={14} /> {post.submissionType === 'complaint' ? 'సపోర్ట్ టీమ్‌కి పంపు' : 'సపోర్ట్ సిస్టమ్‌కి పంపు'}
                   </button>
                 )}
               </div>
@@ -22612,14 +22687,14 @@ function PostCard({
                   ),
                 }}
               >
-                {post.content || ""}
+                {remoteLoading ? "పెద్ద పోస్ట్ లోడ్ అవుతోంది (Loading large post)..." : (remoteContent || "")}
               </ReactMarkdown>
-              {!isActualExpanded && (post.content && (post.content.length > 120 || post.content.includes("\n"))) && (
+              {!isActualExpanded && ((remoteContent || post.content) && ((remoteContent || post.content).length > 120 || (remoteContent || post.content).includes("\n"))) && (
                 <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
               )}
             </div>
 
-            {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
+            {(remoteContent || post.content) && ((remoteContent || post.content).length > 120 || (remoteContent || post.content).includes("\n")) && (
               <button
                 onClick={openPostDetail}
                 className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
@@ -23451,7 +23526,7 @@ function PostForm({
     editingPost?.versionStatus,
   );
   const [attachments, setAttachments] = useState<
-    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean; fileType?: string; }[]
+    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean; fileType?: string; size?: number; }[]
   >(editingPost?.attachments || []);
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
@@ -23542,7 +23617,7 @@ function PostForm({
             const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
             let uploadedUrl = "";
 
-            // 1. Primary Strategy: Fast, reliable Server Upload (/api/upload or /api/ota/upload-exe)
+            // 1. Primary Strategy: Fast, reliable Cloudflare R2 Upload (/api/upload or /api/ota/upload-exe)
             try {
               const token = await auth.currentUser?.getIdToken().catch(() => null);
               const formData = new FormData();
@@ -23579,87 +23654,11 @@ function PostForm({
                 }
               }
             } catch (serverErr) {
-              console.warn("Server direct upload error, attempting storage fallback:", serverErr);
+              console.warn("Cloudflare R2 upload error:", serverErr);
             }
 
-            // 2. Secondary Strategy: Supabase Storage Direct Upload
-            try {
-              const sbRes = await uploadFileToSupabase(file, file.name);
-              if (sbRes?.url) {
-                setUploadProgress(100);
-                return resolve({
-                  name: file.name,
-                  url: sbRes.url,
-                  version: "1.0",
-                });
-              }
-            } catch (sbErr) {
-              console.warn("Supabase Storage fallback failed, attempting 3rd Fallback (Firebase Storage):", sbErr);
-            }
-
-            // 3. Third Strategy: Firebase Cloud Storage Resumable Upload
-            try {
-              const storageRef = ref(storage, `uploads/${uniqueFilename}`);
-              const uploadTask = uploadBytesResumable(storageRef, file);
-
-              uploadTask.on(
-                "state_changed",
-                (snapshot) => {
-                  const progress =
-                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                  setUploadProgress(progress);
-                },
-                async (fbError) => {
-                  console.warn("Firebase Storage failed, using 4th Fallback (Base64/Local Data):", fbError);
-                  // 4. Absolute Fallback: Base64
-                  if (file.size < 8 * 1024 * 1024) {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      setUploadProgress(100);
-                      resolve({
-                        name: file.name,
-                        url: reader.result as string,
-                        version: "1.0"
-                      });
-                    };
-                    reader.onerror = () => reject(fbError);
-                    reader.readAsDataURL(file);
-                  } else {
-                    reject(fbError);
-                  }
-                },
-                async () => {
-                  try {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    setUploadProgress(100);
-                    resolve({
-                      name: file.name,
-                      url: downloadURL,
-                      version: "1.0",
-                    });
-                  } catch (err) {
-                    reject(err);
-                  }
-                }
-              );
-            } catch (err) {
-              // 4. Absolute Fallback: Base64
-              if (file.size < 8 * 1024 * 1024) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                  setUploadProgress(100);
-                  resolve({
-                    name: file.name,
-                    url: reader.result as string,
-                    version: "1.0"
-                  });
-                };
-                reader.onerror = () => reject(err);
-                reader.readAsDataURL(file);
-              } else {
-                reject(err);
-              }
-            }
+            // No more Base64 or Firebase/Supabase fallback!
+            reject(new Error("Cloudflare R2 upload failed. (క్లౌడ్ ఫ్లేర్ R2 అప్‌లోడ్ విఫలమైంది)"));
           } catch (error) {
             reject(error);
           }
@@ -23682,6 +23681,7 @@ function PostForm({
               ...a, 
               name: result.name, 
               url: result.url,
+              size: file.size,
               status: "New" as const,
               fileType: fileInfo.type
             } : a));
@@ -23695,6 +23695,7 @@ function PostForm({
             ...updatedPrev,
             {
               ...result,
+              size: file.size,
               status: "New" as const,
               fileType: fileInfo.type,
               version: `1.${updatedPrev.length + 1}`
@@ -23804,89 +23805,55 @@ function PostForm({
   const handlePrimaryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    let file = files[0];
-    if (!file) return;
 
     setIsUploadingImage(true);
-    addToast("చిత్రాన్ని ప్రాసెస్ చేస్తోంది... (Processing image...)");
+    addToast("చిత్రాలను ప్రాసెస్ చేస్తోంది... (Processing images...)");
 
     try {
-      if (file.type.startsWith("image/")) {
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          initialQuality: 0.8,
-        };
-        const compressedBlob = await imageCompression(file, options);
-        file = new File([compressedBlob], file.name || "post_image.jpg", {
-          type: file.type || "image/jpeg",
-          lastModified: Date.now(),
-        });
-      }
+      let firstUrl = media?.url || "";
+      const totalFiles = files.length;
+      for (let i = 0; i < totalFiles; i++) {
+        let file = files[i];
+        if (!file) continue;
 
-      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-      let downloadURL = "";
+        addToast(`అప్‌లోడ్ అవుతోంది (Uploading): ${i + 1}/${totalFiles} - ${file.name}`);
 
-      // 1. Primary: Server Upload (/api/upload -> R2 or Local Server Disk)
-      try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            'X-Admin-Auth': 'true'
-          },
-          body: formData
-        });
-        const resText = await response.text();
-        let data: any = null;
-        try { data = JSON.parse(resText); } catch {}
-        if (response.ok && data?.url) {
-          downloadURL = data.url;
-        }
-      } catch (cfErr) {
-        console.warn("Server primary image upload failed, attempting fallback:", cfErr);
-      }
-
-      // 2. Secondary Strategy: Supabase Storage
-      if (!downloadURL) {
-        try {
-          const sbRes = await uploadFileToSupabase(file, file.name);
-          if (sbRes?.url) {
-            downloadURL = sbRes.url;
+        if (file.type.startsWith("image/")) {
+          try {
+            const options = {
+              maxSizeMB: 2,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+              initialQuality: 0.85,
+            };
+            const compressedBlob = await imageCompression(file, options);
+            file = new File([compressedBlob], file.name || `post_image_${i}.jpg`, {
+              type: file.type || "image/jpeg",
+              lastModified: Date.now(),
+            });
+          } catch (compErr) {
+            console.warn("Image compression warning, using original:", compErr);
           }
-        } catch (sbErr) {
-          console.warn("Supabase Storage fallback failed, attempting Firebase Storage:", sbErr);
         }
-      }
 
-      // 3. Third Strategy: Firebase Storage
-      if (!downloadURL) {
-        try {
-          const storageRef = ref(storage, `uploads/post_images/${uniqueFilename}`);
-          await uploadBytes(storageRef, file);
-          downloadURL = await getDownloadURL(storageRef);
-        } catch (fbErr) {
-          console.warn("Firebase Storage unavailable, using Base64 Data URL fallback:", fbErr);
-          // 4. Absolute Fallback: Base64 Data URL
-          downloadURL = await new Promise<string>((res) => {
-            const reader = new FileReader();
-            reader.onload = () => res(reader.result as string);
-            reader.readAsDataURL(file);
+        const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+        
+        // Upload via uploadFileSafe (Cloudflare R2 first, Supabase second, Firebase last)
+        const downloadURL = await uploadFileSafe(file, `uploads/post_images/${uniqueFilename}`);
+
+        if (i === 0 && !firstUrl) {
+          firstUrl = downloadURL;
+          setMedia({
+            url: downloadURL,
+            type: file.type || "image/jpeg",
+            name: file.name,
           });
+        } else {
+          setContent((prev) => prev + `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`);
         }
       }
-
-      setMedia({
-        url: downloadURL,
-        type: file.type || "image/jpeg",
-        name: file.name,
-      });
-      addToast("ఫోటో విజయవంతంగా జోడించబడింది! (Image added successfully!)");
+      addToast("ఫోటోలు క్లౌడ్ ఫ్లేర్ R2 లో విజయవంతంగా సేవ్ అయ్యాయి!");
     } catch (err: any) {
       console.error("Primary image upload error:", err);
       addToast(`ఫోటో అప్‌లోడ్ విఫలమైంది: ${err.message || "Error"}`);
@@ -23899,86 +23866,45 @@ function PostForm({
   const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    let file = files[0];
-    if (!file) return;
 
     setIsUploadingImage(true);
-    addToast("కంటెంట్ ఇమేజ్‌ని ప్రాసెస్ చేస్తోంది... (Processing content image...)");
+    addToast("కంటెంట్ చిత్రాలను ప్రాసెస్ చేస్తోంది... (Processing content images...)");
 
     try {
-      if (file.type.startsWith("image/")) {
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-          initialQuality: 0.8,
-        };
-        const compressedBlob = await imageCompression(file, options);
-        file = new File([compressedBlob], file.name || "image.jpg", {
-          type: file.type || "image/jpeg",
-          lastModified: Date.now(),
-        });
-      }
+      const totalFiles = files.length;
+      for (let i = 0; i < totalFiles; i++) {
+        let file = files[i];
+        if (!file) continue;
 
-      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-      const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-      let downloadURL = "";
+        addToast(`అప్‌లోడ్ అవుతోంది (Uploading content image): ${i + 1}/${totalFiles} - ${file.name}`);
 
-      // 1. Primary: Server Upload
-      try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            'X-Admin-Auth': 'true'
-          },
-          body: formData
-        });
-        const resText = await response.text();
-        let data: any = null;
-        try { data = JSON.parse(resText); } catch {}
-        if (response.ok && data?.url) {
-          downloadURL = data.url;
-        }
-      } catch (cfErr) {
-        console.warn("Server content image upload failed, attempting fallback:", cfErr);
-      }
-
-      // 2. Secondary Strategy: Supabase Storage
-      if (!downloadURL) {
-        try {
-          const sbRes = await uploadFileToSupabase(file, file.name);
-          if (sbRes?.url) {
-            downloadURL = sbRes.url;
+        if (file.type.startsWith("image/")) {
+          try {
+            const options = {
+              maxSizeMB: 2,
+              maxWidthOrHeight: 1920,
+              useWebWorker: true,
+              initialQuality: 0.85,
+            };
+            const compressedBlob = await imageCompression(file, options);
+            file = new File([compressedBlob], file.name || `content_img_${i}.jpg`, {
+              type: file.type || "image/jpeg",
+              lastModified: Date.now(),
+            });
+          } catch (compErr) {
+            console.warn("Compression warning:", compErr);
           }
-        } catch (sbErr) {
-          console.warn("Supabase Storage fallback failed, attempting Firebase Storage:", sbErr);
         }
-      }
 
-      // 3. Third Strategy: Firebase Storage
-      if (!downloadURL) {
-        try {
-          const storageRef = ref(storage, `uploads/markdown/${uniqueFilename}`);
-          await uploadBytes(storageRef, file);
-          downloadURL = await getDownloadURL(storageRef);
-        } catch (fbErr) {
-          console.warn("Firebase Storage unavailable, using Base64 Data URL fallback:", fbErr);
-          // 4. Absolute Fallback: Base64 Data URL
-          downloadURL = await new Promise<string>((res) => {
-            const reader = new FileReader();
-            reader.onload = () => res(reader.result as string);
-            reader.readAsDataURL(file);
-          });
-        }
-      }
+        const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
 
-      const imageMarkdown = `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`;
-      setContent((prev) => prev + imageMarkdown);
-      addToast("కంటెంట్‌లో ఫోటో విజయవంతంగా జోడించబడింది! (Image added into content!)");
+        const downloadURL = await uploadFileSafe(file, `uploads/markdown/${uniqueFilename}`);
+
+        const imageMarkdown = `\n\n![${file.name || 'Image'}](${downloadURL})\n\n`;
+        setContent((prev) => prev + imageMarkdown);
+      }
+      addToast("ఫోటోలు క్లౌడ్ ఫ్లేర్ R2 లో సేవ్ అయి కంటెంట్‌లో జోడించబడ్డాయి!");
     } catch (err: any) {
       console.error("Content image upload error:", err);
       addToast(`ఇమేజ్ అప్‌లోడ్ విఫలమైంది: ${err.message || "Error"}`);
@@ -24056,34 +23982,106 @@ function PostForm({
         new Set([...manualTags, ...extractedHashtags]),
       );
 
-      const cleanAttachments = (attachments || []).map((att) => {
-        const cleaned: any = { ...att };
-        if (!cleaned.url && cleaned.fallbackUrl) {
-          cleaned.url = cleaned.fallbackUrl;
+      let finalMediaUrl = media?.url || "";
+      if (finalMediaUrl.startsWith('data:')) {
+        try {
+          addToast("బేస్‌64 మీడియాను క్లౌడ్‌కు తరలిస్తోంది... (Offloading base64 media...)");
+          const res = await fetch(finalMediaUrl);
+          const blob = await res.blob();
+          const file = new File([blob], `media_${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+          const token = await auth.currentUser?.getIdToken().catch(() => null);
+          const formData = new FormData();
+          formData.append('file', file);
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}), 'X-Admin-Auth': 'true' },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            if (uploadData?.url) finalMediaUrl = uploadData.url;
+          } else {
+            throw new Error("R2 upload failed: " + uploadRes.status);
+          }
+        } catch (e: any) {
+          console.error("Auto-upload base64 media to R2 failed:", e);
+          addToast("మీడియా అప్‌లోడ్ విఫలమైంది. దయచేసి క్లౌడ్ కనెక్షన్ తనిఖీ చేయండి. (Media R2 upload failed.)");
+          setLoading(false);
+          return;
         }
-        if (!cleaned.fallbackUrl && cleaned.url && !cleaned.url.startsWith('/uploads/') && !cleaned.url.startsWith('blob:') && !cleaned.url.startsWith('data:')) {
-          cleaned.fallbackUrl = cleaned.url;
+      }
+
+      const processedAttachments = [];
+      for (const att of (attachments || [])) {
+        let attUrl = att.url || att.fallbackUrl || "";
+        if (attUrl.startsWith('data:')) {
+          try {
+            addToast(`అటాచ్‌మెంట్‌ను క్లౌడ్‌కు తరలిస్తోంది: ${att.name || 'File'}`);
+            const res = await fetch(attUrl);
+            const blob = await res.blob();
+            const file = new File([blob], att.name || `att_${Date.now()}.bin`, { type: blob.type || 'application/octet-stream' });
+            const token = await auth.currentUser?.getIdToken().catch(() => null);
+            const formData = new FormData();
+            formData.append('file', file);
+            const uploadRes = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}), 'X-Admin-Auth': 'true' },
+              body: formData
+            });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              if (uploadData?.url) attUrl = uploadData.url;
+            } else {
+              throw new Error("R2 attachment upload failed: " + uploadRes.status);
+            }
+          } catch (e: any) {
+            console.error("Auto-upload base64 attachment to R2 failed:", e);
+            addToast("అటాచ్‌మెంట్ అప్‌లోడ్ విఫలమైంది. (Attachment R2 upload failed.)");
+            setLoading(false);
+            return;
+          }
         }
+        const cleaned: any = { ...att, url: attUrl, fallbackUrl: attUrl };
         Object.keys(cleaned).forEach((key) => {
           if (cleaned[key] === undefined) delete cleaned[key];
         });
-        return cleaned;
-      });
+        processedAttachments.push(cleaned);
+      }
+
+      let finalContent = content;
+      const dataUrlRegex = /data:image\/[a-zA-Z]*;base64,[^"'\s)]+/g;
+      const base64Matches = finalContent.match(dataUrlRegex);
+      
+      if (base64Matches && base64Matches.length > 0) {
+        addToast(`${base64Matches.length} బేస్‌64 చిత్రాలను క్లౌడ్ ఫ్లేర్ R2 లోకి అప్‌లోడ్ చేస్తోంది... (Auto-uploading embedded images to R2...)`);
+        for (const base64 of base64Matches) {
+          try {
+            const res = await fetch(base64);
+            const blob = await res.blob();
+            const ext = blob.type.split('/')[1] || 'jpg';
+            const file = new File([blob], `embedded_${Date.now()}.${ext}`, { type: blob.type });
+            const r2Url = await uploadFileSafe(file, `uploads/embedded/${file.name}`);
+            finalContent = finalContent.replace(base64, r2Url);
+          } catch (e) {
+            console.error("Failed to auto-upload embedded base64:", e);
+          }
+        }
+      }
 
       const postData: any = {
         status: draftStatus,
         slug: displaySlug,
         title,
-        content,
+        content: finalContent,
         category: selectedCategories[0],
         categories: selectedCategories,
         tags: finalTags,
         websiteName,
-        mediaUrl: media?.url || "",
+        mediaUrl: finalMediaUrl,
         mediaType: media?.type || "",
         mediaName: media?.name || "",
         version: version.trim(),
-        attachments: cleanAttachments,
+        attachments: processedAttachments,
         downloadStyle: downloadStyle,
         submissionType,
         userPhone,
@@ -24094,19 +24092,55 @@ function PostForm({
       }
 
       const estimatedSize = JSON.stringify(postData).length;
-      if (estimatedSize > 950000) {
-        // Safety margin
-        addToast(
-          "Post content or media is too large for the portal. Please reduce image size or text content.",
-        );
+      if (estimatedSize > 150 * 1024 * 1024) {
+        addToast("పోస్ట్ కంటెంట్ చాలా పెద్దదిగా ఉంది (150 MB కంటే ఎక్కువ).");
         setLoading(false);
         return;
+      }
+
+      if (estimatedSize > 200 * 1024) {
+        try {
+          addToast("పెద్ద కంటెంట్‌ను క్లౌడ్ ఫ్లేర్ R2 కు తరలిస్తోంది (Optimizing large content to R2)...");
+          const contentBlob = new Blob([finalContent], { type: 'text/markdown' });
+          const contentFile = new File([contentBlob], `content_${Date.now()}.md`, { type: 'text/markdown' });
+          const token = await auth.currentUser?.getIdToken().catch(() => null);
+          const formData = new FormData();
+          formData.append('file', contentFile);
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}), 'X-Admin-Auth': 'true' },
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            if (uploadData?.url) {
+              postData.contentUrl = uploadData.url;
+              postData.isContentExternal = true;
+              postData.content = (title || "Post Content") + "... [Content moved to R2 for speed]";
+            }
+          } else {
+            throw new Error("R2 Content Offload failed: " + uploadRes.status);
+          }
+        } catch (e: any) {
+          console.error("Offload failed:", e);
+          addToast("పెద్ద కంటెంట్‌ను సేవ్ చేయడం విఫలమైంది. (Large content save failed.)");
+          setLoading(false);
+          return;
+        }
       }
 
       if (editingPost) {
         const updatePayload: any = {
           ...postData,
         };
+
+        // Final Size Guard - Firestore has a 1MB limit. 
+        const finalCheckSize = JSON.stringify(updatePayload).length;
+        if (finalCheckSize > 1024 * 1024) {
+          addToast("లోపం: పోస్ట్ సైజు 1 MB పరిమితిని దాటింది. దయచేసి అటాచ్‌మెంట్లను తగ్గించండి. (Error: Post document size exceeds 1MB Firestore limit.)");
+          setLoading(false);
+          return;
+        }
 
         if (updateTimeOption === "now") {
           updatePayload.lastEditedAt = Date.now();
@@ -24138,6 +24172,13 @@ function PostForm({
 
         if (!isAdmin && !isEditor) {
           updatePayload.status = "Pending";
+        } else {
+          // If Admin or Editor is editing, they can publish it immediately
+          // Or at least keep it published if it was already published.
+          // The user expects full rights, so let's ensure it's not pending.
+          if (editingPost.status === "Pending" || editingPost.status === "pending") {
+             updatePayload.status = "published";
+          }
         }
 
         await updateDoc(doc(db, "posts", editingPost.id), updatePayload);
@@ -24173,7 +24214,7 @@ function PostForm({
           if (!isNaN(parsedCreatedMs)) postTime = parsedCreatedMs;
         }
 
-        const docRef = await addDoc(collection(db, "posts"), {
+        const postPayload = {
           ...postData,
           subCategory: "",
           likes: 0,
@@ -24191,11 +24232,20 @@ function PostForm({
               : currentUserProfile?.username ||
                 auth.currentUser.displayName ||
                 "User",
-          userPhoto:
-            isEditor || isAdmin ? "" : currentUserProfile?.photoURL || "",
+          userPhoto: isEditor || isAdmin ? "" : currentUserProfile?.photoURL || "",
           isAdminPost: isEditor || isAdmin,
           status: isEditor || isAdmin ? "published" : "pending",
-        });
+        };
+
+        // Final Size Guard
+        const finalCheckSize = JSON.stringify(postPayload).length;
+        if (finalCheckSize > 1024 * 1024) {
+          addToast("లోపం: పోస్ట్ సైజు 1 MB పరిమితిని దాటింది. దయచేసి అటాచ్‌మెంట్లను తగ్గించండి. (Error: Post document size exceeds 1MB Firestore limit.)");
+          setLoading(false);
+          return;
+        }
+
+        const docRef = await addDoc(collection(db, "posts"), postPayload);
 
         const hasUpdateTag =
           finalTags.some((tag) =>
@@ -24401,12 +24451,17 @@ function PostForm({
 
                 {/* Toolbar */}
                 {!showMarkdownPreview && (
-                  <div className="flex flex-wrap gap-1 p-1.5 border-b border-[#c3c4c7] bg-[#f0f0f1]">
-                    <button type="button" onClick={() => insertFormatting("**", "**")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Bold size={14} strokeWidth={2.5} /></button>
-                    <button type="button" onClick={() => insertFormatting("*", "*")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Italic size={14} strokeWidth={2.5} /></button>
-                    <button type="button" onClick={() => insertFormatting("[", "](url)")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Link2 size={14} strokeWidth={2.5} /></button>
-                    <button type="button" onClick={() => insertFormatting("> ", "")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Quote size={14} strokeWidth={2.5} /></button>
-                    <button type="button" onClick={() => insertFormatting("- ", "")} className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><List size={14} strokeWidth={2.5} /></button>
+                  <div className="flex flex-wrap gap-1.5 p-1.5 border-b border-[#c3c4c7] bg-[#f0f0f1] items-center">
+                    <button type="button" onClick={() => insertFormatting("**", "**")} title="Bold" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors flex items-center gap-1"><Bold size={13} strokeWidth={2.5} /> Bold</button>
+                    <button type="button" onClick={() => insertFormatting("*", "*")} title="Italic" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors flex items-center gap-1"><Italic size={13} strokeWidth={2.5} /> Italic</button>
+                    <button type="button" onClick={() => insertFormatting("<u>", "</u>")} title="Underline" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><u>U</u></button>
+                    <button type="button" onClick={() => insertFormatting("# ", "")} title="Heading 1" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">H1</button>
+                    <button type="button" onClick={() => insertFormatting("## ", "")} title="Heading 2" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">H2</button>
+                    <button type="button" onClick={() => insertFormatting("[", "](url)")} title="Insert Link" className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Link2 size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("> ", "")} title="Quote" className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Quote size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("- ", "")} title="Bullet List" className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><List size={14} strokeWidth={2.5} /></button>
+                    <button type="button" onClick={() => insertFormatting("1. ", "")} title="Numbered List" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">1.</button>
+                    <button type="button" onClick={() => insertFormatting("| Column 1 | Column 2 |\n|---|---|\n| Data 1 | Data 2 |", "")} title="Insert Table" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">Table</button>
                     
                     {/* AI Assistant tool */}
                     <button type="button" onClick={handleAiRewrite} title="Rewrite with AI" className="p-1.5 text-purple-600 hover:text-purple-700 hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors ml-auto flex items-center gap-1">
@@ -24427,14 +24482,27 @@ function PostForm({
                     rows={16}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="Write your post here..."
+                    placeholder="Type your document content here (MS Office Word mode active)..."
                     className="w-full p-4 text-[14px] leading-relaxed outline-none min-h-[400px] resize-y bg-white font-sans text-[#3c434a]"
                   />
                 )}
+
+                {/* MS Office Word Style Status Bar */}
+                <div className="px-4 py-2 bg-[#f0f0f1] border-t border-[#c3c4c7] text-[11px] text-[#646970] flex flex-wrap justify-between items-center gap-2">
+                  <div className="flex items-center gap-4">
+                    <span>Words: <strong>{content.trim() ? content.trim().split(/\s+/).length : 0}</strong></span>
+                    <span>Characters: <strong>{content.length}</strong></span>
+                    <span>Paragraphs: <strong>{content.split(/\n+/).filter(Boolean).length}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2 font-bold text-indigo-700">
+                    <span>📄 MS Office Word Processor Mode Active</span>
+                  </div>
+                </div>
                 
                 {/* Image Input (Hidden) */}
                 <input
                   type="file"
+                  multiple
                   ref={contentImageInputRef}
                   onChange={handleContentImageUpload}
                   accept="image/*"
@@ -24853,6 +24921,7 @@ function PostForm({
                 <div className="p-3">
                   <input
                     type="file"
+                    multiple
                     ref={primaryImageInputRef}
                     onChange={handlePrimaryImageUpload}
                     accept="image/*"
@@ -24998,6 +25067,7 @@ function PostForm({
 
           <input
             type="file"
+            multiple
             ref={primaryImageInputRef}
             onChange={handlePrimaryImageUpload}
             accept="image/*"
@@ -25005,6 +25075,7 @@ function PostForm({
           />
           <input
             type="file"
+            multiple
             ref={contentImageInputRef}
             onChange={handleContentImageUpload}
             accept="image/*"
@@ -25404,7 +25475,7 @@ function PostForm({
                          newContent += `\n\n![Pasted Image](${downloadURL})`;
                       }
                       setContent(newContent);
-                      addToast("Image pasted into markdown successfully!");
+                      addToast("చిత్రం అప్‌లోడ్ చేయబడింది! (Pasted Image R2)");
                     } catch (err: any) {
                       addToast(`Failed to upload pasted image: ${err.message || "Unknown error"}`);
                       console.error(err);
@@ -25875,16 +25946,21 @@ function PostForm({
 
                         {/* Badges & Actions */}
                         <div className="flex items-center gap-2 shrink-0">
-                          {/* File Classification Type Badge */}
+                          {/* File Classification Type & Size Badges */}
                           {(() => {
                             const fileInfo = getFileTypeInfo(att.name || att.url || "");
                             return (
-                              <span 
-                                className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider ${fileInfo.badgeBg} flex items-center gap-1 shrink-0 shadow-xs`}
-                                title={`ఫైల్ రకం: ${fileInfo.label}`}
-                              >
-                                {fileInfo.icon} {att.fileType || fileInfo.type}
-                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span 
+                                  className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider ${fileInfo.badgeBg} flex items-center gap-1 shrink-0 shadow-xs`}
+                                  title={`ఫైల్ రకం: ${fileInfo.label}`}
+                                >
+                                  {fileInfo.icon} {att.fileType || fileInfo.type}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
+                                  {formatFileSize(att.size)}
+                                </span>
+                              </div>
                             );
                           })()}
 
@@ -26743,6 +26819,7 @@ function PostDetail({
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [post, setPost] = useState<Post | null>(null);
+  const { content: remoteContent, loading: remoteContentLoading } = useRemoteContent(post);
   const [loading, setLoading] = useState(true);
   const [showLikesModal, setShowLikesModal] = useState(false);
   const [showViewsModal, setShowViewsModal] = useState(false);
@@ -27102,7 +27179,7 @@ function PostDetail({
     );
   }
 
-  const isApproved = pStatus === "approved" || pStatus === "active" || (pStatus === "published" && (post.isAdminPost || post.verified));
+  const isApproved = post.isAdminPost || pStatus === "approved" || pStatus === "active" || (pStatus === "published" && post.verified);
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
   const canViewPending = isAdmin || isAuthor;
 
@@ -27178,6 +27255,102 @@ function PostDetail({
             {isAdmin && (
               <button
                 type="button"
+                onClick={async () => {
+                  const hasBase64 = JSON.stringify(post).includes('data:');
+                  if (!hasBase64) {
+                    addToast("ఈ పోస్ట్‌లో ఎటువంటి బేస్‌64 డేటా లేదు. (No base64 data found.)");
+                    return;
+                  }
+
+                  const res = await Swal.fire({
+                    title: "బేస్‌64 డేటాను ఫిక్స్ చేయాలా?",
+                    text: "ఈ పోస్ట్‌లో నేరుగా సేవ్ చేయబడిన చిత్రాలను క్లౌడ్ (R2) లోకి మారుస్తాము. దీనివల్ల లోడింగ్ వేగం పెరుగుతుంది.",
+                    icon: "info",
+                    showCancelButton: true,
+                    confirmButtonText: "అవును, ఫిక్స్ చేయి",
+                    cancelButtonText: "వద్దు"
+                  });
+
+                  if (res.isConfirmed) {
+                    try {
+                      addToast("డేటాను మారుస్తోంది... దయచేసి వేచి ఉండండి.");
+                      let updatedContent = post.content || "";
+                      let updatedMediaUrl = post.mediaUrl || "";
+                      let updatedAttachments = [...(post.attachments || [])];
+                      let changesMade = false;
+
+                      const uploadBase64 = async (base64: string, name: string) => {
+                        const blobRes = await fetch(base64);
+                        const blob = await blobRes.blob();
+                        const file = new File([blob], name, { type: blob.type });
+                        const token = await auth.currentUser?.getIdToken().catch(() => null);
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const uploadRes = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}), 'X-Admin-Auth': 'true' },
+                          body: formData
+                        });
+                        if (uploadRes.ok) {
+                          const data = await uploadRes.json();
+                          return data.url;
+                        }
+                        throw new Error("Upload failed");
+                      };
+
+                      // 1. Fix Media URL
+                      if (updatedMediaUrl.startsWith('data:')) {
+                        updatedMediaUrl = await uploadBase64(updatedMediaUrl, `fixed_media_${Date.now()}.jpg`);
+                        changesMade = true;
+                      }
+
+                      // 2. Fix Content (inline images)
+                      const base64Regex = /!\[.*?\]\((data:image\/.*?;base64,.*?)\)/g;
+                      let match;
+                      while ((match = base64Regex.exec(updatedContent)) !== null) {
+                        const fullMatch = match[0];
+                        const base64Data = match[1];
+                        try {
+                          const newUrl = await uploadBase64(base64Data, `fixed_content_${Date.now()}.jpg`);
+                          updatedContent = updatedContent.replace(base64Data, newUrl);
+                          changesMade = true;
+                        } catch (e) { console.error("Inline fix failed", e); }
+                      }
+
+                      // 3. Fix Attachments
+                      for (let i = 0; i < updatedAttachments.length; i++) {
+                        if (updatedAttachments[i].url?.startsWith('data:')) {
+                          updatedAttachments[i].url = await uploadBase64(updatedAttachments[i].url, updatedAttachments[i].name || `fixed_att_${Date.now()}`);
+                          updatedAttachments[i].fallbackUrl = updatedAttachments[i].url;
+                          changesMade = true;
+                        }
+                      }
+
+                      if (changesMade) {
+                        await updateDoc(doc(db, "posts", post.id), {
+                          content: updatedContent,
+                          mediaUrl: updatedMediaUrl,
+                          attachments: updatedAttachments
+                        });
+                        setPost({ ...post, content: updatedContent, mediaUrl: updatedMediaUrl, attachments: updatedAttachments });
+                        addToast("పోస్ట్ డేటా విజయవంతంగా క్లౌడ్‌కు మార్చబడింది!");
+                      } else {
+                        addToast("ఎటువంటి మార్పులు అవసరం లేదు.");
+                      }
+                    } catch (err: any) {
+                      addToast("మార్పు విఫలమైంది: " + err.message);
+                    }
+                  }
+                }}
+                className="p-1.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-all rounded-lg"
+                title="బేస్‌64 డేటాను ఆప్టిమైజ్ చేయండి (Fix Base64)"
+              >
+                <Zap size={16} />
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
                 aria-label={post.pinned ? "Unpin Post" : "Pin Post"}
                 onClick={async () => {
                   try {
@@ -27250,7 +27423,7 @@ function PostDetail({
       </div>
 
       {/* Moderation Status Banner (Only for non-approved posts) */}
-      {!isApproved && (
+      {!isApproved && !post.isAdminPost && (
         <div className="mb-6">
           {isAdmin ? (
             <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-indigo-950 shadow-sm">
@@ -27260,7 +27433,7 @@ function PostDetail({
                 </div>
                 <div>
                   <div className="text-sm font-black uppercase tracking-wider text-indigo-900 flex items-center gap-2">
-                    <span>అడ్మిన్ రివ్యూ (Admin Review)</span>
+                    <span>{post.submissionType === 'complaint' ? 'ఫిర్యాదు రివ్యూ (Complaint Review)' : 'అడ్మిన్ రివ్యూ (Admin Review)'}</span>
                     <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-md text-xs font-black border border-amber-200">
                       {post.status || "Pending"}
                     </span>
@@ -27271,55 +27444,88 @@ function PostDetail({
                     )}
                   </div>
                   <p className="text-xs text-indigo-700 font-medium mt-0.5">
-                    ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే సాధారణ యూజర్లకు కనిపిస్తుంది.
+                    {post.submissionType === 'complaint'
+                      ? 'ఈ ఫిర్యాదును పరిశీలించి సపోర్ట్ టీమ్‌కి పంపండి.'
+                      : 'ఈ పోస్ట్ ఇంకా పబ్లిక్‌కి విడుదల కాలేదు. మీరు ఆమోదిస్తేనే సాధారణ యూజర్లకు కనిపిస్తుంది.'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
-                      setPost((prev) => prev ? { ...prev, status: "Approved" } : null);
-                      
-                      // Send Telegram notification
-                      const postTitle = post.title || post.content || "కొత్త పోస్ట్";
-                      const postAuthor = post.userName || "User";
-                      sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${postTitle}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
+                {post.submissionType !== 'complaint' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await updateDoc(doc(db, "posts", post.id), { status: "Approved" });
+                          setPost((prev) => prev ? { ...prev, status: "Approved" } : null);
+                          
+                          // Send Telegram notification
+                          const postTitle = post.title || post.content || "కొత్త పోస్ట్";
+                          const postAuthor = post.userName || "User";
+                          sendTelegramNotification(`📢 <b>New Post Approved</b>\n\n<b>Title:</b> ${postTitle}\n<b>Author:</b> ${postAuthor}\n\n<i>#EVedhika #Update</i>`, "post");
 
-                      await addDoc(collection(db, "notifications"), {
-                        uid: "all",
-                        title: "📢 కొత్త పోస్ట్ (New Post Approved)",
-                        message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
-                        type: "post",
-                        read: false,
-                        readBy: [],
-                        time: Date.now(),
-                        postId: post.id,
-                        senderUid: auth.currentUser?.uid || ""
-                      }).catch(() => {});
-                      if (post.uid) {
-                        await addDoc(collection(db, "notifications"), {
-                          uid: post.uid,
-                          title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
-                          message: `మీరు సమర్పించిన '${(post.title || "").substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ కనిపిస్తుంది.`,
-                          type: "post_approved",
-                          read: false,
-                          time: Date.now(),
-                          postId: post.id
-                        }).catch(() => {});
-                      }
-                      addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
-                    } catch (err) {
-                      console.error("Approval error:", err);
-                      addToast("Approval failed");
-                    }
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <Check size={14} /> ఆమోదించు (Approve)
-                </button>
+                          await addDoc(collection(db, "notifications"), {
+                            uid: "all",
+                            title: "📢 కొత్త పోస్ట్ (New Post Approved)",
+                            message: `${postAuthor} వారి పోస్ట్ ఆమోదించబడింది: ${postTitle.substring(0, 50)}`,
+                            type: "post",
+                            read: false,
+                            readBy: [],
+                            time: Date.now(),
+                            postId: post.id,
+                            senderUid: auth.currentUser?.uid || ""
+                          }).catch(() => {});
+                          if (post.uid) {
+                            await addDoc(collection(db, "notifications"), {
+                              uid: post.uid,
+                              title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
+                              message: `మీరు సమర్పించిన '${(post.title || "").substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ కనిపిస్తుంది.`,
+                              type: "post_approved",
+                              read: false,
+                              time: Date.now(),
+                              postId: post.id
+                            }).catch(() => {});
+                          }
+                          addToast("పోస్ట్ ఆమోదించబడింది (Post Approved)!");
+                        } catch (err) {
+                          console.error("Approval error:", err);
+                          addToast("Approval failed");
+                        }
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <Check size={14} /> ఆమోదించు (Approve)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await updateDoc(doc(db, "posts", post.id), { status: "Rejected" });
+                          setPost((prev) => prev ? { ...prev, status: "Rejected" } : null);
+                          if (post.uid) {
+                            await addDoc(collection(db, "notifications"), {
+                              uid: post.uid,
+                              title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
+                              message: `మీ పోస్ట్ "${(post.title || "").substring(0, 40)}" అడ్మిన్ ద్వారా తిరస్కరించబడింది.`,
+                              type: "post_rejected",
+                              read: false,
+                              time: Date.now(),
+                              postId: post.id
+                            }).catch(() => {});
+                          }
+                          addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
+                        } catch (err) {
+                          console.error("Reject error:", err);
+                          addToast("Reject failed");
+                        }
+                      }}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                    >
+                      <X size={14} /> తిరస్కరించు (Reject)
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   title="Message User (యూజర్‌తో చాట్ చేయండి)"
@@ -27354,36 +27560,9 @@ function PostDetail({
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
                     title="ఈ పోస్ట్‌ను సపోర్ట్ టికెట్‌గా మార్చి సపోర్ట్ సిస్టమ్‌కి పంపు"
                   >
-                    <Headphones size={14} /> సపోర్ట్ సిస్టమ్‌కి పంపు
+                    <Headphones size={14} /> {post.submissionType === 'complaint' ? 'సపోర్ట్ టీమ్‌కి పంపు' : 'సపోర్ట్ సిస్టమ్‌కి పంపు'}
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await updateDoc(doc(db, "posts", post.id), { status: "Rejected" });
-                      setPost((prev) => prev ? { ...prev, status: "Rejected" } : null);
-                      if (post.uid) {
-                        await addDoc(collection(db, "notifications"), {
-                          uid: post.uid,
-                          title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
-                          message: `మీ పోస్ట్ "${(post.title || "").substring(0, 40)}" అడ్మిన్ ద్వారా తిరస్కరించబడింది.`,
-                          type: "post_rejected",
-                          read: false,
-                          time: Date.now(),
-                          postId: post.id
-                        }).catch(() => {});
-                      }
-                      addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)");
-                    } catch (err) {
-                      console.error("Reject error:", err);
-                      addToast("Reject failed");
-                    }
-                  }}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-                >
-                  <X size={14} /> తిరస్కరించు (Reject)
-                </button>
               </div>
             </div>
           ) : pStatus === "rejected" ? (
@@ -27435,7 +27614,7 @@ function PostDetail({
                     <span>⏳ అడ్మిన్ ఆమోదం కోసం వేచి ఉంది (Pending Admin Approval)</span>
                   </div>
                   <p className="text-xs text-amber-700 font-medium mt-0.5">
-                    మీ పోస్ట్ సమర్పించబడింది. అడ్మిన్ ఆమోదించిన తర్వాత మాత్రమే ఇది పబ్లిక్‌గా అందరికీ కనిపిస్తుంది. ప్రస్తుతానికి మీకు మాత్రమే కనిపిస్తోంది.
+                    మీ {post.submissionType === 'complaint' ? 'ఫిర్యాదు' : 'పోస్ట్'} సమర్పించబడింది. అడ్మిన్ ఆమోదించిన తర్వాత మాత్రమే ఇది పబ్లిక్‌గా అందరికీ కనిపిస్తుంది. ప్రస్తుతానికి మీకు మాత్రమే కనిపిస్తోంది.
                   </p>
                 </div>
               </div>
@@ -28656,7 +28835,7 @@ function PostComments({
           const safeName = (fileToUploadLocal.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
           
-          // 1. Primary: Server Upload
+          // strictly Cloudflare R2
           try {
             const token = await auth.currentUser?.getIdToken().catch(() => null);
             const formData = new FormData();
@@ -28676,35 +28855,14 @@ function PostComments({
               uploadedImageUrl = data.url;
             }
           } catch (cfErr) {
-            console.warn("Screenshot server upload failed, falling back:", cfErr);
+            console.warn("Screenshot server upload failed:", cfErr);
           }
 
-          // 2. Secondary Strategy: Supabase Storage
           if (!uploadedImageUrl) {
-            try {
-              const sbRes = await uploadFileToSupabase(processedFile, processedFile.name || 'image.png');
-              if (sbRes?.url) {
-                uploadedImageUrl = sbRes.url;
-              }
-            } catch (sbErr) {}
-          }
-
-          // 3. Third Strategy: Firebase Storage
-          if (!uploadedImageUrl) {
-            try {
-              const storageRef = ref(storage, `uploads/comments/${uniqueFilename}`);
-              await uploadBytes(storageRef, processedFile);
-              uploadedImageUrl = await getDownloadURL(storageRef);
-            } catch (fbErr) {
-              uploadedImageUrl = await new Promise<string>((res) => {
-                const reader = new FileReader();
-                reader.onload = () => res(reader.result as string);
-                reader.readAsDataURL(processedFile);
-              });
-            }
+            throw new Error("క్లౌడ్ ఫ్లేర్ R2 అప్‌లోడ్ విఫలమైంది.");
           }
           
-          addToast("Screenshot uploaded successfully!");
+          addToast("Screenshot uploaded successfully! (R2)");
         } catch (e: any) {
           addToast(`Failed to upload screenshot: ${e.message || "Unknown error"}`);
           console.error("Screenshot upload error", e);

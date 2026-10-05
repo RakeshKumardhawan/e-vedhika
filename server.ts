@@ -131,9 +131,9 @@ async function startServer() {
   const HOST = hostArgIndex !== -1 && process.argv[hostArgIndex + 1] ? process.argv[hostArgIndex + 1] : "0.0.0.0";
 
   app.use(cors());
-  app.use(express.json({ limit: '15mb' }));
-  app.use(express.text({ limit: '15mb', type: ['text/*', 'application/json'] }));
-  app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+  app.use(express.json({ limit: '150mb' }));
+  app.use(express.text({ limit: '150mb', type: ['text/*', 'application/json'] }));
+  app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
   const proxyOptions = (targetUrl: string) => ({
     target: targetUrl,
@@ -1992,7 +1992,8 @@ app.get('/api/remote-commands', (req, res) => {
   // Gemini Proxy for E-Vedhika AI Assistant (Free Tier Only)
   app.post("/api/chat", async (req, res) => {
     try {
-      const { prompt, systemInstruction } = req.body;
+      const { prompt, message, contents, text: textInput, systemInstruction } = req.body;
+      const actualPrompt = prompt || message || contents || textInput || "Hello";
       const apiKey = process.env.GEMINI_API_KEY || 
                      process.env.VITE_GEMINI_API_KEY || 
                      process.env.GOOGLE_API_KEY || 
@@ -2020,14 +2021,14 @@ app.get('/api/remote-commands', (req, res) => {
       try {
         response = await ai.models.generateContent({
           model: modelId,
-          contents: prompt,
+          contents: actualPrompt,
           config: { systemInstruction }
         });
       } catch (err: any) {
         console.warn("gemini-3.6-flash failed, falling back to gemini-flash-latest:", err?.message);
         response = await ai.models.generateContent({
           model: "gemini-flash-latest",
-          contents: prompt,
+          contents: actualPrompt,
           config: { systemInstruction }
         });
       }
@@ -2856,7 +2857,7 @@ app.get('/api/remote-commands', (req, res) => {
 
   const farmerUpload = multer({ 
     storage: farmerStorage,
-    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for worksheets
+    limits: { fileSize: 100 * 1024 * 1024 } // 150MB limit for worksheets
   });
 
   interface FarmerJob {
@@ -3749,7 +3750,7 @@ app.get('/api/remote-commands', (req, res) => {
       fs.renameSync(f2.path, parsedPath2);
 
       const verificationMode = req.body.verificationMode === "real_live" ? "real_live" : "lightweight";
-      const rateLimitMs = parseInt(req.body.rateLimitMs) || 1500;
+      const rateLimitMs = parseInt(req.body.rateLimitMs) || 150;
       const uid = req.body.uid || "";
 
       farmerJobs[jobId] = {
@@ -3932,7 +3933,7 @@ app.get('/api/remote-commands', (req, res) => {
     res.json({ success: true, message: "Captcha submitted" });
   });
 
-  app.post('/api/ubd/data', verifyToken, express.json({limit: '50mb'}), async (req, res) => {
+  app.post('/api/ubd/data', verifyToken, express.json({limit: '150mb'}), async (req, res) => {
     const userRole = (req as any).user?.email === "rakeshkumardhawan123@gmail.com" || (req as any).user?.email === "Rakeshkumardhawan123@gmail.com" ? "admin" : "user";
     if (userRole !== "admin") return res.status(403).json({error: "Admin only"});
     

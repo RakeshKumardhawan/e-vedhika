@@ -82,7 +82,21 @@ export function SuperAdminDashboard({
 
   // Global Search Modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [adminStorageProvider, setAdminStorageProvider] = useState<"cloudflare" | "firebase" | "supabase">("cloudflare");
+  const [adminStorageProvider, setAdminStorageProvider] = useState<"cloudflare" | "firebase" | "supabase">(() => {
+    try {
+      return (localStorage.getItem("evedhika_storage_provider") as any) || "cloudflare";
+    } catch {
+      return "cloudflare";
+    }
+  });
+
+  const handleStorageChange = (p: "cloudflare" | "firebase" | "supabase") => {
+    setAdminStorageProvider(p);
+    try {
+      localStorage.setItem("evedhika_storage_provider", p);
+    } catch {}
+    if (addToast) addToast(`Storage provider updated to ${p === 'cloudflare' ? 'Cloudflare R2 (e-vedhika-files)' : p}`, "success");
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -314,14 +328,12 @@ export function SuperAdminDashboard({
 
         await updateDoc(doc(db, 'posts', post.id), { 
           status: finalStatus, 
-          verified: isApproving,
-          isAdminPost: isApproving ? true : (post.isAdminPost || false)
+          verified: isApproving
         });
         setPostsList(prev => prev.map(p => p.id === post.id ? { 
           ...p, 
           status: finalStatus, 
-          verified: isApproving,
-          isAdminPost: isApproving ? true : (p.isAdminPost || false)
+          verified: isApproving
         } : p));
 
         if (isApproving) {
@@ -558,7 +570,7 @@ export function SuperAdminDashboard({
             {(['cloudflare', 'supabase', 'firebase'] as const).map((p) => (
               <button
                 key={p}
-                onClick={() => setAdminStorageProvider(p)}
+                onClick={() => handleStorageChange(p)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   adminStorageProvider === p 
                     ? 'bg-indigo-600 text-white shadow-sm' 
@@ -839,27 +851,47 @@ export function SuperAdminDashboard({
                         <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
                           {p.status === 'pending' && (
                             <>
-                              <button
-                                onClick={() => handleUpdatePostStatus(p, 'Approved')}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                                title="పోస్ట్‌ను ఆమోదించి పబ్లిష్ చేయండి (Approve Post)"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleUpdatePostStatus(p, 'private_support')}
-                                className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-black transition-all inline-flex items-center gap-1 shadow-xs cursor-pointer"
-                                title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
-                              >
-                                <LifeBuoy size={11} /> పుష్ టు సపోర్ట్ సిస్టమ్
-                              </button>
-                              <button
-                                onClick={() => handleUpdatePostStatus(p, 'rejected')}
-                                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                                title="తిరస్కరించు (Reject Post)"
-                              >
-                                Reject
-                              </button>
+                              {/* Only allow Approve/Reject for non-admin posts and non-complaints */}
+                              {!p.isAdminPost && p.submissionType !== 'complaint' && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdatePostStatus(p, 'Approved')}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                                    title="పోస్ట్‌ను ఆమోదించి పబ్లిష్ చేయండి (Approve Post)"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdatePostStatus(p, 'rejected')}
+                                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                                    title="తిరస్కరించు (Reject Post)"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              
+                              {/* For Complaints, ALWAYS show push to support and NO approve/reject */}
+                              {p.submissionType === 'complaint' && (
+                                <button
+                                  onClick={() => handleUpdatePostStatus(p, 'private_support')}
+                                  className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-black transition-all inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                                  title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
+                                >
+                                  <LifeBuoy size={11} /> పుష్ టు సపోర్ట్
+                                </button>
+                              )}
+                              
+                              {/* For Admin posts that are somehow pending, just allow publishing or editing */}
+                              {p.isAdminPost && (
+                                <button
+                                  onClick={() => handleUpdatePostStatus(p, 'Approved')}
+                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
+                                  title="అడ్మిన్ పోస్ట్‌ను ఆటో-ఆమోదించు (Auto-Approve Admin Post)"
+                                >
+                                  Publish Now
+                                </button>
+                              )}
                             </>
                           )}
                           {p.status === 'private_support' && (

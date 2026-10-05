@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth, storage } from "../../firebase";
 import { ref, listAll, getDownloadURL, getMetadata, deleteObject } from "firebase/storage";
 import { supabase, SUPABASE_DEFAULT_BUCKET } from "../supabase";
-import { Trash2, ExternalLink, HardDrive, File, Image as ImageIcon, Archive, FileText, FileCode2, Copy, RefreshCw, AlertCircle, Database } from "lucide-react";
+import { Trash2, ExternalLink, HardDrive, File, Image as ImageIcon, Archive, FileText, FileCode2, Copy, RefreshCw, AlertCircle, Database, Upload } from "lucide-react";
 import Swal from "sweetalert2";
 
 interface StorageFile {
@@ -22,6 +22,165 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+
+  const handleMigrateToR2 = async () => {
+    const firebaseFiles = files.filter(f => f.source === 'firebase');
+    if (firebaseFiles.length === 0) {
+      Swal.fire("సమాచారం", "Firebase లో ఎటువంటి ఫైల్స్ లేవు.", "info");
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      title: "Firebase నుండి R2 కు తరలించాలా?",
+      text: `${firebaseFiles.length} ఫైల్స్ క్లౌడ్ ఫ్లేర్ R2 కు తరలించబడతాయి. మీరు నిశ్చయించుకున్నారా?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "అవును, తరలించు (Migrate)",
+      cancelButtonText: "రద్దు (Cancel)"
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setIsMigrating(true);
+    setMigrationProgress(0);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      for (let i = 0; i < firebaseFiles.length; i++) {
+        const file = firebaseFiles[i];
+        try {
+          const res = await fetch(file.url);
+          const blob = await res.blob();
+          const fileName = file.key.split('/').pop() || `migrated_${Date.now()}`;
+          const migrationFile = new File([blob], fileName, { type: blob.type });
+
+          const formData = new FormData();
+          formData.append("file", migrationFile);
+          
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData
+          });
+
+          if (uploadRes.ok) {
+            // Delete from Firebase after successful migration
+            const fileRef = ref(storage, file.key);
+            await deleteObject(fileRef);
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          console.error("Migration error for file:", file.key, err);
+          failCount++;
+        }
+        setMigrationProgress(Math.round(((i + 1) / firebaseFiles.length) * 100));
+      }
+      
+      Swal.fire(
+        "మైగ్రేషన్ పూర్తయింది!",
+        `విజయవంతం: ${successCount}, విఫలం: ${failCount}.`,
+        successCount > 0 ? "success" : "error"
+      );
+      fetchFiles();
+    } catch (err: any) {
+      Swal.fire("లోపం", "మైగ్రేషన్ సమయంలో లోపం సంభవించింది: " + err.message, "error");
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Upload failed");
+        }
+      }
+      Swal.fire("విజయవంతం!", "ఫైల్స్ అప్‌లోడ్ చేయబడ్డాయి.", "success");
+      fetchFiles();
+    } catch (err: any) {
+      Swal.fire("లోపం", err.message, "error");
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFiles.length === 0) return;
+
+    const res = await Swal.fire({
+      title: `${selectedFiles.length} ఫైల్స్ తొలగించాలా?`,
+      text: "ఎంచుకున్న ఫైల్స్ అన్నీ శాశ్వతంగా తొలగించబడతాయి!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "అవును, తొలగించండి",
+      cancelButtonText: "రద్దు",
+      confirmButtonColor: "#ef4444"
+    });
+
+    if (res.isConfirmed) {
+      try {
+        setLoading(true);
+        const token = await auth.currentUser?.getIdToken();
+        for (const key of selectedFiles) {
+          const file = files.find(f => f.key === key);
+          if (!file) continue;
+
+          if (file.source === 'cloudflare') {
+            await fetch("/api/storage/files", {
+              method: "DELETE",
+              headers: { 
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ key })
+            });
+          } else if (file.source === 'supabase') {
+            await supabase.storage.from(SUPABASE_DEFAULT_BUCKET).remove([key]);
+          } else {
+            const fileRef = ref(storage, key);
+            await deleteObject(fileRef);
+          }
+        }
+        Swal.fire("విజయవంతం!", "ఎంచుకున్న ఫైల్స్ తొలగించబడ్డాయి.", "success");
+        setSelectedFiles([]);
+        fetchFiles();
+      } catch (err: any) {
+        Swal.fire("లోపం", err.message, "error");
+        fetchFiles();
+      }
+    }
+  };
+
+  const toggleFileSelection = (key: string) => {
+    setSelectedFiles(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
 
   const fetchFiles = async () => {
     setLoading(true);
@@ -208,6 +367,39 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
         </div>
         <div className="flex items-center gap-2">
           <input 
+            type="file" 
+            multiple 
+            id="cloud-upload" 
+            className="hidden" 
+            onChange={handleUpload} 
+            disabled={isUploading}
+          />
+          <label 
+            htmlFor="cloud-upload"
+            className={`px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer hover:bg-indigo-700 transition-all shadow-md ${isUploading || isMigrating ? 'opacity-50 pointer-events-none' : ''}`}
+          >
+            {isUploading ? <RefreshCw size={16} className="animate-spin" /> : <Upload size={16} />}
+            Upload to R2
+          </label>
+          <button 
+            onClick={handleMigrateToR2}
+            disabled={isMigrating || loading}
+            className={`px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-amber-600 transition-all shadow-md ${isMigrating ? 'opacity-50 pointer-events-none' : ''}`}
+            title="Move all Firebase files to Cloudflare R2"
+          >
+            {isMigrating ? <RefreshCw size={16} className="animate-spin" /> : <Database size={16} />}
+            {isMigrating ? `Migrating ${migrationProgress}%` : 'Migrate Firebase to R2'}
+          </button>
+          {selectedFiles.length > 0 && (
+            <button 
+              onClick={handleBulkDelete}
+              className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-red-600 transition-all shadow-md"
+            >
+              <Trash2 size={16} />
+              Delete ({selectedFiles.length})
+            </button>
+          )}
+          <input 
             type="text" 
             placeholder="Search files..."
             value={searchTerm}
@@ -241,6 +433,14 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-100/50 text-slate-500 sticky top-0 z-10 backdrop-blur-md">
                 <tr>
+                  <th className="px-6 py-4 font-bold uppercase tracking-wider text-xs w-10">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedFiles.length === filteredFiles.length && filteredFiles.length > 0}
+                      onChange={(e) => setSelectedFiles(e.target.checked ? filteredFiles.map(f => f.key) : [])}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </th>
                   <th className="px-6 py-4 font-bold uppercase tracking-wider text-xs">File Name</th>
                   <th className="px-6 py-4 font-bold uppercase tracking-wider text-xs">Provider</th>
                   <th className="px-6 py-4 font-bold uppercase tracking-wider text-xs">Size</th>
@@ -250,7 +450,15 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredFiles.map((file) => (
-                  <tr key={file.key} className="hover:bg-white transition-colors group">
+                  <tr key={file.key} className={`hover:bg-white transition-colors group ${selectedFiles.includes(file.key) ? 'bg-indigo-50/50' : ''}`}>
+                    <td className="px-6 py-4">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedFiles.includes(file.key)}
+                        onChange={() => toggleFileSelection(file.key)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {getFileIcon(file.key)}
