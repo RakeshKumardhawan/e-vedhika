@@ -10,61 +10,67 @@ import { db, auth } from '../firebase';
 
 // Global PWA Update Handler & Registration
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  let refreshing = false;
+  try {
+    let refreshing = false;
 
-  // Global helper for manual PWA update
-  (window as any).__triggerPWAUpdate = async () => {
-    try {
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    // Global helper for manual PWA update
+    (window as any).__triggerPWAUpdate = async () => {
+      try {
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        }
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.update();
+        }
+        window.location.reload();
+      } catch (e) {
+        window.location.reload();
       }
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) {
-        await reg.update();
+    };
+
+    // When the service worker updates and takes control, reload the page cleanly
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
       }
-      window.location.reload();
-    } catch (e) {
-      window.location.reload();
-    }
-  };
+    });
 
-  // When the service worker updates and takes control, reload the page cleanly
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      window.location.reload();
+    if (import.meta.env.PROD) {
+      const updateSW = registerSW({
+        immediate: true,
+        onNeedRefresh() {
+          console.log('New PWA version detected! Updating service worker cache...');
+          window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { updateSW } }));
+          updateSW(true);
+        },
+        onOfflineReady() {
+          console.log('E-Vedhika PWA ready for offline use');
+        },
+        onRegisteredSW(swUrl, r) {
+          if (r) {
+            // Proactive update check every 30s in foreground
+            setInterval(() => {
+              r.update().catch(() => {});
+            }, 30 * 1000);
+          }
+        }
+      });
     }
-  });
 
-  const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      console.log('New PWA version detected! Updating service worker cache...');
-      window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { updateSW } }));
-      updateSW(true);
-    },
-    onOfflineReady() {
-      console.log('E-Vedhika PWA ready for offline use');
-    },
-    onRegisteredSW(swUrl, r) {
-      if (r) {
-        // Proactive update check every 30s in foreground
-        setInterval(() => {
-          r.update().catch(() => {});
-        }, 30 * 1000);
+    // Check on tab focus / visibility resume
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.update().catch(() => {});
+        }).catch(() => {});
       }
-    }
-  });
-
-  // Check on tab focus / visibility resume
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.update().catch(() => {});
-      }).catch(() => {});
-    }
-  });
+    });
+  } catch (e) {
+    console.warn('PWA Service Worker initialization skipped:', e);
+  }
 }
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null, countdown: number}> {

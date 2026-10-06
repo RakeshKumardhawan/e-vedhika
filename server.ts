@@ -4641,7 +4641,8 @@ app.get('/api/remote-commands', (req, res) => {
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR !== 'true' ? { port: hmrPort } : false
+        hmr: false,
+        allowedHosts: true
       },
       appType: "spa",
     });

@@ -2,7 +2,16 @@
 <html lang="en">
   <head>
     <base href="/" />
-    <script>window.addEventListener("unhandledrejection", function(e) { var m = (e.reason && (e.reason.message || e.reason.toString())) || ""; if (m.includes("WebSocket") || m.includes("closed without opened")) { e.preventDefault(); } });</script>
+    <script>
+      window.addEventListener("unhandledrejection", function(e) {
+        try {
+          var m = (e && e.reason && (e.reason.message || (typeof e.reason.toString === 'function' ? e.reason.toString() : ''))) || "";
+          if (typeof m === 'string' && (m.indexOf("WebSocket") !== -1 || m.indexOf("closed without opened") !== -1)) {
+            e.preventDefault();
+          }
+        } catch (err) {}
+      });
+    </script>
     <!-- Single Page Apps for GitHub Pages Redirect Handler -->
     <script type="text/javascript">
       (function(l) {
@@ -58,36 +67,42 @@
     <link rel="canonical" href="https://www.e-vedhika.in/" />
 
     <!-- Polyfills for Windows 7 & 8 Browsers -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.39.0/minified.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.39.0/minified.js" crossorigin="anonymous"></script>
     <script>
       // Global Polyfills
       (function() {
-        if (typeof globalThis === 'undefined') { window.globalThis = window; }
-        
-        // Mock Iterator if missing (ES2023 helpers)
-        if (typeof window.Iterator === 'undefined') {
-          window.Iterator = function() {};
-          window.Iterator.prototype = {};
-        }
+        try {
+          if (typeof globalThis === 'undefined') { window.globalThis = window; }
+          
+          if (typeof window.Iterator === 'undefined') {
+            try {
+              window.Iterator = function() {};
+              window.Iterator.prototype = {};
+            } catch (e) {}
+          }
 
-        // Transpilation helpers
-        if (typeof Reflect === 'undefined') { 
-          window.Reflect = { 
-            get: function(t,k){return t[k];}, 
-            set: function(t,k,v){t[k]=v;return true;},
-            construct: function(Parent, args, Class) {
-              var a = [null]; a.push.apply(a, args);
-              var Constructor = Function.bind.apply(Parent, a);
-              var instance = new Constructor();
-              if (Class) { instance.__proto__ = Class.prototype; }
-              return instance;
-            }
-          }; 
-        }
+          if (typeof Reflect === 'undefined') { 
+            try {
+              window.Reflect = { 
+                get: function(t,k){return t[k];}, 
+                set: function(t,k,v){t[k]=v;return true;},
+                construct: function(Parent, args, Class) {
+                  var a = [null]; a.push.apply(a, args);
+                  var Constructor = Function.bind.apply(Parent, a);
+                  var instance = new Constructor();
+                  if (Class) { instance.__proto__ = Class.prototype; }
+                  return instance;
+                }
+              }; 
+            } catch (e) {}
+          }
 
-        if (!window.requestAnimationFrame) {
-          window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
-          window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+          if (!window.requestAnimationFrame) {
+            window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
+            window.cancelAnimationFrame = function(id) { clearTimeout(id); };
+          }
+        } catch (err) {
+          console.warn("Polyfill error suppressed:", err);
         }
       })();
     </script>
