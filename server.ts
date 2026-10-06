@@ -164,6 +164,20 @@ async function startServer() {
     return res.send("google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n");
   });
 
+  app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    const robotsPath = path.join(process.cwd(), 'public', 'robots.txt');
+    if (fs.existsSync(robotsPath)) return res.sendFile(robotsPath);
+    res.send("User-agent: *\nAllow: /\nSitemap: https://www.e-vedhika.in/sitemap.xml");
+  });
+
+  app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+    if (fs.existsSync(sitemapPath)) return res.sendFile(sitemapPath);
+    res.status(404).send("Sitemap not found");
+  });
+
   // OTA Version endpoints are defined below alongside /api/version
 
   app.get('/api/iframe-proxy', async (req, res) => {
@@ -4662,9 +4676,10 @@ app.get('/api/remote-commands', (req, res) => {
 
       const userAgent = req.headers["user-agent"] || "";
       const isBot = /bot|facebookexternalhit|whatsapp|telegram|twitterbot|pinterest|google|bing|duckduckbot|slackbot|discordbot|applebot|linkedinbot|vkshare|skypeuripreview|qwantify|bitlybot|tumblr|embedly/i.test(userAgent);
+      const isStaticFile = req.path.includes('.') && !req.path.endsWith('.html');
       const acceptsHtml = (req.headers.accept?.includes("text/html") || !req.headers.accept) && !req.path.includes(".");
 
-      if (isBot || acceptsHtml) {
+      if ((isBot || acceptsHtml) && !isStaticFile) {
         try {
           const indexPath = path.join(process.cwd(), "index.html");
           if (fs.existsSync(indexPath)) {
