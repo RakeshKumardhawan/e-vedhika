@@ -178,6 +178,13 @@ async function startServer() {
     res.status(404).send("Sitemap not found");
   });
 
+  app.get('/sitemap.txt', (req, res) => {
+    res.type('text/plain');
+    const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.txt');
+    if (fs.existsSync(sitemapPath)) return res.sendFile(sitemapPath);
+    res.status(404).send("Sitemap not found");
+  });
+
   // OTA Version endpoints are defined below alongside /api/version
 
   app.get('/api/iframe-proxy', async (req, res) => {

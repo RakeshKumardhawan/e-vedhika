@@ -4,3 +4,4 @@ Disallow: /admin/
 Disallow: /api/
 
 Sitemap: https://www.e-vedhika.in/sitemap.xml
+Sitemap: https://www.e-vedhika.in/sitemap.txt
