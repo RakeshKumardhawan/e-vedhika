@@ -144,12 +144,14 @@ function setMetaTagSafe(html, imageUrl, canonicalUrl) {
 
 // Fetch all posts from Firestore and generate static HTML with rich WhatsApp preview cards
 async function generateStaticPostRoutes() {
+  const allPostUrls = [];
   try {
     const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
     const url = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=100&key=${apiKey}`;
     const res = await fetch(url);
     if (!res.ok) {
       console.warn("Could not fetch posts for static pre-generation:", res.status);
+      generateSitemap([]);
       return;
     }
     const data = await res.json();
@@ -177,6 +179,8 @@ async function generateStaticPostRoutes() {
       const postNumber = fields.postNumber?.integerValue || fields.postNumber?.stringValue || (index + 1);
 
       const canonicalUrl = `https://www.e-vedhika.in/home/post/${postSlug}`;
+      allPostUrls.push(canonicalUrl);
+
       const postHtml = injectPostOgTags(indexContent, {
         title: `${title} - E-Vedhika`,
         description: description || "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ పరిపాలనా పోర్టల్.",
@@ -205,12 +209,60 @@ async function generateStaticPostRoutes() {
     }
 
     console.log(`Pre-generated static WhatsApp preview pages for ${docs.length} posts (${generatedCount} path variants) in dist/.`);
+    generateSitemap(allPostUrls);
   } catch (err) {
     console.error("Error pre-generating static post routes:", err);
+    generateSitemap([]);
   }
 }
 
 await generateStaticPostRoutes();
+
+// Generate sitemap.xml and robots.txt
+function generateSitemap(allUrls) {
+  const baseUrl = "https://www.e-vedhika.in";
+  const now = new Date().toISOString().split('T')[0];
+  
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+  
+  // Static Routes
+  routes.forEach(route => {
+    xml += `  <url>\n`;
+    xml += `    <loc>${baseUrl}/${route}</loc>\n`;
+    xml += `    <lastmod>${now}</lastmod>\n`;
+    xml += `    <changefreq>weekly</changefreq>\n`;
+    xml += `    <priority>0.8</priority>\n`;
+    xml += `  </url>\n`;
+  });
+
+  // Home route
+  xml += `  <url>\n`;
+  xml += `    <loc>${baseUrl}/</loc>\n`;
+  xml += `    <lastmod>${now}</lastmod>\n`;
+  xml += `    <changefreq>daily</changefreq>\n`;
+  xml += `    <priority>1.0</priority>\n`;
+  xml += `  </url>\n`;
+
+  // Dynamic Post Routes
+  allUrls.forEach(url => {
+    xml += `  <url>\n`;
+    xml += `    <loc>${url}</loc>\n`;
+    xml += `    <lastmod>${now}</lastmod>\n`;
+    xml += `    <changefreq>monthly</changefreq>\n`;
+    xml += `    <priority>0.6</priority>\n`;
+    xml += `  </url>\n`;
+  });
+
+  xml += `</urlset>`;
+  
+  fs.writeFileSync(path.join(distDir, "sitemap.xml"), xml, "utf-8");
+  console.log(`Generated sitemap.xml with ${routes.length + 1 + allUrls.length} URLs.`);
+
+  const robots = `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: ${baseUrl}/sitemap.xml`;
+  fs.writeFileSync(path.join(distDir, "robots.txt"), robots, "utf-8");
+  console.log("Generated robots.txt.");
+}
 
 // Ensure CNAME and 404.html exist in dist
 const publicCname = path.resolve(process.cwd(), "public", "CNAME");
