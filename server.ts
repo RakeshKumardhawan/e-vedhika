@@ -124,9 +124,7 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 
 async function startServer() {
   const app = express();
-  const portArgIndex = process.argv.indexOf('--port');
-  const portFromArg = portArgIndex !== -1 && process.argv[portArgIndex + 1] ? parseInt(process.argv[portArgIndex + 1], 10) : null;
-  const PORT = portFromArg || (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
+  const PORT = 3000;
   const hostArgIndex = process.argv.indexOf('--host');
   const HOST = hostArgIndex !== -1 && process.argv[hostArgIndex + 1] ? process.argv[hostArgIndex + 1] : "0.0.0.0";
 
@@ -376,6 +374,18 @@ const saveTelemetryLogsToDisk = () => {
     const dir = path.dirname(telemetryDataPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+
+    // Also sync to public admin and api storage files for standalone PHP gateway
+    const adminStoragePath = path.join(process.cwd(), "public", "admin", "telemetry_storage.json");
+    const apiStoragePath = path.join(process.cwd(), "public", "api", "telemetry", "telemetry_storage.json");
+    const pubStoragePath = path.join(process.cwd(), "public", "telemetry_storage.json");
+    [adminStoragePath, apiStoragePath, pubStoragePath].forEach(p => {
+      try {
+        const d = path.dirname(p);
+        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+        fs.writeFileSync(p, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+      } catch (err) {}
+    });
   } catch (e) {
     console.error("Error saving telemetry to disk:", e);
   }
@@ -420,8 +430,8 @@ const saveRemoteQueueToDisk = () => {
 // Telegram Server Alert Helper function
 async function sendTelegramServerAlert(message: string, customChatId?: string): Promise<boolean> {
   try {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = customChatId || process.env.TELEGRAM_CHAT_ID;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
+    const chatId = customChatId || process.env.TELEGRAM_CHAT_ID || "431228008";
 
     if (!botToken || !chatId) {
       console.warn("[TELEGRAM] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment");
@@ -1005,6 +1015,13 @@ const processIncomingTelemetry = (req: express.Request) => {
   const healthScore = body.healthScore !== undefined ? Number(body.healthScore) : (body.HealthScore !== undefined ? Number(body.HealthScore) : 100);
   const remarks = body.remarks || body.Remarks || body.summary || body.Summary || 'Telemetry report received from EXE runner.';
 
+  const totalChecks = body.totalChecks || body.TotalChecks || '90/90';
+  const passedCount = body.passedCount !== undefined ? Number(body.passedCount) : 90;
+
+  // Detect file link in incoming payload
+  const fileLink = body.fileLink || body.link || body.Link || body.fileUrl || body.file_url || body.downloadUrl || body.download_url || body.attachment || body.attachmentUrl || body.file || null;
+  const fileName = body.fileName || body.file_name || (fileLink ? (String(fileLink).split('/').pop()?.split('?')[0] || 'ఫైల్ డౌన్‌లోడ్') : null);
+
   const newRecord = {
     slNo: body.slNo || (telemetryLogsStore.length + 1),
     id: recordId,
@@ -1050,8 +1067,13 @@ const processIncomingTelemetry = (req: express.Request) => {
     activeXControls: body.activeXControls || body.ActiveXControls || 'Allowed & Enabled',
     certValidity: body.certValidity || body.CertValidity || 'Valid (Expires 2028)',
     ubdWebsiteReachable: body.ubdWebsiteReachable || body.UbdWebsiteReachable || 'Reachable (200 OK)',
-    totalChecks: body.totalChecks || body.TotalChecks || '90/90',
-    passedCount: body.passedCount !== undefined ? Number(body.passedCount) : 90,
+    totalChecks,
+    passedCount,
+    fileLink: fileLink || null,
+    link: fileLink || null,
+    fileUrl: fileLink || null,
+    fileName: fileName || null,
+    hasFile: !!fileLink,
     ...body
   };
 
@@ -1095,17 +1117,19 @@ const processIncomingTelemetry = (req: express.Request) => {
     const statusEmoji = isPassing ? '✅' : '⚠️';
     const locName = newRecord.officeLocation || [newRecord.panchayat, newRecord.mandal, newRecord.district].filter(Boolean).join(', ') || 'Grama Panchayat';
     
-    const telegramMsg = `🖥️ <b>[E-VEDHIKA] లైవ్ టెలిమెట్రీ రిపోర్ట్ (Live Telemetry Report)</b>\n\n` +
-      `🏢 <b>కార్యాలయం:</b> ${locName}\n` +
-      `💻 <b>కంప్యూటర్:</b> <code>${newRecord.pcName}</code> (యూజర్: ${newRecord.userName})\n` +
-      `📊 <b>హెల్త్ స్కోర్:</b> ${statusEmoji} <b>${newRecord.healthScore}%</b> [${newRecord.status}]\n` +
-      `🔑 <b>DSC స్టేటస్:</b> ${newRecord.dscStatus || 'USB Token'}\n` +
-      `🌐 <b>Edge IE మోడ్:</b> ${newRecord.edgeIeMode || 'Active'}\n` +
-      `⚙️ <b>NIC DigiSigner:</b> ${newRecord.nicDigiSigner || 'Port 8080'}\n` +
-      `🌐 <b>నెట్‌వర్క్:</b> ${newRecord.internet || 'Online'}\n` +
-      `🕒 <b>సమయం:</b> ${newRecord.date} ${newRecord.time}\n` +
-      `📝 <b>రిమార్క్స్:</b> ${newRecord.remarks || 'EXE Client డయాగ్నస్టిక్ రికార్డ్ విజయవంతంగా నమోదైంది.'}\n\n` +
-      `🔗 <a href="https://www.e-vedhika.in">e-Vedhika లైవ్ డాష్‌బోర్డ్ తెరవండి</a>`;
+    let telegramMsg = `🛡️ <b>E-VEDHIKA LIVE REPORT (v1.0.4)</b>\n` +
+      `💻 <b>PC:</b> ${newRecord.pcName || 'Unknown PC'}\n` +
+      `👤 <b>User:</b> ${newRecord.userName || 'Panchayat User'}\n` +
+      `📍 <b>Location:</b> ${locName}\n` +
+      `🪟 <b>OS:</b> ${newRecord.osVersion || 'Win11 Pro'}\n` +
+      `🔏 <b>DSC:</b> ${newRecord.dscStatus || 'Connected'}\n` +
+      `📊 <b>Status:</b> <b>${newRecord.status || 'SUCCESS'}</b>\n`;
+    
+    if (newRecord.fileLink) {
+      telegramMsg += `📎 <b>ఫైల్ / లింక్:</b> <a href="${newRecord.fileLink}">${newRecord.fileName || 'డౌన్‌లోడ్ ఫైల్'}</a>\n`;
+    }
+    
+    telegramMsg += `🚀 <i>Delivered to e-vedhika.in/admin/exe_ubd_live</i>`;
 
     sendTelegramServerAlert(telegramMsg).catch(err => console.error("Telegram telemetry notify error:", err));
 
@@ -1198,6 +1222,10 @@ app.post('/api/telemetry/test-telegram', async (req, res) => {
 
 const telemetryPostRoutes = [
   '/api/telemetry',
+  '/admin/exe_ubd_live',
+  '/admin/exe_ubd_live.php',
+  '/exe_ubd_live.php',
+  '/api/telemetry/storage',
   '/api/deployment-logs',
   '/api/exe-logs',
   '/api/ubd/logs',
@@ -2012,10 +2040,13 @@ app.get('/api/remote-commands', (req, res) => {
 
       try {
         const targetCol = isPostSource ? "posts" : "support_tickets";
-        if (isPostSource) {
-          await dbAdmin.collection(targetCol).doc(ticketId).update({ status: "deleted" });
-        } else {
-          await dbAdmin.collection(targetCol).doc(ticketId).delete();
+        if (initFirebaseAdmin()) {
+          const db = admin.firestore();
+          if (isPostSource) {
+            await db.collection(targetCol).doc(ticketId).update({ status: "deleted" });
+          } else {
+            await db.collection(targetCol).doc(ticketId).delete();
+          }
         }
       } catch (firestoreErr) {
         console.warn("Firestore delete warning:", firestoreErr);

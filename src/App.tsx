@@ -1228,6 +1228,111 @@ function getValidTime(obj: any): number {
   return Date.now();
 }
 
+export function parseFileAttachmentFromUrl(rawUrl: string, customName?: string, customVersion?: string): {
+  name: string;
+  url: string;
+  fallbackUrl: string;
+  version: string;
+  status: "New" | "Old";
+  badgePrefix: string;
+  isDirect: boolean;
+  fileType: string;
+} {
+  const cleanUrl = (rawUrl || "").trim();
+  let fileName = (customName || "").trim();
+
+  if (!fileName && cleanUrl) {
+    try {
+      const urlObj = new URL(cleanUrl);
+      const pathname = urlObj.pathname;
+      const pathSegments = pathname.split('/').filter(Boolean);
+      const rawLastSegment = pathSegments[pathSegments.length - 1] || "";
+      
+      // Clean off any timestamp / hash prefix (e.g., 1781729079849-1781729079817-678749992-E-Vedhika...)
+      let lastSegment = decodeURIComponent(rawLastSegment).replace(/\+/g, ' ');
+      lastSegment = lastSegment.replace(/^(\d{8,}[-_])+/g, '');
+      
+      // 1. Direct file with extension in path
+      if (lastSegment && lastSegment.includes('.')) {
+        fileName = lastSegment;
+      } 
+      // 2. GitHub URLs (e.g. github.com/user/repo/releases/tag/v1.0.2 or github.com/user/repo/releases/latest/download/file.exe)
+      else if (cleanUrl.includes('github.com')) {
+        const repoName = pathSegments[1] || "Project";
+        const tagIndex = pathSegments.indexOf('tag');
+        const releaseTag = tagIndex !== -1 && pathSegments[tagIndex + 1] ? pathSegments[tagIndex + 1] : "";
+        if (releaseTag) {
+          fileName = `${repoName}_${releaseTag}.zip`;
+        } else if (pathSegments.length >= 2) {
+          fileName = `${repoName}_Setup.zip`;
+        } else {
+          fileName = "GitHub_Release.zip";
+        }
+      }
+      // 3. Google Drive
+      else if (cleanUrl.includes('drive.google.com')) {
+        fileName = 'UBD_Tool_File.zip';
+      }
+      // 4. Query params (e.g. ?file=xyz.zip or &name=xyz.exe)
+      else {
+        const fileParam = urlObj.searchParams.get('file') || urlObj.searchParams.get('filename') || urlObj.searchParams.get('name');
+        if (fileParam) {
+          fileName = decodeURIComponent(fileParam).replace(/^(\d{8,}[-_])+/g, '');
+        } else if (lastSegment) {
+          fileName = lastSegment;
+        } else {
+          fileName = 'Download_File.zip';
+        }
+      }
+    } catch {
+      let fallback = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1).split('?')[0] || 'Download_File.zip';
+      fileName = fallback.replace(/^(\d{8,}[-_])+/g, '');
+    }
+  }
+
+  if (!fileName) fileName = 'Download_File.zip';
+
+  // If no extension, infer from URL or default to .zip / .exe
+  if (!fileName.includes('.')) {
+    if (cleanUrl.toLowerCase().includes('.exe')) fileName += '.exe';
+    else if (cleanUrl.toLowerCase().includes('.bat')) fileName += '.bat';
+    else if (cleanUrl.toLowerCase().includes('.pdf')) fileName += '.pdf';
+    else fileName += '.zip';
+  }
+
+  // Detect file extension & type
+  const extMatch = fileName.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = extMatch ? extMatch[1].toUpperCase() : 'FILE';
+  const fileType = ext === 'EXE' ? 'EXE' : ext === 'BAT' ? 'BAT' : ext === 'ZIP' ? 'ZIP' : ext === 'PDF' ? 'PDF' : ext === 'MSI' ? 'MSI' : ext;
+
+  // Extract version from custom input, or file name, or URL
+  let version = (customVersion || '').trim();
+  if (!version) {
+    const vMatch = (fileName + ' ' + cleanUrl).match(/(?:[vV]|ver|version)[\s_-]?([0-9]+(?:\.[0-9]+)*(?:-[a-zA-Z0-9]+)?)/i) || 
+                   fileName.match(/([0-9]+\.[0-9]+(?:\.[0-9]+)*)/);
+    if (vMatch && vMatch[1]) {
+      version = vMatch[1].replace(/^[vV]/, '');
+    } else {
+      version = '1.0';
+    }
+  }
+
+  // Prefix: if tool or bat/zip use 'Tool', if exe use 'EXE' or 'v'
+  const isTool = fileType === 'BAT' || fileType === 'ZIP' || fileName.toLowerCase().includes('tool') || cleanUrl.toLowerCase().includes('tool');
+  const badgePrefix = isTool ? 'Tool' : fileType === 'EXE' ? 'EXE' : 'v';
+
+  return {
+    name: fileName,
+    url: cleanUrl,
+    fallbackUrl: cleanUrl,
+    version,
+    status: 'New',
+    badgePrefix,
+    isDirect: true,
+    fileType
+  };
+}
+
 function getPostDisplayViews(post: any, isUserAdmin?: boolean) {
   if (!post) return 0;
   let rawViews = 0;
@@ -11965,8 +12070,7 @@ function AdminPanel({
     userRoleStr === "admin" ||
     userRoleStr === "system admin" ||
     userRoleStr === "super admin" ||
-    userRoleStr === "administrator" ||
-    !userRoleStr;
+    userRoleStr === "administrator";
   const isSuperAdmin = isDevEmail || isAdminRole;
   const isAdmin = isSuperAdmin || isAdminRole;
   const isEditor =
@@ -22040,6 +22144,265 @@ function PostCard({
     (auth.currentUser && post.uid && auth.currentUser.uid === post.uid) ||
     isAdmin,
   );
+
+  const extractedLinksFromContent = useMemo(() => {
+    if (!post.content) return [];
+    const urlRegex = /(https?:\/\/[^\s\)\"\'<>]+)/g;
+    const matches: string[] = post.content.match(urlRegex) || [];
+    const fileUrls = matches.filter((url: string) => {
+      const lower = url.toLowerCase();
+      return /\.(exe|zip|bat|pdf|msi|rar|7z)(\?.*)?$/i.test(lower) || 
+             (lower.includes('/releases/') && lower.includes('.exe')) ||
+             (lower.includes('drive.google.com') && (lower.includes('/file/d/') || lower.includes('id=')));
+    });
+    const existingUrls = new Set([
+      (post.mediaUrl || "").toLowerCase(),
+      ...(post.attachments || []).map((a: any) => (a.url || "").toLowerCase())
+    ]);
+    const newUrls = [...new Set(fileUrls)].filter((u: string) => !existingUrls.has(u.toLowerCase()));
+    return newUrls.map((u: string) => parseFileAttachmentFromUrl(u));
+  }, [post.content, post.attachments, post.mediaUrl]);
+
+  const isDevEmail = (auth.currentUser?.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+  const isUserAdmin = Boolean(
+    isAdmin || 
+    isDevEmail || 
+    (userProfile?.role || "").toLowerCase() === "admin" ||
+    (userProfile?.role || "").toLowerCase() === "super admin" ||
+    (userProfile?.role || "").toLowerCase() === "system admin" ||
+    (userProfile?.role || "").toLowerCase() === "administrator"
+  );
+
+  const handleQuickAddAttachmentLink = async () => {
+    if (!isUserAdmin) {
+      Swal.fire({
+        title: "అడ్మిన్ యాక్సెస్ మాత్రమే",
+        text: "ఈ ఆప్షన్ కేవలం అడ్మిన్‌లకు మాత్రమే అనుమతించబడింది.",
+        icon: "warning",
+        confirmButtonColor: "#2563eb",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "⚡ ఫైల్ లింక్ జోడించండి (Add File Link)",
+      html: `
+        <div class="text-left mb-1.5 text-xs font-bold text-slate-700">
+          డౌన్‌లోడ్ లింక్ (Cloudflare R2 / GitHub / Google Drive / Direct URL) పేస్ట్ చేయండి:
+        </div>
+        <input id="swal-quick-url" class="swal2-input !mt-0 !mb-2.5 !text-sm !w-full" placeholder="https://github.com/... లేదా pub-xxx.r2.dev/... లేదా Drive లింక్">
+
+        <!-- Live Auto-Detection Badge / Status Box -->
+        <div id="swal-live-preview" class="mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs transition-all">
+          <div class="flex items-center gap-1.5 text-blue-700 font-bold mb-0.5">
+            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <span>ఆటోమేటిక్ డిటెక్షన్ ప్రివ్యూ (Live Auto-Detect):</span>
+          </div>
+          <div id="swal-live-preview-content" class="text-slate-500 text-[11px] font-medium">
+            పైన లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు, వెర్షన్ మరియు రకం ఆటోమేటిక్‌గా ఇక్కడ కనిపిస్తాయి.
+          </div>
+        </div>
+        
+        <div class="text-left mb-1 text-xs font-bold text-slate-700">ఫైల్ పేరు (వదిలేస్తే లింక్ నుండి ఆటోమేటిక్‌గా తీసుకుంటుంది):</div>
+        <input id="swal-quick-name" class="swal2-input !mt-0 !mb-3 !text-sm !w-full" placeholder="ఉదా: E-Vedhika_UBD_Deployment_Tool_V9.0.zip (ఆటో డిటెక్షన్)">
+        
+        <div class="grid grid-cols-2 gap-2 text-left mb-2">
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">వెర్షన్ (Version):</div>
+            <input id="swal-quick-ver" class="swal2-input !mt-0 !mb-0 !text-sm !w-full" placeholder="ఉదా: 9.0 లేదా 1.0.4">
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">స్టేటస్ బ్యాడ్జ్ (Status):</div>
+            <select id="swal-quick-status" class="swal2-select !mt-0 !mb-0 !text-sm !w-full !h-[45px] font-bold">
+              <option value="New" selected>NEW (తాజా వెర్షన్ - ఆకుపచ్చ)</option>
+              <option value="Old">OLD (పాత వెర్షన్ - ఎరుపు)</option>
+              <option value="Committee">COMMITTEE (కమిటీ - నీలం)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-left mb-2">
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">బ్యాడ్జ్ ప్రిఫిక్స్ (Prefix):</div>
+            <select id="swal-quick-prefix" class="swal2-select !mt-0 !mb-0 !text-sm !w-full !h-[45px] font-bold">
+              <option value="Tool" selected>Tool (ఉదా: Tool 8.0)</option>
+              <option value="EXE">EXE (ఉదా: EXE 1.0.4)</option>
+              <option value="v">v (ఉదా: v1.0.4)</option>
+            </select>
+          </div>
+          <div class="flex items-center pt-5">
+            <input type="checkbox" id="swal-quick-direct" class="w-4 h-4 text-blue-600 rounded cursor-pointer" checked>
+            <label for="swal-quick-direct" class="text-xs font-bold text-slate-700 ml-2 cursor-pointer">డైరెక్ట్ డౌన్‌లోడ్</label>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const urlInput = document.getElementById("swal-quick-url") as HTMLInputElement;
+        const nameInput = document.getElementById("swal-quick-name") as HTMLInputElement;
+        const verInput = document.getElementById("swal-quick-ver") as HTMLInputElement;
+        const statusSelect = document.getElementById("swal-quick-status") as HTMLSelectElement;
+        const prefixSelect = document.getElementById("swal-quick-prefix") as HTMLSelectElement;
+        const previewContent = document.getElementById("swal-live-preview-content") as HTMLDivElement;
+        const previewBox = document.getElementById("swal-live-preview") as HTMLDivElement;
+
+        let manualName = false;
+        let manualVer = false;
+        let manualPrefix = false;
+
+        nameInput?.addEventListener("input", () => {
+          manualName = nameInput.value.trim().length > 0;
+          renderLiveStatus();
+        });
+
+        verInput?.addEventListener("input", () => {
+          manualVer = verInput.value.trim().length > 0;
+          renderLiveStatus();
+        });
+
+        statusSelect?.addEventListener("change", () => renderLiveStatus());
+        prefixSelect?.addEventListener("change", () => {
+          manualPrefix = true;
+          renderLiveStatus();
+        });
+
+        const onUrlChange = () => {
+          const val = urlInput?.value?.trim() || "";
+          if (!val) {
+            if (previewBox && previewContent) {
+              previewBox.className = "mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs transition-all";
+              previewContent.innerHTML = "పైన లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు, వెర్షన్ మరియు రకం ఆటోమేటిక్‌గా ఇక్కడ కనిపిస్తాయి.";
+            }
+            return;
+          }
+          const parsed = parseFileAttachmentFromUrl(val, manualName ? nameInput?.value : undefined, manualVer ? verInput?.value : undefined);
+          if (!manualName && nameInput) {
+            nameInput.value = parsed.name;
+          }
+          if (!manualVer && verInput) {
+            verInput.value = parsed.version;
+          }
+          if (!manualPrefix && prefixSelect) {
+            prefixSelect.value = parsed.badgePrefix;
+          }
+          renderLiveStatus(parsed);
+        };
+
+        const renderLiveStatus = (preset?: any) => {
+          const currentUrl = urlInput?.value?.trim() || "";
+          const parsed = preset || parseFileAttachmentFromUrl(currentUrl, nameInput?.value?.trim(), verInput?.value?.trim());
+          const activeName = nameInput?.value?.trim() || parsed.name || "File.zip";
+          const activeVer = verInput?.value?.trim() || parsed.version || "1.0";
+          const activeStatus = statusSelect?.value || "New";
+          const activePrefix = prefixSelect?.value || parsed.badgePrefix || "Tool";
+
+          if (previewBox && previewContent) {
+            if (!currentUrl) {
+              previewBox.className = "mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs transition-all";
+              previewContent.innerHTML = "పైన లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు, వెర్షన్ మరియు రకం ఆటోమేటిక్‌గా ఇక్కడ కనిపిస్తాయి.";
+            } else {
+              previewBox.className = "mb-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-left text-xs transition-all shadow-xs";
+              let statusColor = "bg-[#00c853]";
+              if (activeStatus === "Old") statusColor = "bg-[#ff1744]";
+              else if (activeStatus === "Committee") statusColor = "bg-blue-600";
+
+              previewContent.innerHTML = `
+                <div class="flex items-center gap-1.5 flex-wrap text-emerald-950 font-bold mb-1">
+                  <span class="truncate max-w-[200px]">📄 ${activeName}</span>
+                  <span class="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black">${activePrefix} ${activeVer}</span>
+                  <span class="bg-indigo-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black">${parsed.fileType}</span>
+                  <span class="${statusColor} text-white text-[9px] px-2 py-0.5 rounded font-black uppercase">${activeStatus}</span>
+                </div>
+                <div class="text-[10px] text-emerald-700 font-bold">
+                  ⚡ ఆటోమేటిక్‌గా గుర్తించబడింది! కింద "ఫైల్ యాడ్ చేయండి" బటన్ నొక్కండి.
+                </div>
+              `;
+            }
+          }
+        };
+
+        urlInput?.addEventListener("input", onUrlChange);
+        urlInput?.addEventListener("paste", () => setTimeout(onUrlChange, 30));
+
+        if (urlInput?.value?.trim()) {
+          onUrlChange();
+        }
+
+        urlInput?.focus();
+      },
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "✅ ఫైల్ యాడ్ చేయండి",
+      cancelButtonText: "రద్దు చేయండి",
+      confirmButtonColor: "#2563eb",
+      preConfirm: () => {
+        const url = (document.getElementById("swal-quick-url") as HTMLInputElement)?.value?.trim();
+        const rawName = (document.getElementById("swal-quick-name") as HTMLInputElement)?.value?.trim();
+        const rawVer = (document.getElementById("swal-quick-ver") as HTMLInputElement)?.value?.trim();
+        const status = (document.getElementById("swal-quick-status") as HTMLSelectElement)?.value as "New" | "Old" | "Committee";
+        const prefix = (document.getElementById("swal-quick-prefix") as HTMLSelectElement)?.value || "Tool";
+        const isDirect = (document.getElementById("swal-quick-direct") as HTMLInputElement)?.checked;
+        if (!url) {
+          Swal.showValidationMessage("దయచేసి ఫైల్ డౌన్‌లోడ్ లింక్ (URL) నమోదు చేయండి");
+          return null;
+        }
+        const parsed = parseFileAttachmentFromUrl(url, rawName, rawVer);
+        let finalName = rawName || parsed.name;
+        if (rawName && !rawName.includes('.')) {
+          finalName = `${rawName}.${parsed.fileType.toLowerCase()}`;
+        }
+        const finalVer = rawVer || parsed.version || "1.0";
+        return {
+          url,
+          name: finalName,
+          ver: finalVer,
+          status: status || "New",
+          isDirect: Boolean(isDirect),
+          fileType: parsed.fileType,
+          badgePrefix: prefix || parsed.badgePrefix || "Tool"
+        };
+      }
+    });
+
+    if (result.isConfirmed && result.value && result.value.url) {
+      try {
+        const val = result.value;
+        const newAttachment = {
+          name: val.name,
+          url: val.url,
+          fallbackUrl: val.url,
+          version: val.ver,
+          status: val.status,
+          badgePrefix: val.badgePrefix || "Tool",
+          fileType: val.fileType || "FILE",
+          isDirect: Boolean(val.isDirect)
+        };
+
+        const currentAtts = Array.isArray(post.attachments) ? [...post.attachments] : [];
+        const existingAtts = currentAtts.map(a => 
+          newAttachment.status === "New" ? { ...a, status: "Old" as const } : a
+        );
+
+        const updatedAttachments = [...existingAtts, newAttachment];
+
+        await updateDoc(doc(db, "posts", post.id), {
+          attachments: updatedAttachments,
+          lastEditedAt: Date.now()
+        });
+
+        // Update local memory so post immediately reflects the update
+        post.attachments = updatedAttachments;
+
+        if (setPosts) {
+          setPosts((prev: any) => prev.map((p: any) => p.id === post.id ? { ...p, attachments: updatedAttachments } : p));
+        }
+
+        addToast(`✅ ఫైల్ "${newAttachment.name}" (${newAttachment.status}) డౌన్‌లోడ్ లిస్ట్‌లో విజయవంతంగా యాడ్ అయ్యింది!`);
+      } catch (err: any) {
+        console.error("Error adding quick file link:", err);
+        Swal.fire("ఎర్రర్", "ఫైల్ లింక్ యాడ్ చేయడంలో సమస్య: " + (err.message || String(err)), "error");
+      }
+    }
+  };
   const postTime = getValidTime(post);
 
   const [showComments, setShowComments] = useState(false);
@@ -22936,7 +23299,11 @@ function PostCard({
                 )}
               {post.attachments?.map((att, idx) => {
                 const fileInfo = getFileTypeInfo(att.name || att.url || "");
-                const statusTag = (att.status || "Old").toLowerCase() === "new" ? "NEW" : "OLD";
+                const statusTag = (att.status || "Old").toUpperCase();
+                let statusColor = "bg-[#ff1744]"; // Default OLD
+                if (statusTag === "NEW") statusColor = "bg-[#00c853]";
+                else if (statusTag === "COMMITTEE") statusColor = "bg-blue-600";
+
                 return (
                 <a
                   key={idx}
@@ -22987,30 +23354,82 @@ function PostCard({
                         </div>
                       )}
 
-                      {/* Admin-Only File Type and OLD / NEW Badges (User కి కనిపించదు - ఓన్లీ అడ్మిన్ కి మాత్రమే) */}
-                      {isAdmin && (
-                        <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
-                          {/* File Classification Type */}
-                          <span 
-                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg} shadow-2xs`}
-                            title={`Admin Classification: ${fileInfo.label}`}
-                          >
-                            {att.fileType || fileInfo.type}
-                          </span>
-                          {/* Exact OLD / NEW Badge (Pink/Red for OLD, Emerald for NEW) */}
-                          <span
-                            className={`${statusTag === "NEW" ? "bg-[#00c853]" : "bg-[#ff1744]"} text-white text-[9px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm flex items-center gap-0.5`}
-                            title={`Admin Status: ${statusTag} (Regular users cannot see this)`}
-                          >
-                            {statusTag}
-                          </span>
-                        </div>
-                      )}
+                      {/* File Classification Type and OLD / NEW Status Badges */}
+                      <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                        {/* File Classification Type */}
+                        <span 
+                          className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg} shadow-2xs`}
+                          title={`Type: ${fileInfo.label}`}
+                        >
+                          {att.fileType || fileInfo.type}
+                        </span>
+                        {/* Exact OLD / NEW Badge (Green for NEW, Red for OLD, Blue for Committee) */}
+                        <span
+                          className={`${statusColor} text-white text-[9px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm flex items-center gap-0.5`}
+                          title={`Status: ${statusTag}`}
+                        >
+                          {statusTag}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </a>
               );
               })}
+
+              {/* Auto-extracted download links from post content if any */}
+              {extractedLinksFromContent.map((att, idx) => {
+                const fileInfo = getFileTypeInfo(att.name || att.url || "");
+                return (
+                  <a
+                    key={`ext-${idx}`}
+                    href="#download"
+                    onClick={(e) =>
+                      handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect, att.fallbackUrl)
+                    }
+                    className="flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full bg-emerald-50/70 border border-emerald-300 hover:border-emerald-500"
+                  >
+                    <div className="flex items-center h-full min-w-0">
+                      <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
+                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
+                          <ArrowDown size={12} className="text-emerald-600" strokeWidth={4} />
+                        </div>
+                      </div>
+                      <div className="flex flex-col px-3 min-w-0">
+                        <span className="text-[11px] font-bold text-emerald-800 truncate leading-tight">
+                          {att.name}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 pr-3 shrink-0">
+                      <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase shadow-2xs">
+                        AUTO
+                      </span>
+                    </div>
+                  </a>
+                );
+              })}
+
+              {/* Quick Add File Link Button in red box slot (ONLY FOR ADMIN - అడ్మిన్‌లకు మాత్రమే!) */}
+              {isUserAdmin && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleQuickAddAttachmentLink();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-xl p-3 transition-all text-blue-700 hover:text-blue-900 group shadow-xs mt-2.5 cursor-pointer"
+                  title="ఈ పోస్ట్‌కి నేరుగా కొత్త డౌన్‌లోడ్ లింక్ ఇవ్వండి - ఫైల్ ఆటోమేటిక్‌గా కింద యాడ్ అవుతుంది (అడ్మిన్‌లకు మాత్రమే)"
+                >
+                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                    <Plus size={14} strokeWidth={3} />
+                  </div>
+                  <span className="text-xs font-black tracking-wide">
+                    + 🔗 లింక్ ఇవ్వండి (ఆటోమేటిక్ ఫైల్ యాడ్)
+                  </span>
+                </button>
+              )}
           </div>
           </div>
         </div>
@@ -23539,6 +23958,84 @@ function PostForm({
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
     editingPost?.downloadStyle || "techspot",
   );
+  const [quickFileUrl, setQuickFileUrl] = useState("");
+
+  const handleAutoAddFileFromUrl = async (urlToProcess?: string) => {
+    const initialUrl = (urlToProcess || quickFileUrl || "").trim();
+
+    const result = await Swal.fire({
+      title: "⚡ ఫైల్ లింక్ జోడించండి (Add File Link)",
+      html: `
+        <div class="text-left mb-1.5 text-xs font-bold text-slate-700">డౌన్‌లోడ్ లింక్:</div>
+        <input id="swal-form-url" class="swal2-input !mt-0 !mb-3 !text-sm !w-full" value="${initialUrl}" placeholder="URL పేస్ట్ చేయండి">
+
+        <div class="text-left mb-1 text-xs font-bold text-slate-700">ఫైల్ పేరు (Auto-detected):</div>
+        <input id="swal-form-name" class="swal2-input !mt-0 !mb-3 !text-sm !w-full" placeholder="ఫైల్ పేరు">
+        
+        <div class="grid grid-cols-2 gap-2 text-left mb-2">
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">వెర్షన్ (Version):</div>
+            <input id="swal-form-ver" class="swal2-input !mt-0 !mb-0 !text-sm !w-full" placeholder="Ver">
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">స్టేటస్ (Status):</div>
+            <select id="swal-form-status" class="swal2-select !mt-0 !mb-0 !text-sm !w-full !h-[45px] font-bold">
+              <option value="New" selected>NEW</option>
+              <option value="Old">OLD</option>
+              <option value="Committee">COMMITTEE</option>
+            </select>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const uIn = document.getElementById("swal-form-url") as HTMLInputElement;
+        const nIn = document.getElementById("swal-form-name") as HTMLInputElement;
+        const vIn = document.getElementById("swal-form-ver") as HTMLInputElement;
+        const sSel = document.getElementById("swal-form-status") as HTMLSelectElement;
+
+        const updateFields = () => {
+          const u = uIn.value.trim();
+          if (!u) return;
+          const p = parseFileAttachmentFromUrl(u);
+          if (!nIn.value) nIn.value = p.name;
+          if (!vIn.value) vIn.value = p.version;
+          if (sSel.value === "New") sSel.value = p.status;
+        };
+
+        uIn.addEventListener("input", updateFields);
+        if (initialUrl) updateFields();
+      },
+      preConfirm: () => {
+        const url = (document.getElementById("swal-form-url") as HTMLInputElement).value.trim();
+        const name = (document.getElementById("swal-form-name") as HTMLInputElement).value.trim();
+        const ver = (document.getElementById("swal-form-ver") as HTMLInputElement).value.trim();
+        const status = (document.getElementById("swal-form-status") as HTMLSelectElement).value as "New" | "Old" | "Committee";
+        
+        if (!url) {
+          Swal.showValidationMessage("లింక్ అవసరం");
+          return false;
+        }
+        
+        const p = parseFileAttachmentFromUrl(url, name, ver);
+        let fName = name || p.name;
+        if (name && !name.includes('.')) fName = `${name}.${p.fileType.toLowerCase()}`;
+
+        return { ...p, name: fName, version: ver || p.version, status };
+      }
+    });
+
+    if (result.isConfirmed && result.value) {
+      const parsed = result.value;
+      setAttachments((prev) => {
+        const updated = parsed.status === "New" 
+          ? prev.map(a => ({ ...a, status: "Old" as const }))
+          : [...prev];
+        return [...updated, parsed];
+      });
+      setQuickFileUrl("");
+      addToast(`✅ ఫైల్ యాడ్ అయ్యింది: ${parsed.name}`);
+    }
+  };
   const [updateTimeOption, setUpdateTimeOption] = useState<"now" | "custom" | "keep" | "none">(
     editingPost ? "keep" : "now"
   );
@@ -23948,6 +24445,7 @@ function PostForm({
     " Taxes & Finance",
     " Housing & Layouts",
     " Technical Support",
+    " Committee",
     " Ideas & Feedback",
     " Applications",
     " Useful Links",
@@ -24548,14 +25046,24 @@ function PostForm({
                         Swal.fire({
                           title: "పబ్లిక్ లింక్ ద్వారా ఫైల్ జోడించండి",
                           html: `
-                            <div class="text-left mb-1 text-xs font-bold text-slate-600">ఫైల్ పేరు (File Name):</div>
-                            <input id="swal-meta-name" class="swal2-input !mt-0 !mb-3 !text-sm" placeholder="ఉదా: UBD_Site_Setup.bat, Deployment.zip">
-                            <div class="text-left mb-1 text-xs font-bold text-slate-600">పబ్లిక్ డౌన్‌లోడ్ లింక్ (Google Drive / Direct URL / Cloud):</div>
-                            <input id="swal-meta-link" class="swal2-input !mt-0 !mb-2 !text-sm" placeholder="https://drive.google.com/... లేదా పబ్లిక్ లింక్">
+                            <div class="text-left mb-1 text-xs font-bold text-slate-600">పబ్లిక్ డౌన్‌లోడ్ లింక్ (Cloudflare R2 / GitHub / Drive / Direct URL):</div>
+                            <input id="swal-meta-link" class="swal2-input !mt-0 !mb-3 !text-sm" placeholder="https://... ఫైల్ లింక్ ఇక్కడ పేస్ట్ చేయండి">
+                            <div class="text-left mb-1 text-xs font-bold text-slate-600">ఫైల్ పేరు (వదిలేస్తే లింక్ నుండి ఆటోమేటిక్‌గా తీసుకుంటుంది):</div>
+                            <input id="swal-meta-name" class="swal2-input !mt-0 !mb-2 !text-sm" placeholder="ఉదా: UBD_Site_Setup.bat లేదా Deployment.zip">
                             <div class="text-left text-[11px] text-slate-500 bg-blue-50 p-2 rounded border border-blue-100 mt-2">
-                              🔒 ఈ లింక్ యూజర్లకు కనిపించదు. యూజర్ ఫైల్ డౌన్‌లోడ్ క్లిక్ చేయగానే ఈ లింక్ నుండి ఫైల్ నేరుగా డౌన్‌లోడ్ అవుతుంది.
+                              ⚡ లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు మరియు రకం ఆటోమేటిక్‌గా గుర్తించబడతాయి.
                             </div>
                           `,
+                          didOpen: () => {
+                            const linkInput = document.getElementById("swal-meta-link") as HTMLInputElement;
+                            const nameInput = document.getElementById("swal-meta-name") as HTMLInputElement;
+                            linkInput?.addEventListener("input", () => {
+                              if (linkInput.value.trim() && nameInput && !nameInput.value.trim()) {
+                                const parsed = parseFileAttachmentFromUrl(linkInput.value.trim());
+                                nameInput.value = parsed.name;
+                              }
+                            });
+                          },
                           showCancelButton: true,
                           confirmButtonText: "ఫైల్ జోడించండి",
                           cancelButtonText: "రద్దు",
@@ -24567,15 +25075,16 @@ function PostForm({
                               Swal.showValidationMessage("దయచేసి పబ్లిక్ లింక్ ఇవ్వండి");
                               return null;
                             }
-                            const finalName = name && name.trim() ? name.trim() : "Attachment";
-                            const fileInfo = getFileTypeInfo(finalName || link);
+                            const parsed = parseFileAttachmentFromUrl(link.trim(), name);
                             return {
-                              name: finalName,
+                              name: parsed.name,
                               url: link.trim(),
                               fallbackUrl: link.trim(),
-                              version: "1.0",
+                              version: parsed.version || "1.0",
                               status: "New" as const,
-                              fileType: fileInfo.type
+                              badgePrefix: parsed.badgePrefix || "Tool",
+                              fileType: parsed.fileType,
+                              isDirect: true
                             };
                           }
                         }).then((result) => {
@@ -24584,7 +25093,7 @@ function PostForm({
                               const updatedPrev = prev.map(item => ({ ...item, status: "Old" as const }));
                               return [...updatedPrev, result.value];
                             });
-                            addToast("పబ్లిక్ లింక్ తో కొత్త ఫైల్ జోడించబడింది!");
+                            addToast(`✅ ఫైల్ "${result.value.name}" విజయవంతంగా జోడించబడింది!`);
                           }
                         });
                       }}
@@ -24599,10 +25108,10 @@ function PostForm({
                     <div className="mt-3 space-y-3 border-t border-[#c3c4c7] pt-3">
                       <div className="flex items-center justify-between text-[11px] text-slate-500 bg-amber-50/70 p-2 rounded border border-amber-200/80">
                         <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                          🔒 అడ్మిన్ ఫైల్ మేనేజ్‌మెంట్ (Admin Only)
+                          🔒 అడ్మిన్ ఫైల్ మేనేజ్‌మెంట్ (Admin File Management)
                         </span>
                         <span className="text-[10px] text-amber-700">
-                          (OLD / NEW మరియు ఫైల్ రకం బ్యాడ్జ్‌లు కేవలం Admin కి మాత్రమే కనిపిస్తాయి — యూజర్లకు కనిపించవు)
+                          (డౌన్‌లోడ్ లిస్ట్‌లో OLD / NEW మరియు ఫైల్ రకం బ్యాడ్జ్‌లు యూజర్లకు కనిపిస్తాయి)
                         </span>
                       </div>
                       {attachments.map((att, i) => {
@@ -25850,11 +26359,19 @@ function PostForm({
                               );
                               return null;
                             }
-                            return { name: name || "File Attachment", url, isDirect };
+                            const parsed = parseFileAttachmentFromUrl(url, name);
+                            if (isDirect !== undefined) parsed.isDirect = isDirect;
+                            return parsed;
                           },
                         }).then((result) => {
                           if (result.isConfirmed && result.value) {
-                            setAttachments((prev) => [...prev, result.value]);
+                            const newAtt = result.value;
+                            setAttachments((prev) => {
+                              const updated = newAtt.status === "New" 
+                                ? prev.map(a => ({ ...a, status: "Old" as const }))
+                                : [...prev];
+                              return [...updated, newAtt];
+                            });
                           }
                         });
                       }}
@@ -25875,6 +26392,34 @@ function PostForm({
                       <ExternalLink size={15} />
                       <span>Cloudflare R2 Bucket</span>
                     </a>
+                  </div>
+
+                  {/* Quick Auto-Detect File Link Input */}
+                  <div className="flex items-center gap-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200 rounded-2xl shadow-xs w-full mt-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Link2 size={16} strokeWidth={2.5} />
+                    </div>
+                    <input
+                      type="url"
+                      value={quickFileUrl}
+                      onChange={(e) => setQuickFileUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAutoAddFileFromUrl();
+                        }
+                      }}
+                      placeholder="డౌన్‌లోడ్ లింక్ ఇక్కడ పేస్ట్ చేయండి (R2, Drive, Direct .exe / .zip / .bat)..."
+                      className="flex-1 bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500 font-medium shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAutoAddFileFromUrl()}
+                      className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-sm transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={14} strokeWidth={3} />
+                      <span>ఆటో యాడ్ (Auto Add)</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -26933,10 +27478,247 @@ function PostDetail({
     lastTapRef.current = now;
   };
 
+  const isDevEmail = (auth.currentUser?.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+  const isDetailUserAdmin = Boolean(
+    isAdmin || 
+    isDevEmail || 
+    (userProfile?.role || "").toLowerCase() === "admin" ||
+    (userProfile?.role || "").toLowerCase() === "super admin" ||
+    (userProfile?.role || "").toLowerCase() === "system admin" ||
+    (userProfile?.role || "").toLowerCase() === "administrator"
+  );
+
   const isOwner = Boolean(
     (auth.currentUser && post?.uid && auth.currentUser.uid === post.uid) ||
     isAdmin
   );
+
+  const handleDetailQuickAddAttachmentLink = async () => {
+    if (!post) return;
+    if (!isDetailUserAdmin) {
+      Swal.fire({
+        title: "అడ్మిన్ యాక్సెస్ మాత్రమే",
+        text: "ఈ ఆప్షన్ కేవలం అడ్మిన్‌లకు మాత్రమే అనుమతించబడింది.",
+        icon: "warning",
+        confirmButtonColor: "#2563eb",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "⚡ ఫైల్ లింక్ జోడించండి (Add File Link)",
+      html: `
+        <div class="text-left mb-1.5 text-xs font-bold text-slate-700">
+          డౌన్‌లోడ్ లింక్ (Cloudflare R2 / GitHub / Google Drive / Direct URL) పేస్ట్ చేయండి:
+        </div>
+        <input id="swal-detail-quick-url" class="swal2-input !mt-0 !mb-2.5 !text-sm !w-full" placeholder="https://github.com/... లేదా pub-xxx.r2.dev/... లేదా Drive లింక్">
+
+        <!-- Live Auto-Detection Badge / Status Box -->
+        <div id="swal-detail-live-preview" class="mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs transition-all">
+          <div class="flex items-center gap-1.5 text-blue-700 font-bold mb-0.5">
+            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <span>ఆటోమేటిక్ డిటెక్షన్ ప్రివ్యూ (Live Auto-Detect):</span>
+          </div>
+          <div id="swal-detail-live-preview-content" class="text-slate-500 text-[11px] font-medium">
+            పైన లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు, వెర్షన్ మరియు రకం ఆటోమేటిక్‌గా ఇక్కడ కనిపిస్తాయి.
+          </div>
+        </div>
+        
+        <div class="text-left mb-1 text-xs font-bold text-slate-700">ఫైల్ పేరు (వదిలేస్తే లింక్ నుండి ఆటోమేటిక్‌గా తీసుకుంటుంది):</div>
+        <input id="swal-detail-quick-name" class="swal2-input !mt-0 !mb-3 !text-sm !w-full" placeholder="ఉదా: E-Vedhika_UBD_Deployment_Tool_V9.0.zip (ఆటో డిటెక్షన్)">
+        
+        <div class="grid grid-cols-2 gap-2 text-left mb-2">
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">వెర్షన్ (Version):</div>
+            <input id="swal-detail-quick-ver" class="swal2-input !mt-0 !mb-0 !text-sm !w-full" placeholder="ఉదా: 9.0 లేదా 1.0.4">
+          </div>
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">స్టేటస్ బ్యాడ్జ్ (Status):</div>
+            <select id="swal-detail-quick-status" class="swal2-select !mt-0 !mb-0 !text-sm !w-full !h-[45px] font-bold">
+              <option value="New" selected>NEW (తాజా వెర్షన్ - ఆకుపచ్చ)</option>
+              <option value="Old">OLD (పాత వెర్షన్ - ఎరుపు)</option>
+              <option value="Committee">COMMITTEE (కమిటీ - నీలం)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-left mb-2">
+          <div>
+            <div class="text-xs font-bold text-slate-700 mb-1">బ్యాడ్జ్ ప్రిఫిక్స్ (Prefix):</div>
+            <select id="swal-detail-quick-prefix" class="swal2-select !mt-0 !mb-0 !text-sm !w-full !h-[45px] font-bold">
+              <option value="Tool" selected>Tool (ఉదా: Tool 8.0)</option>
+              <option value="EXE">EXE (ఉదా: EXE 1.0.4)</option>
+              <option value="v">v (ఉదా: v1.0.4)</option>
+            </select>
+          </div>
+          <div class="flex items-center pt-5">
+            <input type="checkbox" id="swal-detail-quick-direct" class="w-4 h-4 text-blue-600 rounded cursor-pointer" checked>
+            <label for="swal-detail-quick-direct" class="text-xs font-bold text-slate-700 ml-2 cursor-pointer">డైరెక్ట్ డౌన్‌లోడ్</label>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const urlInput = document.getElementById("swal-detail-quick-url") as HTMLInputElement;
+        const nameInput = document.getElementById("swal-detail-quick-name") as HTMLInputElement;
+        const verInput = document.getElementById("swal-detail-quick-ver") as HTMLInputElement;
+        const statusSelect = document.getElementById("swal-detail-quick-status") as HTMLSelectElement;
+        const prefixSelect = document.getElementById("swal-detail-quick-prefix") as HTMLSelectElement;
+        const previewContent = document.getElementById("swal-detail-live-preview-content") as HTMLDivElement;
+        const previewBox = document.getElementById("swal-detail-live-preview") as HTMLDivElement;
+
+        let manualName = false;
+        let manualVer = false;
+        let manualPrefix = false;
+
+        nameInput?.addEventListener("input", () => {
+          manualName = nameInput.value.trim().length > 0;
+          renderLiveStatus();
+        });
+
+        verInput?.addEventListener("input", () => {
+          manualVer = verInput.value.trim().length > 0;
+          renderLiveStatus();
+        });
+
+        statusSelect?.addEventListener("change", () => renderLiveStatus());
+        prefixSelect?.addEventListener("change", () => {
+          manualPrefix = true;
+          renderLiveStatus();
+        });
+
+        const onUrlChange = () => {
+          const val = urlInput?.value?.trim() || "";
+          if (!val) {
+            if (previewBox && previewContent) {
+              previewBox.className = "mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs transition-all";
+              previewContent.innerHTML = "పైన లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు, వెర్షన్ మరియు రకం ఆటోమేటిక్‌గా ఇక్కడ కనిపిస్తాయి.";
+            }
+            return;
+          }
+          const parsed = parseFileAttachmentFromUrl(val, manualName ? nameInput?.value : undefined, manualVer ? verInput?.value : undefined);
+          if (!manualName && nameInput) {
+            nameInput.value = parsed.name;
+          }
+          if (!manualVer && verInput) {
+            verInput.value = parsed.version;
+          }
+          if (!manualPrefix && prefixSelect) {
+            prefixSelect.value = parsed.badgePrefix;
+          }
+          renderLiveStatus(parsed);
+        };
+
+        const renderLiveStatus = (preset?: any) => {
+          const currentUrl = urlInput?.value?.trim() || "";
+          const parsed = preset || parseFileAttachmentFromUrl(currentUrl, nameInput?.value?.trim(), verInput?.value?.trim());
+          const activeName = nameInput?.value?.trim() || parsed.name || "File.zip";
+          const activeVer = verInput?.value?.trim() || parsed.version || "1.0";
+          const activeStatus = statusSelect?.value || "New";
+          const activePrefix = prefixSelect?.value || parsed.badgePrefix || "Tool";
+
+          if (previewBox && previewContent) {
+            if (!currentUrl) {
+              previewBox.className = "mb-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs transition-all";
+              previewContent.innerHTML = "పైన లింక్ పేస్ట్ చేయగానే ఫైల్ పేరు, వెర్షన్ మరియు రకం ఆటోమేటిక్‌గా ఇక్కడ కనిపిస్తాయి.";
+            } else {
+              previewBox.className = "mb-3 p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-left text-xs transition-all shadow-xs";
+              let statusColor = "bg-[#00c853]";
+              if (activeStatus === "Old") statusColor = "bg-[#ff1744]";
+              else if (activeStatus === "Committee") statusColor = "bg-blue-600";
+
+              previewContent.innerHTML = `
+                <div class="flex items-center gap-1.5 flex-wrap text-emerald-950 font-bold mb-1">
+                  <span class="truncate max-w-[200px]">📄 ${activeName}</span>
+                  <span class="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black">${activePrefix} ${activeVer}</span>
+                  <span class="bg-indigo-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black">${parsed.fileType}</span>
+                  <span class="${statusColor} text-white text-[9px] px-2 py-0.5 rounded font-black uppercase">${activeStatus}</span>
+                </div>
+                <div class="text-[10px] text-emerald-700 font-bold">
+                  ⚡ ఆటోమేటిక్‌గా గుర్తించబడింది! కింద "ఫైల్ యాడ్ చేయండి" బటన్ నొక్కండి.
+                </div>
+              `;
+            }
+          }
+        };
+
+        urlInput?.addEventListener("input", onUrlChange);
+        urlInput?.addEventListener("paste", () => setTimeout(onUrlChange, 30));
+
+        if (urlInput?.value?.trim()) {
+          onUrlChange();
+        }
+
+        urlInput?.focus();
+      },
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "✅ ఫైల్ యాడ్ చేయండి",
+      cancelButtonText: "రద్దు చేయండి",
+      confirmButtonColor: "#2563eb",
+      preConfirm: () => {
+        const url = (document.getElementById("swal-detail-quick-url") as HTMLInputElement)?.value?.trim();
+        const rawName = (document.getElementById("swal-detail-quick-name") as HTMLInputElement)?.value?.trim();
+        const rawVer = (document.getElementById("swal-detail-quick-ver") as HTMLInputElement)?.value?.trim();
+        const status = (document.getElementById("swal-detail-quick-status") as HTMLSelectElement)?.value as "New" | "Old" | "Committee";
+        const prefix = (document.getElementById("swal-detail-quick-prefix") as HTMLSelectElement)?.value || "Tool";
+        const isDirect = (document.getElementById("swal-detail-quick-direct") as HTMLInputElement)?.checked;
+        if (!url) {
+          Swal.showValidationMessage("దయచేసి ఫైల్ డౌన్‌లోడ్ లింక్ (URL) నమోదు చేయండి");
+          return null;
+        }
+        const parsed = parseFileAttachmentFromUrl(url, rawName, rawVer);
+        let finalName = rawName || parsed.name;
+        if (rawName && !rawName.includes('.')) {
+          finalName = `${rawName}.${parsed.fileType.toLowerCase()}`;
+        }
+        const finalVer = rawVer || parsed.version || "1.0";
+        return {
+          url,
+          name: finalName,
+          ver: finalVer,
+          status: status || "New",
+          isDirect: Boolean(isDirect),
+          fileType: parsed.fileType,
+          badgePrefix: prefix || parsed.badgePrefix || "Tool"
+        };
+      }
+    });
+
+    if (result.isConfirmed && result.value && result.value.url) {
+      try {
+        const val = result.value;
+        const newAttachment = {
+          name: val.name,
+          url: val.url,
+          fallbackUrl: val.url,
+          version: val.ver,
+          status: val.status,
+          badgePrefix: val.badgePrefix || "Tool",
+          fileType: val.fileType || "FILE",
+          isDirect: Boolean(val.isDirect)
+        };
+
+        const currentAtts = Array.isArray(post.attachments) ? [...post.attachments] : [];
+        const existingAtts = currentAtts.map(a => 
+          newAttachment.status === "New" ? { ...a, status: "Old" as const } : a
+        );
+
+        const updatedAttachments = [...existingAtts, newAttachment];
+
+        await updateDoc(doc(db, "posts", post.id), {
+          attachments: updatedAttachments,
+          lastEditedAt: Date.now()
+        });
+
+        setPost({ ...post, attachments: updatedAttachments });
+
+        addToast(`✅ ఫైల్ "${newAttachment.name}" (${newAttachment.status}) డౌన్‌లోడ్ లిస్ట్‌లో విజయవంతంగా యాడ్ అయ్యింది!`);
+      } catch (err: any) {
+        console.error("Error adding quick file link in PostDetail:", err);
+        Swal.fire("ఎర్రర్", "ఫైల్ లింక్ యాడ్ చేయడంలో సమస్య: " + (err.message || String(err)), "error");
+      }
+    }
+  };
 
   useEffect(() => {
     if (post && post.id) {
@@ -27920,7 +28702,10 @@ function PostDetail({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {post.attachments.map((att: any, idx: number) => {
                 const fileInfo = getFileTypeInfo(att.name || att.url || "");
-                const statusTag = (att.status || "Old").toLowerCase() === "new" ? "NEW" : "OLD";
+                const statusTag = (att.status || "Old").toUpperCase();
+                let statusColor = "bg-[#ff1744]";
+                if (statusTag === "NEW") statusColor = "bg-[#00c853]";
+                else if (statusTag === "COMMITTEE") statusColor = "bg-blue-600";
                 return (
                 <a
                   key={idx}
@@ -27934,23 +28719,21 @@ function PostDetail({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-xs font-bold text-slate-800 truncate">{att.name || "File Attachment"}</p>
-                      {/* Admin-Only File Classification & OLD/NEW Badges (User కి కనిపించదు) */}
-                      {isAdmin && (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span 
-                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg}`}
-                            title={`Admin Classification: ${fileInfo.label}`}
-                          >
-                            {att.fileType || fileInfo.type}
-                          </span>
-                          <span 
-                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase text-white shadow-2xs ${statusTag === "NEW" ? "bg-[#00c853]" : "bg-[#ff1744]"}`}
-                            title={`Admin Status: ${statusTag}`}
-                          >
-                            {statusTag}
-                          </span>
-                        </div>
-                      )}
+                      {/* File Classification & OLD/NEW Badges */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span 
+                          className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg}`}
+                          title={`Type: ${fileInfo.label}`}
+                        >
+                          {att.fileType || fileInfo.type}
+                        </span>
+                        <span 
+                          className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase text-white shadow-2xs ${statusColor}`}
+                          title={`Status: ${statusTag}`}
+                        >
+                          {statusTag}
+                        </span>
+                      </div>
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium">డౌన్‌లోడ్ చేయండి</span>
                   </div>
@@ -27959,6 +28742,24 @@ function PostDetail({
               );
               })}
             </div>
+            {/* Quick Add File Link Button in PostDetail (ONLY FOR ADMIN!) */}
+            {isDetailUserAdmin && (
+              <div className="mt-3.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDetailQuickAddAttachmentLink();
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-xl px-4 py-2.5 transition-all text-blue-700 hover:text-blue-900 group shadow-xs cursor-pointer text-xs font-black"
+                  title="ఈ పోస్ట్‌కి నేరుగా కొత్త డౌన్‌లోడ్ లింక్ ఇవ్వండి (అడ్మిన్‌లకు మాత్రమే)"
+                >
+                  <Plus size={14} strokeWidth={3} />
+                  <span>+ 🔗 లింక్ ఇవ్వండి (ఆటోమేటిక్ ఫైల్ యాడ్)</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 

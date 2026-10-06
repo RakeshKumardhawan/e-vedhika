@@ -19,7 +19,10 @@ import {
   Globe,
   HardDrive,
   Key,
-  Server
+  Server,
+  Paperclip,
+  ExternalLink,
+  Link2
 } from 'lucide-react';
 import { TelegramNotificationCard } from './TelegramNotificationCard';
 
@@ -34,6 +37,7 @@ export const UBDLiveMonitoring: React.FC = () => {
   const [selectedLogFor90Params, setSelectedLogFor90Params] = useState<any | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<'grid' | 'raw'>('grid');
   const [copiedModal, setCopiedModal] = useState(false);
+  const [copiedFileUrl, setCopiedFileUrl] = useState<string | null>(null);
   
   // OTA Configuration
   const [otaConfig, setOtaConfig] = useState({
@@ -229,6 +233,35 @@ export const UBDLiveMonitoring: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(full90Record)
+      });
+      await fetchLiveCloudData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleTestFileLinkPost = async () => {
+    setSyncing(true);
+    try {
+      const samplePayload = {
+        pcName: "GP-SECRETARY-PC-TS",
+        userName: "Panchayat Secretary",
+        officeLocation: "Siddipet Grama Panchayat, Telangana",
+        osVersion: "Windows 11 Pro 64-bit",
+        dscStatus: "USB Token Active",
+        verification: "Passed (90/90)",
+        status: "SUCCESS",
+        healthScore: 100,
+        link: "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
+        fileName: "EVedhikaUBDDeploymentTool.exe",
+        remarks: "Auto-collected telemetry with attached software file"
+      };
+      await fetch('/api/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(samplePayload)
       });
       await fetchLiveCloudData();
     } catch (e) {
@@ -480,6 +513,15 @@ Remarks          : ${log.remarks || 'Verified by E-Vedhika Deployment Engine.'}
               </div>
               <div className="flex items-center gap-2.5">
                 <button 
+                  onClick={handleTestFileLinkPost} 
+                  disabled={syncing}
+                  className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-1.5"
+                  title="ఫైల్ లింక్ తో ఒక టెస్ట్ POST రిపోర్ట్ పంపండి"
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  + ఫైల్ లింక్ POST టెస్ట్
+                </button>
+                <button 
                   onClick={sendSampleTelemetryReport} 
                   disabled={syncing}
                   className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-2"
@@ -570,13 +612,14 @@ Remarks          : ${log.remarks || 'Verified by E-Vedhika Deployment Engine.'}
                     <th className="p-4">Network</th>
                     <th className="p-4">DSC Status</th>
                     <th className="p-4">Checks Status</th>
+                    <th className="p-4 text-center">Attached File / లింక్</th>
                     <th className="p-4 text-center">90-Params</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-20 text-center text-slate-400 font-medium bg-slate-50/50">
+                      <td colSpan={10} className="p-20 text-center text-slate-400 font-medium bg-slate-50/50">
                         <Cloud className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                         <p className="text-sm font-bold text-slate-600">ఎలాంటి నివేదికలు లభించలేదు.</p>
                         <p className="text-xs text-slate-400 mt-1">C# Tool రన్ చేయండి లేదా పైనున్న "Simulate Live PC" బటన్ క్లిక్ చేయండి.</p>
@@ -587,6 +630,8 @@ Remarks          : ${log.remarks || 'Verified by E-Vedhika Deployment Engine.'}
                       const isTS = log.state === 'TS' || String(log.officeLocation || '').includes('Telangana');
                       const pcIdDisplay = log.pcId || log.id || `EVD-PC-${i + 101}`;
                       const isPassed = String(log.status || '').toLowerCase().includes('success') || Number(log.healthScore || 100) >= 90;
+                      const fileLink = log.fileLink || log.link || log.fileUrl;
+                      const fileName = log.fileName || (fileLink ? String(fileLink).split('/').pop()?.split('?')[0] : 'ఫైల్ డౌన్‌లోడ్');
 
                       return (
                         <tr key={log.id || i} className="hover:bg-indigo-50/30 transition-colors">
@@ -637,6 +682,23 @@ Remarks          : ${log.remarks || 'Verified by E-Vedhika Deployment Engine.'}
                             </div>
                           </td>
                           <td className="p-4 text-center">
+                            {fileLink ? (
+                              <a 
+                                href={fileLink} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                download 
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-[10px] font-black shadow-xs transition-all active:scale-95 whitespace-nowrap"
+                                title={fileName}
+                              >
+                                <Download className="w-3 h-3" />
+                                <span className="truncate max-w-[100px]">{fileName}</span>
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">-</span>
+                            )}
+                          </td>
+                          <td className="p-4 text-center">
                             <button 
                               onClick={() => {
                                 setSelectedLogFor90Params(log);
@@ -655,6 +717,141 @@ Remarks          : ${log.remarks || 'Verified by E-Vedhika Deployment Engine.'}
               </table>
             </div>
           </div>
+
+          {/* 📁 Auto-Collected Files via POST Telemetry Section */}
+          {(() => {
+            const fileLogs = centralTelemetryLogs.filter(
+              (l) => Boolean(l.fileLink || l.link || l.fileUrl || l.attachment)
+            );
+            return (
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl p-6 space-y-5 text-white">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
+                      <Paperclip className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-white flex items-center gap-2">
+                        పోస్ట్ చేయబడిన ఫైల్స్ & డౌన్‌లోడ్ హబ్ (Auto-Collected Files via POST)
+                        <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-mono border border-emerald-500/30 font-bold">
+                          {fileLogs.length} ఫైల్స్
+                        </span>
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        POST రిక్వెస్ట్‌లో లింక్ (<code>"link"</code> లేదా <code>"fileUrl"</code>) ఇవ్వగానే ఆ ఫైల్ ఆటోమేటిక్‌గా ఇక్కడ యాడ్ అవుతుంది.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleTestFileLinkPost}
+                      disabled={syncing}
+                      className="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white rounded-xl text-xs font-bold border border-indigo-500/40 transition-all flex items-center gap-1.5"
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                      టెస్ట్ ఫైల్ లింక్ POST
+                    </button>
+                  </div>
+                </div>
+
+                {fileLogs.length === 0 ? (
+                  <div className="p-8 text-center bg-slate-950/60 rounded-2xl border border-dashed border-slate-800 space-y-2">
+                    <FileText className="w-10 h-10 mx-auto text-slate-600" />
+                    <p className="text-sm font-bold text-slate-300">ప్రస్తుతానికి ఏ ఫైల్ లింక్ పోస్ట్ చేయబడలేదు.</p>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      C# అప్లికేషన్ లేదా API POST రిక్వెస్ట్ ద్వారా <code>link</code> లేదా <code>fileUrl</code> పంపిన వెంటనే, ఆ ఫైల్ ఇక్కడ ఆటోమేటిక్‌గా ప్రత్యక్షమవుతుంది.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {fileLogs.map((fLog, idx) => {
+                      const fLink = fLog.fileLink || fLog.link || fLog.fileUrl || '';
+                      const fName = fLog.fileName || (fLink ? String(fLink).split('/').pop()?.split('?')[0] : 'Attached_File');
+                      const ext = (fName.split('.').pop() || 'FILE').toUpperCase();
+
+                      return (
+                        <div
+                          key={fLog.id || idx}
+                          className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/50 transition-all flex flex-col justify-between space-y-4 shadow-xl"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-black text-xs shrink-0">
+                                {ext}
+                              </div>
+                              <div className="min-w-0">
+                                <h5 className="text-sm font-black text-white truncate" title={fName}>
+                                  {fName}
+                                </h5>
+                                <p className="text-[11px] text-slate-400 truncate">
+                                  {fLog.pcName || 'PC'} • {fLog.userName || 'User'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[9px] font-mono border border-emerald-500/30 font-bold shrink-0">
+                              AUTO-ADDED
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 text-[11px] space-y-1">
+                            <div className="flex justify-between text-slate-400">
+                              <span>లొకేషన్:</span>
+                              <span className="text-slate-200 font-bold truncate max-w-[160px]">
+                                {fLog.officeLocation || 'Grama Panchayat'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-slate-400">
+                              <span>సమయం:</span>
+                              <span className="text-slate-300 font-mono">
+                                {fLog.date} {fLog.time}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <a
+                              href={fLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl text-xs text-center transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              డౌన్‌లోడ్
+                            </a>
+                            <a
+                              href={fLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs transition-all flex items-center justify-center"
+                              title="ఓపెన్ లింక్"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(fLink);
+                                setCopiedFileUrl(fLink);
+                                setTimeout(() => setCopiedFileUrl(null), 2000);
+                              }}
+                              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs transition-all flex items-center justify-center"
+                              title="కాపీ లింక్"
+                            >
+                              {copiedFileUrl === fLink ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
