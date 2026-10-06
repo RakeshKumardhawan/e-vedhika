@@ -141,7 +141,26 @@
     <title>🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్</title>
 </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#020617;color:#fff;text-align:center;padding:20px;">
+        <div style="font-size:36px;margin-bottom:16px;">🏛️</div>
+        <h2 style="font-size:20px;font-weight:bold;margin-bottom:8px;">ఈ-వేదిక (E-Vedhika) లోడ్ అవుతోంది...</h2>
+        <p style="font-size:13px;color:#94a3b8;margin-bottom:20px;">దయచేసి వేచి ఉండండి (Please wait)...</p>
+        <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;"></div>
+      </div>
+      <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+      </style>
+    </div>
+    <script>
+      // Fallback check: if root is still showing loading after 6 seconds, show manual refresh option
+      setTimeout(function() {
+        var root = document.getElementById('root');
+        if (root && root.innerHTML.indexOf('లోడ్ అవుతోంది') !== -1) {
+          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#020617;color:#f8fafc;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#1e293b;padding:32px;border-radius:24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);max-width:480px;border:1px solid rgba(255,255,255,0.1);"><div style="font-size:40px;margin-bottom:16px;">⚠️</div><h2 style="color:#f8fafc;margin-bottom:12px;font-size:20px;font-weight:900;">లోడింగ్ ఆలస్యం అవుతోంది (Loading Timeout)</h2><p style="font-size:13px;line-height:1.6;color:#94a3b8;margin-bottom:24px;">మీ నెట్‌వర్క్ కనెక్షన్ నెమ్మదిగా ఉండటం వల్ల లేదా బ్రౌజర్ క్యాచే కారణంగా అప్లికేషన్ లోడ్ అవ్వడం ఆలస్యం అవుతోంది. దయచేసి క్రింది బటన్ నొక్కి రిఫ్రెష్ చేయండి.</p><button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload(true);" style="background:#6366f1;color:#fff;border:none;padding:14px 28px;border-radius:14px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 10px 20px -5px rgba(99,102,241,0.5);width:100%;">రీఫ్రెష్ & క్యాచే క్లియర్ చేయండి (Refresh & Clear)</button></div></div>';
+        }
+      }, 6000);
+    </script>
     <!-- SEO / AdSense Content Block (Visible to Crawlers) -->
     <div style="display:none;" id="seo-content">
       <h1>E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries</h1>
