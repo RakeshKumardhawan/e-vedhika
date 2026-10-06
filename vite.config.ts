@@ -12,7 +12,7 @@ export default defineConfig(({mode}) => {
     plugins: [
       react(), 
       legacy({
-        targets: ['defaults', 'not IE 11', 'chrome 49', 'firefox 52', 'safari 10'],
+        targets: ['defaults', 'not IE 11'],
         additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
         renderLegacyChunks: true
       }),
@@ -169,7 +169,7 @@ export default defineConfig(({mode}) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      target: 'es2015',
+      target: 'esnext',
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
