@@ -756,4 +756,26 @@ html, body, #root {
   opacity: 1;
 }
 
+/* Bulletproof Notification Dropdown Position Fix */
+div#root:nth-of-type(1) > div:nth-of-type(1) > header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) {
+  position: absolute !important;
+  top: 100% !important;
+  right: -10px !important;
+  left: auto !important;
+  margin-top: 12px !important;
+  max-height: calc(100vh - 120px) !important;
+}
+
+@media (max-width: 639px) {
+  div#root:nth-of-type(1) > div:nth-of-type(1) > header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2) {
+    position: fixed !important;
+    top: 72px !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+    max-width: calc(100vw - 32px) !important;
+  }
+}
+
+
 

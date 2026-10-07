@@ -166,6 +166,8 @@ async function startServer() {
 
   app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
+    const distRobotsPath = path.join(process.cwd(), 'dist', 'robots.txt');
+    if (fs.existsSync(distRobotsPath)) return res.sendFile(distRobotsPath);
     const robotsPath = path.join(process.cwd(), 'public', 'robots.txt');
     if (fs.existsSync(robotsPath)) return res.sendFile(robotsPath);
     res.send("User-agent: *\nAllow: /\nSitemap: https://www.e-vedhika.in/sitemap.xml");
@@ -173,6 +175,8 @@ async function startServer() {
 
   app.get('/sitemap.xml', (req, res) => {
     res.type('application/xml');
+    const distSitemapPath = path.join(process.cwd(), 'dist', 'sitemap.xml');
+    if (fs.existsSync(distSitemapPath)) return res.sendFile(distSitemapPath);
     const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
     if (fs.existsSync(sitemapPath)) return res.sendFile(sitemapPath);
     res.status(404).send("Sitemap not found");
@@ -180,6 +184,8 @@ async function startServer() {
 
   app.get('/sitemap.txt', (req, res) => {
     res.type('text/plain');
+    const distSitemapPath = path.join(process.cwd(), 'dist', 'sitemap.txt');
+    if (fs.existsSync(distSitemapPath)) return res.sendFile(distSitemapPath);
     const sitemapPath = path.join(process.cwd(), 'public', 'sitemap.txt');
     if (fs.existsSync(sitemapPath)) return res.sendFile(sitemapPath);
     res.status(404).send("Sitemap not found");
@@ -3047,6 +3053,93 @@ app.get('/api/remote-commands', (req, res) => {
     });
     saveFarmerJobs();
   }, 60 * 1000); // Check every minute
+
+  // Sitemap & SEO Management APIs
+  app.get("/api/admin/sitemap-urls", verifyToken, (req, res) => {
+    try {
+      let sitemapContent = "";
+      const distSitemapPath = path.join(process.cwd(), 'dist', 'sitemap.xml');
+      const publicSitemapPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+      
+      if (fs.existsSync(distSitemapPath)) {
+        sitemapContent = fs.readFileSync(distSitemapPath, "utf-8");
+      } else if (fs.existsSync(publicSitemapPath)) {
+        sitemapContent = fs.readFileSync(publicSitemapPath, "utf-8");
+      }
+      
+      if (!sitemapContent) {
+        return res.json([]);
+      }
+      
+      // Basic regex parsing to extract <url> blocks
+      const urlRegex = /<url>([\s\S]*?)<\/url>/gi;
+      const urls: any[] = [];
+      let match;
+      while ((match = urlRegex.exec(sitemapContent)) !== null) {
+        const block = match[1];
+        const locMatch = /<loc>(.*?)<\/loc>/i.exec(block);
+        const lastmodMatch = /<lastmod>(.*?)<\/lastmod>/i.exec(block);
+        const priorityMatch = /<priority>(.*?)<\/priority>/i.exec(block);
+        const changefreqMatch = /<changefreq>(.*?)<\/changefreq>/i.exec(block);
+        
+        if (locMatch) {
+          urls.push({
+            loc: locMatch[1].trim(),
+            lastmod: lastmodMatch ? lastmodMatch[1].trim() : "",
+            priority: priorityMatch ? priorityMatch[1].trim() : "0.5",
+            changefreq: changefreqMatch ? changefreqMatch[1].trim() : "weekly"
+          });
+        }
+      }
+      
+      res.json(urls);
+    } catch (err: any) {
+      console.error("Error fetching sitemap URLs:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/regenerate-sitemap", verifyToken, async (req, res) => {
+    try {
+      const { exec } = await import("child_process");
+      exec("node scripts/generate-static-routes.js", (error, stdout, stderr) => {
+        if (error) {
+          console.error("Sitemap regeneration process error:", error);
+          return res.status(500).json({ error: error.message, stderr });
+        }
+        res.json({ success: true, stdout });
+      });
+    } catch (err: any) {
+      console.error("Failed to run sitemap regeneration:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/save-robots", verifyToken, express.json(), (req, res) => {
+    try {
+      const { robotsContent } = req.body;
+      if (typeof robotsContent !== "string") {
+        return res.status(400).json({ error: "Invalid robotsContent parameter" });
+      }
+      
+      const distRobotsPath = path.join(process.cwd(), 'dist', 'robots.txt');
+      const publicRobotsPath = path.join(process.cwd(), 'public', 'robots.txt');
+      
+      // Save to both dist/ and public/
+      fs.writeFileSync(publicRobotsPath, robotsContent, "utf-8");
+      try {
+        const distDir = path.join(process.cwd(), 'dist');
+        if (fs.existsSync(distDir)) {
+          fs.writeFileSync(distRobotsPath, robotsContent, "utf-8");
+        }
+      } catch (_) {}
+      
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error saving robots.txt:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // Admin APIs for Farmer Registry
   app.get("/api/admin/farmer-jobs", verifyToken, (req, res) => {

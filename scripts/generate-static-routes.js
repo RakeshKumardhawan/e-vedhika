@@ -4,12 +4,15 @@ import path from "path";
 const distDir = path.resolve(process.cwd(), "dist");
 const indexPath = path.join(distDir, "index.html");
 
-if (!fs.existsSync(indexPath)) {
-  console.error("dist/index.html not found! Run vite build first.");
-  process.exit(0);
+if (!fs.existsSync(distDir)) {
+  fs.mkdirSync(distDir, { recursive: true });
 }
 
-const indexContent = fs.readFileSync(indexPath, "utf-8");
+const hasIndex = fs.existsSync(indexPath);
+const indexContent = hasIndex ? fs.readFileSync(indexPath, "utf-8") : "";
+if (!hasIndex) {
+  console.warn("dist/index.html not found yet. Skipping static deep HTML routes, but generating sitemap.xml and robots.txt.");
+}
 
 // All deep routes that should have pre-generated static index.html on GitHub Pages
 const routes = [
@@ -52,18 +55,20 @@ const routes = [
   "terms",
   "about",
   "contact",
+  "sitemap",
   "home/post",
   "post"
 ];
 
-routes.forEach((route) => {
-  const targetDir = path.join(distDir, route);
-  fs.mkdirSync(targetDir, { recursive: true });
-  const targetFile = path.join(targetDir, "index.html");
-  fs.writeFileSync(targetFile, indexContent, "utf-8");
-});
-
-console.log(`Generated static index.html for ${routes.length} deep routes in dist/ for GitHub Pages.`);
+if (hasIndex) {
+  routes.forEach((route) => {
+    const targetDir = path.join(distDir, route);
+    fs.mkdirSync(targetDir, { recursive: true });
+    const targetFile = path.join(targetDir, "index.html");
+    fs.writeFileSync(targetFile, indexContent, "utf-8");
+  });
+  console.log(`Generated static index.html for ${routes.length} deep routes in dist/ for GitHub Pages.`);
+}
 
 // Utility to generate clean slugs matching frontend
 function generatePostSlug(title, fallbackId) {
@@ -181,30 +186,32 @@ async function generateStaticPostRoutes() {
       const canonicalUrl = `https://www.e-vedhika.in/home/post/${postSlug}`;
       allPostUrls.push(canonicalUrl);
 
-      const postHtml = injectPostOgTags(indexContent, {
-        title: `${title} - E-Vedhika`,
-        description: description || "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ పరిపాలనా పోర్టల్.",
-        imageUrl,
-        canonicalUrl,
-      });
+      if (hasIndex) {
+        const postHtml = injectPostOgTags(indexContent, {
+          title: `${title} - E-Vedhika`,
+          description: description || "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ పరిపాలనా పోర్టల్.",
+          imageUrl,
+          canonicalUrl,
+        });
 
-      // Target folders for slug, docId, and numeric permalink
-      const targetPaths = [
-        path.join(distDir, "home", "post", postSlug),
-        path.join(distDir, "home", "post", docId),
-        path.join(distDir, "post", postSlug),
-        path.join(distDir, "post", docId),
-      ];
+        // Target folders for slug, docId, and numeric permalink
+        const targetPaths = [
+          path.join(distDir, "home", "post", postSlug),
+          path.join(distDir, "home", "post", docId),
+          path.join(distDir, "post", postSlug),
+          path.join(distDir, "post", docId),
+        ];
 
-      if (postNumber) {
-        targetPaths.push(path.join(distDir, "home", "post", String(postNumber)));
-        targetPaths.push(path.join(distDir, "post", String(postNumber)));
-      }
+        if (postNumber) {
+          targetPaths.push(path.join(distDir, "home", "post", String(postNumber)));
+          targetPaths.push(path.join(distDir, "post", String(postNumber)));
+        }
 
-      for (const targetDir of targetPaths) {
-        fs.mkdirSync(targetDir, { recursive: true });
-        fs.writeFileSync(path.join(targetDir, "index.html"), postHtml, "utf-8");
-        generatedCount++;
+        for (const targetDir of targetPaths) {
+          fs.mkdirSync(targetDir, { recursive: true });
+          fs.writeFileSync(path.join(targetDir, "index.html"), postHtml, "utf-8");
+          generatedCount++;
+        }
       }
     }
 
@@ -257,11 +264,32 @@ function generateSitemap(allUrls) {
   xml += `</urlset>`;
   
   fs.writeFileSync(path.join(distDir, "sitemap.xml"), xml, "utf-8");
-  console.log(`Generated sitemap.xml with ${routes.length + 1 + allUrls.length} URLs.`);
+  console.log(`Generated sitemap.xml in dist/ with ${routes.length + 1 + allUrls.length} URLs.`);
+  
+  // Also write to public/ so dev server or server.ts serves the live dynamic sitemap
+  try {
+    const publicDir = path.resolve(process.cwd(), "public");
+    if (fs.existsSync(publicDir)) {
+      fs.writeFileSync(path.join(publicDir, "sitemap.xml"), xml, "utf-8");
+      console.log("Copied sitemap.xml to public/.");
+    }
+  } catch (err) {
+    console.error("Error writing sitemap.xml to public/:", err);
+  }
 
   const robots = `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: ${baseUrl}/sitemap.xml`;
   fs.writeFileSync(path.join(distDir, "robots.txt"), robots, "utf-8");
-  console.log("Generated robots.txt.");
+  console.log("Generated robots.txt in dist/.");
+
+  try {
+    const publicDir = path.resolve(process.cwd(), "public");
+    if (fs.existsSync(publicDir)) {
+      fs.writeFileSync(path.join(publicDir, "robots.txt"), robots, "utf-8");
+      console.log("Copied robots.txt to public/.");
+    }
+  } catch (err) {
+    console.error("Error writing robots.txt to public/:", err);
+  }
 }
 
 // Ensure CNAME and 404.html exist in dist

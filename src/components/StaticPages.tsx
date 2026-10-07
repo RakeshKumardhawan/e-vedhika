@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, FolderTree, Globe, ChevronRight } from 'lucide-react';
 
 function useStaticPage(pageId: string) {
   const [data, setData] = useState<{ title: string; content: string } | null>(null);
@@ -207,4 +207,120 @@ export function ContactPage() {
 - **టెలిగ్రామ్**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
 - **వాట్సాప్**: [WhatsApp సపోర్ట్](https://wa.me/919985402310) (నెంబర్ గోప్యంగా ఉంచబడింది)
   `} />;
+}
+
+export function SitemapContent({ onNavigate }: { onNavigate?: () => void }) {
+  const categories = [
+    {
+      title: "Products & Tools",
+      items: [
+        { name: "Home", path: "/", desc: "Portal Main Page & Citizen Services" },
+        { name: "Workspace", path: "/workspace", desc: "Daily Operations & Work Tools" },
+        { name: "GOs & Formats", path: "/gos_formats", desc: "Government Orders & Application Formats" },
+        { name: "Farmer Registry", path: "/farmer_registry", desc: "Farmer Verification & Registry Tool" },
+        { name: "Software Hub", path: "/software_hub", desc: "Utility Softwares, Tools & Drivers" },
+        { name: "GPDP Planning", path: "/gpdp_setup", desc: "Gram Panchayat Development Plan Tool" },
+        { name: "DSR Tables", path: "/workspace/dsr", desc: "Estimation & Work Calculators" },
+        { name: "Monthly Activity", path: "/workspace/monthly-activity", desc: "Monthly Work Activity Formatter" },
+      ]
+    },
+    {
+      title: "Resources & Documents",
+      items: [
+        { name: "Citizen Updates & Posts", path: "/home/post", desc: "Latest Announcements & News" },
+        { name: "Knowledge Hub & PR Act", path: "/workspace/pract", desc: "Panchayat Raj Acts & Legal Guides" },
+        { name: "PDF Compress", path: "/pdf_compress", desc: "Online File Size Compression Tool" },
+        { name: "Excel Printer Tool", path: "/excel_print", desc: "Clean Sheet Printing & A4 Formats" },
+        { name: "Excel Merger", path: "/workspace/excel-merge", desc: "Combine Multiple Excel Spreadsheets" },
+        { name: "UBD Live Tracker", path: "/ubd_tracker", desc: "Live Monitoring & Status Dashboard" },
+      ]
+    },
+    {
+      title: "Portal & Governance",
+      items: [
+        { name: "About Us", path: "/about", desc: "Mission, Governance & Platform Overview" },
+        { name: "Contact Us", path: "/contact", desc: "Official Helpdesk & Support Desk" },
+        { name: "Suggestions & Support", path: "/suggestions", desc: "Feedback, Tickets & Grievances" },
+        { name: "Emergency Services", path: "/emergency", desc: "Key Emergency Helpline Numbers" },
+        { name: "Privacy Policy", path: "/privacy", desc: "Data Protection & Privacy Policy" },
+        { name: "Terms & Conditions", path: "/terms", desc: "Platform Rules, Regulations & Terms" },
+      ]
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Visual Hierarchy Tree representation matching example */}
+      <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-4 sm:p-6 shadow-xs">
+        <div className="flex flex-col items-center justify-center text-center pb-5 border-b border-slate-200">
+          <div className="px-5 py-2 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-md flex items-center gap-2">
+            <Globe size={16} /> E-VEDHIKA (Home)
+          </div>
+          <div className="w-0.5 h-6 bg-slate-300 my-1" />
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-slate-200">
+            Hierarchical Site Structure
+          </div>
+        </div>
+
+        {/* Tree branches */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-5">
+          {categories.map((cat, idx) => (
+            <div key={idx} className="flex flex-col space-y-2.5">
+              <div className="p-2.5 bg-white border border-slate-200 rounded-2xl shadow-xs text-center font-black text-xs sm:text-sm text-slate-800 border-t-4 border-t-blue-500">
+                {cat.title}
+              </div>
+              <div className="space-y-2">
+                {cat.items.map((item, itemIdx) => (
+                  <Link
+                    key={itemIdx}
+                    to={item.path}
+                    onClick={() => onNavigate && onNavigate()}
+                    className="p-2.5 bg-white border border-slate-100 hover:border-blue-300 hover:bg-blue-50/50 rounded-xl transition-all shadow-xs flex items-center justify-between group block"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="font-bold text-xs text-slate-800 group-hover:text-blue-600 transition-colors truncate">
+                        {item.name}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
+                        {item.desc}
+                      </div>
+                    </div>
+                    <ChevronRight size={13} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SitemapPage() {
+  return (
+    <div className="fixed inset-0 z-[9999] w-full h-screen h-[100dvh] bg-slate-50 text-slate-800 p-4 sm:p-12 font-sans overflow-y-auto custom-scrollbar">
+      <div className="max-w-5xl mx-auto space-y-6 bg-white p-6 sm:p-10 rounded-3xl shadow-xl my-6 border border-slate-100">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <Link to="/" className="text-primary font-bold hover:underline flex items-center gap-1 text-sm">
+            &larr; Back to Home
+          </Link>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-blue-700 text-xs font-bold">
+            <FolderTree size={13} /> E-Vedhika Sitemap
+          </div>
+        </div>
+
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            Sitemap & Directory
+          </h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            Complete hierarchical directory of all sections, public services, utility tools, and policy pages on E-Vedhika.
+          </p>
+        </div>
+
+        <SitemapContent />
+      </div>
+    </div>
+  );
 }

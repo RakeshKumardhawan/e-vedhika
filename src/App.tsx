@@ -24,7 +24,7 @@ import {
 
 import html2canvas from "html2canvas";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
-import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage } from "./components/StaticPages";
+import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage, SitemapPage, SitemapContent } from "./components/StaticPages";
 import { TabInfoBanner } from "./components/TabInfoBanner";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
@@ -2363,7 +2363,7 @@ function LandingPage({
 }: { 
   onEnterSite: () => void;
   onLoginClick: () => void;
-  onShowFooter: (type: "privacy" | "about" | "contact" | "terms") => void;
+  onShowFooter: (type: "privacy" | "about" | "contact" | "terms" | "sitemap") => void;
   landingPageData: any;
 }) {
   const [isWarping, setIsWarping] = useState(false);
@@ -2559,6 +2559,7 @@ function LandingPage({
               <button onClick={() => onShowFooter("about")} className="hover:text-blue-600 transition-colors">About Us</button>
               <button onClick={() => onShowFooter("terms")} className="hover:text-blue-600 transition-colors">Terms</button>
               <button onClick={() => onShowFooter("contact")} className="hover:text-blue-600 transition-colors">Contact Us</button>
+              <button onClick={() => onShowFooter("sitemap")} className="hover:text-blue-600 transition-colors">Sitemap</button>
             </div>
             <div className="text-sm text-slate-400 font-medium">
               &copy; {new Date().getFullYear()} E-Vedhika. All rights reserved.
@@ -3172,7 +3173,7 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [showFooterModal, setShowFooterModal] = useState<
-    "privacy" | "about" | "contact" | "terms" | null
+    "privacy" | "about" | "contact" | "terms" | "sitemap" | null
   >(null);
 
   const [showPWABanner, setShowPWABanner] = useState(false);
@@ -5038,6 +5039,9 @@ E-Vedhika Team`;
   if (location.pathname === "/contact") {
     return <ContactPage />;
   }
+  if (location.pathname === "/sitemap") {
+    return <SitemapPage />;
+  }
 
   const isMaintActive = siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE";
   const hasAdminOverride = typeof localStorage !== 'undefined' && localStorage.getItem("evedhika_admin_override") === "true";
@@ -5083,7 +5087,7 @@ E-Vedhika Team`;
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl max-h-[85vh] flex flex-col overflow-y-auto custom-scrollbar border border-slate-100"
+            className={`relative w-full ${showFooterModal === "sitemap" ? "max-w-4xl" : "max-w-2xl"} bg-white rounded-[40px] shadow-2xl max-h-[85vh] flex flex-col overflow-y-auto custom-scrollbar border border-slate-100`}
           >
             <div className="p-8 sm:p-12">
               <div className="flex justify-between items-start mb-8">
@@ -5094,6 +5098,7 @@ E-Vedhika Team`;
                       (aboutContent?.title || "మా గురించి (About)")}
                     {showFooterModal === "terms" && "నిబంధనలు & షరతులు (Terms)"}
                     {showFooterModal === "contact" && "సంప్రదించండి (Contact)"}
+                    {showFooterModal === "sitemap" && "Sitemap"}
                   </h2>
                 </div>
                 <button
@@ -5258,6 +5263,10 @@ E-Vedhika Team`;
                       </div>
                     </div>
                   </div>
+                )}
+
+                {showFooterModal === "sitemap" && (
+                  <SitemapContent onNavigate={() => setShowFooterModal(null)} />
                 )}
               </div>
 
@@ -5474,7 +5483,7 @@ E-Vedhika Team`;
             >
               <MessageCircle size={20} className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" />
               {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length > 0 && (
-                <span className="notif-badge" style={{ display: "flex", top: 0, right: 0 }}>
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border-2 border-[#0d2a4a]">
                   {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length}
                 </span>
               )}
@@ -5491,10 +5500,9 @@ E-Vedhika Team`;
               />
               {unreadCount > 0 && (
                 <span
-                  className="notif-badge"
-                  style={{ display: "flex", top: 0, right: 0 }}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border-2 border-[#0d2a4a] animate-bounce"
                 >
-                  {unreadCount}
+                  {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </div>
@@ -5502,24 +5510,29 @@ E-Vedhika Team`;
             <AnimatePresence>
               {showNotifications && (
                 <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                  initial={{ opacity: 0, y: 12, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-20 sm:top-full sm:mt-2.5 max-w-[380px] mx-auto sm:mx-0 sm:w-[380px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.25)] border border-slate-200 z-[2000] overflow-hidden"
+                  exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                  className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[72px] sm:top-full sm:mt-4 w-auto sm:w-[420px] max-w-[calc(100vw-32px)] bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/80 z-[2000] overflow-hidden flex flex-col"
+                  style={{ maxHeight: "calc(100vh - 120px)" }}
                 >
-                  <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
-                        <Bell size={14} /> Notification Center
-                      </h3>
-                      {notifications.length > 0 && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          {notifications.length}
-                        </span>
-                      )}
+                  {/* Arrow for Desktop */}
+                  <div className="hidden sm:block absolute top-[-8px] right-[18px] w-4 h-4 bg-white border-t border-l border-slate-200/80 rotate-45 z-[-1]" />
+
+                  <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
+                        <Bell size={18} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <h3 className="text-[13px] font-black text-slate-900 uppercase tracking-wider leading-none">
+                          Notification Center
+                        </h3>
+                        <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase tracking-tight">Stay updated with live alerts</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       {notifications.length > 0 && (
                         <button
                           onClick={() => {
@@ -5533,19 +5546,19 @@ E-Vedhika Team`;
                             setUnreadCount(0);
                             addToast("అన్ని నోటిఫికేషన్‌లు తొలగించబడ్డాయి (Cleared all)");
                           }}
-                          className="text-[10px] font-bold text-slate-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 flex items-center gap-1 transition-colors cursor-pointer"
+                          className="text-[10px] font-black text-slate-400 hover:text-red-600 px-3 py-1.5 rounded-xl hover:bg-red-50 transition-all cursor-pointer flex items-center gap-1.5 border border-transparent hover:border-red-100"
                           title="అన్నీ క్లియర్ చేయండి"
                         >
-                          <Trash2 size={12} />
-                          <span className="hidden min-[360px]:inline">Clear</span>
+                          <Trash2 size={13} />
+                          <span className="hidden min-[400px]:inline uppercase">Clear All</span>
                         </button>
                       )}
                       <button
                         onClick={() => setShowNotifications(false)}
-                        className="text-slate-400 hover:text-danger cursor-pointer p-1 rounded-full hover:bg-slate-100 transition-colors"
+                        className="text-slate-400 hover:text-slate-600 cursor-pointer p-2 rounded-xl hover:bg-slate-200/50 transition-all"
                         title="Close"
                       >
-                        <X size={14} />
+                        <X size={18} strokeWidth={2.5} />
                       </button>
                     </div>
                   </div>
@@ -5574,7 +5587,7 @@ E-Vedhika Team`;
                   )}
 
                   {/* Category Filter Tabs */}
-                  <div className="flex gap-1 p-2 bg-slate-100/80 overflow-x-auto scrollbar-none border-b border-slate-200/60">
+                  <div className="flex gap-1.5 p-3 bg-slate-50 border-b border-slate-100 overflow-x-auto scrollbar-none no-scrollbar">
                     {[
                       { id: "all", label: "All" },
                       { id: "system", label: "System" },
@@ -5601,15 +5614,15 @@ E-Vedhika Team`;
                         <button
                           key={tab.id}
                           onClick={() => setNotifTab(tab.id as any)}
-                          className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${
+                          className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
                             notifTab === tab.id
-                              ? "bg-primary text-white shadow-sm"
-                              : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/60"
+                              ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                              : "bg-white text-slate-500 border-slate-200 hover:text-slate-800 hover:border-slate-300"
                           }`}
                         >
                           <span>{tab.label}</span>
                           {count > 0 && (
-                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${notifTab === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"}`}>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${notifTab === tab.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
                               {count}
                             </span>
                           )}
@@ -5618,7 +5631,7 @@ E-Vedhika Team`;
                     })}
                   </div>
 
-                  <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar no-scrollbar" style={{ minHeight: "150px" }}>
                     {(() => {
                       const filteredNotifs = notifications
                         .filter((n) => {
@@ -5637,13 +5650,20 @@ E-Vedhika Team`;
 
                       if (filteredNotifs.length > 0) {
                         return (
-                          <div className="divide-y divide-slate-100">
+                          <div className="flex flex-col">
                             {filteredNotifs.map((n) => {
                               const isUnread =
                                 !readNotifIds.has(n.id) &&
                                 (n.uid === "all"
                                   ? !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false)
                                   : !n.read);
+                              
+                              let icon = <Info size={14} />;
+                              if (n.type?.includes("like")) icon = <Heart size={14} className="fill-current" />;
+                              if (n.type?.includes("comment")) icon = <MessageSquare size={14} />;
+                              if (n.type?.includes("admin")) icon = <ShieldAlert size={14} />;
+                              if (n.type?.includes("flash")) icon = <Zap size={14} />;
+
                               return (
                                 <div
                                   key={n.id}
@@ -5677,64 +5697,61 @@ E-Vedhika Team`;
                                     }
                                     setShowNotifications(false);
                                   }}
-                                  className={`p-3.5 cursor-pointer hover:bg-slate-50/80 transition-all relative group ${isUnread ? "bg-blue-50/50 border-l-4 border-primary" : "border-l-4 border-transparent"}`}
+                                  className={`p-4 cursor-pointer hover:bg-slate-50 transition-all border-b border-slate-100 flex gap-4 group relative ${isUnread ? "bg-blue-50/30" : "bg-white"}`}
                                 >
-                                  <div className="flex justify-between items-start mb-1 gap-2">
-                                    <span
-                                      className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                                        n.type === "flash_update"
-                                          ? "bg-amber-100 text-amber-700"
-                                          : n.type?.includes("admin")
-                                          ? "bg-red-100 text-red-700"
-                                          : n.type?.includes("like")
-                                          ? "bg-pink-100 text-pink-700"
-                                          : n.type?.includes("comment")
-                                          ? "bg-emerald-100 text-emerald-700"
-                                          : "bg-blue-100 text-primary"
-                                      }`}
-                                    >
-                                      {n.type?.replace("_", " ")}
-                                    </span>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {isUnread && (
-                                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                                      )}
-                                      <span className="text-[8px] font-bold text-slate-400">
-                                        {new Date(n.time).toLocaleTimeString([], {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        })}
-                                      </span>
-                                      {/* Individual Dismiss/Delete Button */}
-                                      <button
-                                        type="button"
-                                        title="తొలగించు (Delete)"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDismissedNotifIds(prev => {
-                                            const next = new Set(prev);
-                                            next.add(n.id);
-                                            try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
-                                            return next;
-                                          });
-                                          setNotifications(prev => prev.filter(item => item.id !== n.id));
-                                          if (isUnread) setUnreadCount(prev => Math.max(0, prev - 1));
-                                          if (n.uid === user?.uid) {
-                                            deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
-                                          }
-                                        }}
-                                        className="opacity-60 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all ml-1"
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
-                                    </div>
+                                  <div className={`w-10 h-10 rounded-2xl shrink-0 flex items-center justify-center border ${
+                                    isUnread ? "bg-white border-blue-100 text-blue-600 shadow-xs" : "bg-slate-50 border-slate-100 text-slate-400"
+                                  }`}>
+                                    {icon}
                                   </div>
-                                  <h4 className="text-xs font-black text-slate-800 leading-tight mb-1 pr-4">
-                                    {n.title}
-                                  </h4>
-                                  <p className="text-[10px] font-medium text-slate-500 line-clamp-2">
-                                    {n.message}
-                                  </p>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start mb-0.5 gap-2">
+                                      <span className={`text-[9px] font-black uppercase tracking-widest ${
+                                        n.type?.includes("admin") ? "text-red-500" : 
+                                        n.type?.includes("like") ? "text-pink-500" :
+                                        n.type?.includes("comment") ? "text-emerald-500" : "text-blue-500"
+                                      }`}>
+                                        {n.type?.replace("_", " ")}
+                                      </span>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                          {formatDistanceToNow(n.time)}
+                                        </span>
+                                        {isUnread && (
+                                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <h4 className={`text-[13px] leading-snug truncate ${isUnread ? "font-black text-slate-900" : "font-semibold text-slate-600"}`}>
+                                      {n.title}
+                                    </h4>
+                                    <p className={`text-[11px] mt-1 line-clamp-2 leading-relaxed ${isUnread ? "text-slate-700 font-medium" : "text-slate-500 font-medium"}`}>
+                                      {n.message}
+                                    </p>
+                                  </div>
+
+                                  {/* Delete Button on Hover */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDismissedNotifIds(prev => {
+                                        const next = new Set(prev);
+                                        next.add(n.id);
+                                        try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
+                                        return next;
+                                      });
+                                      setNotifications(prev => prev.filter(item => item.id !== n.id));
+                                      if (isUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+                                      if (n.uid === user?.uid) {
+                                        deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+                                      }
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 absolute right-4 bottom-4 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
                                 </div>
                               );
                             })}
@@ -5746,10 +5763,10 @@ E-Vedhika Team`;
                             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
                               <Bell size={20} className="opacity-40" />
                             </div>
-                            <p className="text-xs font-bold text-slate-600">
+                            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                               నోటిఫికేషన్‌లు ఏమీ లేవు
                             </p>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">
                               No notifications in this category
                             </p>
                           </div>
@@ -5764,7 +5781,7 @@ E-Vedhika Team`;
                     if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
                     return true;
                   }).length > 0 && (
-                    <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50">
+                    <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50/50 backdrop-blur-sm sticky bottom-0">
                       <button
                         onClick={async () => {
                           const allIds = notifications.map(n => n.id);
@@ -5794,16 +5811,12 @@ E-Vedhika Team`;
                                 if (n.uid === "all") {
                                   return updateDoc(
                                     doc(db, "notifications", n.id),
-                                    {
-                                      readBy: arrayUnion(user?.uid),
-                                    },
+                                    { readBy: arrayUnion(user?.uid) },
                                   ).catch(() => {});
                                 } else {
                                   return updateDoc(
                                     doc(db, "notifications", n.id),
-                                    {
-                                      read: true,
-                                    },
+                                    { read: true },
                                   ).catch(() => {});
                                 }
                               }),
@@ -5812,27 +5825,10 @@ E-Vedhika Team`;
                             console.error("Failed marking all notifications as read:", e);
                           }
                         }}
-                        className="flex-1 p-2.5 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        className="flex-1 p-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center gap-2"
                       >
-                        <CheckCheck size={13} className="text-emerald-500" />
+                        <CheckCheck size={14} className="text-emerald-500" />
                         Mark all as read
-                      </button>
-                      <button
-                        onClick={() => {
-                          const allIds = notifications.map(n => n.id);
-                          setDismissedNotifIds(prev => {
-                            const next = new Set([...prev, ...allIds]);
-                            try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
-                            return next;
-                          });
-                          setNotifications([]);
-                          setUnreadCount(0);
-                          addToast("అన్ని నోటిఫికేషన్‌లు తొలగించబడ్డాయి (Cleared all)");
-                        }}
-                        className="px-4 p-2.5 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer flex items-center justify-center gap-1"
-                      >
-                        <Trash2 size={12} />
-                        Clear All
                       </button>
                     </div>
                   )}
@@ -7747,6 +7743,14 @@ E-Vedhika Team`;
                                 >
                                   Terms & Conditions
                                 </Link>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <button
+                                  onClick={() => setShowFooterModal("sitemap")}
+                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out cursor-pointer flex items-center gap-1 font-bold"
+                                  id="footer-sitemap-btn"
+                                >
+                                  Sitemap
+                                </button>
                               </div>
                             </footer>
                           </div>

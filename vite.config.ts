@@ -97,6 +97,7 @@ export default defineConfig(({mode}) => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
+          navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/sitemap\.txt$/, /^\/robots\.txt$/, /^\/ads\.txt$/],
           maximumFileSizeToCacheInBytes: 25 * 1024 * 1024, // 25MiB
           runtimeCaching: [
             {
