@@ -24,7 +24,7 @@ import {
 
 import html2canvas from "html2canvas";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
-import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage, SitemapPage, SitemapContent } from "./components/StaticPages";
+import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage, SitemapPage, SitemapContent, UbdDskTroubleshootingPage } from "./components/StaticPages";
 import { TabInfoBanner } from "./components/TabInfoBanner";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
@@ -5041,6 +5041,9 @@ E-Vedhika Team`;
   }
   if (location.pathname === "/sitemap") {
     return <SitemapPage />;
+  }
+  if (location.pathname === "/ubd-settings-dsk-issues") {
+    return <UbdDskTroubleshootingPage />;
   }
 
   const isMaintActive = siteConfig?.isMaintenanceMode || siteConfig?.governanceMode === "MAINTENANCE";

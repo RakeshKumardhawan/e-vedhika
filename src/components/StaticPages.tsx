@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import { Sparkles, FolderTree, Globe, ChevronRight } from 'lucide-react';
+import { Sparkles, FolderTree, Globe, ChevronRight, Key, ShieldCheck, AlertTriangle, CheckCircle2, Download, ExternalLink, HelpCircle, ArrowLeft } from 'lucide-react';
 
 function useStaticPage(pageId: string) {
   const [data, setData] = useState<{ title: string; content: string } | null>(null);
@@ -216,6 +216,7 @@ export function SitemapContent({ onNavigate }: { onNavigate?: () => void }) {
       items: [
         { name: "Home", path: "/", desc: "Portal Main Page & Citizen Services" },
         { name: "Workspace", path: "/workspace", desc: "Daily Operations & Work Tools" },
+        { name: "UBD Settings & DSK Guide", path: "/ubd-settings-dsk-issues", desc: "Telangana & AP UBD Portal DSK, DSC & Browser Fixes" },
         { name: "GOs & Formats", path: "/gos_formats", desc: "Government Orders & Application Formats" },
         { name: "Farmer Registry", path: "/farmer_registry", desc: "Farmer Verification & Registry Tool" },
         { name: "Software Hub", path: "/software_hub", desc: "Utility Softwares, Tools & Drivers" },
@@ -320,6 +321,269 @@ export function SitemapPage() {
         </div>
 
         <SitemapContent />
+      </div>
+    </div>
+  );
+}
+
+export function UbdDskTroubleshootingPage() {
+  return (
+    <div className="fixed inset-0 z-[9999] w-full h-screen h-[100dvh] bg-slate-50 text-slate-800 p-4 sm:p-8 md:p-12 font-sans overflow-y-auto custom-scrollbar">
+      <div className="max-w-5xl mx-auto space-y-8 bg-white p-6 sm:p-10 md:p-12 rounded-3xl shadow-xl my-6 border border-slate-200/80">
+        
+        {/* Navigation & Breadcrumbs */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <Link to="/" className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1.5 text-sm transition-colors">
+            <ArrowLeft size={16} /> హోమ్ పేజీకి తిరిగి వెళ్లండి (Back to Home)
+          </Link>
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-800 text-xs font-bold">
+            <ShieldCheck size={14} className="text-emerald-600" /> అఫీషియల్ గైడ్ (Official Troubleshooting)
+          </div>
+        </div>
+
+        {/* Page Header */}
+        <div className="space-y-3">
+          <div className="inline-block px-3 py-1 bg-blue-100/70 text-blue-800 rounded-lg text-xs font-extrabold uppercase tracking-wider">
+            Bilingual Technical Guide • ద్విభాషా సాంకేతిక గైడ్
+          </div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+            UBD Settings, DSC & DSK Issues Solution Guide
+          </h1>
+          <p className="text-base sm:text-lg text-slate-600 font-semibold leading-relaxed">
+            తెలంగాణ &amp; ఏపీ పంచాయతీ UBD పోర్టల్, డిజిటల్ సిగ్నేచర్ కీ (DSK) మరియు DSC టోకెన్ సమస్యల పూర్తి పరిష్కారాలు.
+          </p>
+        </div>
+
+        {/* Quick Highlights Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-blue-800 font-black text-sm">
+              <Key size={16} className="text-blue-600" /> UBD Settings
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              క్రోమ్ &amp; ఎడ్జ్ బ్రౌజర్ పాప్-అప్స్, జావా రన్‌టైమ్ మరియు లోకల్‌హోస్ట్ పోర్ట్ సెట్టింగ్స్.
+            </p>
+          </div>
+
+          <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
+              <ShieldCheck size={16} className="text-emerald-600" /> DSC &amp; DSK Setup
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              ePass2003, mToken, ProxKey క్రిప్టో టోకెన్ డ్రైవర్లు &amp; సర్టిఫికేట్ చెల్లుబాటు ధృవీకరణ.
+            </p>
+          </div>
+
+          <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 text-amber-800 font-black text-sm">
+              <AlertTriangle size={16} className="text-amber-600" /> TG &amp; AP UBD Fixes
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              తెలంగాణ &amp; ఆంధ్రప్రదేశ్ పంచాయతీ UBD సైట్‌లలో సైనింగ్ ఎర్రర్స్ పరిష్కారాలు.
+            </p>
+          </div>
+        </div>
+
+        {/* Section 1: UBD Settings */}
+        <section className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+              1
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              UBD Settings (యూబీడీ బ్రౌజర్ &amp; సిస్టమ్ సెట్టింగ్స్)
+            </h2>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3.5 text-sm text-slate-700 leading-relaxed font-medium">
+            <p>
+              UBD పోర్టల్ (భవన అనుమతులు, లేఅవుట్ &amp; ట్రేడ్ లైసెన్స్) లో డిజిటల్ సంతకం (DSK) సరిగ్గా పనిచేయడానికి ఈ క్రింది బ్రౌజర్ సెట్టింగ్స్ తప్పనిసరి:
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-slate-800 font-medium">
+              <li>
+                <strong>Pop-ups &amp; Redirects Allow:</strong> Chrome లేదా Edge సెట్టింగ్స్‌లో <code className="bg-white px-2 py-0.5 rounded border border-slate-300 font-mono text-xs text-blue-700">chrome://settings/content/popups</code> కు వెళ్లి UBD వెబ్‌సైట్ URL ను Allowed లిస్ట్‌లో చేర్చండి.
+              </li>
+              <li>
+                <strong>Insecure Content / Localhost Communication:</strong> DSK సైనింగ్ సర్వీస్ లోకల్ కంప్యూటర్‌లో పోర్ట్ (8080 లేదా 8443) పై రన్ అవుతుంది కాబట్టి బ్రౌజర్ సెక్యూరిటీ బ్లాక్ చేయకుండా అనుమతించాలి.
+              </li>
+              <li>
+                <strong>Clear SSL State &amp; Cache:</strong> ఇంటర్నెట్ ఆప్షన్స్ (Internet Properties) &rarr; Content &rarr; <em>Clear SSL State</em> పై క్లిక్ చేయండి.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Section 2: DSC (Digital Signature Certificate) */}
+        <section className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+              2
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              DSC Setup &amp; Token Registration (డిజిటల్ సిగ్నేచర్ సర్టిఫికెట్)
+            </h2>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 text-sm text-slate-700 leading-relaxed font-medium">
+            <p>
+              పంచాయతీ కార్యదర్శి లేదా అధికారి యొక్క ఆధార్ మరియు పేరు UBD పోర్టల్ లోని ప్రొఫైల్‌తో ఖచ్చితంగా సరిపోలాలి:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
+                <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 size={14} /> Class 3 DSC Token
+                </span>
+                <p className="text-xs text-slate-600">
+                  ఈ-ముద్ర (eMudhra), కాప్రిగాట్ (Capricorn), లేదా వీ-సైన్ (Vsign) Class 3 సైనింగ్ సర్టిఫికెట్ మాత్రమే అంగీకరించబడుతుంది.
+                </p>
+              </div>
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
+                <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 size={14} /> Token Drivers Installation
+                </span>
+                <p className="text-xs text-slate-600">
+                  ePass2003 Auto, mToken CryptoID, లేదా Watchdata ProxKey డ్రైవర్లను సిస్టమ్‌లో ఇన్‌స్టాల్ చేసి రీస్టార్ట్ చేయండి.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: DSK Issues & Troubleshooting */}
+        <section className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+              3
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              DSK Issues &amp; Solutions (డీఎస్కే లోపాల నివారణ)
+            </h2>
+          </div>
+          <div className="space-y-3">
+            <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-1.5">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <AlertTriangle size={15} className="text-amber-500" />
+                సమస్య 1: &quot;Token Not Found&quot; లేదా టోకెన్ గుర్తించకపోవడం
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                <strong>పరిష్కారం:</strong> USB టోకెన్‌ను తీసి మరొక USB పోర్ట్‌లోకి పెట్టండి. ePass2003 / mToken క్లయింట్ మేనేజర్‌ని ఓపెన్ చేసి మీ సర్టిఫికేట్ కనిపిస్తుందో లేదో చూడండి.
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-1.5">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <AlertTriangle size={15} className="text-amber-500" />
+                సమస్య 2: &quot;DSK Signer Service Not Running&quot;
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                <strong>పరిష్కారం:</strong> మీ కంప్యూటర్‌లోని DSK సైనింగ్ అప్లికేషన్‌ను <em>Run as Administrator</em> ద్వారా ప్రారంభించండి. విండోస్ డిఫెండర్ లేదా యాంటీవైరస్ లోకల్‌హోస్ట్ పోర్ట్‌ను బ్లాక్ చేయకుండా తనిఖీ చేయండి.
+              </p>
+            </div>
+
+            <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-1.5">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <AlertTriangle size={15} className="text-amber-500" />
+                సమస్య 3: &quot;Token PIN Locked / Blocked&quot;
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                <strong>పరిష్కారం:</strong> 3 సార్లు తప్పు పిన్ ఎంటర్ చేస్తే టోకెన్ లాక్ అవుతుంది. అడ్మిన్ అన్‌బ్లాక్ టూల్ లేదా మీ వెండర్ అందించిన PUK కోడ్‌తో అన్‌లాక్ చేసుకోవాలి.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 4: Telangana & AP UBD Website Specifics */}
+        <section className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+              4
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              UBD Telangana &amp; AP Website DSK Issues
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-2.5">
+              <h3 className="font-black text-purple-900 text-sm">
+                తెలంగాణ UBD పోర్టల్ (ubd.telangana.gov.in)
+              </h3>
+              <ul className="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+                <li>పంచాయతీ కార్యదర్శి లాగిన్‌లో DSK కీ మ్యాపింగ్ సరిచూసుకోండి.</li>
+                <li>Telangana Signer Utility V2.4 లేటెస్ట్ వెర్షన్ వాడండి.</li>
+                <li>MIS రిపోర్ట్‌లలో పెండింగ్ అప్లికేషన్ల స్టేటస్ ట్రాక్ చేయండి.</li>
+              </ul>
+              <a 
+                href="https://ubd.telangana.gov.in/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 mt-1"
+              >
+                తెలంగాణ UBD సైట్ ఓపెన్ చేయండి <ExternalLink size={12} />
+              </a>
+            </div>
+
+            <div className="p-5 bg-sky-50/60 border border-sky-200 rounded-2xl space-y-2.5">
+              <h3 className="font-black text-sky-900 text-sm">
+                ఆంధ్రప్రదేశ్ పంచాయతీ UBD పోర్టల్
+              </h3>
+              <ul className="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+                <li>AP గ్రామ వార్డు సచివాలయం / UBD పోర్టల్ DSC సైనింగ్ సర్వీస్.</li>
+                <li>జావా రన్‌టైమ్ (JRE 8 Update 200+) కాన్ఫిగరేషన్ చెక్ చేయండి.</li>
+                <li>DSC సర్టిఫికెట్ పాత్‌ను సైట్ ఆటో-డిటెక్ట్ చేసేలా అనుమతించండి.</li>
+              </ul>
+              <Link 
+                to="/ubd_tracker" 
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 hover:text-sky-900 mt-1"
+              >
+                ఈ-వేదిక UBD ట్రాకర్‌కి వెళ్లండి <ChevronRight size={12} />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 5: Software Hub Action */}
+        <section className="p-6 bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-3xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="space-y-1 text-center sm:text-left">
+            <h3 className="text-lg font-black text-white flex items-center justify-center sm:justify-start gap-2">
+              <Download size={18} className="text-emerald-400" />
+              డ్రైవర్లు &amp; టూల్స్ డౌన్‌లోడ్ చేసుకోండి
+            </h3>
+            <p className="text-xs text-slate-300 font-medium">
+              ఈ-వేదిక Software Hub లో ePass2003, mToken, DSK సెటప్ బ్యాచ్ ఫైల్స్ ఉచితంగా లభిస్తాయి.
+            </p>
+          </div>
+          <Link
+            to="/software_hub"
+            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
+          >
+            Software Hub కు వెళ్లండి
+          </Link>
+        </section>
+
+        {/* Frequently Asked Questions (FAQ) for Google Search Engine Optimization */}
+        <section className="space-y-4 pt-4 border-t border-slate-100">
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+            <HelpCircle size={18} className="text-blue-600" />
+            తరచుగా అడిగే ప్రశ్నలు (Frequently Asked Questions)
+          </h2>
+          <div className="space-y-3">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1">
+              <p className="font-bold text-slate-900">
+                ప్రశ్న: UBD పోర్టల్‌లో DSC డిజిటల్ సంతకం ఎందుకు ఫెయిల్ అవుతుంది?
+              </p>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                సమాధానం: బ్రౌజర్‌లో పాప్-అప్స్ బ్లాక్ కావడం, USB టోకెన్ డ్రైవర్లు లేకపోవడం, లేదా DSK సైనింగ్ యాప్ రన్ కాకపోవడం వల్ల ఈ సమస్య వస్తుంది. పై గైడ్‌లోని క్రోమ్ సెట్టింగ్స్ మరియు డ్రైవర్లను సరిచేసుకోవడం ద్వారా పరిష్కరించవచ్చు.
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1">
+              <p className="font-bold text-slate-900">
+                ప్రశ్న: Telangana &amp; AP UBD వెబ్‌సైట్ సమస్యలకు ఈ-వేదిక ఎలా సహాయపడుతుంది?
+              </p>
+              <p className="text-slate-600 leading-relaxed font-medium">
+                సమాధానం: ఈ-వేదిక పోర్టల్‌లో పంచాయతీ కార్యదర్శులు మరియు ఆపరేటర్ల కోసం ప్రత్యక్ష UBD ట్రాకర్, DSK డ్రైవర్ల డౌన్‌లోడ్స్, మరియు ఆటోమేటెడ్ సెటప్ ఫైల్స్ అందుబాటులో ఉన్నాయి.
+              </p>
+            </div>
+          </div>
+        </section>
+
       </div>
     </div>
   );

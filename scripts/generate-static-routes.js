@@ -47,6 +47,7 @@ const routes = [
   "pdf_compress",
   "gpdp_setup",
   "ubd_tracker",
+  "ubd-settings-dsk-issues",
   "software_hub",
   "admin",
   "evdka",
@@ -65,7 +66,25 @@ if (hasIndex) {
     const targetDir = path.join(distDir, route);
     fs.mkdirSync(targetDir, { recursive: true });
     const targetFile = path.join(targetDir, "index.html");
-    fs.writeFileSync(targetFile, indexContent, "utf-8");
+
+    let routeContent = indexContent;
+    if (route === "ubd-settings-dsk-issues") {
+      routeContent = injectPostOgTags(indexContent, {
+        title: "UBD Settings, DSC & DSK Issues Solution | Telangana & AP Panchayath Portal - E-Vedhika",
+        description: "Bilingual guide & troubleshooting for UBD Settings, DSC, DSK issues, Telangana UBD website DSK errors, and AP UBD portal issues on E-Vedhika.",
+        imageUrl: "https://www.e-vedhika.in/banner.jpg",
+        canonicalUrl: "https://www.e-vedhika.in/ubd-settings-dsk-issues",
+      });
+    } else if (route === "sitemap") {
+      routeContent = injectPostOgTags(indexContent, {
+        title: "Sitemap & Directory | E-Vedhika Panchayath Portal",
+        description: "Complete hierarchical sitemap and directory of all public tools, services, and administration links on E-Vedhika.",
+        imageUrl: "https://www.e-vedhika.in/banner.jpg",
+        canonicalUrl: "https://www.e-vedhika.in/sitemap",
+      });
+    }
+
+    fs.writeFileSync(targetFile, routeContent, "utf-8");
   });
   console.log(`Generated static index.html for ${routes.length} deep routes in dist/ for GitHub Pages.`);
 }
