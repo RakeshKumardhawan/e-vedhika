@@ -1209,6 +1209,43 @@ const processIncomingTelemetry = (req: express.Request) => {
 // 1. C# Executable & System Telemetry API Route (POST) with all common aliases
 const telemetryPostHandler = (req: express.Request, res: express.Response) => {
   try {
+    const action = String(req.body?.action || req.query?.action || '').toLowerCase().trim();
+    if (action === 'check_update' || action === 'version') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.json({
+        success: true,
+        name: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+        appName: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+        executableName: 'EVedhika_Setup_v1.0.7.exe',
+        currentVersion: 'v1.0.7',
+        latestVersion: 'v1.0.7',
+        versionCode: 10070,
+        releaseDate: '2026-10-17',
+        downloadUrl: 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.7.exe',
+        githubRepo: 'https://github.com/RakeshKumardhawan/UBDTOOLS',
+        updateRequired: false,
+        silent: false,
+        releaseNotes: 'Enterprise v1.0.7: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
+        publisher: 'E-Vedhika.in (Rakesh Dhawan)',
+        telemetryRelayUrl: 'https://www.e-vedhika.in/admin/exe_ubd_live'
+      });
+    }
+
+    if (action === 'get_news' || action === 'news') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.json({
+        news: [
+          {
+            id: 1,
+            title: 'E-Vedhika v1.0.7 Live Deployment Engine Active',
+            content: 'UBD Telangana (ubd.telangana.gov.in) Zone 2 Registry Automation, DSC Token Drivers & Central Live Telemetry active.',
+            date: '2026-10-17',
+            importance: 'HIGH'
+          }
+        ]
+      });
+    }
+
     const record = processIncomingTelemetry(req);
     return res.status(200).json({
       success: true,
@@ -1267,6 +1304,65 @@ const telemetryPostRoutes = [
 ];
 
 app.post(telemetryPostRoutes, telemetryPostHandler);
+
+// Handle GET queries on /admin/exe_ubd_live for update checks, news, and export actions
+app.get(['/admin/exe_ubd_live', '/admin/exe_ubd_live.php', '/exe_ubd_live.php'], (req, res, next) => {
+  const action = String(req.query.action || '').toLowerCase().trim();
+  const format = String(req.query.format || '').toLowerCase().trim();
+
+  if (action === 'check_update' || action === 'version') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json({
+      success: true,
+      name: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+      appName: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+      executableName: 'EVedhika_Setup_v1.0.7.exe',
+      currentVersion: 'v1.0.7',
+      latestVersion: 'v1.0.7',
+      versionCode: 10070,
+      releaseDate: '2026-10-17',
+      downloadUrl: 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.7.exe',
+      githubRepo: 'https://github.com/RakeshKumardhawan/UBDTOOLS',
+      updateRequired: false,
+      silent: false,
+      releaseNotes: 'Enterprise v1.0.7: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
+      publisher: 'E-Vedhika.in (Rakesh Dhawan)',
+      telemetryRelayUrl: 'https://www.e-vedhika.in/admin/exe_ubd_live'
+    });
+  }
+
+  if (action === 'get_news' || action === 'news') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json({
+      news: [
+        {
+          id: 1,
+          title: 'E-Vedhika v1.0.7 Live Deployment Engine Active',
+          content: 'UBD Telangana (ubd.telangana.gov.in) Zone 2 Registry Automation, DSC Token Drivers & Central Live Telemetry active.',
+          date: '2026-10-17',
+          importance: 'HIGH'
+        }
+      ]
+    });
+  }
+
+  if (action === 'export' || format === 'json') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.json({
+      success: true,
+      count: (telemetryLogsStore || []).length,
+      logs: telemetryLogsStore || []
+    });
+  }
+
+  // If requesting clear via GET
+  if (req.query.clear === '1') {
+    telemetryLogsStore = [];
+    return res.redirect('/admin/exe_ubd_live');
+  }
+
+  return next();
+});
 
 // Seed / Restore default telemetry reports - Fake reports disabled
 app.post('/api/telemetry/seed', (req, res) => {

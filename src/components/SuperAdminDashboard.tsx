@@ -82,6 +82,7 @@ export function SuperAdminDashboard({
 
   // Global Search Modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [adminUserRoleFilter, setAdminUserRoleFilter] = useState<string>("all");
   const [adminStorageProvider, setAdminStorageProvider] = useState<"cloudflare" | "firebase" | "supabase">(() => {
     try {
       return (localStorage.getItem("evedhika_storage_provider") as any) || "cloudflare";
@@ -290,12 +291,13 @@ export function SuperAdminDashboard({
     };
   }, []);
 
-  const navigateToTab = (id: string) => {
+  const navigateToTab = (id: string, filter: string = "all") => {
     if (setActiveSubTab) {
       setActiveSubTab(id);
     } else {
       setLocalActiveTab(id);
     }
+    setAdminUserRoleFilter(filter);
   };
 
   const handleUpdatePostStatus = async (post: any, newStatus: string) => {
@@ -507,8 +509,27 @@ export function SuperAdminDashboard({
     if (addToast) addToast(`Exported ${filename}.json successfully`, "success");
   };
 
-  // Calculated Metrics
-  const activeUsersCount = usersList.filter(u => !u.isDeleted && !u.banned).length || liveUsersCount;
+  // Helper to determine if a user is currently active/online
+  const isUserOnline = (u: any) => {
+    if (!u) return false;
+    if (u.isDeleted || u.banned) return false;
+    // Current user is always online
+    if (user?.uid && (u.id === user.uid || u.uid === user.uid)) return true;
+    const now = Date.now();
+    // 10s periodic heartbeat mechanism: active if heartbeat received within last 35 seconds
+    const HEARTBEAT_WINDOW = 35 * 1000;
+    // Explicit isOnline flag and fresh heartbeat within 35 seconds
+    if (u.isOnline && u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
+    // Fresh lastActive within 35 seconds
+    if (u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
+    // Fresh visitor telemetry within 35 seconds
+    if (recentVisitors.some(v => (v.uid === u.id || (u.email && v.email === u.email)) && (now - (v.timestamp || 0) < HEARTBEAT_WINDOW))) return true;
+    return false;
+  };
+
+  // Calculated Metrics: Active Users strictly represents currently active / online users
+  const onlineUsersList = usersList.filter(isUserOnline);
+  const activeUsersCount = onlineUsersList.length;
   const pendingPostsCount = postsList.filter(p => (p.status || '').toLowerCase() === 'pending').length;
   const publishedPostsCount = postsList.filter(p => !p.status || p.status.toLowerCase() === 'published' || p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'active').length;
   const rejectedPostsCount = postsList.filter(p => (p.status || '').toLowerCase() === 'rejected').length;
@@ -592,7 +613,7 @@ export function SuperAdminDashboard({
       ) : effectiveTab === "admin_software_hub" ? (
         <AdminSoftwareHub user={user} addToast={addToast} />
       ) : effectiveTab === "roles" || effectiveTab === "staff_management" || effectiveTab === "users" ? (
-        <RolesAndPermissionsControl currentUser={user} addToast={addToast} />
+        <RolesAndPermissionsControl currentUser={user} addToast={addToast} initialRoleFilter={adminUserRoleFilter} />
       ) : effectiveTab === "notifications" ? (
         <div className="space-y-6">
           <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -629,8 +650,18 @@ export function SuperAdminDashboard({
           {/* 10 High-Precision Live System Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {[
-              { label: "Total Users", val: liveUsersCount, trend: "Registered", color: "from-blue-600 to-cyan-500", icon: Users, tab: "users" },
-              { label: "Active Users", val: activeUsersCount, trend: "Verified", color: "from-emerald-600 to-teal-500", icon: UserCheck, tab: "users" },
+              { label: "Total Users", val: liveUsersCount, trend: "Registered", color: "from-blue-600 to-cyan-500", icon: Users, tab: "users", filter: "all" },
+              { 
+                label: "Active Users", 
+                subLabel: "ప్రస్తుతం ఆన్‌లైన్",
+                val: activeUsersCount, 
+                trend: "Live Online", 
+                isOnlineCard: true, 
+                color: "from-emerald-600 to-teal-500", 
+                icon: UserCheck, 
+                tab: "users",
+                filter: "online"
+              },
               { label: "Total Posts", val: livePostsCount, trend: "Community", color: "from-indigo-600 to-purple-600", icon: FileText, tab: "reports" },
               { label: "Pending Submissions", val: pendingPostsCount, trend: "Action Needed", color: "from-amber-500 to-orange-500", icon: Clock, tab: "moderation" },
               { label: "Published Posts", val: publishedPostsCount, trend: "Live Wall", color: "from-emerald-500 to-teal-600", icon: CheckSquare, tab: "reports" },
@@ -639,26 +670,45 @@ export function SuperAdminDashboard({
               { label: "Open Support", val: openSupportCount, trend: "Pending Help", color: "from-sky-500 to-blue-600", icon: MessageCircle, tab: "support" },
               { label: "Citizen Reports", val: reportsCount, trend: "Grievances", color: "from-rose-600 to-pink-600", icon: AlertTriangle, tab: "reports" },
               { label: "System Health", val: "100%", trend: "Optimal", color: "from-slate-800 to-slate-900", icon: HeartPulse, tab: "health" },
-            ].map((stat, i) => {
+            ].map((stat: any, i) => {
               const Icon = stat.icon;
               return (
                 <div 
                   key={i} 
-                  onClick={() => navigateToTab(stat.tab)} 
-                  className="relative overflow-hidden p-4 bg-white rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
+                  onClick={() => navigateToTab(stat.tab, stat.filter || "all")} 
+                  className={`relative overflow-hidden p-4 bg-white rounded-3xl border shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group ${
+                    stat.isOnlineCard ? 'border-emerald-200 ring-1 ring-emerald-500/20' : 'border-slate-100'
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className={`p-2 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-xs`}>
                       <Icon size={16} />
                     </div>
-                    <span className="text-[9px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                      stat.isOnlineCard 
+                        ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
+                        : 'text-slate-500 bg-slate-50 border-slate-100'
+                    }`}>
+                      {stat.isOnlineCard && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      )}
                       {stat.trend}
                     </span>
                   </div>
                   
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5 truncate">{stat.label}</p>
-                    <p className="text-2xl font-black text-slate-900 tracking-tight">{stat.val}</p>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 truncate">{stat.label}</p>
+                      {stat.subLabel && (
+                        <span className="text-[9px] font-bold text-emerald-600">{stat.subLabel}</span>
+                      )}
+                    </div>
+                    <p className="text-2xl font-black text-slate-900 tracking-tight flex items-baseline gap-1.5">
+                      {stat.val}
+                      {stat.isOnlineCard && (
+                        <span className="text-[10px] font-bold text-slate-400">/ {usersList.length}</span>
+                      )}
+                    </p>
                   </div>
                 </div>
               );
@@ -781,6 +831,102 @@ export function SuperAdminDashboard({
               >
                 <Settings size={14} /> Open System Settings
               </button>
+            </div>
+          </div>
+
+          {/* Live Active & Online Users Panel */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
+            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <UserCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    ప్రస్తుతం ఆన్‌లైన్ లో ఉన్న యూజర్లు (Currently Active Users)
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      {activeUsersCount} ఆన్‌లైన్
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">పోర్టల్‌లో ప్రస్తుతం ఆక్టివ్‌గా (Online) ఉన్న యూజర్ల లైవ్ జాబితా</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => navigateToTab("users")}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 w-fit"
+              >
+                యూజర్ల డైరెక్టరీ (All Users) <ArrowRight size={13} />
+              </button>
+            </div>
+
+            <div className="p-5">
+              {onlineUsersList.length === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <UserCheck size={36} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-xs font-semibold text-slate-600">ప్రస్తుతం ఎవరూ ఆన్‌లైన్‌లో లేరు.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">సభ్యులు పోర్టల్‌లోకి ప్రవేశించినప్పుడు ఇక్కడ రియల్ టైమ్‌లో కనిపిస్తారు.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {onlineUsersList.map((u: any) => {
+                    const fullName = u.fullName || u.name || u.displayName || u.username || (u.email ? u.email.split('@')[0] : "User");
+                    const role = (u.role || "Citizen").toLowerCase();
+                    const isDev = (u.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+                    const displayRole = isDev ? "Super Admin" : role === "admin" ? "Admin" : role === "editor" ? "Editor" : role === "moderator" ? "Moderator" : "Citizen";
+                    const isSelf = user?.uid && (u.id === user.uid || u.uid === user.uid);
+
+                    return (
+                      <div 
+                        key={u.id}
+                        className="p-3.5 rounded-2xl bg-slate-50/80 hover:bg-emerald-50/40 border border-slate-200/80 hover:border-emerald-200 transition-all flex items-center justify-between gap-3 group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 border border-emerald-200 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+                            {u.photoURL || u.avatar ? (
+                              <img src={u.photoURL || u.avatar} alt={fullName} className="w-full h-full object-cover rounded-xl" />
+                            ) : (
+                              (fullName[0] || "U").toUpperCase()
+                            )}
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-black text-slate-900 truncate">{fullName}</p>
+                              {isSelf && (
+                                <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                                  మీరు (You)
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 truncate">{u.email || u.mobile || "No Contact"}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white text-slate-600 border border-slate-200">
+                                {displayRole}
+                              </span>
+                              {u.district && (
+                                <span className="text-[9px] text-slate-400 truncate">
+                                  • {u.district}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            ఆన్‌లైన్
+                          </span>
+                          <span className="text-[9px] font-semibold text-slate-400">
+                            {isSelf ? "ఇప్పుడే (Live)" : u.lastActive ? `${Math.max(1, Math.round((Date.now() - Number(u.lastActive)) / 1000))}s క్రితం` : "ఇప్పుడే"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

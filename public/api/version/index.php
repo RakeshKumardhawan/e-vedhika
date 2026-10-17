@@ -23,10 +23,10 @@ $defaultConfig = [
     "status" => "ok",
     "name" => "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
     "portal" => "e-vedhika.in",
-    "latestVersion" => "v1.6.3 Enterprise",
-    "versionCode" => 163, // పాత కోడ్ 162 కంటే ఎక్కువ సంఖ్య ఉండాలి
-    "downloadUrl" => "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
-    "releaseNotes" => "కొత్త డ్రైవర్లు మరియు స్పీడ్ ఇంప్రూవ్మెంట్స్ యాడ్ చేయబడ్డాయి.",
+    "latestVersion" => "v1.0.7",
+    "versionCode" => 10070, // v1.0.7
+    "downloadUrl" => "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.7.exe",
+    "releaseNotes" => "Enterprise v1.0.7: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.",
     "updatedAt" => date('Y-m-d H:i:s')
 ];
 

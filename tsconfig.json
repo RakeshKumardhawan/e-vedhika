@@ -26,5 +26,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["app", "artifacts"]
+  "exclude": ["app", "artifacts", "server.ts"]
 }

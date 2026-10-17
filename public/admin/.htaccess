@@ -1,0 +1,18 @@
+# ====================================================================
+# E-VEDHIKA /admin/ Apache Rewrite Rules
+# Routes /admin/exe_ubd_live directly to /admin/exe_ubd_live.php
+# ====================================================================
+
+RewriteEngine On
+
+# Allow direct access to real files and directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Route /admin/exe_ubd_live to /admin/exe_ubd_live.php
+RewriteRule ^exe_ubd_live/?$ exe_ubd_live.php [L,QSA]
+
+# General fallback: append .php if file exists
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php [L,QSA]

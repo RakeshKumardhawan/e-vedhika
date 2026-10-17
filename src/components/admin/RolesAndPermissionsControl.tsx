@@ -11,6 +11,7 @@ import Swal from 'sweetalert2';
 interface RolesAndPermissionsControlProps {
   currentUser?: any;
   addToast?: (msg: string, type?: "success" | "error" | "info") => void;
+  initialRoleFilter?: string;
 }
 
 const DEFAULT_MODULE_PERMISSIONS: Record<string, { view: boolean; edit: boolean; delete: boolean }> = {
@@ -115,16 +116,31 @@ const MODULE_DEFINITIONS: Record<string, { name: string; telugu: string; desc: s
   ai: { name: "Gemini AI Node", telugu: "జెమినీ AI అసిస్టెంట్", desc: "AI ఆటోమేషన్ & స్మార్ట్ అసిస్టెంట్" },
 };
 
-export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPermissionsControlProps) {
+export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleFilter = "all" }: RolesAndPermissionsControlProps) {
   const [users, setUsers] = useState<any[]>([]);
   const [userPins, setUserPins] = useState<Record<string, string>>({});
   const [rbacPermissions, setRbacPermissions] = useState<Record<string, any>>(DEFAULT_ROLE_PERMISSIONS);
   const [selectedRbacRole, setSelectedRbacRole] = useState<string>("admin");
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>(initialRoleFilter);
   const [activeTab, setActiveTab] = useState<"users_roles" | "matrix">("users_roles");
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (initialRoleFilter) {
+      setRoleFilter(initialRoleFilter);
+    }
+  }, [initialRoleFilter]);
+
+  const [presenceTick, setPresenceTick] = useState<number>(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPresenceTick(Date.now());
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 1. Listen to Real Firestore Users
   useEffect(() => {
@@ -279,6 +295,18 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
     });
   };
 
+  // Helper to detect currently active/online users with 10s heartbeat
+  const isUserOnline = (u: any) => {
+    if (!u) return false;
+    if (u.isDeleted || u.banned) return false;
+    if (currentUser?.uid && (u.id === currentUser.uid || u.uid === currentUser.uid)) return true;
+    const now = presenceTick;
+    const HEARTBEAT_WINDOW = 35 * 1000;
+    if (u.isOnline && u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
+    if (u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
+    return false;
+  };
+
   // Filtered Users List
   const filteredUsers = users.filter((u) => {
     const name = getUserFullName(u).toLowerCase();
@@ -296,6 +324,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
     const effectiveRole = isDev ? "super_admin" : role;
 
     if (roleFilter === "all") return true;
+    if (roleFilter === "online") return isUserOnline(u);
     if (roleFilter === "super_admin") return effectiveRole === "super_admin" || effectiveRole === "superadmin";
     if (roleFilter === "admin") return effectiveRole === "admin";
     if (roleFilter === "editor") return effectiveRole === "editor";
@@ -398,6 +427,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
             <div className="flex flex-wrap items-center gap-1.5">
               {[
                 { id: "all", label: "All Users", count: users.length },
+                { id: "online", label: "🟢 ఆన్‌లైన్ (Online)", count: users.filter(isUserOnline).length },
                 { id: "staff", label: "All Staff", count: staffCount },
                 { id: "super_admin", label: "Super Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'super_admin' || (u.email && u.email.toLowerCase() === 'rakeshkumardhawan123@gmail.com')).length },
                 { id: "admin", label: "Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'admin').length },
@@ -410,8 +440,8 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
                   onClick={() => setRoleFilter(rf.id)}
                   className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
                     roleFilter === rf.id
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "bg-slate-50 border border-slate-200/70 text-slate-600 hover:bg-slate-100"
+                      ? (rf.id === "online" ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-900 text-white shadow-xs")
+                      : (rf.id === "online" ? "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100" : "bg-slate-50 border border-slate-200/70 text-slate-600 hover:bg-slate-100")
                   }`}
                 >
                   {rf.label} ({rf.count})
@@ -463,13 +493,14 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
                       const fullName = getUserFullName(u);
                       const userRole = (u.role || "user").toLowerCase();
                       const pin = userPins[u.id];
+                      const online = isUserOnline(u);
 
                       return (
                         <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                          {/* 1. USER DETAILS: Actual Full Name + Avatar + User ID */}
+                          {/* 1. USER DETAILS: Actual Full Name + Avatar + User ID + Live Status */}
                           <td className="p-4 pl-6">
                             <div className="flex items-center gap-3.5">
-                              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200/60 shadow-xs overflow-hidden flex items-center justify-center shrink-0">
+                              <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200/60 shadow-xs overflow-hidden flex items-center justify-center shrink-0">
                                 {u.photoURL || u.avatar ? (
                                   <img
                                     src={u.photoURL || u.avatar}
@@ -486,12 +517,27 @@ export function RolesAndPermissionsControl({ currentUser, addToast }: RolesAndPe
                                     {getUserInitials(fullName)}
                                   </span>
                                 )}
+                                {online && (
+                                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" title="ప్రస్తుతం ఆన్‌లైన్ (Online)"></span>
+                                )}
                               </div>
                               <div className="min-w-0">
-                                <p className="font-black text-slate-900 text-sm leading-tight truncate">
-                                  {fullName}
-                                </p>
-                                <div className="mt-1 flex items-center gap-1.5">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-black text-slate-900 text-sm leading-tight truncate">
+                                    {fullName}
+                                  </p>
+                                  {online ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      ఆన్‌లైన్ ({u.id === currentUser?.uid ? "మీరు" : u.lastActive ? `${Math.max(1, Math.round((presenceTick - Number(u.lastActive)) / 1000))}s` : "లైవ్"})
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-slate-400 bg-slate-50 border border-slate-100">
+                                      ఆఫ్‌లైన్
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                   <span className="text-[10px] font-mono text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md truncate max-w-[200px]" title={u.id}>
                                     ID: {u.id}
                                   </span>

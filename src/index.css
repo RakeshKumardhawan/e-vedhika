@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -18,42 +19,111 @@ button {
 }
 
 :root {
-  --primary: #0d3b66;
+  --primary: #0f2e4a;
   --accent: #fbbf24;
-  --success: #16a34a;
-  --danger: #dc2626;
-  --info: #0ea5e9;
+  --success: #10b981;
+  --danger: #ef4444;
+  --info: #3b82f6;
   --bg-light: #f1f5f9;
-  --google-red: #ea4335;
-  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  --header-h: 72px;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --header-h: 80px;
   --nav-h: 56px;
-}
-
-@media (max-width: 639px) {
-  :root {
-    --header-h: 56px;
-    --nav-h: 48px;
-  }
 }
 
 body {
   margin: 0;
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  background-color: #f8fafc;
+  background-color: #f1f5f9;
   color: #1e293b;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
-  -webkit-font-smoothing: antialiased;
 }
 
-/* --- HEADER --- */
+/* --- HEADER & NAVIGATION --- */
 header {
   background: var(--primary);
-  border-bottom: 2px solid var(--accent);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  width: 100%;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
+
+.nav-tab-active {
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+.latest-bar {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.latest-label {
+  background: #dc2626;
+  color: white;
+  padding: 4px 12px;
+  font-weight: 900;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* --- COMPONENTS --- */
+.hero-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);
+}
+
+.service-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.post-card {
+  background: white !important;
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.post-card:hover {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.04) !important;
+  transform: none !important;
+}
+
+.sidebar-section {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 20px;
+}
+
+.sidebar-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+/* --- UTILS --- */
+.text-telugu {
+  line-height: 1.6;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 
 .brand-wrapper { display: flex; align-items: center; gap: 8px; }
 .brand-title {
@@ -659,7 +729,135 @@ html, body, #root {
   }
 }
 
-/* --- CURSOR ROUND SPOTLIGHT / LIGHTING GLOW EFFECT --- */
+/* --- PORTAL REDESIGN STYLES (MATCHING USER IMAGE) --- */
+
+.portal-header {
+  background-color: #0a2540;
+  color: white;
+}
+
+.portal-ticker {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  height: 44px;
+}
+
+.ticker-badge {
+  @apply bg-red-600 text-white px-2 py-1 rounded font-black text-[10px] uppercase tracking-wider flex items-center gap-2;
+}
+
+.nav-trigger-bar {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.nav-item-btn {
+  @apply flex flex-col items-center gap-1 px-3 py-2 border-b-2 border-transparent transition-all hover:bg-slate-50 min-w-[80px];
+}
+
+.nav-item-btn.active {
+  @apply border-blue-600 text-blue-600;
+}
+
+.nav-item-btn:not(.active) {
+  @apply text-slate-600;
+}
+
+.service-card {
+  @apply p-4 rounded-2xl flex flex-col items-center justify-center text-center gap-2 transition-all hover:shadow-lg active:scale-95 border border-transparent;
+}
+
+.sidebar-widget {
+  @apply bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden;
+}
+
+.sidebar-widget-header {
+  @apply p-4 border-b border-slate-50 flex items-center justify-between;
+}
+
+.portal-nav-btn.active {
+  @apply bg-blue-600 text-white shadow-lg shadow-blue-500/30;
+}
+
+.portal-nav-btn:not(.active) {
+  @apply text-slate-600 hover:bg-slate-100;
+}
+
+.portal-hero-banner {
+  position: relative;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  border-radius: 48px;
+  overflow: hidden;
+}
+
+.portal-hero-overlay {
+  background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
+}
+
+.quick-access-card {
+  @apply flex flex-col items-center justify-center p-4 rounded-3xl transition-all hover:scale-105 cursor-pointer text-center;
+  min-height: 120px;
+}
+
+.sidebar-card {
+  @apply bg-white rounded-3xl border border-slate-100 p-6 shadow-sm;
+}
+
+.trending-item {
+  @apply flex items-center justify-between py-3 border-b border-slate-50 last:border-0;
+}
+
+.trending-number {
+  @apply w-6 h-6 rounded-full flex items-center justify-center text-xs font-black mr-3;
+}
+
+.post-card-new {
+  @apply bg-white rounded-3xl border border-slate-100 p-5 shadow-sm transition-all hover:shadow-xl hover:shadow-indigo-500/5;
+}
+
+.post-meta-item {
+  @apply flex items-center gap-1.5 text-[11px] font-bold text-slate-400;
+}
+
+/* Custom Scrollbar for Nav */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animation for Hero Image */
+@keyframes slowZoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+.hero-zoom {
+  animation: slowZoom 20s infinite alternate linear;
+}
+
+/* Specific Ticker Badge */
+.ticker-badge {
+  @apply bg-red-600 text-white px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-2;
+}
+
+/* Accessibility Buttons */
+.a11y-btn {
+  @apply px-3 py-1.5 rounded-full text-[11px] font-black transition-all border border-transparent;
+}
+.a11y-btn.active {
+  @apply bg-yellow-400 text-blue-900 shadow-md;
+}
+.a11y-btn:not(.active) {
+  @apply text-slate-300 hover:text-white hover:bg-white/10;
+}
+
+/* Admin Panel Button */
+.admin-panel-btn {
+  @apply border border-yellow-400/50 text-yellow-400 px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-yellow-400 hover:text-blue-900 transition-all;
+}
+
 .spotlight-card,
 .spotlight-box,
 .interactive-card,

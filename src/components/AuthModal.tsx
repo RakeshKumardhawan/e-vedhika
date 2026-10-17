@@ -71,6 +71,9 @@ export function AuthModal({
     if (code.includes("auth/unauthorized-domain") || code.includes("unauthorized-domain")) {
       return "ఈ డొమైన్ Firebase Authentication లో ఇంకా అనుమతించబడలేదు. Firebase Console లో Authorized domains లో డొమైన్‌ను జోడించండి.";
     }
+    if (code.includes("auth/internal-error") || code.includes("internal-error")) {
+      return "Firebase App Check సమస్య: Firebase Console > App Check > APIs లో 'Identity Toolkit' ను 'Unenforce' చేయండి.";
+    }
     return err.message;
   };
 

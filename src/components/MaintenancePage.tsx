@@ -77,7 +77,12 @@ export function MaintenancePage({
       if (onAdminLoginSuccess) onAdminLoginSuccess();
       window.location.reload();
     } catch (e: any) {
-      setAuthError(e.message || "Authentication failed");
+      const msg = e.message || "";
+      if (msg.includes("internal-error")) {
+        setAuthError("Firebase App Check లోపం: Firebase Console > App Check > APIs లో Identity Toolkit ని 'Unenforce' చేయండి.");
+      } else {
+        setAuthError(msg || "Authentication failed");
+      }
     } finally {
       setAuthLoading(false);
     }
@@ -94,7 +99,12 @@ export function MaintenancePage({
       if (onAdminLoginSuccess) onAdminLoginSuccess();
       window.location.reload();
     } catch (e: any) {
-      setAuthError("అడ్మిన్ లాగిన్ విఫలమైంది: " + (e.message || "Invalid Admin Credentials"));
+      const msg = e.message || "";
+      if (msg.includes("internal-error")) {
+        setAuthError("Firebase App Check లోపం: Firebase Console > App Check > APIs లో Identity Toolkit ని 'Unenforce' చేయండి.");
+      } else {
+        setAuthError("అడ్మిన్ లాగిన్ విఫలమైంది: " + (msg || "Invalid Admin Credentials"));
+      }
     } finally {
       setAuthLoading(false);
     }

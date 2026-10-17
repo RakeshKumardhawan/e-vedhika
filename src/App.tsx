@@ -421,6 +421,9 @@ export function getFriendlyError(err: any): string {
   if (msg.includes("unauthorized-domain")) {
     return "ఈ డొమైన్ Firebase Authentication లో ఇంకా అనుమతించబడలేదు. Firebase Console > Authentication > Settings > Authorized domains లో ప్రస్తుత డొమైన్‌ను యాడ్ చేయండి.";
   }
+  if (msg.includes("auth/internal-error") || msg.includes("internal-error") || msg.includes("Firebase App Check token is invalid")) {
+    return "Firebase App Check సమస్య: Firebase Console > App Check > APIs లో 'Identity Toolkit' ను 'Unenforce' చేయండి.";
+  }
 
   return msg;
 }
@@ -3692,22 +3695,65 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) return;
     
-    // Initial tracking update on mount
+    // Initial tracking update on mount: mark as online and refresh lastActive
     updateDoc(doc(db, "users", user.uid), {
+      isOnline: true,
       lastActive: Date.now()
     }).catch(() => {});
 
+    let tickCount = 0;
+    // Periodic heartbeat mechanism: updates Firestore every 10 seconds so Active Users list remains accurate
     const interval = setInterval(async () => {
       try {
-        await updateDoc(doc(db, "users", user.uid), {
-          timeSpentMinutes: increment(1),
+        tickCount += 1;
+        const updatePayload: any = {
+          isOnline: true,
           lastActive: Date.now()
-        });
+        };
+        // Increment timeSpentMinutes once every 60 seconds (every 6th 10-second tick)
+        if (tickCount % 6 === 0) {
+          updatePayload.timeSpentMinutes = increment(1);
+        }
+        await updateDoc(doc(db, "users", user.uid), updatePayload);
       } catch (e) {
         // Silent fail for non-admins if profile doc doesn't exist yet
       }
-    }, 60000);
-    return () => clearInterval(interval);
+    }, 10000);
+
+    const handleBeforeUnload = () => {
+      try {
+        updateDoc(doc(db, "users", user.uid), {
+          isOnline: false,
+          lastActive: Date.now()
+        }).catch(() => {});
+      } catch (e) {}
+    };
+
+    const handleVisibilityChange = () => {
+      try {
+        if (document.visibilityState === "hidden") {
+          updateDoc(doc(db, "users", user.uid), {
+            isOnline: false,
+            lastActive: Date.now()
+          }).catch(() => {});
+        } else if (document.visibilityState === "visible") {
+          updateDoc(doc(db, "users", user.uid), {
+            isOnline: true,
+            lastActive: Date.now()
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      handleBeforeUnload();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -4451,6 +4497,31 @@ E-Vedhika Team`;
           confirmButtonText: "సరే (OK)",
           confirmButtonColor: "#0d3b66",
         });
+      } else if (
+        err.code === "auth/internal-error" ||
+        err.message?.includes("internal-error")
+      ) {
+        Swal.fire({
+          icon: "error",
+          title: "Firebase App Check లోపం (App Check Enforced)",
+          html: `
+            <div style="text-align: left; font-size: 13px; line-height: 1.6;">
+              <p style="margin-bottom: 8px; color: #b91c1c; font-weight: bold;">
+                Firebase Console లో 'App Check' Enforce అయి ఉండటం వల్ల లాగిన్ రిక్వెస్ట్ బ్లాక్ చేయబడింది (Firebase App Check token is invalid).
+              </p>
+              <p><strong>దీనిని వెంటనే పరిష్కరించే విధానం (How to fix):</strong></p>
+              <ol style="padding-left: 20px; margin-top: 6px;">
+                <li><strong>Firebase Console</strong> లో ప్రాజెక్ట్ <code>e-vedhika-258f2</code> కి వెళ్ళండి.</li>
+                <li>ఎడమవైపు మెనూలో <strong>App Check</strong> పై క్లిక్ చేయండి.</li>
+                <li><strong>APIs</strong> (లేదా Services) ట్యాబ్ పై క్లిక్ చేయండి.</li>
+                <li>అక్కడ <strong>Identity Toolkit</strong> (Authentication) వద్ద ఉన్న <strong>Enforce</strong> ని <strong>Unenforce</strong> (లేదా Turn off) చేయండి.</li>
+              </ol>
+            </div>
+          `,
+          confirmButtonText: "సరే (OK)",
+          confirmButtonColor: "#0d3b66",
+        });
+        addToast("Firebase App Check లో Identity Toolkit ను Unenforce చేయండి.");
       } else {
         addToast(getFriendlyError(err));
       }
