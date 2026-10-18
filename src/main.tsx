@@ -38,27 +38,24 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       }
     });
 
-    if (import.meta.env.PROD) {
-      const updateSW = registerSW({
-        immediate: true,
-        onNeedRefresh() {
-          console.log('New PWA version detected! Updating service worker cache...');
-          window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { updateSW } }));
-          updateSW(true);
-        },
-        onOfflineReady() {
-          console.log('E-Vedhika PWA ready for offline use');
-        },
-        onRegisteredSW(swUrl, r) {
-          if (r) {
-            // Proactive update check every 30s in foreground
-            setInterval(() => {
-              r.update().catch(() => {});
-            }, 30 * 1000);
-          }
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        console.log('New PWA version detected! Updating service worker cache...');
+        window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { updateSW } }));
+        updateSW(true);
+      },
+      onOfflineReady() {
+        console.log('E-Vedhika PWA ready for offline use');
+      },
+      onRegisteredSW(swUrl, r) {
+        if (r) {
+          setInterval(() => {
+            r.update().catch(() => {});
+          }, 30 * 1000);
         }
-      });
-    }
+      }
+    });
 
     // Check on tab focus / visibility resume
     document.addEventListener('visibilitychange', () => {

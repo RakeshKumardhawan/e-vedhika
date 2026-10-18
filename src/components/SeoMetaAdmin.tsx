@@ -21,9 +21,9 @@ import {
 export const DEFAULT_SEO_CONFIG = {
   seoTitle: "E-Vedhika | The Digital Governance Platform",
   seoDescription:
-    "E-Vedhika: All Problems One Solution - Comprehensive Digital Portal for Panchayat Secretaries and Citizens in Telangana and Andhra Pradesh.",
+    "E-Vedhika: All Problems One Solution - Comprehensive Digital Portal for Panchayat Operators, Mandal Operators and Citizens in Telangana and Andhra Pradesh.",
   seoKeywords:
-    "E-Vedhika, Governance, Digital Solutions, Portal, Problem Solving, AP Governance, Telangana Panchayath, Panchayat Secretary Formats",
+    "E-Vedhika, Governance, Digital Solutions, Portal, Problem Solving, AP Governance, Telangana Panchayath, Panchayat Operator Formats, Mandal Operator Tools",
   ogTitle: "E-Vedhika - Digital Governance Portal",
   ogDescription:
     "All Problems One Solution. Access Panchayath forms, daily logs, GOs, and public e-services in one unified platform.",

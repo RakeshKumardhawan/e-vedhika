@@ -247,7 +247,7 @@ export const UBDLiveMonitoring: React.FC = () => {
     try {
       const samplePayload = {
         pcName: "GP-SECRETARY-PC-TS",
-        userName: "Panchayat Secretary",
+        userName: "Panchayat / Mandal Operator",
         officeLocation: "Siddipet Grama Panchayat, Telangana",
         osVersion: "Windows 11 Pro 64-bit",
         dscStatus: "USB Token Active",

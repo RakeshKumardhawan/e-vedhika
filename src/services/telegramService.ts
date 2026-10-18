@@ -236,7 +236,7 @@ export async function notifyEmergencyBroadcast(data: {
     `📢 <b>సందేశం (Broadcast Alert):</b>\n<i>"${escapeHtml(data.message)}"</i>\n\n` +
     (data.adminName ? `👤 <b>జారీ చేసినవారు:</b> ${escapeHtml(data.adminName)}\n` : "") +
     `🕒 <b>సమయం:</b> ${new Date().toLocaleDateString("te-IN")} ${new Date().toLocaleTimeString()}\n\n` +
-    `⚠️ ఈ అలర్ట్ పోర్టల్‌లో ఉన్న అందరు పంచాయతీ కార్యదర్శులకు లైవ్‌గా ప్రదర్శించబడుతుంది.`;
+    `⚠️ ఈ అలర్ట్ పోర్టల్‌లో ఉన్న అందరు పంచాయతీ మరియు మండల ఆపరేటర్లకు లైవ్‌గా ప్రదర్శించబడుతుంది.`;
 
   return sendTelegramAlert({
     category: "system",

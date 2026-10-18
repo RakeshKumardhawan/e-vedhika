@@ -147,7 +147,7 @@ const CODE_FILES: CodeFileMeta[] = [  {
     icon: FileType,
     defaultContent: `<div class="custom-banner text-center mb-6">
   <h2 class="text-xl font-bold">Mana Panchayath Updates</h2>
-  <p>Latest circulars and tools for Panchayat Secretaries.</p>
+  <p>Latest circulars and tools for Panchayat Operators and Mandal Operators.</p>
 </div>`,
     path: '/src/App.tsx (Mana Panchayath Tab)',
     module: 'Content Injection',

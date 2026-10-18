@@ -1,0 +1,6 @@
+{
+  "summary": "Plan to fix structural JSX errors in App.tsx by removing orphaned closing tags and fixing fragment closures.",
+  "updatedAt": "2026-10-17T20:54:40.765244117Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

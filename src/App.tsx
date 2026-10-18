@@ -3881,12 +3881,12 @@ export default function App() {
       },
     );
 
-    if (!sessionStorage.getItem("site_visited")) {
-      sessionStorage.setItem("site_visited", "true");
+    if (!sessionStorage.getItem("site_visited_recorded")) {
+      sessionStorage.setItem("site_visited_recorded", "true");
       const statsRef = doc(db, "settings", "site_stats");
       updateDoc(statsRef, { visitCount: increment(1) }).catch(async (e) => {
-        if (e.code === "not-found") {
-          await setDoc(statsRef, { visitCount: 1 });
+        if (e.code === "not-found" || String(e).includes("not-found") || String(e).includes("No document")) {
+          await setDoc(statsRef, { visitCount: 1 }, { merge: true });
         }
       });
     }
@@ -5285,12 +5285,21 @@ E-Vedhika Team`;
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <a
-                          href="mailto:evedhikasupport@gmail.com"
-                          className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-rose-50 transition-colors border-l-4 border-l-rose-500 flex flex-col items-center justify-center gap-2"
+                          href="mailto:support@e-vedhika.in"
+                          className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-blue-50 transition-colors border-l-4 border-l-blue-500 flex flex-col items-center justify-center gap-1.5"
                         >
-                          <Mail size={28} className="text-rose-500" />
-                          <span className="font-bold text-slate-800 text-sm">
-                            Email Support (ఈమెయిల్)
+                          <Mail size={24} className="text-blue-500" />
+                          <span className="font-bold text-slate-800 text-xs text-center">
+                            Support Email<br/><span className="text-blue-600 font-mono text-[11px]">support@e-vedhika.in</span>
+                          </span>
+                        </a>
+                        <a
+                          href="mailto:evedhikasupport@gmail.com"
+                          className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-rose-50 transition-colors border-l-4 border-l-rose-500 flex flex-col items-center justify-center gap-1.5"
+                        >
+                          <Mail size={24} className="text-rose-500" />
+                          <span className="font-bold text-slate-800 text-xs text-center">
+                            Admin Email<br/><span className="text-rose-600 font-mono text-[11px]">evedhikasupport@gmail.com</span>
                           </span>
                         </a>
                         <a
@@ -5315,7 +5324,7 @@ E-Vedhika Team`;
                             Telegram
                           </span>
                         </a>
-                        <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm border-l-4 border-l-slate-400 flex flex-col items-center justify-center">
+                        <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm border-l-4 border-l-slate-400 flex flex-col items-center justify-center sm:col-span-2">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
                             Office Hours
                           </p>
@@ -5409,7 +5418,6 @@ E-Vedhika Team`;
         )}
       </AnimatePresence>
 
-      <>
       <header className="sticky top-0 z-[1001] shadow-lg bg-[#0d2a4a] border-b border-[#fbe947]/40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
           {/* Left Brand Area */}
@@ -5539,10 +5547,11 @@ E-Vedhika Team`;
 
           
         
+
+
+
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            
-
             {/* Direct Messages Button */}
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
@@ -7796,13 +7805,13 @@ E-Vedhika Team`;
                                   About
                                 </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
-                                <Link
-                                  to="/contact"
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                <button
+                                  onClick={() => setShowFooterModal("contact")}
+                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out cursor-pointer flex items-center gap-1 font-extrabold text-[#fbe947]"
                                   id="footer-contact-btn"
                                 >
-                                  Contact Us
-                                </Link>
+                                  Support & Contact
+                                </button>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <Link
                                   to="/privacy"
@@ -9020,11 +9029,12 @@ E-Vedhika Team`;
                   </motion.div>
                 )}
 
-                
-                {/* Secondary admin block removed */}
-              </AnimatePresence>
+                </AnimatePresence>
               </div>
             )}
+          </div>
+        </main>
+
 
             {(showPostForm || editingPost) && (
               <div className="fixed inset-0 z-[3000] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
@@ -9087,10 +9097,6 @@ E-Vedhika Team`;
                 rbacPermissions={rbacPermissions}
               />
             )}
-          </div>
-        </main>
-      </div>
-      </>
 
       {/* IMAGE LIGHTBOX MODAL */}
       {lightboxImage && (
@@ -9769,6 +9775,7 @@ E-Vedhika Team`;
         )}
       </AnimatePresence>
     
+    </div>
     </div>
   );
 }
@@ -11750,7 +11757,7 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
               rows={4}
               value={formData.metaDescription || ""}
               onChange={handleChange}
-              placeholder="ఉదా: ఈ-వేదిక (E-Vedhika) - తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
+              placeholder="ఉదా: ఈ-వేదిక (E-Vedhika) - తెలంగాణ పంచాయతీ ఆపరేటర్లు మరియు మండల ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
               className="w-full bg-white border border-slate-300 p-4 rounded-xl text-slate-800 text-sm md:text-base leading-relaxed focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-y min-h-[110px]"
             />
 
@@ -11778,7 +11785,7 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
                   type="button"
                   onClick={() => setFormData((prev: any) => ({
                     ...prev,
-                    metaDescription: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
+                    metaDescription: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ ఆపరేటర్లు మరియు మండల ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
                   }))}
                   className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition-all flex items-center gap-1.5"
                 >
@@ -20728,7 +20735,7 @@ function DSRAnalyzer({
     const aoa: any[][] = [];
     aoa.push(["Telangana State"]);
     aoa.push([
-      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+      `Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance (${reportDate}) ${reportTime}`,
     ]);
     aoa.push([]);
     aoa.push(DSR_REPORT_HEADERS);
@@ -20798,7 +20805,7 @@ function DSRAnalyzer({
     const aoa: any[][] = [];
     aoa.push(["Telangana State"]);
     aoa.push([
-      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+      `Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance (${reportDate}) ${reportTime}`,
     ]);
     aoa.push([]);
     aoa.push(DSR_REPORT_HEADERS);
@@ -20902,7 +20909,7 @@ function DSRAnalyzer({
     doc.setFont("helvetica", "normal");
     doc.setTextColor(203, 213, 225); // slate-300
     doc.text(
-      `Mandal-wise Panchayat Secretaries Attendance & DSR Analysis Report (${reportDate} - ${reportTime || currentTime})`,
+      `District & Mandal-wise Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance & DSR Report (${reportDate} - ${reportTime || currentTime})`,
       12,
       16
     );
@@ -21142,7 +21149,7 @@ function DSRAnalyzer({
     const lines: string[] = [];
     lines.push("Telangana State");
     lines.push(
-      `Report Mandal wise Status of Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
+      `Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance (${reportDate}) ${reportTime}`,
     );
     lines.push(DSR_REPORT_HEADERS.join("\t"));
 
@@ -21424,7 +21431,7 @@ function DSRAnalyzer({
                   Telangana State
                 </h2>
                 <p className="text-sm sm:text-base font-medium text-slate-300">
-                  Report Mandal wise Status of Panchayat Secretaries Attendance ({reportDate}) {reportTime}
+                  Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance ({reportDate}) {reportTime}
                 </p>
                 {/* Date / Time Edit inputs */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
@@ -30763,7 +30770,6 @@ function SuggestionForm({
           </button>
         </div>
       </div>
-    
-          </div>
+    </div>
   );
 }

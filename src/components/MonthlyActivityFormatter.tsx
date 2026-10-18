@@ -1554,7 +1554,7 @@ export function MonthlyActivityFormatter({
       msg += `\n${idx + 1}. *${r["Panchayat Name"]}* (Pending: ${r.pendingCount}, %: ${r.percentage}%)\n   ${r.pendingActivities.join(", ")}\n`;
     });
 
-    msg += `\n_All concerned Panchayat Secretaries are requested to complete the remaining entries immediately._\n\n🌐 _Generated via E-VEDHIKA | www.e-vedhika.in_`;
+    msg += `\n_All concerned Panchayat Operators & Mandal Operators are requested to complete the remaining entries immediately._\n\n🌐 _Generated via E-VEDHIKA | www.e-vedhika.in_`;
 
     navigator.clipboard.writeText(msg);
     setBulkCopied(true);

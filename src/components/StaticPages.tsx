@@ -69,40 +69,77 @@ function PageTemplate({ pageId, defaultTitle, defaultContent, extraHeader }: { p
 }
 
 export function PrivacyPolicyPage() {
-  return <PageTemplate pageId="privacy" defaultTitle="Privacy Policy" defaultContent={`
+  return <PageTemplate pageId="privacy" defaultTitle="గోప్యతా విధానం (Privacy Policy)" defaultContent={`
+### 🛡️ గోప్యతా విధానం (Privacy Policy)
+**E-VEDHIKA** (e-vedhika.in) పోర్టల్‌లో వినియోగదారుల వ్యక్తిగత వివరాలు మరియు డేటా భద్రతకు మేము అత్యున్నత ప్రాధాన్యత ఇస్తాము. ఈ పాలసీ ద్వారా మేము డేటాను ఎలా సేకరిస్తాము, ఉపయోగిస్తాము మరియు రక్షిస్తామో పారదర్శకంగా తెలియజేస్తున్నాము.
+
+---
+
 ### 1. మేము సేకరించే సమాచారం (Information We Collect)
-**E-VEDHIKA** (e-vedhika.in) వద్ద, మేము మీ గోప్యతను గౌరవిస్తాము. మీ ఖాతా వివరాలు, సిస్టమ్ లాగ్‌లు మరియు మెరుగైన సేవలను అందించడానికి అవసరమైన ప్రాధాన్యతలను మాత్రమే మేము సేకరిస్తాము.
+- **ఖాతా ప్రొఫైల్ సమాచారం**: పేరు, ఇమెయిల్ అడ్రస్, జిల్లా, మండలం, గ్రామ పంచాయతీ పేరు మరియు ఫోన్ నంబర్.
+- **సిస్టమ్ & లాగిన్ డేటా**: లాగిన్ సమయం, IP చిరునామా, బ్రౌజర్ టైప్ మరియు అప్లికేషన్ వినియోగ లాగ్‌లు.
+- **అప్‌లోడ్ చేసిన ఫైళ్లు & మీడియా**: మీరు సపోర్ట్ అభ్యర్థనలు లేదా కామెంట్‌లలో అప్‌లోడ్ చేసిన ఇమేజ్‌లు మరియు డాక్యుమెంట్‌లు.
 
-### 2. మేము డేటాను ఎలా ఉపయోగిస్తాము (How We Use Data)
-- మా డిప్లాయ్‌మెంట్ టూల్స్ మరియు అడ్మినిస్ట్రేటివ్ ఫీచర్లను నిర్వహించడానికి మరియు మెరుగుపరచడానికి.
-- ముఖ్యమైన సిస్టమ్ నోటిఫికేషన్లు, అప్‌డేట్లు మరియు ప్రకటనలను పంపడానికి.
-- ప్లాట్‌ఫారమ్ భద్రతను నిర్ధారించడానికి మరియు సాంకేతిక సమస్యలను పరిష్కరించడానికి.
+---
 
-### 3. డేటా భద్రత (Data Security)
-మీ డేటాను అనధికారిక యాక్సెస్ నుండి రక్షించడానికి మేము బలమైన భద్రతా చర్యలు, ఎన్క్రిప్షన్ మరియు సురక్షిత క్లౌడ్ స్టోరేజ్‌ని ఉపయోగిస్తాము.
+### 2. డేటా వినియోగ విధానం (How We Use Your Data)
+- **ఐటీ సపోర్ట్ & సేవల నిర్వహణ**: UBD డీఎస్కే, డీఎస్సీ సెటప్‌లు, రోజువారీ రిపోర్ట్‌లు మరియు పోర్టల్ ఫీచర్లు అందించడానికి.
+- **కమ్యూనికేషన్ & అలర్ట్‌లు**: సేవలకు సంబంధించిన ముఖ్యమైన అప్‌డేట్లు, టెలిగ్రామ్ అలర్ట్‌లు మరియు నోటిఫికేషన్‌లు పంపడానికి.
+- **భద్రత & ఆడిటింగ్**: సిస్టమ్‌ను అనధికారిక యాక్సెస్ నుండి రక్షించడానికి మరియు లాగ్‌లను తనిఖీ చేయడానికి.
 
-### 4. థర్డ్-పార్టీ సేవలు (Third-Party Services)
-మేము మీ వ్యక్తిగత సమాచారాన్ని ఇతరులకు విక్రయించము. డేటా కేవలం విశ్వసనీయ క్లౌడ్ ప్రొవైడర్ల (Firebase, Cloud Run) ద్వారా మాత్రమే ప్రాసెస్ చేయబడుతుంది.
+---
+
+### 3. డేటా భద్రత & నిల్వ (Data Security & Cloud Storage)
+- మీ వివరాలన్నీ **Google Firebase & SSL Encryption** తో అత్యున్నత భద్రతతో సేవ్ చేయబడతాయి.
+- మేము మీ వ్యక్తిగత సమాచారాన్ని ఏ ఇతర మూడో పక్షానికి (Third-party) విక్రయించము లేదా వాణిజ్యపరంగా పంచుకోము.
+
+---
+
+### 4. కుకీలు & బ్రౌజర్ క్యాషే (Cookies & Local Cache)
+- పోర్టల్ వేగంగా లోడ్ అవ్వడానికి మరియు PWA ఆఫ్‌లైన్ సేవలకు బ్రౌజర్ లోకల్ స్టోరేజ్ (Local Storage/Cache) ఉపయోగించబడుతుంది.
+
+---
+
+### 5. సంప్రదించండి (Contact Information)
+గోప్యతా విధానంపై ఏవైనా సందేహాలు ఉంటే మా సపోర్ట్ బృందాన్ని సంప్రదించండి:
+- **Support Email**: [support@e-vedhika.in](mailto:support@e-vedhika.in)
+- **Admin Email**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
   `} />;
 }
 
 export function TermsPage() {
-  return <PageTemplate pageId="terms" defaultTitle="Terms & Conditions" defaultContent={`
-### 1. పరిచయం (Introduction)
-**E-VEDHIKA** (e-vedhika.in) కు స్వాగతం. ఈ వేదికను ఉపయోగించడం ద్వారా, మీరు మా నిబంధనలు మరియు షరతులకు కట్టుబడి ఉండటానికి అంగీకరిస్తున్నారు. **ఈ-వేదిక ఒక ప్రైవేట్ సాంకేతిక వేదిక మరియు దీనికి ఎటువంటి ప్రభుత్వ సంస్థతో సంబంధం లేదు.**
+  return <PageTemplate pageId="terms" defaultTitle="నిబంధనలు & షరతులు (Terms & Conditions)" defaultContent={`
+### 📜 నిబంధనలు & షరతులు (Terms & Conditions)
+**E-VEDHIKA** (e-vedhika.in) ప్లాట్‌ఫారమ్‌ను ఉపయోగించడం ద్వారా, మీరు క్రింది నిబంధనలు మరియు షరతులకు అంగీకరిస్తున్నట్లు భావించబడుతుంది.
 
-### 2. వినియోగ విధానం (Usage Policy)
-- వినియోగదారులు ప్లాట్‌ఫారమ్‌ను బాధ్యతాయుతంగా మరియు చట్టబద్ధమైన సాంకేతిక ప్రయోజనాల కోసం మాత్రమే ఉపయోగించాలి.
-- సిస్టమ్ భద్రతను ఉల్లంఘించడానికి లేదా అనధికారికంగా యాక్సెస్ చేయడానికి ప్రయత్నించడం ఖచ్చితంగా నిషేధించబడింది.
+---
 
-### 3. మేధో సంపత్తి (Intellectual Property)
-ఈ-వేదికలోని అన్ని కంటెంట్, సాధనాలు, కోడ్ మరియు డిజైన్లు మా మేధో సంపత్తి హక్కుల ద్వారా రక్షించబడతాయి. ముందస్తు అనుమతి లేకుండా వీటిని వాణిజ్యపరంగా ఉపయోగించడం నిషేధం.
+### 1. ప్రైవేట్ వేదిక స్పష్టీకరణ (Disclaimer & Independence)
+- **ఈ-వేదిక (E-VEDHIKA)** అనేది పంచాయతీ కార్యదర్శులు, ఆపరేటర్లు మరియు సిబ్బందికి సాంకేతిక సహాయం అందించడానికి రూపొందించబడిన **స్వతంత్ర ప్రైవేట్ సాంకేతిక పోర్టల్**.
+- **దీనికి ఏ ప్రభుత్వ శాఖ, పంచాయతీ రాజ్ విభాగం లేదా ప్రభుత్వ అధికారిక సంస్థతో ఎటువంటి నేరుగా అనుబంధం లేదా భాగస్వామ్యం లేదు.**
 
-### 4. బాధ్యత పరిమితి (Limitation of Liability)
-మేము గరిష్ట విశ్వసనీయత కోసం ప్రయత్నిస్తాము, కానీ బాహ్య నెట్‌వర్క్ సమస్యలు లేదా థర్డ్-పార్టీ సేవల డౌన్‌టైమ్‌కు మేము బాధ్యత వహించము.
+---
 
-### 5. సంప్రదించండి (Contact Information)
-ఈ నిబంధనలకు సంబంధించి ఏవైనా ప్రశ్నలు ఉంటే, దయచేసి మా అధికారిక సపోర్ట్ ఛానెల్స్ ద్వారా సంప్రదించండి.
+### 2. అనుమతించబడిన వినియోగం (Acceptable Use)
+- ప్లాట్‌ఫారమ్‌లోని సాధనాలు, గైడ్‌లు మరియు ఫార్మాట్‌లను కేవలం అధికారిక కార్యాలయ సహాయం మరియు సాంకేతిక అవసరాలకు మాత్రమే ఉపయోగించాలి.
+- సిస్టమ్ సెక్యూరిటీని ఉల్లంఘించడం, వ్యాపార రీత్యా డేటాను స్క్రాప్ చేయడం లేదా అనధికారిక యాక్సెస్ పొందడం నిషేధించబడింది.
+
+---
+
+### 3. ఖాతా భద్రత & లాగిన్ బాధ్యత (Account Responsibility)
+- మీ ఖాతా లాగిన్ వివరాలు, PIN మరియు లాగిన్ సెషన్‌లను సురక్షితంగా ఉంచుకోవడం మీ బాధ్యత.
+- మీ ఖాతా ద్వారా జరిగే అన్ని కార్యకలాపాలకు మీరే బాధ్యత వహించాలి.
+
+---
+
+### 4. బాధ్యతా రాహిత్య ప్రకటన (Limitation of Liability)
+- నెట్‌వర్క్ సమస్యలు, బాహ్య సర్వర్ల డౌన్‌టైమ్ లేదా థర్డ్-పార్టీ సాఫ్ట్‌వేర్ లోపాల కారణంగా జరిగే ఆలస్యాలకు ఈ-వేదిక బాధ్యత వహించదు.
+
+---
+
+### 5. సవరణలు & సంప్రదింపులు (Updates & Contact)
+- మేము ఈ నిబంధనలను ఎప్పటికప్పుడు సమీక్షించి అప్‌డేట్ చేసే హక్కును కలిగి ఉన్నాము.
+- ఏవైనా సందేహాలు ఉంటే [support@e-vedhika.in](mailto:support@e-vedhika.in) కి ఇమెయిల్ చేయవచ్చు.
   `} />;
 }
 
@@ -173,78 +210,100 @@ export function AboutPage({ landingPageData }: { landingPageData?: any }) {
   return (
     <PageTemplate
       pageId="about"
-      defaultTitle="About E-Vedhika"
+      defaultTitle="మా గురించి (About E-Vedhika)"
       extraHeader={overviewSection}
       defaultContent={`
 ### 🌟 ఈ-వేదిక: ఆల్ ప్రాబ్లమ్స్ వన్ సొల్యూషన్ (About Us)
-**E-Vedhika** అనేది సాఫ్ట్‌వేర్ కాన్ఫిగరేషన్‌లు, డిజిటల్ సిగ్నేచర్ సెటప్‌లు మరియు ఐటీ సపోర్ట్ సేవలను సులభతరం చేయడానికి రూపొందించబడిన ఒక స్వతంత్ర అడ్మినిస్ట్రేటివ్ మరియు టెక్నికల్ ప్లాట్‌ఫారమ్.
+**E-Vedhika** అనేది తెలంగాణ మరియు ఏపీ పంచాయతీ ఆపరేటర్లు, పంచాయతీ కార్యదర్శులు, మరియు జిల్లా స్థాయి నివేదికలకు డిస్ట్రిక్ట్ ప్రాజెక్ట్ మేనేజర్ల (DPM) రోజువారీ ఆఫీసు పనులు, సాఫ్ట్‌వేర్ కాన్ఫిగరేషన్‌లు, డీఎస్కే సమస్యల పరిష్కారం మరియు టెక్నికల్ సపోర్ట్ (Technical Support) కోసం రూపొందించబడిన సమగ్ర డిజిటల్ ప్లాట్‌ఫారమ్.
 
-**ముఖ్య గమనిక:** ఈ-వేదిక ఒక స్వతంత్ర ప్రైవేట్ ప్లాట్‌ఫారమ్. దీనికి ఎటువంటి ప్రభుత్వ సంస్థతో సంబంధం లేదు.
+---
 
-### 🚀 ప్రధాన ఫీచర్లు (Key Features)
-- **డిప్లాయ్‌మెంట్ టూల్స్**: ఆటోమేటెడ్ కాన్ఫిగరేషన్ మరియు సిస్టమ్ మానిటరింగ్.
-- **రియల్-టైమ్ మానిటరింగ్**: సర్వర్ ఆరోగ్యం మరియు ప్లాట్‌ఫారమ్ లభ్యత యొక్క ప్రత్యక్ష స్థితి ట్రాకింగ్.
-- **సురక్షిత అడ్మిన్ కంట్రోల్స్**: ఆడిట్ లాగ్‌లు మరియు నేరుగా అడ్మినిస్ట్రేటివ్ కమ్యూనికేషన్.
-- **సమగ్ర గైడ్లు**: యూటిలిటీ ఫార్మాట్లు మరియు ట్రబుల్షూటింగ్ డాక్యుమెంటేషన్.
+### 🚀 ప్రధాన ఫీచర్లు & సేవలు (Core Capabilities)
+- **UBD Settings & DSK Troubleshooting**: తెలంగాణ & ఏపీ పంచాయతీ UBD పోర్టల్ డీఎస్కే, డీఎస్సీ డిజిటల్ సిగ్నేచర్ డ్రైవర్లు మరియు బ్రౌజర్ పరిష్కారాలు.
+- **DSR Analyzer & Calculators**: సివిల్ మరియు పంచాయతీ పనుల అంచనాలు, డిజిటల్ మ్యాపింగ్ మరియు DSR వర్క్ టేబుల్స్.
+- **Farmer Registry & Verification**: రైతు రిజిస్ట్రీ మరియు లబ్ధిదారుల వివరాల సరిచూసే నిష్పాక్షిక సాధనం.
+- **GOs & Utility Formats**: జీవోలు, అధికారిక అప్లికేషన్ ఫార్మాట్‌లు మరియు డౌన్‌లోడ్స్.
+- **Software Hub**: ePass2003, mToken, జావాలు, కంపెసర్లు మరియు అవసరమైన సాఫ్ట్‌వేర్లు.
 
-### 📞 సంప్రదించండి (Contact & Support)
-- **Email**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
-- **Telegram**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
-- **WhatsApp**: [WhatsApp సపోర్ట్](https://wa.me/919985402310) (నెంబర్ గోప్యంగా ఉంచబడింది)
+---
+
+### 📞 సంప్రదింపుల వివరాలు (Contact & Support Channels)
+- **1. Support Email (సపోర్ట్ & సహాయం)**: [support@e-vedhika.in](mailto:support@e-vedhika.in)
+- **2. Admin Email (అడ్మిన్ & భద్రత)**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
+- **Telegram Bot**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
+- **WhatsApp Support**: [WhatsApp సపోర్ట్ చాట్](https://wa.me/919985402310)
   `}
     />
   );
 }
 
 export function ContactPage() {
-  return <PageTemplate pageId="contact" defaultTitle="Contact Us" defaultContent={`
+  return <PageTemplate pageId="contact" defaultTitle="సంప్రదించండి (Contact & Support)" defaultContent={`
 ### 📞 మమ్మల్ని సంప్రదించండి (Get in Touch)
-**E-VEDHIKA** కు సంబంధించి మీకు ఏవైనా ప్రశ్నలు, సూచనలు లేదా సాంకేతిక మద్దతు అభ్యర్థనలు ఉంటే, మేము సహాయం చేయడానికి ఇక్కడ ఉన్నాము!
+**E-VEDHIKA** పోర్టల్‌కు సంబంధించి మీకు ఏవైనా సాంకేతిక సందేహాలు, ఫిర్యాదులు లేదా సూచనలు ఉంటే సహాయం చేయడానికి మేము సిద్ధంగా ఉన్నాము.
 
-- **అధికారిక వెబ్‌సైట్**: [https://e-vedhika.in](https://e-vedhika.in)
-- **సపోర్ట్ ఛానెల్స్**: అడ్మిన్‌లను సంప్రదించడానికి యాప్‌లోని **Suggestions / Support** ప్యానెల్ లేదా డైరెక్ట్ మెసేజ్ సిస్టమ్‌ను ఉపయోగించండి.
-- **మెయిల్**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
-- **టెలిగ్రామ్**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
-- **వాట్సాప్**: [WhatsApp సపోర్ట్](https://wa.me/919985402310) (నెంబర్ గోప్యంగా ఉంచబడింది)
+---
+
+### ✉️ ఇమెయిల్ సపోర్ట్ (Email Channels)
+- **1. Support Email (సపోర్ట్ & సహాయం)**: [support@e-vedhika.in](mailto:support@e-vedhika.in)
+  - సపోర్ట్ అభ్యర్థనలు, సాంకేతిక సందేహాలు మరియు సహాయం కోసం.
+- **2. Admin Email (అడ్మిన్ & భద్రత)**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
+  - వెబ్‌సైట్ నిర్వహణ, అత్యవసర అడ్మిన్ సమాచారం కోసం.
+
+---
+
+### 💬 సోషల్ & మెసేజింగ్ ఛానెల్స్ (Instant Messaging)
+- **WhatsApp సపోర్ట్ చాట్**: [మమ్మల్ని వాట్సాప్‌లో సంప్రదించండి](https://wa.me/919985402310)
+- **Telegram అలెర్ట్స్ బోట్**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
+- **సపోర్ట్ & గ్రీవెన్స్ ప్యానెల్**: పోర్టల్‌లోని **Suggestions / Support Panel** ద్వారా నేరుగా టికెట్ నమోదు చేయవచ్చు.
+
+---
+
+### ⏰ పని వేళలు (Office Hours)
+- **సోమవారం నుండి శనివారం వరకు**: ఉదయం 10:00 AM నుండి సాయంత్రం 05:00 PM వరకు.
   `} />;
 }
 
 export function SitemapContent({ onNavigate }: { onNavigate?: () => void }) {
   const categories = [
     {
-      title: "Products & Tools",
+      title: "ప్రధాన విభాగములు & ఉత్పత్తులు (Products & Tools)",
       items: [
-        { name: "Home", path: "/", desc: "Portal Main Page & Citizen Services" },
-        { name: "Workspace", path: "/workspace", desc: "Daily Operations & Work Tools" },
-        { name: "UBD Settings & DSK Guide", path: "/ubd-settings-dsk-issues", desc: "Telangana & AP UBD Portal DSK, DSC & Browser Fixes" },
-        { name: "GOs & Formats", path: "/gos_formats", desc: "Government Orders & Application Formats" },
-        { name: "Farmer Registry", path: "/farmer_registry", desc: "Farmer Verification & Registry Tool" },
-        { name: "Software Hub", path: "/software_hub", desc: "Utility Softwares, Tools & Drivers" },
-        { name: "GPDP Planning", path: "/gpdp_setup", desc: "Gram Panchayat Development Plan Tool" },
-        { name: "DSR Tables", path: "/workspace/dsr", desc: "Estimation & Work Calculators" },
-        { name: "Monthly Activity", path: "/workspace/monthly-activity", desc: "Monthly Work Activity Formatter" },
+        { name: "Home Dashboard", path: "/", desc: "పోర్టల్ ప్రధాన హోమ్‌పేజీ & సేవలు" },
+        { name: "Workspace", path: "/workspace", desc: "రోజువారీ ఆఫీసు పనులు & పరికరాలు" },
+        { name: "UBD Settings & DSK Guide", path: "/ubd-settings-dsk-issues", desc: "తెలంగాణ & ఏపీ UBD పోర్టల్ DSK, DSC & బ్రౌజర్ పరిష్కారాలు" },
+        { name: "GOs & Formats", path: "/gos_formats", desc: "ప్రభుత్వ జీవోలు & అధికారిక అప్లికేషన్ ఫార్మాట్‌లు" },
+        { name: "Farmer Registry", path: "/farmer_registry", desc: "రైతు రిజిస్ట్రీ & లబ్ధిదారుల తనిఖీ సాధనం" },
+        { name: "Software Hub", path: "/software_hub", desc: "ePass, mToken, జావాలు, డ్రైవర్లు & సాఫ్ట్‌వేర్లు" },
+        { name: "GPDP Planning", path: "/gpdp_setup", desc: "గ్రామ పంచాయతీ డెవలప్‌మెంట్ ప్లాన్ సాధనం" },
+        { name: "DSR Tables & Calculators", path: "/workspace/dsr", desc: "సివిల్ పనుల అంచనాలు & DSR క్యాలిక్యులేటర్" },
+        { name: "Monthly Activity Formatter", path: "/workspace/monthly-activity", desc: "నెలవారీ పని నివేదికలు & రిపోర్ట్‌లు" },
+        { name: "Attendance & Multi-Day Log", path: "/workspace/attendance", desc: "హాజరు వివరాలు & రిజిస్టర్ నమోదు" },
       ]
     },
     {
-      title: "Resources & Documents",
+      title: "వనరులు, సాధనాలు & మీడియా (Resources & Media)",
       items: [
-        { name: "Citizen Updates & Posts", path: "/home/post", desc: "Latest Announcements & News" },
-        { name: "Knowledge Hub & PR Act", path: "/workspace/pract", desc: "Panchayat Raj Acts & Legal Guides" },
-        { name: "PDF Compress", path: "/pdf_compress", desc: "Online File Size Compression Tool" },
-        { name: "Excel Printer Tool", path: "/excel_print", desc: "Clean Sheet Printing & A4 Formats" },
-        { name: "Excel Merger", path: "/workspace/excel-merge", desc: "Combine Multiple Excel Spreadsheets" },
-        { name: "UBD Live Tracker", path: "/ubd_tracker", desc: "Live Monitoring & Status Dashboard" },
+        { name: "Announcements & Posts", path: "/home/post", desc: "తాజా పంచాయతీ వార్తలు & ప్రకటనలు" },
+        { name: "Knowledge Hub & PR Act", path: "/workspace/pract", desc: "పంచాయతీ రాజ్ చట్టాలు & లీగల్ మార్గదర్శకాలు" },
+        { name: "PDF Compress Tool", path: "/pdf_compress", desc: "ఆన్‌లైన్ ఫైల్ సైజ్ కుదింపు సాధనం" },
+        { name: "Excel Printer Tool", path: "/excel_print", desc: "A4 క్లీన్ షీట్ ప్రింటింగ్ & ఫార్మాట్లు" },
+        { name: "Excel Merger Tool", path: "/workspace/excel-merge", desc: "మల్టిపుల్ ఎక్సెల్ స్ప్రెడ్‌షీట్ల విలీనం" },
+        { name: "UBD Live Tracker", path: "/ubd_tracker", desc: "ప్రత్యక్ష మానిటరింగ్ & సర్వర్ స్టేటస్ డ్యాష్‌బోర్డ్" },
+        { name: "Media Vault", path: "/vault", desc: "మీడియా వాల్ట్ & ఇమేజ్ గ్యాలరీ" },
+        { name: "Direct Messages / Inbox", path: "/workspace/messages", desc: "డైరెక్ట్ మెసేజింగ్ & సపోర్ట్ చాట్" },
       ]
     },
     {
-      title: "Portal & Governance",
+      title: "పోర్టల్ సమాచారం & మద్దతు (Portal & Support)",
       items: [
-        { name: "About Us", path: "/about", desc: "Mission, Governance & Platform Overview" },
-        { name: "Contact Us", path: "/contact", desc: "Official Helpdesk & Support Desk" },
-        { name: "Suggestions & Support", path: "/suggestions", desc: "Feedback, Tickets & Grievances" },
-        { name: "Emergency Services", path: "/emergency", desc: "Key Emergency Helpline Numbers" },
-        { name: "Privacy Policy", path: "/privacy", desc: "Data Protection & Privacy Policy" },
-        { name: "Terms & Conditions", path: "/terms", desc: "Platform Rules, Regulations & Terms" },
+        { name: "About Us (మా గురించి)", path: "/about", desc: "పోర్టల్ లష్యాలు, సమాచారం & అవలోకనం" },
+        { name: "Contact Support (సంప్రదించండి)", path: "/contact", desc: "అధికారిక హెల్ప్‌డెస్క్, ఇమెయిల్స్ & వాట్సాప్ చాట్" },
+        { name: "Suggestions & Grievances", path: "/suggestions", desc: "సూచనలు, ఫిర్యాదులు & టికెట్ మద్దతు" },
+        { name: "Emergency Helplines", path: "/emergency", desc: "కీలక అత్యవసర హెల్ప్‌లైన్ నంబర్లు" },
+        { name: "Privacy Policy (గోప్యతా విధానం)", path: "/privacy", desc: "డేటా భద్రత & గోప్యతా విధానము" },
+        { name: "Terms & Conditions (నిబంధనలు)", path: "/terms", desc: "పోర్టల్ వినియోగ నిబంధనలు & షరతులు" },
+        { name: "Sitemap Directory", path: "/sitemap", desc: "సంపూర్ణ పోర్టల్ డైరెక్టరీ & నేవిగేషన్" },
       ]
     }
   ];
@@ -578,7 +637,7 @@ export function UbdDskTroubleshootingPage() {
                 ప్రశ్న: Telangana &amp; AP UBD వెబ్‌సైట్ సమస్యలకు ఈ-వేదిక ఎలా సహాయపడుతుంది?
               </p>
               <p className="text-slate-600 leading-relaxed font-medium">
-                సమాధానం: ఈ-వేదిక పోర్టల్‌లో పంచాయతీ కార్యదర్శులు మరియు ఆపరేటర్ల కోసం ప్రత్యక్ష UBD ట్రాకర్, DSK డ్రైవర్ల డౌన్‌లోడ్స్, మరియు ఆటోమేటెడ్ సెటప్ ఫైల్స్ అందుబాటులో ఉన్నాయి.
+                సమాధానం: ఈ-వేదిక పోర్టల్‌లో పంచాయతీ ఆపరేటర్లు, పంచాయతీ కార్యదర్శులు మరియు జిల్లా అధికారుల కోసం ప్రత్యక్ష UBD ట్రాకర్, DSK డ్రైవర్ల డౌన్‌లోడ్స్, మరియు టెక్నికల్ సపోర్ట్ అందుబాటులో ఉన్నాయి.
               </p>
             </div>
           </div>

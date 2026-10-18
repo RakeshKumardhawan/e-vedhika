@@ -137,7 +137,7 @@ export async function pushPostToSupportSystem(
     // Initial acknowledgment
     await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
       senderId: "system",
-      senderName: "e-Vedika Team",
+      senderName: "E-Vedhika Support Team",
       text: customNote?.trim() || "నమస్కారం! మీ విన్నపం మా సపోర్ట్ సిస్టమ్‌కు చేరింది. మా బృందం త్వరలోనే దీనిని పరిశీలించి పరిష్కరిస్తుంది.",
       time: Date.now() + 50,
       isAdminComment: true

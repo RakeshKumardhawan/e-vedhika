@@ -216,7 +216,7 @@ Excel Files ను A4 Print format లోకి సులభంగా ఉపయ�
 మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
 
 ధన్యవాదాలు 🙏
-E-Vedhika Team`;
+E-Vedhika Support Team`;
 
         await addDoc(collection(db, "notifications"), {
           uid: user.uid,
