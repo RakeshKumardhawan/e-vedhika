@@ -155,7 +155,7 @@ import {  DollarSign,
   UserCheck,
   Smile,
   ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key, Copy, Printer,
-  Landmark, Building2, LifeBuoy } from "lucide-react";
+  Landmark, Building2, LifeBuoy, Youtube, Send, Mail } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -7751,10 +7751,10 @@ E-Vedhika Team`;
                                       ?.scrollTo({ top: 0, behavior: "smooth" });
                                     window.scrollTo({ top: 0, behavior: "smooth" });
                                   }}
-                                  className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl transition-all shadow-lg backdrop-blur-sm"
+                                  className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-white/10 hover:bg-amber-400 hover:text-slate-900 border border-white/20 text-white rounded-2xl transition-all duration-300 ease-out shadow-lg backdrop-blur-sm transform hover:-translate-y-1.5 hover:scale-110 hover:shadow-amber-500/30 active:scale-95 cursor-pointer group"
                                   aria-label="Scroll to top"
                                 >
-                                  <ChevronUp size={24} strokeWidth={2.5} />
+                                  <ChevronUp size={24} strokeWidth={2.5} className="group-hover:animate-bounce" />
                                 </button>
                                 
                                 <div className="flex flex-col items-center sm:items-start gap-1">
@@ -7770,13 +7770,37 @@ E-Vedhika Team`;
                                 </div>
                               </div>
 
+                              {/* Social Media & Support Links with Animated Hover Effects */}
+                              <div className="flex items-center gap-2.5 my-1 sm:my-0">
+                                {[
+                                  { href: "https://t.me/e_vedhika_alerts", label: "Telegram Alerts", icon: Send, color: "hover:bg-[#229ED9] hover:shadow-sky-500/30 hover:border-sky-400/50" },
+                                  { href: "https://chat.whatsapp.com/EVedhika", label: "WhatsApp Channel", icon: MessageCircle, color: "hover:bg-[#25D366] hover:shadow-emerald-500/30 hover:border-emerald-400/50" },
+                                  { href: "https://youtube.com/@evedhika", label: "YouTube Guides", icon: Youtube, color: "hover:bg-[#FF0000] hover:shadow-red-500/30 hover:border-red-400/50" },
+                                  { href: "mailto:support@e-vedhika.in", label: "Email Support", icon: Mail, color: "hover:bg-[#ea4335] hover:shadow-rose-500/30 hover:border-rose-400/50" },
+                                ].map((s, idx) => {
+                                  const IconComp = s.icon;
+                                  return (
+                                    <a
+                                      key={idx}
+                                      href={s.href}
+                                      target={s.href.startsWith("http") ? "_blank" : undefined}
+                                      rel={s.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                                      className={`p-2.5 bg-white/10 ${s.color} text-white hover:text-white rounded-xl transition-all duration-300 ease-out transform hover:-translate-y-1.5 hover:scale-110 hover:shadow-xl border border-white/15 flex items-center justify-center cursor-pointer group active:scale-95`}
+                                      title={s.label}
+                                    >
+                                      <IconComp size={16} className="transition-transform duration-300 group-hover:rotate-6" />
+                                    </a>
+                                  );
+                                })}
+                              </div>
+
                               {/* Merged unified single banner for Stats & Links */}
                               <div 
                                 className="flex items-center justify-center flex-wrap gap-x-3 sm:gap-x-5 gap-y-3 text-white/90 w-full xl:w-auto bg-white/5 px-4 sm:px-6 py-4 sm:py-3.5 rounded-2xl sm:rounded-full border border-white/10 text-[11px] sm:text-xs font-bold tracking-wide uppercase shadow-sm"
                                 id="vedhika-statistics-banner"
                               >
                                 {/* Statistics Area */}
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 transition-transform duration-200 hover:scale-105 cursor-default">
                                   <Users className="w-3.5 h-3.5 text-[#fbe947]" />
                                   <span>
                                     {(visitorCount !== null ? visitorCount + 12345 : "...").toLocaleString()}
@@ -7784,7 +7808,7 @@ E-Vedhika Team`;
                                   </span>
                                 </div>
                                 <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 transition-transform duration-200 hover:scale-105 cursor-default">
                                   <Package className="w-3.5 h-3.5 text-[#fbe947]" />
                                   <span>
                                     {SYSTEM_UPDATES[0]?.version || "V1.6.2"}
@@ -7792,7 +7816,7 @@ E-Vedhika Team`;
                                   </span>
                                 </div>
                                 <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 transition-transform duration-200 hover:scale-105 cursor-default">
                                   <RefreshCw className="w-3.5 h-3.5 text-[#fbe947]" />
                                   <span>
                                     {SYSTEM_UPDATES[0]?.time
@@ -7806,7 +7830,7 @@ E-Vedhika Team`;
                                 <div className="hidden xl:block w-px h-4 bg-white/20 mx-2" />
                                 <div className="w-full h-px bg-white/10 xl:hidden my-2" />
 
-                                {/* Links Area */}
+                                {/* Links Area with High Engagement Opacity, Color Shift, Underline & Hover Effects */}
                                 <Link
                                   to="/"
                                   onClick={(e) => {
@@ -7816,14 +7840,14 @@ E-Vedhika Team`;
                                       ?.scrollTo({ top: 0, behavior: "smooth" });
                                     window.scrollTo({ top: 0, behavior: "smooth" });
                                   }}
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
                                 >
                                   Home
                                 </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <Link
                                   to="/about"
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
                                   id="footer-about-btn"
                                 >
                                   About
@@ -7831,7 +7855,7 @@ E-Vedhika Team`;
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <button
                                   onClick={() => setShowFooterModal("contact")}
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out cursor-pointer flex items-center gap-1 font-extrabold text-[#fbe947]"
+                                  className="opacity-90 hover:opacity-100 hover:text-[#fbe947] hover:scale-105 hover:-translate-y-0.5 hover:bg-white/15 active:scale-95 transition-all duration-300 ease-out cursor-pointer flex items-center gap-1 font-extrabold text-[#fbe947] bg-white/5 px-2.5 py-1 rounded-xl border border-white/10 shadow-xs hover:border-[#fbe947]/40"
                                   id="footer-contact-btn"
                                 >
                                   Support & Contact
@@ -7839,7 +7863,7 @@ E-Vedhika Team`;
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <button
                                   onClick={handlePWAInstall}
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out cursor-pointer flex items-center gap-1 font-black text-amber-300 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/30"
+                                  className="opacity-90 hover:opacity-100 hover:text-[#fbe947] hover:scale-105 hover:-translate-y-0.5 hover:bg-amber-400/25 active:scale-95 transition-all duration-300 ease-out cursor-pointer flex items-center gap-1 font-black text-amber-300 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/30 hover:border-amber-300 shadow-xs"
                                   id="footer-pwa-btn"
                                 >
                                   <Smartphone size={13} className="text-amber-300" />
@@ -7848,21 +7872,21 @@ E-Vedhika Team`;
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <Link
                                   to="/privacy"
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
                                 >
                                   Privacy Policy
                                 </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <Link
                                   to="/terms"
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
                                 >
                                   Terms & Conditions
                                 </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <button
                                   onClick={() => setShowFooterModal("sitemap")}
-                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out cursor-pointer flex items-center gap-1 font-bold"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out cursor-pointer flex items-center gap-1 font-bold"
                                   id="footer-sitemap-btn"
                                 >
                                   Sitemap
