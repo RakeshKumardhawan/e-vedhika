@@ -537,6 +537,61 @@ export function SuperAdminDashboard({
   const openSupportCount = supportTickets.filter(t => t.status !== 'closed' && t.status !== 'resolved').length;
   const reportsCount = reportsList.filter(r => r.status !== 'resolved' && r.status !== 'closed').length;
 
+  // Daily Post Creation Trends by Category for the last 7 days
+  const postCategoryTrendData = React.useMemo(() => {
+    const today = new Date();
+    const daysMap: { [key: string]: { date: string; dateKey: string; total: number; [cat: string]: any } } = {};
+    const categoriesFound = new Set<string>();
+
+    const dateKeys: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const dateKey = `${yyyy}-${mm}-${dd}`;
+      const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      dateKeys.push(dateKey);
+      daysMap[dateKey] = { date: dateLabel, dateKey, total: 0 };
+    }
+
+    postsList.forEach((post) => {
+      if (!post) return;
+      const rawTime = post.time || post.timestamp || post.createdAt;
+      if (!rawTime) return;
+
+      const pDate = new Date(typeof rawTime === 'number' ? rawTime : typeof rawTime === 'string' ? rawTime : Date.now());
+      if (isNaN(pDate.getTime())) return;
+
+      const yyyy = pDate.getFullYear();
+      const mm = String(pDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(pDate.getDate()).padStart(2, '0');
+      const pDateKey = `${yyyy}-${mm}-${dd}`;
+
+      if (daysMap[pDateKey]) {
+        const cat = (post.category || post.type || 'General').trim() || 'General';
+        categoriesFound.add(cat);
+        daysMap[pDateKey][cat] = (daysMap[pDateKey][cat] || 0) + 1;
+        daysMap[pDateKey].total = (daysMap[pDateKey].total || 0) + 1;
+      }
+    });
+
+    const categories = Array.from(categoriesFound);
+    if (categories.length === 0) categories.push('General');
+
+    const data = dateKeys.map((k) => {
+      const row = { ...daysMap[k] };
+      categories.forEach((c) => {
+        if (row[c] === undefined) row[c] = 0;
+      });
+      return row;
+    });
+
+    return { data, categories };
+  }, [postsList]);
+
   const effectiveTab = localActiveTab;
 
   return (
@@ -831,6 +886,94 @@ export function SuperAdminDashboard({
               >
                 <Settings size={14} /> Open System Settings
               </button>
+            </div>
+          </div>
+
+          {/* Daily Post Creation Trends by Category (Last 7 Days) */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-[0_4px_20px_rgb(0,0,0,0.03)] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                  <BarChart2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    Daily Post Creation Trends by Category
+                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      Last 7 Days
+                    </span>
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 mt-0.5">
+                    Breakdown of newly created community posts, news, GOs & updates by category
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-1.5 rounded-2xl border border-slate-200/80 text-xs font-bold text-slate-700">
+                <FileText size={14} className="text-indigo-600" />
+                <span>
+                  Total 7-Day Posts:{" "}
+                  <strong className="text-indigo-700 font-mono text-sm">
+                    {postCategoryTrendData.data.reduce((acc, curr) => acc + (curr.total || 0), 0)}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="h-[280px] w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={postCategoryTrendData.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 700 }} 
+                    dy={5} 
+                  />
+                  <YAxis 
+                    allowDecimals={false} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }} 
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      borderRadius: '16px', 
+                      border: '1px solid #e2e8f0', 
+                      fontSize: '12px', 
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                      backgroundColor: '#ffffff'
+                    }}
+                    cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '10px', fontSize: '11px', fontWeight: 700 }} 
+                  />
+                  {postCategoryTrendData.categories.map((cat, idx) => {
+                    const colors = [
+                      "#4f46e5", // Indigo
+                      "#06b6d4", // Cyan
+                      "#10b981", // Emerald
+                      "#f59e0b", // Amber
+                      "#8b5cf6", // Purple
+                      "#ec4899", // Pink
+                      "#3b82f6", // Blue
+                      "#64748b", // Slate
+                    ];
+                    return (
+                      <Bar 
+                        key={cat} 
+                        dataKey={cat} 
+                        name={cat} 
+                        fill={colors[idx % colors.length]} 
+                        radius={[6, 6, 0, 0]} 
+                        maxBarSize={36} 
+                      />
+                    );
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 

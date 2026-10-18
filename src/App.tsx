@@ -4210,7 +4210,7 @@ E-Vedhika Team`;
     );
 
     let initialNotificationsLoadedLocal = false;
-    const notificationTargets = [user.uid, "all"];
+    const notificationTargets = [user?.uid || "guest", "all"];
     if (userRole === "admin") notificationTargets.push("admin_only");
 
     const unsub1 = onSnapshot(
@@ -4229,7 +4229,7 @@ E-Vedhika Team`;
         setUnreadCount(
           nArr.filter((n) => {
             if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
-            if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
+            if (n.uid === "admin_only" && userRole !== "admin") return false;
             if (readNotifIds.has(n.id)) return false;
             if (n.uid === "all") {
               return !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false);
@@ -4248,8 +4248,7 @@ E-Vedhika Team`;
             addedChanges.forEach((change) => {
               const newNotif = change.doc.data() as any;
               const isOwnAction = newNotif.senderUid && user && newNotif.senderUid === user.uid;
-              const isAdminAlert = newNotif.type === "admin_alert" || newNotif.uid === "admin_only";
-              if (isAdminAlert && userRole !== "admin") return;
+              if (newNotif.uid === "admin_only" && userRole !== "admin") return;
               if (isOwnAction) return;
 
               const isRecent = !newNotif.time || (Date.now() - newNotif.time < 300000);
@@ -5552,6 +5551,16 @@ E-Vedhika Team`;
 
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Install PWA App Header Button */}
+            <button
+              onClick={handlePWAInstall}
+              className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-slate-900 rounded-full sm:rounded-xl text-[10px] sm:text-[11px] font-black tracking-tight transition-all active:scale-95 shadow-md shadow-amber-500/20 flex items-center gap-1 shrink-0 cursor-pointer border border-amber-300/80"
+              title="E-Vedhika Mobile App ఇన్‌స్టాల్ చేసుకోండి"
+            >
+              <Smartphone size={15} className="text-slate-900 shrink-0" />
+              <span className="inline font-bold">యాప్ ఇన్‌స్టాల్</span>
+            </button>
+
             {/* Direct Messages Button */}
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
@@ -6699,6 +6708,21 @@ E-Vedhika Team`;
               </>
             ) : (
               <>
+                <div className="mb-3 px-2">
+                  <button
+                    onClick={() => {
+                      handlePWAInstall();
+                      setSidebarOpen(false);
+                    }}
+                    className="w-full p-3 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-slate-900 rounded-2xl font-black text-xs transition-all active:scale-95 shadow-md shadow-amber-500/20 flex items-center justify-between border border-amber-300/80 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Smartphone size={17} className="text-slate-900 shrink-0" />
+                      <span>📱 యాప్ ఇన్‌స్టాల్ (Install PWA App)</span>
+                    </div>
+                    <ChevronRight size={15} className="text-slate-900 shrink-0" />
+                  </button>
+                </div>
                 
                 {[
                   { id: "home", label: "Home", icon: Home },
@@ -7811,6 +7835,15 @@ E-Vedhika Team`;
                                   id="footer-contact-btn"
                                 >
                                   Support & Contact
+                                </button>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <button
+                                  onClick={handlePWAInstall}
+                                  className="hover:text-[#fbe947] transition-colors duration-300 ease-in-out cursor-pointer flex items-center gap-1 font-black text-amber-300 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/30"
+                                  id="footer-pwa-btn"
+                                >
+                                  <Smartphone size={13} className="text-amber-300" />
+                                  <span>Install App (మొబైల్ యాప్)</span>
                                 </button>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <Link
