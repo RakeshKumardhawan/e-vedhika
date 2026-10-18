@@ -5302,14 +5302,14 @@ E-Vedhika Team`;
                           </span>
                         </a>
                         <a
-                          href="https://wa.me/919985402310"
+                          href="https://whatsapp.com/channel/0029VbDYABvKQuJFzU48c92u"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm cursor-pointer hover:bg-green-50 transition-colors border-l-4 border-l-green-500 flex flex-col items-center justify-center gap-2"
                         >
                           <MessageCircle size={28} className="text-green-500" />
-                          <span className="font-bold text-slate-800 text-sm">
-                            WhatsApp (సపోర్ట్ చాట్)
+                          <span className="font-bold text-slate-800 text-sm text-center">
+                            WhatsApp ఛానెల్<br/><span className="text-green-600 font-medium text-[11px]">అధికారిక అప్‌డేట్స్ ఛానెల్</span>
                           </span>
                         </a>
                         <a
@@ -7774,7 +7774,7 @@ E-Vedhika Team`;
                               <div className="flex items-center gap-2.5 my-1 sm:my-0">
                                 {[
                                   { href: "https://t.me/e_vedhika_alerts", label: "Telegram Alerts", icon: Send, color: "hover:bg-[#229ED9] hover:shadow-sky-500/30 hover:border-sky-400/50" },
-                                  { href: "https://chat.whatsapp.com/EVedhika", label: "WhatsApp Channel", icon: MessageCircle, color: "hover:bg-[#25D366] hover:shadow-emerald-500/30 hover:border-emerald-400/50" },
+                                  { href: "https://whatsapp.com/channel/0029VbDYABvKQuJFzU48c92u", label: "WhatsApp Channel", icon: MessageCircle, color: "hover:bg-[#25D366] hover:shadow-emerald-500/30 hover:border-emerald-400/50" },
                                   { href: "https://youtube.com/@evedhika", label: "YouTube Guides", icon: Youtube, color: "hover:bg-[#FF0000] hover:shadow-red-500/30 hover:border-red-400/50" },
                                   { href: "mailto:support@e-vedhika.in", label: "Email Support", icon: Mail, color: "hover:bg-[#ea4335] hover:shadow-rose-500/30 hover:border-rose-400/50" },
                                 ].map((s, idx) => {

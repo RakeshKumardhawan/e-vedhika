@@ -231,6 +231,7 @@ export function AboutPage({ landingPageData }: { landingPageData?: any }) {
 - **1. Support Email (సపోర్ట్ & సహాయం)**: [support@e-vedhika.in](mailto:support@e-vedhika.in)
 - **2. Admin Email (అడ్మిన్ & భద్రత)**: [evedhikasupport@gmail.com](mailto:evedhikasupport@gmail.com)
 - **Telegram Bot**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
+- **WhatsApp Channel**: [అధికారిక వాట్సాప్ ఛానెల్ (Join WhatsApp Channel)](https://whatsapp.com/channel/0029VbDYABvKQuJFzU48c92u)
 - **WhatsApp Support**: [WhatsApp సపోర్ట్ చాట్](https://wa.me/919985402310)
   `}
     />
@@ -253,6 +254,7 @@ export function ContactPage() {
 ---
 
 ### 💬 సోషల్ & మెసేజింగ్ ఛానెల్స్ (Instant Messaging)
+- **WhatsApp అధికారిక ఛానెల్**: [E-Vedhika వాట్సాప్ ఛానెల్‌లో చేరండి](https://whatsapp.com/channel/0029VbDYABvKQuJFzU48c92u)
 - **WhatsApp సపోర్ట్ చాట్**: [మమ్మల్ని వాట్సాప్‌లో సంప్రదించండి](https://wa.me/919985402310)
 - **Telegram అలెర్ట్స్ బోట్**: [@e_vedhika_alerts_bot](https://t.me/e_vedhika_alerts_bot)
 - **సపోర్ట్ & గ్రీవెన్స్ ప్యానెల్**: పోర్టల్‌లోని **Suggestions / Support Panel** ద్వారా నేరుగా టికెట్ నమోదు చేయవచ్చు.

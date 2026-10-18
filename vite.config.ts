@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '',
+    base: '/',
     plugins: [
       react(), 
       legacy({
@@ -24,8 +24,9 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifestFilename: 'manifest.json',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'ev-logo-v2.png'],
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'ev-logo-v2.png'],
         manifest: {
+          id: '/',
           name: 'E-Vedhika',
           short_name: 'E-Vedhika',
           description: 'E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries - All Problems One Solution',
@@ -41,8 +42,14 @@ export default defineConfig(({mode}) => {
           categories: ['productivity', 'government', 'utilities', 'business'],
           icons: [
             {
-              src: '/ev-logo-v2.png',
+              src: '/pwa-192x192.png',
               sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/pwa-512x512.png',
+              sizes: '512x512',
               type: 'image/png',
               purpose: 'any'
             },
@@ -53,13 +60,13 @@ export default defineConfig(({mode}) => {
               purpose: 'any'
             },
             {
-              src: '/ev-logo-v2.png',
+              src: '/pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'maskable'
             },
             {
-              src: '/ev-logo-v2.png',
+              src: '/pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable'
