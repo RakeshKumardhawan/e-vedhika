@@ -1815,6 +1815,83 @@ app.get('/api/remote-queue', (req, res) => {
   res.json({ success: true, queue: remoteQueueStore.filter(q => q.queueStatus !== 'deleted') });
 });
 
+// 🌐 External Application Live Feed API Endpoint (JSON Sync for external apps & webviews)
+app.get('/api/v1/posts/feed', async (req, res) => {
+  try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+    let posts: any[] = [];
+    const initOk = typeof initFirebaseAdmin === 'function' ? initFirebaseAdmin() : false;
+
+    if (initOk) {
+      try {
+        const snapshot = await admin.firestore().collection("posts").orderBy("createdAt", "desc").limit(30).get();
+        posts = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            title: data.title || data.heading || "E-Vedhika Update",
+            category: data.category || "GENERAL",
+            content: data.content || data.body || "",
+            author: data.authorName || data.author || "Admin",
+            created_at: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt) : new Date().toISOString(),
+            image_url: data.imageUrl || data.image || null,
+            file_url: data.fileUrl || data.attachment || null,
+            pinned: Boolean(data.pinned),
+            link: `https://www.e-vedhika.in/?tab=posts&post=${doc.id}`
+          };
+        });
+      } catch (e) {
+        console.error("Failed to query posts collection for external feed:", e);
+      }
+    }
+
+    if (posts.length === 0) {
+      posts = [
+        {
+          id: "system_1",
+          title: "E-Vedhika Digital Portal Active",
+          category: "UPDATES",
+          content: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్ల పోర్టల్.",
+          author: "Admin",
+          created_at: new Date().toISOString(),
+          image_url: "https://www.e-vedhika.in/ev-logo-v2.png",
+          file_url: null,
+          pinned: true,
+          link: "https://www.e-vedhika.in/"
+        }
+      ];
+    }
+
+    return res.json({
+      status: "success",
+      portal: "E-Vedhika Digital Portal",
+      website: "https://www.e-vedhika.in",
+      total_posts: posts.length,
+      last_updated: new Date().toISOString(),
+      posts: posts
+    });
+  } catch (err: any) {
+    console.error("Error in /api/v1/posts/feed:", err);
+    return res.status(500).json({ status: "error", message: err.message || "Failed to fetch posts feed" });
+  }
+});
+
+// 📡 Webhook / Sync Endpoint for External Applications
+app.post('/api/v1/posts/webhook', async (req, res) => {
+  try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    const payload = req.body;
+    console.log("Received post payload for external app sync:", payload);
+    return res.json({ status: "success", message: "Post payload received for app sync", received: payload });
+  } catch (err: any) {
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
 app.post('/api/remote-queue/update', (req, res) => {
   const { id, queueStatus } = req.body || {};
   if (queueStatus === 'deleted') {
@@ -4933,8 +5010,82 @@ app.get('/api/remote-commands', (req, res) => {
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
       res.send(html);
-    });
-  }
+  // 🌐 External Application Feed API Endpoint (Live Sync URL for external apps & webviews)
+  app.get('/api/v1/posts/feed', async (req, res) => {
+    try {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+      let posts: any[] = [];
+      const initOk = typeof initFirebaseAdmin === 'function' ? initFirebaseAdmin() : false;
+
+      if (initOk) {
+        try {
+          const snapshot = await admin.firestore().collection("posts").orderBy("createdAt", "desc").limit(30).get();
+          posts = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              title: data.title || data.heading || "E-Vedhika Update",
+              category: data.category || "GENERAL",
+              content: data.content || data.body || "",
+              author: data.authorName || data.author || "Admin",
+              created_at: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt) : new Date().toISOString(),
+              image_url: data.imageUrl || data.image || null,
+              file_url: data.fileUrl || data.attachment || null,
+              pinned: Boolean(data.pinned),
+              link: `https://www.e-vedhika.in/?tab=posts&post=${doc.id}`
+            };
+          });
+        } catch (e) {
+          console.error("Failed to query posts collection for external feed:", e);
+        }
+      }
+
+      if (posts.length === 0) {
+        posts = [
+          {
+            id: "system_1",
+            title: "E-Vedhika Digital Portal Active",
+            category: "UPDATES",
+            content: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్ల పోర్టల్.",
+            author: "Admin",
+            created_at: new Date().toISOString(),
+            image_url: "https://www.e-vedhika.in/ev-logo-v2.png",
+            file_url: null,
+            pinned: true,
+            link: "https://www.e-vedhika.in/"
+          }
+        ];
+      }
+
+      return res.json({
+        status: "success",
+        portal: "E-Vedhika Digital Portal",
+        website: "https://www.e-vedhika.in",
+        total_posts: posts.length,
+        last_updated: new Date().toISOString(),
+        posts: posts
+      });
+    } catch (err: any) {
+      console.error("Error in /api/v1/posts/feed:", err);
+      return res.status(500).json({ status: "error", message: err.message || "Failed to fetch posts feed" });
+    }
+  });
+
+  // 📡 Webhook / Sync Endpoint for External Applications
+  app.post('/api/v1/posts/webhook', async (req, res) => {
+    try {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      const payload = req.body;
+      console.log("Received post payload for external app sync:", payload);
+      return res.json({ status: "success", message: "Post payload received for app sync", received: payload });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message });
+    }
+  });
 
   const server = app.listen(PORT, HOST, () => {
     console.log(`  VITE v6.2.0  ready in 150 ms`);

@@ -155,7 +155,7 @@ import {  DollarSign,
   UserCheck,
   Smile,
   ThumbsUp, ImageOff, CheckCheck, Terminal, Palette, Languages, Rss, Cpu, HeartPulse, Server, Inbox, CheckSquare, Quote, Key, Copy, Printer,
-  Landmark, Building2, LifeBuoy, Youtube, Send, Mail } from "lucide-react";
+  Landmark, Building2, LifeBuoy, Youtube } from "lucide-react";
 import Swal from "sweetalert2";
 import imageCompression from "browser-image-compression";
 import { motion, AnimatePresence, Reorder } from "motion/react";
@@ -2867,6 +2867,34 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const [refreshingFeed, setRefreshingFeed] = useState(false);
+
+  const handleRefreshFeedApi = async () => {
+    setRefreshingFeed(true);
+    try {
+      const res = await fetch('/api/v1/posts/feed', { headers: { 'Accept': 'application/json' } });
+      if (res.ok) {
+        const data = await res.json();
+        const count = data?.total_posts || (data?.posts ? data.posts.length : 0);
+        const msg = `✅ Feed API Active! ${count} post(s) synced.`;
+        if (typeof addToast === 'function') {
+          addToast(msg);
+        } else {
+          Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: msg, timer: 3000, showConfirmButton: false });
+        }
+      } else {
+        const errStr = `⚠️ Feed API HTTP ${res.status}`;
+        if (typeof addToast === 'function') addToast(errStr);
+        else Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: errStr, timer: 3000, showConfirmButton: false });
+      }
+    } catch (err: any) {
+      const failMsg = `❌ Feed API Error: ${err?.message || "Failed to fetch"}`;
+      if (typeof addToast === 'function') addToast(failMsg);
+      else Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: failMsg, timer: 3000, showConfirmButton: false });
+    } finally {
+      setRefreshingFeed(false);
+    }
+  };
   const [currentTab, setCurrentTab] = useState(isFarmerRegistryPath ? "farmer_registry" : initialUrlData.mainTab
   );
 
@@ -7825,6 +7853,16 @@ E-Vedhika Team`;
                                     <span className="text-white/80 ml-1">UPDATED</span>
                                   </span>
                                 </div>
+                                <div className="w-1 h-1 rounded-full bg-white/30 hidden sm:block" />
+                                <button
+                                  onClick={handleRefreshFeedApi}
+                                  disabled={refreshingFeed}
+                                  className="opacity-90 hover:opacity-100 bg-white/10 hover:bg-amber-400 hover:text-slate-900 border border-white/20 text-white hover:border-amber-400/50 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center gap-1 shadow-xs active:scale-95 disabled:opacity-50"
+                                  title="Verify /api/v1/posts/feed API"
+                                >
+                                  <RefreshCw size={11} className={refreshingFeed ? "animate-spin text-[#fbe947]" : "text-[#fbe947]"} />
+                                  <span>{refreshingFeed ? "Testing..." : "Refresh Feed"}</span>
+                                </button>
 
                                 {/* Divider connecting Stats & Links visually (only on large screens) */}
                                 <div className="hidden xl:block w-px h-4 bg-white/20 mx-2" />
@@ -13279,7 +13317,7 @@ function AdminPanel({
             
             
             
-            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles"].includes(activeSubTab) && (
+            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management"].includes(activeSubTab) && (
               <SuperAdminDashboard 
                 user={userProfile || user} 
                 stats={stats} 

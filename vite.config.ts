@@ -173,6 +173,33 @@ export default defineConfig(({mode}) => {
               res.end('google-site-verification: google46d0fa093843f771.html');
               return;
             }
+            if (req.url && (req.url.startsWith('/api/v1/posts/feed') || req.url.startsWith('/api/posts/feed'))) {
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+              res.end(JSON.stringify({
+                status: "success",
+                portal: "E-Vedhika Digital Portal",
+                website: "https://www.e-vedhika.in",
+                total_posts: 1,
+                last_updated: new Date().toISOString(),
+                posts: [
+                  {
+                    id: "feed_1",
+                    title: "E-Vedhika Digital Administration Portal Active",
+                    category: "UPDATES",
+                    content: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్లు మరియు మండల ఆపరేటర్ల పోర్టల్.",
+                    author: "Admin",
+                    created_at: new Date().toISOString(),
+                    image_url: "https://www.e-vedhika.in/ev-logo-v2.png",
+                    file_url: null,
+                    pinned: true,
+                    link: "https://www.e-vedhika.in/"
+                  }
+                ]
+              }));
+              return;
+            }
             next();
           });
         }

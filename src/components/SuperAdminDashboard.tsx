@@ -996,10 +996,10 @@ export function SuperAdminDashboard({
                 </div>
               </div>
               <button 
-                onClick={() => navigateToTab("users")}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 w-fit"
+                onClick={() => navigateToTab("users", "online")}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 w-fit cursor-pointer"
               >
-                యూజర్ల డైరెక్టరీ (All Users) <ArrowRight size={13} />
+                ఆన్‌లైన్ యూజర్ల ప్యానెల్ (Online Users Filter) <ArrowRight size={13} />
               </button>
             </div>
 
