@@ -1,13 +1,14 @@
 <?php
 // ====================================================================================
-// 🏛️ E-VEDHIKA CENTRAL TELEMETRY, UPDATES & LIVE MONITORING GATEWAY (v1.0.7)
+// 🏛️ E-VEDHIKA CENTRAL TELEMETRY, UPDATES & LIVE MONITORING GATEWAY ($version)
 // File Path: /admin/exe_ubd_live.php  (URL: https://www.e-vedhika.in/admin/exe_ubd_live)
 // Developer: Rakesh Dhawan (@DhawanRakesh)
+// Features: Consolidated PC Health, Deduplicated Alerts, Dynamic Posts/Feed, AutoRepair Verification
 // ====================================================================================
 
 // 1. Enable Global CORS Headers (Allows C# Apps, Web Browser & External Tools to Communicate)
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS, DELETE');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -15,18 +16,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$dataFile = __DIR__ . '/telemetry_storage.json';
+$storageDir = __DIR__;
+$dataFile = $storageDir . '/telemetry_storage.json';
+$announcementsFile = $storageDir . '/announcements.json';
+$exeLiveJsonFile = $storageDir . '/exe_ubd_live.json';
+$consolidatedFile = $storageDir . '/pc_consolidated_health.json';
+$issuesFile = $storageDir . '/active_issues.json';
+
+// Central Telegram Bot Credentials
 $botToken = "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
 $chatId = "431228008";
 
-// 2. Clear Logs Action (Optional for Admin)
-if (isset($_GET['clear']) && $_GET['clear'] === '1') {
-    if (file_exists($dataFile)) unlink($dataFile);
-    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
-    exit;
+// Helper: Dispatch Telegram HTML Message
+function sendTelegramMessage($token, $chat, $message) {
+    if (empty($token) || empty($chat) || empty($message)) return false;
+    $ch = curl_init("https://api.telegram.org/bot{$token}/sendMessage");
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'chat_id' => $chat,
+        'text' => $message,
+        'parse_mode' => 'HTML',
+        'disable_web_page_preview' => true
+    ]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $res = @curl_exec($ch);
+    curl_close($ch);
+    return $res;
+}
+
+// Helper: Load Announcements
+function loadAnnouncements($filePath, $fallbackPath) {
+    if (file_exists($filePath)) {
+        $data = json_decode(@file_get_contents($filePath), true);
+        if (is_array($data) && !empty($data)) return $data;
+    }
+    if (file_exists($fallbackPath)) {
+        $json = json_decode(@file_get_contents($fallbackPath), true);
+        if (isset($json['news']) && is_array($json['news'])) return $json['news'];
+    }
+    return [
+        [
+            'id' => 1,
+            'title' => 'IMPORTANT: $version Update Released',
+            'content' => 'Brand new $version release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.',
+            'date' => date('Y-m-d'),
+            'importance' => 'High',
+            'category' => 'Software Update',
+            'author' => 'Rakesh Dhawan (Admin)'
+        ],
+        [
+            'id' => 2,
+            'title' => 'UBD Portal Security Guidelines',
+            'content' => 'Ensure Edge IE Mode and Zone 2 Trusted Sites configuration are kept verified. AutoRepair Guardian automatically secures all policies.',
+            'date' => date('Y-m-d'),
+            'importance' => 'Medium',
+            'category' => 'Security',
+            'author' => 'E-Vedhika Security Desk'
+        ]
+    ];
+}
+
+// Helper: Save Announcements
+function saveAnnouncements($list, $announcementsFile, $exeLiveJsonFile) {
+    @file_put_contents($announcementsFile, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    $liveNews = array_map(function($p) {
+        return [
+            'id' => $p['id'] ?? time(),
+            'title' => $p['title'] ?? 'Notice',
+            'content' => $p['content'] ?? '',
+            'date' => $p['date'] ?? date('Y-m-d'),
+            'importance' => strtoupper($p['importance'] ?? 'MEDIUM'),
+            'category' => $p['category'] ?? 'General',
+            'author' => $p['author'] ?? 'Admin'
+        ];
+    }, $list);
+    @file_put_contents($exeLiveJsonFile, json_encode(['news' => $liveNews], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 }
 
 $action = strtolower($_GET['action'] ?? $_POST['action'] ?? '');
+
+// 2. Clear Logs Action (Optional for Admin)
+if (isset($_GET['clear']) && $_GET['clear'] === '1') {
+    if (file_exists($dataFile)) @unlink($dataFile);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
+    exit;
+}
 
 // 3. ACTION: Software Update & Version Check (Used by C# Tool and Web Portal)
 if ($action === 'check_update' || $action === 'version') {
@@ -35,39 +112,107 @@ if ($action === 'check_update' || $action === 'version') {
         'success' => true,
         'name' => 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
         'appName' => 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
-        'executableName' => 'EVedhika_Setup_v1.0.7.exe',
-        'currentVersion' => 'v1.0.7',
-        'latestVersion' => 'v1.0.7',
+        'executableName' => 'EVedhika_Setup_$version.exe',
+        'currentVersion' => '$version',
+        'latestVersion' => '$version',
         'versionCode' => 10070,
         'releaseDate' => '2026-10-17',
-        'downloadUrl' => 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.7.exe',
+        'downloadUrl' => 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_$version.exe',
         'githubRepo' => 'https://github.com/RakeshKumardhawan/UBDTOOLS',
         'updateRequired' => false,
         'silent' => false,
-        'releaseNotes' => 'Enterprise v1.0.7: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
+        'releaseNotes' => 'Enterprise $version: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
         'publisher' => 'E-Vedhika.in (Rakesh Dhawan)',
         'telemetryRelayUrl' => 'https://www.e-vedhika.in/admin/exe_ubd_live'
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// 4. ACTION: Live News & Announcements
-if ($action === 'get_news' || $action === 'news') {
+// 4. ACTION: Live News, Announcements & Posts Feed
+// Compatible with: /api/v1/posts/feed, /api/news, ?action=get_news, ?action=posts_feed
+if (
+    $action === 'get_news' || 
+    $action === 'news' || 
+    $action === 'posts_feed' || 
+    $action === 'get_posts' || 
+    $action === 'feed'
+) {
     header('Content-Type: application/json; charset=utf-8');
+    $announcements = loadAnnouncements($announcementsFile, $exeLiveJsonFile);
+    
+    // Return unified structure compatible with C# app and Web app
     echo json_encode([
-        'news' => [
-            [
-                'title' => 'E-Vedhika v1.0.7 Live Deployment Engine Active',
-                'content' => 'UBD Telangana (ubd.telangana.gov.in) Zone 2 Registry Automation, DSC Token Drivers & Central Live Telemetry active.',
-                'date' => date('Y-m-d'),
-                'importance' => 'HIGH'
-            ]
-        ]
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        'success' => true,
+        'status' => 'ACTIVE_FEED',
+        'endpoint' => '/api/v1/posts/feed',
+        'count' => count($announcements),
+        'posts' => $announcements,
+        'feed' => $announcements,
+        'announcements' => $announcements,
+        'news' => $announcements
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-// 5. ACTION: Export JSON Logs (Used by Web App to Sync Cloud Logs)
+// 5. ACTION: Publish / Delete Announcement from Web Admin or API
+if ($action === 'publish_post' || ($action === 'post_announcement' && $_SERVER['REQUEST_METHOD'] === 'POST')) {
+    header('Content-Type: application/json; charset=utf-8');
+    $input = file_get_contents('php://input');
+    $body = json_decode($input, true) ?: $_POST;
+
+    $title = trim($body['title'] ?? '');
+    $content = trim($body['content'] ?? '');
+    $importance = trim($body['importance'] ?? 'Normal');
+    $category = trim($body['category'] ?? 'General Update');
+    $author = trim($body['author'] ?? 'Rakesh Dhawan (Admin)');
+    $sendTelegram = !empty($body['sendTelegram']);
+
+    if (empty($title) || empty($content)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Title and Content are required']);
+        exit;
+    }
+
+    $announcements = loadAnnouncements($announcementsFile, $exeLiveJsonFile);
+    $newPost = [
+        'id' => time(),
+        'title' => $title,
+        'content' => $content,
+        'date' => date('Y-m-d'),
+        'importance' => $importance,
+        'category' => $category,
+        'author' => $author
+    ];
+
+    array_unshift($announcements, $newPost);
+    saveAnnouncements($announcements, $announcementsFile, $exeLiveJsonFile);
+
+    // Optional Telegram Announcement Broadcast
+    if ($sendTelegram) {
+        $impEmoji = strtoupper($importance) === 'URGENT' ? '🚨' : (strtoupper($importance) === 'HIGH' ? '⚠️' : '📢');
+        $msg = "{$impEmoji} <b>E-VEDHIKA BROADCAST ANNOUNCEMENT</b>\n" .
+               "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" .
+               "📌 <b>" . htmlspecialchars($title) . "</b>\n\n" .
+               htmlspecialchars($content) . "\n\n" .
+               "🏷️ <b>Category:</b> " . htmlspecialchars($category) . "\n" .
+               "⚡ <b>Priority:</b> " . htmlspecialchars($importance) . "\n" .
+               "👤 <b>By:</b> " . htmlspecialchars($author) . "\n" .
+               "⏰ <b>Date:</b> " . date('Y-m-d H:i') . "\n" .
+               "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" .
+               "🌐 <b>Live Feed:</b> https://www.e-vedhika.in/api/v1/posts/feed";
+        sendTelegramMessage($botToken, $chatId, $msg);
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Post published and synced with live application feed!',
+        'post' => $newPost,
+        'count' => count($announcements)
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 6. ACTION: Export JSON Logs (Used by Web App to Sync Cloud Logs)
 if ($action === 'export' || (isset($_GET['format']) && $_GET['format'] === 'json')) {
     header('Content-Type: application/json; charset=utf-8');
     $logs = file_exists($dataFile) ? (json_decode(file_get_contents($dataFile), true) ?: []) : [];
@@ -75,7 +220,7 @@ if ($action === 'export' || (isset($_GET['format']) && $_GET['format'] === 'json
     exit;
 }
 
-// 6. HANDLE INCOMING POST TELEMETRY & INSTALLATION NOTIFICATIONS
+// 7. HANDLE INCOMING POST TELEMETRY & CONSOLIDATED ISSUE TRACKING
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
@@ -84,120 +229,222 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!empty($data)) {
+        // Load raw telemetry logs
         $logs = [];
         if (file_exists($dataFile)) {
-            $jsonData = file_get_contents($dataFile);
-            $logs = json_decode($jsonData, true) ?: [];
+            $logs = json_decode(@file_get_contents($dataFile), true) ?: [];
         }
 
-        // Standardize timestamps, IDs, and PC details
+        // Load consolidated PC records & active issues
+        $consolidatedPcs = file_exists($consolidatedFile) ? (json_decode(@file_get_contents($consolidatedFile), true) ?: []) : [];
+        $activeIssues = file_exists($issuesFile) ? (json_decode(@file_get_contents($issuesFile), true) ?: []) : [];
+
         $now = date('Y-m-d H:i:s');
         $data['receivedAt'] = $now;
         if (!isset($data['id'])) {
             $data['id'] = 'TEL-' . time() . '-' . rand(100, 999);
         }
 
-        $pcName = $data['pcName'] ?? $data['computerName'] ?? 'Unknown-PC';
-        $userName = $data['userName'] ?? $data['operatorName'] ?? 'Panchayat Operator';
-        $location = $data['officeLocation'] ?? $data['office'] ?? 'Telangana GP Office';
-        $status = strtoupper($data['status'] ?? 'SUCCESS');
-        $version = $data['deployVersion'] ?? $data['version'] ?? 'v1.0.7';
-        $os = $data['osVersion'] ?? 'Windows';
-        $dsc = $data['dscStatus'] ?? 'Connected';
-        $remarks = $data['remarks'] ?? 'Report received from client machine.';
+        $pcName = trim($data['pcName'] ?? $data['computerName'] ?? 'Unknown-PC');
+        $machineId = trim($data['machineId'] ?? $data['macAddress'] ?? $pcName);
+        $userName = trim($data['userName'] ?? $data['operatorName'] ?? 'Panchayat Operator');
+        $location = trim($data['officeLocation'] ?? $data['office'] ?? 'Telangana GP Office');
+        $os = trim($data['osVersion'] ?? $data['os'] ?? 'Windows');
+        $osBuild = trim($data['buildNumber'] ?? $data['osBuild'] ?? 'Unknown');
+        $version = trim($data['deployVersion'] ?? $data['version'] ?? '$version');
+        $dsc = trim($data['dscStatus'] ?? $data['dscToken'] ?? 'Active');
+        $edgeVersion = trim($data['edgeVersion'] ?? 'Latest');
+        $edgePolicy = trim($data['edgePolicy'] ?? 'Configured');
+        $sitesXml = trim($data['sitesXmlStatus'] ?? 'Validated');
+        $remarks = trim($data['remarks'] ?? $data['summary'] ?? 'Report received from client machine.');
 
-        // Detect attached files / logs
-        $fileLink = $data['fileLink'] ?? $data['link'] ?? $data['fileUrl'] ?? null;
-        if (!empty($fileLink)) {
-            $data['hasFile'] = true;
+        $stepsTotal = intval($data['stepsTotal'] ?? 15);
+        $stepsVerified = intval($data['stepsVerified'] ?? ($data['status'] === 'SUCCESS' ? 15 : 0));
+        $stepsFailed = intval($data['stepsFailed'] ?? 0);
+
+        // Deduplication & Issue Classification
+        $isIssue = (stripos($data['status'] ?? '', 'ISSUE') !== false ||
+                    stripos($data['status'] ?? '', 'ERROR') !== false ||
+                    stripos($remarks, 'Drift') !== false ||
+                    stripos($remarks, 'Issue') !== false ||
+                    stripos($edgePolicy, 'Drift') !== false ||
+                    stripos($sitesXml, 'Requires') !== false);
+
+        $isRepairAttempt = (stripos($remarks, 'Repair') !== false ||
+                           stripos($data['status'] ?? '', 'REPAIR') !== false);
+
+        $isSuccess = (!$isIssue && stripos($data['status'] ?? '', 'SUCCESS') !== false);
+
+        // Derive Overall System Status
+        $overallStatus = 'ONLINE & READY';
+        if ($isIssue) {
+            $overallStatus = (stripos($remarks, 'Edge') !== false || stripos($remarks, 'sites.xml') !== false) ? 'DEGRADED' : 'WARNING';
+        } elseif ($isRepairAttempt) {
+            $overallStatus = 'REPAIRING';
+        } elseif ($isSuccess) {
+            $overallStatus = 'ONLINE & READY';
         }
 
-        // Prepend new report to storage (keeps latest 1000 records)
+        // Issue Identification Key
+        $issueCategory = 'UBD Edge Policy / sites.xml Drift';
+        if (stripos($remarks, 'DSC') !== false || stripos($remarks, 'Token') !== false) {
+            $issueCategory = 'USB DSC Token / Port 8080 Offline';
+        } elseif (stripos($remarks, 'Registry') !== false) {
+            $issueCategory = 'Registry Zone 2 Policy Drift';
+        }
+
+        $issueId = 'ISSUE-' . strtoupper(substr(md5($machineId . '_' . $issueCategory), 0, 8));
+
+        // Manage Active Issue Record
+        $issueRecord = null;
+        $shouldSendTelegram = true;
+        $isNewIssue = false;
+        $isResolved = false;
+
+        if ($isIssue) {
+            if (isset($activeIssues[$issueId])) {
+                // Existing recurring issue - increment count without Telegram spam!
+                $activeIssues[$issueId]['occurrenceCount'] = ($activeIssues[$issueId]['occurrenceCount'] ?? 1) + 1;
+                $activeIssues[$issueId]['lastDetected'] = $now;
+                $activeIssues[$issueId]['currentStatus'] = 'RECURRING';
+                $activeIssues[$issueId]['remarks'] = $remarks;
+                $issueRecord = $activeIssues[$issueId];
+
+                // Only send Telegram alert if occurrence is 1, 5, 10 or every 20 to prevent notification fatigue
+                $count = $activeIssues[$issueId]['occurrenceCount'];
+                if ($count > 1 && ($count % 10 !== 0 && $count !== 5)) {
+                    $shouldSendTelegram = false; // Throttled!
+                }
+            } else {
+                // Brand new issue
+                $isNewIssue = true;
+                $issueRecord = [
+                    'issueId' => $issueId,
+                    'machineId' => $machineId,
+                    'pcName' => $pcName,
+                    'office' => $location,
+                    'issueCategory' => $issueCategory,
+                    'severity' => ($overallStatus === 'DEGRADED' ? 'HIGH' : 'MEDIUM'),
+                    'firstDetected' => $now,
+                    'lastDetected' => $now,
+                    'occurrenceCount' => 1,
+                    'repairAttempts' => ($isRepairAttempt ? 1 : 0),
+                    'lastRepairResult' => ($isRepairAttempt ? 'Attempted' : 'Pending'),
+                    'postRepairVerification' => 'PENDING',
+                    'currentStatus' => 'ACTIVE',
+                    'remarks' => $remarks
+                ];
+                $activeIssues[$issueId] = $issueRecord;
+            }
+        } elseif ($isSuccess && isset($activeIssues[$issueId])) {
+            // Resolution verified!
+            $activeIssues[$issueId]['currentStatus'] = 'RESOLVED';
+            $activeIssues[$issueId]['postRepairVerification'] = 'PASS';
+            $activeIssues[$issueId]['resolutionTime'] = $now;
+            $overallStatus = 'RESOLVED';
+            $isResolved = true;
+            $issueRecord = $activeIssues[$issueId];
+            unset($activeIssues[$issueId]);
+        }
+
+        // Update Consolidated Machine Health Record
+        $consolidatedPcs[$machineId] = [
+            'machineId' => $machineId,
+            'pcName' => $pcName,
+            'userName' => $userName,
+            'officeLocation' => $location,
+            'os' => $os,
+            'buildNumber' => $osBuild,
+            'appVersion' => $version,
+            'overallStatus' => $overallStatus,
+            'stepsVerified' => "{$stepsVerified}/{$stepsTotal}",
+            'dscStatus' => $dsc,
+            'edgePolicy' => $edgePolicy,
+            'sitesXml' => $sitesXml,
+            'activeIssue' => ($issueRecord ? $issueRecord['issueCategory'] : 'None (Healthy)'),
+            'lastSeen' => $now,
+            'lastSummary' => $remarks
+        ];
+
+        // Save states to disk
         array_unshift($logs, $data);
-        if (count($logs) > 1000) {
-            $logs = array_slice($logs, 0, 1000);
-        }
+        if (count($logs) > 1000) $logs = array_slice($logs, 0, 1000);
         @file_put_contents($dataFile, json_encode($logs, JSON_PRETTY_PRINT));
+        @file_put_contents($consolidatedFile, json_encode($consolidatedPcs, JSON_PRETTY_PRINT));
+        @file_put_contents($issuesFile, json_encode($activeIssues, JSON_PRETTY_PRINT));
 
-        // 7. AUTOMATIC DUAL TELEGRAM ALERT DISPATCH
-        $headerEmoji = "🛡️";
-        $headerTitle = "E-VEDHIKA TELEMETRY REPORT (Live)";
-        
-        if (stripos($status, 'INSTALLED') !== false || stripos($remarks, 'Installation') !== false) {
-            $headerEmoji = "🎉";
-            $headerTitle = "NEW E-VEDHIKA INSTALLATION DETECTED!";
-        } elseif (stripos($status, 'ONLINE') !== false || stripos($remarks, 'App Opened') !== false) {
-            $headerEmoji = "⚡";
-            $headerTitle = "PC ONLINE & APP OPENED (v1.0.7)";
-        } elseif (stripos($status, 'ISSUE') !== false || stripos($status, 'ERROR') !== false) {
-            $headerEmoji = "🚨";
-            $headerTitle = "UBD PORTAL / TOKEN ISSUE REPORTED!";
-        }
+        // 8. DISPATCH CONSOLIDATED TELEGRAM HEALTH REPORT
+        if ($shouldSendTelegram && !empty($botToken) && !empty($chatId)) {
+            $statusEmoji = '✅';
+            if ($overallStatus === 'DEGRADED') $statusEmoji = '🚨';
+            elseif ($overallStatus === 'WARNING') $statusEmoji = '⚠️';
+            elseif ($overallStatus === 'REPAIRING') $statusEmoji = '🔧';
+            elseif ($overallStatus === 'RESOLVED') $statusEmoji = '✨';
 
-        $teleMsg = "{$headerEmoji} <b>{$headerTitle}</b>\n" .
-                   "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" .
-                   "🏢 <b>Office:</b> " . htmlspecialchars($location) . "\n" .
-                   "💻 <b>PC:</b> <code>" . htmlspecialchars($pcName) . "</code> (" . htmlspecialchars($userName) . ")\n" .
-                   "🪟 <b>OS:</b> " . htmlspecialchars($os) . "\n" .
-                   "🔏 <b>DSC Token:</b> " . htmlspecialchars($dsc) . "\n" .
-                   "📦 <b>Version:</b> " . htmlspecialchars($version) . "\n" .
-                   "📊 <b>Status:</b> <b>" . htmlspecialchars($status) . "</b>\n" .
-                   "📝 <b>Summary:</b> " . htmlspecialchars($remarks) . "\n" .
-                   "⏰ <b>Time:</b> " . $now . "\n" .
-                   "━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+            $teleMsg = "🏛️ <b>E-VEDHIKA CONSOLIDATED SYSTEM HEALTH REPORT</b>\n" .
+                       "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" .
+                       "💻 <b>PC:</b> <code>" . htmlspecialchars($pcName) . "</code> (" . htmlspecialchars($userName) . ")\n" .
+                       "🏢 <b>Office:</b> " . htmlspecialchars($location) . "\n" .
+                       "🪟 <b>OS:</b> " . htmlspecialchars($os) . " (Build: " . htmlspecialchars($osBuild) . ")\n" .
+                       "📦 <b>Application:</b> " . htmlspecialchars($version) . "\n\n" .
+                       "📊 <b>Overall Status:</b> {$statusEmoji} <b>" . htmlspecialchars($overallStatus) . "</b>\n" .
+                       "⚙️ <b>Deployment Verification:</b> {$stepsVerified}/{$stepsTotal} Steps Verified\n" .
+                       "🔏 <b>DSC Driver:</b> " . htmlspecialchars($dsc) . "\n" .
+                       "🌐 <b>Edge IE Mode Policy:</b> " . htmlspecialchars($edgePolicy) . "\n" .
+                       "📄 <b>sites.xml:</b> " . htmlspecialchars($sitesXml) . "\n";
 
-        if (!empty($data['fileLink'])) {
-            $teleMsg .= "📎 <b>ఫైల్ / లింక్:</b> <a href=\"" . htmlspecialchars($data['fileLink']) . "\">డౌన్‌లోడ్ చేయండి</a>\n";
-        }
+            if ($issueRecord) {
+                $teleMsg .= "\n⚠️ <b>Active Issue:</b> " . htmlspecialchars($issueRecord['issueCategory']) . "\n" .
+                            "🆔 <b>Issue ID:</b> <code>" . htmlspecialchars($issueRecord['issueId']) . "</code>\n" .
+                            "⏱️ <b>First Detected:</b> " . htmlspecialchars($issueRecord['firstDetected']) . "\n" .
+                            "🔄 <b>Occurrence Count:</b> " . intval($issueRecord['occurrenceCount'] ?? 1) . "\n" .
+                            "🔧 <b>Repair Attempts:</b> " . intval($issueRecord['repairAttempts'] ?? 0) . "\n" .
+                            "🛡️ <b>Post-Repair Verification:</b> " . htmlspecialchars($issueRecord['postRepairVerification'] ?? 'PENDING') . "\n";
+            }
 
-        $teleMsg .= "🌐 <b>Gateway:</b> https://www.e-vedhika.in/admin/exe_ubd_live";
+            $teleMsg .= "\n📝 <b>Summary:</b> " . htmlspecialchars($remarks) . "\n" .
+                        "⏰ <b>Last Updated:</b> " . $now . "\n" .
+                        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" .
+                        "🌐 <b>Admin Gateway:</b> https://www.e-vedhika.in/admin/exe_ubd_live";
 
-        // Dispatch to Telegram Bot using cURL with timeout
-        if (!empty($botToken) && !empty($chatId)) {
-            $ch = curl_init("https://api.telegram.org/bot{$botToken}/sendMessage");
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-                'chat_id' => $chatId,
-                'text' => $teleMsg,
-                'parse_mode' => 'HTML',
-                'disable_web_page_preview' => true
-            ]));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            @curl_exec($ch);
-            curl_close($ch);
+            sendTelegramMessage($botToken, $chatId, $teleMsg);
         }
 
         // Return clean JSON response
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'success' => true,
-            'message' => 'Report stored and Telegram alert dispatched successfully!',
+            'message' => 'Consolidated health report logged successfully!',
             'id' => $data['id'],
+            'overallStatus' => $overallStatus,
+            'issueId' => ($issueRecord ? $issueRecord['issueId'] : null),
+            'telegramDispatched' => $shouldSendTelegram,
             'receivedAt' => $now
-        ]);
+        ], JSON_PRETTY_PRINT);
         exit;
     }
 }
 
-// 8. RENDER WEB MONITORING DASHBOARD (When viewed in browser)
+// 9. RENDER WEB MONITORING & MANAGEMENT DASHBOARD (When viewed in browser)
 $logs = file_exists($dataFile) ? (json_decode(file_get_contents($dataFile), true) ?: []) : [];
+$consolidatedPcs = file_exists($consolidatedFile) ? (json_decode(file_get_contents($consolidatedFile), true) ?: []) : [];
+$activeIssues = file_exists($issuesFile) ? (json_decode(file_get_contents($issuesFile), true) ?: []) : [];
+$announcements = loadAnnouncements($announcementsFile, $exeLiveJsonFile);
+
 $totalCount = count($logs);
-$successCount = count(array_filter($logs, fn($l) => stripos($l['status'] ?? 'SUCCESS', 'SUCCESS') !== false));
-$installCount = count(array_filter($logs, fn($l) => stripos($l['status'] ?? '', 'INSTALLED') !== false || stripos($l['remarks'] ?? '', 'Installation') !== false));
-$issuesCount = count(array_filter($logs, fn($l) => stripos($l['status'] ?? '', 'ISSUE') !== false || stripos($l['status'] ?? '', 'ERROR') !== false));
+$totalPcs = count($consolidatedPcs);
+$healthyPcs = count(array_filter($consolidatedPcs, fn($p) => ($p['overallStatus'] ?? '') === 'ONLINE & READY'));
+$issueCount = count($activeIssues);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏛️ E-Vedhika Live Telemetry Gateway & Dashboard</title>
+    <title>🏛️ E-Vedhika Live Telemetry & Feed Gateway (v1.0.8)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <meta http-equiv="refresh" content="15">
+    <meta http-equiv="refresh" content="30">
     <style> body { font-family: 'Inter', sans-serif; } .font-mono { font-family: 'JetBrains Mono', monospace; } </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
@@ -208,90 +455,133 @@ $issuesCount = count(array_filter($logs, fn($l) => stripos($l['status'] ?? '', '
             <div class="flex items-center gap-4">
                 <div class="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-400/30 text-indigo-400 text-3xl shadow-inner">🛡️</div>
                 <div>
-                    <h1 class="text-2xl font-black text-white tracking-tight">ఈ-వేదిక (E-Vedhika) Live Telemetry Gateway</h1>
-                    <p class="text-xs text-indigo-300 font-medium">Real-Time Central Monitoring & Automatic Telegram Alerts (@DhawanRakesh)</p>
+                    <h1 class="text-2xl font-black text-white tracking-tight">ఈ-వేదిక (E-Vedhika) Live Telemetry & Feed Gateway</h1>
+                    <p class="text-xs text-indigo-300 font-medium">Consolidated PC Health, Anti-Duplicate Alerts & Live Post Feed (@DhawanRakesh)</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <a href="?action=check_update" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700 transition">Test Update JSON</a>
-                <a href="?format=json" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700 transition">Export JSON</a>
-                <a href="?clear=1" onclick="return confirm('మీరు అన్ని లాగ్స్‌ను క్లియర్ చేయాలనుకుంటున్నారా?');" class="px-4 py-2 bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs font-bold rounded-xl border border-rose-700/50 transition">Clear Logs</a>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="?action=posts_feed" target="_blank" class="px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-700/50 transition">Live Post Feed JSON</a>
+                <a href="?action=check_update" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700 transition">Update JSON</a>
+                <a href="?format=json" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700 transition">Export Logs</a>
+                <a href="?clear=1" onclick="return confirm('మీరు అన్ని లాగ్స్‌ను క్లియర్ చేయాలనుకుంటున్నారా?');" class="px-3 py-1.5 bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs font-bold rounded-xl border border-rose-700/50 transition">Clear Logs</a>
             </div>
         </div>
 
-        <!-- Metrics Cards -->
+        <!-- Metric Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">మొత్తం రిపోర్టులు</span>
-                <span class="text-3xl font-black text-white mt-1 block font-mono"><?= $totalCount ?></span>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">కనెక్ట్ అయిన PCలు</span>
+                <span class="text-3xl font-black text-white mt-1 block font-mono"><?= $totalPcs ?></span>
             </div>
             <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-                <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">విజయవంతమైనవి (Success)</span>
-                <span class="text-3xl font-black text-emerald-400 mt-1 block font-mono"><?= $successCount ?></span>
+                <span class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">ఆరోగ్యకరమైనవి (Healthy)</span>
+                <span class="text-3xl font-black text-emerald-400 mt-1 block font-mono"><?= $healthyPcs ?></span>
             </div>
             <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-                <span class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">కొత్త ఇన్‌స్టాలేషన్‌లు</span>
-                <span class="text-3xl font-black text-indigo-400 mt-1 block font-mono"><?= $installCount ?></span>
+                <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider block">యాక్టివ్ సమస్యలు (Active)</span>
+                <span class="text-3xl font-black text-rose-400 mt-1 block font-mono"><?= $issueCount ?></span>
             </div>
             <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-                <span class="text-[11px] font-bold text-rose-400 uppercase tracking-wider block">ఎర్రర్లు / సమస్యలు</span>
-                <span class="text-3xl font-black text-rose-400 mt-1 block font-mono"><?= $issuesCount ?></span>
+                <span class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">లైవ్ పోస్ట్‌లు (Feed)</span>
+                <span class="text-3xl font-black text-indigo-400 mt-1 block font-mono"><?= count($announcements) ?></span>
             </div>
         </div>
 
-        <!-- Live Reports Table -->
+        <!-- Quick Post Announcement Widget -->
+        <div class="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-xl">
+            <h2 class="text-sm font-black text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>📢</span> వెబ్‌సైట్ నుంచి కొత్త పోస్ట్ ప్రచురించండి (Publish Live Post to Feed)
+            </h2>
+            <form method="POST" action="?action=publish_post" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">పోస్ట్ శీర్షిక (Title)</label>
+                        <input type="text" name="title" required placeholder="ఉదా: కొత్త UBD వెర్షన్ లేదా ముఖ్య సమాచారం..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">ప్రాధాన్యత (Importance)</label>
+                        <select name="importance" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 mb-1">వివరాలు (Content)</label>
+                    <textarea name="content" required rows="3" placeholder="పోస్ట్ వివరాలను ఇక్కడ టైప్ చేయండి..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="flex items-center justify-between pt-2">
+                    <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                        <input type="checkbox" name="sendTelegram" value="1" checked class="rounded border-slate-700 bg-slate-950 text-indigo-600">
+                        <span>Telegram గ్రూప్‌కు వెంటనే బ్రాడ్‌కాస్ట్ చేయండి</span>
+                    </label>
+                    <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition shadow-lg">
+                        వెంటనే ప్రచురించండి (Publish Post)
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Consolidated PC Health Table -->
         <div class="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
             <div class="p-5 border-b border-slate-800 flex justify-between items-center">
-                <h2 class="text-sm font-black text-white uppercase tracking-wider">Live Panchayat & Mandal Executions</h2>
-                <span class="text-xs text-slate-400">ఆటో-రిఫ్రెష్: 15 సెకన్లకు ఒకసారి</span>
+                <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>💻</span> Consolidated PC Health Status (కన్సాలిడేటెడ్ రిపోర్టులు)
+                </h2>
+                <span class="text-xs text-slate-400 font-mono"><?= count($consolidatedPcs) ?> PCs Tracked</span>
             </div>
-
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-slate-950/60 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
                         <tr>
-                            <th class="p-4">Time</th>
-                            <th class="p-4">PC & Operator</th>
+                            <th class="p-4">PC Name & User</th>
                             <th class="p-4">Office Location</th>
-                            <th class="p-4">OS / Windows</th>
+                            <th class="p-4">OS & Build</th>
+                            <th class="p-4">Overall Status</th>
+                            <th class="p-4">Verification</th>
                             <th class="p-4">DSC Status</th>
-                            <th class="p-4">Status</th>
-                            <th class="p-4">Summary</th>
+                            <th class="p-4">Active Issue</th>
+                            <th class="p-4">Last Seen</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/60">
-                        <?php if (empty($logs)): ?>
+                        <?php if (empty($consolidatedPcs)): ?>
                         <tr>
-                            <td colspan="7" class="p-12 text-center text-slate-500 font-medium">
-                                ఇంకా ఎటువంటి రిపోర్టులు రాలేదు. క్లయింట్ PC లో టూల్ ఇన్‌స్టాల్ లేదా రన్ అయిన వెంటనే ఇక్కడ ప్రత్యక్షమవుతాయి.
+                            <td colspan="8" class="p-12 text-center text-slate-500 font-medium">
+                                ఇంకా ఏ కంప్యూటర్ నుంచి టెలిమెట్రీ రాలేదు. క్లయింట్ PC లో యాప్ రన్ అయిన వెంటనే ఇక్కడ కనిపిస్తుంది.
                             </td>
                         </tr>
                         <?php else: ?>
-                        <?php foreach ($logs as $log): ?>
+                        <?php foreach ($consolidatedPcs as $pc): ?>
                         <tr class="hover:bg-slate-800/40 transition">
-                            <td class="p-4 font-mono text-slate-400 whitespace-nowrap"><?= htmlspecialchars($log['receivedAt'] ?? $log['time'] ?? 'Just now') ?></td>
                             <td class="p-4">
-                                <div class="font-bold text-white"><?= htmlspecialchars($log['pcName'] ?? 'PC') ?></div>
-                                <div class="text-[10px] text-slate-400"><?= htmlspecialchars($log['userName'] ?? 'User') ?></div>
+                                <div class="font-bold text-white font-mono"><?= htmlspecialchars($pc['pcName']) ?></div>
+                                <div class="text-[10px] text-slate-400"><?= htmlspecialchars($pc['userName']) ?></div>
                             </td>
-                            <td class="p-4 text-slate-300 font-medium"><?= htmlspecialchars($log['officeLocation'] ?? 'GP Office') ?></td>
-                            <td class="p-4 text-slate-400 font-mono text-[11px]"><?= htmlspecialchars($log['osVersion'] ?? 'Windows') ?></td>
+                            <td class="p-4 text-slate-300 font-medium"><?= htmlspecialchars($pc['officeLocation']) ?></td>
+                            <td class="p-4 text-slate-400 font-mono text-[11px]"><?= htmlspecialchars($pc['os']) ?> (<?= htmlspecialchars($pc['buildNumber']) ?>)</td>
+                            <td class="p-4 whitespace-nowrap">
+                                <?php
+                                    $st = $pc['overallStatus'] ?? 'ONLINE & READY';
+                                    $badge = 'bg-emerald-950 text-emerald-300 border-emerald-800';
+                                    if ($st === 'DEGRADED') $badge = 'bg-rose-950 text-rose-300 border-rose-800';
+                                    elseif ($st === 'WARNING') $badge = 'bg-amber-950 text-amber-300 border-amber-800';
+                                    elseif ($st === 'REPAIRING') $badge = 'bg-indigo-950 text-indigo-300 border-indigo-800';
+                                    elseif ($st === 'RESOLVED') $badge = 'bg-teal-950 text-teal-300 border-teal-800';
+                                ?>
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase border <?= $badge ?>"><?= htmlspecialchars($st) ?></span>
+                            </td>
+                            <td class="p-4 font-mono font-bold text-slate-200"><?= htmlspecialchars($pc['stepsVerified']) ?></td>
                             <td class="p-4">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold <?= stripos($log['dscStatus'] ?? '', 'Connect') !== false ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-400' ?>">
-                                    <?= htmlspecialchars($log['dscStatus'] ?? 'Not Checked') ?>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
+                                    <?= htmlspecialchars($pc['dscStatus']) ?>
                                 </span>
                             </td>
-                            <td class="p-4 whitespace-nowrap">
-                                <?php 
-                                    $st = strtoupper($log['status'] ?? 'SUCCESS');
-                                    $bg = 'bg-emerald-950 text-emerald-300 border-emerald-800';
-                                    if (stripos($st, 'INSTALLED') !== false) $bg = 'bg-indigo-950 text-indigo-300 border-indigo-800';
-                                    elseif (stripos($st, 'ONLINE') !== false) $bg = 'bg-sky-950 text-sky-300 border-sky-800';
-                                    elseif (stripos($st, 'ISSUE') !== false || stripos($st, 'ERROR') !== false) $bg = 'bg-rose-950 text-rose-300 border-rose-800';
-                                ?>
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase border <?= $bg ?>"><?= htmlspecialchars($st) ?></span>
+                            <td class="p-4 text-slate-300 max-w-xs truncate">
+                                <?= htmlspecialchars($pc['activeIssue']) ?>
                             </td>
-                            <td class="p-4 text-slate-300 max-w-xs truncate"><?= htmlspecialchars($log['remarks'] ?? 'Report completed.') ?></td>
+                            <td class="p-4 font-mono text-slate-400 whitespace-nowrap"><?= htmlspecialchars($pc['lastSeen']) ?></td>
                         </tr>
                         <?php endforeach; ?>
                         <?php endif; ?>

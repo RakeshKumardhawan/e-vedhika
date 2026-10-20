@@ -1,65 +1,113 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- Rich Background Gradient -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0a2540" />
-      <stop offset="50%" stop-color="#0d3b66" />
-      <stop offset="100%" stop-color="#05192d" />
+    <!-- Background Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0c2242" />
+      <stop offset="70%" stop-color="#07152b" />
+      <stop offset="100%" stop-color="#040b17" />
+    </radialGradient>
+
+    <!-- Arc Glow & Gradient -->
+    <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="35%" stop-color="#0284c7" />
+      <stop offset="70%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#38bdf8" />
     </linearGradient>
-    <!-- Gold Ring Gradient -->
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="50%" stop-color="#facc15" />
-      <stop offset="100%" stop-color="#eab308" />
+
+    <!-- Inner Core Gradient -->
+    <radialGradient id="coreGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#14325e" />
+      <stop offset="60%" stop-color="#091b38" />
+      <stop offset="100%" stop-color="#050e1f" />
+    </radialGradient>
+
+    <!-- Text Metallic Silver/White Gradient -->
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="45%" stop-color="#f0f6fc" />
+      <stop offset="85%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#94a3b8" />
     </linearGradient>
-    <!-- Emerald Accent Gradient -->
-    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4ade80" />
-      <stop offset="100%" stop-color="#16a34a" />
-    </linearGradient>
-    <!-- Inner Badge Gradient -->
-    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e3a8a" />
-      <stop offset="100%" stop-color="#0f172a" />
-    </linearGradient>
-    <!-- Subtle Drop Shadow -->
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+
+    <!-- Glow Filter for Knobs -->
+    <filter id="knobGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Text Shadow -->
+    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.8" />
     </filter>
   </defs>
 
-  <!-- Full Background Square for Maskable PWA Icon Safety -->
-  <rect width="512" height="512" fill="url(#bgGrad)" />
+  <!-- Outer Dark Circular Base -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGrad)" stroke="#112d56" stroke-width="4" />
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#0a1c36" stroke-width="3" />
 
-  <!-- Glowing Outer Gold & Emerald Ring -->
-  <circle cx="256" cy="256" r="215" fill="none" stroke="url(#goldGrad)" stroke-width="12" filter="url(#shadow)" />
-  <circle cx="256" cy="256" r="195" fill="none" stroke="url(#emeraldGrad)" stroke-width="4" stroke-dasharray="16 8" />
+  <!-- Outer Track Groove -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#091b34" stroke-width="38" />
 
-  <!-- Inner Badge Circle -->
-  <circle cx="256" cy="256" r="185" fill="url(#badgeGrad)" stroke="#2563eb" stroke-width="3" />
+  <!-- Glowing Cyan Main Arc (from ~45 deg to ~-45 deg, CCW / 270+ degree sweep) -->
+  <!-- Center: 256, 256; Radius: 200; Arc angle 40 deg to 320 deg -->
+  <!-- Angle 40 deg (top right): x = 256 + 200*cos(-50 deg) = 256 + 128.5 = 384.5, y = 256 - 200*sin(50 deg) = 256 - 153.2 = 102.8 -->
+  <!-- Angle -40 deg (bottom right): x = 384.5, y = 256 + 153.2 = 409.2 -->
+  <path
+    d="M 384.5 102.8 A 200 200 0 1 0 384.5 409.2"
+    fill="none"
+    stroke="url(#arcGrad)"
+    stroke-width="36"
+    stroke-linecap="round"
+  />
 
-  <!-- Pillars/Government Building Emblem Icon -->
-  <g transform="translate(256, 190) scale(2.2)" filter="url(#shadow)">
-    <!-- Dome Roof -->
-    <path d="M 0 -28 Q -28 -8 -22 0 L 22 0 Q 28 -8 0 -28 Z" fill="url(#goldGrad)" />
-    <path d="M -18 0 L 18 0 L 20 5 L -20 5 Z" fill="#ffffff" />
-    <!-- Pillars -->
-    <rect x="-18" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
-    <rect x="-9" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
-    <rect x="0" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
-    <rect x="9" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
-    <rect x="13" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
-    <!-- Base -->
-    <rect x="-22" y="32" width="44" height="6" rx="2" fill="#ffffff" />
-  </g>
+  <!-- Subtle Dashed Ticks inside the Cyan Arc -->
+  <path
+    d="M 378 110 A 200 200 0 1 0 378 402"
+    fill="none"
+    stroke="#7dd3fc"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-dasharray="3 14"
+    opacity="0.75"
+  />
 
-  <!-- Main "E-VEDHIKA" Title Text in Gold & White -->
-  <text x="256" y="335" text-anchor="middle" fill="url(#goldGrad)" font-size="34" font-weight="900" font-family="'Segoe UI', Arial, sans-serif" letter-spacing="2">
-    E-VEDHIKA
-  </text>
+  <!-- Top Glowing White Knob / Terminal Dot -->
+  <circle cx="384.5" cy="102.8" r="18" fill="#ffffff" filter="url(#knobGlow)" />
+  <circle cx="384.5" cy="102.8" r="10" fill="#e0f2fe" />
 
-  <!-- Telugu Text Below -->
-  <text x="256" y="375" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="800" font-family="'Segoe UI', Arial, sans-serif" letter-spacing="1">
-    ఈ-వేదిక డిజిటల్ పోర్టల్
+  <!-- Bottom Glowing White Knob / Terminal Dot -->
+  <circle cx="384.5" cy="409.2" r="18" fill="#ffffff" filter="url(#knobGlow)" />
+  <circle cx="384.5" cy="409.2" r="10" fill="#e0f2fe" />
+
+  <!-- Small accent bracket on the open right side -->
+  <path
+    d="M 448 230 A 215 215 0 0 1 448 282"
+    fill="none"
+    stroke="#1e3a5f"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+
+  <!-- Inner Dark Blue Circular Core -->
+  <circle cx="256" cy="256" r="156" fill="url(#coreGrad)" stroke="#1d4ed8" stroke-width="3" />
+  <circle cx="256" cy="256" r="148" fill="none" stroke="#2563eb" stroke-width="1.5" opacity="0.6" />
+
+  <!-- "EV" Center Bold Text -->
+  <text
+    x="256"
+    y="298"
+    text-anchor="middle"
+    fill="url(#textGrad)"
+    font-size="124"
+    font-weight="900"
+    font-family="'Inter', 'Arial Black', Impact, 'Segoe UI', system-ui, sans-serif"
+    letter-spacing="-2"
+    filter="url(#textShadow)"
+  >
+    EV
   </text>
 </svg>

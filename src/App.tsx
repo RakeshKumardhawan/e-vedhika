@@ -4072,7 +4072,14 @@ export default function App() {
           const p = { id: snap.id, ...snap.data() } as UserProfile & { welcomeMessageSent?: boolean };
           setUserProfile(p);
           
-          // Increment visit/login count once per session
+          // Restore permanently dismissed notifications across all devices/sessions
+          if (Array.isArray((p as any).dismissedNotifIds) && (p as any).dismissedNotifIds.length > 0) {
+            setDismissedNotifIds(prev => {
+              const next = new Set([...prev, ...(p as any).dismissedNotifIds]);
+              try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
+              return next;
+            });
+          }
           const sessionKey = "ev_visit_incremented_" + user.uid;
           if (!sessionStorage.getItem(sessionKey)) {
             sessionStorage.setItem(sessionKey, "true");
@@ -4237,11 +4244,23 @@ E-Vedhika Team`;
       },
     );
 
-    let initialNotificationsLoadedLocal = false;
-    const notificationTargets = [user?.uid || "guest", "all"];
-    if (userRole === "admin") notificationTargets.push("admin_only");
+    return () => {
+      unsubProfile();
+      unsubAdminCheck();
+      unsubChat();
+      unsubProblems();
+      unsubRequests();
+    };
+  }, [user, userRole]);
 
-    const unsub1 = onSnapshot(
+  // Global real-time notifications listener for all users (guests, members, and admins)
+  useEffect(() => {
+    let initialNotificationsLoadedLocal = false;
+    const notificationTargets = ["all"];
+    if (user?.uid) notificationTargets.push(user.uid);
+    if (userRole === "admin" || isAdmin) notificationTargets.push("admin_only");
+
+    const unsubNotifs = onSnapshot(
       query(
         collection(db, "notifications"),
         where("uid", "in", notificationTargets),
@@ -4249,15 +4268,17 @@ E-Vedhika Team`;
       (snap) => {
         const nArr: Notification[] = [];
         snap.forEach((d) => {
-          if (!dismissedNotifIds.has(d.id)) {
-            nArr.push({ id: d.id, ...(d.data() as any) } as Notification);
+          const data = d.data() as any;
+          const isDismissedByDoc = Array.isArray(data.dismissedBy) && user?.uid && data.dismissedBy.includes(user.uid);
+          if (!dismissedNotifIds.has(d.id) && !isDismissedByDoc) {
+            nArr.push({ id: d.id, ...data } as Notification);
           }
         });
         setNotifications(nArr.sort((a, b) => b.time - a.time));
         setUnreadCount(
           nArr.filter((n) => {
             if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
-            if (n.uid === "admin_only" && userRole !== "admin") return false;
+            if (n.uid === "admin_only" && userRole !== "admin" && !isAdmin) return false;
             if (readNotifIds.has(n.id)) return false;
             if (n.uid === "all") {
               return !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false);
@@ -4275,8 +4296,10 @@ E-Vedhika Team`;
           if (addedChanges.length > 0) {
             addedChanges.forEach((change) => {
               const newNotif = change.doc.data() as any;
+              if (dismissedNotifIds.has(change.doc.id)) return;
+              if (Array.isArray(newNotif.dismissedBy) && user?.uid && newNotif.dismissedBy.includes(user.uid)) return;
               const isOwnAction = newNotif.senderUid && user && newNotif.senderUid === user.uid;
-              if (newNotif.uid === "admin_only" && userRole !== "admin") return;
+              if (newNotif.uid === "admin_only" && userRole !== "admin" && !isAdmin) return;
               if (isOwnAction) return;
 
               const isRecent = !newNotif.time || (Date.now() - newNotif.time < 300000);
@@ -4298,14 +4321,9 @@ E-Vedhika Team`;
     );
 
     return () => {
-      unsubProfile();
-      unsubAdminCheck();
-      unsubChat();
-      unsubProblems();
-      unsubRequests();
-      unsub1();
+      unsubNotifs();
     };
-  }, [user, userRole]);
+  }, [user?.uid, userRole, isAdmin, dismissedNotifIds, readNotifIds]);
 
   // 3. Dynamically control forced profile setup - only show it when in "suggestions" tab and profile is incomplete
   useEffect(() => {
@@ -5544,51 +5562,8 @@ E-Vedhika Team`;
             </div>
           </div>
 
-          {/* Center Font Size Switcher (only on XL screens to prevent overlap) */}
-          <div className="hidden xl:flex items-center justify-center shrink-0">
-            <div className="flex items-center gap-1 bg-[#071a30] border border-white/15 rounded-full p-1 shadow-inner">
-              <span className="text-[10px] font-black text-slate-300 uppercase tracking-wider px-2 select-none">అక్షరాల సైజు</span>
-              <button
-                onClick={() => setTextZoom("normal")}
-                className={`text-[9.5px] font-black uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "normal" ? "bg-[#fbe947] text-[#0d2a4a] shadow-xs" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
-                title="సాధారణ సైజు"
-              >
-                సాధారణం (A)
-              </button>
-              <button
-                onClick={() => setTextZoom("large")}
-                className={`text-[9.5px] font-black uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "large" ? "bg-[#fbe947] text-[#0d2a4a] shadow-xs" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
-                title="పెద్ద సైజు"
-              >
-                పెద్దది (A+)
-              </button>
-              <button
-                onClick={() => setTextZoom("xlarge")}
-                className={`text-[9.5px] font-black uppercase px-2.5 py-1 transition-all cursor-pointer rounded-full ${textZoom === "xlarge" ? "bg-[#fbe947] text-[#0d2a4a] shadow-xs" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
-                title="చాలా పెద్ద సైజు"
-              >
-                మహా పెద్దది (A++)
-              </button>
-            </div>
-          </div>
-
-          
-        
-
-
-
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            {/* Install PWA App Header Button */}
-            <button
-              onClick={handlePWAInstall}
-              className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-slate-900 rounded-full sm:rounded-xl text-[10px] sm:text-[11px] font-black tracking-tight transition-all active:scale-95 shadow-md shadow-amber-500/20 flex items-center gap-1 shrink-0 cursor-pointer border border-amber-300/80"
-              title="E-Vedhika Mobile App ఇన్‌స్టాల్ చేసుకోండి"
-            >
-              <Smartphone size={15} className="text-slate-900 shrink-0" />
-              <span className="inline font-bold">యాప్ ఇన్‌స్టాల్</span>
-            </button>
-
             {/* Direct Messages Button */}
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
@@ -5630,17 +5605,18 @@ E-Vedhika Team`;
             <AnimatePresence>
               {showNotifications && (
                 <motion.div
-                  initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                  id="notifications-dropdown-menu"
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 12, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                  className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[72px] sm:top-full sm:mt-4 w-auto sm:w-[420px] max-w-[calc(100vw-32px)] bg-white rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-200/80 z-[2000] overflow-hidden flex flex-col"
-                  style={{ maxHeight: "calc(100vh - 120px)" }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="fixed top-[68px] right-3 sm:right-6 md:right-8 w-[calc(100vw-24px)] sm:w-[420px] max-w-[420px] bg-white rounded-2xl sm:rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-200/90 z-[3000] overflow-hidden flex flex-col"
+                  style={{ maxHeight: "calc(100vh - 84px)" }}
                 >
                   {/* Arrow for Desktop */}
-                  <div className="hidden sm:block absolute top-[-8px] right-[18px] w-4 h-4 bg-white border-t border-l border-slate-200/80 rotate-45 z-[-1]" />
+                  <div className="hidden sm:block absolute top-[-6px] right-7 w-3 h-3 bg-slate-50 border-t border-l border-slate-200/90 rotate-45 z-10" />
 
-                  <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 backdrop-blur-sm sticky top-0 z-10">
+                  <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/95 backdrop-blur-sm sticky top-0 z-10 shrink-0">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
                         <Bell size={18} strokeWidth={2.5} />
@@ -5655,8 +5631,9 @@ E-Vedhika Team`;
                     <div className="flex items-center gap-2">
                       {notifications.length > 0 && (
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const allIds = notifications.map(n => n.id);
+                            // 1. Update React state and localStorage immediately
                             setDismissedNotifIds(prev => {
                               const next = new Set([...prev, ...allIds]);
                               try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
@@ -5664,10 +5641,37 @@ E-Vedhika Team`;
                             });
                             setNotifications([]);
                             setUnreadCount(0);
-                            addToast("అన్ని నోటిఫికేషన్‌లు తొలగించబడ్డాయి (Cleared all)");
+
+                            // 2. Persist permanently to user document in Firestore so it survives reloads, new sessions, and devices
+                            if (user?.uid) {
+                              updateDoc(doc(db, "users", user.uid), {
+                                dismissedNotifIds: arrayUnion(...allIds)
+                              }).catch(() => {});
+                            }
+
+                            // 3. If Admin or creator, permanently delete admin/personal notification documents from Firestore
+                            try {
+                              const deletePromises = notifications.map(n => {
+                                if (isAdmin || userRole === "admin" || n.uid === user?.uid || n.uid === "admin_only" || n.type === "admin_alert") {
+                                  return deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+                                }
+                                if (user?.uid) {
+                                  return updateDoc(doc(db, "notifications", n.id), {
+                                    dismissedBy: arrayUnion(user.uid),
+                                    readBy: arrayUnion(user.uid)
+                                  }).catch(() => {});
+                                }
+                                return Promise.resolve();
+                              });
+                              await Promise.all(deletePromises);
+                            } catch (e) {
+                              console.error("Error clearing notifications from firestore:", e);
+                            }
+
+                            addToast("అన్ని నోటిఫికేషన్‌లు శాశ్వతంగా క్లియర్ చేయబడ్డాయి (All notifications permanently cleared)!");
                           }}
                           className="text-[10px] font-black text-slate-400 hover:text-red-600 px-3 py-1.5 rounded-xl hover:bg-red-50 transition-all cursor-pointer flex items-center gap-1.5 border border-transparent hover:border-red-100"
-                          title="అన్నీ క్లియర్ చేయండి"
+                          title="అన్నీ శాశ్వతంగా క్లియర్ చేయండి"
                         >
                           <Trash2 size={13} />
                           <span className="hidden min-[400px]:inline uppercase">Clear All</span>
@@ -5707,7 +5711,7 @@ E-Vedhika Team`;
                   )}
 
                   {/* Category Filter Tabs */}
-                  <div className="flex gap-1.5 p-3 bg-slate-50 border-b border-slate-100 overflow-x-auto scrollbar-none no-scrollbar">
+                  <div className="flex gap-1.5 p-3 bg-slate-50 border-b border-slate-100 overflow-x-auto scrollbar-none no-scrollbar shrink-0">
                     {[
                       { id: "all", label: "All" },
                       { id: "system", label: "System" },
@@ -5856,19 +5860,36 @@ E-Vedhika Team`;
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      const notifId = n.id;
+                                      // 1. Update state and localStorage immediately
                                       setDismissedNotifIds(prev => {
                                         const next = new Set(prev);
-                                        next.add(n.id);
+                                        next.add(notifId);
                                         try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
                                         return next;
                                       });
-                                      setNotifications(prev => prev.filter(item => item.id !== n.id));
+                                      setNotifications(prev => prev.filter(item => item.id !== notifId));
                                       if (isUnread) setUnreadCount(prev => Math.max(0, prev - 1));
-                                      if (n.uid === user?.uid) {
-                                        deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+
+                                      // 2. Persist to Firestore user profile
+                                      if (user?.uid) {
+                                        updateDoc(doc(db, "users", user.uid), {
+                                          dismissedNotifIds: arrayUnion(notifId)
+                                        }).catch(() => {});
                                       }
+
+                                      // 3. Delete doc if admin or owner, or mark dismissedBy on shared doc
+                                      if (isAdmin || userRole === "admin" || n.uid === user?.uid || n.uid === "admin_only" || n.type === "admin_alert") {
+                                        deleteDoc(doc(db, "notifications", notifId)).catch(() => {});
+                                      } else if (user?.uid) {
+                                        updateDoc(doc(db, "notifications", notifId), {
+                                          dismissedBy: arrayUnion(user.uid)
+                                        }).catch(() => {});
+                                      }
+                                      addToast("నోటిఫికేషన్ శాశ్వతంగా తొలగించబడింది (Notification removed)");
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 absolute right-4 bottom-4 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                    className="opacity-0 group-hover:opacity-100 absolute right-4 bottom-4 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                                    title="శాశ్వతంగా తొలగించండి"
                                   >
                                     <Trash2 size={14} />
                                   </button>
@@ -5901,7 +5922,7 @@ E-Vedhika Team`;
                     if ((n.type === "admin_alert" || n.uid === "admin_only") && userRole !== "admin") return false;
                     return true;
                   }).length > 0 && (
-                    <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50/50 backdrop-blur-sm sticky bottom-0">
+                    <div className="flex border-t border-slate-100 divide-x divide-slate-100 bg-slate-50/95 backdrop-blur-sm sticky bottom-0 shrink-0">
                       <button
                         onClick={async () => {
                           const allIds = notifications.map(n => n.id);

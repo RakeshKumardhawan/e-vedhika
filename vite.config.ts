@@ -173,10 +173,22 @@ export default defineConfig(({mode}) => {
               res.end('google-site-verification: google46d0fa093843f771.html');
               return;
             }
+            if (req.url && (req.url.startsWith('/api/v1/posts/create') || (req.url.startsWith('/api/v1/posts/feed') && req.method === 'POST'))) {
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+              res.end(JSON.stringify({
+                status: "success",
+                message: "పోస్ట్ విజయవంతంగా పబ్లిష్ చేయబడింది (Post successfully published)",
+                postId: "dev_post_" + Date.now(),
+                link: "https://www.e-vedhika.in/?tab=posts"
+              }));
+              return;
+            }
             if (req.url && (req.url.startsWith('/api/v1/posts/feed') || req.url.startsWith('/api/posts/feed'))) {
               res.setHeader('Content-Type', 'application/json; charset=utf-8');
               res.setHeader('Access-Control-Allow-Origin', '*');
-              res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
               res.end(JSON.stringify({
                 status: "success",
                 portal: "E-Vedhika Digital Portal",
@@ -199,6 +211,102 @@ export default defineConfig(({mode}) => {
                 ]
               }));
               return;
+            }
+            if (req.url && (req.url.startsWith('/admin/exe_ubd_live') || req.url.startsWith('/exe_ubd_live'))) {
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+              if (req.method === 'OPTIONS') {
+                res.statusCode = 200;
+                res.end();
+                return;
+              }
+              const urlObj = new URL(req.url, 'http://localhost:3000');
+              const action = (urlObj.searchParams.get('action') || '').toLowerCase().trim();
+              const format = (urlObj.searchParams.get('format') || '').toLowerCase().trim();
+
+              if (action === 'check_update' || action === 'version') {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.end(JSON.stringify({
+                  success: true,
+                  name: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+                  appName: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+                  executableName: 'EVedhika_Setup_v1.0.7.exe',
+                  currentVersion: 'v1.0.7',
+                  latestVersion: 'v1.0.7',
+                  versionCode: 10070,
+                  releaseDate: '2026-10-17',
+                  downloadUrl: 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.7.exe',
+                  githubRepo: 'https://github.com/RakeshKumardhawan/UBDTOOLS',
+                  updateRequired: false,
+                  silent: false,
+                  releaseNotes: 'Enterprise v1.0.7: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
+                  publisher: 'E-Vedhika.in (Rakesh Dhawan)',
+                  telemetryRelayUrl: 'https://www.e-vedhika.in/admin/exe_ubd_live'
+                }, null, 2));
+                return;
+              }
+
+              if (action === 'get_news' || action === 'news' || action === 'posts_feed' || action === 'get_posts' || action === 'feed') {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                const announcements = [
+                  {
+                    id: 1,
+                    title: 'IMPORTANT: v1.0.7 Update Released',
+                    content: 'Brand new v1.0.7 release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.',
+                    date: new Date().toISOString().slice(0, 10),
+                    importance: 'High',
+                    category: 'Software Update',
+                    author: 'Rakesh Dhawan (Admin)'
+                  },
+                  {
+                    id: 2,
+                    title: 'UBD Portal Security Guidelines',
+                    content: 'Ensure Edge IE Mode and Zone 2 Trusted Sites configuration are kept verified. AutoRepair Guardian automatically secures all policies.',
+                    date: new Date().toISOString().slice(0, 10),
+                    importance: 'Medium',
+                    category: 'Security',
+                    author: 'E-Vedhika Security Desk'
+                  }
+                ];
+                res.end(JSON.stringify({
+                  success: true,
+                  status: 'ACTIVE_FEED',
+                  endpoint: '/api/v1/posts/feed',
+                  count: announcements.length,
+                  posts: announcements,
+                  feed: announcements,
+                  announcements: announcements,
+                  news: announcements
+                }, null, 2));
+                return;
+              }
+
+              if (action === 'export' || format === 'json') {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.end(JSON.stringify({
+                  success: true,
+                  count: 0,
+                  logs: []
+                }, null, 2));
+                return;
+              }
+
+              if (urlObj.searchParams.get('clear') === '1') {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.end(JSON.stringify({ success: true, message: 'Logs cleared successfully' }));
+                return;
+              }
+
+              if (req.method === 'POST') {
+                res.setHeader('Content-Type', 'application/json; charset=utf-8');
+                res.end(JSON.stringify({
+                  success: true,
+                  message: 'Consolidated health report logged successfully!',
+                  receivedAt: new Date().toISOString()
+                }));
+                return;
+              }
             }
             next();
           });
@@ -248,7 +356,8 @@ export default defineConfig(({mode}) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      strictPort: false,
+      strictPort: true,
+      allowedHosts: true,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify - file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true' ? { overlay: false } : false,

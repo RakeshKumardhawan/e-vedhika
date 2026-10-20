@@ -630,7 +630,7 @@ export function SuperAdminDashboard({
       ) : effectiveTab === "exe_release" ? (
         <ExeDeploymentManager />
       ) : effectiveTab === "exe_ubd_live" ? (
-        <UBDLiveMonitoring />
+        <UBDLiveMonitoring user={user} addToast={addToast} />
       ) : effectiveTab === "health" ? (
         <LiveSystemHealthCenter />
       ) : effectiveTab === "ddos" ? (

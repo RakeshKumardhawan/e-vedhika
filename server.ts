@@ -1331,18 +1331,37 @@ app.get(['/admin/exe_ubd_live', '/admin/exe_ubd_live.php', '/exe_ubd_live.php'],
     });
   }
 
-  if (action === 'get_news' || action === 'news') {
+  if (action === 'get_news' || action === 'news' || action === 'posts_feed' || action === 'get_posts' || action === 'feed') {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    const announcements = [
+      {
+        id: 1,
+        title: 'IMPORTANT: v1.0.7 Update Released',
+        content: 'Brand new v1.0.7 release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.',
+        date: new Date().toISOString().slice(0, 10),
+        importance: 'High',
+        category: 'Software Update',
+        author: 'Rakesh Dhawan (Admin)'
+      },
+      {
+        id: 2,
+        title: 'UBD Portal Security Guidelines',
+        content: 'Ensure Edge IE Mode and Zone 2 Trusted Sites configuration are kept verified. AutoRepair Guardian automatically secures all policies.',
+        date: new Date().toISOString().slice(0, 10),
+        importance: 'Medium',
+        category: 'Security',
+        author: 'E-Vedhika Security Desk'
+      }
+    ];
     return res.json({
-      news: [
-        {
-          id: 1,
-          title: 'E-Vedhika v1.0.7 Live Deployment Engine Active',
-          content: 'UBD Telangana (ubd.telangana.gov.in) Zone 2 Registry Automation, DSC Token Drivers & Central Live Telemetry active.',
-          date: '2026-10-17',
-          importance: 'HIGH'
-        }
-      ]
+      success: true,
+      status: 'ACTIVE_FEED',
+      endpoint: '/api/v1/posts/feed',
+      count: announcements.length,
+      posts: announcements,
+      feed: announcements,
+      announcements: announcements,
+      news: announcements
     });
   }
 
@@ -1879,6 +1898,73 @@ app.get('/api/v1/posts/feed', async (req, res) => {
     return res.status(500).json({ status: "error", message: err.message || "Failed to fetch posts feed" });
   }
 });
+
+// 📡 Create Post via API Endpoint (For External Apps / Admin Integrations)
+const handleCreatePostApi = async (req: any, res: any) => {
+  try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    const payload = req.body || {};
+    const title = payload.title?.trim();
+    const content = payload.content?.trim();
+
+    if (!title) {
+      return res.status(400).json({ status: "error", message: "Title (శీర్షిక) is required" });
+    }
+
+    const postTime = Date.now();
+    const postDoc = {
+      title,
+      content: content || "",
+      category: payload.category || "UPDATES",
+      categories: [payload.category || "UPDATES"],
+      authorName: payload.authorName || payload.author || "Admin",
+      userName: payload.authorName || payload.author || "Admin",
+      time: postTime,
+      createdAt: postTime,
+      imageUrl: payload.imageUrl || payload.image || "",
+      fileUrl: payload.fileUrl || payload.attachment || "",
+      pinned: Boolean(payload.pinned),
+      status: "published",
+      isAdminPost: true,
+      likes: 0,
+      likedBy: [],
+      views: 0,
+      comments: [],
+      commentCount: 0
+    };
+
+    let savedId = `api_post_${postTime}`;
+    const initOk = typeof initFirebaseAdmin === 'function' ? initFirebaseAdmin() : false;
+    if (initOk) {
+      try {
+        const docRef = await admin.firestore().collection("posts").add(postDoc);
+        savedId = docRef.id;
+      } catch (err) {
+        console.error("Failed to insert post into firestore via API:", err);
+      }
+    }
+
+    return res.json({
+      status: "success",
+      message: "పోస్ట్ విజయవంతంగా పబ్లిష్ చేయబడింది (Post successfully published)",
+      postId: savedId,
+      link: `https://www.e-vedhika.in/?tab=posts&post=${savedId}`,
+      post: {
+        id: savedId,
+        ...postDoc
+      }
+    });
+  } catch (err: any) {
+    console.error("Error creating post via API:", err);
+    return res.status(500).json({ status: "error", message: err.message || "Failed to create post" });
+  }
+};
+
+app.post('/api/v1/posts/create', handleCreatePostApi);
+app.post('/api/v1/posts/feed', handleCreatePostApi);
 
 // 📡 Webhook / Sync Endpoint for External Applications
 app.post('/api/v1/posts/webhook', async (req, res) => {
@@ -5010,82 +5096,8 @@ app.get('/api/remote-commands', (req, res) => {
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
       res.send(html);
-  // 🌐 External Application Feed API Endpoint (Live Sync URL for external apps & webviews)
-  app.get('/api/v1/posts/feed', async (req, res) => {
-    try {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-      res.setHeader("Content-Type", "application/json; charset=utf-8");
-
-      let posts: any[] = [];
-      const initOk = typeof initFirebaseAdmin === 'function' ? initFirebaseAdmin() : false;
-
-      if (initOk) {
-        try {
-          const snapshot = await admin.firestore().collection("posts").orderBy("createdAt", "desc").limit(30).get();
-          posts = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              title: data.title || data.heading || "E-Vedhika Update",
-              category: data.category || "GENERAL",
-              content: data.content || data.body || "",
-              author: data.authorName || data.author || "Admin",
-              created_at: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt) : new Date().toISOString(),
-              image_url: data.imageUrl || data.image || null,
-              file_url: data.fileUrl || data.attachment || null,
-              pinned: Boolean(data.pinned),
-              link: `https://www.e-vedhika.in/?tab=posts&post=${doc.id}`
-            };
-          });
-        } catch (e) {
-          console.error("Failed to query posts collection for external feed:", e);
-        }
-      }
-
-      if (posts.length === 0) {
-        posts = [
-          {
-            id: "system_1",
-            title: "E-Vedhika Digital Portal Active",
-            category: "UPDATES",
-            content: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్ల పోర్టల్.",
-            author: "Admin",
-            created_at: new Date().toISOString(),
-            image_url: "https://www.e-vedhika.in/ev-logo-v2.png",
-            file_url: null,
-            pinned: true,
-            link: "https://www.e-vedhika.in/"
-          }
-        ];
-      }
-
-      return res.json({
-        status: "success",
-        portal: "E-Vedhika Digital Portal",
-        website: "https://www.e-vedhika.in",
-        total_posts: posts.length,
-        last_updated: new Date().toISOString(),
-        posts: posts
-      });
-    } catch (err: any) {
-      console.error("Error in /api/v1/posts/feed:", err);
-      return res.status(500).json({ status: "error", message: err.message || "Failed to fetch posts feed" });
-    }
-  });
-
-  // 📡 Webhook / Sync Endpoint for External Applications
-  app.post('/api/v1/posts/webhook', async (req, res) => {
-    try {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      const payload = req.body;
-      console.log("Received post payload for external app sync:", payload);
-      return res.json({ status: "success", message: "Post payload received for app sync", received: payload });
-    } catch (err: any) {
-      return res.status(500).json({ status: "error", message: err.message });
-    }
-  });
+    });
+  }
 
   const server = app.listen(PORT, HOST, () => {
     console.log(`  VITE v6.2.0  ready in 150 ms`);
