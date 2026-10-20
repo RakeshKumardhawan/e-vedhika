@@ -1,55 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <!-- కలర్ గ్రేడియంట్స్ (Color Gradients) -->
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#22c55e" />
-      <stop offset="100%" stop-color="#0ea5e9" />
+    <!-- Rich Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a2540" />
+      <stop offset="50%" stop-color="#0d3b66" />
+      <stop offset="100%" stop-color="#05192d" />
     </linearGradient>
-    <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#22c55e" />
+    <!-- Gold Ring Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
       <stop offset="50%" stop-color="#facc15" />
-      <stop offset="100%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#eab308" />
     </linearGradient>
-    <style>
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-      .logo-ring {
-        transform-origin: center;
-        animation: spin 8s linear infinite;
-      }
-    </style>
+    <!-- Emerald Accent Gradient -->
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#16a34a" />
+    </linearGradient>
+    <!-- Inner Badge Gradient -->
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <!-- Subtle Drop Shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
   </defs>
-  
-  <!-- బయటి డైనమిక్ రింగ్ (Outer Dynamic Ring) -->
-  <circle
-    class="logo-ring"
-    cx="32"
-    cy="32"
-    r="29"
-    fill="none"
-    stroke="url(#ringG)"
-    stroke-width="2.5"
-    stroke-dasharray="10 5"
-  />
-  
-  <!-- లోపలి ప్రైమరీ బ్యాక్‌గ్రౌండ్ (Inner Gradient Base) -->
-  <circle cx="32" cy="32" r="25" fill="url(#g)" />
-  <circle cx="32" cy="32" r="21" fill="#0f172a" />
-  
-  <!-- EV సెంట్రల్ టెక్స్ట్ (EV Central Text) -->
-  <text
-    x="50%"
-    y="54%"
-    dominant-baseline="middle"
-    text-anchor="middle"
-    fill="#ffffff"
-    font-size="18"
-    font-weight="900"
-    font-family="Segoe UI, system-ui, -apple-system, sans-serif"
-    letter-spacing="0.5"
-  >
-    EV
+
+  <!-- Full Background Square for Maskable PWA Icon Safety -->
+  <rect width="512" height="512" fill="url(#bgGrad)" />
+
+  <!-- Glowing Outer Gold & Emerald Ring -->
+  <circle cx="256" cy="256" r="215" fill="none" stroke="url(#goldGrad)" stroke-width="12" filter="url(#shadow)" />
+  <circle cx="256" cy="256" r="195" fill="none" stroke="url(#emeraldGrad)" stroke-width="4" stroke-dasharray="16 8" />
+
+  <!-- Inner Badge Circle -->
+  <circle cx="256" cy="256" r="185" fill="url(#badgeGrad)" stroke="#2563eb" stroke-width="3" />
+
+  <!-- Pillars/Government Building Emblem Icon -->
+  <g transform="translate(256, 190) scale(2.2)" filter="url(#shadow)">
+    <!-- Dome Roof -->
+    <path d="M 0 -28 Q -28 -8 -22 0 L 22 0 Q 28 -8 0 -28 Z" fill="url(#goldGrad)" />
+    <path d="M -18 0 L 18 0 L 20 5 L -20 5 Z" fill="#ffffff" />
+    <!-- Pillars -->
+    <rect x="-18" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
+    <rect x="-9" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
+    <rect x="0" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
+    <rect x="9" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
+    <rect x="13" y="7" width="5" height="24" rx="2" fill="url(#goldGrad)" />
+    <!-- Base -->
+    <rect x="-22" y="32" width="44" height="6" rx="2" fill="#ffffff" />
+  </g>
+
+  <!-- Main "E-VEDHIKA" Title Text in Gold & White -->
+  <text x="256" y="335" text-anchor="middle" fill="url(#goldGrad)" font-size="34" font-weight="900" font-family="'Segoe UI', Arial, sans-serif" letter-spacing="2">
+    E-VEDHIKA
+  </text>
+
+  <!-- Telugu Text Below -->
+  <text x="256" y="375" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="800" font-family="'Segoe UI', Arial, sans-serif" letter-spacing="1">
+    ఈ-వేదిక డిజిటల్ పోర్టల్
   </text>
 </svg>
