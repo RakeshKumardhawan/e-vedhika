@@ -3118,6 +3118,14 @@ export default function App() {
       return new Set();
     }
   });
+  const [notifClearedBefore, setNotifClearedBefore] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem("evedhika_notifs_cleared_before");
+      return stored ? Number(stored) : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [aboutContent, setAboutContent] = useState<{
     title: string;
     content: string;
@@ -4080,6 +4088,13 @@ export default function App() {
               return next;
             });
           }
+          if ((p as any).notifClearedBefore && typeof (p as any).notifClearedBefore === 'number') {
+            setNotifClearedBefore(prev => {
+              const nextVal = Math.max(prev, Number((p as any).notifClearedBefore));
+              try { localStorage.setItem("evedhika_notifs_cleared_before", String(nextVal)); } catch {}
+              return nextVal;
+            });
+          }
           const sessionKey = "ev_visit_incremented_" + user.uid;
           if (!sessionStorage.getItem(sessionKey)) {
             sessionStorage.setItem(sessionKey, "true");
@@ -4270,7 +4285,9 @@ E-Vedhika Team`;
         snap.forEach((d) => {
           const data = d.data() as any;
           const isDismissedByDoc = Array.isArray(data.dismissedBy) && user?.uid && data.dismissedBy.includes(user.uid);
-          if (!dismissedNotifIds.has(d.id) && !isDismissedByDoc) {
+          const notifTime = Number(data.time || data.createdAt || 0);
+          const isClearedBefore = notifClearedBefore > 0 && notifTime > 0 && notifTime <= notifClearedBefore;
+          if (!dismissedNotifIds.has(d.id) && !isDismissedByDoc && !isClearedBefore) {
             nArr.push({ id: d.id, ...data } as Notification);
           }
         });
@@ -4298,6 +4315,8 @@ E-Vedhika Team`;
               const newNotif = change.doc.data() as any;
               if (dismissedNotifIds.has(change.doc.id)) return;
               if (Array.isArray(newNotif.dismissedBy) && user?.uid && newNotif.dismissedBy.includes(user.uid)) return;
+              const notifTime = Number(newNotif.time || newNotif.createdAt || 0);
+              if (notifClearedBefore > 0 && notifTime > 0 && notifTime <= notifClearedBefore) return;
               const isOwnAction = newNotif.senderUid && user && newNotif.senderUid === user.uid;
               if (newNotif.uid === "admin_only" && userRole !== "admin" && !isAdmin) return;
               if (isOwnAction) return;
@@ -4323,7 +4342,7 @@ E-Vedhika Team`;
     return () => {
       unsubNotifs();
     };
-  }, [user?.uid, userRole, isAdmin, dismissedNotifIds, readNotifIds]);
+  }, [user?.uid, userRole, isAdmin, dismissedNotifIds, readNotifIds, notifClearedBefore]);
 
   // 3. Dynamically control forced profile setup - only show it when in "suggestions" tab and profile is incomplete
   useEffect(() => {
@@ -5632,8 +5651,12 @@ E-Vedhika Team`;
                       {notifications.length > 0 && (
                         <button
                           onClick={async () => {
+                            const now = Date.now();
+                            // 1. Set timestamp filter so all notifications at or before this time are hidden permanently
+                            setNotifClearedBefore(now);
+                            try { localStorage.setItem("evedhika_notifs_cleared_before", String(now)); } catch {}
+
                             const allIds = notifications.map(n => n.id);
-                            // 1. Update React state and localStorage immediately
                             setDismissedNotifIds(prev => {
                               const next = new Set([...prev, ...allIds]);
                               try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
@@ -5642,14 +5665,14 @@ E-Vedhika Team`;
                             setNotifications([]);
                             setUnreadCount(0);
 
-                            // 2. Persist permanently to user document in Firestore so it survives reloads, new sessions, and devices
+                            // 2. Persist permanently to user document in Firestore
                             if (user?.uid) {
                               updateDoc(doc(db, "users", user.uid), {
-                                dismissedNotifIds: arrayUnion(...allIds)
+                                notifClearedBefore: now
                               }).catch(() => {});
                             }
 
-                            // 3. If Admin or creator, permanently delete admin/personal notification documents from Firestore
+                            // 3. Delete notification documents from Firestore for admin / owner
                             try {
                               const deletePromises = notifications.map(n => {
                                 if (isAdmin || userRole === "admin" || n.uid === user?.uid || n.uid === "admin_only" || n.type === "admin_alert") {
@@ -5888,10 +5911,10 @@ E-Vedhika Team`;
                                       }
                                       addToast("నోటిఫికేషన్ శాశ్వతంగా తొలగించబడింది (Notification removed)");
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 absolute right-4 bottom-4 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
-                                    title="శాశ్వతంగా తొలగించండి"
+                                    className="opacity-70 hover:opacity-100 absolute right-3 top-3 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer z-10"
+                                    title="శాశ్వతంగా తొలగించండి (Dismiss)"
                                   >
-                                    <Trash2 size={14} />
+                                    <X size={15} strokeWidth={2.5} />
                                   </button>
                                 </div>
                               );
@@ -5966,10 +5989,57 @@ E-Vedhika Team`;
                             console.error("Failed marking all notifications as read:", e);
                           }
                         }}
-                        className="flex-1 p-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                        className="flex-1 p-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <CheckCheck size={14} className="text-emerald-500" />
-                        Mark all as read
+                        <span>Mark all read</span>
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          const now = Date.now();
+                          setNotifClearedBefore(now);
+                          try { localStorage.setItem("evedhika_notifs_cleared_before", String(now)); } catch {}
+
+                          const allIds = notifications.map(n => n.id);
+                          setDismissedNotifIds(prev => {
+                            const next = new Set([...prev, ...allIds]);
+                            try { localStorage.setItem("evedhika_dismissed_notifs", JSON.stringify(Array.from(next))); } catch {}
+                            return next;
+                          });
+                          setNotifications([]);
+                          setUnreadCount(0);
+
+                          if (user?.uid) {
+                            updateDoc(doc(db, "users", user.uid), {
+                              notifClearedBefore: now
+                            }).catch(() => {});
+                          }
+
+                          try {
+                            const deletePromises = notifications.map(n => {
+                              if (isAdmin || userRole === "admin" || n.uid === user?.uid || n.uid === "admin_only" || n.type === "admin_alert") {
+                                return deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+                              }
+                              if (user?.uid) {
+                                return updateDoc(doc(db, "notifications", n.id), {
+                                  dismissedBy: arrayUnion(user.uid),
+                                  readBy: arrayUnion(user.uid)
+                                }).catch(() => {});
+                              }
+                              return Promise.resolve();
+                            });
+                            await Promise.all(deletePromises);
+                          } catch (e) {
+                            console.error("Error clearing notifications from firestore:", e);
+                          }
+
+                          addToast("అన్ని నోటిఫికేషన్‌లు శాశ్వతంగా క్లియర్ చేయబడ్డాయి (Permanent Clear Complete)!");
+                        }}
+                        className="flex-1 p-3 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 size={14} className="text-red-500" />
+                        <span>Clear All</span>
                       </button>
                     </div>
                   )}

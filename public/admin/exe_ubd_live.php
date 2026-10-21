@@ -23,6 +23,9 @@ $exeLiveJsonFile = $storageDir . '/exe_ubd_live.json';
 $consolidatedFile = $storageDir . '/pc_consolidated_health.json';
 $issuesFile = $storageDir . '/active_issues.json';
 
+// Application Version
+$version = 'v1.0.8';
+
 // Central Telegram Bot Credentials
 $botToken = "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
 $chatId = "431228008";
@@ -60,8 +63,8 @@ function loadAnnouncements($filePath, $fallbackPath) {
     return [
         [
             'id' => 1,
-            'title' => 'IMPORTANT: $version Update Released',
-            'content' => 'Brand new $version release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.',
+            'title' => "IMPORTANT: v1.0.8 Update Released",
+            'content' => "Brand new v1.0.8 release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.",
             'date' => date('Y-m-d'),
             'importance' => 'High',
             'category' => 'Software Update',
@@ -112,16 +115,16 @@ if ($action === 'check_update' || $action === 'version') {
         'success' => true,
         'name' => 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
         'appName' => 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
-        'executableName' => 'EVedhika_Setup_$version.exe',
-        'currentVersion' => '$version',
-        'latestVersion' => '$version',
-        'versionCode' => 10070,
-        'releaseDate' => '2026-10-17',
-        'downloadUrl' => 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_$version.exe',
+        'executableName' => "EVedhika_Setup_{$version}.exe",
+        'currentVersion' => $version,
+        'latestVersion' => $version,
+        'versionCode' => 10080,
+        'releaseDate' => '2026-10-21',
+        'downloadUrl' => "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_{$version}.exe",
         'githubRepo' => 'https://github.com/RakeshKumardhawan/UBDTOOLS',
         'updateRequired' => false,
         'silent' => false,
-        'releaseNotes' => 'Enterprise $version: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
+        'releaseNotes' => "Enterprise {$version}: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.",
         'publisher' => 'E-Vedhika.in (Rakesh Dhawan)',
         'telemetryRelayUrl' => 'https://www.e-vedhika.in/admin/exe_ubd_live'
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
