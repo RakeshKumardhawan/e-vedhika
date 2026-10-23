@@ -5205,7 +5205,7 @@ E-Vedhika Team`;
 
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
-      <VisitorTracker user={user} />
+      <VisitorTracker user={user} userProfile={userProfile} />
       {isOffline && (
         <div className="bg-red-500 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 z-[2000]">
           <WifiOff size={16} />
@@ -14377,7 +14377,7 @@ function AdminPanel({
 
                                       // Send telegram if suspended
                                       if (nextRole === "suspended") {
-                                        sendTelegramNotification(`🚨 <b>User Suspended</b>\n\n<b>User:</b> ${u.name || u.email}\n<b>Email:</b> ${u.email}\n<b>ID:</b> ${u.id}\n\n<i>This user has been blocked by an administrator.</i>`, "system");
+                                        sendTelegramNotification(`🚨 <b>User Suspended</b>\n\n<b>User:</b> ${u.name || u.email}\n<b>Username:</b> ${u.username ? `@${u.username}` : "N/A"}\n<b>Email:</b> ${u.email}\n<b>ID:</b> ${u.id}\n\n<i>This user has been blocked by an administrator.</i>`, "system");
                                       }
 
                                       // Send Notification to user
@@ -27651,6 +27651,38 @@ function PostDetail({
   const [floatingBursts, setFloatingBursts] = useState<{ id: number; emoji: string; x: number }[]>([]);
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
   const lastTapRef = useRef<number>(0);
+  const postContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  // Compute Word Count & Estimated Reading Time
+  const fullText = [post?.title, (post as any)?.subTitle, remoteContent || post?.content].filter(Boolean).join(" ");
+  const plainText = fullText.replace(/<[^>]*>/g, "").replace(/!\[.*?\]\(.*?\)/g, "").replace(/\[.*?\]\(.*?\)/g, "");
+  const wordCount = plainText.trim() ? plainText.trim().split(/\s+/).filter(Boolean).length : 0;
+  const readingTimeMinutes = Math.max(1, Math.ceil(wordCount / 180));
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (postContainerRef.current) {
+        const el = postContainerRef.current;
+        const rect = el.getBoundingClientRect();
+        const totalHeight = el.scrollHeight || rect.height;
+        const windowHeight = window.innerHeight;
+        const currentScroll = window.scrollY - el.offsetTop + windowHeight;
+        const progress = Math.min(100, Math.max(0, (currentScroll / totalHeight) * 100));
+        setScrollProgress(progress);
+      } else {
+        const scrollTop = window.scrollY;
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (docHeight > 0) {
+          setScrollProgress(Math.min(100, Math.max(0, (scrollTop / docHeight) * 100)));
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [post?.id, remoteContent]);
 
   const likedBy = Array.isArray(post?.likedBy) ? post.likedBy : [];
   const currentUserId = auth.currentUser?.uid;
@@ -28289,7 +28321,7 @@ function PostDetail({
   const mainCategory = post.categories?.[0] || post.category || "తాజా వార్తలు";
 
   return (
-    <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative items-start">
+    <div ref={postContainerRef} className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative items-start">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -28310,6 +28342,40 @@ function PostDetail({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Sticky Reading Time & Scroll Progress Indicator Bar */}
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xs rounded-xl p-2.5 mb-2.5 flex items-center justify-between gap-3 text-xs font-bold text-slate-700 transition-all overflow-hidden relative">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 font-extrabold text-[11px] shrink-0">
+              <Clock size={13} className="text-indigo-600 animate-pulse" />
+              చదువు సమయం: ~{readingTimeMinutes} ని॥ ({readingTimeMinutes} min read)
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-mono hidden sm:inline-flex shrink-0">
+              📖 {wordCount} పదాలు (words)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+              {Math.round(scrollProgress)}%
+            </span>
+            <div className="w-16 sm:w-28 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80 p-0.5">
+              <div
+                className="h-full bg-gradient-to-r from-red-500 via-indigo-600 to-emerald-500 rounded-full transition-all duration-100 ease-out"
+                style={{ width: `${scrollProgress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Full Width Reading Progress Line */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100">
+            <div
+              className="h-full bg-gradient-to-r from-red-600 via-indigo-600 to-emerald-500 transition-all duration-75 ease-out"
+              style={{ width: `${scrollProgress}%` }}
+            />
+          </div>
+        </div>
+
       {/* Top Bar: Back & Edit */}
       <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-100">
         <button

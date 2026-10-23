@@ -137,6 +137,7 @@ export async function notifyUserProfileUpdate(data: {
   const html =
     `${info.emoji} <b>[E-VEDHIKA] ${info.label}</b>\n\n` +
     `👤 <b>పేరు (Name):</b> <b>${escapeHtml(fullName)}</b>\n` +
+    (u.username ? `🏷️ <b>యూజర్‌నేమ్ (Username):</b> <code>@${escapeHtml(u.username)}</code>\n` : "") +
     (u.designation ? `💼 <b>హోదా (Designation):</b> ${escapeHtml(u.designation)}\n` : "") +
     (u.email ? `✉️ <b>ఈమెయిల్ (Email):</b> ${escapeHtml(u.email)}\n` : "") +
     (u.mobile ? `📞 <b>మొబైల్ (Mobile):</b> <code>${escapeHtml(u.mobile)}</code>\n` : "") +

@@ -231,10 +231,12 @@ export function PublicVisitorLogs() {
                           </div>
                           <div>
                             <p className={`text-[13px] font-bold ${isAnon ? 'text-slate-500' : 'text-slate-800'}`}>
-                              {isAnon ? "Anonymous Visitor" : log.email}
+                              {isAnon ? "Anonymous Visitor" : (log.name || log.email)}
                             </p>
-                            {!isAnon && log.uid && (
-                              <p className="text-[10px] font-mono text-slate-400 truncate max-w-[150px]">ID: {log.uid}</p>
+                            {!isAnon && (
+                              <p className="text-[10px] font-mono text-indigo-600 font-semibold truncate max-w-[170px]" title={`UID: ${log.uid}`}>
+                                {log.username ? `@${log.username}` : (log.uid ? `ID: ${log.uid}` : log.email)}
+                              </p>
                             )}
                           </div>
                         </div>

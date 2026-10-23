@@ -220,7 +220,9 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
       title: `Security PIN: ${userName}`,
       html: `
         <div class="text-left text-xs text-slate-600 mb-3">
-          <p><strong>User ID:</strong> <code class="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">${userItem.id}</code></p>
+          <p><strong>Username:</strong> <code class="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded font-bold">${userItem.username ? `@${userItem.username}` : (userItem.name || 'Not Configured')}</code></p>
+          <p class="mt-1"><strong>Full Name:</strong> ${userName}</p>
+          <p class="mt-1 text-[10px] text-slate-400">UID: <code class="text-slate-500 bg-slate-100 px-1 py-0.5 rounded font-mono">${userItem.id}</code></p>
           <p class="mt-1">Current PIN: <strong>${existingPin || 'NOT CONFIGURED'}</strong></p>
         </div>
       `,
@@ -538,9 +540,15 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                                   )}
                                 </div>
                                 <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[10px] font-mono text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md truncate max-w-[200px]" title={u.id}>
-                                    ID: {u.id}
-                                  </span>
+                                  {u.username ? (
+                                    <span className="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md hover:bg-indigo-100 transition-colors" title={`User ID (UID): ${u.id}`}>
+                                      @{u.username}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md truncate max-w-[200px]" title={u.id}>
+                                      ID: {u.id}
+                                    </span>
+                                  )}
                                   {u.designation && (
                                     <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                                       {u.designation}

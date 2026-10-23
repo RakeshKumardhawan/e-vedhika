@@ -4,7 +4,7 @@ import { db, analyticsDb } from '../../firebase';
 import { collection, addDoc, doc, setDoc, increment } from 'firebase/firestore';
 import { UAParser } from 'ua-parser-js';
 
-export function VisitorTracker({ user }: { user: any }) {
+export function VisitorTracker({ user, userProfile }: { user: any; userProfile?: any }) {
   const location = useLocation();
   const sessionToken = useRef(sessionStorage.getItem('visitor_session') || crypto.randomUUID());
   const hasTrackedInitial = useRef(false);
@@ -29,9 +29,13 @@ export function VisitorTracker({ user }: { user: any }) {
         const result = parser.getResult();
         
         try {
+          const uName = userProfile?.name || user?.displayName || "";
+          const uUsername = userProfile?.username || "";
           await addDoc(collection(analyticsDb, "visitor_logs"), {
             uid: user?.uid || "anonymous",
             email: user?.email || "anonymous",
+            username: uUsername,
+            name: uName,
             path: location.pathname + location.search,
             url: window.location.href,
             userAgent: navigator.userAgent,
