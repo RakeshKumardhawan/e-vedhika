@@ -394,14 +394,19 @@ function ensureGitHubPagesAssets() {
     fs.writeFileSync(distCname, "www.e-vedhika.in\n", "utf-8");
   }
 
-  // 3. 404.html
-  const dist404 = path.join(distDir, "404.html");
-  const public404 = path.join(rootDir, "public", "404.html");
-  if (fs.existsSync(public404)) {
-    fs.copyFileSync(public404, dist404);
-  }
+  // 4. Banner images
+  const publicDir = path.resolve(rootDir, "public");
+  ["banner.jpg", "banner.png", "ev-logo-v2.png", "ev_logo.png"].forEach(file => {
+    const pubFile = path.join(publicDir, file);
+    const distFile = path.join(distDir, file);
+    if (fs.existsSync(pubFile)) {
+      try {
+        fs.copyFileSync(pubFile, distFile);
+      } catch (e) {}
+    }
+  });
 
-  console.log("[generate-static-routes] Verified GitHub Pages assets (.nojekyll, CNAME, 404.html).");
+  console.log("[generate-static-routes] Verified GitHub Pages assets (.nojekyll, CNAME, 404.html, banner images).");
 }
 
 async function run() {
