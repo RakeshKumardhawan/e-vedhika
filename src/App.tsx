@@ -175,6 +175,7 @@ import { PollsScreen } from "./components/PollsScreen";
 import { PdfCompressTool } from "./components/PdfCompressTool";
 import { FarmerRegistryTool } from "./components/FarmerRegistryTool";
 import { UBDTracker } from "./components/UBDTracker";
+import UBDTrackingTool from "./components/UBDTrackingTool";
 import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
 import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
@@ -9183,7 +9184,15 @@ E-Vedhika Team`;
         <ArrowLeft size={16} /> Back to Home
       </button>
     </div>
-    <UBDTracker user={user} addToast={addToast} />
+    <div className="space-y-6">
+      <UBDTrackingTool addToast={addToast} />
+      <div className="pt-6 border-t border-slate-200/80">
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">
+          మాస్టర్ ట్రాకర్ &amp; ఆఫీస్ కోడ్ డైరెక్టరీ (Master GP Tracker &amp; Directory)
+        </h3>
+        <UBDTracker user={user} addToast={addToast} />
+      </div>
+    </div>
   </motion.div>
 )}
 

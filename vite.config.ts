@@ -167,7 +167,129 @@ export default defineConfig(({mode}) => {
       {
         name: 'google-verification',
         configureServer(server) {
-          server.middlewares.use((req, res, next) => {
+          server.middlewares.use(async (req, res, next) => {
+            if (req.url && req.url.startsWith('/api/ubd/search')) {
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+              if (req.method === 'OPTIONS') {
+                res.statusCode = 200;
+                res.end();
+                return;
+              }
+
+              const handleSearch = async (body: any) => {
+                const { section, unitId } = body || {};
+                const id = String(unitId || '').trim();
+
+                if (!id || !/^\d+$/.test(id)) {
+                  res.statusCode = 400;
+                  res.end(JSON.stringify({ error: "దయచేసి సరైన Unit ID (అంకెలు మాత్రమే) నమోదు చేయండి." }));
+                  return;
+                }
+
+                const isDeath = section === "Death" || section === "DEA" || String(section).toLowerCase().includes("death");
+                const sectionName = isDeath ? "Death" : "Birth";
+
+                const targetUrl = isDeath
+                  ? `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`
+                  : `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+
+                try {
+                  const controller = new AbortController();
+                  const timeout = setTimeout(() => controller.abort(), 8000);
+
+                  const response = await fetch(targetUrl, {
+                    signal: controller.signal,
+                    headers: {
+                      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                    }
+                  });
+                  clearTimeout(timeout);
+
+                  if (!response.ok) {
+                    res.statusCode = 502;
+                    res.end(JSON.stringify({
+                      error: `తెలంగాణ ప్రభుత్వ UBDMIS పోర్టల్ (ubdmis.telangana.gov.in) నుండి Error Code ${response.status} వచ్చింది. అధికారిక పోర్టల్ స్పందించడం లేదు.`,
+                      officialUrl: targetUrl
+                    }));
+                    return;
+                  }
+
+                  const html = await response.text();
+                  const cheerio = await import('cheerio');
+                  const $ = cheerio.load(html);
+                  const records: any[] = [];
+
+                  $("table").each((_, table) => {
+                    const rows = $(table).find("tr");
+                    if (rows.length > 1) {
+                      rows.each((rowIndex, row) => {
+                        const cells = $(row).find("td, th").map((_, c) => $(c).text().trim()).get();
+                        if (cells.length >= 3 && !cells[0].toLowerCase().includes("sl") && !cells[0].toLowerCase().includes("s.no") && !cells[0].toLowerCase().includes("total")) {
+                          records.push({
+                            sno: cells[0] || String(records.length + 1),
+                            regNo: cells[1] || `REG-${id}-${records.length + 1}`,
+                            name: cells[2] || "-",
+                            eventDate: cells[3] || "-",
+                            gender: cells[4] || "-",
+                            status: cells[5] || "Approved / Active",
+                            details: cells.slice(6).join(" ")
+                          });
+                        }
+                      });
+                    }
+                  });
+
+                  res.statusCode = 200;
+                  res.end(JSON.stringify({
+                    success: true,
+                    section: sectionName,
+                    unitId: id,
+                    totalRecords: records.length,
+                    records,
+                    officialUrl: targetUrl
+                  }));
+
+                } catch (fetchErr: any) {
+                  res.statusCode = 502;
+                  res.end(JSON.stringify({
+                    error: `తెలంగాణ ప్రభుత్వ UBDMIS పోర్టల్ (ubdmis.telangana.gov.in) తో నెట్‌వర్క్ కనెక్షన్ టైమౌట్ అయింది. అధికారిక సర్వర్ ఇంట్రానెట్/ఫైర్‌వాల్ సెక్యూరిటీ ఆంక్షల వల్ల నేరుగా డేటా రాలేదు. అధికారిక పేజీని నేరుగా ఓపెన్ చేసి చూడవచ్చు.`,
+                    officialUrl: targetUrl
+                  }));
+                }
+              };
+
+              if ((req as any).body && typeof (req as any).body === 'object') {
+                await handleSearch((req as any).body);
+                return;
+              }
+
+              let bodyStr = '';
+              let hasEnded = false;
+              req.on('data', chunk => { bodyStr += chunk.toString(); });
+              req.on('end', async () => {
+                hasEnded = true;
+                try {
+                  const body = bodyStr ? JSON.parse(bodyStr) : {};
+                  await handleSearch(body);
+                } catch (jsonErr: any) {
+                  res.statusCode = 400;
+                  res.end(JSON.stringify({ error: "Invalid JSON Payload" }));
+                }
+              });
+
+              // Fallback timeout if stream was consumed earlier
+              setTimeout(async () => {
+                if (!hasEnded) {
+                  await handleSearch({});
+                }
+              }, 1000);
+              return;
+            }
             if (req.url === '/google46d0fa093843f771.html') {
               res.setHeader('Content-Type', 'text/html');
               res.end('google-site-verification: google46d0fa093843f771.html');

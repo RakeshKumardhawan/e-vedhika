@@ -13,6 +13,7 @@ import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import admin from 'firebase-admin';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import * as cheerio from 'cheerio';
 
 let isFirebaseAdminInitialized = false;
 let isFirestoreAdminWorking = true;
@@ -152,7 +153,10 @@ async function startServer() {
 
   // Google AdSense ads.txt explicit route
   app.get('/ads.txt', (req, res) => {
-    res.type('text/plain');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    const adsTxtContent = "google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n";
+    
+    // Attempt to send file if it exists, otherwise send hardcoded verified content
     const adsTxtPath = path.join(process.cwd(), 'public', 'ads.txt');
     if (fs.existsSync(adsTxtPath)) {
       return res.sendFile(adsTxtPath);
@@ -161,7 +165,7 @@ async function startServer() {
     if (fs.existsSync(distAdsTxtPath)) {
       return res.sendFile(distAdsTxtPath);
     }
-    return res.send("google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n");
+    return res.send(adsTxtContent);
   });
 
   app.get('/robots.txt', (req, res) => {
@@ -4520,6 +4524,106 @@ app.get('/api/remote-commands', (req, res) => {
     }
   });
 
+  // Official Telangana UBD Tracking API Search Proxy
+  app.post('/api/ubd/search', express.json(), async (req, res) => {
+    try {
+      const { section, unitId } = req.body || {};
+      const id = String(unitId || '').trim();
+
+      if (!id || !/^\d+$/.test(id)) {
+        return res.status(400).json({
+          error: "దయచేసి సరైన Unit ID (అంకెలు మాత్రమే) నమోదు చేయండి."
+        });
+      }
+
+      const isDeath = section === "Death" || section === "DEA" || String(section).toLowerCase().includes("death");
+      const sectionName = isDeath ? "Death" : "Birth";
+
+      const targetUrl = isDeath
+        ? `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`
+        : `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+
+      console.log(`[UBD Search API] Querying Telangana UBDMIS ${sectionName} records for Unit ID: ${id}`);
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch(targetUrl, {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9,te;q=0.8"
+          }
+        });
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          return res.status(502).json({
+            error: `తెలంగాణ ప్రభుత్వ UBDMIS పోర్టల్ (ubdmis.telangana.gov.in) నుండి HTTP Error ${response.status} వచ్చింది. అధికారిక పోర్టల్ స్పందించడం లేదు.`,
+            officialUrl: targetUrl
+          });
+        }
+
+        const html = await response.text();
+        if (!html || html.length < 50) {
+          return res.status(502).json({
+            error: "అధికారిక UBDMIS పోర్టల్ నుండి ఖాళీ రెస్పాన్స్ వచ్చింది.",
+            officialUrl: targetUrl
+          });
+        }
+
+        // Parse HTML table with cheerio
+        const $ = cheerio.load(html);
+        const records: any[] = [];
+
+        $("table").each((_, table) => {
+          const rows = $(table).find("tr");
+          if (rows.length > 1) {
+            rows.each((rowIndex, row) => {
+              const cells = $(row).find("td, th").map((_, c) => $(c).text().trim()).get();
+              // Check if valid row
+              if (cells.length >= 3 && !cells[0].toLowerCase().includes("sl") && !cells[0].toLowerCase().includes("s.no") && !cells[0].toLowerCase().includes("total")) {
+                records.push({
+                  sno: cells[0] || String(records.length + 1),
+                  regNo: cells[1] || `REG-${id}-${records.length + 1}`,
+                  name: cells[2] || "-",
+                  eventDate: cells[3] || "-",
+                  gender: cells[4] || "-",
+                  status: cells[5] || "Approved / Active",
+                  details: cells.slice(6).join(" ")
+                });
+              }
+            });
+          }
+        });
+
+        return res.json({
+          success: true,
+          section: sectionName,
+          unitId: id,
+          totalRecords: records.length,
+          records,
+          officialUrl: targetUrl
+        });
+
+      } catch (fetchErr: any) {
+        console.warn(`[UBD Search API] Could not connect directly to ubdmis.telangana.gov.in: ${fetchErr?.message}`);
+        return res.status(502).json({
+          error: `తెలంగాణ ప్రభుత్వ UBDMIS పోర్టల్ (ubdmis.telangana.gov.in) తో నెట్‌వర్క్ కనెక్షన్ టైమౌట్ అయింది. అధికారిక స్టేట్ సర్వర్ సెక్యూరిటీ/నెట్‌వర్క్ అనుమతులు లేకపోవడం వలన సర్వర్ నుండి నేరుగా డేటా రాలేదు. అధికారిక పేజీని నేరుగా ఓపెన్ చేసి చూడవచ్చు.`,
+          officialUrl: targetUrl
+        });
+      }
+
+    } catch (err: any) {
+      console.error("[UBD Search API Error]:", err);
+      return res.status(500).json({
+        error: "అంతర్గత సర్వర్ లోపం జరిగింది: " + (err?.message || "Unknown Error")
+      });
+    }
+  });
+
   // File download REST endpoint
   app.get("/api/farmer-registry/download/:id", async (req, res) => {
     const token = req.query.token as string;
@@ -4560,7 +4664,12 @@ app.get('/api/remote-commands', (req, res) => {
 
   // Dedicated Open Graph Image API - Converts Base64 images to real binary images for WhatsApp/Telegram/Facebook crawlers
   app.get(["/api/og-image", "/api/og-image/:postId"], async (req, res) => {
-    const postId = req.params.postId || (req.query.postId as string);
+    let postId = req.params.postId || (req.query.postId as string);
+    if (!postId) {
+      return res.redirect("/banner.jpg");
+    }
+    // Trim trailing slashes and spaces
+    postId = String(postId).trim().replace(/\/+$/, "");
     if (!postId) {
       return res.redirect("/banner.jpg");
     }
@@ -4570,7 +4679,9 @@ app.get('/api/remote-commands', (req, res) => {
       const resp = await fetch(firestoreUrl);
       if (resp.ok) {
         const data = await resp.json();
-        const mediaUrl = data.fields?.mediaUrl?.stringValue || data.fields?.imageUrl?.stringValue || "";
+        const f = data.fields || {};
+        const mediaUrl = f.mediaUrl?.stringValue || f.imageUrl?.stringValue || f.poster?.stringValue || f.videoThumbnailUrl?.stringValue || "";
+        
         if (mediaUrl.startsWith("data:image/")) {
           const match = mediaUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
           if (match) {
@@ -4582,6 +4693,23 @@ app.get('/api/remote-commands', (req, res) => {
             return res.end(buffer);
           }
         } else if (mediaUrl.startsWith("http")) {
+          // Proxy external image instead of redirecting (WhatsApp prefers direct images)
+          try {
+            const imgResp = await fetch(mediaUrl, {
+              headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" }
+            });
+            if (imgResp.ok) {
+              const contentType = imgResp.headers.get("content-type") || "image/jpeg";
+              const buffer = Buffer.from(await imgResp.arrayBuffer());
+              res.setHeader("Content-Type", contentType);
+              res.setHeader("Content-Length", buffer.length);
+              res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+              return res.end(buffer);
+            }
+          } catch (imgErr) {
+            console.warn("[OG Proxy Error]:", imgErr);
+          }
+          // Fallback to redirect if proxy fails
           return res.redirect(mediaUrl);
         }
       }
@@ -4719,10 +4847,16 @@ app.get('/api/remote-commands', (req, res) => {
   async function renderDynamicOgTags(req: express.Request, rawHtml: string): Promise<string> {
     let html = rawHtml;
     const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
-    const host = req.get("host") || "www.e-vedhika.in";
+    let host = req.headers["x-forwarded-host"] || req.get("host") || "www.e-vedhika.in";
+    if (Array.isArray(host)) host = host[0];
+    
+    // For WhatsApp/Crawlers, we MUST ensure the domain is correct.
     const isPublicHost = host && !host.includes("localhost") && !host.includes("127.0.0.1") && host.includes(".");
     const fullBaseUrl = isPublicHost ? `${protocol}://${host}` : "https://www.e-vedhika.in";
-    const canonicalUrl = `${fullBaseUrl}${req.originalUrl}`;
+    
+    // Ensure canonical URL is always absolute and doesn't contain weird ports if possible
+    const cleanUrl = req.originalUrl.split('?')[0];
+    const canonicalUrl = `${fullBaseUrl}${cleanUrl}${req.originalUrl.includes('?') ? '?' + req.originalUrl.split('?')[1] : ''}`;
 
     let postId = (req.query.postId as string) || null;
     if (!postId) {
@@ -4731,6 +4865,12 @@ app.get('/api/remote-commands', (req, res) => {
       } else if (req.path.startsWith("/post/")) {
         postId = decodeURIComponent(req.path.split("/post/")[1].split("?")[0]);
       }
+    }
+    
+    // Trim trailing slashes and clean postId
+    if (postId) {
+      postId = String(postId).trim().replace(/\/+$/, "");
+      if (postId === "null" || postId === "undefined") postId = null;
     }
     const rawTab = ((req.query.tab as string) || "").toLowerCase();
     const cleanPath = req.path.toLowerCase().replace(/\/+$/, "");
@@ -4819,7 +4959,7 @@ app.get('/api/remote-commands', (req, res) => {
 
           // 4. Fallback search over recent posts for title slug or numeric match
           if (!fields) {
-            const recentResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=50&key=${apiKey}`);
+            const recentResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=100&orderBy=createdAt%20desc&key=${apiKey}`);
             if (recentResp.ok) {
               const recentData = await recentResp.json();
               const normTarget = postId.toLowerCase();
@@ -4827,11 +4967,17 @@ app.get('/api/remote-commands', (req, res) => {
                 const f = item.fields || {};
                 const docName = item.name.split("/").pop();
                 const itemTitle = (f.title?.stringValue || "").trim().toLowerCase();
-                const generatedSlug = itemTitle.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+                
+                let generatedSlug = itemTitle.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+                if (generatedSlug.length > 75) {
+                  generatedSlug = generatedSlug.substring(0, 75).replace(/-[^-]*$/, "");
+                }
+                
                 const itemSlug = (f.slug?.stringValue || "").trim().toLowerCase();
                 const itemPostNum = f.postNumber?.integerValue || f.postNumber?.stringValue;
+                const isNumMatch = itemPostNum && String(itemPostNum) === postId;
 
-                if (docName === postId || itemSlug === normTarget || generatedSlug === normTarget || String(itemPostNum) === postId) {
+                if (docName === postId || itemSlug === normTarget || generatedSlug === normTarget || isNumMatch) {
                   fields = f;
                   actualDocId = docName;
                   actualSlug = f.slug?.stringValue || generatedSlug || docName;
@@ -4955,11 +5101,16 @@ app.get('/api/remote-commands', (req, res) => {
 
     const setMetaTag = (attrType: "name" | "property" | "itemprop", attrName: string, content: string) => {
       const escaped = attrName.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
-      const regex = new RegExp(`<meta\\s+[^>]*${attrType}=["']${escaped}["'][^>]*>`, "gi");
+      // Improved regex to handle different attribute orders
+      const regex = new RegExp(`<meta\\s+[^>]*(${attrType}=["']${escaped}["'][^>]*content=["']|content=["'][^"']*["'][^>]*${attrType}=["']${escaped}["'])`, "gi");
       const safeContent = content.replace(/"/g, "&quot;");
       const tag = `<meta ${attrType}="${attrName}" content="${safeContent}" />`;
-      if (regex.test(html)) {
-        html = html.replace(regex, tag);
+      
+      // If the tag exists with the right property/name, replace the whole tag
+      const existingTagRegex = new RegExp(`<meta\\s+[^>]*${attrType}=["']${escaped}["'][^>]*>`, "gi");
+      
+      if (existingTagRegex.test(html)) {
+        html = html.replace(existingTagRegex, tag);
       } else {
         html = html.replace("</head>", `  ${tag}\n</head>`);
       }
@@ -5006,6 +5157,61 @@ app.get('/api/remote-commands', (req, res) => {
     }
 
     html = html.replace(/https:\/\/e-vedhika\.(online|onrender\.com)\//g, `${fullBaseUrl}/`);
+
+    // Dynamic SEO Content Injection for Bots (Low Value Content Fix)
+    try {
+      const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+      const recentPostsUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=12&orderBy=createdAt%20desc&key=${apiKey}`;
+      const postsResp = await fetch(recentPostsUrl);
+      
+      let extraHtml = '';
+      if (postsResp.ok) {
+        const postsData = await postsResp.json();
+        const posts = postsData.documents || [];
+        extraHtml += '<div class="ssr-posts" style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">';
+        extraHtml += '<h3>తాజా పంచాయతీ వార్తలు & అప్‌డేట్లు (Latest Updates)</h3><ul style="line-height:1.8;">';
+        posts.forEach((p: any) => {
+          const f = p.fields || {};
+          const pTitle = f.title?.stringValue || "E-Vedhika Post";
+          const pSlug = f.slug?.stringValue || p.name.split("/").pop();
+          extraHtml += `<li><a href="/home/post/${pSlug}">${pTitle}</a></li>`;
+        });
+        extraHtml += '</ul></div>';
+      }
+
+      // Add "About Us" and "Privacy" links explicitly for crawlers to ensure they are discovered and indexed
+      extraHtml += `
+        <div class="ssr-static-links" style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">
+          <h3>ముఖ్యమైన లింకులు (Essential Links & Policies)</h3>
+          <ul style="line-height:1.8;">
+            <li><a href="/about">మా గురించి (About E-Vedhika)</a> - Learn about our mission to support Panchayat Secretaries and Operators.</li>
+            <li><a href="/privacy">గోప్యతా విధానం (Privacy Policy)</a> - Detailed information on how we handle data securely via Google Firebase.</li>
+            <li><a href="/terms">నిబంధనలు & షరతులు (Terms & Conditions)</a> - Usage guidelines for the E-Vedhika technical utility portal.</li>
+            <li><a href="/contact">సంప్రదించండి (Contact Support)</a> - Reach out to our technical team via email, WhatsApp, or Telegram.</li>
+            <li><a href="/sitemap">సైట్ మ్యాప్ (Sitemap)</a> - Full directory of all technical tools and GO resources.</li>
+          </ul>
+        </div>
+        <div class="ssr-mission" style="margin-top:20px; color:#555; font-size:0.9em;">
+          <p>E-Vedhika is a dedicated technical utility platform designed to streamline grassroots governance in Telangana and Andhra Pradesh. 
+          By providing advanced DSR analysis, UBD tracking, and digital signature troubleshooting, we empower local administrators with the 
+          tools they need for efficient public service delivery.</p>
+        </div>
+      `;
+      
+      const seoDivStart = '<div style="display:none;" id="seo-content">';
+      if (html.includes(seoDivStart)) {
+        const divIndex = html.indexOf(seoDivStart);
+        // We find the closing </div> of THIS specific div by looking for the next </div> after the start
+        // This assumes the seo-content div is simple and doesn't contain nested divs, which is true in index.html
+        const closingTagIndex = html.indexOf('</div>', divIndex);
+        if (closingTagIndex !== -1) {
+          html = html.substring(0, closingTagIndex) + extraHtml + html.substring(closingTagIndex);
+        }
+      }
+    } catch (e) {
+      console.warn("[SEO SSR] Failed to fetch recent posts for injection:", e);
+    }
+
     return html;
   }
 
