@@ -18,7 +18,13 @@ export function StaticPagesAdmin({ addToast }: any) {
       try {
         const snap = await getDoc(doc(db, "settings", "static_pages"));
         if (snap.exists() && snap.data()) {
-          setPages(prev => ({ ...prev, ...snap.data() }));
+          const data = snap.data();
+          setPages(prev => ({
+            about: data.about || prev.about,
+            privacy: data.privacy || prev.privacy,
+            terms: data.terms || prev.terms,
+            contact: data.contact || prev.contact
+          }));
         }
       } catch (err) {
         console.error("Error fetching static pages:", err);

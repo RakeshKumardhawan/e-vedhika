@@ -12,10 +12,21 @@ export interface UpdateEntry {
 
 export const SYSTEM_UPDATES: UpdateEntry[] = [
   {
-    id: "sys_v169",
-    version: "V1.6.9",
+    id: "sys_v108_guardian",
+    version: "V1.0.8",
     time: Date.now(),
     date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    badge: "GUARDIAN",
+    title: "UBD టూల్ v1.0.8 (Guardian Build) రిలీజ్ 🛡️",
+    description: "కొత్త 17-స్టెప్ రియల్-టైమ్ ఆడిట్ మ్యాట్రిక్స్ మరియు సిస్టమ్ ట్రే గార్డియన్ ఫీచర్లతో v1.0.8 విడుదల చేయబడింది. ఇది మీ PC ఆరోగ్యాన్ని 24*7 పర్యవేక్షిస్తుంది మరియు సమస్యలను ఆటోమేటిక్‌గా పరిష్కరిస్తుంది.",
+    color: "bg-indigo-700",
+    isHot: true
+  },
+  {
+    id: "sys_v169",
+    version: "V1.6.9",
+    time: 1780681124000,
+    date: "25, అక్టోబర్ 2026",
     badge: "UPDATE",
     title: "వైట్ స్క్రీన్ & పెర్ఫార్మెన్స్ ఫిక్స్ 🚀",
     description: "వెబ్‌సైట్ ఓపెన్ చేసేటప్పుడు వస్తున్న తెల్ల స్క్రీన్ (White Screen) సమస్యను పూర్తిగా పరిష్కరించాము. సర్వర్ కోటా ఇబ్బందులు ఉన్నా కూడా ఇప్పుడు పోర్టల్ లోడ్ అవుతుంది. వేగం మరియు స్థిరత్వం మెరుగుపరచబడ్డాయి.",

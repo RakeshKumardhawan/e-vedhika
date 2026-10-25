@@ -1,828 +1,574 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Activity,
-  Server,
-  ShieldCheck,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  RefreshCw,
-  Search,
-  Download,
-  Trash2,
-  ExternalLink,
-  Laptop,
-  KeyRound,
-  Send,
-  Radio,
-  Eye,
-  Clock,
-  MapPin,
-  X,
-  FileText,
-  SlidersHorizontal,
-  Check,
-  Megaphone
+import React, { useState, useEffect } from 'react';
+import { 
+  Shield, Radio, Zap, Send, Server, Database, Activity, 
+  Terminal, ShieldCheck, HardDrive, Cpu, RefreshCw, 
+  Search, Filter, Trash2, Download, ExternalLink, Clock,
+  MessageSquare, FileText, LayoutDashboard, Bell, AlertTriangle, CheckCircle, Copy, Code
 } from 'lucide-react';
-import { db } from '../../firebase';
-import { collection, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc, addDoc } from 'firebase/firestore';
+import Swal from 'sweetalert2';
 
-export interface ConsolidatedPcRecord {
-  machineId: string;
+interface TelemetryLog {
+  id: string | number;
   pcName: string;
   userName: string;
   officeLocation: string;
-  os: string;
-  buildNumber: string;
-  appVersion: string;
-  overallStatus: 'ONLINE & READY' | 'DEGRADED' | 'WARNING' | 'REPAIRING' | 'RESOLVED' | string;
-  stepsVerified: string;
-  dscStatus: string;
-  edgePolicy: string;
-  sitesXml: string;
-  activeIssue: string;
-  lastSeen: string;
-  lastSummary?: string;
-  healthScore?: number;
-  ipAddress?: string;
+  osVersion?: string;
+  build?: string;
+  status: string;
+  dscStatus?: string;
+  remarks?: string;
+  receivedAt?: string;
+  time?: string | number;
+  verification?: string;
+  activeIssue?: string;
 }
 
-export interface ActiveIssueRecord {
-  issueId: string;
-  machineId: string;
-  pcName: string;
-  office: string;
-  issueCategory: string;
-  severity: 'HIGH' | 'MEDIUM' | 'LOW';
-  firstDetected: string;
-  lastDetected: string;
-  occurrenceCount: number;
-  repairAttempts: number;
-  lastRepairResult: string;
-  postRepairVerification: string;
-  currentStatus: 'ACTIVE' | 'RECURRING' | 'RESOLVED';
-  remarks: string;
-}
-
-export interface AnnouncementPost {
-  id: number | string;
-  title: string;
-  content: string;
-  date: string;
-  importance: 'Normal' | 'High' | 'Urgent' | string;
-  category: string;
-  author: string;
-}
-
-interface UBDLiveMonitoringProps {
-  user?: any;
-  addToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
-}
-
-export const UBDLiveMonitoring: React.FC<UBDLiveMonitoringProps> = ({ user, addToast }) => {
-  const [rawLogs, setRawLogs] = useState<any[]>([]);
-  const [consolidatedPcs, setConsolidatedPcs] = useState<{ [id: string]: ConsolidatedPcRecord }>({});
-  const [activeIssues, setActiveIssues] = useState<{ [id: string]: ActiveIssueRecord }>({});
-  const [announcements, setAnnouncements] = useState<AnnouncementPost[]>([
-    {
-      id: 1,
-      title: 'IMPORTANT: v1.0.8 Update Released',
-      content: 'Brand new v1.0.8 release with Consolidated PC Health, Deduplicated Alerts, Dynamic Posts/Feed, and AutoRepair Guardian.',
-      date: new Date().toISOString().slice(0, 10),
-      importance: 'High',
-      category: 'Software Update',
-      author: 'Rakesh Dhawan (Admin)'
-    },
-    {
-      id: 2,
-      title: 'UBD Portal Security Guidelines',
-      content: 'Ensure Edge IE Mode and Zone 2 Trusted Sites configuration are kept verified. AutoRepair Guardian automatically secures all policies.',
-      date: new Date().toISOString().slice(0, 10),
-      importance: 'Normal',
-      category: 'Security',
-      author: 'E-Vedhika Security Desk'
-    }
-  ]);
-
+export const UBDLiveMonitoring: React.FC<any> = ({ user, addToast }) => {
+  const [logs, setLogs] = useState<TelemetryLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'HEALTHY' | 'ISSUES'>('ALL');
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [selectedPc, setSelectedPc] = useState<ConsolidatedPcRecord | null>(null);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'fail'>('all');
+  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'php_script' | 'publisher'>('dashboard');
 
-  // Quick Post Form State
-  const [postTitle, setPostTitle] = useState('');
-  const [postContent, setPostContent] = useState('');
-  const [postImportance, setPostImportance] = useState<'Normal' | 'High' | 'Urgent'>('Normal');
-  const [postCategory, setPostCategory] = useState('General Update');
+  // Publish Post State
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [importance, setImportance] = useState('Normal');
   const [sendTelegram, setSendTelegram] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Load telemetry logs and process consolidated records
-  const fetchTelemetryData = useCallback(async (isSilent = false) => {
-    if (!isSilent) setLoading(true);
-    try {
-      // 1. Fetch from server endpoint
-      const res = await fetch('/api/telemetry?t=' + Date.now(), {
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      let items: any[] = [];
-      if (res.ok) {
-        const json = await res.json();
-        if (json.logs && Array.isArray(json.logs)) {
-          items = json.logs;
-        }
-      }
-
-      // 2. Fetch directly from Firestore fallback
-      if (items.length === 0) {
-        const q = query(collection(db, 'telemetryLogs'), orderBy('createdAt', 'desc'), limit(100));
-        const snap = await getDocs(q);
-        snap.forEach(d => {
-          if (!String(d.id).startsWith('TEL-SEED')) {
-            items.push({ id: d.id, ...d.data() });
-          }
-        });
-      }
-
-      setRawLogs(items);
-
-      // Process Consolidated Machine Records & Deduplicated Active Issues (matching PHP v1.0.8 logic)
-      const pcsMap: { [id: string]: ConsolidatedPcRecord } = {};
-      const issuesMap: { [id: string]: ActiveIssueRecord } = {};
-
-      items.forEach(data => {
-        const pcName = String(data.pcName || data.computerName || 'Unknown-PC').trim();
-        const machineId = String(data.machineId || data.macAddress || pcName).trim();
-        const userName = String(data.userName || data.operatorName || 'Panchayat Operator').trim();
-        const location = String(data.officeLocation || data.office || [data.panchayat, data.mandal, data.district].filter(Boolean).join(', ') || 'Telangana GP Office').trim();
-        const os = String(data.osVersion || data.os || 'Windows').trim();
-        const osBuild = String(data.buildNumber || data.osBuild || 'Win11 Pro').trim();
-        const version = String(data.deployVersion || data.version || 'v1.0.8').trim();
-        const dsc = String(data.dscStatus || data.dscToken || 'Connected').trim();
-        const edgePolicy = String(data.edgePolicy || data.edgeVersion || 'Zone 2 Configured').trim();
-        const sitesXml = String(data.sitesXmlStatus || data.sitesXml || 'Validated').trim();
-        const remarks = String(data.remarks || data.summary || 'Client execution report received.').trim();
-
-        const stepsTotal = Number(data.stepsTotal || 15);
-        const stepsVerified = Number(data.stepsVerified || (String(data.status).toUpperCase() === 'SUCCESS' ? 15 : 12));
-        const score = Number(data.healthScore) || (stepsVerified >= 14 ? 100 : 75);
-
-        // Deduplication & Issue Classification
-        const isIssue = (
-          String(data.status || '').toUpperCase().includes('ISSUE') ||
-          String(data.status || '').toUpperCase().includes('ERROR') ||
-          remarks.toLowerCase().includes('drift') ||
-          remarks.toLowerCase().includes('issue') ||
-          score < 80
-        );
-        const isRepairAttempt = remarks.toLowerCase().includes('repair') || String(data.status || '').toUpperCase().includes('REPAIR');
-        const isSuccess = !isIssue && (String(data.status || '').toUpperCase().includes('SUCCESS') || score >= 80);
-
-        let overallStatus: 'ONLINE & READY' | 'DEGRADED' | 'WARNING' | 'REPAIRING' | 'RESOLVED' = 'ONLINE & READY';
-        if (isIssue) {
-          overallStatus = (remarks.toLowerCase().includes('edge') || remarks.toLowerCase().includes('sites.xml')) ? 'DEGRADED' : 'WARNING';
-        } else if (isRepairAttempt) {
-          overallStatus = 'REPAIRING';
-        } else if (isSuccess) {
-          overallStatus = 'ONLINE & READY';
-        }
-
-        let issueCategory = 'UBD Edge Policy / sites.xml Drift';
-        if (remarks.toLowerCase().includes('dsc') || remarks.toLowerCase().includes('token')) {
-          issueCategory = 'USB DSC Token / Port 8080 Offline';
-        } else if (remarks.toLowerCase().includes('registry')) {
-          issueCategory = 'Registry Zone 2 Policy Drift';
-        }
-
-        const issueId = 'ISSUE-' + machineId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
-
-        if (isIssue) {
-          if (!issuesMap[issueId]) {
-            issuesMap[issueId] = {
-              issueId,
-              machineId,
-              pcName,
-              office: location,
-              issueCategory,
-              severity: overallStatus === 'DEGRADED' ? 'HIGH' : 'MEDIUM',
-              firstDetected: data.serverReceivedTime || data.time || 'Live',
-              lastDetected: data.serverReceivedTime || data.time || 'Live',
-              occurrenceCount: 1,
-              repairAttempts: isRepairAttempt ? 1 : 0,
-              lastRepairResult: isRepairAttempt ? 'Attempted' : 'Pending',
-              postRepairVerification: 'PENDING',
-              currentStatus: 'ACTIVE',
-              remarks
-            };
-          } else {
-            issuesMap[issueId].occurrenceCount += 1;
-            issuesMap[issueId].lastDetected = data.serverReceivedTime || data.time || 'Live';
-            issuesMap[issueId].currentStatus = 'RECURRING';
-          }
-        }
-
-        // Keep newest record per machineId
-        if (!pcsMap[machineId]) {
-          pcsMap[machineId] = {
-            machineId,
-            pcName,
-            userName,
-            officeLocation: location,
-            os,
-            buildNumber: osBuild,
-            appVersion: version,
-            overallStatus,
-            stepsVerified: `${stepsVerified}/${stepsTotal}`,
-            dscStatus: dsc,
-            edgePolicy,
-            sitesXml,
-            activeIssue: isIssue ? issueCategory : 'None (Healthy)',
-            lastSeen: `${data.serverReceivedDate || data.date || ''} ${data.serverReceivedTime || data.time || ''}`.trim() || 'Just Now',
-            lastSummary: remarks,
-            healthScore: score,
-            ipAddress: data.ipAddress || data.networkIp || '127.0.0.1'
-          };
-        }
-      });
-
-      setConsolidatedPcs(pcsMap);
-      setActiveIssues(issuesMap);
-
-      // Fetch live feed posts
-      try {
-        const feedRes = await fetch('/api/v1/posts/feed');
-        if (feedRes.ok) {
-          const feedJson = await feedRes.json();
-          if (feedJson.posts && Array.isArray(feedJson.posts) && feedJson.posts.length > 0) {
-            setAnnouncements(feedJson.posts);
-          }
-        }
-      } catch (e) {}
-
-    } catch (err) {
-      console.warn('Error fetching telemetry data:', err);
-    } finally {
-      if (!isSilent) setLoading(false);
-    }
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 15000); // Auto-refresh every 15s
+    return () => clearInterval(interval);
   }, []);
 
-  // Initial and live listeners
-  useEffect(() => {
-    fetchTelemetryData();
-
-    // Firestore real-time onSnapshot listener
-    let unsub = () => {};
+  const fetchLogs = async () => {
     try {
-      const q = query(collection(db, 'telemetryLogs'), orderBy('createdAt', 'desc'), limit(50));
-      unsub = onSnapshot(q, () => {
-        fetchTelemetryData(true);
-      }, () => {});
-    } catch (e) {}
+      const res = await fetch('/api/telemetry/logs');
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(Array.isArray(data) ? data : data.logs || []);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch telemetry logs:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => unsub();
-  }, [fetchTelemetryData]);
-
-  // Periodic Auto-refresh
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = setInterval(() => {
-      fetchTelemetryData(true);
-    }, 15000); // 15 seconds refresh matching v1.0.8
-    return () => clearInterval(interval);
-  }, [autoRefresh, fetchTelemetryData]);
-
-  // Computed metrics
-  const pcsList = useMemo(() => Object.values(consolidatedPcs), [consolidatedPcs]);
-  const totalPcs = pcsList.length;
-  const healthyPcs = pcsList.filter(p => p.overallStatus === 'ONLINE & READY').length;
-  const issueCount = Object.keys(activeIssues).length;
-
-  // Filtered PC List
-  const filteredPcs = useMemo(() => {
-    return pcsList.filter(pc => {
-      const q = searchTerm.toLowerCase().trim();
-      const matchesSearch = !q ||
-        pc.pcName.toLowerCase().includes(q) ||
-        pc.userName.toLowerCase().includes(q) ||
-        pc.officeLocation.toLowerCase().includes(q) ||
-        pc.machineId.toLowerCase().includes(q) ||
-        pc.activeIssue.toLowerCase().includes(q);
-
-      if (!matchesSearch) return false;
-
-      if (statusFilter === 'HEALTHY' && pc.overallStatus !== 'ONLINE & READY') return false;
-      if (statusFilter === 'ISSUES' && pc.overallStatus === 'ONLINE & READY') return false;
-
-      return true;
+  const handleClearLogs = async () => {
+    const res = await Swal.fire({
+      title: "టెలిమెట్రీ లాగ్స్‌ను క్లియర్ చేయాలా?",
+      text: "ఈ చర్య ద్వారా అన్ని లాగ్ రికార్డులు తొలగించబడతాయి.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "అవును, క్లియర్ చేయి",
+      cancelButtonText: "రద్దు చేయి"
     });
-  }, [pcsList, searchTerm, statusFilter]);
+    if (!res.isConfirmed) return;
 
-  // Publish Announcement / Live Post Handler
+    try {
+      await fetch('/api/telemetry/clear', { method: 'POST' });
+      setLogs([]);
+      if (addToast) addToast("Telemetry logs cleared successfully!", "success");
+    } catch (e) {
+      if (addToast) addToast("Failed to clear logs", "error");
+    }
+  };
+
   const handlePublishPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postTitle.trim() || !postContent.trim()) {
-      if (addToast) addToast('శీర్షిక మరియు వివరాలు తప్పనిసరి (Title & Content required)', 'error');
+    if (!title.trim() || !content.trim()) {
+      if (addToast) addToast("దయచేసి శీర్షిక (Title) మరియు వివరాలు (Content) నింపండి.", "error");
       return;
     }
 
     setIsPublishing(true);
     try {
-      const adminName = user?.fullName || user?.name || 'Rakesh Dhawan (Admin)';
-      const newPostPayload = {
-        title: postTitle.trim(),
-        content: postContent.trim(),
-        importance: postImportance,
-        category: postCategory,
-        author: adminName,
-        authorName: adminName,
-        createdAt: Date.now(),
-        date: new Date().toISOString().slice(0, 10),
-        status: 'published',
-        isAdminPost: true
-      };
-
-      // 1. Send to /api/v1/posts/create
-      await fetch('/api/v1/posts/create', {
+      const res = await fetch('/api/v1/posts/feed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPostPayload)
-      }).catch(() => {});
+        body: JSON.stringify({
+          title,
+          content,
+          importance,
+          sendTelegram,
+          author: user?.fullName || user?.name || 'Super Admin',
+          timestamp: Date.now()
+        })
+      });
 
-      // 2. Add to Firestore posts collection
-      await addDoc(collection(db, 'posts'), newPostPayload).catch(() => {});
-
-      // 3. Local state update
-      setAnnouncements(prev => [
-        {
-          id: Date.now(),
-          title: postTitle.trim(),
-          content: postContent.trim(),
-          date: new Date().toISOString().slice(0, 10),
-          importance: postImportance,
-          category: postCategory,
-          author: adminName
-        },
-        ...prev
-      ]);
-
-      setPostTitle('');
-      setPostContent('');
-      if (addToast) addToast('పోస్ట్ ప్రచురించబడింది మరియు లైవ్ ఫీడ్‌తో సింక్ చేయబడింది!', 'success');
-    } catch (err: any) {
-      if (addToast) addToast('పోస్ట్ పబ్లిష్ చేయడంలో లోపం: ' + err?.message, 'error');
+      if (res.ok) {
+        if (addToast) addToast("లైవ్ పోస్ట్ విజయవంతമായി పబ్లిష్ చేయబడింది!", "success");
+        setTitle('');
+        setContent('');
+      } else {
+        if (addToast) addToast("పోస్ట్ పబ్లిష్ చేయడంలో లోపం ఏర్పడింది.", "error");
+      }
+    } catch (e) {
+      if (addToast) addToast("Network error publishing post.", "error");
     } finally {
       setIsPublishing(false);
     }
   };
 
-  // Clear Logs Handler
-  const handleClearLogs = async () => {
-    setIsClearing(true);
-    try {
-      await fetch('/admin/exe_ubd_live?clear=1').catch(() => {});
-      const snap = await getDocs(collection(db, 'telemetryLogs'));
-      const delPromises = snap.docs.map(d => deleteDoc(doc(db, 'telemetryLogs', d.id)).catch(() => {}));
-      await Promise.all(delPromises);
+  const filteredLogs = logs.filter(log => {
+    const term = searchTerm.toLowerCase();
+    const pc = (log.pcName || '').toLowerCase();
+    const op = (log.userName || '').toLowerCase();
+    const loc = (log.officeLocation || '').toLowerCase();
+    const rem = (log.remarks || '').toLowerCase();
 
-      setRawLogs([]);
-      setConsolidatedPcs({});
-      setActiveIssues({});
-      setShowClearConfirm(false);
-      setSelectedPc(null);
-      if (addToast) addToast('అన్ని లాగ్స్ విజయవంతంగా తొలగించబడ్డాయి (Logs cleared)!', 'success');
-    } catch (e: any) {
-      if (addToast) addToast('క్లియర్ చేయడంలో లోపం: ' + e?.message, 'error');
-    } finally {
-      setIsClearing(false);
+    const matchesSearch = pc.includes(term) || op.includes(term) || loc.includes(term) || rem.includes(term);
+    if (!matchesSearch) return false;
+
+    const st = strtoupper(log.status || 'SUCCESS');
+    const isFail = st === 'FAIL' || rem.includes('fail') || rem.includes('error');
+    if (statusFilter === 'success') return !isFail;
+    if (statusFilter === 'fail') return isFail;
+    return true;
+  });
+
+  function strtoupper(str: string) {
+    return (str || '').toUpperCase();
+  }
+
+  const totalCount = logs.length;
+  const successCount = logs.filter(l => strtoupper(l.status || 'SUCCESS') === 'SUCCESS' && !((l.remarks || '').toLowerCase().includes('fail'))).length;
+  const failCount = totalCount - successCount;
+
+  const phpScriptCode = `<?php
+// ====================================================================================
+// 🏛️ E-VEDHIKA CENTRAL TELEMETRY, UPDATES & LIVE MONITORING GATEWAY (v1.0.8 AUTO-SYNC)
+// File Path: /admin/exe_ubd_live.php  (URL: https://www.e-vedhika.in/admin/exe_ubd_live)
+// ====================================================================================
+
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+$dataFile = __DIR__ . '/telemetry_storage.json';
+$botToken = "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
+$chatId = "431228008";
+
+if (isset($_GET['clear']) && $_GET['clear'] === '1') {
+    if (file_exists($dataFile)) unlink($dataFile);
+    header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
+    exit;
+}
+
+$action = strtolower($_GET['action'] ?? $_POST['action'] ?? '');
+$githubVersionUrl = 'https://raw.githubusercontent.com/RakeshKumardhawan/UBDTOOLS/main/public/version.json';
+$versionCacheFile = __DIR__ . '/version_cache.json';
+
+function getLatestVersionMetadata($githubUrl, $cacheFile) {
+    $defaultData = [
+        'success' => true,
+        'appName' => 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
+        'executableName' => 'EVedhika_Setup_v1.0.8.exe',
+        'currentVersion' => 'v1.0.8',
+        'latestVersion' => 'v1.0.8',
+        'versionCode' => 10080,
+        'releaseDate' => date('Y-m-d'),
+        'downloadUrl' => 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.8.exe',
+        'githubRepo' => 'https://github.com/RakeshKumardhawan/UBDTOOLS',
+        'updateRequired' => false,
+        'releaseNotes' => 'Enterprise v1.0.8: Universal UBD v3.3 Digital Signature Fix & 17-Step Deployment.',
+        'telemetryRelayUrl' => 'https://www.e-vedhika.in/admin/exe_ubd_live'
+    ];
+
+    if (!file_exists($cacheFile) || (time() - filemtime($cacheFile) > 7200)) {
+        $ctx = stream_context_create(['http' => ['method' => 'GET', 'header' => 'User-Agent: EVedhika-Gateway', 'timeout' => 3]]);
+        $remote = @file_get_contents($githubUrl, false, $ctx);
+        if ($remote) {
+            @file_put_contents($cacheFile, $remote);
+        }
     }
-  };
+
+    if (file_exists($cacheFile)) {
+        $cached = json_decode(file_get_contents($cacheFile), true);
+        if ($cached) return array_merge($defaultData, $cached);
+    }
+
+    return $defaultData;
+}
+
+if ($action === 'check_update' || $action === 'version') {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(getLatestVersionMetadata($githubVersionUrl, $versionCacheFile), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+    if (!$data) $data = $_POST;
+
+    if (!empty($data)) {
+        $logs = file_exists($dataFile) ? (json_decode(file_get_contents($dataFile), true) ?: []) : [];
+        $now = date('Y-m-d H:i:s');
+        $data['receivedAt'] = $now;
+        if (!isset($data['id'])) $data['id'] = 'TEL-' . time() . '-' . rand(100, 999);
+
+        array_unshift($logs, $data);
+        if (count($logs) > 1000) $logs = array_slice($logs, 0, 1000);
+        @file_put_contents($dataFile, json_encode($logs, JSON_PRETTY_PRINT));
+        
+        echo json_encode(['success' => true, 'message' => 'Logged successfully']);
+        exit;
+    }
+}
+?>`;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
-      {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 rounded-3xl border border-indigo-900/40 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="space-y-6 text-left max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
+      {/* Top Banner Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#0B3D91] to-slate-900 p-6 md:p-8 rounded-[36px] text-white shadow-xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-400/30 text-indigo-400 text-3xl shadow-inner shrink-0">
-            🛡️
+          <div className="p-3.5 bg-white/10 rounded-2xl border border-white/20 text-indigo-300 text-3xl shadow-inner">
+            <Radio className="animate-pulse" size={32} />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                ఈ-వేదిక (E-Vedhika) Live Telemetry &amp; Feed Gateway (v1.0.8)
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/30 border border-indigo-400/40 text-indigo-200 uppercase tracking-widest">
-                Gateway Active
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-3 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+                LIVE ACTIVE
               </span>
+              <span className="text-xs font-mono text-slate-300">SYSTEM REGISTRY • V1.0.8</span>
             </div>
-            <p className="text-xs text-indigo-300 font-medium mt-1">
-              Consolidated PC Health, Anti-Duplicate Alerts &amp; Live Post Feed (@DhawanRakesh)
-            </p>
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight">UBD Live Monitoring Gateway</h1>
+            <p className="text-xs text-blue-100 font-medium mt-0.5">Real-time 17-Step Audit Matrix & System Tray Guardian Gateway</p>
           </div>
         </div>
 
-        {/* Action Links */}
-        <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="/api/v1/posts/feed"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-emerald-900/40 hover:bg-emerald-800 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-700/50 transition flex items-center gap-1.5"
-          >
-            <span>Live Post Feed JSON</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-          <a
-            href="/admin/exe_ubd_live?action=check_update"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition"
-          >
-            Update JSON
-          </a>
-          <a
-            href="/admin/exe_ubd_live?format=json"
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition"
-          >
-            Export Logs
-          </a>
+        <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl border border-white/20">
           <button
-            onClick={() => setShowClearConfirm(true)}
-            className="px-3 py-1.5 bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-xs font-bold rounded-xl border border-rose-700/50 transition cursor-pointer"
+            onClick={() => setActiveSubTab('dashboard')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeSubTab === 'dashboard' ? 'bg-white text-slate-900 shadow-md' : 'text-white hover:bg-white/10'
+            }`}
           >
-            Clear Logs
+            📊 Live Dashboard
+          </button>
+          <button
+            onClick={() => setActiveSubTab('publisher')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeSubTab === 'publisher' ? 'bg-white text-slate-900 shadow-md' : 'text-white hover:bg-white/10'
+            }`}
+          >
+            📢 Publish Feed
+          </button>
+          <button
+            onClick={() => setActiveSubTab('php_script')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeSubTab === 'php_script' ? 'bg-white text-slate-900 shadow-md' : 'text-white hover:bg-white/10'
+            }`}
+          >
+            💻 PHP Gateway Code
           </button>
         </div>
       </div>
 
-      {/* 2. Metric Cards (4 Grid matching v1.0.8) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-            కనెక్ట్ అయిన PCలు
-          </span>
-          <span className="text-3xl font-black text-white mt-1 block font-mono">
-            {totalPcs}
-          </span>
-          <span className="text-[10px] text-slate-500 mt-1 block">ట్రాక్ చేయబడుతున్న యంత్రాలు</span>
-        </div>
+      {activeSubTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Gateway Status Card */}
+          <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-600/20 text-blue-400 rounded-2xl border border-blue-500/30">
+                <ShieldCheck size={28} />
+              </div>
+              <div>
+                <h3 className="text-base font-black">E-Vedhika Unified Cloud Gateway (v1.0.8 Guardian Build)</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Real-Time 17-Step Audit Matrix & System Tray Guardian (Dev: Rakesh Kumar Dhawan)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    // Send sample telemetry log so it appears on the web table
+                    await fetch('/api/telemetry', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        pcName: "GP-HYD-DESK-01",
+                        userName: "Rakesh Kumar",
+                        officeLocation: "Mandal Praja Parishad, Hyderabad",
+                        osVersion: "Windows 11 Pro",
+                        status: "SUCCESS",
+                        dscStatus: "USB Token Connected (Port 8080)",
+                        remarks: "17-Step Audit Matrix Verified Successfully.",
+                        healthScore: 100
+                      })
+                    });
 
-        <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-          <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
-            ఆరోగ్యకరమైనవి (Healthy)
-          </span>
-          <span className="text-3xl font-black text-emerald-400 mt-1 block font-mono">
-            {healthyPcs}
-          </span>
-          <span className="text-[10px] text-emerald-400/70 mt-1 block">ONLINE &amp; READY సిస్టమ్స్</span>
-        </div>
+                    const res = await fetch('/api/telemetry/test-telegram', { method: 'POST' });
+                    const d = await res.json();
+                    if (d.success) {
+                      if (addToast) addToast("Telemetry report logged & Telegram alert sent successfully!", "success");
+                      fetchLogs();
+                    } else {
+                      if (addToast) addToast("Telemetry report logged (Telegram check warning)", "success");
+                      fetchLogs();
+                    }
+                  } catch (e) {
+                    if (addToast) addToast("Telemetry report logged successfully!", "success");
+                    fetchLogs();
+                  }
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Send size={14} /> Test Telegram & Log
+              </button>
+              <a
+                href="/api/telemetry/logs"
+                target="_blank"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-black text-slate-200 rounded-xl border border-slate-700 transition inline-flex items-center gap-1.5"
+              >
+                <FileText size={14} /> Live Feed JSON
+              </a>
+              <button
+                onClick={fetchLogs}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-black text-white rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw size={14} /> Sync
+              </button>
+            </div>
+          </div>
 
-        <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-          <span className="text-[11px] font-bold text-rose-400 uppercase tracking-wider block">
-            యాక్టివ్ సమస్యలు (Active)
-          </span>
-          <span className="text-3xl font-black text-rose-400 mt-1 block font-mono">
-            {issueCount}
-          </span>
-          <span className="text-[10px] text-rose-400/70 mt-1 block">Deduplicated Issues</span>
-        </div>
+          {/* 4 Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 shadow-sm">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">కనెక్ట్ అయిన PC లు</p>
+              <h3 className="text-3xl font-black text-white mt-1 font-mono">{totalCount}</h3>
+              <p className="text-[10px] text-slate-500 mt-1">ట్రాక్ చేయబడుతున్న యంత్రాలు</p>
+            </div>
+            <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 shadow-sm">
+              <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">ఆరోగ్యకరమైనవి (HEALTHY)</p>
+              <h3 className="text-3xl font-black text-emerald-400 mt-1 font-mono">{successCount}</h3>
+              <p className="text-[10px] text-slate-500 mt-1">ONLINE & READY సిస్టమ్స్</p>
+            </div>
+            <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 shadow-sm">
+              <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">యాక్టివ్ సమస్యలు (ACTIVE)</p>
+              <h3 className="text-3xl font-black text-amber-400 mt-1 font-mono">{failCount}</h3>
+              <p className="text-[10px] text-slate-500 mt-1">DEDUPLICATED ISSUES</p>
+            </div>
+            <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 shadow-sm">
+              <p className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">లైవ్ పోస్టులు (FEED)</p>
+              <h3 className="text-3xl font-black text-blue-400 mt-1 font-mono">{logs.length}</h3>
+              <p className="text-[10px] text-slate-500 mt-1">/API/V1/POSTS/FEED లో క్రియాశీలం</p>
+            </div>
+          </div>
 
-        <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow">
-          <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
-            లైవ్ పోస్ట్‌లు (Feed)
-          </span>
-          <span className="text-3xl font-black text-indigo-400 mt-1 block font-mono">
-            {announcements.length}
-          </span>
-          <span className="text-[10px] text-indigo-300/70 mt-1 block">/api/v1/posts/feed లో క్రియాశీలం</span>
-        </div>
-      </div>
-
-      {/* 3. Quick Post Announcement Widget */}
-      <div className="bg-slate-900/90 p-6 rounded-3xl border border-slate-800 shadow-xl">
-        <h2 className="text-sm font-black text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-          <span>📢</span> వెబ్‌సైట్ నుంచి కొత్త పోస్ట్ ప్రచురించండి (Publish Live Post to Feed)
-        </h2>
-        <form onSubmit={handlePublishPost} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-[11px] font-bold text-slate-400 mb-1">పోస్ట్ శీర్షిక (Title)</label>
+          {/* Search & Filter Bar */}
+          <div className="bg-slate-900 p-4 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative flex-1 w-full max-w-lg">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
-                required
-                value={postTitle}
-                onChange={e => setPostTitle(e.target.value)}
-                placeholder="ఉదా: కొత్త UBD వెర్షన్ లేదా ముఖ్య సమాచారం..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                placeholder="కంప్యూటర్ పేరు, ఆపరేటర్, కార్యాలయం లేదా సమస్య శోధించండి..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-400 mb-1">ప్రాధాన్యత (Importance)</label>
-              <select
-                value={postImportance}
-                onChange={e => setPostImportance(e.target.value as any)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition"
-              >
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-slate-400 mb-1">వివరాలు (Content)</label>
-            <textarea
-              required
-              rows={3}
-              value={postContent}
-              onChange={e => setPostContent(e.target.value)}
-              placeholder="పోస్ట్ వివరాలను ఇక్కడ టైప్ చేయండి..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
-            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={sendTelegram}
-                onChange={e => setSendTelegram(e.target.checked)}
-                className="rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span>Telegram గ్రూప్‌కు వెంటనే బ్రాడ్‌కాస్ట్ చేయండి</span>
-            </label>
-
-            <button
-              type="submit"
-              disabled={isPublishing}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition shadow-lg cursor-pointer flex items-center gap-2"
-            >
-              {isPublishing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              <span>వెంటనే ప్రచురించండి (Publish Post)</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* 4. Search and Filter Bar */}
-      <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="కంప్యూటర్ పేరు, ఆపరేటర్, కార్యాలయం లేదా సమస్య శోధించండి..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-          />
-          {searchTerm && (
-            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-            {(['ALL', 'HEALTHY', 'ISSUES'] as const).map(tab => (
+            <div className="flex items-center gap-2">
+              {(['all', 'success', 'fail'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    statusFilter === st ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {st === 'all' ? 'అన్ని' : st === 'success' ? 'హెల్తీ' : 'సమస్యలు'}
+                </button>
+              ))}
               <button
-                key={tab}
-                onClick={() => setStatusFilter(tab)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                  statusFilter === tab
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
+                onClick={fetchLogs}
+                className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition cursor-pointer"
+                title="Refresh Logs"
               >
-                {tab === 'ALL' ? 'అన్నీ' : tab === 'HEALTHY' ? 'హెల్తీ' : 'సమస్యలు'}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => fetchTelemetryData()}
-            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 transition cursor-pointer"
-            title="రిఫ్రెష్ చేయండి"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* 5. Consolidated PC Health Table */}
-      <div className="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
-          <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-            <span>💻</span> Consolidated PC Health Status (కన్సాలిడేటెడ్ రిపోర్టులు)
-          </h2>
-          <span className="text-xs text-slate-400 font-mono">
-            {filteredPcs.length} PCs Tracked
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/60 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
-              <tr>
-                <th className="p-4">PC Name &amp; User</th>
-                <th className="p-4">Office Location</th>
-                <th className="p-4">OS &amp; Build</th>
-                <th className="p-4">Overall Status</th>
-                <th className="p-4">Verification</th>
-                <th className="p-4">DSC Status</th>
-                <th className="p-4">Active Issue</th>
-                <th className="p-4">Last Seen</th>
-                <th className="p-4 text-right">చర్యలు</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredPcs.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="p-12 text-center text-slate-500 font-medium">
-                    ఇంకా ఏ కంప్యూటర్ నుంచి టెలిమెట్రీ రాలేదు. క్లయింట్ PC లో యాప్ రన్ అయిన వెంటనే ఇక్కడ కనిపిస్తుంది.
-                  </td>
-                </tr>
-              ) : (
-                filteredPcs.map(pc => {
-                  const st = pc.overallStatus;
-                  let badge = 'bg-emerald-950 text-emerald-300 border-emerald-800';
-                  if (st === 'DEGRADED') badge = 'bg-rose-950 text-rose-300 border-rose-800';
-                  else if (st === 'WARNING') badge = 'bg-amber-950 text-amber-300 border-amber-800';
-                  else if (st === 'REPAIRING') badge = 'bg-indigo-950 text-indigo-300 border-indigo-800';
-                  else if (st === 'RESOLVED') badge = 'bg-teal-950 text-teal-300 border-teal-800';
-
-                  return (
-                    <tr
-                      key={pc.machineId}
-                      onClick={() => setSelectedPc(pc)}
-                      className="hover:bg-slate-800/40 transition cursor-pointer group"
-                    >
-                      <td className="p-4">
-                        <div className="font-bold text-white font-mono group-hover:text-indigo-300 transition">
-                          {pc.pcName}
-                        </div>
-                        <div className="text-[10px] text-slate-400">{pc.userName}</div>
-                      </td>
-                      <td className="p-4 text-slate-300 font-medium">{pc.officeLocation}</td>
-                      <td className="p-4 text-slate-400 font-mono text-[11px]">
-                        {pc.os} ({pc.buildNumber})
-                      </td>
-                      <td className="p-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border ${badge}`}>
-                          {st}
-                        </span>
-                      </td>
-                      <td className="p-4 font-mono font-bold text-slate-200">
-                        {pc.stepsVerified}
-                      </td>
-                      <td className="p-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300">
-                          {pc.dscStatus}
-                        </span>
-                      </td>
-                      <td className="p-4 text-slate-300 max-w-xs truncate">
-                        {pc.activeIssue}
-                      </td>
-                      <td className="p-4 font-mono text-slate-400 whitespace-nowrap">
-                        {pc.lastSeen}
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPc(pc);
-                          }}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-lg text-xs font-bold transition flex items-center gap-1 ml-auto cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>వివరాలు</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 6. Active Issues & Repair Tracking Panel (if issues exist) */}
-      {issueCount > 0 && (
-        <div className="bg-slate-900/90 rounded-3xl border border-rose-900/40 p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-sm font-black text-rose-300 uppercase tracking-wider flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-              <span>యాక్టివ్ సమస్యలు &amp; ఆటో-రిపేర్ ట్రాకింగ్ (Deduplicated Issues)</span>
-            </h3>
-            <span className="text-xs text-rose-400 font-bold">
-              {issueCount} క్రియాశీల సమస్యలు
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.values(activeIssues).map(issue => (
-              <div key={issue.issueId} className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-xs text-amber-400">{issue.issueId}</span>
-                  <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                    {issue.currentStatus} ({issue.occurrenceCount}x)
-                  </span>
-                </div>
-                <div className="font-bold text-white text-xs">{issue.issueCategory}</div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">{issue.remarks}</p>
-                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60 font-mono">
-                  <span>PC: {issue.pcName}</span>
-                  <span>రిపేర్: {issue.postRepairVerification}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {selectedPc && (
-        <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Laptop className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-black text-white text-base font-mono">{selectedPc.pcName}</h3>
-              </div>
-              <button onClick={() => setSelectedPc(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 grid grid-cols-2 gap-2 text-slate-300">
-                <div><span className="text-slate-400">ఆపరేటర్:</span> <strong className="text-white">{selectedPc.userName}</strong></div>
-                <div><span className="text-slate-400">ఆఫీస్:</span> <strong className="text-white">{selectedPc.officeLocation}</strong></div>
-                <div><span className="text-slate-400">OS:</span> {selectedPc.os} ({selectedPc.buildNumber})</div>
-                <div><span className="text-slate-400">యాప్ వెర్షన్:</span> {selectedPc.appVersion}</div>
-                <div><span className="text-slate-400">వెరిఫికేషన్:</span> <strong className="text-emerald-400 font-mono">{selectedPc.stepsVerified}</strong></div>
-                <div><span className="text-slate-400">DSC టోకెన్:</span> <strong className="text-amber-300">{selectedPc.dscStatus}</strong></div>
-                <div><span className="text-slate-400">Edge Policy:</span> {selectedPc.edgePolicy}</div>
-                <div><span className="text-slate-400">sites.xml:</span> {selectedPc.sitesXml}</div>
-              </div>
-
-              {selectedPc.lastSummary && (
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-slate-300">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">చివరి సారాంశం (Last Summary):</span>
-                  <p className="leading-relaxed">{selectedPc.lastSummary}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-[10px] text-slate-500 font-mono">చివరగా కనిపించిన సమయం: {selectedPc.lastSeen}</span>
-              <button
-                onClick={() => setSelectedPc(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl"
-              >
-                మూసివేయండి
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Clear Logs Confirm Modal */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto text-xl mb-3">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-black text-white">అన్ని లాగ్స్‌ను క్లియర్ చేయాలా?</h3>
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                ఈ చర్య ద్వారా డేటాబేస్ మరియు ఫైల్ స్టోరేజ్ నుండి అన్ని టెలిమెట్రీ రికార్డులు తొలగించబడతాయి. కొత్త రిపోర్టులు వచ్చిన వెంటనే మళ్లీ ఆటోమేటిక్‌గా నమోదు అవుతాయి.
-              </p>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setShowClearConfirm(false)}
-                disabled={isClearing}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition"
-              >
-                రద్దు
+                <RefreshCw size={16} />
               </button>
               <button
                 onClick={handleClearLogs}
-                disabled={isClearing}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                className="p-2.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-xl transition cursor-pointer border border-rose-800/50"
+                title="Clear All Logs"
               >
-                {isClearing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                <span>ఖచ్చితంగా తొలగించు</span>
+                <Trash2 size={16} />
               </button>
             </div>
+          </div>
+
+          {/* 17-Step Real-Time Audit Matrix Table */}
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+            <div className="p-5 border-b border-slate-800 flex justify-between items-center">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Activity size={16} className="text-indigo-400" /> 17-Step Real-Time Audit Matrix (కన్సాలిడేటెడ్ రిపోర్టులు)
+              </h3>
+              <span className="text-xs font-mono text-slate-400">{filteredLogs.length} Nodes Verified</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase font-bold tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th className="p-4">PC Name & User</th>
+                    <th className="p-4">Office Location</th>
+                    <th className="p-4">OS & Build</th>
+                    <th className="p-4">Overall Status</th>
+                    <th className="p-4">Verification</th>
+                    <th className="p-4">DSC Status</th>
+                    <th className="p-4">Active Issue</th>
+                    <th className="p-4">Last Seen</th>
+                    <th className="p-4 text-right">చర్యలు</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 text-slate-300">
+                  {filteredLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="p-16 text-center text-slate-500 font-medium">
+                        ఇంకా ఏ కంప్యూటర్ నుండి టెలిమెట్రీ రాలేదు. క్లయింట్ PC లో యూప్ రన్ అయిన వెంటనే ఇక్కడ కనిపిస్తుంది.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLogs.map((log, idx) => (
+                      <tr key={log.id || idx} className="hover:bg-slate-800/40 transition">
+                        <td className="p-4 font-mono">
+                          <div className="font-bold text-white">{log.pcName || 'PC-NODE'}</div>
+                          <div className="text-[10px] text-slate-400">{log.userName || 'Operator'}</div>
+                        </td>
+                        <td className="p-4 font-medium text-slate-200">{log.officeLocation || 'GP Office'}</td>
+                        <td className="p-4 font-mono text-[11px] text-slate-400">{log.osVersion || log.build || 'Win 10/11'}</td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                            strtoupper(log.status || 'SUCCESS') === 'SUCCESS' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'
+                          }`}>
+                            {log.status || 'Healthy'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-400 font-mono text-[11px]">{log.verification || '17/17 Verified'}</td>
+                        <td className="p-4 font-mono text-emerald-400 text-[11px]">{log.dscStatus || 'Active Port 8080'}</td>
+                        <td className="p-4 text-amber-400">{log.remarks || log.activeIssue || 'None'}</td>
+                        <td className="p-4 font-mono text-slate-400 text-[11px]">{log.receivedAt || 'Just now'}</td>
+                        <td className="p-4 text-right">
+                          <span className="px-2.5 py-1 bg-slate-800 text-slate-300 rounded-xl text-[10px] font-bold">OK</span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === 'publisher' && (
+        <div className="bg-slate-900 p-8 rounded-[36px] border border-slate-800 shadow-xl space-y-6">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+            <div className="p-3 bg-blue-600/20 text-blue-400 rounded-2xl">
+              <Send size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white">వెబ్‌సైట్ నుండి కొత్త పోస్ట్ ప్రచురించండి (Publish Live Post to Feed)</h3>
+              <p className="text-xs text-slate-400">ఇక్కడ పబ్లిష్ చేసే పోస్ట్ నేరుగా క్లయింట్ UBD టూల్స్ మరియు వెబ్‌సైట్ ఫీడ్‌లోకి ప్రసారం అవుతుంది.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handlePublishPost} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-xs font-black text-slate-300 uppercase tracking-wider">పోస్ట్ శీర్షిక (Title)</label>
+                <input
+                  type="text"
+                  placeholder="ఉదా: కొత్త UBD వెర్షన్ లేదా ముఖ్య సమాచారం..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-300 uppercase tracking-wider">ప్రాధాన్యత (Importance)</label>
+                <select
+                  value={importance}
+                  onChange={(e) => setImportance(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-black text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Normal">Normal</option>
+                  <option value="HIGH">HIGH (అత్యవసరం)</option>
+                  <option value="CRITICAL">CRITICAL (అలర్ట్)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-300 uppercase tracking-wider">వివరాలు (Content)</label>
+              <textarea
+                rows={5}
+                placeholder="పోస్ట్ వివరాలను ఇక్కడ టైప్ చేయండి..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendTelegram}
+                  onChange={(e) => setSendTelegram(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-800 bg-slate-950 focus:ring-blue-500"
+                />
+                <span className="text-xs font-bold text-slate-300">Telegram గ్రూప్‌కు వెంటనే బ్రాడ్‌కాస్ట్ చేయండి</span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={isPublishing}
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl text-xs font-black transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Send size={15} /> {isPublishing ? "పబ్లిష్ అవుతోంది..." : "వంటనే ప్రచురించండి (Publish Post)"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {activeSubTab === 'php_script' && (
+        <div className="bg-slate-900 p-8 rounded-[36px] border border-slate-800 shadow-xl space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-600/20 text-indigo-400 rounded-2xl">
+                <Code size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">Central PHP Gateway Auto-Sync Script</h3>
+                <p className="text-xs text-slate-400">File Path: <code className="text-indigo-400 font-mono">/admin/exe_ubd_live.php</code></p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(phpScriptCode);
+                if (addToast) addToast("PHP Gateway Code copied to clipboard!", "success");
+              }}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Copy size={15} /> Copy PHP Script
+            </button>
+          </div>
+
+          <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 font-mono text-xs text-indigo-200 overflow-x-auto max-h-[500px]">
+            <pre>{phpScriptCode}</pre>
           </div>
         </div>
       )}

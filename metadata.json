@@ -1,10 +1,6 @@
 {
-  "name": "E-Vedhika Portal",
-  "description": "E-Vedhika All problems one solution",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ],
+  "name": "E-Vedhika One-Click Deployment Tool",
+  "description": "v1.0.8 Guardian Build. Developed by Rakesh Kumar Dhawan.",
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

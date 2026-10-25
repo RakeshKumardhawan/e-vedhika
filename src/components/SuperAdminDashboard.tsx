@@ -631,6 +631,8 @@ export function SuperAdminDashboard({
         <ExeDeploymentManager />
       ) : effectiveTab === "exe_ubd_live" ? (
         <UBDLiveMonitoring user={user} addToast={addToast} />
+      ) : effectiveTab === "exe_broadcast" ? (
+        <EmergencyBroadcast />
       ) : effectiveTab === "health" ? (
         <LiveSystemHealthCenter />
       ) : effectiveTab === "ddos" ? (

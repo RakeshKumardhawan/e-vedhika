@@ -4,7 +4,7 @@ import {
   Search, CheckCircle2, Save, User, ShieldAlert, Check, X, Filter, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, doc, onSnapshot, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc, setDoc, getDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import Swal from 'sweetalert2';
 
@@ -124,6 +124,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>(initialRoleFilter);
   const [activeTab, setActiveTab] = useState<"users_roles" | "matrix">("users_roles");
+  const [selectedUserForModal, setSelectedUserForModal] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -280,6 +281,67 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
     }
   };
 
+  // Handle Block / Unblock User
+  const handleToggleUserBan = async (userItem: any) => {
+    const isBanned = !!userItem.banned;
+    const actionName = isBanned ? "అన్‌బ్లాక్ (Unblock)" : "బ్లాక్ (Block)";
+    const fullName = getUserFullName(userItem);
+
+    const res = await Swal.fire({
+      title: `${actionName} - ${fullName}?`,
+      text: isBanned ? "ఈ యూజర్ తిరిగి పోర్టల్‌ను యాక్సెస్ చేయవచ్చు." : "ఈ యూజర్ పోర్టల్‌ను ఉపయోగించకుండా బ్లాక్ చేయబడతారు.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: isBanned ? "#10b981" : "#ef4444",
+      confirmButtonText: `అవును, ${actionName}`,
+      cancelButtonText: "రద్దు చేయి"
+    });
+
+    if (!res.isConfirmed) return;
+
+    try {
+      await updateDoc(doc(db, "users", userItem.id), {
+        banned: !isBanned,
+        updatedAt: Date.now(),
+        bannedBy: currentUser?.email || "Admin"
+      });
+      if (addToast) addToast(`User ${fullName} successfully ${isBanned ? 'unblocked' : 'blocked'}!`, "success");
+    } catch (e: any) {
+      if (addToast) addToast(`Failed to update status: ${e.message}`, "error");
+    }
+  };
+
+  // Handle Direct Admin Notification to User
+  const handleSendAdminNotification = async (userItem: any) => {
+    const fullName = getUserFullName(userItem);
+    const { value: messageText } = await Swal.fire({
+      title: `సందేశం పంపు (Send Admin Alert): ${fullName}`,
+      input: "textarea",
+      inputLabel: "Type direct notice or warning to this user:",
+      inputPlaceholder: "Enter notification message...",
+      showCancelButton: true,
+      confirmButtonText: "Send Notification",
+      confirmButtonColor: "#0B3D91"
+    });
+
+    if (!messageText || !messageText.trim()) return;
+
+    try {
+      await addDoc(collection(db, "notifications"), {
+        uid: userItem.id,
+        title: "🛡️ అడ్మిన్ ప్రత్యేక సందేశం (Admin Notice)",
+        message: messageText.trim(),
+        type: "admin_direct_notice",
+        senderName: currentUser?.fullName || currentUser?.name || "Super Admin",
+        read: false,
+        time: Date.now()
+      });
+      if (addToast) addToast(`Notification successfully sent to ${fullName}!`, "success");
+    } catch (e: any) {
+      if (addToast) addToast(`Failed to send notification: ${e.message}`, "error");
+    }
+  };
+
   // Reset to Defaults
   const handleResetToDefaults = () => {
     Swal.fire({
@@ -425,230 +487,409 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
               />
             </div>
 
-            {/* Role Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: "all", label: "All Users", count: users.length },
-                { id: "online", label: "🟢 ఆన్‌లైన్ (Online)", count: users.filter(isUserOnline).length },
-                { id: "staff", label: "All Staff", count: staffCount },
-                { id: "super_admin", label: "Super Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'super_admin' || (u.email && u.email.toLowerCase() === 'rakeshkumardhawan123@gmail.com')).length },
-                { id: "admin", label: "Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'admin').length },
-                { id: "editor", label: "Editor", count: users.filter(u => (u.role || '').toLowerCase() === 'editor').length },
-                { id: "moderator", label: "Moderator", count: users.filter(u => (u.role || '').toLowerCase() === 'moderator').length },
-                { id: "user", label: "User / Citizen", count: users.filter(u => !['super_admin', 'admin', 'editor', 'moderator'].includes((u.role || '').toLowerCase()) && (u.email || '').toLowerCase() !== 'rakeshkumardhawan123@gmail.com').length },
-              ].map((rf) => (
+            {/* Role Filter Tabs & Export Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: "all", label: "All Users", count: users.length },
+                  { id: "online", label: "🟢 ఆన్‌లైన్ (Online)", count: users.filter(isUserOnline).length },
+                  { id: "staff", label: "All Staff", count: staffCount },
+                  { id: "super_admin", label: "Super Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'super_admin' || (u.email && u.email.toLowerCase() === 'rakeshkumardhawan123@gmail.com')).length },
+                  { id: "admin", label: "Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'admin').length },
+                  { id: "editor", label: "Editor", count: users.filter(u => (u.role || '').toLowerCase() === 'editor').length },
+                  { id: "moderator", label: "Moderator", count: users.filter(u => (u.role || '').toLowerCase() === 'moderator').length },
+                  { id: "user", label: "User / Citizen", count: users.filter(u => !['super_admin', 'admin', 'editor', 'moderator'].includes((u.role || '').toLowerCase()) && (u.email || '').toLowerCase() !== 'rakeshkumardhawan123@gmail.com').length },
+                ].map((rf) => (
+                  <button
+                    key={rf.id}
+                    onClick={() => setRoleFilter(rf.id)}
+                    className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
+                      roleFilter === rf.id
+                        ? (rf.id === "online" ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-900 text-white shadow-xs")
+                        : (rf.id === "online" ? "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100" : "bg-slate-50 border border-slate-200/70 text-slate-600 hover:bg-slate-100")
+                    }`}
+                  >
+                    {rf.label} ({rf.count})
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  key={rf.id}
-                  onClick={() => setRoleFilter(rf.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all ${
-                    roleFilter === rf.id
-                      ? (rf.id === "online" ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-900 text-white shadow-xs")
-                      : (rf.id === "online" ? "bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100" : "bg-slate-50 border border-slate-200/70 text-slate-600 hover:bg-slate-100")
-                  }`}
+                  onClick={() => {
+                    if (!filteredUsers.length) {
+                      if (addToast) addToast("No users to export", "info");
+                      return;
+                    }
+                    const keys = ["id", "fullName", "email", "mobile", "district", "role", "designation"];
+                    const csvContent = [
+                      keys.join(','),
+                      ...filteredUsers.map(u => keys.map(k => `"${String(u[k] || '').replace(/"/g, '""')}"`).join(','))
+                    ].join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `evedhika_users_${Date.now()}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    if (addToast) addToast("Users exported to CSV successfully!", "success");
+                  }}
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  {rf.label} ({rf.count})
+                  📥 Export CSV
                 </button>
-              ))}
+              </div>
             </div>
           </div>
 
-          {/* User Role Management Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-xs">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          {/* Compact User Name Cards Grid with Hover Details */}
+          <div className="space-y-4">
+            <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <UserCheck size={16} className="text-blue-600" /> User Directory & Role Assignment
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">Real-time Firestore user profiles with direct role elevation & security credentials</p>
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">యూజర్ల జాబితా (User Directory Cards)</h4>
+                <p className="text-[11px] text-slate-500">కార్డుపై మౌస్ ఉంచితే పూర్తి వివరాలు పక్కనే కనిపిస్తాయి (Hover over any user card to view details)</p>
               </div>
-              <span className="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-xl border border-slate-100">
-                Showing {filteredUsers.length} of {users.length} Users
+              <span className="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
+                Total Users: {filteredUsers.length}
               </span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                    <th className="p-4 pl-6">User Details</th>
-                    <th className="p-4">Contact / Location</th>
-                    <th className="p-4">Assigned Role</th>
-                    <th className="p-4">Security PIN</th>
-                    <th className="p-4 text-right pr-6">Quick Role Change</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="p-12 text-center text-slate-400 font-medium">
-                        <RefreshCw className="animate-spin inline mr-2 text-blue-600" size={16} /> Loading user records from Firestore...
-                      </td>
-                    </tr>
-                  ) : filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-12 text-center text-slate-400 font-medium">
-                        No users match the search criteria "{searchQuery}".
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsers.map((u) => {
-                      const fullName = getUserFullName(u);
-                      const userRole = (u.role || "user").toLowerCase();
-                      const pin = userPins[u.id];
-                      const online = isUserOnline(u);
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {loading ? (
+                <div className="col-span-3 p-12 text-center text-slate-400 font-medium bg-white rounded-3xl border border-slate-200">
+                  <RefreshCw className="animate-spin inline mr-2 text-blue-600" size={16} /> Loading user records from Firestore...
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="col-span-3 p-12 text-center text-slate-400 font-medium bg-white rounded-3xl border border-slate-200">
+                  No users match the search criteria "{searchQuery}".
+                </div>
+              ) : (
+                filteredUsers.map((u) => {
+                  const fullName = getUserFullName(u);
+                  const userRole = (u.role || "user").toLowerCase();
+                  const online = isUserOnline(u);
 
-                      return (
-                        <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                          {/* 1. USER DETAILS: Actual Full Name + Avatar + User ID + Live Status */}
-                          <td className="p-4 pl-6">
-                            <div className="flex items-center gap-3.5">
-                              <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200/60 shadow-xs overflow-hidden flex items-center justify-center shrink-0">
-                                {u.photoURL || u.avatar ? (
-                                  <img
-                                    src={u.photoURL || u.avatar}
-                                    alt={fullName}
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                    onError={(e) => {
-                                      // Fallback on image error
-                                      (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                  />
-                                ) : (
-                                  <span className="font-black text-xs text-blue-700">
-                                    {getUserInitials(fullName)}
-                                  </span>
-                                )}
-                                {online && (
-                                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" title="ప్రస్తుతం ఆన్‌లైన్ (Online)"></span>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-black text-slate-900 text-sm leading-tight truncate">
-                                    {fullName}
-                                  </p>
-                                  {online ? (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                      ఆన్‌లైన్ ({u.id === currentUser?.uid ? "మీరు" : u.lastActive ? `${Math.max(1, Math.round((presenceTick - Number(u.lastActive)) / 1000))}s` : "లైవ్"})
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-slate-400 bg-slate-50 border border-slate-100">
-                                      ఆఫ్‌లైన్
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                  {u.username ? (
-                                    <span className="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md hover:bg-indigo-100 transition-colors" title={`User ID (UID): ${u.id}`}>
-                                      @{u.username}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-mono text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md truncate max-w-[200px]" title={u.id}>
-                                      ID: {u.id}
-                                    </span>
-                                  )}
-                                  {u.designation && (
-                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                                      {u.designation}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
+                  const rawTime = u.createdAt || u.registeredAt || u.timestamp || u.joinedAt || u.time;
+                  let regDate = 'తేదీ అందుబాటులో లేదు';
+                  if (rawTime) {
+                    try {
+                      if (typeof rawTime === 'object' && rawTime !== null) {
+                        const millis = typeof rawTime.toMillis === 'function' ? rawTime.toMillis() :
+                                       typeof rawTime.seconds === 'number' ? rawTime.seconds * 1000 :
+                                       rawTime.seconds ? Number(rawTime.seconds) * 1000 : 0;
+                        if (millis > 0) {
+                          regDate = new Date(millis).toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          });
+                        }
+                      } else {
+                        const num = Number(rawTime);
+                        if (!isNaN(num) && num > 0) {
+                          regDate = new Date(num > 1e12 ? num : num * 1000).toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          });
+                        } else {
+                          regDate = String(rawTime);
+                        }
+                      }
+                    } catch (e) {
+                      regDate = String(rawTime);
+                    }
+                  } else {
+                    regDate = 'ఫైర్‌బేస్ సింక్ చేయబడింది';
+                  }
 
-                          {/* 2. CONTACT / LOCATION */}
-                          <td className="p-4 text-slate-600">
-                            <p className="font-semibold text-xs text-slate-800 truncate">{u.email || "No email"}</p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              {u.mobile || u.phone ? `📱 ${u.mobile || u.phone}` : "No phone"}
-                              {u.district ? ` • ${u.district}` : ""}
-                            </p>
-                          </td>
-
-                          {/* 3. ASSIGNED ROLE: Only the role badge & selector */}
-                          <td className="p-4">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                                userRole === "super_admin"
-                                  ? "bg-purple-100 text-purple-800 border border-purple-200"
-                                  : userRole === "admin"
-                                  ? "bg-rose-100 text-rose-800 border border-rose-200"
-                                  : userRole === "editor"
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : userRole === "moderator"
-                                  ? "bg-amber-100 text-amber-800 border border-amber-200"
-                                  : "bg-slate-100 text-slate-700 border border-slate-200"
-                              }`}
-                            >
-                              <Shield size={11} />
-                              {userRole === "super_admin"
-                                ? "Super Admin"
-                                : userRole === "admin"
-                                ? "Admin"
-                                : userRole === "editor"
-                                ? "Editor"
-                                : userRole === "moderator"
-                                ? "Moderator"
-                                : "Citizen / User"}
-                            </span>
-                          </td>
-
-                          {/* 4. SECURITY PIN */}
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2.5 py-1 rounded-lg font-mono text-xs font-black ${
-                                pin ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"
-                              }`}>
-                                {pin || "NOT SET"}
+                  return (
+                    <div
+                      key={u.id}
+                      className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-blue-400 transition-all duration-200 group relative overflow-visible flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Top: Avatar, Name & Role */}
+                        <div className="flex items-center gap-3.5 mb-3">
+                          <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 shadow-xs overflow-hidden flex items-center justify-center shrink-0">
+                            {u.photoURL || u.avatar ? (
+                              <img
+                                src={u.photoURL || u.avatar}
+                                alt={fullName}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <span className="font-black text-xs text-blue-700">
+                                {getUserInitials(fullName)}
                               </span>
-                              <button
-                                onClick={() => handleResetPin(u)}
-                                title="Reset / Set 4-Digit Security PIN"
-                                className="p-1.5 bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 rounded-lg transition-colors"
-                              >
-                                <Key size={13} />
-                              </button>
+                            )}
+                            {online && (
+                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4 className="font-black text-slate-900 text-sm truncate" title={fullName}>
+                                {fullName}
+                              </h4>
+                              <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                                userRole === "super_admin" ? "bg-purple-100 text-purple-800" :
+                                userRole === "admin" ? "bg-rose-100 text-rose-800" :
+                                userRole === "editor" ? "bg-emerald-100 text-emerald-800" :
+                                userRole === "moderator" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"
+                              }`}>
+                                {userRole}
+                              </span>
                             </div>
-                          </td>
+                            <p className="text-[11px] font-bold text-slate-700 truncate mt-0.5" title={u.email || "No email"}>
+                              📧 {u.email || "No email"}
+                            </p>
+                          </div>
+                        </div>
 
-                          {/* 5. ACTIONS: Direct Role Selection */}
-                          <td className="p-4 text-right pr-6">
-                            <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60">
-                              {[
-                                { r: "user", label: "User" },
-                                { r: "moderator", label: "Moderator" },
-                                { r: "editor", label: "Editor" },
-                                { r: "admin", label: "Admin" },
-                                { r: "super_admin", label: "Super Admin" },
-                              ].map(({ r, label }) => {
-                                const isCurrent = (userRole === r) || (r === "user" && !["super_admin", "admin", "editor", "moderator"].includes(userRole));
-                                return (
-                                  <button
-                                    key={r}
-                                    onClick={() => handleAssignRole(u.id, userRole, r, fullName)}
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${
-                                      isCurrent
-                                        ? "bg-slate-900 text-white shadow-xs"
-                                        : "text-slate-500 hover:text-slate-800 hover:bg-white/80"
-                                    }`}
-                                  >
-                                    {label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                        {/* Middle: Phone & District */}
+                        <div className="space-y-1 text-xs pt-2 border-t border-slate-100">
+                          <p className="font-bold text-blue-700 flex items-center gap-1.5 truncate">
+                            <span>📱</span> {u.mobile || u.phone || "ఫోన్ నెంబర్ లేదు"}
+                          </p>
+                          <p className="font-medium text-slate-600 flex items-center gap-1.5 truncate">
+                            <span>📍</span> {u.district ? `${u.district}, Telangana` : "జిల్లా నమోదు కాలేదు"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Bottom: Registration Time & Admin Quick Actions */}
+                      <div className="pt-3 mt-3 border-t border-slate-100 flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                          <span className="font-sans font-bold text-slate-400">🕒 రిజిస్టర్:</span>
+                          <span className="font-bold text-slate-800 truncate" title={regDate}>
+                            {regDate}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <button
+                            onClick={() => handleToggleUserBan(u)}
+                            className={`flex-1 py-1.5 px-2 rounded-xl text-[10px] font-black uppercase transition-all cursor-pointer ${
+                              u.banned 
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                            }`}
+                          >
+                            {u.banned ? '🟢 Unblock' : '🔒 Block'}
+                          </button>
+                          <button
+                            onClick={() => handleSendAdminNotification(u)}
+                            className="flex-1 py-1.5 px-2 rounded-xl text-[10px] font-black uppercase bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all cursor-pointer"
+                          >
+                            ✉️ Notice
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* HOVER TOOLTIP DETAILS BOX WITH ACTIVITY LOGS */}
+                      <div className="absolute left-0 right-0 top-full mt-2 hidden group-hover:block z-30 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-700 space-y-2 text-xs animate-in fade-in duration-150 pointer-events-none">
+                        <p className="font-black text-blue-300 border-b border-slate-800 pb-1 flex items-center justify-between">
+                          <span>{fullName}</span>
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 bg-blue-600 rounded text-white">{userRole}</span>
+                        </p>
+                        <p className="text-slate-300">📧 <strong>Email:</strong> {u.email || "N/A"}</p>
+                        <p className="text-slate-300">📱 <strong>Phone:</strong> {u.mobile || u.phone || "N/A"}</p>
+                        <p className="text-slate-300">📍 <strong>District:</strong> {u.district || "N/A"}</p>
+                        <p className="text-slate-300 font-mono text-[11px]">🕒 <strong>Registered:</strong> {regDate}</p>
+                        <p className="text-slate-300 font-mono text-[11px]">🟢 <strong>Status:</strong> {online ? "Currently Online" : u.lastActive ? `Last Seen: ${Math.round((Date.now() - Number(u.lastActive)) / 60000)}m ago` : "Offline"}</p>
+                        <p className="text-[10px] text-emerald-400 font-semibold pt-1 border-t border-slate-800">
+                          📜 Activity Log: Active from registration ({regDate}) to till now.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
+
+          {/* Detailed User Modal Popup (Reference Card Style) */}
+          {selectedUserForModal && (() => {
+            const u = selectedUserForModal;
+            const fullName = getUserFullName(u);
+            const userRole = (u.role || "user").toLowerCase();
+            const pin = userPins[u.id];
+            const online = isUserOnline(u);
+            const rawTime = u.createdAt || u.registeredAt || u.timestamp;
+            let regDate = 'సమాచారం అందుబాటులో లేదు';
+            if (rawTime) {
+              try {
+                const millis = typeof rawTime.toMillis === 'function' ? rawTime.toMillis() :
+                               typeof rawTime.seconds === 'number' ? rawTime.seconds * 1000 :
+                               Number(rawTime);
+                if (!isNaN(millis) && millis > 0) {
+                  regDate = new Date(millis).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+                }
+              } catch (e) {
+                regDate = String(rawTime);
+              }
+            }
+
+            return (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-[36px] border border-slate-200/80 shadow-2xl max-w-lg w-full p-6 sm:p-8 space-y-6 relative overflow-hidden animate-in zoom-in-95 duration-200">
+                  <button
+                    onClick={() => setSelectedUserForModal(null)}
+                    className="absolute top-6 right-6 p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+
+                  <div className="flex items-start gap-4">
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 border-2 border-blue-200 shadow-md overflow-hidden flex items-center justify-center shrink-0">
+                      {u.photoURL || u.avatar ? (
+                        <img
+                          src={u.photoURL || u.avatar}
+                          alt={fullName}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span className="font-black text-base text-blue-700">
+                          {getUserInitials(fullName)}
+                        </span>
+                      )}
+                      {online && (
+                        <span className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
+                      )}
+                    </div>
+                    <div className="min-w-0 pr-8">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-black text-slate-900 text-lg">{fullName}</h3>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          userRole === "super_admin" ? "bg-purple-100 text-purple-800" :
+                          userRole === "admin" ? "bg-rose-100 text-rose-800" :
+                          userRole === "editor" ? "bg-emerald-100 text-emerald-800" :
+                          userRole === "moderator" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"
+                        }`}>
+                          {userRole}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium mt-1">
+                        {u.designation ? `${u.designation} / ` : ""}{u.district || "Hyderabad"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200/80 space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          📞 Contact Information
+                        </span>
+                        <p className="font-bold text-slate-900">
+                          {u.mobile || u.phone || "ఫోన్ నెంబర్ లేదు (No Phone)"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          ✉️ Email
+                        </span>
+                        <p className="font-bold text-slate-900 truncate" title={u.email}>
+                          {u.email || "No email"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs pt-2 border-t border-slate-200/60">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          📍 Location / District
+                        </span>
+                        <p className="font-bold text-slate-900">
+                          {u.district ? `${u.district}, Telangana` : "Hyderabad"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          🔑 Security PIN
+                        </span>
+                        <p className="font-mono font-bold text-slate-900">
+                          {pin || "NOT CONFIGURED"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/60 text-xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        🕒 Registered (ఫైర్‌బేస్ రికార్డ్ ప్రకారం)
+                      </span>
+                      <p className="font-mono font-bold text-slate-800 text-sm">
+                        {regDate}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Quick Role Change:</span>
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 gap-1">
+                      {[
+                        { r: "user", label: "User" },
+                        { r: "moderator", label: "Moderator" },
+                        { r: "editor", label: "Editor" },
+                        { r: "admin", label: "Admin" },
+                        { r: "super_admin", label: "Super Admin" },
+                      ].map(({ r, label }) => {
+                        const isCurrent = (userRole === r) || (r === "user" && !["super_admin", "admin", "editor", "moderator"].includes(userRole));
+                        return (
+                          <button
+                            key={r}
+                            onClick={() => {
+                              handleAssignRole(u.id, userRole, r, fullName);
+                              setSelectedUserForModal({ ...u, role: r });
+                            }}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all cursor-pointer ${
+                              isCurrent
+                                ? "bg-slate-900 text-white shadow-md"
+                                : "text-slate-600 hover:bg-white hover:text-slate-900"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => setSelectedUserForModal(null)}
+                      className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-all cursor-pointer"
+                    >
+                      మూసివేయి (Close)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 

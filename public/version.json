@@ -1,0 +1,11 @@
+{
+  "appName": "E-VEDHIKA UBD Deployment Tool",
+  "currentVersion": "v1.0.8",
+  "latestVersion": "v1.0.8",
+  "versionCode": 10080,
+  "releaseDate": "2026-10-25",
+  "executableName": "EVedhika_Setup_v1.0.8.exe",
+  "downloadUrl": "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.8.exe",
+  "releaseNotes": "v1.0.8 (24*7 Guardian Build): 17-Step Audit Matrix and System Tray Guardian.",
+  "publisher": "E-Vedhika.in (Rakesh Kumar Dhawan)"
+}
