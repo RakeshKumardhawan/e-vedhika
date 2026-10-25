@@ -134,6 +134,15 @@ async function startServer() {
   app.use(express.text({ limit: '150mb', type: ['text/*', 'application/json'] }));
   app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
+  // WWW Redirect Middleware
+  app.use((req, res, next) => {
+    const host = req.get('host');
+    if (host === 'e-vedhika.in') {
+      return res.redirect(301, `https://www.e-vedhika.in${req.originalUrl}`);
+    }
+    next();
+  });
+
   const proxyOptions = (targetUrl: string) => ({
     target: targetUrl,
     changeOrigin: true,
