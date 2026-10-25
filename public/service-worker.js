@@ -1,5 +1,5 @@
 // E-Vedhika PWA Service Worker
-const CACHE_NAME = 'e-vedhika-v1.6.2';
+const CACHE_NAME = 'e-vedhika-v1.6.3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
