@@ -4427,12 +4427,20 @@ E-Vedhika Team`;
         if (!docSnap.exists()) {
           isNewUser = true;
           const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+          let detectedDistrict = "Ranga Reddy";
+          try {
+            const rawLoc = localStorage.getItem("evedhika_user_district");
+            if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
+          } catch(e) {}
+
           await setDoc(docRef, {
             name: result.user.displayName || "System User",
             email: result.user.email,
             photoURL: result.user.photoURL,
             gender: "",
             designation: "",
+            district: detectedDistrict,
+            location: `${detectedDistrict}, TELANGANA`,
             role: isDev ? "super_admin" : "user",
             time: Date.now(),
           });
@@ -4451,6 +4459,18 @@ E-Vedhika Team`;
           const existingData = docSnap.data();
           if (isDev && existingData?.role !== "super_admin") {
             await updateDoc(docRef, { role: "super_admin" }).catch(() => {});
+          }
+
+          if (!existingData?.district || existingData?.district?.toLowerCase() === "undefined") {
+            let detectedDistrict = "Ranga Reddy";
+            try {
+              const rawLoc = localStorage.getItem("evedhika_user_district");
+              if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
+            } catch(e) {}
+            await updateDoc(docRef, {
+              district: detectedDistrict,
+              location: `${detectedDistrict}, TELANGANA`
+            }).catch(() => {});
           }
 
           const WELCOME_MESSAGE = `నమస్కారం! 🙏
@@ -6767,7 +6787,7 @@ E-Vedhika Team`;
                     {[
                       { id: "logs", label: "Security Logs", icon: ShieldAlert },
                       { id: "visitor_logs", label: "Visitor Logs (పబ్లిక్)", icon: Globe },
-                      { id: "exe_ubd_live", label: "UBD Live Monitoring", icon: Activity },
+                      
                       { id: "farmer_registry_logs", label: "Farmer Registry Logs", icon: FileText },
                       { id: "survey_reports", label: "Survey Reports", icon: Database },
                       { id: "health", label: "Live System Health", icon: HeartPulse },
@@ -6786,6 +6806,25 @@ E-Vedhika Team`;
                         }}
                       />
                     ))}
+                  </>
+                )}
+
+                {/* UBD MONITORING */}
+                {(isAdmin || isDevEmail) && (
+                  <>
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-5 mb-2">
+                      UBD Monitoring
+                    </h3>
+                    <MenuButton
+                      label="UBD Monitoring"
+                      icon={Activity}
+                      active={activeAdminSubTab === "ubd_monitoring"}
+                      onClick={() => {
+                        setActiveAdminSubTab("ubd_monitoring");
+                        setCurrentTab("admin");
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                    />
                   </>
                 )}
 
@@ -12629,7 +12668,7 @@ function AdminPanel({
                       icon: <Globe size={18} />,
                     },
                     {
-                      id: "exe_ubd_live",
+                      
                       label: "UBD Live Monitoring",
                       icon: <Activity size={18} />,
                     },
@@ -13423,7 +13462,7 @@ function AdminPanel({
             
             
             
-            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "exe_ubd_live", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management"].includes(activeSubTab) && (
+            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "ubd_monitoring", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management"].includes(activeSubTab) && (
               <SuperAdminDashboard 
                 user={userProfile || user} 
                 stats={stats} 

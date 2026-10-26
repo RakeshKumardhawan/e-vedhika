@@ -1,0 +1,30 @@
+{
+  "2026-10": [
+    {
+      "pcId": "EVD-PC-1900-62E8",
+      "pcName": "MPO-PC",
+      "userName": "MPO e-Panchayat Sec",
+      "officeLocation": "MPO Mandal Office, Telangana",
+      "district": "Warangal",
+      "date": "2026-10-26",
+      "status": "SUCCESS",
+      "healthScore": 100,
+      "verification": "Passed (17/17)",
+      "sitesXml": "IE5 Quirks Active (sites.xml present)",
+      "dscStatus": "USB Token Driver Active"
+    },
+    {
+      "pcId": "EVD-TS-4A9B-12EF",
+      "pcName": "TS-GP-KHAMMAM-01",
+      "userName": "Srinivas Rao",
+      "officeLocation": "Khammam Urban GP",
+      "district": "Khammam",
+      "date": "2026-10-26",
+      "status": "SUCCESS",
+      "healthScore": 100,
+      "verification": "Passed (17/17)",
+      "sitesXml": "IE5 Quirks Active (sites.xml present)",
+      "dscStatus": "USB Token Driver Active"
+    }
+  ]
+}

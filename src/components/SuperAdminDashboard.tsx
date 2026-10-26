@@ -42,7 +42,8 @@ import { SupportCenter } from './admin/SupportCenter';
 import { PublicVisitorLogs } from './PublicVisitorLogs';
 import { CloudStorageManager } from './CloudStorageManager';
 import { AdminSoftwareHub } from './admin/AdminSoftwareHub';
-import { UBDLiveMonitoring } from './UBDLiveMonitoring';
+import { UBDMonitoringSection } from './admin/UBDMonitoringSection';
+
 
 interface SuperAdminDashboardProps {
   user?: any;
@@ -629,8 +630,8 @@ export function SuperAdminDashboard({
         <LocalizationManager />
       ) : effectiveTab === "exe_release" ? (
         <ExeDeploymentManager />
-      ) : effectiveTab === "exe_ubd_live" ? (
-        <UBDLiveMonitoring user={user} addToast={addToast} />
+      ) : effectiveTab === "ubd_monitoring" ? (
+        <UBDMonitoringSection addToast={addToast} />
       ) : effectiveTab === "exe_broadcast" ? (
         <EmergencyBroadcast />
       ) : effectiveTab === "health" ? (
@@ -704,6 +705,38 @@ export function SuperAdminDashboard({
       ) : (
         /* UNIFIED OVERVIEW & ANALYTICS HUB DASHBOARD */
         <div className="space-y-6 pb-12">
+          {/* Telugu Admin Welcome Banner */}
+          <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-xl">
+            <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-blue-500/20 rounded-full blur-[50px]"></div>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/10 text-blue-200 rounded-full border border-white/10 mb-2 inline-block">
+                  అధికారిక ప్యానెల్ (Official Admin Portal) v1.4.8+
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                  <ShieldCheck className="text-emerald-400" size={26} /> ఈ-వేదిక సూపర్ అడ్మిన్ డాష్‌బోర్డ్
+                </h2>
+                <p className="text-xs text-slate-300 font-medium mt-1">
+                  యూజర్లు, పోస్ట్‌లు, లైవ్ విజిటర్స్, మరియు సిస్టమ్ హెల్త్ మానిటరింగ్ కోసం కేంద్రీకృత ప్యానెల్.
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  onClick={() => navigateToTab("moderation")}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Clock size={14} /> పెండింగ్ పోస్ట్‌లు ({pendingPostsCount})
+                </button>
+                <button
+                  onClick={() => navigateToTab("support")}
+                  className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <LifeBuoy size={14} /> సపోర్ట్ టికెట్లు ({openSupportCount})
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* 10 High-Precision Live System Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {[

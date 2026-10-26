@@ -1,0 +1,56 @@
+[
+  {
+    "pcId": "EVD-PC-1900-62E8",
+    "pcName": "MPO-PC",
+    "userName": "MPO e-Panchayat Sec",
+    "officeLocation": "MPO Mandal Office, Telangana",
+    "district": "Warangal",
+    "state": "Telangana",
+    "osVersion": "Windows 11 Pro (64-Bit)",
+    "winBuild": "10.0.22631",
+    "appVersion": "v1.0.8",
+    "overallStatus": "HEALTHY",
+    "healthScore": 100,
+    "deployment": {
+      "totalSteps": 17,
+      "verifiedSteps": 17,
+      "failedSteps": 0,
+      "verificationPercentage": 100,
+      "deployResult": "SUCCESS"
+    },
+    "technicalHealth": {
+      "edgeIeModeStatus": "PASS",
+      "sitesXmlStatus": "PASS",
+      "registryPoliciesStatus": "PASS",
+      "dscDriverStatus": "PASS",
+      "dscTokenConnected": "PASS"
+    },
+    "lastTelemetryUpdate": "2026-10-26 21:15:37"
+  },
+  {
+    "pcId": "EVD-TS-4A9B-12EF",
+    "pcName": "TS-GP-KHAMMAM-01",
+    "userName": "Srinivas Rao (Secretary)",
+    "officeLocation": "Khammam Urban Grama Panchayat Office",
+    "district": "Khammam",
+    "state": "Telangana",
+    "osVersion": "Windows 11 Pro (64-Bit)",
+    "overallStatus": "HEALTHY",
+    "healthScore": 100,
+    "deployment": {
+      "totalSteps": 17,
+      "verifiedSteps": 17,
+      "failedSteps": 0,
+      "verificationPercentage": 100,
+      "deployResult": "SUCCESS"
+    },
+    "technicalHealth": {
+      "edgeIeModeStatus": "PASS",
+      "sitesXmlStatus": "PASS",
+      "registryPoliciesStatus": "PASS",
+      "dscDriverStatus": "PASS",
+      "dscTokenConnected": "PASS"
+    },
+    "lastTelemetryUpdate": "2026-10-26 19:40:12"
+  }
+]

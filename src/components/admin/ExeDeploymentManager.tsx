@@ -110,6 +110,14 @@ export function ExeDeploymentManager() {
           </h3>
           <p className="text-xs text-slate-500 font-medium mt-1">Upload and manage .exe binary files to Firebase Storage.</p>
         </div>
+        <a
+          href="/admin/exe_ubd_live.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition-all cursor-pointer"
+        >
+          <span>🌐</span> UBD Live Monitor (admin/exe_ubd_live.html) ↗
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
