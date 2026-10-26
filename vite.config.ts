@@ -424,7 +424,7 @@ export default defineConfig(({mode}) => {
                 res.setHeader('Content-Type', 'application/json; charset=utf-8');
                 res.end(JSON.stringify({
                   success: true,
-                  message: 'Consolidated health report logged successfully!',
+                  message: 'టెలిమెట్రీ రిపోర్ట్ విజయవంతంగా లాగ్ చేయబడింది (Telemetry report logged successfully)! Telegram alert active.',
                   receivedAt: new Date().toISOString()
                 }));
                 return;

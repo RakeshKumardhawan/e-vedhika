@@ -3680,16 +3680,22 @@ export default function App() {
   useEffect(() => {
     if (postIdFromUrl && posts.length > 0) {
       const rawParam = decodeURIComponent(postIdFromUrl).trim().toLowerCase();
+      const targetClean = rawParam.replace(/[^a-z0-9]/g, "");
       const post = posts.find((p) => {
         if (p.id === postIdFromUrl || p.id === rawParam) return true;
         if (p.slug && p.slug.toLowerCase() === rawParam) return true;
         if (p.postNumber && String(p.postNumber) === rawParam) return true;
+        if (Array.isArray((p as any).aliases)) {
+          if ((p as any).aliases.some((a: string) => a.toLowerCase() === rawParam || a.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
+        }
+        const cleanSlug = (p.slug || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (targetClean.length >= 3 && cleanSlug && (cleanSlug.includes(targetClean) || targetClean.includes(cleanSlug))) return true;
         const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
         if (slugFromTitle && slugFromTitle === rawParam) return true;
         const generated = generatePostSlug(p.title || "", p.id);
         if (generated && generated.toLowerCase() === rawParam) return true;
         const cleanTitle = (p.title || "").trim().toLowerCase();
-        if (cleanTitle === rawParam) return true;
+        if (cleanTitle === rawParam || (targetClean.length >= 3 && cleanTitle.replace(/[^a-z0-9]/g, "").includes(targetClean))) return true;
         return false;
       });
       if (post) {
@@ -28075,16 +28081,22 @@ function PostDetail({
         }
 
         if (candidatePosts && candidatePosts.length > 0) {
+          const targetClean = normTarget.replace(/[^a-z0-9]/g, "");
           const matchedFromProp = candidatePosts.find((p) => {
             if (p.id === target || p.id.toLowerCase() === normTarget) return true;
             if (p.slug && p.slug.toLowerCase() === normTarget) return true;
             if (p.postNumber && String(p.postNumber) === target) return true;
+            if (Array.isArray((p as any).aliases)) {
+              if ((p as any).aliases.some((a: string) => a.toLowerCase() === normTarget || a.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
+            }
+            const cleanSlug = (p.slug || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (targetClean.length >= 3 && cleanSlug && (cleanSlug.includes(targetClean) || targetClean.includes(cleanSlug))) return true;
             const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
             if (slugFromTitle && slugFromTitle === normTarget) return true;
             const generated = generatePostSlug(p.title || "", p.id);
             if (generated && generated.toLowerCase() === normTarget) return true;
             const cleanTitle = (p.title || "").trim().toLowerCase();
-            if (cleanTitle === normTarget || cleanTitle.includes(normTarget)) return true;
+            if (cleanTitle === normTarget || cleanTitle.includes(normTarget) || (targetClean.length >= 3 && cleanTitle.replace(/[^a-z0-9]/g, "").includes(targetClean))) return true;
             return false;
           });
           if (matchedFromProp) {
@@ -28122,16 +28134,22 @@ function PostDetail({
         const snapRecent = await getDocs(qRecent);
         const docs = snapRecent.docs.map((d) => ({ id: d.id, ...d.data() } as Post));
 
+        const targetClean = normTarget.replace(/[^a-z0-9]/g, "");
         const matched = docs.find((p) => {
           if (p.id === target || p.id.toLowerCase() === normTarget) return true;
           if (p.slug && p.slug.toLowerCase() === normTarget) return true;
           if (p.postNumber && String(p.postNumber) === target) return true;
+          if (Array.isArray((p as any).aliases)) {
+            if ((p as any).aliases.some((a: string) => a.toLowerCase() === normTarget || a.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
+          }
+          const cleanSlug = (p.slug || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          if (targetClean.length >= 3 && cleanSlug && (cleanSlug.includes(targetClean) || targetClean.includes(cleanSlug))) return true;
           const slugFromTitle = (p.title || "").trim().replace(/\s+/g, "-").toLowerCase();
           if (slugFromTitle && slugFromTitle === normTarget) return true;
           const generated = generatePostSlug(p.title || "", p.id);
           if (generated && generated.toLowerCase() === normTarget) return true;
           const cleanTitle = (p.title || "").trim().toLowerCase();
-          if (cleanTitle === normTarget || cleanTitle.includes(normTarget)) return true;
+          if (cleanTitle === normTarget || cleanTitle.includes(normTarget) || (targetClean.length >= 3 && cleanTitle.replace(/[^a-z0-9]/g, "").includes(targetClean))) return true;
           return false;
         });
 

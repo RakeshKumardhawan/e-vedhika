@@ -4909,12 +4909,15 @@ app.get('/api/remote-commands', (req, res) => {
     const cleanUrl = req.originalUrl.split('?')[0];
     const canonicalUrl = `${fullBaseUrl}${cleanUrl}${req.originalUrl.includes('?') ? '?' + req.originalUrl.split('?')[1] : ''}`;
 
+    const origPath = (req.originalUrl || req.path || "").split('?')[0];
     let postId = (req.query.postId as string) || null;
     if (!postId) {
-      if (req.path.startsWith("/home/post/")) {
-        postId = decodeURIComponent(req.path.split("/home/post/")[1].split("?")[0]);
-      } else if (req.path.startsWith("/post/")) {
-        postId = decodeURIComponent(req.path.split("/post/")[1].split("?")[0]);
+      if (origPath.includes("/home/post/")) {
+        postId = decodeURIComponent(origPath.split("/home/post/")[1].split("/")[0]);
+      } else if (origPath.includes("/post/")) {
+        postId = decodeURIComponent(origPath.split("/post/")[1].split("/")[0]);
+      } else if (origPath === "/ubdsetting" || origPath === "/ubdsettings") {
+        postId = "ubdsetting";
       }
     }
     
@@ -4924,7 +4927,7 @@ app.get('/api/remote-commands', (req, res) => {
       if (postId === "null" || postId === "undefined") postId = null;
     }
     const rawTab = ((req.query.tab as string) || "").toLowerCase();
-    const cleanPath = req.path.toLowerCase().replace(/\/+$/, "");
+    const cleanPath = origPath.toLowerCase().replace(/\/+$/, "");
 
     let title = "🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్";
     let description = "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. Comprehensive Digital Portal for Panchayat Secretaries, E-Panchayat Operators, and Citizens in Telangana.";
@@ -4933,54 +4936,69 @@ app.get('/api/remote-commands', (req, res) => {
 
     // 1. Post Preview (Individual News / Notification / Issue / Slug / Numeric Permalink)
     if (postId) {
+      console.log(`[OG-DEBUG] Extracted postId: "${postId}" from origPath: "${origPath}"`);
       try {
         const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
         let fields: any = null;
         let actualDocId = postId;
         let actualSlug = postId;
 
-        // 1. Try direct doc ID lookup
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
-        const firestoreResp = await fetch(firestoreUrl);
-        if (firestoreResp.ok) {
-          const data = await firestoreResp.json();
-          fields = data.fields || {};
-          actualDocId = postId;
-          actualSlug = fields.slug?.stringValue || postId;
-        } else {
-          // 2. Query Firestore by slug field
-          const queryUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents:runQuery?key=${apiKey}`;
-          const qResp = await fetch(queryUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              structuredQuery: {
-                from: [{ collectionId: "posts" }],
-                where: {
-                  fieldFilter: {
-                    field: { fieldPath: "slug" },
-                    op: "EQUAL",
-                    value: { stringValue: postId }
-                  }
-                },
-                limit: 1
+        const targetNorm = postId.toLowerCase().trim();
+        const targetClean = targetNorm.replace(/[^a-z0-9]/g, "");
+
+        // 0. Check local posts-manifest.json on disk for fast offline resolution & aliases
+        try {
+          const manifestPath = path.join(process.cwd(), "data", "posts-manifest.json");
+          if (fs.existsSync(manifestPath)) {
+            const manifestData = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+            if (Array.isArray(manifestData)) {
+              const matchedManifest = manifestData.find((p: any) => {
+                if (p.id === postId || p.id?.toLowerCase() === targetNorm) return true;
+                if (p.slug && (p.slug.toLowerCase() === targetNorm || p.slug.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
+                if (p.postNumber && String(p.postNumber) === postId) return true;
+                if (Array.isArray(p.aliases)) {
+                  if (p.aliases.some((a: string) => a.toLowerCase() === targetNorm || a.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
+                }
+                if (targetClean.length >= 3 && p.slug && (p.slug.toLowerCase().replace(/[^a-z0-9]/g, "").includes(targetClean) || targetClean.includes(p.slug.toLowerCase().replace(/[^a-z0-9]/g, "")))) return true;
+                return false;
+              });
+
+              if (matchedManifest) {
+                fields = {
+                  title: { stringValue: matchedManifest.title },
+                  content: { stringValue: matchedManifest.content },
+                  imageUrl: { stringValue: matchedManifest.imageUrl },
+                  mediaUrl: { stringValue: matchedManifest.imageUrl },
+                  slug: { stringValue: matchedManifest.slug }
+                };
+                actualDocId = matchedManifest.id || postId;
+                actualSlug = matchedManifest.slug || postId;
               }
-            })
-          });
-          if (qResp.ok) {
-            const results = await qResp.json();
-            if (Array.isArray(results) && results[0]?.document) {
-              fields = results[0].document.fields || {};
-              const nameParts = (results[0].document.name || "").split("/");
-              actualDocId = nameParts[nameParts.length - 1] || postId;
-              actualSlug = fields.slug?.stringValue || postId;
             }
           }
+        } catch (mErr) {
+          console.warn("[OG] Manifest lookup error:", mErr);
+        }
 
-          // 3. If still not found and postId is numeric or permalink, query by postNumber
-          if (!fields && !isNaN(Number(postId))) {
-            const numVal = Number(postId);
-            const qNumResp = await fetch(queryUrl, {
+        // 1. Direct doc ID lookup
+        if (!fields) {
+          try {
+            const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
+            const firestoreResp = await fetch(firestoreUrl);
+            if (firestoreResp.ok) {
+              const data = await firestoreResp.json();
+              fields = data.fields || {};
+              actualDocId = postId;
+              actualSlug = fields.slug?.stringValue || postId;
+            }
+          } catch (e1) {}
+        }
+
+        // 2. Query Firestore by slug field
+        if (!fields) {
+          try {
+            const queryUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents:runQuery?key=${apiKey}`;
+            const qResp = await fetch(queryUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -4988,55 +5006,25 @@ app.get('/api/remote-commands', (req, res) => {
                   from: [{ collectionId: "posts" }],
                   where: {
                     fieldFilter: {
-                      field: { fieldPath: "postNumber" },
+                      field: { fieldPath: "slug" },
                       op: "EQUAL",
-                      value: { integerValue: numVal }
+                      value: { stringValue: postId }
                     }
                   },
                   limit: 1
                 }
               })
             });
-            if (qNumResp.ok) {
-              const numResults = await qNumResp.json();
-              if (Array.isArray(numResults) && numResults[0]?.document) {
-                fields = numResults[0].document.fields || {};
-                const nameParts = (numResults[0].document.name || "").split("/");
+            if (qResp.ok) {
+              const results = await qResp.json();
+              if (Array.isArray(results) && results[0]?.document) {
+                fields = results[0].document.fields || {};
+                const nameParts = (results[0].document.name || "").split("/");
                 actualDocId = nameParts[nameParts.length - 1] || postId;
-                actualSlug = fields.slug?.stringValue || String(numVal);
+                actualSlug = fields.slug?.stringValue || postId;
               }
             }
-          }
-
-          // 4. Fallback search over recent posts for title slug or numeric match
-          if (!fields) {
-            const recentResp = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=100&orderBy=createdAt%20desc&key=${apiKey}`);
-            if (recentResp.ok) {
-              const recentData = await recentResp.json();
-              const normTarget = postId.toLowerCase();
-              for (const item of (recentData.documents || [])) {
-                const f = item.fields || {};
-                const docName = item.name.split("/").pop();
-                const itemTitle = (f.title?.stringValue || "").trim().toLowerCase();
-                
-                let generatedSlug = itemTitle.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
-                if (generatedSlug.length > 75) {
-                  generatedSlug = generatedSlug.substring(0, 75).replace(/-[^-]*$/, "");
-                }
-                
-                const itemSlug = (f.slug?.stringValue || "").trim().toLowerCase();
-                const itemPostNum = f.postNumber?.integerValue || f.postNumber?.stringValue;
-                const isNumMatch = itemPostNum && String(itemPostNum) === postId;
-
-                if (docName === postId || itemSlug === normTarget || generatedSlug === normTarget || isNumMatch) {
-                  fields = f;
-                  actualDocId = docName;
-                  actualSlug = f.slug?.stringValue || generatedSlug || docName;
-                  break;
-                }
-              }
-            }
-          }
+          } catch (e2) {}
         }
 
         if (fields) {
@@ -5300,13 +5288,16 @@ app.get('/api/remote-commands', (req, res) => {
           const indexPath = path.join(process.cwd(), "index.html");
           if (fs.existsSync(indexPath)) {
             let html = fs.readFileSync(indexPath, "utf-8");
-            html = await vite.transformIndexHtml(req.originalUrl, html);
+            try {
+              html = await vite.transformIndexHtml("/", html);
+            } catch (vErr) {}
             html = await renderDynamicOgTags(req, html);
             res.setHeader("Content-Type", "text/html; charset=utf-8");
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
             return res.send(html);
           }
         } catch (e) {
+          console.error("[OG-DEV-ERROR]", e);
           return next();
         }
       }

@@ -311,20 +311,34 @@ async function handlePostGeneration() {
       type: "article"
     });
 
-    // Write all path variations
-    const pathsToWrite = [
+    // Write all path variations (slug, docId, postNumber, aliases)
+    const pathsToWrite = new Set([
       path.join("home", "post", slug),
-      path.join("post", slug)
-    ];
+      path.join("post", slug),
+      slug
+    ]);
 
-    if (docId !== slug) {
-      pathsToWrite.push(path.join("home", "post", docId));
-      pathsToWrite.push(path.join("post", docId));
+    if (docId && docId !== slug) {
+      pathsToWrite.add(path.join("home", "post", docId));
+      pathsToWrite.add(path.join("post", docId));
+      pathsToWrite.add(docId);
     }
 
     if (post.postNumber) {
-      pathsToWrite.push(path.join("home", "post", String(post.postNumber)));
-      pathsToWrite.push(path.join("post", String(post.postNumber)));
+      pathsToWrite.add(path.join("home", "post", String(post.postNumber)));
+      pathsToWrite.add(path.join("post", String(post.postNumber)));
+    }
+
+    if (Array.isArray(post.aliases)) {
+      post.aliases.forEach(alias => {
+        const cleanAlias = String(alias).trim();
+        if (cleanAlias) {
+          pathsToWrite.add(path.join("home", "post", cleanAlias));
+          pathsToWrite.add(path.join("post", cleanAlias));
+          pathsToWrite.add(cleanAlias);
+          allPostUrls.push(`${BASE_URL}/home/post/${cleanAlias}`);
+        }
+      });
     }
 
     for (const p of pathsToWrite) {
