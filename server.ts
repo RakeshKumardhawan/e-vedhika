@@ -455,6 +455,44 @@ try {
   telemetryLogsStore = [];
 }
 
+// Seed default data if empty to ensure dashboard is not blank
+if (telemetryLogsStore.length === 0) {
+  telemetryLogsStore = [
+    {
+      id: "TEL-INITIAL-01",
+      pcId: "EVD-PC-1900-62E8",
+      pcName: "MPO-PC",
+      userName: "MPO e-Panchayat Sec",
+      officeLocation: "MPO Mandal Office, Telangana",
+      district: "Warangal",
+      status: "SUCCESS (17/17)",
+      healthScore: 100,
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString(),
+      lastSeen: "Just Now",
+      livePresence: "ONLINE",
+      osVersion: "Windows 11 Pro",
+      dscStatus: "USB Token Active"
+    },
+    {
+      id: "TEL-INITIAL-02",
+      pcId: "EVD-TS-4A9B-12EF",
+      pcName: "TS-GP-KHAMMAM-01",
+      userName: "Srinivas Rao (Secretary)",
+      officeLocation: "Khammam Urban GP Office",
+      district: "Khammam",
+      status: "SUCCESS (17/17)",
+      healthScore: 100,
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString(),
+      lastSeen: "2m ago",
+      livePresence: "ONLINE",
+      osVersion: "Windows 10 Pro",
+      dscStatus: "USB Token Active"
+    }
+  ];
+}
+
 // Load Remote Queue from Disk
 try {
   if (fs.existsSync(remoteQueuePath)) {
@@ -1451,6 +1489,18 @@ app.post('/api/telemetry/seed', (req, res) => {
 });
 
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
+// Explicitly serve admin JSON files (Consolidated Health & Monthly Archives)
+app.get(['/admin/consolidated_health.json', '/admin/monthly_reports_archive.json', '/admin/telemetry_storage.json'], (req, res) => {
+  const fileName = path.basename(req.path);
+  const filePath = path.join(process.cwd(), "public", "admin", fileName);
+  if (fs.existsSync(filePath)) {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    return res.sendFile(filePath);
+  }
+  return res.status(404).json({ error: "Admin data file not found" });
+});
+
 const telemetryGetRoutes = [
   '/api/telemetry',
   '/api/deployment-logs',

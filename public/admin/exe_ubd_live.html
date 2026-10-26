@@ -101,6 +101,7 @@
   <script>
     async function fetchLiveData() {
       const endpoints = [
+        '/api/telemetry',
         '/admin/consolidated_health.json',
         '/admin/monthly_reports_archive.json'
       ];
@@ -108,16 +109,31 @@
       let data = [];
       for (const url of endpoints) {
         try {
-          const res = await fetch(url + '?t=' + Date.now());
+          const res = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now());
           if (res.ok) {
             const json = await res.json();
-            data = Array.isArray(json) ? json : (json.logs || Object.values(json).flat());
-            if (data && data.length > 0) break;
+            if (!json) continue;
+            
+            let logs = [];
+            if (Array.isArray(json)) {
+              logs = json;
+            } else if (json.logs && Array.isArray(json.logs)) {
+              logs = json.logs;
+            } else if (typeof json === 'object') {
+              logs = Object.values(json).flat().filter(item => typeof item === 'object' && item !== null);
+            }
+
+            if (logs.length > 0) {
+              data = logs;
+              break;
+            }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn("Failed to fetch from " + url, e);
+        }
       }
 
-      // Fallback sample if remote not reached
+      // Fallback sample if remote not reached or empty
       if (!data || data.length === 0) {
         data = [
           { pcId: 'EVD-PC-1900-62E8', pcName: 'MPO-PC', userName: 'MPO e-Panchayat Sec', officeLocation: 'MPO Mandal Office', district: 'Warangal', status: 'SUCCESS', healthScore: 100, verification: 'Passed (17/17)', sitesXmlStatus: 'PASS', dscStatus: 'USB Token Active', lastTelemetryUpdate: '2026-10-26 21:15:37' },
