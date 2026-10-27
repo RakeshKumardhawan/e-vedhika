@@ -3069,9 +3069,11 @@ export default function App() {
   useEffect(() => {
     (window as any).setLightboxImage = setLightboxImage;
     (window as any).setSharingPostForPoster = setSharingPostForPoster;
+    (window as any).broadcastWelcomeDMToAllUsers = handleBroadcastWelcomeDMToAllUsers;
     return () => {
       delete (window as any).setLightboxImage;
       delete (window as any).setSharingPostForPoster;
+      delete (window as any).broadcastWelcomeDMToAllUsers;
     };
   }, []);
 
@@ -3371,6 +3373,88 @@ export default function App() {
     );
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!allUsers || allUsers.length === 0 || !user) return;
+    const sessionKey = "ev_auto_broadcast_done_" + user.uid;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, "true");
+
+    const autoDispatchWelcomeDM = async () => {
+      const WELCOME_MESSAGE = `నమస్కారం! 🙏
+
+మీ కోసం e-Vedhika పోర్టల్‌లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి:
+
+🔹 Latest Intelligence Hub / Popular Pulse
+అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
+
+🔹 Latest Updates
+వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
+
+🔹 మన పేజీ
+Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Pre-Ad Service
+State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
+
+🔹 Live Chat & Direct Messages
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot మరియు Admin Support సహాయం కూడా అందుబాటులో ఉంది.
+
+🔹 Union Corner & Pulse
+Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
+
+🔹 Public Suggestions & Feedback
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా e-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+
+🔹 Application Formats & GOs
+కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
+
+🔹 Useful Information
+Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
+
+🔹 Excel → A4 Print
+Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
+
+🔹 PDF Compressor
+అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
+
+🔹 Farmer Registry Live Verification
+ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
+
+💬 మీకేమైనా అనుమానాలు, సందేహాలు లేదా సహాయం కావలసి వస్తే ఈ ఇన్ బాక్స్ మెసేజ్‌కు నేరుగా రిప్లై ఇచ్చి మమ్మల్ని సంప్రదించవచ్చు!
+
+ధన్యవాదాలు 🙏
+e-Vedhika Support System`;
+
+      for (const u of allUsers) {
+        if (!u.id) continue;
+        try {
+          const q = query(
+            collection(db, "chat"),
+            where("receiverId", "==", u.id),
+            where("senderId", "==", "evedhika_support_system")
+          );
+          const snap = await getDocs(q).catch(() => null);
+          const alreadyHas = snap?.docs.some((d) => (d.data().text || "").includes("e-Vedhika") || (d.data().text || "").includes("E-Vedhika"));
+          
+          if (!alreadyHas) {
+            await addDoc(collection(db, "chat"), {
+              uid: "evedhika_support_system",
+              senderId: "evedhika_support_system",
+              senderName: "e-Vedhika Support System",
+              senderRole: "Official Support System",
+              receiverId: u.id,
+              text: WELCOME_MESSAGE,
+              createdAt: Date.now(),
+              read: false
+            }).catch(() => {});
+          }
+        } catch (e) {}
+      }
+    };
+
+    autoDispatchWelcomeDM();
+  }, [allUsers, user]);
 
   useEffect(() => {
     let interval: any;
@@ -4115,12 +4199,22 @@ export default function App() {
             }).catch(console.error);
           }
           
-          if (!p.welcomeNotificationSent) {
-            // Send detailed welcome notification to existing & new users on login
+          const welcomeKey = "ev_welcome_dm_sent_" + user.uid;
+          if (!p.welcomeNotificationSent && !sessionStorage.getItem(welcomeKey)) {
+            sessionStorage.setItem(welcomeKey, "true");
             updateDoc(doc(db, "users", user.uid), { welcomeNotificationSent: true }).then(async () => {
-              const WELCOME_MESSAGE = `నమస్కారం! 🙏
+              const q = query(
+                collection(db, "chat"),
+                where("receiverId", "==", user.uid),
+                where("senderId", "==", "evedhika_support_team")
+              );
+              const snap = await getDocs(q).catch(() => null);
+              const alreadyHas = snap?.docs.some((d) => (d.data().text || "").includes("E-Vedhika"));
+              
+              if (!alreadyHas) {
+                const WELCOME_MESSAGE = `నమస్కారం! 🙏
 
-మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
+మీ కోసం e-Vedhika పోర్టల్‌లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి:
 
 🔹 Latest Intelligence Hub / Popular Pulse
 అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
@@ -4134,14 +4228,14 @@ Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Mon
 🔹 Pre-Ad Service
 State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
 
-🔹 Live Chat
-ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot సహాయం కూడా అందుబాటులో ఉంది.
+🔹 Live Chat & Direct Messages
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot మరియు Admin Support సహాయం కూడా అందుబాటులో ఉంది.
 
 🔹 Union Corner & Pulse
 Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
 
 🔹 Public Suggestions & Feedback
-మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా E-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా e-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
 
 🔹 Application Formats & GOs
 కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
@@ -4158,19 +4252,23 @@ Excel Files ను A4 Print format లోకి సులభంగా ఉపయ�
 🔹 Farmer Registry Live Verification
 ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
 
-మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
+💬 మీకేమైనా అనుమానాలు, సందేహాలు లేదా సహాయం కావలసి వస్తే ఈ ఇన్ బాక్స్ మెసేజ్‌కు నేరుగా రిప్లై ఇచ్చి మమ్మల్ని సంప్రదించవచ్చు!
 
 ధన్యవాదాలు 🙏
-E-Vedhika Team`;
+e-Vedhika Support System`;
 
-              await addDoc(collection(db, "notifications"), {
-                uid: user.uid,
-                title: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)",
-                message: WELCOME_MESSAGE,
-                type: "system",
-                read: false,
-                time: Date.now()
-              });
+                // Deliver directly to the user's Direct Messages Inbox!
+                await addDoc(collection(db, "chat"), {
+                  uid: "evedhika_support_system",
+                  senderId: "evedhika_support_system",
+                  senderName: "e-Vedhika Support System",
+                  senderRole: "Official Support System",
+                  receiverId: user.uid,
+                  text: WELCOME_MESSAGE,
+                  createdAt: Date.now(),
+                  read: false
+                }).catch(console.error);
+              }
             }).catch(console.error);
           }
 
@@ -4303,16 +4401,38 @@ E-Vedhika Team`;
       ),
       (snap) => {
         const nArr: Notification[] = [];
+        const seenKeys = new Set<string>();
+        const rawItems: Notification[] = [];
+
         snap.forEach((d) => {
           const data = d.data() as any;
           const isDismissedByDoc = Array.isArray(data.dismissedBy) && user?.uid && data.dismissedBy.includes(user.uid);
           const notifTime = Number(data.time || data.createdAt || 0);
           const isClearedBefore = notifClearedBefore > 0 && notifTime > 0 && notifTime <= notifClearedBefore;
           if (!dismissedNotifIds.has(d.id) && !isDismissedByDoc && !isClearedBefore) {
-            nArr.push({ id: d.id, ...data } as Notification);
+            rawItems.push({ id: d.id, ...data } as Notification);
           }
         });
-        setNotifications(nArr.sort((a, b) => b.time - a.time));
+
+        rawItems.sort((a, b) => Number(b.time || 0) - Number(a.time || 0));
+
+        rawItems.forEach((item) => {
+          const titleKey = String(item.title || "").trim().toLowerCase();
+          const msgKey = String(item.message || (item as any).msg || "").trim().toLowerCase().substring(0, 100);
+
+          // Filter out welcome notifications from Notification Center (now sent via DM Inbox)
+          if (titleKey.includes("స్వాగతం") || titleKey.includes("welcome")) {
+            return;
+          }
+
+          const dedupKey = `${item.uid}_${item.type || 'gen'}_${titleKey}_${msgKey}`;
+          if (!seenKeys.has(dedupKey)) {
+            seenKeys.add(dedupKey);
+            nArr.push(item);
+          }
+        });
+
+        setNotifications(nArr);
         setUnreadCount(
           nArr.filter((n) => {
             if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
@@ -4417,6 +4537,88 @@ E-Vedhika Team`;
       }, 3000);
       return [...prev, { id, msg }];
     });
+  };
+
+  const handleBroadcastWelcomeDMToAllUsers = async () => {
+    if (!allUsers || allUsers.length === 0) {
+      addToast("యూజర్లు ఎవరూ లభించలేదు.");
+      return;
+    }
+    
+    const WELCOME_MESSAGE = `నమస్కారం! 🙏
+
+మీ కోసం e-Vedhika పోర్టల్‌లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి:
+
+🔹 Latest Intelligence Hub / Popular Pulse
+అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
+
+🔹 Latest Updates
+వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
+
+🔹 మన పేజీ
+Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Pre-Ad Service
+State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
+
+🔹 Live Chat & Direct Messages
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot మరియు Admin Support సహాయం కూడా అందుబాటులో ఉంది.
+
+🔹 Union Corner & Pulse
+Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
+
+🔹 Public Suggestions & Feedback
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా e-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+
+🔹 Application Formats & GOs
+కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
+
+🔹 Useful Information
+Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
+
+🔹 Excel → A4 Print
+Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
+
+🔹 PDF Compressor
+అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
+
+🔹 Farmer Registry Live Verification
+ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
+
+💬 మీకేమైనా అనుమానాలు, సందేహాలు లేదా సహాయం కావలసి వస్తే ఈ ఇన్ బాక్స్ మెసేజ్‌కు నేరుగా రిప్లై ఇచ్చి మమ్మల్ని సంప్రదించవచ్చు!
+
+ధన్యవాదాలు 🙏
+e-Vedhika Support System`;
+
+    addToast("అందరి యూజర్ల డైరెక్ట్ ఇన్ బాక్స్ లోకి వెల్కమ్ మెసేజ్ పంపడం ప్రారంభమైంది...");
+    let sentCount = 0;
+    for (const u of allUsers) {
+      if (!u.id) continue;
+      try {
+        const q = query(
+          collection(db, "chat"),
+          where("receiverId", "==", u.id),
+          where("senderId", "==", "evedhika_support_system")
+        );
+        const snap = await getDocs(q).catch(() => null);
+        const alreadyHas = snap?.docs.some((d) => (d.data().text || "").includes("E-Vedhika") || (d.data().text || "").includes("e-Vedhika"));
+        
+        if (!alreadyHas) {
+          await addDoc(collection(db, "chat"), {
+            uid: "evedhika_support_system",
+            senderId: "evedhika_support_system",
+            senderName: "e-Vedhika Support System",
+            senderRole: "Official Support System",
+            receiverId: u.id,
+            text: WELCOME_MESSAGE,
+            createdAt: Date.now(),
+            read: false
+          });
+          sentCount++;
+        }
+      } catch (e) {}
+    }
+    addToast(`🎉 విజయవంతంగా ${sentCount} మంది యూజర్ల ఇన్ బాక్స్ లోకి వెల్కమ్ మెసేజ్ డెలివర్ అయింది!`);
   };
 
   const handleGoogleLogin = async () => {
@@ -4532,27 +4734,19 @@ Excel Files ను A4 Print format లోకి సులభంగా ఉపయ�
 ధన్యవాదాలు 🙏
 E-Vedhika Team`;
 
+        }
+
+        if (isNewUser) {
+          const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
           await addDoc(collection(db, "notifications"), {
-            uid: result.user.uid,
-            title: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)",
-            message: WELCOME_MESSAGE,
-            type: "system",
+            uid: "admin_only",
+            title: "కొత్త సభ్యుడు (New Sign Up)",
+            message: `${loginName} వారు Google ద్వారా కొత్తగా జాయిన్ అయ్యారు.`,
+            type: "admin_alert",
             read: false,
             time: Date.now()
           }).catch(() => {});
         }
-        
-        const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
-        await addDoc(collection(db, "notifications"), {
-          uid: "all",
-          title: isNewUser ? "కొత్త సభ్యుడు (New Sign Up)" : "సభ్యుడు లాగిన్ (Login)",
-          message: isNewUser 
-            ? `${loginName} వారు Google ద్వారా కొత్తగా జాయిన్ అయ్యారు.` 
-            : `${loginName} వారు E-Vedhikaలోనికి లాగిన్ అయ్యారు.`,
-          type: "admin_alert",
-          read: false,
-          time: Date.now()
-        }).catch(() => {});
       } catch (e) {}
 
       setShowAuthModal(false);
@@ -4760,20 +4954,24 @@ E-Vedhika Team`;
       }
     });
 
-    const officialConv = conversations.get("e-vedika-official");
-    const officialUser = {
-      id: "e-vedika-official",
-      name: "e-Vedika Team",
-      role: "system",
-      lastMessageAt: officialConv ? officialConv.lastMessageAt : 0,
-      lastMessageText: officialConv ? officialConv.lastMessageText : "",
-      lastMessageSender: officialConv ? officialConv.lastMessageSender : "",
-      lastMessageRead: officialConv ? officialConv.lastMessageRead : false,
-      unreadCount: officialConv ? officialConv.unread : 0
+    const supportConv = conversations.get("evedhika_support_system") || conversations.get("e-vedika-official");
+    const supportUser = {
+      id: "evedhika_support_system",
+      name: "e-Vedhika Support System",
+      username: "evedhika_support_system",
+      role: "Official Support System",
+      designation: "Official Support System",
+      photoURL: "/pwa-192x192.png",
+      district: "e-Vedhika Portal",
+      lastMessageAt: supportConv ? supportConv.lastMessageAt : Date.now(),
+      lastMessageText: supportConv ? supportConv.lastMessageText : "నమస్కారం! e-Vedhika Support System కు స్వాగతం. ఏవైనా సందేహాలు లేదా సమస్యలు ఉంటే ఇక్కడ తెలపగలరు.",
+      lastMessageSender: supportConv ? supportConv.lastMessageSender : "evedhika_support_system",
+      lastMessageRead: supportConv ? supportConv.lastMessageRead : true,
+      unreadCount: supportConv ? supportConv.unread : 0
     } as any;
 
     const filteredUsers = allUsers
-      .filter(u => u.id !== user.uid)
+      .filter(u => u.id !== user.uid && u.id !== "evedhika_support_system" && u.id !== "e-vedika-official")
       .map(u => {
         const conv = conversations.get(u.id);
         return {
@@ -4786,14 +4984,14 @@ E-Vedhika Team`;
         };
       });
       
-    if (officialConv) {
-      filteredUsers.unshift(officialUser);
-    }
-
+    // Always include e-Vedhika Support System at the top
+    filteredUsers.unshift(supportUser);
 
     const q = dmSearchQuery.toLowerCase();
     if (q) {
       return filteredUsers.filter(u => 
+        u.id === "evedhika_support_system" ||
+        u.id === "e-vedika-official" ||
         (u.name || "").toLowerCase().includes(q) ||
         (u.username || "").toLowerCase().includes(q) ||
         (u.district || "").toLowerCase().includes(q) ||
@@ -4801,9 +4999,12 @@ E-Vedhika Team`;
       ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     }
     
-    // If no search query, only show "Friends" (Following) OR users with active history
+    // Always show e-Vedhika Support System, plus Following OR users with active history
     return filteredUsers.filter(u => 
-      (userProfile?.following || []).includes(u.id) || u.lastMessageAt > 0
+      u.id === "evedhika_support_system" ||
+      u.id === "e-vedika-official" ||
+      (userProfile?.following || []).includes(u.id) || 
+      u.lastMessageAt > 0
     ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
   }, [allUsers, allDmMessages, user, dmSearchQuery, userProfile]);
 
