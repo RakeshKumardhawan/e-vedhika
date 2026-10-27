@@ -2714,6 +2714,8 @@ export default function App() {
     (userProfile?.role || "").toLowerCase() === "admin" ||
     (userRole || "").toLowerCase() === "super admin" ||
     (userProfile?.role || "").toLowerCase() === "super admin" ||
+    (userRole || "").toLowerCase() === "super_admin" ||
+    (userProfile?.role || "").toLowerCase() === "super_admin" ||
     (userRole || "").toLowerCase() === "system admin" ||
     (userProfile?.role || "").toLowerCase() === "system admin" ||
     (userRole || "").toLowerCase() === "administrator" ||
@@ -3856,6 +3858,7 @@ export default function App() {
       if (!u) {
         setUserProfile(null);
         setUserRole("user");
+        setProfileLoading(false);
         hasGreetedRef.current = false;
         setHasEnteredSite(false);
         sessionStorage.removeItem("ev_entered_site");
@@ -3887,8 +3890,8 @@ export default function App() {
       "my_activity",
       "logs",
     ];
-    // Wait for auth to resolve and bypass checking if loaded
-    if (!authLoading) {
+    // Wait for both auth and profile data to resolve before validating role permissions
+    if (!authLoading && !profileLoading) {
       if (!user && protectedTabs.includes(currentTab)) {
         setCurrentTab("home");
         setSearchParams(new URLSearchParams());
@@ -3912,7 +3915,7 @@ export default function App() {
         }
       }
     }
-  }, [authLoading, user, currentTab, canAccessAdmin, setSearchParams]);
+  }, [authLoading, profileLoading, user, currentTab, canAccessAdmin, isAdmin, isDevEmail, setSearchParams]);
 
   useEffect(() => {
     const unsubVisits = onSnapshot(
@@ -4178,6 +4181,11 @@ E-Vedhika Team`;
               addToast(`Welcome to E-vedhika website, ${honorific}!`);
             }
           }
+
+          const pRole = (p.role || "").toLowerCase();
+          if (["admin", "super admin", "super_admin", "editor", "moderator", "system admin", "administrator"].includes(pRole)) {
+            setUserRole(pRole === "super_admin" || pRole === "super admin" ? "admin" : (pRole as any));
+          }
         } else {
           setUserProfile(null);
         }
@@ -4204,9 +4212,15 @@ E-Vedhika Team`;
         } else if (snap.exists()) {
           const data = snap.data();
           const role = (data?.role || "admin").toLowerCase();
-          setUserRole(role);
+          setUserRole(role as any);
         } else {
-          setUserRole("user");
+          // Preserve role from userProfile if admins doc does not exist
+          const pRole = (userProfile?.role || "").toLowerCase();
+          if (["admin", "super admin", "super_admin", "editor", "moderator", "system admin", "administrator"].includes(pRole)) {
+            setUserRole(pRole === "super_admin" || pRole === "super admin" ? "admin" : (pRole as any));
+          } else {
+            setUserRole("user");
+          }
         }
       },
       (err) =>

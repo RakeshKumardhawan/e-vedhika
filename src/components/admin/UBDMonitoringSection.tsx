@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, ExternalLink, Radio, ChevronRight, RefreshCw, Maximize2 } from 'lucide-react';
+import { TelegramNotificationCard } from './TelegramNotificationCard';
 
 interface UBDMonitoringSectionProps {
   addToast?: (msg: string, type?: "success" | "error" | "info") => void;
@@ -292,6 +293,9 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
           )}
         </div>
       )}
+
+      {/* Telegram Configuration & PC Mute Gateway */}
+      <TelegramNotificationCard addToast={addToast} />
     </div>
   );
 }

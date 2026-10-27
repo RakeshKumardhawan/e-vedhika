@@ -369,10 +369,115 @@ const saveAnnouncements = () => {
   }
 };
 
+// Persistent File & Cloud Stores for Telegram Config & PC Filters
+const telegramConfigPath = path.join(process.cwd(), "data", "telegram_config.json");
+const pcFiltersPath = path.join(process.cwd(), "data", "pc_filters.json");
+
+let telegramConfigStore = {
+  botToken: process.env.TELEGRAM_BOT_TOKEN || "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE",
+  chatId: process.env.TELEGRAM_CHAT_ID || "431228008",
+  autoNotifyOnTelemetry: true
+};
+
+try {
+  if (fs.existsSync(telegramConfigPath)) {
+    telegramConfigStore = { ...telegramConfigStore, ...JSON.parse(fs.readFileSync(telegramConfigPath, "utf-8")) };
+  }
+} catch (e) {}
+
+let blockedPcsStore: string[] = [];
+try {
+  if (fs.existsSync(pcFiltersPath)) {
+    blockedPcsStore = JSON.parse(fs.readFileSync(pcFiltersPath, "utf-8")) || [];
+  }
+} catch (e) {}
+
+const saveTelegramConfig = () => {
+  try {
+    fs.mkdirSync(path.dirname(telegramConfigPath), { recursive: true });
+    fs.writeFileSync(telegramConfigPath, JSON.stringify(telegramConfigStore, null, 2));
+  } catch (e) {}
+};
+
+const savePcFilters = () => {
+  try {
+    fs.mkdirSync(path.dirname(pcFiltersPath), { recursive: true });
+    fs.writeFileSync(pcFiltersPath, JSON.stringify(blockedPcsStore, null, 2));
+  } catch (e) {}
+};
+
 app.post('/api/telegram-notify', async (req, res) => {
-  const { message } = req.body;
-  const success = await sendTelegramServerAlert(message);
+  const { message, botToken, chatId } = req.body;
+  const success = await sendTelegramServerAlert(message, chatId);
   res.json({ success });
+});
+
+// Endpoints for Telegram Config
+const telegramConfigRoutes = ['/api/telegram-config', '/admin/api/telegram-config'];
+
+app.get(telegramConfigRoutes, (req, res) => {
+  const token = telegramConfigStore.botToken || "";
+  const masked = token.length > 8 ? token.slice(0, 4) + '...' + token.slice(-4) : '••••••••';
+  res.json({
+    success: true,
+    hasBotToken: !!token && token !== "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE",
+    botTokenMasked: masked,
+    chatId: telegramConfigStore.chatId,
+    autoNotifyOnTelemetry: telegramConfigStore.autoNotifyOnTelemetry
+  });
+});
+
+app.post(telegramConfigRoutes, (req, res) => {
+  const { botToken, chatId, autoNotifyOnTelemetry } = req.body || {};
+  if (botToken) telegramConfigStore.botToken = botToken;
+  if (chatId !== undefined) telegramConfigStore.chatId = chatId;
+  if (autoNotifyOnTelemetry !== undefined) telegramConfigStore.autoNotifyOnTelemetry = !!autoNotifyOnTelemetry;
+  saveTelegramConfig();
+  res.json({ success: true, message: "Telegram config saved successfully" });
+});
+
+// Endpoints for PC Filters (Allow / Mute)
+const pcFiltersRoutes = ['/api/telegram-pc-filters', '/admin/api/telegram-pc-filters'];
+
+app.get(pcFiltersRoutes, (req, res) => {
+  const uniquePcsMap = new Map();
+  (telemetryLogsStore || []).forEach(l => {
+    const key = l.pcId || l.pcName;
+    if (key && !uniquePcsMap.has(key)) {
+      uniquePcsMap.set(key, {
+        pcId: l.pcId || key,
+        pcName: l.pcName || key,
+        officeLocation: l.officeLocation || l.panchayat || 'Grama Panchayat',
+        district: l.district || 'Telangana',
+        isBlocked: blockedPcsStore.includes(key)
+      });
+    }
+  });
+
+  const allPcs = Array.from(uniquePcsMap.values());
+  res.json({
+    success: true,
+    blockedPcs: blockedPcsStore,
+    allPcs: allPcs
+  });
+});
+
+app.post(pcFiltersRoutes, (req, res) => {
+  const { pcKey, action } = req.body || {};
+  if (!pcKey) {
+    return res.status(400).json({ success: false, error: "Missing pcKey" });
+  }
+
+  if (action === 'block' || action === 'mute') {
+    if (!blockedPcsStore.includes(pcKey)) {
+      blockedPcsStore.push(pcKey);
+    }
+  } else if (action === 'allow' || action === 'unblock') {
+    blockedPcsStore = blockedPcsStore.filter(k => k !== pcKey);
+  }
+
+  savePcFilters();
+  res.json({ success: true, blockedPcs: blockedPcsStore });
 });
 
 // API: Post Live Announcements (Visible in Website & C# App)
@@ -564,9 +669,19 @@ const saveRemoteQueueToDisk = () => {
 };
 
 // Telegram Server Alert Helper function
-async function sendTelegramServerAlert(message: string, customChatId?: string): Promise<boolean> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN || "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
-  const chatId = customChatId || process.env.TELEGRAM_CHAT_ID || "431228008";
+async function sendTelegramServerAlert(message: string, customChatId?: string, pcKey?: string): Promise<boolean> {
+  // Check if autoNotifyOnTelemetry is disabled
+  if (telegramConfigStore.autoNotifyOnTelemetry === false && !customChatId) {
+    return true; // Skipping automatic telemetry notifications
+  }
+
+  // Check if PC is blocked / muted
+  if (pcKey && blockedPcsStore.includes(pcKey)) {
+    return true; // Skipping alert for muted PC
+  }
+
+  const botToken = telegramConfigStore.botToken || process.env.TELEGRAM_BOT_TOKEN || "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
+  const chatId = customChatId || telegramConfigStore.chatId || process.env.TELEGRAM_CHAT_ID || "431228008";
 
   if (!botToken || !chatId) {
     console.warn("[TELEGRAM] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment");
@@ -1260,7 +1375,7 @@ const processIncomingTelemetry = (req: express.Request) => {
       
       telegramMsg += `🚀 <i>Delivered to e-vedhika.in/admin/exe_ubd_live</i>`;
 
-      sendTelegramServerAlert(telegramMsg).catch(err => console.error("Telegram telemetry notify error:", err));
+      sendTelegramServerAlert(telegramMsg, undefined, pcId).catch(err => console.error("Telegram telemetry notify error:", err));
       global.sentTelemetryMap.set(pcKey, Date.now());
 
       if (Number(newRecord.healthScore) < 80 || String(newRecord.status || '').toLowerCase().includes('fail')) {
@@ -1270,7 +1385,7 @@ const processIncomingTelemetry = (req: express.Request) => {
           `❌ <b>హెల్త్ స్కోర్:</b> <b>${newRecord.healthScore}%</b> (< 80% థ్రెషోల్డ్)\n` +
           `📌 <b>సమస్య:</b> DSC లేదా Edge IE Mode లేదా ActiveX కాంపోనెంట్స్ లో లోపం గుర్తించబడింది.\n` +
           `🛠️ దయచేసి e-Vedhika లైవ్ డాష్‌బోర్డ్ లేదా AnyDesk ద్వారా వెంటనే పరిశీలించండి!`;
-        sendTelegramServerAlert(urgentAlertMsg).catch(() => {});
+        sendTelegramServerAlert(urgentAlertMsg, undefined, pcId).catch(() => {});
       }
     }
   } catch (tgErr) {
