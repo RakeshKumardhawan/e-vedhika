@@ -7298,6 +7298,7 @@ E-Vedhika Team`;
                 isEditorMode={!isAdmin && isEditor}
                 rbacPermissions={rbacPermissions}
                 setRbacPermissions={setRbacPermissions}
+                onBroadcastWelcomeDM={handleBroadcastWelcomeDMToAllUsers}
                 activeSubTab={activeAdminSubTab}
                 setActiveSubTab={setActiveAdminSubTab}
                 customMenus={customMenus}
@@ -12558,6 +12559,7 @@ function AdminPanel({
   setSidebarOpen,
   siteConfig,
   setSiteConfig = () => {},
+  onBroadcastWelcomeDM,
 }: any) {
   const posts =
     hasPostsOnly || isEditorMode
@@ -13685,6 +13687,7 @@ function AdminPanel({
                 addToast={addToast} 
                 activeTab={activeSubTab} 
                 onEditPost={onEditPost}
+                onBroadcastWelcomeDM={onBroadcastWelcomeDM}
               />
             )}
 

@@ -52,6 +52,7 @@ interface SuperAdminDashboardProps {
   addToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   activeTab?: string;
   onEditPost?: (post: any) => void;
+  onBroadcastWelcomeDM?: () => void;
 }
 
 export function SuperAdminDashboard({ 
@@ -60,7 +61,8 @@ export function SuperAdminDashboard({
   setActiveSubTab, 
   addToast, 
   activeTab: propActiveTab = "overview",
-  onEditPost
+  onEditPost,
+  onBroadcastWelcomeDM
 }: SuperAdminDashboardProps) {
   const currentActiveTab = (propActiveTab === "super_admin" || propActiveTab === "dash" || !propActiveTab) ? "overview" : propActiveTab;
   const [localActiveTab, setLocalActiveTab] = useState<string>(currentActiveTab);
@@ -900,11 +902,12 @@ export function SuperAdminDashboard({
                     { l: "Database Backups", i: "db_backup", icon: Database, color: "text-cyan-400", bg: "bg-cyan-400/10" },
                     { l: "Software Hub & Files", i: "admin_software_hub", icon: HardDrive, color: "text-indigo-400", bg: "bg-indigo-400/10" },
                     { l: "Security & Audit", i: "security", icon: ShieldAlert, color: "text-pink-400", bg: "bg-pink-400/10" },
+                    { l: "Broadcast Welcome DM", i: "broadcast_dm", icon: MessageCircle, color: "text-rose-400", bg: "bg-rose-400/10", action: onBroadcastWelcomeDM },
                   ].map((btn, i) => (
                     <button 
                       key={i} 
-                      onClick={() => navigateToTab(btn.i)}
-                      className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all text-left group"
+                      onClick={() => btn.action ? btn.action() : navigateToTab(btn.i)}
+                      className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all text-left group cursor-pointer active:scale-95"
                     >
                       <div className={`p-1.5 rounded-xl ${btn.bg} ${btn.color} group-hover:scale-105 transition-transform`}>
                         <btn.icon size={16} />
