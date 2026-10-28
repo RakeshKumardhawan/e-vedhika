@@ -17,7 +17,6 @@
     "@tailwindcss/vite": "^4.1.14",
     "@types/d3": "^7.4.3",
     "@types/nodemailer": "^8.0.2",
-    "@vitejs/plugin-legacy": "^8.2.3",
     "@vitejs/plugin-react": "^5.0.4",
     "browser-image-compression": "^2.0.2",
     "cheerio": "^1.2.0",

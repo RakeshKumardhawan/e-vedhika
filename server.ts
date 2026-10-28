@@ -12,6 +12,18 @@ import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, Del
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import admin from 'firebase-admin';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
+
+// Ensure modular firebase-admin methods are accessible on default admin object for backwards compatibility
+if (!(admin as any).firestore) {
+  (admin as any).firestore = getFirestore;
+  (admin as any).firestore.FieldValue = FieldValue;
+  (admin as any).firestore.Timestamp = Timestamp;
+}
+if (!(admin as any).auth) {
+  (admin as any).auth = getAuth;
+}
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 
@@ -21,12 +33,20 @@ let firestoreQuotaExceededUntil = 0;
 const QUOTA_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown
 
 function handleFirestoreQuotaError(err: any) {
-  if (err?.code === 7 || (err?.message && String(err.message).includes("PERMISSION_DENIED"))) {
-    // Admin SDK does not have GCP service account in this runtime, fallback to persistent disk/memory store
+  const msg = String(err?.message || err || '');
+  if (
+    err?.code === 7 || 
+    err?.code === 16 || 
+    msg.includes("PERMISSION_DENIED") || 
+    msg.includes("UNAUTHENTICATED") || 
+    msg.includes("Could not load the default credentials") ||
+    msg.includes("credentials")
+  ) {
+    // Admin SDK does not have GCP service account credentials in this runtime, fallback to persistent disk/memory store
     isFirestoreAdminWorking = false;
     return true;
   }
-  if (err?.code === 8 || (err?.message && String(err.message).includes("RESOURCE_EXHAUSTED"))) {
+  if (err?.code === 8 || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("Quota exceeded")) {
     console.warn("Firestore Quota Exceeded detected in server. Cooling down for 5 minutes.");
     firestoreQuotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
     return true;
