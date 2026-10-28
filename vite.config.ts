@@ -1,25 +1,19 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import legacy from '@vitejs/plugin-legacy';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import {defineConfig, loadEnv} from 'vite';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default defineConfig(({mode}) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     base: '/',
     plugins: [
-      react(), 
-      legacy({
-        targets: ['defaults', 'not IE 11'],
-        additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
-        renderLegacyChunks: true
-      }),
+      react(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
@@ -41,36 +35,11 @@ export default defineConfig(({mode}) => {
           dir: 'ltr',
           categories: ['productivity', 'government', 'utilities', 'business'],
           icons: [
-            {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any'
-            },
-            {
-              src: '/pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any'
-            },
-            {
-              src: '/ev-logo-v2.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any'
-            },
-            {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable'
-            },
-            {
-              src: '/pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable'
-            }
+            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: '/ev-logo-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
           ],
           shortcuts: [
             {
@@ -109,60 +78,44 @@ export default defineConfig(({mode}) => {
           clientsClaim: true,
           skipWaiting: true,
           navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/sitemap\.txt$/, /^\/robots\.txt$/, /^\/ads\.txt$/],
-          maximumFileSizeToCacheInBytes: 25 * 1024 * 1024, // 25MiB
+          maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+                expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] }
+              }
             },
             {
               urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'gstatic-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+                expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] }
+              }
             },
             {
               urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif|ico)$/i,
               handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: 'images-cache',
-                expiration: {
-                  maxEntries: 60,
-                  maxAgeSeconds: 60 * 60 * 24 * 30,
-                },
-              },
+                expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 }
+              }
             },
             {
               urlPattern: /\.(?:js|css)$/i,
               handler: 'StaleWhileRevalidate',
               options: {
                 cacheName: 'static-resources',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 * 7,
-                },
-              },
-            },
-          ],
-        },
+                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 }
+              }
+            }
+          ]
+        }
       }),
       {
         name: 'google-verification',
@@ -227,7 +180,7 @@ export default defineConfig(({mode}) => {
                   $("table").each((_, table) => {
                     const rows = $(table).find("tr");
                     if (rows.length > 1) {
-                      rows.each((rowIndex, row) => {
+                      rows.each((_, row) => {
                         const cells = $(row).find("td, th").map((_, c) => $(c).text().trim()).get();
                         if (cells.length >= 3 && !cells[0].toLowerCase().includes("sl") && !cells[0].toLowerCase().includes("s.no") && !cells[0].toLowerCase().includes("total")) {
                           records.push({
@@ -276,13 +229,12 @@ export default defineConfig(({mode}) => {
                 try {
                   const body = bodyStr ? JSON.parse(bodyStr) : {};
                   await handleSearch(body);
-                } catch (jsonErr: any) {
+                } catch {
                   res.statusCode = 400;
                   res.end(JSON.stringify({ error: "Invalid JSON Payload" }));
                 }
               });
 
-              // Fallback timeout if stream was consumed earlier
               setTimeout(async () => {
                 if (!hasEnded) {
                   await handleSearch({});
@@ -290,11 +242,13 @@ export default defineConfig(({mode}) => {
               }, 1000);
               return;
             }
+
             if (req.url === '/google46d0fa093843f771.html') {
               res.setHeader('Content-Type', 'text/html');
               res.end('google-site-verification: google46d0fa093843f771.html');
               return;
             }
+
             if (req.url && (req.url.startsWith('/api/v1/posts/create') || (req.url.startsWith('/api/v1/posts/feed') && req.method === 'POST'))) {
               res.setHeader('Content-Type', 'application/json; charset=utf-8');
               res.setHeader('Access-Control-Allow-Origin', '*');
@@ -307,6 +261,7 @@ export default defineConfig(({mode}) => {
               }));
               return;
             }
+
             if (req.url && (req.url.startsWith('/api/v1/posts/feed') || req.url.startsWith('/api/posts/feed'))) {
               res.setHeader('Content-Type', 'application/json; charset=utf-8');
               res.setHeader('Access-Control-Allow-Origin', '*');
@@ -334,6 +289,7 @@ export default defineConfig(({mode}) => {
               }));
               return;
             }
+
             if (req.url && (req.url.startsWith('/admin/exe_ubd_live') || req.url.startsWith('/exe_ubd_live'))) {
               res.setHeader('Access-Control-Allow-Origin', '*');
               res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
@@ -353,16 +309,16 @@ export default defineConfig(({mode}) => {
                   success: true,
                   name: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
                   appName: 'E-VEDHIKA All Problems One Solution & UBD Deployment Tool',
-                  executableName: 'EVedhika_Setup_v1.0.7.exe',
-                  currentVersion: 'v1.0.7',
-                  latestVersion: 'v1.0.7',
-                  versionCode: 10070,
-                  releaseDate: '2026-10-17',
-                  downloadUrl: 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/latest/download/EVedhika_Setup_v1.0.7.exe',
+                  executableName: 'EVedhika_Setup_v1.0.9.exe',
+                  currentVersion: 'v1.0.9',
+                  latestVersion: 'v1.0.9',
+                  versionCode: 10090,
+                  releaseDate: '2026-10-28',
+                  downloadUrl: 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.9.exe',
                   githubRepo: 'https://github.com/RakeshKumardhawan/UBDTOOLS',
                   updateRequired: false,
                   silent: false,
-                  releaseNotes: 'Enterprise v1.0.7: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
+                  releaseNotes: 'Enterprise v1.0.9: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
                   publisher: 'E-Vedhika.in (Rakesh Dhawan)',
                   telemetryRelayUrl: 'https://www.e-vedhika.in/admin/exe_ubd_live'
                 }, null, 2));
@@ -374,21 +330,12 @@ export default defineConfig(({mode}) => {
                 const announcements = [
                   {
                     id: 1,
-                    title: 'IMPORTANT: v1.0.7 Update Released',
-                    content: 'Brand new v1.0.7 release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.',
+                    title: 'IMPORTANT: v1.0.9 Update Released',
+                    content: 'Brand new v1.0.9 release with Direct Telegram & Cloud Telemetry, immediate installation reporting, zero-manual auto-repair, and full Windows 7/8/10/11 compatibility.',
                     date: new Date().toISOString().slice(0, 10),
                     importance: 'High',
                     category: 'Software Update',
                     author: 'Rakesh Dhawan (Admin)'
-                  },
-                  {
-                    id: 2,
-                    title: 'UBD Portal Security Guidelines',
-                    content: 'Ensure Edge IE Mode and Zone 2 Trusted Sites configuration are kept verified. AutoRepair Guardian automatically secures all policies.',
-                    date: new Date().toISOString().slice(0, 10),
-                    importance: 'Medium',
-                    category: 'Security',
-                    author: 'E-Vedhika Security Desk'
                   }
                 ];
                 res.end(JSON.stringify({
@@ -396,10 +343,7 @@ export default defineConfig(({mode}) => {
                   status: 'ACTIVE_FEED',
                   endpoint: '/api/v1/posts/feed',
                   count: announcements.length,
-                  posts: announcements,
-                  feed: announcements,
-                  announcements: announcements,
-                  news: announcements
+                  posts: announcements
                 }, null, 2));
                 return;
               }
@@ -424,7 +368,7 @@ export default defineConfig(({mode}) => {
                 res.setHeader('Content-Type', 'application/json; charset=utf-8');
                 res.end(JSON.stringify({
                   success: true,
-                  message: 'టెలిమెట్రీ రిపోర్ట్ విజయవంతంగా లాగ్ చేయబడింది (Telemetry report logged successfully)! Telegram alert active.',
+                  message: 'టెలిమెట్రీ రిపోర్ట్ విజయవంతంగా లాగ్ చేయబడింది (Telemetry report logged successfully)!',
                   receivedAt: new Date().toISOString()
                 }));
                 return;
@@ -438,7 +382,6 @@ export default defineConfig(({mode}) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      target: 'esnext',
       chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
@@ -476,15 +419,11 @@ export default defineConfig(({mode}) => {
         'motion/react',
       ],
     },
-    define: {
-    },
     server: {
       port: 3000,
       host: '0.0.0.0',
       strictPort: true,
       allowedHosts: true,
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify - file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true' ? { overlay: false } : false,
     },
   };

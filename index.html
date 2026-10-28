@@ -150,72 +150,19 @@
     
 
 
-    <!-- Polyfills for Windows 7 & 8 Browsers -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/3.39.0/minified.js" crossorigin="anonymous"></script>
     <script>
-      // Global Polyfills
       (function() {
-        try {
-          if (typeof globalThis === 'undefined') { window.globalThis = window; }
-          
-          if (typeof window.Iterator === 'undefined') {
-            try {
-              window.Iterator = function() {};
-              window.Iterator.prototype = {};
-            } catch (e) {}
-          }
-
-          if (typeof Reflect === 'undefined') { 
-            try {
-              window.Reflect = { 
-                get: function(t,k){return t[k];}, 
-                set: function(t,k,v){t[k]=v;return true;},
-                construct: function(Parent, args, Class) {
-                  var a = [null]; a.push.apply(a, args);
-                  var Constructor = Function.bind.apply(Parent, a);
-                  var instance = new Constructor();
-                  if (Class) { instance.__proto__ = Class.prototype; }
-                  return instance;
-                }
-              }; 
-            } catch (e) {}
-          }
-
-          if (!window.requestAnimationFrame) {
-            window.requestAnimationFrame = function(cb) { return setTimeout(cb, 16); };
-            window.cancelAnimationFrame = function(id) { clearTimeout(id); };
-          }
-        } catch (err) {
-          console.warn("Polyfill error suppressed:", err);
-        }
+        if (typeof globalThis === 'undefined') { window.globalThis = window; }
       })();
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/intersection-observer@0.12.2/intersection-observer.js"></script>
 
     <!-- Legacy Browser (IE11) Detection -->
     <script nomodule>
       window.addEventListener('load', function() {
         var root = document.getElementById('root');
-        root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.1);max-width:480px;border:1px solid #cbd5e1;"><div style="font-size:48px;margin-bottom:16px;">🚫</div><h2 style="color:#0f172a;margin-bottom:12px;font-size:22px;font-weight:900;">బ్రౌజర్ సపోర్ట్ లేదు (Not Supported)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:24px;">మీరు వాడుతున్న ఇంటర్నెట్ ఎక్స్‌ప్లోరర్ (IE11) లేదా పాత బ్రౌజర్ ఈ ఆధునిక వెబ్‌సైట్‌ను సపోర్ట్ చేయదు. <br><br>దయచేసి విండోస్ 7/8 లో <strong>Google Chrome</strong> లేదా <strong>Firefox</strong> లేటెస్ట్ వెర్షన్‌ను ఇన్‌స్టాల్ చేసుకోండి.</p><a href="https://www.google.com/chrome/" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:bold;font-size:14px;box-shadow:0 4px 12px rgba(37,99,235,0.2);">Chrome డౌన్‌లోడ్ చేయండి</a></div></div>';
-      });
-    </script>
-
-    <script>
-      // Debug helper for white screen
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          var root = document.getElementById('root');
-          var isIE = !!window.MSInputMethodContext && !!document.documentMode;
-          if (root && root.innerHTML.trim() === '' && !isIE) {
-            console.error("App failed to mount.");
-            var diagnostic = document.createElement('div');
-            diagnostic.style.cssText = 'position:fixed;bottom:10px;left:10px;font-size:10px;color:#94a3b8;z-index:9999;background:rgba(255,255,255,0.8);padding:5px;border-radius:4px;';
-            diagnostic.innerHTML = 'UA: ' + navigator.userAgent;
-            document.body.appendChild(diagnostic);
-          }
-        }, 5000);
+        if (root) {
+          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.1);max-width:480px;border:1px solid #cbd5e1;"><div style="font-size:48px;margin-bottom:16px;">🚫</div><h2 style="color:#0f172a;margin-bottom:12px;font-size:22px;font-weight:900;">బ్రౌజర్ సపోర్ట్ లేదు (Not Supported)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:24px;">మీరు వాడుతున్న ఇంటర్నెట్ ఎక్స్‌ప్లోరర్ (IE11) లేదా పాత బ్రౌజర్ ఈ ఆధునిక వెబ్‌సైట్‌ను సపోర్ట్ చేయదు. <br><br>దయచేసి విండోస్ 7/8 లో <strong>Google Chrome</strong> లేదా <strong>Firefox</strong> లేటెస్ట్ వెర్షన్‌ను ఇన్‌స్టాల్ చేసుకోండి.</p><a href="https://www.google.com/chrome/" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:bold;font-size:14px;box-shadow:0 4px 12px rgba(37,99,235,0.2);">Chrome డౌన్‌లోడ్ చేయండి</a></div></div>';
+        }
       });
     </script>
 
@@ -240,6 +187,11 @@
         <p style="font-size:13px;color:#94a3b8;margin-bottom:20px;">దయచేసి వేచి ఉండండి (Please wait)...</p>
         <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;"></div>
       </div>
+        <div id="slow-network-hint" style="display:none;margin-top:16px;max-width:320px;padding:12px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.1);">
+          <p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">నెట్‌వర్క్ నెమ్మదిగా ఉన్నట్లుంది, ఫైల్స్ లోడ్ అవుతున్నాయి...</p>
+          <button onclick="window.location.reload()" style="background:#6366f1;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;">రీలోడ్ చేయండి</button>
+        </div>
+      </div>
       <style>
         @keyframes spin { to { transform: rotate(360deg); } }
       </style>
@@ -252,13 +204,10 @@
       </div>
     </noscript>
     <script>
-      // Fallback check: if root is still showing loading after 35 seconds, show manual refresh option
       setTimeout(function() {
-        var root = document.getElementById('root');
-        if (root && root.innerHTML.indexOf('లోడ్ అవుతోంది') !== -1) {
-          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#020617;color:#f8fafc;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#1e293b;padding:32px;border-radius:24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);max-width:480px;border:1px solid rgba(255,255,255,0.1);"><div style="font-size:40px;margin-bottom:16px;">⚠️</div><h2 style="color:#f8fafc;margin-bottom:12px;font-size:20px;font-weight:900;">లోడింగ్ ఆలస్యం అవుతోంది (Loading Timeout)</h2><p style="font-size:13px;line-height:1.6;color:#94a3b8;margin-bottom:24px;">మీ నెట్‌వర్క్ కనెక్షన్ నెమ్మదిగా ఉండటం వల్ల లేదా బ్రౌజర్ క్యాచే కారణంగా అప్లికేషన్ లోడ్ అవ్వడం ఆలస్యం అవుతోంది. దయచేసి క్రింది బటన్ నొక్కి రిఫ్రెష్ చేయండి.</p><button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload(true);" style="background:#6366f1;color:#fff;border:none;padding:14px 28px;border-radius:14px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 10px 20px -5px rgba(99,102,241,0.5);width:100%;">రీఫ్రెష్ & క్యాచే క్లియర్ చేయండి (Refresh & Clear)</button></div></div>';
-        }
-      }, 35000);
+        var hint = document.getElementById('slow-network-hint');
+        if (hint) hint.style.display = 'block';
+      }, 15000);
     </script>
     <!-- SEO / AdSense Content Block (Visible to Crawlers) -->
     <div style="display:none;" id="seo-content">
@@ -304,18 +253,17 @@
         }
       }
     </script>
-    <script type="module" src="/src/main.tsx"></script>
     <script>
       window.addEventListener('error', function(e) {
-        var m = (e && (e.message || e.toString())) || "Unknown Error";
-        var isCompatError = m.includes('SyntaxError') || m.includes('import') || m.includes('module') || m.includes('Unexpected');
-        
+        var m = (e && (e.message || (e.error && e.error.message) || e.toString())) || "Unknown Error";
+        var isCompatError = m.includes('SyntaxError') || m.includes('import') || m.includes('module') || m.includes('Unexpected') || m.includes('Iterator');
         var root = document.getElementById('root');
-        if (root && (root.innerHTML.trim() === '' || isCompatError)) {
-          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.08);max-width:480px;border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px;">⚠️</div><h2 style="color:#b91c1c;margin-bottom:12px;font-size:20px;font-weight:900;">బ్రౌజర్ అనుకూలత లోపం (Compatibility Notice)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:10px;">మీ బ్రౌజర్‌లో ఈ క్రింది లోపం కారణంగా అప్లికేషన్ లోడ్ కాలేదు:</p><div style="background:#fef2f2;padding:12px;border-radius:10px;font-family:monospace;font-size:11px;color:#991b1b;margin-bottom:20px;word-break:break-all;text-align:left;border:1px solid #fee2e2;">' + m + '</div><p style="font-size:13px;color:#64748b;margin-bottom:20px;">Windows 7/8 పాత బ్రౌజర్‌లలో ఈ సమస్య రావచ్చు. దయచేసి <strong>Google Chrome</strong> లేదా <strong>Firefox</strong> లేటెస్ట్ వెర్షన్‌కు అప్‌డేట్ చేయండి.</p><button onclick="window.location.reload()" style="background:#0d3b66;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:bold;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(13,59,102,0.3);">మళ్ళీ ప్రయత్నించండి (Retry)</button></div></div>';
+        if (root && (root.innerHTML.indexOf('లోడ్ అవుతోంది') !== -1 || isCompatError)) {
+          root.innerHTML = '<div style="font-family:system-ui,sans-serif;text-align:center;padding:40px;background:#f1f5f9;color:#1e293b;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><div style="background:#fff;padding:32px;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,0.08);max-width:480px;border:1px solid #e2e8f0;"><div style="font-size:36px;margin-bottom:12px;">⚠️</div><h2 style="color:#b91c1c;margin-bottom:12px;font-size:20px;font-weight:900;">అప్లికేషన్ లోడ్ కాలేదు (Load Error)</h2><p style="font-size:14px;line-height:1.6;color:#475569;margin-bottom:10px;">మీ బ్రౌజర్‌లో లోపం సంభవించింది:</p><div style="background:#fef2f2;padding:12px;border-radius:10px;font-family:monospace;font-size:11px;color:#991b1b;margin-bottom:20px;word-break:break-all;text-align:left;border:1px solid #fee2e2;">' + m + '</div><button onclick="localStorage.clear(); sessionStorage.clear(); window.location.reload();" style="background:#0d3b66;color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:bold;font-size:13px;cursor:pointer;box-shadow:0 4px 12px rgba(13,59,102,0.3);">రీఫ్రెష్ చేయండి (Refresh)</button></div></div>';
         }
       });
     </script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 

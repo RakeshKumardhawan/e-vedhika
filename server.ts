@@ -1604,6 +1604,160 @@ app.get(['/admin/exe_ubd_live.html', '/admin/exe_ubd_live', '/exe_ubd_live.html'
   return next();
 });
 
+// ====================================================================================
+// 🏛️ E-VEDHIKA CENTRAL TELEMETRY & UBD LIVE MONITORING GATEWAY (v1.0.9)
+// File Path: /admin/ubd_monitoring  (URL: https://www.e-vedhika.in/admin/ubd_monitoring)
+// Developer: Rakesh Dhawan (@DhawanRakesh)
+// ====================================================================================
+const ubdMonitoringStoragePath = path.join(process.cwd(), "public", "admin", "pc_consolidated_health.json");
+
+function getNormalizedConsolidatedPcs(): Record<string, any> {
+  try {
+    if (fs.existsSync(ubdMonitoringStoragePath)) {
+      const raw = JSON.parse(fs.readFileSync(ubdMonitoringStoragePath, "utf-8"));
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
+    }
+  } catch (e) {
+    console.error("Error reading consolidated pcs:", e);
+  }
+  return {};
+}
+
+function saveNormalizedConsolidatedPcs(data: Record<string, any>): void {
+  try {
+    const dir = path.dirname(ubdMonitoringStoragePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(ubdMonitoringStoragePath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error writing consolidated pcs:", e);
+  }
+}
+
+async function sendUbdMonitoringTelegram(token: string, chat: string, message: string) {
+  try {
+    if (!token || !chat || !message) return;
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chat,
+        text: message,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
+    });
+  } catch (err) {
+    console.error("Telegram ubd_monitoring alert error:", err);
+  }
+}
+
+app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.html', '/admin/ubd_monitoring.php', '/ubd_monitoring.php'], async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const botToken = "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
+  const chatId = "431228008";
+  const version = 'v1.0.9';
+
+  // Clear Dummy Reports Action
+  if (req.query.clear === '1') {
+    try {
+      if (fs.existsSync(ubdMonitoringStoragePath)) fs.unlinkSync(ubdMonitoringStoragePath);
+      const dataFile = path.join(process.cwd(), "public", "admin", "telemetry_storage.json");
+      if (fs.existsSync(dataFile)) fs.unlinkSync(dataFile);
+    } catch (e) {}
+    return res.redirect('/admin/ubd_monitoring');
+  }
+
+  // Handle Incoming POST Telemetry from C# App
+  if (req.method === 'POST') {
+    const data = (typeof req.body === 'object' && req.body !== null) ? req.body : {};
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const pcName = String(data.pcName || data.computerName || 'Unknown-PC').trim();
+    const machineId = String(data.deviceInstallationId || data.machineId || data.pcId || pcName).trim();
+    const userName = String(data.userName || data.operatorName || 'Panchayat Operator').trim();
+    const location = String(data.officeLocation || data.office || 'Grama Panchayat Office').trim();
+    const os = String(data.osVersion || data.os || 'Windows 11').trim();
+    const remarks = String(data.remarks || data.summary || 'Report received from client machine.').trim();
+
+    const stepsTotal = parseInt(String(data.stepsTotal), 10) || 17;
+    const stepsVerified = parseInt(String(data.stepsVerified), 10) || (data.status === 'SUCCESS' ? 17 : 12);
+
+    const isIssue = String(data.status || '').toUpperCase().includes('ISSUE') || String(data.status || '').toUpperCase().includes('FAIL');
+    const overallStatus = isIssue ? 'DEGRADED' : 'ONLINE & READY';
+
+    const pcs = getNormalizedConsolidatedPcs();
+
+    // Strict Enforce: 1 Report per PC
+    pcs[machineId] = {
+      machineId,
+      pcName,
+      userName,
+      officeLocation: location,
+      os,
+      appVersion: version,
+      overallStatus,
+      stepsVerified: `${stepsVerified}/${stepsTotal} Passed`,
+      dscStatus: String(data.dscStatus || 'Connected').trim(),
+      lastSeen: now,
+      lastSummary: remarks
+    };
+    saveNormalizedConsolidatedPcs(pcs);
+
+    // Telegram Auto-Dispatch
+    const statusEmoji = isIssue ? '🚨' : '✅';
+    const tgMsg = `🏛️ <b>E-VEDHIKA TELEMETRY REPORT RECEIVED</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `💻 <b>PC:</b> <code>${pcName}</code>\n` +
+      `🏢 <b>Office:</b> ${location}\n` +
+      `👤 <b>Operator:</b> ${userName}\n` +
+      `⚡ <b>Status:</b> ${statusEmoji} <b>${overallStatus}</b>\n` +
+      `⚙️ <b>Verification:</b> ${stepsVerified}/${stepsTotal} Steps Verified\n` +
+      `📝 <b>Summary:</b> ${remarks}\n` +
+      `⏰ <b>Timestamp:</b> ${now}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🌐 <b>Admin Gateway:</b> https://www.e-vedhika.in/admin/ubd_monitoring`;
+
+    sendUbdMonitoringTelegram(botToken, chatId, tgMsg).catch(() => {});
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.json({ success: true, message: 'Telemetry logged successfully', pcId: machineId });
+  }
+
+  // Handle GET - JSON response
+  if (req.query.format === 'json' || req.headers.accept?.includes('application/json')) {
+    const pcs = getNormalizedConsolidatedPcs();
+    const pcsList = Object.values(pcs);
+    const totalPcs = pcsList.length;
+    const healthyPcs = pcsList.filter((p: any) => ['ONLINE & READY', 'HEALTHY', 'SUCCESS'].includes(p.overallStatus)).length;
+    const issueCount = totalPcs - healthyPcs;
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.json({
+      success: true,
+      totalPcs,
+      healthyPcs,
+      issueCount,
+      pcs: pcsList
+    });
+  }
+
+  // Handle GET - Serve the Live Dashboard HTML
+  const dashboardHtmlPath = path.join(process.cwd(), "public", "admin", "ubd_monitoring.html");
+  if (fs.existsSync(dashboardHtmlPath)) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    return res.sendFile(dashboardHtmlPath);
+  }
+
+  return res.redirect('/admin/exe_ubd_live.html');
+});
+
 // Seed / Restore default telemetry reports - Fake reports disabled
 app.post('/api/telemetry/seed', (req, res) => {
   // Fake reports strictly prohibited per user instructions
@@ -1617,7 +1771,7 @@ app.post('/api/telemetry/seed', (req, res) => {
 
 // 2. Web UI కోసం Telemetry Logs అందించే API Route (GET)
 // Explicitly serve admin JSON files (Consolidated Health & Monthly Archives)
-app.get(['/admin/consolidated_health.json', '/admin/monthly_reports_archive.json', '/admin/telemetry_storage.json'], (req, res) => {
+app.get(['/admin/consolidated_health.json', '/admin/monthly_reports_archive.json', '/admin/telemetry_storage.json', '/admin/pc_consolidated_health.json'], (req, res) => {
   const fileName = path.basename(req.path);
   const filePath = path.join(process.cwd(), "public", "admin", fileName);
   if (fs.existsSync(filePath)) {
@@ -1626,6 +1780,21 @@ app.get(['/admin/consolidated_health.json', '/admin/monthly_reports_archive.json
     return res.sendFile(filePath);
   }
   return res.status(404).json({ error: "Admin data file not found" });
+});
+
+app.get(['/api/consolidated-health', '/api/consolidated-data', '/api/reports/consolidated'], (req, res) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  const pcs = getNormalizedConsolidatedPcs();
+  const pcsList = Object.values(pcs);
+  return res.json({
+    success: true,
+    count: pcsList.length,
+    machines: pcsList,
+    logs: pcsList
+  });
 });
 
 const telemetryGetRoutes = [

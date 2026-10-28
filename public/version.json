@@ -1,11 +1,18 @@
 {
-  "appName": "E-VEDHIKA UBD Deployment Tool",
-  "currentVersion": "v1.0.8",
-  "latestVersion": "v1.0.8",
-  "versionCode": 10080,
-  "releaseDate": "2026-10-25",
-  "executableName": "EVedhika_Setup_v1.0.8.exe",
-  "downloadUrl": "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.8.exe",
-  "releaseNotes": "v1.0.8 (24*7 Guardian Build): 17-Step Audit Matrix and System Tray Guardian.",
-  "publisher": "E-Vedhika.in (Rakesh Kumar Dhawan)"
+  "name": "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+  "appName": "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+  "executableName": "EVedhika_Setup_v1.0.9.exe",
+  "currentVersion": "v1.0.9",
+  "latestVersion": "v1.0.9",
+  "versionCode": 10090,
+  "releaseDate": "2026-10-28",
+  "downloadUrl": "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.9.exe",
+  "githubRepo": "https://github.com/RakeshKumardhawan/UBDTOOLS",
+  "updateRequired": false,
+  "silent": false,
+  "releaseNotes": "Updated version v1.0.9",
+  "publisher": "E-Vedhika.in (Rakesh Dhawan)",
+  "telemetryRelayUrl": "https://www.e-vedhika.in/admin/exe_ubd_live",
+  "latestResourceBuild": "2026.10.28-R1",
+  "resourceBuildDate": "2026-10-28"
 }

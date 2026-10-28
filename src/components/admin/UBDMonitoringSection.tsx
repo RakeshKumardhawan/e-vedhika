@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, ExternalLink, Radio, ChevronRight, RefreshCw, Maximize2 } from 'lucide-react';
+import { Activity, ExternalLink, Radio, ChevronRight, RefreshCw, Maximize2, Code, Table, Copy, Check, Download } from 'lucide-react';
 import { TelegramNotificationCard } from './TelegramNotificationCard';
 
 interface UBDMonitoringSectionProps {
@@ -13,33 +13,91 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
   const [previewTitle, setPreviewTitle] = useState("");
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+  const [copiedJson, setCopiedJson] = useState(false);
 
-  const handlePreview = async (type: "daily" | "monthly") => {
+  const handlePreview = async (type: "daily" | "monthly" | "consolidated" | "archive") => {
     setIsPreviewLoading(true);
     setPreviewData(null);
+    setViewMode('table');
     try {
       if (type === "daily") {
         setPreviewTitle("Daily GP Health Report Preview");
         setDownloadUrl("/api/reports/download-excel");
         const res = await fetch("/api/telemetry");
         const data = await res.json();
-        if (data.success && Array.isArray(data.logs)) {
+        if (data && Array.isArray(data.logs)) {
           setPreviewData(data.logs);
+        } else if (Array.isArray(data)) {
+          setPreviewData(data);
+        } else {
+          setPreviewData([]);
         }
-      } else {
+      } else if (type === "monthly") {
         setPreviewTitle("Monthly Master Report Preview");
         setDownloadUrl("/api/reports/monthly-excel");
-        const res = await fetch("/admin/monthly_reports_archive.json");
-        const data = await res.json();
-        // Archive structure is {"YYYY-MM": [...]}
-        const allLogs = (data && typeof data === 'object' && !Array.isArray(data)) ? Object.values(data).flat() : (Array.isArray(data) ? data : []);
-        setPreviewData(allLogs);
+        try {
+          const res = await fetch("/api/consolidated-health");
+          if (res.ok) {
+            const data = await res.json();
+            const list = data.machines || data.logs || (Array.isArray(data) ? data : []);
+            setPreviewData(list);
+          } else {
+            throw new Error("Failed");
+          }
+        } catch {
+          const res = await fetch("/api/telemetry");
+          const data = await res.json();
+          setPreviewData(data.logs || []);
+        }
+      } else if (type === "consolidated") {
+        setPreviewTitle("Consolidated Health Data Preview (consolidated_health.json)");
+        setDownloadUrl("/api/consolidated-health");
+        try {
+          const res = await fetch("/api/consolidated-health");
+          if (res.ok) {
+            const data = await res.json();
+            const list = data.machines || data.logs || (Array.isArray(data) ? data : [data]);
+            setPreviewData(list);
+          } else {
+            throw new Error("Failed");
+          }
+        } catch {
+          const res = await fetch("/api/telemetry");
+          const data = await res.json();
+          setPreviewData(data.logs || []);
+        }
+      } else if (type === "archive") {
+        setPreviewTitle("Monthly Archive Reports Preview (monthly_reports_archive.json)");
+        setDownloadUrl("/api/reports/monthly-excel");
+        try {
+          const res = await fetch("/api/consolidated-health");
+          if (res.ok) {
+            const data = await res.json();
+            const list = data.machines || data.logs || (Array.isArray(data) ? data : [data]);
+            setPreviewData(list);
+          } else {
+            throw new Error("Failed");
+          }
+        } catch {
+          const res = await fetch("/api/telemetry");
+          const data = await res.json();
+          setPreviewData(data.logs || []);
+        }
       }
     } catch (err) {
       if (addToast) addToast("Failed to load preview data", "error");
     } finally {
       setIsPreviewLoading(false);
     }
+  };
+
+  const handleCopyJson = () => {
+    if (!previewData) return;
+    navigator.clipboard.writeText(JSON.stringify(previewData, null, 2));
+    setCopiedJson(true);
+    if (addToast) addToast("JSON copied to clipboard!", "success");
+    setTimeout(() => setCopiedJson(false), 2000);
   };
 
   return (
@@ -84,7 +142,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             </div>
           </div>
 
-          <button className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5">
+          <button className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer">
             <span>{isLiveOpen ? "Collapse" : "View Data"}</span>
             <ChevronRight size={16} className={`transition-transform duration-200 ${isLiveOpen ? 'rotate-90' : ''}`} />
           </button>
@@ -98,7 +156,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
                   <span className="w-2 h-2 rounded-full bg-emerald-400"></span> LIVE STREAM ACTIVE
                 </span>
                 <span>•</span>
-                <span>URL: <code className="text-blue-300">admin/exe_ubd_live.html</code></span>
+                <span>URL: <code className="text-blue-300">/admin/ubd_monitoring</code></span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -114,7 +172,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
                 </button>
 
                 <a
-                  href="/admin/exe_ubd_live.html"
+                  href="/admin/ubd_monitoring"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
@@ -133,7 +191,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
               )}
               <iframe
                 id="ubdLiveIframe"
-                src="/admin/exe_ubd_live.html"
+                src="/admin/ubd_monitoring"
                 title="UBD Live Monitoring Console"
                 className="w-full h-full border-0"
                 onLoad={() => setIsIframeLoading(false)}
@@ -151,7 +209,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
           </div>
           <div>
             <h3 className="text-lg font-black text-slate-900">Data & Reports Center</h3>
-            <p className="text-xs text-slate-500 font-bold">Preview data tables before downloading Excel files.</p>
+            <p className="text-xs text-slate-500 font-bold">Preview data tables directly on this page before downloading.</p>
           </div>
         </div>
 
@@ -165,7 +223,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
               <Activity size={20} />
             </div>
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Daily Health Report</h4>
-            <p className="text-[10px] text-slate-500 mt-1">Preview Data</p>
+            <p className="text-[10px] text-slate-500 mt-1">Preview Data Table</p>
           </button>
 
           {/* Monthly Master Preview */}
@@ -180,31 +238,29 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             <p className="text-[10px] text-slate-500 mt-1">Monthly Master Preview</p>
           </button>
 
-          {/* Consolidated JSON */}
-          <a 
-            href="/admin/consolidated_health.json" 
-            target="_blank"
-            className="bg-white p-5 rounded-3xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all group"
+          {/* Consolidated Data */}
+          <button 
+            onClick={() => handlePreview("consolidated")}
+            className="bg-white p-5 rounded-3xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all group text-left w-full cursor-pointer"
           >
             <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Activity size={20} />
             </div>
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Consolidated Data</h4>
-            <p className="text-[10px] text-slate-500 mt-1">Raw JSON: consolidated_health.json</p>
-          </a>
+            <p className="text-[10px] text-slate-500 mt-1">Preview Data (consolidated_health.json)</p>
+          </button>
 
-          {/* Monthly Archive JSON */}
-          <a 
-            href="/admin/monthly_reports_archive.json" 
-            target="_blank"
-            className="bg-white p-5 rounded-3xl border border-slate-200 hover:border-purple-400 hover:shadow-lg transition-all group"
+          {/* Monthly Archive */}
+          <button 
+            onClick={() => handlePreview("archive")}
+            className="bg-white p-5 rounded-3xl border border-slate-200 hover:border-purple-400 hover:shadow-lg transition-all group text-left w-full cursor-pointer"
           >
             <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-3 group-hover:bg-purple-600 group-hover:text-white transition-colors">
               <Activity size={20} />
             </div>
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Monthly Archive</h4>
-            <p className="text-[10px] text-slate-500 mt-1">Raw JSON: monthly_reports_archive.json</p>
-          </a>
+            <p className="text-[10px] text-slate-500 mt-1">Preview Data (monthly_reports_archive.json)</p>
+          </button>
         </div>
       </div>
 
@@ -215,22 +271,55 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             <div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">{previewTitle}</h3>
               <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">
-                {isPreviewLoading ? "Loading Data..." : `Showing ${previewData?.length} Records`}
+                {isPreviewLoading ? "Loading Data..." : `Showing ${Array.isArray(previewData) ? previewData.length : 1} Records`}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex items-center gap-2 flex-wrap">
               {previewData && (
-                <a 
-                  href={downloadUrl}
-                  target="_blank"
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition-all shadow-md flex items-center gap-2"
-                >
-                  <Maximize2 size={14} /> Download Excel (.xlsx)
-                </a>
+                <>
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold mr-2">
+                    <button
+                      onClick={() => setViewMode('table')}
+                      className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                        viewMode === 'table' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Table size={14} /> Table View
+                    </button>
+                    <button
+                      onClick={() => setViewMode('json')}
+                      className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                        viewMode === 'json' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Code size={14} /> Raw JSON View
+                    </button>
+                  </div>
+
+                  {viewMode === 'json' ? (
+                    <button
+                      onClick={handleCopyJson}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedJson ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                      {copiedJson ? "Copied!" : "Copy JSON"}
+                    </button>
+                  ) : (
+                    <a 
+                      href={downloadUrl}
+                      target="_blank"
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                    >
+                      <Download size={14} /> Download Data / Excel
+                    </a>
+                  )}
+                </>
               )}
+              
               <button 
                 onClick={() => setPreviewData(null)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-black transition-all"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-black transition-all cursor-pointer"
               >
                 Close Preview
               </button>
@@ -241,6 +330,12 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-4">
               <RefreshCw size={32} className="animate-spin text-blue-600" />
               <p className="font-bold text-sm">Fetching report data...</p>
+            </div>
+          ) : viewMode === 'json' ? (
+            <div className="relative">
+              <pre className="bg-slate-950 text-emerald-400 p-6 rounded-3xl overflow-auto text-xs font-mono max-h-[500px] border border-slate-800 leading-relaxed">
+                {JSON.stringify(previewData, null, 2)}
+              </pre>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-3xl border border-slate-100">
@@ -257,36 +352,44 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {previewData?.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 font-mono font-bold text-blue-600">{row.pcId || "N/A"}</td>
-                      <td className="p-4">
-                        <p className="font-black text-slate-900">{row.pcName || row.pc_name || "Unknown"}</p>
-                        <p className="text-[10px] text-slate-400 font-bold">{row.userName || row.user || "N/A"}</p>
-                      </td>
-                      <td className="p-4 font-medium text-slate-600">{row.officeLocation || row.panchayat || "N/A"}</td>
-                      <td className="p-4 font-black text-slate-800">{row.district || "N/A"}</td>
-                      <td className="p-4 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                          String(row.status || "").includes("SUCCESS") ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                        }`}>
-                          {row.status || "REPORTED"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="font-black text-slate-900">{row.healthScore}%</span>
-                          <div className="w-12 h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                            <div className="h-full bg-blue-500" style={{ width: `${row.healthScore}%` }}></div>
+                  {Array.isArray(previewData) && previewData.length > 0 ? (
+                    previewData.map((row: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-4 font-mono font-bold text-blue-600">{row.pcId || row.id || `PC-${idx + 1}`}</td>
+                        <td className="p-4">
+                          <p className="font-black text-slate-900">{row.pcName || row.pc_name || row.name || "Gram Panchayat PC"}</p>
+                          <p className="text-[10px] text-slate-400 font-bold">{row.userName || row.user || row.author || "Operator"}</p>
+                        </td>
+                        <td className="p-4 font-medium text-slate-600">{row.officeLocation || row.panchayat || row.office || "GP Office"}</td>
+                        <td className="p-4 font-black text-slate-800">{row.district || "Telangana"}</td>
+                        <td className="p-4 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                            String(row.status || "").includes("SUCCESS") || String(row.status || "").includes("HEALTHY") ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {row.status || "REPORTED"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="flex flex-col items-center">
+                            <span className="font-black text-slate-900">{row.healthScore || 100}%</span>
+                            <div className="w-12 h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                              <div className="h-full bg-blue-500" style={{ width: `${row.healthScore || 100}%` }}></div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-slate-400 font-mono text-[10px]">
-                        {row.date || row.serverReceivedDate} <br />
-                        {row.time || row.serverReceivedTime}
+                        </td>
+                        <td className="p-4 text-slate-400 font-mono text-[10px]">
+                          {row.date || row.serverReceivedDate || new Date().toISOString().slice(0, 10)} <br />
+                          {row.time || row.serverReceivedTime || ""}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
+                        No records found in preview.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -299,4 +402,3 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
     </div>
   );
 }
-

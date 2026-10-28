@@ -8,11 +8,18 @@ import { registerSW } from 'virtual:pwa-register';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
+// Vite chunk preload error handler
+window.addEventListener('vite:preloadError', () => {
+  const hasReloaded = sessionStorage.getItem('vite_preload_reloaded');
+  if (!hasReloaded) {
+    sessionStorage.setItem('vite_preload_reloaded', 'true');
+    window.location.reload();
+  }
+});
+
 // Global PWA Update Handler & Registration
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   try {
-    let refreshing = false;
-
     // Global helper for manual PWA update
     (window as any).__triggerPWAUpdate = async () => {
       try {
@@ -30,20 +37,11 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       }
     };
 
-    // When the service worker updates and takes control, reload the page cleanly
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
-
     const updateSW = registerSW({
-      immediate: true,
+      immediate: false,
       onNeedRefresh() {
-        console.log('New PWA version detected! Updating service worker cache...');
+        console.log('New PWA version available');
         window.dispatchEvent(new CustomEvent('pwa-update-available', { detail: { updateSW } }));
-        updateSW(true);
       },
       onOfflineReady() {
         console.log('E-Vedhika PWA ready for offline use');
@@ -52,7 +50,7 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
         if (r) {
           setInterval(() => {
             r.update().catch(() => {});
-          }, 30 * 1000);
+          }, 60 * 1000);
         }
       }
     });

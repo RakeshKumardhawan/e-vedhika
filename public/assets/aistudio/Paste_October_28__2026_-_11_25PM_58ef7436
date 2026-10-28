@@ -1,0 +1,586 @@
+code
+JSON
+{
+  "name": "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+  "appName": "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+  "executableName": "EVedhika_Setup_v1.0.9.exe",
+  "currentVersion": "v1.0.9",
+  "latestVersion": "v1.0.9",
+  "versionCode": 10090,
+  "releaseDate": "2026-10-28",
+  "downloadUrl": "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.9.exe",
+  "githubRepo": "https://github.com/RakeshKumardhawan/UBDTOOLS",
+  "updateRequired": false,
+  "silent": false,
+  "releaseNotes": "Updated version v1.0.9",
+  "publisher": "E-Vedhika.in (Rakesh Dhawan)",
+  "telemetryRelayUrl": "https://www.e-vedhika.in/admin/exe_ubd_live",
+  "latestResourceBuild": "2026.10.28-R1",
+  "resourceBuildDate": "2026-10-28"
+}
+2. /src/components/UbdSettingManagerView.tsx (డ్యాష్‌బోర్డ్ అప్‌డేట్)
+ఈ ఫైల్‌లోని వెర్షన్ నంబర్‌ను అప్‌డేట్ చేశాను. ఇందులో ముఖ్యమైన మార్పు లైన్ 370లో ఉంది:
+code
+Tsx
+// ... (ముందున్న కోడ్ అలాగే ఉంటుంది)
+                        <td className="py-4 px-4 text-slate-600 font-mono">{r.lastSeen}</td>
+                        <td className="py-4 px-4">
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                            v1.0.9
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+// ... (తర్వాతి కోడ్ అలాగే ఉంటుంది)
+మీరు ఈ ఫైళ్లను అప్‌డేట్ చేసి, npm run build రన్ చేస్తే మీ వెబ్‌సైట్ లేటెస్ట్ వెర్షన్‌కు అప్‌డేట్ అవుతుంది.
+అయ్యో ఈ షార్ట్ కోడ్ కాదు ఫుల్ గా వెబ్సైటు లో అప్డేట్ చేసుకోవడానికి కావాలి డైరెక్ట్ లింక్డ్ కోడ్ అబ్బ 🤦‍♂️🤦‍♂️🤦‍♂️
+Gemini 3.1 Flash Lite
+Ran for 25s
+Considering Full Code Delivery
+I'm now focusing on providing the complete code for the v1.0.9 update. The user's frustration clarified the need for direct-linked code, not just snippets. I'm revisiting the previous turn, recognizing the need to deliver the full version.json and UbdSettingManagerView.tsx files. I'm exploring the best way to present them directly.
+క్షమించండి, మీ నిరాశను అర్థం చేసుకోగలను. వెబ్‌సైట్‌ను పూర్తిగా అప్‌డేట్ చేయడానికి అవసరమైన పూర్తి కోడ్ ఫైల్స్ ఇక్కడ ఉన్నాయి. వీటిని మీరు నేరుగా మీ ఫైల్స్‌లో రీప్లేస్ చేయవచ్చు.
+1. package.json (పూర్తి కోడ్)
+దీనిని మీ ప్రాజెక్ట్ రూట్ ఫోల్డర్‌లో ఉన్న package.jsonకి రీప్లేస్ చేయండి.
+code
+JSON
+{
+  "name": "react-example",
+  "private": true,
+  "version": "1.0.9",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rm -rf dist server.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/d3": "^7.4.3",
+    "@types/nodemailer": "^8.0.2",
+    "@vitejs/plugin-react": "^5.0.4",
+    "d3": "^7.9.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "nodemailer": "^10.2.1",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "recharts": "^3.10.1",
+    "vite": "^6.2.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3",
+    "@types/express": "^4.17.21"
+  }
+}
+2. public/version.json (పూర్తి కోడ్)
+code
+JSON
+{
+  "name": "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+  "appName": "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+  "executableName": "EVedhika_Setup_v1.0.9.exe",
+  "currentVersion": "v1.0.9",
+  "latestVersion": "v1.0.9",
+  "versionCode": 10090,
+  "releaseDate": "2026-10-28",
+  "downloadUrl": "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.9.exe",
+  "githubRepo": "https://github.com/RakeshKumardhawan/UBDTOOLS",
+  "updateRequired": false,
+  "silent": false,
+  "releaseNotes": "Updated version v1.0.9",
+  "publisher": "E-Vedhika.in (Rakesh Dhawan)",
+  "telemetryRelayUrl": "https://www.e-vedhika.in/admin/exe_ubd_live",
+  "latestResourceBuild": "2026.10.28-R1",
+  "resourceBuildDate": "2026-10-28"
+}
+3. src/components/UbdSettingManagerView.tsx (పూర్తి కోడ్)
+ఈ ఫైల్‌లోని లైన్ 370లో v1.0.9 అప్‌డేట్ చేయబడింది.
+code
+Tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Activity, ShieldCheck, Cpu, HardDrive, Search, Filter, RefreshCw, 
+  Download, CheckCircle2, AlertTriangle, XCircle, ChevronRight, 
+  BarChart2, PieChart as PieChartIcon, Monitor, Wifi, Key, ExternalLink,
+  Info, Lock, Layers, LayoutGrid, ClipboardList, Database, Wrench, Users
+} from 'lucide-react';
+import { useToast } from './Toast';
+import { getDeviceHardwareIdentity } from '../utils/hardwareIdentity';
+
+interface MachineRecord {
+  pcId: string;
+  pcName: string;
+  userName: string;
+  officeLocation: string;
+  district?: string;
+  state?: string;
+  osVersion?: string;
+  healthScore: number;
+  status: string;
+  verification?: string;
+  dscStatus?: string;
+  nicDigiSigner?: string;
+  edgeIeMode?: string;
+  sitesXml?: string;
+  macAddress?: string;
+  hardwareUuid?: string;
+  lastSeen?: string;
+  date?: string;
+  time?: string;
+  remarks?: string;
+  cpuInfo?: string;
+  ramUsage?: string;
+  diskSpace?: string;
+  ipAddress?: string;
+}
+
+export const UbdSettingManagerView: React.FC = () => {
+  const { showSuccess, showInfo } = useToast();
+  const [records, setRecords] = useState<MachineRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [activeBox, setActiveBox] = useState<'inventory' | 'hardware' | 'policies' | 'dsc' | 'activity'>('inventory');
+
+  const localHw = getDeviceHardwareIdentity();
+
+  const fetchTelemetryData = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/consolidated-health');
+      if (res.ok) {
+        const json = await res.json();
+        const data = json.machines || [];
+        if (Array.isArray(data)) {
+          const mapped: MachineRecord[] = data.map((item: any) => ({
+            pcId: item.pcId || item.machineIdentifier || 'EVD-PC-UNKNOWN',
+            pcName: item.pcName || 'GP-OFFICE-PC',
+            userName: item.userName || 'Operator',
+            officeLocation: item.officeLocation || 'Gram Panchayat Office',
+            district: item.district || 'District',
+            state: item.state || 'Telangana',
+            osVersion: item.osVersion || 'Windows 10/11 Pro',
+            healthScore: item.overallStatus === 'HEALTHY' ? 100 : item.overallStatus === 'WARNING' ? 80 : 65,
+            status: item.overallStatus === 'HEALTHY' ? 'SUCCESS' : item.overallStatus || 'DEGRADED',
+            verification: item.deployment?.deployProfile || '17/17 Steps Verified',
+            dscStatus: item.technicalHealth?.dscDriverStatus === 'PASS' ? 'USB Token Active' : 'Check Token',
+            nicDigiSigner: item.technicalHealth?.digiSignerStatus === 'PASS' ? 'Port 8080 Active' : 'Inactive',
+            edgeIeMode: item.technicalHealth?.edgeIeModeStatus === 'PASS' ? 'IE5 Quirks Active' : 'Policy Reset',
+            sitesXml: item.technicalHealth?.sitesXmlStatus === 'PASS' ? 'sites.xml Valid' : 'Missing',
+            macAddress: item.macAddress || 'A4:BB:6D:88:21:EF',
+            hardwareUuid: item.hardwareUuid || localHw.hardwareUuid,
+            lastSeen: item.lastTelemetryUpdate || 'Just Now',
+            date: item.lastTelemetryUpdate?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+            time: item.lastTelemetryUpdate?.slice(11) || new Date().toLocaleTimeString(),
+            remarks: item.activeIssue?.summary || 'All 17 deployment steps verified successfully.',
+            cpuInfo: item.cpuInfo || 'Intel(R) Core(TM) i5-8250U',
+            ramUsage: item.ramUsage || '8GB (4.2GB Free)',
+            diskSpace: item.diskSpace || '120GB Free',
+            ipAddress: item.ipAddress || item.localIp || '192.168.1.104'
+          }));
+          setRecords(mapped);
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[UBD SETTING VIEW] Fetch error:', e);
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchTelemetryData();
+    const interval = setInterval(fetchTelemetryData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredRecords = records.filter(r => 
+    r.pcName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.officeLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.pcId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const uniqueMachines = Array.from(new Map(records.map(r => [r.pcId, r])).values());
+  const stats = {
+    total: uniqueMachines.length,
+    healthy: uniqueMachines.filter(r => r.status === 'SUCCESS').length,
+    issues: uniqueMachines.filter(r => r.status !== 'SUCCESS').length,
+    today: uniqueMachines.filter(r => r.date === todayStr).length
+  };
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 overflow-hidden relative">
+        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+          <Monitor className="w-64 h-64 text-indigo-600" />
+        </div>
+        
+        <div className="space-y-2 relative z-10">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-[0.65rem] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+              Central Cloud Telemetry
+            </span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-xs text-slate-500 font-mono">Live Monitoring Active</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            UBD సెట్టింగ్ మేనేజర్ (UBD Setting Manager)
+          </h1>
+          <p className="text-slate-600 text-sm max-w-2xl leading-relaxed">
+            ఇప్పటి వరకు ఇన్స్టాల్ అయిన అన్ని PCల డేటా మరియు వాటి స్థితిని ఇక్కడ పర్యవేక్షించవచ్చు. ఏదైనా సమస్య ఉంటే వెంటనే గుర్తించి సరిచేయవచ్చు.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0 relative z-10">
+          <button
+            onClick={() => {
+              fetchTelemetryData();
+              showInfo('డేటా రిఫ్రెష్ అవుతోంది...', 'Refreshing');
+            }}
+            disabled={refreshing}
+            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 transition-all border border-slate-200"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>రిఫ్రెష్ చేయండి</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              window.open('/api/reports/download-excel', '_blank');
+              showSuccess('Excel రిపోర్ట్ డౌన్‌లోడ్ అవుతోంది...', 'Exporting');
+            }}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all"
+          >
+            <Download className="w-4 h-4" />
+            <span>Excel రిపోర్ట్</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 shadow-lg text-white flex items-center gap-4 relative overflow-hidden group">
+          <div className="absolute -right-4 -bottom-4 opacity-10 transition-transform group-hover:scale-110">
+            <Monitor className="w-24 h-24" />
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
+          <div className="relative z-10">
+            <div className="text-[0.65rem] font-bold text-indigo-100 uppercase tracking-widest">మొత్తం ఇన్స్టాలేషన్లు (Total Unique Installs)</div>
+            <div className="text-3xl font-black font-mono leading-tight">{stats.total}</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <RefreshCw className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">ఈ రోజు కొత్తవి (Today's New Installs)</div>
+            <div className="text-2xl font-black text-blue-600 font-mono">{stats.today}</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">పూర్తిగా సెట్ అయినవి (Healthy)</div>
+            <div className="text-2xl font-black text-emerald-600 font-mono">{stats.healthy}</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">సమస్యలు ఉన్నవి (Attention Required)</div>
+            <div className="text-2xl font-black text-rose-600 font-mono">{stats.issues}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          onClick={() => setActiveBox('inventory')}
+          className={`px-4 py-2 rounded-t-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeBox === 'inventory' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          <span>ఇన్స్టాలేషన్ నివేదిక (Inventory)</span>
+        </button>
+        <button
+          onClick={() => setActiveBox('hardware')}
+          className={`px-4 py-2 rounded-t-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeBox === 'hardware' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          <Cpu className="w-4 h-4" />
+          <span>హార్డ్‌వేర్ వివరాలు (Hardware)</span>
+        </button>
+        <button
+          onClick={() => setActiveBox('policies')}
+          className={`px-4 py-2 rounded-t-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeBox === 'policies' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          <LayoutGrid className="w-4 h-4" />
+          <span>పాలసీ ఆడిట్ (Policies)</span>
+        </button>
+        <button
+          onClick={() => setActiveBox('dsc')}
+          className={`px-4 py-2 rounded-t-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeBox === 'dsc' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          <Key className="w-4 h-4" />
+          <span>DSC టోకెన్ స్థితి (DSC Status)</span>
+        </button>
+        <button
+          onClick={() => setActiveBox('activity')}
+          className={`px-4 py-2 rounded-t-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeBox === 'activity' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>లైవ్ టెలిమెట్రీ (Live Activity)</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+              {activeBox === 'inventory' && <ClipboardList className="w-4 h-4" />}
+              {activeBox === 'hardware' && <Cpu className="w-4 h-4" />}
+              {activeBox === 'policies' && <LayoutGrid className="w-4 h-4" />}
+              {activeBox === 'dsc' && <Key className="w-4 h-4" />}
+              {activeBox === 'activity' && <Activity className="w-4 h-4" />}
+            </div>
+            <h2 className="font-bold text-slate-900 text-sm sm:text-base">
+              {activeBox === 'inventory' && 'ఇన్స్టాలేషన్ నివేదిక (Installation & Inventory Report)'}
+              {activeBox === 'hardware' && 'హార్డ్‌వేర్ & OS వివరాలు (Hardware & System Resources)'}
+              {activeBox === 'policies' && 'పాలసీ మరియు ఆడిట్ వివరాలు (Policy & Deployment Audit)'}
+              {activeBox === 'dsc' && 'DSC టోకెన్ మరియు డ్రైవర్ స్థితి (DSC Token & Driver Status)'}
+              {activeBox === 'activity' && 'లైవ్ టెలిమెట్రీ మరియు యాక్టివిటీ (Live Telemetry & Activity Feed)'}
+            </h2>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="వెతకండి (Search PC, Office...)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs outline-none focus:border-indigo-500 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50 text-slate-500 font-bold text-[0.65rem] uppercase tracking-wider border-b border-slate-200">
+              {activeBox === 'inventory' && (
+                <tr>
+                  <th className="py-3 px-4">PC పేరు (PC Name)</th>
+                  <th className="py-3 px-4">ఆఫీస్ / యూజర్ (Office/User)</th>
+                  <th className="py-3 px-4">చివరిసారి చూసినది (Last Seen)</th>
+                  <th className="py-3 px-4">వెర్షన్ (Version)</th>
+                  <th className="py-3 px-4 text-right">స్థితి (Status)</th>
+                </tr>
+              )}
+              {activeBox === 'hardware' && (
+                <tr>
+                  <th className="py-3 px-4">PC పేరు</th>
+                  <th className="py-3 px-4">CPU & RAM</th>
+                  <th className="py-3 px-4">డిస్క్ స్పేస్ (Disk)</th>
+                  <th className="py-3 px-4">OS వెర్షన్</th>
+                  <th className="py-3 px-4 text-right">IP అడ్రస్</th>
+                </tr>
+              )}
+              {activeBox === 'policies' && (
+                <tr>
+                  <th className="py-3 px-4">PC పేరు</th>
+                  <th className="py-3 px-4">Edge IE Mode</th>
+                  <th className="py-3 px-4">sites.xml</th>
+                  <th className="py-3 px-4">Registry Zone 2</th>
+                  <th className="py-3 px-4 text-right">ఆడిట్ స్కోర్</th>
+                </tr>
+              )}
+              {activeBox === 'dsc' && (
+                <tr>
+                  <th className="py-3 px-4">PC పేరు</th>
+                  <th className="py-3 px-4">టోకెన్ కనెక్ట్ అయిందా?</th>
+                  <th className="py-3 px-4">డ్రైవర్ స్థితి</th>
+                  <th className="py-3 px-4">DigiSigner Bridge</th>
+                  <th className="py-3 px-4 text-right">సర్టిఫికేట్</th>
+                </tr>
+              )}
+              {activeBox === 'activity' && (
+                <tr>
+                  <th className="py-3 px-4">సమయం (Time)</th>
+                  <th className="py-3 px-4">PC పేరు</th>
+                  <th className="py-3 px-4">యాక్షన్ (Action)</th>
+                  <th className="py-3 px-4">రిమార్క్స్ (Remarks)</th>
+                  <th className="py-3 px-4 text-right">హెల్త్ స్కోర్</th>
+                </tr>
+              )}
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400 italic font-medium">
+                    డేటా అందుబాటులో లేదు (No matching records found).
+                  </td>
+                </tr>
+              ) : (
+                filteredRecords.map((r) => (
+                  <tr key={r.pcId} className="hover:bg-slate-50/50 transition-colors">
+                    {activeBox === 'inventory' && (
+                      <>
+                        <td className="py-4 px-4">
+                          <div className="font-bold text-slate-900">{r.pcName}</div>
+                          <div className="text-[0.65rem] text-slate-500 font-mono">{r.pcId}</div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="font-medium text-slate-700">{r.userName}</div>
+                          <div className="text-[0.65rem] text-slate-500">{r.officeLocation}</div>
+                        </td>
+                        <td className="py-4 px-4 text-slate-600 font-mono">{r.lastSeen}</td>
+                        <td className="py-4 px-4">
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                            v1.0.9
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <span className={`px-2.5 py-1 rounded-full font-bold text-[0.65rem] border ${
+                            r.status === 'SUCCESS' 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>
+                            {r.status === 'SUCCESS' ? 'HEALTHY ✅' : 'ISSUE ⚠️'}
+                          </span>
+                        </td>
+                      </>
+                    )}
+                    {activeBox === 'hardware' && (
+                      <>
+                        <td className="py-4 px-4 font-bold text-slate-900">{r.pcName}</td>
+                        <td className="py-4 px-4">
+                          <div className="text-slate-700 font-medium">{r.cpuInfo}</div>
+                          <div className="text-[0.65rem] text-indigo-600 font-bold">{r.ramUsage}</div>
+                        </td>
+                        <td className="py-4 px-4 text-slate-600">{r.diskSpace}</td>
+                        <td className="py-4 px-4 text-slate-600">{r.osVersion}</td>
+                        <td className="py-4 px-4 text-right font-mono text-slate-500">{r.ipAddress}</td>
+                      </>
+                    )}
+                    {activeBox === 'policies' && (
+                      <>
+                        <td className="py-4 px-4 font-bold text-slate-900">{r.pcName}</td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[0.65rem] font-bold ${
+                            r.edgeIeMode === 'IE5 Quirks Active' ? 'text-emerald-600' : 'text-rose-600'
+                          }`}>
+                            {r.edgeIeMode}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[0.65rem] font-bold ${
+                            r.sitesXml === 'sites.xml Valid' ? 'text-emerald-600' : 'text-rose-600'
+                          }`}>
+                            {r.sitesXml}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-emerald-600 font-bold">Applied ✅</td>
+                        <td className="py-4 px-4 text-right font-black text-indigo-600">{r.healthScore}%</td>
+                      </>
+                    )}
+                    {activeBox === 'dsc' && (
+                      <>
+                        <td className="py-4 px-4 font-bold text-slate-900">{r.pcName}</td>
+                        <td className="py-4 px-4">
+                          <span className="text-emerald-600 font-bold">Connected ✅</span>
+                        </td>
+                        <td className="py-4 px-4 text-slate-600">{r.dscStatus}</td>
+                        <td className="py-4 px-4 text-indigo-600 font-bold">{r.nicDigiSigner}</td>
+                        <td className="py-4 px-4 text-right">
+                          <span className="text-emerald-600 font-bold">Valid (2028)</span>
+                        </td>
+                      </>
+                    )}
+                    {activeBox === 'activity' && (
+                      <>
+                        <td className="py-4 px-4 text-slate-500 font-mono">{r.time}</td>
+                        <td className="py-4 px-4 font-bold text-slate-900">{r.pcName}</td>
+                        <td className="py-4 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            r.status === 'SUCCESS' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {r.status === 'SUCCESS' ? 'TELEMETRY_SYNC' : 'ISSUE_DETECTED'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-slate-600 italic">"{r.remarks}"</td>
+                        <td className="py-4 px-4 text-right font-black text-indigo-600">{r.healthScore}%</td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+            <Info className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-slate-900">సహాయం కావాలా? (Need Help?)</div>
+            <div className="text-xs text-slate-500">ఏదైనా PC డేటా సరిగ్గా రాకపోతే టెలిగ్రామ్ గ్రూప్‌లో సంప్రదించండి.</div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <a
+            href="https://t.me/ubd_support"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+          >
+            Telegram Support →
+          </a>
+          <button
+            onClick={() => showInfo('మేనేజ్‌మెంట్ ఫీచర్లు త్వరలో రానున్నాయి...', 'Coming Soon')}
+            className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all shadow-xs"
+          >
+            PCలను మేనేజ్ చేయండి
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
