@@ -157,7 +157,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
     );
 
     navigator.clipboard.writeText(lines.join("\n"));
-    addToast("Status of PS Attendance & DSR టేబుల్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది!");
+    addToast("Status of PS Attendance & DSR table copied to clipboard!");
   };
 
   // Download Excel helper for Status Summary (Image 2)
@@ -232,7 +232,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "PS Attendance & DSR");
     XLSX.writeFile(wb, `Status_PS_Attendance_Reporting_DSR_${reportDate.replace(/\./g, "-")}.xlsx`);
-    addToast("PS Attendance & DSR Status ఎక్సెల్ ఫైల్ డౌన్లోడ్ అవుతోంది...");
+    addToast("PS Attendance & DSR Status Excel file is downloading...");
   };
 
   // Download PDF helper for Status Summary
@@ -363,7 +363,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
     });
 
     doc.save(`Status_PS_Attendance_Reporting_DSR_${reportDate.replace(/\./g, "-")}.pdf`);
-    addToast("మండలాల వ్యాప్తంగా PS Attendance & DSR Status PDF డౌన్‌లోడ్ చేయబడింది!");
+    addToast("Mandal-wide PS Attendance & DSR Status PDF downloaded!");
   };
 
   // Copy helper for Leave/Meetings (Image 1)
@@ -400,7 +400,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
       );
     });
     navigator.clipboard.writeText(lines.join("\n"));
-    addToast("Meeting / Training / On Leave టేబుల్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది!");
+    addToast("Meeting / Training / On Leave table copied to clipboard!");
   };
 
   // Download Excel for Leave/Meetings (Image 1)
@@ -439,7 +439,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Leave and Meetings");
     XLSX.writeFile(wb, `Attendance_Meeting_Training_Leave_${reportDate.replace(/\./g, "-")}.xlsx`);
-    addToast("Meeting / Training / On Leave ఎక్సెల్ ఫైల్ డౌన్లోడ్ అవుతోంది...");
+    addToast("Meeting / Training / On Leave Excel file is downloading...");
   };
 
   // Copy helper for Not Reported (Image 3)
@@ -453,7 +453,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
       lines.push([idx + 1, m.mandal, m.balanceGps, m.gpsList].join("\t"));
     });
     navigator.clipboard.writeText(lines.join("\n"));
-    addToast("Attendance Not Reported టేబుల్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది!");
+    addToast("Attendance Not Reported table copied to clipboard!");
   };
 
   // Copy helper for DSR Not Completed (Image 3)
@@ -467,7 +467,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
       lines.push([idx + 1, m.mandal, m.balanceGps, m.gpsList].join("\t"));
     });
     navigator.clipboard.writeText(lines.join("\n"));
-    addToast("DSR Not Completed టేబుల్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది!");
+    addToast("DSR Not Completed table copied to clipboard!");
   };
 
   // Download Excel for Image 3
@@ -496,7 +496,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
     XLSX.utils.book_append_sheet(wb, ws2, "DSR Not Completed");
 
     XLSX.writeFile(wb, `Not_Reported_and_DSR_Pending_GPs_${reportDate.replace(/\./g, "-")}.xlsx`);
-    addToast("Not Reported & DSR Pending GPs ఎక్సెల్ ఫైల్ డౌన్లోడ్ అవుతోంది...");
+    addToast("Not Reported & DSR Pending GPs Excel file is downloading...");
   };
 
   // Master Excel with ALL 4 official reports in separate sheets in 1 Workbook
@@ -665,7 +665,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
 
     // Save Master Workbook with 5 sheets
     XLSX.writeFile(wb, `Mana_Panchayati_Master_Reports_${reportDate.replace(/\./g, "-")}.xlsx`);
-    addToast("అన్ని 4 రిపోర్ట్‌లు + మాస్టర్ డేటాతో కూడిన Complete Multi-Sheet Excel ఫైల్ విజయవంతంగా డౌన్లోడ్ చేయబడింది!");
+    addToast("Complete Multi-Sheet Excel file with all 4 reports + master data downloaded successfully!");
   };
 
   const handlePrint = (mode: "current" | "all") => {
@@ -720,7 +720,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
               className="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
               title="Download PDF Report"
             >
-              <FileText size={13} /> PDF రిపోర్ట్
+              <FileText size={13} /> PDF Report
             </button>
           </div>
         </div>
@@ -926,7 +926,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
               {leaveMeetingRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400 font-semibold italic">
-                    ఈ తేదీన Leave, Meeting లేదా Training నమోదు చేసిన పంచాయతీ సెక్రటరీలు ఎవరూ లేరు.
+                    No Panchayat Secretaries reported Leave, Meeting, or Training on this date.
                   </td>
                 </tr>
               ) : (
@@ -1005,7 +1005,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
                 {notReportedMandals.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-emerald-600 font-semibold">
-                      🎉 అభినందనలు! అన్ని మండలాల గ్రామ పంచాయతీల్లో హాజరు 100% పూర్తయింది.
+                      🎉 Congratulations! Attendance is 100% complete in all mandal Gram Panchayats.
                     </td>
                   </tr>
                 ) : (
@@ -1073,7 +1073,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
                 {dsrNotCompletedMandals.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-emerald-600 font-semibold">
-                      🎉 అభినందనలు! అన్ని మండలాల గ్రామ పంచాయతీల్లో DSR ఎంట్రీ 100% పూర్తయింది.
+                      🎉 Congratulations! DSR entry is 100% complete in all mandal Gram Panchayats.
                     </td>
                   </tr>
                 ) : (
@@ -1110,10 +1110,10 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
           </div>
           <div>
             <h4 className="text-sm font-bold text-emerald-200">
-              అన్ని అధికారిక రిపోర్ట్‌ల ఎక్స్‌పోర్ట్ సెంటర్ (Master Multi-Sheet & PDF Export)
+              Official Reports Export Center (Master Multi-Sheet & PDF Export)
             </h4>
             <p className="text-xs text-slate-300">
-              ఒకే Excel ఫైల్‌లో 5 షీట్‌లుగా (Sheet 1, Sheet 2, Sheet 3, Sheet 4, Sheet 5) డౌన్‌లోడ్ చేయండి లేదా PDF రూపంలో ప్రింట్ తీయండి.
+              Download as 5 sheets in a single Excel file (Sheet 1, Sheet 2, Sheet 3, Sheet 4, Sheet 5) or print as PDF.
             </p>
           </div>
         </div>
@@ -1125,7 +1125,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
             title="Download all reports into 1 Excel file with multiple sheets"
           >
             <Download size={15} />
-            Master Multi-Sheet Excel (అన్ని షీట్లు ఒకే ఫైల్)
+            Master Multi-Sheet Excel (All sheets in one file)
           </button>
 
           <button
@@ -1134,7 +1134,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
             title="Print / Save as PDF all official reports"
           >
             <Printer size={15} />
-            ప్రింట్ / Save as PDF (All Reports)
+            Print / Save as PDF (All Reports)
           </button>
         </div>
       </div>
@@ -1187,7 +1187,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
             }`}
           >
             <LayoutGrid size={14} />
-            అన్ని అధికారిక రిపోర్టులు (Combined View)
+            All Official Reports (Combined View)
           </button>
         </div>
 
@@ -1196,7 +1196,7 @@ export const DsrTables: React.FC<DsrTablesProps> = ({
           className="text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
           title="Print or Save current report view to PDF"
         >
-          <Printer size={13} /> ఈ రిపోర్ట్ ప్రింట్ / PDF
+          <Printer size={13} /> Print / Save as PDF
         </button>
       </div>
 

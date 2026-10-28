@@ -31,7 +31,7 @@ export async function pushPostToSupportSystem(
   const postId = post.id;
   const authorUid = post.uid || post.authorId || post.userId || "";
   const authorName = post.userName || post.authorName || post.author || post.user || "Citizen";
-  const postTitle = post.title || post.subject || post.problem || "Support Inquiry / సహాయ విజ్ఞప్తి";
+  const postTitle = post.title || post.subject || post.problem || "Support Inquiry";
   const postContent = post.content || post.description || post.problem || postTitle;
 
   // 1. Try Server API with Admin SDK first (guarantees 100% bypass of client permission glitches)
@@ -124,7 +124,7 @@ export async function pushPostToSupportSystem(
     // Initial citizen message
     let initialMessage = postContent;
     if (post.userPhone || post.phone) {
-      initialMessage += `\n\n📞 సంప్రదించాల్సిన ఫోన్ నంబర్: ${post.userPhone || post.phone}`;
+      initialMessage += `\n\n📞 Contact Phone Number: ${post.userPhone || post.phone}`;
     }
 
     await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
@@ -138,7 +138,7 @@ export async function pushPostToSupportSystem(
     await addDoc(collection(db, "support_tickets", ticketRef.id, "messages"), {
       senderId: "system",
       senderName: "E-Vedhika Support Team",
-      text: customNote?.trim() || "నమస్కారం! మీ విన్నపం మా సపోర్ట్ సిస్టమ్‌కు చేరింది. మా బృందం త్వరలోనే దీనిని పరిశీలించి పరిష్కరిస్తుంది.",
+      text: customNote?.trim() || "Hello! Your request has reached our support system. Our team will review and resolve it soon.",
       time: Date.now() + 50,
       isAdminComment: true
     }).catch(console.error);
@@ -158,8 +158,8 @@ export async function pushPostToSupportSystem(
     if (authorUid && authorUid !== "community_user") {
       await addDoc(collection(db, "notifications"), {
         uid: authorUid,
-        title: "🎧 సపోర్ట్ రిక్వెస్ట్ అప్‌డేట్ (Support Request Sent)",
-        message: `మీరు చేసిన సపోర్ట్ రిక్వెస్ట్ ను అడ్మిన్ సపోర్ట్ టీం కి పంపారు. ట్రాకింగ్ ID: #${trackingNumber}. మీ రిక్వెస్ట్ స్టేటస్ ను ఇక్కడ ట్రాక్ చేసుకోవచ్చు.`,
+        title: "🎧 Support Request Update",
+        message: `Your support request has been sent to the Admin Support Team. Tracking ID: #${trackingNumber}. You can track your request status here.`,
         type: "support_ticket_created",
         read: false,
         readBy: [],
@@ -199,7 +199,7 @@ export async function trackTicketByCode(inputCode: string): Promise<{
 }> {
   const code = inputCode.trim();
   if (!code) {
-    return { found: false, message: "దయచేసి సరైన ట్రాకింగ్ నెంబర్ ఎంటర్ చేయండి." };
+    return { found: false, message: "Please enter a valid tracking number." };
   }
 
   try {
@@ -313,13 +313,13 @@ export async function trackTicketByCode(inputCode: string): Promise<{
 
     return {
       found: false,
-      message: `ట్రాకింగ్ నెంబర్ '${code}' తో ఎలాంటి సపోర్ట్ టికెట్ కనుగొనబడలేదు. దయచేసి నెంబర్ సరిచూసుకోండి.`
+      message: `No support ticket found with tracking number '${code}'. Please check the number.`
     };
   } catch (error: any) {
     console.error("Error tracking ticket:", error);
     return {
       found: false,
-      message: `ట్రాక్ చేయడంలో లోపం ఏర్పడింది: ${error?.message || ""}`
+      message: `An error occurred while tracking: ${error?.message || ""}`
     };
   }
 }

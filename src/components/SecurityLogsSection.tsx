@@ -143,7 +143,7 @@ export function SecurityLogsSection() {
         extraEvents.push({
           id: `synth_u_${d.id}`,
           category: "NEW_USER",
-          title: `కొత్త యూజర్ నమోదు (New Account Created)`,
+          title: `New User Registration`,
           description: `User ${u.displayName || u.name || u.email} created account as ${u.role || "Citizen"}`,
           actor: u.email || "System Auth",
           timestamp: t,
@@ -160,7 +160,7 @@ export function SecurityLogsSection() {
         extraEvents.push({
           id: `synth_p_${d.id}`,
           category: "POST_CREATED",
-          title: `పోస్ట్ సృష్టించబడింది (Community Post Created)`,
+          title: `Community Post Created`,
           description: p.title ? `Title: "${p.title}"` : p.content ? p.content.substring(0, 80) : "Post created",
           actor: p.author || "Community Member",
           timestamp: t,
@@ -177,7 +177,7 @@ export function SecurityLogsSection() {
         extraEvents.push({
           id: `synth_s_${d.id}`,
           category: "SUGGESTION",
-          title: `సలహా నమోదు (New Suggestion Recorded)`,
+          title: `New Suggestion Recorded`,
           description: s.text || s.title || "Public citizen feedback submitted",
           actor: s.author || "Citizen",
           timestamp: t,
@@ -215,33 +215,33 @@ export function SecurityLogsSection() {
   const getCategoryMeta = (cat: ActivityCategory) => {
     switch (cat) {
       case "LOGIN":
-        return { label: "Login", telugu: "లాగిన్", icon: LogIn, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" };
+        return { label: "Login", icon: LogIn, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" };
       case "LOGOUT":
-        return { label: "Logout", telugu: "లాగౌట్", icon: LogOut, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" };
+        return { label: "Logout", icon: LogOut, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" };
       case "NEW_USER":
-        return { label: "New User", telugu: "కొత్త యూజర్", icon: UserPlus, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" };
+        return { label: "New User", icon: UserPlus, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" };
       case "POST_CREATED":
-        return { label: "Post Created", telugu: "పోస్ట్ నమోదు", icon: FileText, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" };
+        return { label: "Post Created", icon: FileText, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" };
       case "SUGGESTION":
-        return { label: "Suggestion", telugu: "సలహా", icon: Lightbulb, color: "text-amber-700", bg: "bg-amber-100/60", border: "border-amber-300" };
+        return { label: "Suggestion", icon: Lightbulb, color: "text-amber-700", bg: "bg-amber-100/60", border: "border-amber-300" };
       case "BACKUP":
-        return { label: "Backup", telugu: "బ్యాకప్", icon: Database, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" };
+        return { label: "Backup", icon: Database, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" };
       case "RESTORE":
-        return { label: "Restore", telugu: "రీస్టోర్", icon: RotateCcw, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200" };
+        return { label: "Restore", icon: RotateCcw, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200" };
       case "CODE_CHANGE":
-        return { label: "Code Change", telugu: "కోడ్ సవరణ", icon: Code, color: "text-emerald-700", bg: "bg-slate-900 text-emerald-400", border: "border-slate-800" };
+        return { label: "Code Change", icon: Code, color: "text-emerald-700", bg: "bg-slate-900 text-emerald-400", border: "border-slate-800" };
       case "SETTINGS_CHANGE":
-        return { label: "Settings Change", telugu: "సెట్టింగ్‌ల మార్పు", icon: Settings, color: "text-slate-700", bg: "bg-slate-100", border: "border-slate-300" };
+        return { label: "Settings Change", icon: Settings, color: "text-slate-700", bg: "bg-slate-100", border: "border-slate-300" };
       case "PERMISSION_CHANGE":
-        return { label: "Permission Change", telugu: "అనుమతుల మార్పు", icon: ShieldCheck, color: "text-indigo-700", bg: "bg-indigo-100/70", border: "border-indigo-300" };
+        return { label: "Permission Change", icon: ShieldCheck, color: "text-indigo-700", bg: "bg-indigo-100/70", border: "border-indigo-300" };
       case "DELETE":
-        return { label: "Delete", telugu: "తొలగింపు", icon: Trash2, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" };
+        return { label: "Delete", icon: Trash2, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" };
       case "EXPORT":
-        return { label: "Export", telugu: "ఎగుమతి", icon: Download, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" };
+        return { label: "Export", icon: Download, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" };
       case "AI_USAGE":
-        return { label: "AI Usage", telugu: "AI వినియోగం", icon: Sparkles, color: "text-fuchsia-600", bg: "bg-fuchsia-50", border: "border-fuchsia-200" };
+        return { label: "AI Usage", icon: Sparkles, color: "text-fuchsia-600", bg: "bg-fuchsia-50", border: "border-fuchsia-200" };
       default:
-        return { label: "Activity", telugu: "యాక్టివిటీ", icon: Activity, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" };
+        return { label: "Activity", icon: Activity, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-200" };
     }
   };
 
@@ -314,7 +314,7 @@ export function SecurityLogsSection() {
                   🔴 Real-time Live Log
                 </span>
                 <span className="text-slate-400 text-xs">|</span>
-                <span className="text-xs font-bold text-slate-300">సిస్టమ్ యాక్టివిటీ టైమ్‌లైన్</span>
+                <span className="text-xs font-bold text-slate-300">System Activity Center</span>
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white">
                 System Activity Timeline
@@ -331,7 +331,7 @@ export function SecurityLogsSection() {
               className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2"
             >
               <PlusCircle size={16} />
-              <span>యాక్టివిటీ రికార్డ్ చేయి (Record Activity)</span>
+              <span>Record System Activity</span>
             </button>
             <button
               onClick={exportLogsCSV}
@@ -421,20 +421,20 @@ export function SecurityLogsSection() {
         {/* Category Pills Slider */}
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 text-xs font-bold text-slate-600">
           {[
-            { cat: "ALL", label: "🌐 All Activities", telugu: "అన్నీ" },
-            { cat: "LOGIN", label: "🔑 Login", telugu: "లాగిన్" },
-            { cat: "LOGOUT", label: "🚪 Logout", telugu: "లాగౌట్" },
-            { cat: "NEW_USER", label: "👤 New User", telugu: "కొత్త యూజర్" },
-            { cat: "POST_CREATED", label: "📝 Post Created", telugu: "పోస్ట్" },
-            { cat: "SUGGESTION", label: "💡 Suggestion", telugu: "సలహా" },
-            { cat: "BACKUP", label: "💾 Backup", telugu: "బ్యాకప్" },
-            { cat: "RESTORE", label: "🔄 Restore", telugu: "రీస్టోర్" },
-            { cat: "CODE_CHANGE", label: "💻 Code Change", telugu: "కోడ్ మార్పు" },
-            { cat: "SETTINGS_CHANGE", label: "⚙️ Settings", telugu: "సెట్టింగ్‌లు" },
-            { cat: "PERMISSION_CHANGE", label: "🛡️ Permissions", telugu: "అనుమతులు" },
-            { cat: "DELETE", label: "🗑️ Delete", telugu: "తొలగింపు" },
-            { cat: "EXPORT", label: "📤 Export", telugu: "ఎగుమతి" },
-            { cat: "AI_USAGE", label: "🤖 AI Usage", telugu: "AI ప్రాసెసింగ్" }
+            { cat: "ALL", label: "🌐 All Activities" },
+            { cat: "LOGIN", label: "🔑 Login" },
+            { cat: "LOGOUT", label: "🚪 Logout" },
+            { cat: "NEW_USER", label: "👤 New User" },
+            { cat: "POST_CREATED", label: "📝 Post Created" },
+            { cat: "SUGGESTION", label: "💡 Suggestion" },
+            { cat: "BACKUP", label: "💾 Backup" },
+            { cat: "RESTORE", label: "🔄 Restore" },
+            { cat: "CODE_CHANGE", label: "💻 Code Change" },
+            { cat: "SETTINGS_CHANGE", label: "⚙️ Settings" },
+            { cat: "PERMISSION_CHANGE", label: "🛡️ Permissions" },
+            { cat: "DELETE", label: "🗑️ Delete" },
+            { cat: "EXPORT", label: "📤 Export" },
+            { cat: "AI_USAGE", label: "🤖 AI Usage" }
           ].map((item) => {
             const isSelected = selectedCategory === item.cat;
             return (
@@ -448,7 +448,6 @@ export function SecurityLogsSection() {
                 }`}
               >
                 <span>{item.label}</span>
-                <span className="text-[10px] ml-1 opacity-75 font-normal">({item.telugu})</span>
               </button>
             );
           })}
@@ -493,7 +492,7 @@ export function SecurityLogsSection() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5 mb-2.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${meta.bg} ${meta.color} ${meta.border}`}>
-                          {meta.label} • {meta.telugu}
+                          {meta.label}
                         </span>
                         <span className="text-xs font-bold text-slate-900">{log.title}</span>
                       </div>
@@ -587,37 +586,37 @@ export function SecurityLogsSection() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-indigo-900 font-bold text-base">
                 <PlusCircle size={20} className="text-indigo-600" />
-                <h3>Record Activity Entry (యాక్టివిటీ రికార్డ్)</h3>
+                <h3>Record Activity Entry</h3>
               </div>
               <button onClick={() => setShowSimulateModal(false)} className="text-slate-400 hover:text-slate-700 font-bold text-sm">✕</button>
             </div>
 
             <form onSubmit={handleSimulateSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Select Activity Type (వర్గం):</label>
+                <label className="block font-bold text-slate-700 mb-1">Select Activity Type:</label>
                 <select
                   value={simCategory}
                   onChange={(e) => setSimCategory(e.target.value as ActivityCategory)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
                 >
-                  <option value="LOGIN">🔑 Login (లాగిన్)</option>
-                  <option value="LOGOUT">🚪 Logout (లాగౌట్)</option>
-                  <option value="NEW_USER">👤 New User (కొత్త యూజర్)</option>
-                  <option value="POST_CREATED">📝 Post Created (పోస్ట్ సృష్టి)</option>
-                  <option value="SUGGESTION">💡 Suggestion (సలహా)</option>
-                  <option value="BACKUP">💾 Backup (సిస్టమ్ బ్యాకప్)</option>
-                  <option value="RESTORE">🔄 Restore (రీస్టోర్)</option>
-                  <option value="CODE_CHANGE">💻 Code Change (కోడ్ సవరణ)</option>
-                  <option value="SETTINGS_CHANGE">⚙️ Settings Change (సెట్టింగ్‌లు)</option>
-                  <option value="PERMISSION_CHANGE">🛡️ Permission Change (అనుమతులు)</option>
-                  <option value="DELETE">🗑️ Delete (తొలగింపు)</option>
-                  <option value="EXPORT">📤 Export (ఎగుమతి)</option>
-                  <option value="AI_USAGE">🤖 AI Usage (AI విశ్లేషణ)</option>
+                  <option value="LOGIN">🔑 Login</option>
+                  <option value="LOGOUT">🚪 Logout</option>
+                  <option value="NEW_USER">👤 New User</option>
+                  <option value="POST_CREATED">📝 Post Created</option>
+                  <option value="SUGGESTION">💡 Suggestion</option>
+                  <option value="BACKUP">💾 Backup</option>
+                  <option value="RESTORE">🔄 Restore</option>
+                  <option value="CODE_CHANGE">💻 Code Change</option>
+                  <option value="SETTINGS_CHANGE">⚙️ Settings Change</option>
+                  <option value="PERMISSION_CHANGE">🛡️ Permission Change</option>
+                  <option value="DELETE">🗑️ Delete</option>
+                  <option value="EXPORT">📤 Export</option>
+                  <option value="AI_USAGE">🤖 AI Usage</option>
                 </select>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Activity Title (శీర్షిక):</label>
+                <label className="block font-bold text-slate-700 mb-1">Activity Title:</label>
                 <input
                   type="text"
                   required
@@ -629,7 +628,7 @@ export function SecurityLogsSection() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Description / Details (వివరాలు):</label>
+                <label className="block font-bold text-slate-700 mb-1">Description / Details:</label>
                 <textarea
                   rows={2}
                   placeholder="Enter details about this activity..."

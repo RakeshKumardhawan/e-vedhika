@@ -130,9 +130,9 @@ export function PublicVisitorLogs() {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-indigo-100 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm border border-white/10 mb-2">
             <Activity size={14} className="text-indigo-300" /> Public Tracking
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Public Visitor Logs (పబ్లిక్ లాగ్లు)</h2>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Public Visitor Logs</h2>
           <p className="text-indigo-200 text-sm max-w-xl leading-relaxed">
-            రియల్ టైమ్ వెబ్‌సైట్ సందర్శకుల యాక్టివిటీ, బ్రౌజర్, ఆపరేటింగ్ సిస్టమ్ మరియు IP ట్రాకింగ్ వివరాలు.
+            Real-time tracking of website visitor activity, browser, operating system, and IP details.
           </p>
         </div>
 
@@ -142,14 +142,14 @@ export function PublicVisitorLogs() {
             className="flex items-center justify-center gap-2 px-5 py-3 bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white rounded-xl font-bold text-sm backdrop-blur-md border border-white/20 whitespace-nowrap"
           >
             <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-            రిఫ్రెష్ (Refresh)
+            Refresh
           </button>
           <button 
             onClick={exportCSV}
             className="flex items-center justify-center gap-2 px-5 py-3 bg-indigo-500 hover:bg-indigo-400 active:scale-95 transition-all text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-500/20 whitespace-nowrap"
           >
             <Download size={18} />
-            CSV డౌన్‌లోడ్
+            Download CSV
           </button>
         </div>
       </div>
@@ -169,7 +169,7 @@ export function PublicVisitorLogs() {
           />
         </div>
         <div className="text-xs font-bold text-slate-500 bg-slate-100 px-4 py-2 rounded-lg">
-          చూపిస్తున్నవి: <span className="text-indigo-600">{filteredLogs.length}</span> లాగ్స్
+          Showing: <span className="text-indigo-600">{filteredLogs.length}</span> Logs
         </div>
       </div>
 
@@ -183,7 +183,7 @@ export function PublicVisitorLogs() {
       ) : loading && logs.length === 0 ? (
         <div className="p-12 text-center bg-white border border-slate-200 rounded-3xl">
           <RefreshCw size={30} className="animate-spin text-indigo-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-500">లోడ్ అవుతోంది (Loading)...</p>
+          <p className="text-sm font-semibold text-slate-500">Loading...</p>
         </div>
       ) : filteredLogs.length === 0 ? (
         <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 space-y-2">

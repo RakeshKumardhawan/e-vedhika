@@ -255,7 +255,7 @@ INSTRUCTIONS FOR GEMINI AI:
 - You have DIRECT live access to the E-VEDHIKA database snapshot above.
 - When the user asks about system users, reports, logs, suggestions, or platform health, summarize the REAL numbers above. DO NOT guess or invent fake data.
 - If the user asks to analyze or generate a report/PDF/Excel for users, reports, logs, or suggestions, provide a clear analytical breakdown and tell them:
-  "మరింత వివరమైన ఎక్సెల్ రిపోర్ట్ లేదా PDF డౌన్‌లోడ్ కోసం క్రింది బటన్లపై క్లిక్ చేయగలరు."
+  "You can click the buttons below for a more detailed Excel report or PDF download."
   (For detailed Excel or PDF report, click the download button below.)
 - Always maintain a polite, official Telugu or English response tone matching the user's language.
 `;

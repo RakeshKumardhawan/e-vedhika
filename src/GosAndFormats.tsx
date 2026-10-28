@@ -185,7 +185,7 @@ export function GosAndFormatsPublic({
               <FileBadge className="text-indigo-500 shrink-0" />
               <span>Applications, Formats & GOs</span>
            </h2>
-           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">ముఖ్యమైన అప్లికేషన్లు & ప్రభుత్వ ఉత్తర్వులు</p>
+           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Essential Applications & Government Orders</p>
          </div>
          <button onClick={() => {
              if(!user) return requireLoginAlert();
@@ -213,18 +213,18 @@ export function GosAndFormatsPublic({
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 mb-6 space-y-4">
                <div>
-                 <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1 block">Document Title (ఫైల్ పేరు) *</label>
+                 <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1 block">Document Title *</label>
                  <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Pension Form / GO 42" className="w-full bg-white border border-slate-200 p-3 rounded-xl outline-none focus:border-indigo-400" />
                </div>
                
                {activeTab === 'Application' && (
                  <>
                    <div>
-                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1 block">What is this file? (ఈ ఫైల్ ఏంటి?) *</label>
+                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1 block">What is this file? *</label>
                      <textarea value={whatIsIt} onChange={e => setWhatIsIt(e.target.value)} rows={2} placeholder="Explain what the original purpose..." className="w-full bg-white border border-slate-200 p-3 rounded-xl outline-none focus:border-indigo-400 custom-scrollbar" />
                    </div>
                    <div>
-                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1 block">Who is this for? (ఎవరికి యూస్ అవుతుంది?) *</label>
+                     <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-1 block">Who is this for? *</label>
                      <textarea value={whoUses} onChange={e => setWhoUses(e.target.value)} rows={2} placeholder="e.g. Farmers, Students, Teachers..." className="w-full bg-white border border-slate-200 p-3 rounded-xl outline-none focus:border-indigo-400 custom-scrollbar" />
                    </div>
                  </>
@@ -318,7 +318,7 @@ export function GosAndFormatsPublic({
                     e.preventDefault();
                     if (!item.url) { addToast("File link not found"); return; }
                     navigator.clipboard.writeText(item.url);
-                    addToast("లింక్ కాపీ చేయబడింది! (Link Copied)");
+                    addToast("Link Copied!");
                  }} className="p-3 bg-white text-indigo-500 rounded-xl hover:bg-indigo-50 border border-slate-100 transition-colors shadow-sm shrink-0" title="Copy Link">
                     <Copy size={18} />
                  </button>

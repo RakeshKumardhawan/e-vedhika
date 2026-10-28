@@ -30,17 +30,17 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
   const handleMigrateToR2 = async () => {
     const firebaseFiles = files.filter(f => f.source === 'firebase');
     if (firebaseFiles.length === 0) {
-      Swal.fire("సమాచారం", "Firebase లో ఎటువంటి ఫైల్స్ లేవు.", "info");
+      Swal.fire("Information", "No files found in Firebase.", "info");
       return;
     }
 
     const confirm = await Swal.fire({
-      title: "Firebase నుండి R2 కు తరలించాలా?",
-      text: `${firebaseFiles.length} ఫైల్స్ క్లౌడ్ ఫ్లేర్ R2 కు తరలించబడతాయి. మీరు నిశ్చయించుకున్నారా?`,
+      title: "Migrate from Firebase to R2?",
+      text: `${firebaseFiles.length} files will be migrated to Cloudflare R2. Are you sure?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "అవును, తరలించు (Migrate)",
-      cancelButtonText: "రద్దు (Cancel)"
+      confirmButtonText: "Yes, Migrate",
+      cancelButtonText: "Cancel"
     });
 
     if (!confirm.isConfirmed) return;
@@ -83,13 +83,13 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
       }
       
       Swal.fire(
-        "మైగ్రేషన్ పూర్తయింది!",
-        `విజయవంతం: ${successCount}, విఫలం: ${failCount}.`,
+        "Migration Completed!",
+        `Success: ${successCount}, Failed: ${failCount}.`,
         successCount > 0 ? "success" : "error"
       );
       fetchFiles();
     } catch (err: any) {
-      Swal.fire("లోపం", "మైగ్రేషన్ సమయంలో లోపం సంభవించింది: " + err.message, "error");
+      Swal.fire("Error", "An error occurred during migration: " + err.message, "error");
     } finally {
       setIsMigrating(false);
     }
@@ -117,10 +117,10 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
           throw new Error(data.error || "Upload failed");
         }
       }
-      Swal.fire("విజయవంతం!", "ఫైల్స్ అప్‌లోడ్ చేయబడ్డాయి.", "success");
+      Swal.fire("Success!", "Files uploaded successfully.", "success");
       fetchFiles();
     } catch (err: any) {
-      Swal.fire("లోపం", err.message, "error");
+      Swal.fire("Error", err.message, "error");
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -131,12 +131,12 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
     if (selectedFiles.length === 0) return;
 
     const res = await Swal.fire({
-      title: `${selectedFiles.length} ఫైల్స్ తొలగించాలా?`,
-      text: "ఎంచుకున్న ఫైల్స్ అన్నీ శాశ్వతంగా తొలగించబడతాయి!",
+      title: `Delete ${selectedFiles.length} files?`,
+      text: "All selected files will be permanently deleted!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "అవును, తొలగించండి",
-      cancelButtonText: "రద్దు",
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
       confirmButtonColor: "#ef4444"
     });
 
@@ -164,11 +164,11 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
             await deleteObject(fileRef);
           }
         }
-        Swal.fire("విజయవంతం!", "ఎంచుకున్న ఫైల్స్ తొలగించబడ్డాయి.", "success");
+        Swal.fire("Success!", "Selected files deleted successfully.", "success");
         setSelectedFiles([]);
         fetchFiles();
       } catch (err: any) {
-        Swal.fire("లోపం", err.message, "error");
+        Swal.fire("Error", err.message, "error");
         fetchFiles();
       }
     }
@@ -269,12 +269,12 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
 
   const handleDelete = async (file: StorageFile) => {
     const res = await Swal.fire({
-      title: "ఖచ్చితంగా తొలగించాలా?",
-      text: "ఈ ఫైల్ శాశ్వతంగా తొలగించబడుతుంది!",
+      title: "Confirm Deletion?",
+      text: "This file will be permanently deleted!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "అవును, తొలగించండి (Delete)",
-      cancelButtonText: "రద్దు (Cancel)",
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
       confirmButtonColor: "#ef4444"
     });
 
@@ -301,9 +301,9 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
         }
         
         setFiles(files.filter(f => f.key !== file.key));
-        Swal.fire("విజయవంతం!", "ఫైల్ తొలగించబడింది.", "success");
+        Swal.fire("Success!", "File deleted successfully.", "success");
       } catch (err: any) {
-        Swal.fire("లోపం", err.message, "error");
+        Swal.fire("Error", err.message, "error");
       }
     }
   };
@@ -312,7 +312,7 @@ export const CloudStorageManager: React.FC<Props> = ({ storageConfig }) => {
     navigator.clipboard.writeText(text);
     Swal.fire({
       icon: 'success',
-      title: 'కాపీ అయింది!',
+      title: 'Copied!',
       toast: true,
       position: 'top-end',
       showConfirmButton: false,

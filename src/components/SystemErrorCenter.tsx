@@ -255,7 +255,7 @@ export function SystemErrorCenter() {
                   🚫 Zero Silent Failures
                 </span>
                 <span className="text-slate-400 text-xs">|</span>
-                <span className="text-xs font-bold text-slate-300">సిస్టమ్ ఎర్రర్ సెంటర్</span>
+                <span className="text-xs font-bold text-slate-300">System Error Center</span>
               </div>
               <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white">
                 Live System Error Center
@@ -272,7 +272,7 @@ export function SystemErrorCenter() {
               className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-rose-900/40 flex items-center gap-2"
             >
               <PlusCircle size={16} />
-              <span>ఎర్రర్ రికార్డ్ చేయి (Log Test Error)</span>
+              <span>Log Test Error</span>
             </button>
           </div>
         </div>
@@ -394,7 +394,7 @@ export function SystemErrorCenter() {
                   <div className="space-y-2">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-wider text-rose-600 mb-0.5">
-                        Error (ఎర్రర్ విశ్లేషణ):
+                        Error (Analysis):
                       </p>
                       <h4 className="text-sm font-black text-slate-900 leading-snug">
                         {item.error}
@@ -403,7 +403,7 @@ export function SystemErrorCenter() {
 
                     <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
                       <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                        Reason / Cause (మూల కారణం):
+                        Reason / Cause:
                       </p>
                       <p className="text-xs font-mono text-slate-700 font-medium leading-relaxed">
                         {item.reason}
@@ -416,7 +416,7 @@ export function SystemErrorCenter() {
                     <div className="bg-indigo-50/70 p-3.5 rounded-2xl border border-indigo-200/80">
                       <div className="flex items-center gap-1.5 text-indigo-900 font-black text-xs mb-1">
                         <Sparkles size={14} className="text-indigo-600" />
-                        <span>Possible Fix (సూచించిన పరిష్కారం):</span>
+                        <span>Possible Fix:</span>
                       </div>
                       <p className="text-xs text-indigo-950 font-bold leading-relaxed">
                         {item.possibleFix}
@@ -451,7 +451,7 @@ export function SystemErrorCenter() {
                       className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                     >
                       <RefreshCw size={14} className={retryingId === item.id ? "animate-spin text-emerald-400" : ""} />
-                      <span>{retryingId === item.id ? "Retrying Execution..." : "Retry Button (మళ్ళీ ప్రయత్నించు)"}</span>
+                      <span>{retryingId === item.id ? "Retrying Execution..." : "Retry Execution"}</span>
                     </button>
 
                     {/* Resolve Button */}
@@ -464,7 +464,7 @@ export function SystemErrorCenter() {
                       }`}
                     >
                       <CheckCircle2 size={15} />
-                      <span>{isResolved ? "Mark Unresolved" : "Resolve Button (పరిష్కరించబడింది)"}</span>
+                      <span>{isResolved ? "Mark Unresolved" : "Resolve Error"}</span>
                     </button>
                   </div>
                 </div>

@@ -6724,7 +6724,7 @@ E-Vedhika Support System`;
                                       </div>
                                       <div className="flex flex-col">
                                         <span className="text-[13px] font-bold">Mana Panchayath Dashboard</span>
-                                        <span className="text-[10px] text-slate-500 font-bold">పంచాయతీ ప్రధాన పేజీ (అన్ని సాధనాలు)</span>
+                                        <span className="text-[10px] text-slate-500 font-bold">Panchayat Main Page (All Tools)</span>
                                       </div>
                                     </button>
 
@@ -18132,13 +18132,13 @@ function SmartAssistant({
 
   const generateFallbackAdminResponse = (query: string): string => {
     const q = query.toLowerCase();
-    if (q.includes("seo") || q.includes("meta") || q.includes("మ్యాపింగ్") || q.includes("టేగ్")) {
-      return `### 🌐 **E-Vedhika SEO & Dynamic Meta Tag Manager:**\n\n- **లొకేషన్:** Admin Control Panel > Sidebar > **Operations & Content** > **"SEO & Dynamic Meta Tags"**\n- **విభాగం:** ఇక్కడ మీరు ఓపెన్ గ్రాఫ్ (OG) ఇమేజ్, SEO టైటిల్, వివరణ (Description), మరియు Keyword Tag లను నేరుగా డైనమిక్‌గా మార్చవచ్చు.`;
+    if (q.includes("seo") || q.includes("meta") || q.includes("mapping") || q.includes("tag")) {
+      return `### 🌐 **E-Vedhika SEO & Dynamic Meta Tag Manager:**\n\n- **Location:** Admin Control Panel > Sidebar > **Operations & Content** > **"SEO & Dynamic Meta Tags"**\n- **Section:** Here you can dynamically change the Open Graph (OG) image, SEO Title, Description, and Keyword Tags directly.`;
     }
-    if (q.includes("error") || q.includes("ide") || q.includes("code") || q.includes("ఎర్రర్")) {
-      return `### 💻 **Enterprise Code Manager & IDE గైడ్:**\n\n- **పరిష్కారం:** Code Manager లో CSS, JS లేదా HTML కోడ్‌ని సవరించినప్పుడు లోకల్ బ్రౌజర్ స్టోరేజ్ & క్లౌడ్‌లో ఆటోమేటిక్‌గా సేవ్ అయి లైవ్‌లో అప్లై అవుతుంది.\n- ప్రమేయం లేకుండా సరికొత్త కోడ్‌ని 'Save & Deploy Live' బటన్‌పై క్లిక్ చేసి క్షణాల్లో అప్‌డేట్ చేయవచ్చు.`;
+    if (q.includes("error") || q.includes("ide") || q.includes("code")) {
+      return `### 💻 **Enterprise Code Manager & IDE Guide:**\n\n- **Solution:** When you edit CSS, JS or HTML code in the Code Manager, it is automatically saved to local browser storage & cloud and applied live.\n- You can update the latest code in seconds by clicking the 'Save & Deploy Live' button without any manual deployment.`;
     }
-    return `### 🤖 **E-Vedhika Admin Assistant (${aiEngine === "chatgpt" ? "ChatGPT Engine" : "Gemini 2.5 Pro"}):**\n\nమీరు అడిగిన **"${query}"** ప్రశ్నకు సంబంధించిన వివరాలు:\n\n1. **సిస్టమ్ స్థితి (System Status):** E-Vedhika సర్వర్లు మరియు డేటాబేస్ లైవ్ మోడ్‌లో సక్రమంగా పనిచేస్తున్నాయి.\n2. **పరిపాలన సెట్టింగ్‌లు (Admin Controls):** Control Panel ద్వారా Page Builder, Dynamic Menus, SEO Meta Tags, మరియు Security Logs లను సులభంగా నిర్వహించవచ్చు.\n3. **సహాయం (Support):** మరింత సాంకేతిక సహాయం కోసం Live System Health Center లో రోగనిర్ధారణ రన్ చేయండి.`;
+    return `### 🤖 **E-Vedhika Admin Assistant (${aiEngine === "chatgpt" ? "ChatGPT Engine" : "Gemini 2.5 Pro"}):**\n\nDetails regarding your question **"${query}"**:\n\n1. **System Status:** E-Vedhika servers and database are functioning correctly in live mode.\n2. **Admin Controls:** Page Builder, Dynamic Menus, SEO Meta Tags, and Security Logs can be easily managed via the Control Panel.\n3. **Support:** For more technical assistance, run a diagnostic in the Live System Health Center.`;
   };
 
   const handleAsk = async () => {
@@ -21717,7 +21717,7 @@ function DSRAnalyzer({
     );
 
     navigator.clipboard.writeText(lines.join("\n"));
-    addToast("టేబుల్ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది! Excel లేదా WhatsApp లో నేరుగా పేస్ట్ చేయవచ్చు.");
+    addToast("Table copied to clipboard! You can paste it directly into Excel or WhatsApp.");
   };
 
   // Filtered views
@@ -21789,18 +21789,18 @@ function DSRAnalyzer({
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[11px] font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                ఆఫీసర్ & సెక్రటరీల సహాయక సాధనం
+                Officer & Secretary Assistant Tool
               </div>
               <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                మన పంచాయతీ DSR & హాజరు విశ్లేషణ సాధనం (DSR Analyzer)
+                Mana Panchayat DSR & Attendance Analyzer
               </h3>
               <p className="text-xs sm:text-sm text-slate-200 max-w-3xl leading-relaxed">
-                పంచాయతీ సెక్రటరీల రోజువారీ హాజరు, సెలవులు, మండల మీటింగ్‌లు మరియు DSR నివేదికలను ఆటోమేటిక్‌గా విశ్లేషించి అధికారిక రిపోర్ట్‌లుగా మార్చే సులభమైన సాధనం.
+                A simple tool that automatically analyzes daily attendance, leaves, mandal meetings, and DSR reports of Panchayat Secretaries and converts them into official reports.
               </p>
             </div>
             
             <div className="flex items-center gap-2 self-start md:self-auto bg-white/10 px-3 py-2 rounded-2xl border border-white/15 backdrop-blur-sm">
-              <span className="text-amber-300 font-bold text-xs">🔒 100% ప్రైవేట్ & సురక్షితం</span>
+              <span className="text-amber-300 font-bold text-xs">🔒 100% Private & Secure</span>
             </div>
           </div>
         </div>
@@ -21809,7 +21809,7 @@ function DSRAnalyzer({
         <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-200">
           <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-primary"></span>
-            ఈ సాధనాన్ని ఎలా ఉపయోగించాలి? (సులభమైన 3 దశలు)
+            How to use this tool? (Easy 3 Steps)
           </h4>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -21818,9 +21818,9 @@ function DSRAnalyzer({
               <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 font-black text-sm flex items-center justify-center">
                 1
               </div>
-              <h5 className="font-bold text-slate-900 text-sm">ఫైల్ డౌన్‌లోడ్ చేయండి</h5>
+              <h5 className="font-bold text-slate-900 text-sm">Download File</h5>
               <p className="text-xs text-slate-600 leading-relaxed">
-                <strong>Mana Panchayati</strong> పోర్టల్ నుండి మీ జిల్లా/మండలం యొక్క తాజా హాజరు/DSR Excel (.xlsx / .xls / .html) ఫైల్‌ను డౌన్‌లోడ్ చేసుకోండి.
+                Download the latest Attendance/DSR Excel (.xlsx / .xls / .html) file of your district/mandal from the <strong>Mana Panchayati</strong> portal.
               </p>
             </div>
 
@@ -21829,9 +21829,9 @@ function DSRAnalyzer({
               <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center">
                 2
               </div>
-              <h5 className="font-bold text-slate-900 text-sm">ఫైల్‌ను ఇక్కడ అప్‌లోడ్ చేయండి</h5>
+              <h5 className="font-bold text-slate-900 text-sm">Upload File Here</h5>
               <p className="text-xs text-slate-600 leading-relaxed">
-                క్రింద ఉన్న <strong>"DSR ఎక్సెల్ ఫైల్‌ను ఎంచుకోండి"</strong> బటన్‌ను నొక్కి డౌన్‌లోడ్ చేసిన ఫైల్‌ను సెలెక్ట్ చేయండి (క్షణాల్లో విశ్లేషిస్తుంది).
+                Click the <strong>"Select DSR Excel File"</strong> button below and select the downloaded file (analyzes in seconds).
               </p>
             </div>
 
@@ -21840,9 +21840,9 @@ function DSRAnalyzer({
               <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 font-black text-sm flex items-center justify-center">
                 3
               </div>
-              <h5 className="font-bold text-slate-900 text-sm">రిపోర్ట్‌లు & ఎక్స్‌పోర్ట్</h5>
+              <h5 className="font-bold text-slate-900 text-sm">Reports & Export</h5>
               <p className="text-xs text-slate-600 leading-relaxed">
-                అధికారిక టేబుల్స్‌ను చూసి వాట్సాప్‌కి కాపీ చేయండి, లేదా <strong>Master Multi-Sheet Excel</strong> మరియు <strong>PDF</strong> రూపంలో డౌన్‌లోడ్ చేయండి.
+                View official tables and copy to WhatsApp, or download in <strong>Master Multi-Sheet Excel</strong> and <strong>PDF</strong> format.
               </p>
             </div>
           </div>
@@ -21855,7 +21855,7 @@ function DSRAnalyzer({
               <div className="w-72 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-black text-primary uppercase tracking-wider">
-                    DSR డేటాను విశ్లేషిస్తున్నాము...
+                    Analyzing DSR Data...
                   </span>
                   <span className="text-xs font-black text-primary">
                     {uploadProgress}%
@@ -21868,7 +21868,7 @@ function DSRAnalyzer({
                     className="h-full bg-primary"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">దయచేసి ఒక్క క్షణం వేచి ఉండండి</p>
+                <p className="text-[11px] text-slate-500">Please wait a moment</p>
               </div>
             </div>
           )}
@@ -21893,10 +21893,10 @@ function DSRAnalyzer({
               }`}
             >
               <Upload size={18} />
-              {isProcessing ? "డేటా ప్రాసెస్ అవుతోంది..." : (data.length > 0 ? "మరో DSR ఫైల్‌ను మార్చండి (Change File)" : "DSR ఎక్సెల్ ఫైల్‌ను ఎంచుకోండి (Select File)")}
+              {isProcessing ? "Processing Data..." : (data.length > 0 ? "Change DSR File" : "Select DSR Excel File")}
             </button>
             <p className="text-xs text-slate-500">
-              మద్దతు ఇచ్చే ఫైల్ ఫార్మాట్‌లు: Excel (.xlsx, .xls), Mana Panchayati HTML Reports
+              Supported file formats: Excel (.xlsx, .xls), Mana Panchayati HTML Reports
             </p>
           </div>
         </div>
@@ -25663,13 +25663,13 @@ function PostForm({
                               const updatedPrev = prev.map(item => ({ ...item, status: "Old" as const }));
                               return [...updatedPrev, result.value];
                             });
-                            addToast(`✅ ఫైల్ "${result.value.name}" విజయవంతంగా జోడించబడింది!`);
+                            addToast(`✅ File "${result.value.name}" added successfully!`);
                           }
                         });
                       }}
                       className="border border-emerald-600 text-emerald-700 bg-emerald-50 px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-emerald-100 font-medium transition-colors flex items-center gap-1.5"
                     >
-                      <Plus size={13} /> + పబ్లిక్ లింక్ ద్వారా జోడించండి
+                      <Plus size={13} /> + Add via Public Link
                     </button>
                   </div>
 
@@ -25678,10 +25678,10 @@ function PostForm({
                     <div className="mt-3 space-y-3 border-t border-[#c3c4c7] pt-3">
                       <div className="flex items-center justify-between text-[11px] text-slate-500 bg-amber-50/70 p-2 rounded border border-amber-200/80">
                         <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                          🔒 అడ్మిన్ ఫైల్ మేనేజ్‌మెంట్ (Admin File Management)
+                          🔒 Admin File Management
                         </span>
                         <span className="text-[10px] text-amber-700">
-                          (డౌన్‌లోడ్ లిస్ట్‌లో OLD / NEW మరియు ఫైల్ రకం బ్యాడ్జ్‌లు యూజర్లకు కనిపిస్తాయి)
+                          (Users will see OLD / NEW and file type badges in the download list)
                         </span>
                       </div>
                       {attachments.map((att, i) => {
