@@ -311,23 +311,23 @@ export function SuperAdminDashboard({
           setPostsList(prev => prev.map(p => p.id === post.id ? { ...p, status: 'private_support', trackingNumber: res.trackingNumber } : p));
           Swal.fire({
             icon: 'success',
-            title: 'సపోర్ట్ సిస్టమ్‌కు పంపబడింది! (Pushed to Support)',
+            title: 'Pushed to Support System!',
             html: `
               <div class="text-left text-xs text-slate-600 space-y-2">
-                <p>పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ & ఇన్క్వైరీస్ లోకి బదిలీ చేయబడింది.</p>
+                <p>Post successfully transferred to Support System & Inquiries.</p>
                 <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-center my-2">
-                  <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">యూనిక్ ట్రాకింగ్ నెంబర్ (Unique Tracking Number)</span>
+                  <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">Unique Tracking Number</span>
                   <span class="text-lg font-mono font-black text-indigo-700 select-all block mt-0.5">#${res.trackingNumber}</span>
                 </div>
-                <p class="text-[11px] text-slate-500">ఈ నెంబర్‌తో యూజర్ ఎప్పుడైనా తమ పోస్ట్ లేదా విజ్ఞప్తి యొక్క లైవ్ స్టేటస్ ట్రాక్ చేయవచ్చు.</p>
+                <p class="text-[11px] text-slate-500">Users can track the live status of their post or inquiry using this number.</p>
               </div>
             `,
-            confirmButtonText: 'సరే (OK)',
+            confirmButtonText: 'OK',
             confirmButtonColor: '#4f46e5'
           });
-          if (addToast) addToast(`సపోర్ట్ సిస్టమ్‌కు పంపబడింది! ట్రాకింగ్: #${res.trackingNumber}`, "success");
+          if (addToast) addToast(`Pushed to Support System! Tracking: #${res.trackingNumber}`, "success");
         } else {
-          if (addToast) addToast("సపోర్ట్ సిస్టమ్‌కు పంపడంలో లోపం: " + res.error, "error");
+          if (addToast) addToast("Failed to push to Support System: " + res.error, "error");
         }
       } else {
         const isApproving = newStatus === 'published' || newStatus === 'Approved';
@@ -344,14 +344,14 @@ export function SuperAdminDashboard({
         } : p));
 
         if (isApproving) {
-          if (addToast) addToast("పోస్ట్ విజయవంతంగా ఆమోదించబడింది (Post Approved)!", "success");
+          if (addToast) addToast("Post Approved Successfully!", "success");
 
           const postAuthor = post.userName || post.author || "User";
-          const title = post.title || post.content || "కొత్త పోస్ట్";
+          const title = post.title || post.content || "New Post";
           await addDoc(collection(db, "notifications"), {
             uid: "all",
-            title: "📢 కొత్త పోస్ట్ (New Post Approved)",
-            message: `${postAuthor} సమర్పించిన పోస్ట్ ఆమోదించబడింది: ${title.substring(0, 50)}`,
+            title: "📢 New Post Approved",
+            message: `Post submitted by ${postAuthor} approved: ${title.substring(0, 50)}`,
             type: "post",
             read: false,
             readBy: [],
@@ -363,8 +363,8 @@ export function SuperAdminDashboard({
           if (post.uid) {
             await addDoc(collection(db, "notifications"), {
               uid: post.uid,
-              title: "🎉 మీ పోస్ట్ ఆమోదించబడింది (Post Approved)!",
-              message: `మీరు సమర్పించిన '${title.substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ ఆమోదించారు. ఇప్పుడు ఇది అందరికీ అందుబాటులో ఉంది.`,
+              title: "🎉 Your Post Has Been Approved!",
+              message: `Your submitted post '${title.substring(0, 40)}' has been approved by Admin and is now live.`,
               type: "post_approved",
               read: false,
               time: Date.now(),
@@ -372,13 +372,13 @@ export function SuperAdminDashboard({
             }).catch(() => {});
           }
         } else if (newStatus === 'rejected') {
-          if (addToast) addToast("పోస్ట్ తిరస్కరించబడింది (Post Rejected)", "info");
+          if (addToast) addToast("Post Rejected", "info");
           if (post.uid) {
-            const title = post.title || post.content || "పోస్ట్";
+            const title = post.title || post.content || "Post";
             await addDoc(collection(db, "notifications"), {
               uid: post.uid,
-              title: "పోస్ట్ తిరస్కరించబడింది (Post Rejected)",
-              message: `మీరు సమర్పించిన '${title.substring(0, 40)}' పోస్ట్‌ను అడ్మిన్ తిరస్కరించారు.`,
+              title: "Post Rejected",
+              message: `Your submitted post '${title.substring(0, 40)}' has been rejected by Admin.`,
               type: "post_rejected",
               read: false,
               time: Date.now(),
@@ -407,19 +407,19 @@ export function SuperAdminDashboard({
   const handleDeletePost = async (postId: string) => {
     try {
       const res = await Swal.fire({
-        title: "పోస్ట్‌ను తొలగించాలా?",
-        text: "ఈ పోస్ట్‌ను శాశ్వతంగా తొలగించాలనుకుంటున్నారా? ఈ చర్యను రద్దు చేయలేరు.",
+        title: "Delete Post?",
+        text: "Are you sure you want to permanently delete this post? This action cannot be undone.",
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#ef4444",
-        confirmButtonText: "అవును, తొలగించు (Delete)",
-        cancelButtonText: "రద్దు చేయి (Cancel)"
+        confirmButtonText: "Yes, Delete",
+        cancelButtonText: "Cancel"
       });
       if (!res.isConfirmed) return;
 
       await deleteDoc(doc(db, 'posts', postId));
       setPostsList(prev => prev.filter(p => p.id !== postId));
-      if (addToast) addToast("పోస్ట్ శాశ్వతంగా తొలగించబడింది (Post Deleted)!", "success");
+      if (addToast) addToast("Post Permanently Deleted!", "success");
       notifyPostUpdate({
         action: 'deleted',
         postTitle: 'Deleted Post',
@@ -449,7 +449,7 @@ export function SuperAdminDashboard({
       // Dispatch real-time notification to all logged in users
       await addDoc(collection(db, "notifications"), {
         uid: "all",
-        title: "📢 ముఖ్య ప్రకటన (Official Broadcast Alert)",
+        title: "📢 Official Broadcast Alert",
         message: broadcastText,
         type: "broadcast",
         senderName: adminDisplayName,
@@ -459,7 +459,7 @@ export function SuperAdminDashboard({
       }).catch(err => console.error("Failed to add broadcast notification document:", err));
 
       setBroadcastActive(true);
-      if (addToast) addToast("అందరి యూజర్లకు అలర్ట్ పంపబడింది (Broadcast sent to all users)!", "success");
+      if (addToast) addToast("Broadcast alert sent to all users!", "success");
 
       notifyEmergencyBroadcast({
         message: broadcastText,
@@ -512,21 +512,39 @@ export function SuperAdminDashboard({
     if (addToast) addToast(`Exported ${filename}.json successfully`, "success");
   };
 
+  // Helper to safely parse timestamp from Firestore objects, strings, or numbers
+  const parseTimestampMs = (raw: any): number => {
+    if (!raw) return 0;
+    if (typeof raw === 'number') return raw > 1e12 ? raw : raw * 1000;
+    if (typeof raw === 'object' && raw !== null) {
+      if (typeof raw.toMillis === 'function') return raw.toMillis();
+      if (typeof raw.seconds === 'number') return raw.seconds * 1000;
+    }
+    const parsed = Date.parse(raw);
+    if (!isNaN(parsed)) return parsed;
+    return 0;
+  };
+
   // Helper to determine if a user is currently active/online
   const isUserOnline = (u: any) => {
     if (!u) return false;
     if (u.isDeleted || u.banned) return false;
-    // Current user is always online
     if (user?.uid && (u.id === user.uid || u.uid === user.uid)) return true;
+    
     const now = Date.now();
-    // 10s periodic heartbeat mechanism: active if heartbeat received within last 35 seconds
-    const HEARTBEAT_WINDOW = 35 * 1000;
-    // Explicit isOnline flag and fresh heartbeat within 35 seconds
-    if (u.isOnline && u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
-    // Fresh lastActive within 35 seconds
-    if (u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
-    // Fresh visitor telemetry within 35 seconds
-    if (recentVisitors.some(v => (v.uid === u.id || (u.email && v.email === u.email)) && (now - (v.timestamp || 0) < HEARTBEAT_WINDOW))) return true;
+    // 5-minute window for active session
+    const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+    
+    const lastActiveMs = parseTimestampMs(u.lastActive || u.lastSeen || u.updatedAt || u.registeredAt || u.createdAt || u.time);
+
+    if (u.isOnline === true || u.status === 'online') {
+      // Still verify if the online status is recent (within 15 mins)
+      if (lastActiveMs > 0 && (now - lastActiveMs < 15 * 60 * 1000)) return true;
+    }
+    
+    if (lastActiveMs > 0 && (now - lastActiveMs < ACTIVE_WINDOW_MS)) return true;
+    if (recentVisitors.some(v => (v.uid === u.id || (u.email && (v.email || '').toLowerCase() === (u.email || '').toLowerCase())) && (now - (v.timestamp || v.time || 0) < ACTIVE_WINDOW_MS))) return true;
+
     return false;
   };
 
@@ -649,7 +667,7 @@ export function SuperAdminDashboard({
       ) : effectiveTab === "storage" || effectiveTab === "cloud_storage" ? (
         <div className="space-y-4">
           <div className="flex items-center gap-2 p-2 bg-white rounded-2xl border border-slate-200/80 w-fit shadow-xs">
-            <span className="text-xs font-bold text-slate-500 px-2">స్టోరేజ్ ఇంజిన్:</span>
+            <span className="text-xs font-bold text-slate-500 px-2">Storage Engine:</span>
             {(['cloudflare', 'supabase', 'firebase'] as const).map((p) => (
               <button
                 key={p}
@@ -671,7 +689,7 @@ export function SuperAdminDashboard({
       ) : effectiveTab === "support" ? (
         <SupportCenter currentUser={user} addToast={addToast} />
       ) : effectiveTab === "admin_software_hub" ? (
-        <AdminSoftwareHub user={user} addToast={addToast} />
+        <AdminSoftwareHub user={user} addToast={addToast as any} />
       ) : effectiveTab === "roles" || effectiveTab === "staff_management" || effectiveTab === "users" ? (
         <RolesAndPermissionsControl currentUser={user} addToast={addToast} initialRoleFilter={adminUserRoleFilter} />
       ) : effectiveTab === "notifications" ? (
@@ -713,13 +731,13 @@ export function SuperAdminDashboard({
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/10 text-blue-200 rounded-full border border-white/10 mb-2 inline-block">
-                  అధికారిక ప్యానెల్ (Official Admin Portal) v1.4.8+
+                  Official Admin Portal v1.4.8+
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                  <ShieldCheck className="text-emerald-400" size={26} /> ఈ-వేదిక సూపర్ అడ్మిన్ డాష్‌బోర్డ్
+                  <ShieldCheck className="text-emerald-400" size={26} /> E-Vedhika Super Admin Dashboard
                 </h2>
                 <p className="text-xs text-slate-300 font-medium mt-1">
-                  యూజర్లు, పోస్ట్‌లు, లైవ్ విజిటర్స్, మరియు సిస్టమ్ హెల్త్ మానిటరింగ్ కోసం కేంద్రీకృత ప్యానెల్.
+                  Centralized panel for Users, Posts, Live Visitors, and System Health Monitoring.
                 </p>
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -727,13 +745,13 @@ export function SuperAdminDashboard({
                   onClick={() => navigateToTab("moderation")}
                   className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  <Clock size={14} /> పెండింగ్ పోస్ట్‌లు ({pendingPostsCount})
+                  <Clock size={14} /> Pending Posts ({pendingPostsCount})
                 </button>
                 <button
                   onClick={() => navigateToTab("support")}
                   className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  <LifeBuoy size={14} /> సపోర్ట్ టికెట్లు ({openSupportCount})
+                  <LifeBuoy size={14} /> Support Tickets ({openSupportCount})
                 </button>
               </div>
             </div>
@@ -745,7 +763,7 @@ export function SuperAdminDashboard({
               { label: "Total Users", val: liveUsersCount, trend: "Registered", color: "from-blue-600 to-cyan-500", icon: Users, tab: "users", filter: "all" },
               { 
                 label: "Active Users", 
-                subLabel: "ప్రస్తుతం ఆన్‌లైన్",
+                subLabel: "Currently Online",
                 val: activeUsersCount, 
                 trend: "Live Online", 
                 isOnlineCard: true, 
@@ -1024,20 +1042,20 @@ export function SuperAdminDashboard({
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                    ప్రస్తుతం ఆన్‌లైన్ లో ఉన్న యూజర్లు (Currently Active Users)
+                    Currently Active Users
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      {activeUsersCount} ఆన్‌లైన్
+                      {activeUsersCount} Online
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium">పోర్టల్‌లో ప్రస్తుతం ఆక్టివ్‌గా (Online) ఉన్న యూజర్ల లైవ్ జాబితా</p>
+                  <p className="text-xs text-slate-500 font-medium">Live list of active users currently online in the portal</p>
                 </div>
               </div>
               <button 
                 onClick={() => navigateToTab("users", "online")}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 w-fit cursor-pointer"
               >
-                ఆన్‌లైన్ యూజర్ల ప్యానెల్ (Online Users Filter) <ArrowRight size={13} />
+                Online Users Panel <ArrowRight size={13} />
               </button>
             </div>
 
@@ -1045,8 +1063,8 @@ export function SuperAdminDashboard({
               {onlineUsersList.length === 0 ? (
                 <div className="py-8 text-center text-slate-400">
                   <UserCheck size={36} className="mx-auto text-slate-300 mb-2" />
-                  <p className="text-xs font-semibold text-slate-600">ప్రస్తుతం ఎవరూ ఆన్‌లైన్‌లో లేరు.</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">సభ్యులు పోర్టల్‌లోకి ప్రవేశించినప్పుడు ఇక్కడ రియల్ టైమ్‌లో కనిపిస్తారు.</p>
+                  <p className="text-xs font-semibold text-slate-600">No users currently online.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Members will appear here in real-time when they enter the portal.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -1076,7 +1094,7 @@ export function SuperAdminDashboard({
                               <p className="text-xs font-black text-slate-900 truncate">{fullName}</p>
                               {isSelf && (
                                 <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
-                                  మీరు (You)
+                                  You
                                 </span>
                               )}
                             </div>
@@ -1097,10 +1115,10 @@ export function SuperAdminDashboard({
                         <div className="shrink-0 flex flex-col items-end gap-1">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            ఆన్‌లైన్
+                            Online
                           </span>
                           <span className="text-[9px] font-semibold text-slate-400">
-                            {isSelf ? "ఇప్పుడే (Live)" : u.lastActive ? `${Math.max(1, Math.round((Date.now() - Number(u.lastActive)) / 1000))}s క్రితం` : "ఇప్పుడే"}
+                            {isSelf ? "Live" : u.lastActive ? `${Math.max(1, Math.round((Date.now() - Number(u.lastActive)) / 1000))}s ago` : "Live"}
                           </span>
                         </div>
                       </div>
@@ -1165,7 +1183,7 @@ export function SuperAdminDashboard({
                         <td className="p-3.5">
                           {p.status === 'private_support' ? (
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                              సపోర్ట్: #{p.trackingNumber || 'Active'}
+                              Support: #{p.trackingNumber || 'Active'}
                             </span>
                           ) : (
                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
@@ -1186,14 +1204,14 @@ export function SuperAdminDashboard({
                                   <button
                                     onClick={() => handleUpdatePostStatus(p, 'Approved')}
                                     className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                                    title="పోస్ట్‌ను ఆమోదించి పబ్లిష్ చేయండి (Approve Post)"
+                                    title="Approve and Publish Post"
                                   >
                                     Approve
                                   </button>
                                   <button
                                     onClick={() => handleUpdatePostStatus(p, 'rejected')}
                                     className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                                    title="తిరస్కరించు (Reject Post)"
+                                    title="Reject Post"
                                   >
                                     Reject
                                   </button>
@@ -1205,9 +1223,9 @@ export function SuperAdminDashboard({
                                 <button
                                   onClick={() => handleUpdatePostStatus(p, 'private_support')}
                                   className="px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-[10px] font-black transition-all inline-flex items-center gap-1 shadow-xs cursor-pointer"
-                                  title="పుష్ టు సపోర్ట్ సిస్టమ్ (Push to Support System)"
+                                  title="Push to Support System"
                                 >
-                                  <LifeBuoy size={11} /> పుష్ టు సపోర్ట్
+                                  <LifeBuoy size={11} /> Push to Support
                                 </button>
                               )}
                               
@@ -1216,7 +1234,7 @@ export function SuperAdminDashboard({
                                 <button
                                   onClick={() => handleUpdatePostStatus(p, 'Approved')}
                                   className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                                  title="అడ్మిన్ పోస్ట్‌ను ఆటో-ఆమోదించు (Auto-Approve Admin Post)"
+                                  title="Auto-Approve Admin Post"
                                 >
                                   Publish Now
                                 </button>
@@ -1228,15 +1246,15 @@ export function SuperAdminDashboard({
                               <button
                                 onClick={() => handleUpdatePostStatus(p, 'Approved')}
                                 className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                                title="తిరిగి ఫీడ్‌లో పబ్లిష్ చేయండి"
+                                title="Publish Back to Feed"
                               >
-                                పబ్లిష్ చేయి
+                                Publish
                               </button>
                               <button
                                 onClick={() => navigateToTab('support')}
                                 className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-black transition-colors inline-flex items-center gap-1 cursor-pointer"
                               >
-                                <LifeBuoy size={11} /> సపోర్ట్ సెంటర్
+                                <LifeBuoy size={11} /> Support Center
                               </button>
                             </>
                           )}
@@ -1244,7 +1262,7 @@ export function SuperAdminDashboard({
                             <button
                               onClick={() => onEditPost(p)}
                               className="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-[10px] font-black transition-colors inline-flex items-center gap-1 cursor-pointer"
-                              title="పోస్ట్ సవరించు (Edit Post)"
+                              title="Edit Post"
                             >
                               <Edit3 size={11} /> Edit
                             </button>
@@ -1252,7 +1270,7 @@ export function SuperAdminDashboard({
                           <button
                             onClick={() => handleDeletePost(p.id)}
                             className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-[10px] font-black transition-colors cursor-pointer"
-                            title="పోస్ట్‌ను తొలగించు (Delete Post)"
+                            title="Delete Post"
                           >
                             Delete
                           </button>

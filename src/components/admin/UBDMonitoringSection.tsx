@@ -55,10 +55,10 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            UBD Monitoring Center (యుబిడి మానిటరింగ్)
+            UBD Monitoring Center
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm max-w-2xl font-medium mt-1">
-            E-Vedhika UBD Deployment Tool (EXE) లైవ్ స్టేటస్ మరియు టెలిమెట్రీ కన్సోల్.
+            Live status and telemetry console for E-Vedhika UBD Deployment Tool (EXE).
           </p>
         </div>
       </div>
@@ -76,10 +76,10 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-                Live Monitoring (లైవ్ మానిటరింగ్)
+                Live Monitoring
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                తెలంగాణ పంచాయతీల డెస్క్‌టాప్ క్లయింట్ల లైవ్ డేటా మరియు ఆఫీస్ ఐడీ సింక్ రికార్డులు.
+                Live data and office ID sync records of Telangana Grama Panchayat desktop clients.
               </p>
             </div>
           </div>
@@ -150,7 +150,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
             <Activity size={20} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900">Data & Reports Center (రిపోర్టుల కేంద్రం)</h3>
+            <h3 className="text-lg font-black text-slate-900">Data & Reports Center</h3>
             <p className="text-xs text-slate-500 font-bold">Preview data tables before downloading Excel files.</p>
           </div>
         </div>
@@ -165,7 +165,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
               <Activity size={20} />
             </div>
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Daily Health Report</h4>
-            <p className="text-[10px] text-slate-500 mt-1">ముందుగా డేటా చూడండి (Preview)</p>
+            <p className="text-[10px] text-slate-500 mt-1">Preview Data</p>
           </button>
 
           {/* Monthly Master Preview */}
@@ -177,7 +177,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
               <Activity size={20} />
             </div>
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Monthly Master</h4>
-            <p className="text-[10px] text-slate-500 mt-1">మంత్లీ మాస్టర్ ప్రివ్యూ (Preview)</p>
+            <p className="text-[10px] text-slate-500 mt-1">Monthly Master Preview</p>
           </button>
 
           {/* Consolidated JSON */}

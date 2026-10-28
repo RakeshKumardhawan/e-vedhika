@@ -1186,8 +1186,14 @@ function startTelegramPollingLoop() {
 
   const poll = async () => {
     try {
+      // Ensure botToken is properly formatted (should not contain spaces or be obviously dummy)
+      if (!botToken || botToken.includes(" ") || botToken.length < 20) {
+        console.warn("[TELEGRAM BOT] Invalid token format, polling loop suspended.");
+        return;
+      }
+
       const url = `https://api.telegram.org/bot${botToken}/getUpdates?offset=${lastTelegramUpdateId + 1}&timeout=5`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
       if (res.ok) {
         const data = await res.json();
         if (data.ok && Array.isArray(data.result)) {
@@ -1203,11 +1209,17 @@ function startTelegramPollingLoop() {
       } else if (res.status === 409) {
         // Resolve webhook conflict
         await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`).catch(() => {});
+      } else {
+        console.warn(`[TELEGRAM POLL WARNING] Status: ${res.status}`);
       }
     } catch (e: any) {
-      // transient network wait
+      // transient network wait or timeout
+      if (e.name !== 'TimeoutError') {
+        console.error("[TELEGRAM POLL EXCEPTION]", e?.message || e);
+      }
     }
-    setTimeout(poll, 1000);
+    // Exponential backoff or constant wait
+    setTimeout(poll, 2000);
   };
 
   poll();
@@ -5609,8 +5621,14 @@ app.get('/api/remote-commands', (req, res) => {
     console.log(`  ➜  Local:   http://localhost:${PORT}/`);
     console.log(`  ➜  Network: http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}/`);
     console.log(`Server running on http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
-    // Start background Telegram support bot polling for real-time two-way replies
-    startTelegramPollingLoop();
+    // Start background Telegram support bot polling for real-time two-way replies with a delay
+    setTimeout(() => {
+      try {
+        startTelegramPollingLoop();
+      } catch (err) {
+        console.error("[TELEGRAM START ERROR]", err);
+      }
+    }, 5000);
   });
 
   server.on('error', (e: any) => {
@@ -5626,4 +5644,15 @@ app.get('/api/remote-commands', (req, res) => {
   });
 }
 
-startServer();
+// Global Process Error Handlers for Stability
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+startServer().catch(err => {
+  console.error("Critical Server Startup Failure:", err);
+});

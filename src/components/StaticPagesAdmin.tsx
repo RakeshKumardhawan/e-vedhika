@@ -38,10 +38,10 @@ export function StaticPagesAdmin({ addToast }: any) {
   const handleSave = async () => {
     try {
       await setDoc(doc(db, "settings", "static_pages"), pages, { merge: true });
-      addToast("పేజీ విజయవంతంగా సేవ్ చేయబడింది! (Saved successfully)");
+      addToast("Page saved successfully!");
     } catch (err) {
       console.error(err);
-      addToast("పేజీని సేవ్ చేయడంలో లోపం. (Error saving)");
+      addToast("Error saving page.");
     }
   };
 
@@ -64,10 +64,10 @@ export function StaticPagesAdmin({ addToast }: any) {
   }
 
   const pageLabels: Record<string, string> = {
-    about: "About Us (గురించి)",
+    about: "About Us",
     privacy: "Privacy Policy",
     terms: "Terms & Conditions",
-    contact: "Contact Us (సంప్రదించండి)"
+    contact: "Contact Us"
   };
 
   return (
@@ -81,7 +81,7 @@ export function StaticPagesAdmin({ addToast }: any) {
             Static Pages Editor
           </h4>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-            ఎడిట్ చేయండి: About, Privacy, Terms, Contact
+            Edit: About Us, Privacy Policy, Terms, Contact Us
           </p>
         </div>
       </div>
@@ -107,7 +107,7 @@ export function StaticPagesAdmin({ addToast }: any) {
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-              Page Title (శీర్షిక)
+              Page Title
             </label>
             <input
               type="text"
@@ -119,13 +119,13 @@ export function StaticPagesAdmin({ addToast }: any) {
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-              Content (విషయం - HTML/Markdown Supported)
+              Content (HTML / Markdown Supported)
             </label>
             <textarea
               rows={15}
               value={pages[activePage]?.content || ""}
               onChange={(e) => handleContentChange(e.target.value)}
-              placeholder="HTML లేదా Markdown లో మీ కంటెంట్ ఇక్కడ రాయండి..."
+              placeholder="Write your content here in HTML or Markdown..."
               className="w-full bg-slate-50 border-slate-100 rounded-3xl p-6 font-medium text-sm outline-none focus:border-indigo-500 transition-all leading-relaxed custom-scrollbar font-mono"
             />
           </div>
@@ -134,7 +134,7 @@ export function StaticPagesAdmin({ addToast }: any) {
               onClick={handleSave}
               className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2"
             >
-              <Save size={18} /> సేవ్ చేయండి (Save)
+              <Save size={18} /> Save Page
             </button>
           </div>
         </div>
@@ -149,7 +149,7 @@ export function StaticPagesAdmin({ addToast }: any) {
             Admin Tip
           </p>
           <p className="text-sm font-bold text-amber-900 leading-relaxed">
-            ఈ పేజీలో మీరు చేసే మార్పులు నేరుగా పబ్లిక్ సైట్‌లో (Contact Us, About Us మొ.) ప్రతిబింబిస్తాయి. HTML ట్యాగ్స్ లేదా మార్క్‌డౌన్ (Markdown) ను ఉపయోగించి టెక్స్ట్ స్టైలింగ్ చేసుకోవచ్చు.
+            Changes made on this page will directly reflect on the public site (Contact Us, About Us, etc.). You can use HTML tags or Markdown formatting.
           </p>
         </div>
       </div>

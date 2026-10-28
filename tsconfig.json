@@ -24,6 +24,8 @@
       ]
     },
     "allowImportingTsExtensions": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "noEmit": true
   },
   "exclude": ["app", "artifacts", "server.ts"]

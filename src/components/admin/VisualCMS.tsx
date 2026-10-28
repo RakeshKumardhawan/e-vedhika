@@ -32,12 +32,12 @@ export function VisualCMS() {
       if (res.ok) {
         const data = await res.json();
         const count = data?.total_posts || (data?.posts ? data.posts.length : 0);
-        setSyncStatus(`మొత్తం ${count} పోస్ట్‌లు లైవ్‌లో సింక్ అయ్యాయి! API పర్ఫెక్ట్‌గా రన్ అవుతోంది.`);
+        setSyncStatus(`Total ${count} posts synced live! API is running perfectly.`);
       } else {
-        setSyncStatus(`API లైవ్ రెస్పాన్స్ (HTTP ${res.status}). సింక్ సిద్ధంగా ఉంది.`);
+        setSyncStatus(`API live response (HTTP ${res.status}). Sync is ready.`);
       }
     } catch (err: any) {
-      setSyncStatus('API లింక్ ఆక్టివ్‌గా ఉంది. మీరు ఈ లింక్‌ను నేరుగా బ్రౌజర్‌లో లేదా మీ యాప్‌లో ఓపెన్ చేసి లైవ్ డేటా చూడవచ్చు!');
+      setSyncStatus('API link is active. You can open this link directly in your browser or app to view live data!');
     } finally {
       setTestingSync(false);
     }
@@ -45,7 +45,7 @@ export function VisualCMS() {
 
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-200/70 shadow-xs h-full space-y-6">
-      {/* 🌐 External App & API Sync Hub (అడ్మిన్ పోస్ట్ సింక్ సెక్షన్) */}
+      {/* 🌐 External App & API Sync Hub */}
       <div className="p-5 bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white rounded-2xl border border-indigo-500/30 shadow-md">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
@@ -54,10 +54,10 @@ export function VisualCMS() {
             </div>
             <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
               <LinkIcon size={20} className="text-amber-400" />
-              ఎక్స్‌టర్నల్ యాప్ సింక్ API (External App Live Sync)
+              External App Live Sync API
             </h3>
             <p className="text-xs text-slate-300 font-medium mt-1">
-              మీరు E-Vedhika లో పోస్ట్ చేసే ప్రతీ అప్‌డేట్ మీ వేరే అప్లికేషన్‌కి ఈ API URL ద్వారా లైవ్‌గా సింక్ అవుతుంది.
+              Every update you post on E-Vedhika will be synced live to your other application via this API URL.
             </p>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -65,7 +65,7 @@ export function VisualCMS() {
               onClick={handleCopyFeedUrl}
               className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 active:scale-95 shrink-0"
             >
-              {copiedFeedUrl ? "కాపీ చేయబడింది! ✓" : "API లింక్ కాపీ చేయండి"}
+              {copiedFeedUrl ? "Copied! ✓" : "Copy API Link"}
             </button>
             <button
               onClick={handleTestFeedSync}
@@ -73,7 +73,7 @@ export function VisualCMS() {
               className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shrink-0"
             >
               <RefreshCw size={13} className={testingSync ? "animate-spin" : ""} />
-              {testingSync ? "సింక్ తనిఖీ అవుతోంది..." : "సింక్ టెస్ట్ చేయండి"}
+              {testingSync ? "Checking sync..." : "Test Sync"}
             </button>
           </div>
         </div>
@@ -87,11 +87,11 @@ export function VisualCMS() {
               rel="noopener noreferrer"
               className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded-md shrink-0 cursor-pointer font-sans underline"
             >
-              ఓపెన్ చేయండి ↗
+              Open ↗
             </a>
           </div>
           <div className="bg-white/5 p-3 rounded-xl border border-white/10 flex items-center justify-between text-xs text-slate-200">
-            <span className="font-bold">స్టేటస్:</span>
+            <span className="font-bold">Status:</span>
             <span className="font-black text-emerald-400 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
               ACTIVE & LIVE

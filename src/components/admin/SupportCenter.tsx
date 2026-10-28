@@ -22,43 +22,43 @@ interface SupportCenterProps {
 export const SPOT_REPLIES_DATA = [
   {
     id: "review",
-    label: "పరిశీలనలో ఉంది ⏳",
+    label: "Under Review ⏳",
     badge: "Under Review",
-    text: "నమస్కారం! మీ విన్నపం/సమస్య పరిశీలనలో ఉంది. మా సాంకేతిక బృందం దీనిపై పరిశీలిస్తోంది, త్వరలోనే తగిన పరిష్కారం అందజేస్తాము. - e-Vedika Support Team",
+    text: "Hello! Your inquiry/issue is currently under review by our technical team. We will update you shortly. - e-Vedika Support Team",
     status: "in_progress",
     btnColor: "bg-amber-600 hover:bg-amber-700 text-white"
   },
   {
     id: "resolved",
-    label: "సమస్య పరిష్కరించబడింది ✅",
+    label: "Issue Resolved ✅",
     badge: "Resolved",
-    text: "నమస్కారం! మీరు తెలియజేసిన సమస్య విజయవంతంగా పరిష్కరించబడింది. ఏవైనా సమస్యలుంటే మళ్లీ తెలియజేయగలరు. ధన్యవాదాలు! - e-Vedika Support Team",
+    text: "Hello! The issue you reported has been successfully resolved. Please let us know if you need any further assistance. Thank you! - e-Vedika Support Team",
     status: "resolved",
     btnColor: "bg-emerald-600 hover:bg-emerald-700 text-white"
   },
   {
     id: "info",
-    label: "వివరాలు పంపండి 📝",
+    label: "Need Details 📝",
     badge: "Need Info",
-    text: "నమస్కారం! మీ సమస్యను వేగంగా పరిష్కరించడానికి దయచేసి మీ జిల్లా, మండలం, గ్రామ పంచాయతీ వివరాలు లేదా స్క్రీన్‌షాట్/ఎర్రర్ వివరాలు ఇక్కడ పంపగలరు. - e-Vedika Support Team",
+    text: "Hello! To resolve your issue faster, please provide your district, mandal, or relevant error screenshot/details here. - e-Vedika Support Team",
     status: "in_progress",
     btnColor: "bg-blue-600 hover:bg-blue-700 text-white"
   },
   {
     id: "escalate",
-    label: "అధికారులకు ఫార్వర్డ్ 🏛️",
+    label: "Escalated 🏛️",
     badge: "Escalated",
-    text: "నమస్కారం! మీ సమస్య తగిన పరిష్కారం నిమిత్తం సంబంధిత జిల్లా / టెక్నికల్ అధికార బృందానికి ఫార్వర్డ్ చేయబడింది. త్వరలోనే అప్‌డేట్ చేస్తాము. - e-Vedika Support Team",
+    text: "Hello! Your inquiry has been forwarded to the relevant district or technical department team for resolution. We will update you soon. - e-Vedika Support Team",
     status: "in_progress",
     btnColor: "bg-purple-600 hover:bg-purple-700 text-white"
   }
 ];
 
 const QUICK_RESPONSES = [
-  "నమస్కారం! మీ సమస్య పరిశీలనలో ఉంది. త్వరలోనే తగిన పరిష్కారం అందజేస్తాము. (We are reviewing your issue and will resolve it soon.)",
-  "మీరు తెలియజేసిన సమస్య విజయవంతంగా పరిష్కరించబడింది. ధన్యవాదాలు! (Your reported issue has been successfully resolved.)",
-  "దయచేసి మీ జిల్లా, మండలం లేదా సంబంధిత డాక్యుమెంట్ వివరాలు ఇక్కడ పంపగలరు. (Please provide your district, mandal, or additional details.)",
-  "మీ దరఖాస్తు సంబంధిత అధికార యంత్రాంగానికి పంపబడింది. (Your inquiry has been escalated to the relevant departmental authority.)"
+  "Hello! Your issue is currently under review. We will provide a resolution soon.",
+  "The reported issue has been successfully resolved. Thank you!",
+  "Please provide your district, mandal, or additional document details here.",
+  "Your application/inquiry has been escalated to the relevant departmental authority."
 ];
 
 const PRIORITY_LEVELS = [
@@ -135,7 +135,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       }, 1000);
     } catch (err) {
       console.error("Microphone access denied or error:", err);
-      if (addToast) addToast("మైక్రోఫోన్ అనుమతి లభించలేదు లేదా లోపం సంభవించింది", "error");
+      if (addToast) addToast("Microphone access denied or error occurred", "error");
     }
   };
 
@@ -187,7 +187,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       });
       const data = await res.json().catch(() => ({ success: true }));
       if (data.success) {
-        if (addToast) addToast("వాయిస్ ప్రత్యుత్తరం విజయవంతంగా పంపబడింది! (Voice Reply Sent)", "success");
+        if (addToast) addToast("Voice reply sent successfully!", "success");
         return;
       }
 
@@ -216,7 +216,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           lastReplyTime: Date.now()
         });
       }
-      if (addToast) addToast("వాయిస్ ప్రత్యుత్తరం విజయవంతంగా పంపబడింది! (Voice Reply Sent)", "success");
+      if (addToast) addToast("Voice reply sent successfully!", "success");
     } catch (e: any) {
       console.error("Error sending admin voice note:", e);
       if (addToast) addToast(`Voice Reply error: ${e.message}`, "error");
@@ -230,13 +230,13 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       const res = await fetch("/api/support/create-test-ticket", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        if (addToast) addToast("టెస్ట్ టికెట్ విజయవంతంగా సృష్టించబడింది! (Test Ticket Created)", "success");
+        if (addToast) addToast("Test ticket created successfully!", "success");
         const newTicket = {
           id: data.ticketId,
           trackingNumber: data.trackingNumber,
           ticketNumber: data.trackingNumber,
-          subject: "టెస్ట్ సమస్య / సాఫ్ట్‌వేర్ సహాయ విజ్ఞప్తి (Test Inquiry)",
-          problem: "ఇది సిస్టమ్ పరీక్షించడానికి సృష్టించిన టెస్ట్ సపోర్ట్ టికెట్.",
+          subject: "Test Inquiry / Software Support Request",
+          problem: "This is a test support ticket created for system testing.",
           category: "Technical Support",
           status: "open",
           priority: "medium",
@@ -258,12 +258,12 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
   const handleDeleteTicket = async (e: React.MouseEvent, ticketId: string, isPostSource?: boolean) => {
     e.stopPropagation();
     const res = await Swal.fire({
-      title: "టికెట్‌ను తొలగించాలా? (Delete Ticket?)",
-      text: "ఈ సపోర్ట్ టికెట్ లేదా డమ్మీ డేటా శాశ్వతంగా తొలగించబడుతుంది.",
+      title: "Delete Ticket?",
+      text: "This support ticket or dummy data will be permanently deleted.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
-      confirmButtonText: "అవును, తొలగించు (Delete)"
+      confirmButtonText: "Yes, Delete"
     });
     if (res.isConfirmed) {
       try {
@@ -278,7 +278,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           if (selectedTicket?.id === ticketId) {
             setSelectedTicket(null);
           }
-          if (addToast) addToast("టికెట్ విజయవంతంగా తొలగించబడింది! (Ticket deleted)", "success");
+          if (addToast) addToast("Ticket deleted successfully!", "success");
         } else {
           throw new Error(data.error || "Failed");
         }
@@ -548,7 +548,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       });
       const data = await res.json().catch(() => ({ success: true }));
       if (data.success) {
-        if (addToast) addToast("ప్రత్యుత్తరం పంపబడింది! (Reply sent & synced to Telegram)", "success");
+        if (addToast) addToast("Reply sent & synced to Telegram!", "success");
         return;
       }
 
@@ -578,7 +578,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
         });
       }
 
-      if (addToast) addToast("ప్రత్యుత్తరం పంపబడింది! (Reply sent to citizen)", "success");
+      if (addToast) addToast("Reply sent to citizen!", "success");
     } catch (e: any) {
       console.error("Error sending reply:", e);
       if (addToast) addToast(`Reply error: ${e.message}`, "error");
@@ -622,7 +622,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       });
       const data = await res.json().catch(() => ({ success: true }));
       if (data.success) {
-        if (addToast) addToast(`⚡ Spot Reply [${spot.label}] విజయవంతంగా పంపబడింది!`, "success");
+        if (addToast) addToast(`⚡ Spot Reply [${spot.label}] sent successfully!`, "success");
         return;
       }
 
@@ -651,7 +651,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
           lastReplyTime: Date.now()
         });
       }
-      if (addToast) addToast(`⚡ Spot Reply [${spot.label}] విజయవంతంగా పంపబడింది!`, "success");
+      if (addToast) addToast(`⚡ Spot Reply [${spot.label}] sent successfully!`, "success");
     } catch (e: any) {
       console.error("Error sending spot reply:", e);
       if (addToast) addToast(`Spot reply error: ${e.message}`, "error");
@@ -675,9 +675,9 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
       message: selectedTicket.message || selectedTicket.problem || selectedTicket.description || ""
     });
     if (ok) {
-      if (addToast) addToast("✅ టెలిగ్రామ్ అలర్ట్ & 1-Click Spot Reply బటన్లు పంపబడ్డాయి!", "success");
+      if (addToast) addToast("✅ Telegram alert & 1-Click Spot Reply buttons sent!", "success");
     } else {
-      if (addToast) addToast("⚠️ టెలిగ్రామ్ నోటిఫికేషన్ పంపడంలో లోపం", "error");
+      if (addToast) addToast("⚠️ Error sending Telegram notification", "error");
     }
   };
 
@@ -854,12 +854,12 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
             ) : filteredTickets.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-[11px] font-bold space-y-3">
                 <MessageSquare className="mx-auto text-slate-300" size={32} />
-                <p>ఎటువంటి సపోర్ట్ టికెట్లు లేవు (No tickets found)</p>
+                <p>No support tickets found</p>
                 <button
                   onClick={handleCreateTestTicket}
                   className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black shadow-sm hover:bg-blue-700 transition-all inline-block cursor-pointer"
                 >
-                  + Create Test Ticket (టెస్ట్ టికెట్ సృష్టించు)
+                  + Create Test Ticket
                 </button>
               </div>
             ) : (
@@ -892,7 +892,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                         <button
                           onClick={(e) => handleDeleteTicket(e, t.id, t.isPostSource)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                          title="తొలగించు (Delete Ticket)"
+                          title="Delete Ticket"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -980,7 +980,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                       <button
                         onClick={(e) => handleDeleteTicket(e, selectedTicket.id, selectedTicket.isPostSource)}
                         className="px-2.5 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 rounded-lg text-[9px] font-black uppercase flex items-center gap-1 transition-colors ml-auto cursor-pointer"
-                        title="టికెట్ తొలగించు (Delete Ticket)"
+                        title="Delete Ticket"
                       >
                         <Trash2 size={12} /> Delete
                       </button>
@@ -994,10 +994,10 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={handleTriggerTelegramAlert}
-                      title="Telegram కి అలర్ట్ & 1-Click Spot Reply బటన్లు పంపు"
+                      title="Send alert & 1-Click Spot Reply buttons to Telegram"
                       className="px-3 py-2 bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#229ED9] border border-[#229ED9]/30 rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all shadow-xs"
                     >
-                      <Send size={13} /> 📱 Telegram అలర్ట్ పంపు
+                      <Send size={13} /> 📱 Send Telegram Alert
                     </button>
                     <button 
                       onClick={() => setShowUserInfo(!showUserInfo)}
@@ -1091,7 +1091,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                         {m.text && m.text.startsWith("data:audio/") ? (
                           <div className="flex flex-col gap-1 py-1 min-w-[200px]">
                             <span className={`text-[10px] font-bold flex items-center gap-1 ${isAdminMsg ? 'text-blue-200' : 'text-slate-500'}`}>
-                              <Mic size={12} className="text-rose-400 animate-pulse" /> వాయిస్ సందేశం (Voice Message)
+                              <Mic size={12} className="text-rose-400 animate-pulse" /> Voice Message
                             </span>
                             <audio src={m.text} controls className="w-full max-w-full rounded-md h-8 text-black" />
                           </div>
@@ -1113,10 +1113,10 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Zap size={13} className="text-amber-500 fill-amber-500" />
-                    ⚡ 1-Click Spot Replies (తక్షణ ప్రత్యుత్తరాలు):
+                    ⚡ 1-Click Spot Replies:
                   </span>
                   <span className="text-[9px] text-slate-500 font-semibold">
-                    (Telegram బాట్ లో మరియు వెబ్‌సైట్ లో ఒకేసారి సింక్ అవుతాయి)
+                    (Synced across Telegram bot and Website)
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1137,7 +1137,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
               {/* Quick Template Replies (paste to textarea) */}
               <div className="px-5 py-2 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                  <Sparkles size={11} className="text-blue-600" /> టెంప్లేట్ కాపీ:
+                  <Sparkles size={11} className="text-blue-600" /> Copy Template:
                 </span>
                 {QUICK_RESPONSES.map((qr, idx) => (
                   <button
@@ -1157,7 +1157,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                   <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center justify-between text-xs animate-pulse">
                     <div className="flex items-center gap-2 text-rose-700 font-bold">
                       <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
-                      <span>వాయిస్ ప్రత్యుత్తరం రికార్డ్ అవుతోంది... {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span>
+                      <span>Recording voice reply... {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -1166,7 +1166,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                         className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-black transition-all cursor-pointer"
                         title="Cancel"
                       >
-                        రద్దు (Cancel)
+                        Cancel
                       </button>
                       <button
                         type="button"
@@ -1174,7 +1174,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                         className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer"
                         title="Stop & Send"
                       >
-                        పంపండి (Stop & Send)
+                        Stop & Send
                       </button>
                     </div>
                   </div>
@@ -1202,7 +1202,7 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
                           className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
                           title="Record voice note"
                         >
-                          <Mic size={14} /> Record Voice Note (వాయిస్ నోట్)
+                          <Mic size={14} /> Record Voice Note
                         </button>
                         <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
                           Press <kbd className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Ctrl+Enter</kbd> to send

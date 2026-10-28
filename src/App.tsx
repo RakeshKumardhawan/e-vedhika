@@ -614,13 +614,23 @@ export function requireLoginAlert(userObj?: any): boolean {
   const account = userObj || auth.currentUser;
   if (!account || account.isAnonymous) {
     Swal.fire({
-      title: "లాగిన్ అవసరం",
-      text: "ముందుకు సాగడానికి దయచేసి లాగిన్ అవ్వండి.",
-      icon: "warning",
-      confirmButtonText: "సరే (OK)",
+      title: "లాగిన్ అవసరం (Login Required)",
+      text: "పోస్ట్‌లకు కామెంట్ చేయడం, లైక్ చేయడం లేదా స్పందించడానికి దయచేసి మీ ఖాతాతో లాగిన్ అవ్వండి.",
+      icon: "info",
+      showCancelButton: true,
+      confirmButtonText: "🔑 లాగిన్ / రిజిస్టర్ అవ్వండి",
+      cancelButtonText: "రద్దు (Cancel)",
       confirmButtonColor: "#0d3b66",
-    }).then(() => {
-      window.dispatchEvent(new Event("open-login-modal"));
+      cancelButtonColor: "#64748b",
+      customClass: {
+        popup: "rounded-2xl font-sans",
+        confirmButton: "rounded-xl font-bold px-5 py-2.5",
+        cancelButton: "rounded-xl font-bold px-5 py-2.5",
+      },
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.dispatchEvent(new Event("open-login-modal"));
+      }
     });
     return true;
   }
@@ -2624,49 +2634,6 @@ export default function App() {
     return () => window.removeEventListener("open-ticket-tracker", handleOpenTracker);
   }, []);
 
-  // 🌟 Cursor Round Spotlight Lighting Effect on Hovered Boxes/Cards with Center Proximity
-  useEffect(() => {
-    let rafId: number | null = null;
-    const handleMouseMove = (e: MouseEvent) => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const target = (e.target as HTMLElement)?.closest(
-          '.spotlight-card, .spotlight-box, .interactive-card, .card-glow, [data-spotlight="true"], .bg-white.rounded-2xl, .bg-white.rounded-3xl, .bg-slate-900.rounded-2xl, .bg-slate-900.rounded-3xl, .bg-slate-800.rounded-2xl, article'
-        ) as HTMLElement | null;
-
-        if (target) {
-          if (!target.classList.contains('spotlight-card')) {
-            target.classList.add('spotlight-card');
-          }
-          const rect = target.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          
-          // Calculate distance to center
-          const centerX = rect.width / 2;
-          const centerY = rect.height / 2;
-          const maxDist = Math.max(1, Math.sqrt(centerX * centerX + centerY * centerY));
-          const currentDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-          
-          // Proximity factor: 1.0 (center) to ~0.35 (edges/corners)
-          const proximity = Math.max(0.35, Math.min(1.0, 1 - (currentDist / maxDist) * 0.65));
-          const glowSize = Math.round(240 + proximity * 140); // 240px to 380px
-
-          target.style.setProperty('--mouse-x', `${x}px`);
-          target.style.setProperty('--mouse-y', `${y}px`);
-          target.style.setProperty('--glow-proximity', proximity.toFixed(3));
-          target.style.setProperty('--glow-size', `${glowSize}px`);
-        }
-      });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, []);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -3718,6 +3685,23 @@ e-Vedhika Support System`;
   const [userPinDoc, setUserPinDoc] = useState<any>(null);
   const [loadedUserPin, setLoadedUserPin] = useState<boolean>(false);
 
+  // Active user presence heartbeat for Admin Online Users
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (user && !user.isAnonymous) {
+        const userRef = doc(db, "users", user.uid);
+        updateDoc(userRef, { lastActive: Date.now(), isOnline: true }).catch(() => {});
+        const interval = setInterval(() => {
+          if (auth.currentUser && !auth.currentUser.isAnonymous) {
+            updateDoc(doc(db, "users", auth.currentUser.uid), { lastActive: Date.now(), isOnline: true }).catch(() => {});
+          }
+        }, 60000);
+        return () => clearInterval(interval);
+      }
+    });
+    return () => unsubAuth();
+  }, []);
+
   useEffect(() => {
     if (!isDevEmail) return;
     const unsub = onSnapshot(
@@ -3965,6 +3949,31 @@ e-Vedhika Support System`;
     });
     return () => unsubAuth();
   }, []);
+
+  // Online user presence heartbeat
+  useEffect(() => {
+    if (!user) return;
+    const updatePresence = async () => {
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          isOnline: true,
+          lastActive: Date.now()
+        });
+      } catch (e) {
+        try {
+          await setDoc(doc(db, "users", user.uid), {
+            name: user.displayName || "User",
+            email: user.email,
+            isOnline: true,
+            lastActive: Date.now()
+          }, { merge: true });
+        } catch (err) {}
+      }
+    };
+    updatePresence();
+    const interval = setInterval(updatePresence, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     // Protected Tabs Redirection Control
@@ -4593,30 +4602,23 @@ e-Vedhika Support System`;
     addToast("అందరి యూజర్ల డైరెక్ట్ ఇన్ బాక్స్ లోకి వెల్కమ్ మెసేజ్ పంపడం ప్రారంభమైంది...");
     let sentCount = 0;
     for (const u of allUsers) {
-      if (!u.id) continue;
+      if (!u.id || u.id === user?.uid) continue; // Don't send to self (admin)
       try {
-        const q = query(
-          collection(db, "chat"),
-          where("receiverId", "==", u.id),
-          where("senderId", "==", "evedhika_support_system")
-        );
-        const snap = await getDocs(q).catch(() => null);
-        const alreadyHas = snap?.docs.some((d) => (d.data().text || "").includes("E-Vedhika") || (d.data().text || "").includes("e-Vedhika"));
-        
-        if (!alreadyHas) {
-          await addDoc(collection(db, "chat"), {
-            uid: "evedhika_support_system",
-            senderId: "evedhika_support_system",
-            senderName: "e-Vedhika Support System",
-            senderRole: "Official Support System",
-            receiverId: u.id,
-            text: WELCOME_MESSAGE,
-            createdAt: Date.now(),
-            read: false
-          });
-          sentCount++;
-        }
-      } catch (e) {}
+        // Force send to all existing users as requested "Send to all now"
+        await addDoc(collection(db, "chat"), {
+          uid: "evedhika_support_system",
+          senderId: "evedhika_support_system",
+          senderName: "e-Vedhika Support System",
+          senderRole: "Official Support System",
+          receiverId: u.id,
+          text: WELCOME_MESSAGE,
+          createdAt: Date.now(),
+          read: false
+        });
+        sentCount++;
+      } catch (e) {
+        console.error("Error sending broadcast DM to user", u.id, e);
+      }
     }
     addToast(`🎉 విజయవంతంగా ${sentCount} మంది యూజర్ల ఇన్ బాక్స్ లోకి వెల్కమ్ మెసేజ్ డెలివర్ అయింది!`);
   };
@@ -4635,6 +4637,52 @@ e-Vedhika Support System`;
       provider.setCustomParameters({ prompt: "select_account" });
       const result = await signInWithPopup(auth, provider);
       clearTimeout(slowLoginWarning);
+      setShowAuthModal(false);
+
+      const WELCOME_MESSAGE = `నమస్కారం! 🙏
+
+మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Latest Intelligence Hub / Popular Pulse
+అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
+
+🔹 Latest Updates
+వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
+
+🔹 మన పేజీ
+Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Pre-Ad Service
+State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
+
+🔹 Live Chat
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot సహాయం కూడా అందుబాటులో ఉంది.
+
+🔹 Union Corner & Pulse
+Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
+
+🔹 Public Suggestions & Feedback
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా E-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+
+🔹 Application Formats & GOs
+కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
+
+🔹 Useful Information
+Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
+
+🔹 Excel → A4 Print
+Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
+
+🔹 PDF Compressor
+అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
+
+🔹 Farmer Registry Live Verification
+ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
+
+మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
+
+ధన్యవాదాలు 🙏
+E-Vedhika Support System`;
 
       try {
         const docRef = doc(db, "users", result.user.uid);
@@ -4689,50 +4737,6 @@ e-Vedhika Support System`;
             }).catch(() => {});
           }
 
-          const WELCOME_MESSAGE = `నమస్కారం! 🙏
-
-మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
-
-🔹 Latest Intelligence Hub / Popular Pulse
-అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
-
-🔹 Latest Updates
-వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
-
-🔹 మన పేజీ
-Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
-
-🔹 Pre-Ad Service
-State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
-
-🔹 Live Chat
-ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot సహాయం కూడా అందుబాటులో ఉంది.
-
-🔹 Union Corner & Pulse
-Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
-
-🔹 Public Suggestions & Feedback
-మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా E-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
-
-🔹 Application Formats & GOs
-కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
-
-🔹 Useful Information
-Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
-
-🔹 Excel → A4 Print
-Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
-
-🔹 PDF Compressor
-అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
-
-🔹 Farmer Registry Live Verification
-ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
-
-మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
-
-ధన్యవాదాలు 🙏
-E-Vedhika Team`;
 
         }
 
@@ -4745,6 +4749,18 @@ E-Vedhika Team`;
             type: "admin_alert",
             read: false,
             time: Date.now()
+          }).catch(() => {});
+
+          // Send Welcome DM to new user as requested
+          await addDoc(collection(db, "chat"), {
+            uid: "evedhika_support_system",
+            senderId: "evedhika_support_system",
+            senderName: "e-Vedhika Support System",
+            senderRole: "Official Support System",
+            receiverId: result.user.uid,
+            text: WELCOME_MESSAGE,
+            createdAt: Date.now(),
+            read: false
           }).catch(() => {});
         }
       } catch (e) {}
@@ -5000,12 +5016,18 @@ E-Vedhika Team`;
     }
     
     // Always show e-Vedhika Support System, plus Following OR users with active history
-    return filteredUsers.filter(u => 
+    const finalFiltered = filteredUsers.filter(u => 
       u.id === "evedhika_support_system" ||
       u.id === "e-vedika-official" ||
       (userProfile?.following || []).includes(u.id) || 
       u.lastMessageAt > 0
     ).sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+
+    // Final safety check: if list is empty but we should show support, add it
+    if (finalFiltered.length === 0 && !dmSearchQuery) {
+      return [supportUser];
+    }
+    return finalFiltered;
   }, [allUsers, allDmMessages, user, dmSearchQuery, userProfile]);
 
   const handleRecordProblem = () => {
@@ -7001,7 +7023,7 @@ E-Vedhika Team`;
                     </h3>
                     {[
                       { id: "logs", label: "Security Logs", icon: ShieldAlert },
-                      { id: "visitor_logs", label: "Visitor Logs (పబ్లిక్)", icon: Globe },
+                      { id: "visitor_logs", label: "Visitor Logs (Public)", icon: Globe },
                       
                       { id: "farmer_registry_logs", label: "Farmer Registry Logs", icon: FileText },
                       { id: "survey_reports", label: "Survey Reports", icon: Database },
@@ -20505,6 +20527,8 @@ function DSRAnalyzer({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [currentTime, setCurrentTime] = useState(
     new Date().toLocaleTimeString(),
   );
@@ -21851,23 +21875,26 @@ function DSRAnalyzer({
 
           <input
             type="file"
+            ref={fileInputRef}
             onChange={onUpload}
-            className="hidden"
+            className="sr-only"
             id="dsr-up"
             disabled={isProcessing}
             accept=".xlsx,.xls,.html,.htm,.csv"
           />
           
           <div className="max-w-xl mx-auto space-y-4">
-            <label
-              htmlFor="dsr-up"
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessing}
               className={`bg-primary hover:bg-[#004e80] text-white px-8 sm:px-10 py-4 rounded-2xl font-black shadow-xl transition-all inline-flex items-center gap-3 text-sm tracking-wide ${
                 isProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:shadow-2xl active:scale-95"
               }`}
             >
               <Upload size={18} />
               {isProcessing ? "డేటా ప్రాసెస్ అవుతోంది..." : (data.length > 0 ? "మరో DSR ఫైల్‌ను మార్చండి (Change File)" : "DSR ఎక్సెల్ ఫైల్‌ను ఎంచుకోండి (Select File)")}
-            </label>
+            </button>
             <p className="text-xs text-slate-500">
               మద్దతు ఇచ్చే ఫైల్ ఫార్మాట్‌లు: Excel (.xlsx, .xls), Mana Panchayati HTML Reports
             </p>
@@ -30454,92 +30481,102 @@ function PostComments({
             ))}
           </div>
         </div>
-        {auth.currentUser && !auth.currentUser.isAnonymous ? (
-          <div className="flex flex-col sm:flex-row gap-3 relative">
-            <div className="flex-1 flex flex-col gap-2 relative">
-              {mentionQuery?.target === "comment" && (
-                <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                  {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleMentionSelect(u.username || u.name || "User")}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3"
-                    >
-                      <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
-                        {(u.username || u.name || "U")[0].toUpperCase()}
-                      </div>
-                      <span className="truncate text-slate-700 font-bold">{u.username || u.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {commentFile && (
-                <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg">
-                  <Paperclip size={14} className="text-slate-500" />
-                  <span className="text-xs text-slate-600 truncate flex-1">{commentFile.name}</span>
-                  <button onClick={() => setCommentFile(null)} className="text-red-500 p-1 hover:bg-red-50 rounded">
-                    <Trash2 size={14} />
+        <div className="flex flex-col sm:flex-row gap-3 relative">
+          <div className="flex-1 flex flex-col gap-2 relative">
+            {mentionQuery?.target === "comment" && (
+              <div className="absolute bottom-full mb-1 left-0 w-64 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                {allUsers.filter((u: any) => (u.username || u.name || "").toLowerCase().includes(mentionQuery.query.toLowerCase())).slice(0, 5).map((u: any) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleMentionSelect(u.username || u.name || "User")}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 shrink-0">
+                      {(u.username || u.name || "U")[0].toUpperCase()}
+                    </div>
+                    <span className="truncate text-slate-700 font-bold">{u.username || u.name}</span>
                   </button>
-                </div>
-              )}
-              <div className="flex relative">
-                <input
-                  value={newComment}
-                  onChange={handleCommentChange}
-                  onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && !submittingComment && handleAddComment()}
-                  onPaste={(e) => {
-                    const items = e.clipboardData?.items;
-                    if (!items) return;
-                    for (let i = 0; i < items.length; i++) {
-                      if (items[i].type.indexOf('image') !== -1) {
-                        const file = items[i].getAsFile();
-                        if (file) setCommentFile(file);
-                        break;
-                      }
-                    }
-                  }}
-                  placeholder="Type your comment here..."
-                  className="flex-1 text-base bg-white p-4 pr-12 rounded-xl border-2 border-transparent focus:border-accent outline-none shadow-sm transition-all text-slate-700"
-                />
-                <button
-                  onClick={() => uploadFileInputRef.current?.click()}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-primary transition-colors bg-white rounded-lg"
-                  title="Attach Screenshot"
-                >
-                  <Paperclip size={20} />
-                </button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={uploadFileInputRef}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setCommentFile(file);
-                    e.target.value = "";
-                  }}
-                />
+                ))}
               </div>
+            )}
+            {commentFile && (
+              <div className="flex items-center gap-2 bg-slate-100 p-2 rounded-lg">
+                <Paperclip size={14} className="text-slate-500" />
+                <span className="text-xs text-slate-600 truncate flex-1">{commentFile.name}</span>
+                <button onClick={() => setCommentFile(null)} className="text-red-500 p-1 hover:bg-red-50 rounded cursor-pointer">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )}
+            <div className="flex relative">
+              <input
+                value={newComment}
+                onChange={handleCommentChange}
+                onKeyDown={(e) => (e.ctrlKey || e.metaKey) && e.key === "Enter" && !submittingComment && handleAddComment()}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                      const file = items[i].getAsFile();
+                      if (file) setCommentFile(file);
+                      break;
+                    }
+                  }
+                }}
+                placeholder="మీ కామెంట్ లేదా అభిప్రాయాన్ని ఇక్కడ టైప్ చేయండి..."
+                className="flex-1 text-base bg-white p-4 pr-12 rounded-xl border-2 border-slate-200 focus:border-accent outline-none shadow-sm transition-all text-slate-800 placeholder:text-slate-400"
+              />
+              <button
+                type="button"
+                onClick={() => uploadFileInputRef.current?.click()}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-primary transition-colors bg-white rounded-lg cursor-pointer"
+                title="స్క్రీన్‌షాట్/ఫోటో జోడించండి"
+              >
+                <Paperclip size={20} />
+              </button>
+              <input
+                type="file"
+                accept="image/*"
+                ref={uploadFileInputRef}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setCommentFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Post Comment"
+            disabled={submittingComment || (!newComment.trim() && !commentFile)}
+            onClick={handleAddComment}
+            className="bg-primary hover:bg-primary/90 text-white py-4 px-8 rounded-xl font-black uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+          >
+            {submittingComment ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+            కామెంట్ పంపండి (Post)
+          </button>
+        </div>
+
+        {(!auth.currentUser || auth.currentUser.isAnonymous) && (
+          <div className="mt-3 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900">
+            <div className="flex items-center gap-2 text-xs font-bold text-center sm:text-left">
+              <Info size={16} className="text-amber-600 shrink-0" />
+              <span>కామెంట్ పబ్లిష్ చేయడానికి లేదా లైక్ చేయడానికి దయచేసి లాగిన్ అవ్వండి.</span>
             </div>
             <button
-              aria-label="Post Comment"
-              disabled={submittingComment || (!newComment.trim() && !commentFile)}
-              onClick={handleAddComment}
-              className="bg-primary text-white py-4 px-8 rounded-xl font-black uppercase tracking-wider disabled:opacity-50 hover:bg-opacity-90 flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("open-login-modal"))}
+              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-black text-xs transition-colors shadow-sm cursor-pointer whitespace-nowrap"
             >
-              {submittingComment ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Send size={18} />
-              )}
-              Post
+              🔑 లాగిన్ / రిజిస్టర్ అవ్వండి
             </button>
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-sm font-bold text-slate-500">
-              Please login to join the conversation and comment.
-            </p>
           </div>
         )}
       </div>

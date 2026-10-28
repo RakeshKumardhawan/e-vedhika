@@ -249,7 +249,7 @@ export function TelegramNotificationCard({ addToast }: TelegramNotificationCardP
       {/* PC Allow / Block (Mute) Manager */}
       <div className="pt-6 border-t border-slate-100 space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">🛡️ టెలిగ్రామ్ PC అనుమతి & మ్యూట్ మేనేజర్ (Allow / Mute PC)</h4>
+          <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">🛡️ Telegram PC Allow & Mute Manager</h4>
           <span className="text-xs font-bold text-slate-400">Total Registered PCs: {pcFilters.allPcs.length}</span>
         </div>
         

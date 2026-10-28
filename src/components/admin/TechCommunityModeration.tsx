@@ -34,30 +34,30 @@ export function TechCommunityModeration() {
       await addDoc(collection(db, "security_logs"), {
         category: "PERMISSION_CHANGE", title: "Post Published", description: "Post " + id + " was published", admin: "Admin", time: Date.now()
       });
-      Swal.fire({ icon: 'success', title: 'పోస్ట్ విజయవంతంగా పబ్లిష్ చేయబడింది!', timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: 'success', title: 'Post published successfully!', timer: 1500, showConfirmButton: false });
     } else if (action === 'reject') {
       await updateDoc(doc(db, "posts", id), { status: "rejected" });
       await addDoc(collection(db, "security_logs"), {
         category: "DELETE", title: "Post Rejected", description: "Post " + id + " was rejected", admin: "Admin", time: Date.now()
       });
-      Swal.fire({ icon: 'success', title: 'పోస్ట్ తిరస్కరించబడింది (Rejected)', timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: 'success', title: 'Post Rejected', timer: 1500, showConfirmButton: false });
     } else if (action === 'private_support') {
       if (postDoc) {
         const res = await pushPostToSupportSystem(postDoc);
         if (res.success) {
           Swal.fire({
             icon: 'success',
-            title: 'సపోర్ట్ సిస్టమ్‌కు పంపబడింది! (Pushed to Support)',
+            title: 'Pushed to Support System!',
             html: `
               <div class="text-left text-xs text-slate-600 space-y-2">
-                <p>పోస్ట్ విజయవంతంగా సపోర్ట్ సిస్టమ్ / ఇన్క్వైరీస్ లోకి మార్చబడింది.</p>
+                <p>Post has been successfully transferred to Support / Inquiries.</p>
                 <div class="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-center my-2">
-                  <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">యూనిక్ ట్రాకింగ్ నెంబర్ (Tracking Number)</span>
+                  <span class="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">Tracking Number</span>
                   <span class="text-lg font-mono font-black text-indigo-700 select-all block mt-0.5">#${res.trackingNumber}</span>
                 </div>
               </div>
             `,
-            confirmButtonText: 'సరే (OK)',
+            confirmButtonText: 'OK',
             confirmButtonColor: '#4f46e5'
           });
         }
@@ -143,27 +143,27 @@ export function TechCommunityModeration() {
                     <td className="p-3 text-right flex items-center justify-end gap-2">
                       <button 
                         onClick={() => setSelectedPostDetail(item)}
-                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="పూర్తి వివరాలు చూడండి (View Full Details)"
+                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="View Full Details"
                       >
                         <Eye size={16} />
                       </button>
                       <button 
                         onClick={() => handleAction(item.id, 'approve')}
-                        className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors" title="ప్రచురించు (Publish)"
+                        className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors" title="Publish"
                       >
                         <CheckCircle size={16} />
                       </button>
                       <button 
                         onClick={() => handleAction(item.id, 'private_support')}
                         className="p-1.5 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-700 hover:bg-purple-100 rounded-lg transition-all flex items-center gap-1 font-bold text-[10px]" 
-                        title="పుష్ టు సపోర్ట్"
+                        title="Push to Support"
                       >
                         <LifeBuoy size={14} className="text-purple-600" />
-                        <span className="hidden sm:inline">సపోర్ట్</span>
+                        <span className="hidden sm:inline">Support</span>
                       </button>
                       <button 
                         onClick={() => handleAction(item.id, 'reject')}
-                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors" title="తిరస్కరించు (Reject)"
+                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors" title="Reject"
                       >
                         <Trash2 size={16} />
                       </button>

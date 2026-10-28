@@ -182,10 +182,10 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
       // Also write to settings/seo_meta for backup consistency
       await setDoc(doc(db, "settings", "seo_meta"), payload, { merge: true });
 
-      addToast("SEO & Meta Tags updated and applied successfully! (SEO సెట్టింగ్‌లు భద్రపరచబడ్డాయి)");
+      addToast("SEO & Meta Tags updated and applied successfully!");
     } catch (err: any) {
       console.warn("Firestore sync error for SEO settings, saved locally:", err);
-      addToast("SEO & Meta Tags applied locally! (SEO సెట్టింగ్‌లు లోకల్‌గా భద్రపరచబడ్డాయి)");
+      addToast("SEO & Meta Tags applied locally!");
     } finally {
       setSaving(false);
     }
@@ -197,7 +197,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
       ogTitle: prev.seoTitle,
       ogDescription: prev.seoDescription,
     }));
-    addToast("SEO Title & Description copied to OpenGraph! (OG వివరణ కాపీ చేయబడింది)");
+    addToast("SEO Title & Description copied to OpenGraph!");
   };
 
   const resetDefaults = () => {
@@ -212,7 +212,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
           <RefreshCw size={28} />
         </div>
         <p className="text-sm font-bold text-slate-600">
-          SEO & మెటా ట్యాగ్స్ లోడ్ అవుతున్నాయి... (Loading SEO & Meta Tags...)
+          Loading SEO & Meta Tags...
         </p>
       </div>
     );
@@ -229,14 +229,14 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
             <div className="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-3">
-              <Sparkles size={12} /> Live Meta Tag Manager (డైనామిక్ SEO మేనేజర్)
+              <Sparkles size={12} /> Live Meta Tag Manager
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
               <Globe className="text-amber-400" size={28} />
               SEO & Dynamic Meta Tags
             </h2>
             <p className="text-xs sm:text-sm text-blue-200 mt-1 max-w-2xl font-medium">
-              సెర్చ్ ఇంజిన్‌లు (Google, Bing) మరియు వాట్సాప్ / ఫేస్‌బుక్ షేరింగ్ కోసం మెటా వివరణలు, OG ఇమేజ్‌లు మరియు టైటిల్స్‌ను సులభంగా నిర్వహించండి.
+              Easily manage meta descriptions, OpenGraph images, and titles for Google, Bing, and social media sharing.
             </p>
           </div>
 
@@ -244,9 +244,9 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
             <button
               onClick={resetDefaults}
               className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/10 flex items-center gap-2"
-              title="డిఫాల్ట్ విలువలకు మార్చు"
+              title="Reset to default values"
             >
-              <RefreshCw size={14} /> డిఫాల్ట్
+              <RefreshCw size={14} /> Default
             </button>
             <button
               onClick={handleSave}
@@ -254,7 +254,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
               className="px-6 py-3 rounded-2xl bg-[#fbe947] hover:bg-yellow-400 text-[#103052] font-black text-xs uppercase tracking-wider transition-all shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center gap-2"
             >
               <Save size={16} />
-              {saving ? "భద్రపరుస్తోంది..." : "SEO సేవ్ చేయి"}
+              {saving ? "Saving..." : "Save SEO"}
             </button>
           </div>
         </div>
@@ -271,7 +271,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
           }`}
         >
           <Search size={15} />
-          1. సెర్చ్ ఇంజిన్ SEO (Search Meta Tags)
+          1. Search Engine SEO
         </button>
         <button
           onClick={() => setActiveTab("og")}
@@ -282,7 +282,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
           }`}
         >
           <Share2 size={15} />
-          2. వాట్సాప్ & సోషల్ షేరింగ్ (OpenGraph & Images)
+          2. OpenGraph & Social Sharing
         </button>
         <button
           onClick={() => setActiveTab("preview")}
@@ -293,7 +293,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
           }`}
         >
           <Eye size={15} />
-          3. లైవ్ ప్రివ్యూ (Live Snippet Preview)
+          3. Live Snippet Preview
         </button>
       </div>
 
@@ -305,10 +305,10 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
               <div>
                 <h3 className="text-base font-black text-[#103052] flex items-center gap-2">
                   <Search className="text-blue-600" size={18} />
-                  సెర్చ్ ఇంజిన్ మెటా టాగ్స్ (Search Engine Optimization)
+                  Search Engine Meta Tags
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Google మరియు ఇతర సెర్చ్ ఫలితాల్లో కనిపించే శీర్షిక, వివరణ వివరాలు.
+                  Title and description details displayed in Google and search engine results.
                 </p>
               </div>
             </div>
@@ -317,7 +317,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  SEO Title (పేజీ ప్రధాన శీర్షిక)
+                  SEO Title
                 </label>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -326,7 +326,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
                       : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {titleLength} / 60 క్యారెక్టర్లు (సూచించిన సైజు: 50-60)
+                  {titleLength} / 60 characters (Recommended: 50-60)
                 </span>
               </div>
               <input
@@ -342,7 +342,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  SEO Meta Description (శోధన వివరణ)
+                  SEO Meta Description
                 </label>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -351,14 +351,14 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
                       : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {descLength} / 160 క్యారెక్టర్లు (సూచించిన సైజు: 140-160)
+                  {descLength} / 160 characters (Recommended: 140-160)
                 </span>
               </div>
               <textarea
                 value={seo.seoDescription}
                 onChange={(e) => handleChange("seoDescription", e.target.value)}
                 rows={3}
-                placeholder="Google ఫలితాల్లో కనిపించే సారాంశం..."
+                placeholder="Summary displayed in Google search results..."
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 font-medium text-xs text-slate-800 outline-none focus:border-blue-600 focus:bg-white transition-all shadow-inner resize-y"
               />
             </div>
@@ -366,7 +366,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
             {/* Meta Keywords */}
             <div>
               <label className="text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5 block">
-                Meta Keywords (కీవర్డ్‌లు - కామాలతో వేరుచేయండి)
+                Meta Keywords (comma separated)
               </label>
               <input
                 type="text"
@@ -381,23 +381,23 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
                 <label className="text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5 block">
-                  Meta Robots (సెర్చ్ ఇండెక్సింగ్ అనుమతి)
+                  Meta Robots (Search Indexing)
                 </label>
                 <select
                   value={seo.metaRobots}
                   onChange={(e) => handleChange("metaRobots", e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 font-bold text-xs text-slate-800 outline-none focus:border-blue-600"
                 >
-                  <option value="index, follow">🟢 index, follow (అన్ని సెర్చ్ ఇంజిన్‌లకు అనుమతించు - డిఫాల్ట్)</option>
-                  <option value="noindex, follow">🟡 noindex, follow (పేజీ ఇండెక్స్ చేయవద్దు, లింకులు ఫాలో అవ్వు)</option>
-                  <option value="index, nofollow">🟡 index, nofollow (ఇండెక్స్ చేయి, లింకులు ఫాలో అవ్వొద్దు)</option>
-                  <option value="noindex, nofollow">🔴 noindex, nofollow (పూర్తిగా నిరోధించు)</option>
+                  <option value="index, follow">🟢 index, follow (Allow all search engines - Default)</option>
+                  <option value="noindex, follow">🟡 noindex, follow (Do not index page, follow links)</option>
+                  <option value="index, nofollow">🟡 index, nofollow (Index page, do not follow links)</option>
+                  <option value="noindex, nofollow">🔴 noindex, nofollow (Block completely)</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5 block">
-                  Author / Publisher (రచయిత వివరాలు)
+                  Author / Publisher
                 </label>
                 <input
                   type="text"
@@ -412,7 +412,7 @@ export function SeoMetaAdmin({ addToast }: { addToast: (msg: string) => void }) 
             {/* Canonical URL */}
             <div>
               <label className="text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
-                <LinkIcon size={12} /> Canonical URL (ప్రధాన అధికారిక లింక్)
+                <LinkIcon size={12} /> Canonical URL
               </label>
               <input
                 type="text"

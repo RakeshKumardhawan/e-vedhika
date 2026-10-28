@@ -95,26 +95,26 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, { view: boolean; e
   }
 };
 
-const MODULE_DEFINITIONS: Record<string, { name: string; telugu: string; desc: string }> = {
-  dash: { name: "Analytics Hub", telugu: "అనలిటిక్స్ హబ్", desc: "ముఖ్యమైన గణాంకాలు & గ్రాఫ్‌ల వీక్షణ" },
-  reports: { name: "Posts & Issues", telugu: "సమస్యలు & పోస్టులు", desc: "పౌరుల సమస్యల పరిష్కారం, మరియు పోస్టుల అనుమతి" },
-  moderation: { name: "Pending Submissions", telugu: "మోడరేషన్ క్యూ", desc: "పెండింగ్ పోస్ట్‌ల సమీక్ష మరియు ఆమోదం" },
-  gos_formats: { name: "GOs & Formats", telugu: "జీవోలు & ఫార్మాట్లు", desc: "సర్కారు జీవోలు, దరఖాస్తు ఫార్మాట్ల నియంత్రణ" },
-  updates: { name: "Flash News", telugu: "ఫ్లాష్ న్యూస్ & నోటీసులు", desc: "ముఖ్యమైన ప్రకటనలు, స్క్రోలింగ్ తాజా వార్తలు" },
-  users: { name: "User Access", telugu: "యూజర్ల అడ్మిన్", desc: "యూజర్ల వివరాలు మరియు డైరెక్టరీ నిర్వహణ" },
-  roles: { name: "Roles & Permissions", telugu: "రోల్స్ & అనుమతులు", desc: "సిబ్బంది రోల్స్ & RBAC అనుమతుల నియంత్రణ" },
-  cms: { name: "Content CMS", telugu: "విజువల్ CMS", desc: "కంటెంట్ ఎడిటర్ మరియు పబ్లికేషన్స్" },
-  builder: { name: "Page Builder", telugu: "పేజ్ బిల్డర్", desc: "వెబ్‌సైట్ లేఅవుట్ మరియు సెక్షన్ల మార్పులు" },
-  locations: { name: "Manage Locations", telugu: "లొకేషన్లు", desc: "జిల్లాలు, మండలాలు, గ్రామాల జాబితా నిర్వహణ" },
-  support: { name: "Support Center", telugu: "సపోర్ట్ సిస్టమ్", desc: "పౌరుల సపోర్ట్ టికెట్లు & సహాయ సంభాషణలు" },
-  admin_inbox: { name: "Admin Inbox", telugu: "అడ్మిన్ ఇన్‌బాక్స్", desc: "యూజర్ల డైరెక్ట్ సందేశాల రిసీవింగ్" },
-  chat_mgmt: { name: "User Chat Mgmt", telugu: "చాట్ మేనేజ్‌మెంట్", desc: "యూజర్ చాట్ లాగ్స్ & కమ్యూనికేషన్ మానిటరింగ్" },
-  suggestions: { name: "Suggestions & Feedback", telugu: "సలహాలు & ఫీడ్‌బ్యాక్", desc: "పౌరుల సలహాల స్వీకరణ మరియు పరిష్కారాలు" },
-  trash: { name: "Recycle Bin", telugu: "రీసైకిల్ బిన్", desc: "తొలగించిన రికార్డుల వీక్షణ మరియు పునరుద్ధరణ" },
-  logs: { name: "Security Logs", telugu: "సెక్యూరిటీ లాగ్స్", desc: "అడ్మిన్ లాగిన్, ఎడిట్ & యాక్టివిటీ లాగ్స్" },
-  db_backup: { name: "Database Backups", telugu: "డేటాబేస్ బ్యాకప్", desc: "డేటా ఎక్స్‌పోర్ట్, బ్యాకప్ & రికవరీ" },
-  settings: { name: "System Config", telugu: "సిస్టమ్ సెట్టింగ్స్", desc: "సిస్టమ్ పిన్స్, పోర్టల్ కాన్ఫిగరేషన్" },
-  ai: { name: "Gemini AI Node", telugu: "జెమినీ AI అసిస్టెంట్", desc: "AI ఆటోమేషన్ & స్మార్ట్ అసిస్టెంట్" },
+const MODULE_DEFINITIONS: Record<string, { name: string; desc: string }> = {
+  dash: { name: "Analytics Hub", desc: "Important statistics & graphs view" },
+  reports: { name: "Posts & Issues", desc: "Citizen issue resolution and post approval" },
+  moderation: { name: "Pending Submissions", desc: "Pending post review and approval" },
+  gos_formats: { name: "GOs & Formats", desc: "Government orders and application format control" },
+  updates: { name: "Flash News", desc: "Important announcements and scrolling latest news" },
+  users: { name: "User Access", desc: "User details and directory management" },
+  roles: { name: "Roles & Permissions", desc: "Staff roles & RBAC permission control" },
+  cms: { name: "Content CMS", desc: "Content editor and publications" },
+  builder: { name: "Page Builder", desc: "Website layout and section modifications" },
+  locations: { name: "Manage Locations", desc: "Districts, mandals, and village list management" },
+  support: { name: "Support Center", desc: "Citizen support tickets & help conversations" },
+  admin_inbox: { name: "Admin Inbox", desc: "Receiving direct messages from users" },
+  chat_mgmt: { name: "User Chat Mgmt", desc: "User chat logs & communication monitoring" },
+  suggestions: { name: "Suggestions & Feedback", desc: "Citizen suggestions collection and solutions" },
+  trash: { name: "Recycle Bin", desc: "Deleted records view and restoration" },
+  logs: { name: "Security Logs", desc: "Admin login, edit & activity logs" },
+  db_backup: { name: "Database Backups", desc: "Data export, backup & recovery" },
+  settings: { name: "System Config", desc: "System PINs, portal configuration" },
+  ai: { name: "Gemini AI Node", desc: "AI automation & smart assistant" },
 };
 
 const TELANGANA_MANDAL_DISTRICT_MAP: Record<string, string> = {
@@ -362,7 +362,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
         </div>
       `,
       input: "text",
-      inputLabel: "Enter New 4-Digit Security PIN (4 అంకెల పిన్ నమోదు చేయండి)",
+      inputLabel: "Enter New 4-Digit Security PIN",
       inputValue: existingPin,
       inputAttributes: {
         maxlength: "4",
@@ -418,17 +418,17 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
   // Handle Block / Unblock User
   const handleToggleUserBan = async (userItem: any) => {
     const isBanned = !!userItem.banned;
-    const actionName = isBanned ? "అన్‌బ్లాక్ (Unblock)" : "బ్లాక్ (Block)";
+    const actionName = isBanned ? "Unblock" : "Block";
     const fullName = getUserFullName(userItem);
 
     const res = await Swal.fire({
       title: `${actionName} - ${fullName}?`,
-      text: isBanned ? "ఈ యూజర్ తిరిగి పోర్టల్‌ను యాక్సెస్ చేయవచ్చు." : "ఈ యూజర్ పోర్టల్‌ను ఉపయోగించకుండా బ్లాక్ చేయబడతారు.",
+      text: isBanned ? "This user will regain access to the portal." : "This user will be blocked from accessing the portal.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: isBanned ? "#10b981" : "#ef4444",
-      confirmButtonText: `అవును, ${actionName}`,
-      cancelButtonText: "రద్దు చేయి"
+      confirmButtonText: `Yes, ${actionName}`,
+      cancelButtonText: "Cancel"
     });
 
     if (!res.isConfirmed) return;
@@ -449,7 +449,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
   const handleSendAdminNotification = async (userItem: any) => {
     const fullName = getUserFullName(userItem);
     const { value: messageText } = await Swal.fire({
-      title: `సందేశం పంపు (Send Admin Alert): ${fullName}`,
+      title: `Send Admin Alert: ${fullName}`,
       input: "textarea",
       inputLabel: "Type direct notice or warning to this user:",
       inputPlaceholder: "Enter notification message...",
@@ -463,7 +463,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
     try {
       await addDoc(collection(db, "notifications"), {
         uid: userItem.id,
-        title: "🛡️ అడ్మిన్ ప్రత్యేక సందేశం (Admin Notice)",
+        title: "🛡️ Admin Notice",
         message: messageText.trim(),
         type: "admin_direct_notice",
         senderName: currentUser?.fullName || currentUser?.name || "Super Admin",
@@ -493,15 +493,35 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
     });
   };
 
-  // Helper to detect currently active/online users with 10s heartbeat
+  // Helper to safely parse timestamp from Firestore objects, strings, or numbers
+  const parseTimestampMs = (raw: any): number => {
+    if (!raw) return 0;
+    if (typeof raw === 'number') return raw > 1e12 ? raw : raw * 1000;
+    if (typeof raw === 'object' && raw !== null) {
+      if (typeof raw.toMillis === 'function') return raw.toMillis();
+      if (typeof raw.seconds === 'number') return raw.seconds * 1000;
+    }
+    const parsed = Date.parse(raw);
+    if (!isNaN(parsed)) return parsed;
+    return 0;
+  };
+
+  // Helper to detect currently active/online users
   const isUserOnline = (u: any) => {
     if (!u) return false;
     if (u.isDeleted || u.banned) return false;
     if (currentUser?.uid && (u.id === currentUser.uid || u.uid === currentUser.uid)) return true;
+    
     const now = presenceTick;
-    const HEARTBEAT_WINDOW = 35 * 1000;
-    if (u.isOnline && u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
-    if (u.lastActive && (now - Number(u.lastActive) < HEARTBEAT_WINDOW)) return true;
+    const ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+    const lastActiveMs = parseTimestampMs(u.lastActive || u.lastSeen || u.updatedAt || u.registeredAt || u.createdAt || u.time);
+
+    if (u.isOnline === true || u.status === 'online') {
+      if (lastActiveMs === 0 || (now - lastActiveMs < 15 * 60 * 1000)) return true;
+    }
+
+    if (lastActiveMs > 0 && (now - lastActiveMs < ACTIVE_WINDOW_MS)) return true;
+
     return false;
   };
 
@@ -626,7 +646,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
               <div className="flex flex-wrap items-center gap-1.5">
                 {[
                   { id: "all", label: "All Users", count: users.length },
-                  { id: "online", label: "🟢 ఆన్‌లైన్ (Online)", count: users.filter(isUserOnline).length },
+                  { id: "online", label: "🟢 Online", count: users.filter(isUserOnline).length },
                   { id: "staff", label: "All Staff", count: staffCount },
                   { id: "super_admin", label: "Super Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'super_admin' || (u.email && u.email.toLowerCase() === 'rakeshkumardhawan123@gmail.com')).length },
                   { id: "admin", label: "Admin", count: users.filter(u => (u.role || '').toLowerCase() === 'admin').length },
@@ -682,8 +702,8 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
           <div className="space-y-4">
             <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">యూజర్ల జాబితా (User Directory Cards)</h4>
-                <p className="text-[11px] text-slate-500">కార్డుపై మౌస్ ఉంచితే పూర్తి వివరాలు పక్కనే కనిపిస్తాయి (Hover over any user card to view details)</p>
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">User Directory Cards</h4>
+                <p className="text-[11px] text-slate-500">Hover over any user card to view details</p>
               </div>
               <span className="text-xs font-black text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl">
                 Total Users: {filteredUsers.length}
@@ -703,14 +723,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                 [...filteredUsers].sort((a, b) => {
                   const getTimestamp = (u: any) => {
                     const raw = u.createdAt || u.registeredAt || u.timestamp || u.joinedAt || u.time;
-                    if (!raw) {
-                      const text = `${u.fullName || ''} ${u.email || ''}`.toLowerCase();
-                      // Priority for today's identified users
-                      if (text.includes("maheshwaram") || text.includes("zaffergadh")) {
-                        return new Date("2026-10-26T17:44:00").getTime();
-                      }
-                      return 0;
-                    }
+                    if (!raw) return 0;
                     if (typeof raw === 'object' && raw !== null) {
                       if (typeof raw.toMillis === 'function') return raw.toMillis();
                       if (typeof raw.seconds === 'number') return raw.seconds * 1000;
@@ -726,13 +739,9 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                     const ts = getTimestamp(u);
                     if (ts > 0) {
                       const d = new Date(ts);
-                      // Exact date match for user's requested "Today" (26-10-2026)
-                      if (d.getDate() === 26 && d.getMonth() === 9 && d.getFullYear() === 2026) return true;
                       const now = new Date();
-                      if (d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) return true;
+                      return d.toDateString() === now.toDateString();
                     }
-                    const text = `${u.fullName || ''} ${u.email || ''}`.toLowerCase();
-                    if (text.includes("maheshwaram") || text.includes("zaffergadh")) return true;
                     return false;
                   };
 
@@ -756,8 +765,8 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                   const userMandal = resolvedLoc.mandal || u.mandal || "N/A";
 
                   const rawTime = u.createdAt || u.registeredAt || u.timestamp || u.joinedAt || u.time;
-                  let regDate = '26 Oct 2026, 05:44 pm';
-                  let isRegisteredToday = true;
+                  let regDate = 'N/A';
+                  let isRegisteredToday = false;
 
                   if (rawTime) {
                     try {
@@ -776,8 +785,8 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
 
                       if (millis > 0) {
                         const d = new Date(millis);
-                        isRegisteredToday = (d.getDate() === 26 && d.getMonth() === 9 && d.getFullYear() === 2026) ||
-                                            (d.toDateString() === new Date().toDateString());
+                        const now = new Date();
+                        isRegisteredToday = d.toDateString() === now.toDateString();
                         regDate = d.toLocaleString('en-IN', {
                           day: '2-digit',
                           month: 'short',
@@ -785,6 +794,8 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                           hour: '2-digit',
                           minute: '2-digit',
                         });
+                      } else {
+                        regDate = String(rawTime);
                       }
                     } catch (e) {
                       regDate = String(rawTime);
@@ -792,7 +803,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                   }
 
                   const usageTime = u.usageTime || (isRegisteredToday ? "21 MINUTES" : "6 MINUTES");
-                  const visitCount = u.visitCount ? `${u.visitCount} TIMES (సార్లు)` : (isRegisteredToday ? "2 TIMES (సార్లు)" : "1 TIMES (సార్లు)");
+                  const visitCount = u.visitCount ? `${u.visitCount} TIMES` : (isRegisteredToday ? "2 TIMES" : "1 TIMES");
                   const statusBadge = online 
                     ? "• ONLINE • ACTIVE SESSION" 
                     : (u.lastActive ? `• OFFLINE (${Math.round((Date.now() - Number(u.lastActive)) / 60000)}M AGO) • 21M SESSION` : "• OFFLINE (60M AGO) • 21M SESSION");
@@ -998,7 +1009,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
             const pin = userPins[u.id];
             const online = isUserOnline(u);
             const rawTime = u.createdAt || u.registeredAt || u.timestamp;
-            let regDate = 'సమాచారం అందుబాటులో లేదు';
+            let regDate = 'Information not available';
             if (rawTime) {
               try {
                 const millis = typeof rawTime.toMillis === 'function' ? rawTime.toMillis() :
@@ -1074,7 +1085,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                           📞 Contact Information
                         </span>
                         <p className="font-bold text-slate-900">
-                          {u.mobile || u.phone || "ఫోన్ నెంబర్ లేదు (No Phone)"}
+                          {u.mobile || u.phone || "No Phone Number"}
                         </p>
                       </div>
 
@@ -1110,7 +1121,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
 
                     <div className="pt-2 border-t border-slate-200/60 text-xs">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                        🕒 Registered (ఫైర్‌బేస్ రికార్డ్ ప్రకారం)
+                        🕒 Registered (As per Firebase record)
                       </span>
                       <p className="font-mono font-bold text-slate-800 text-sm">
                         {regDate}
@@ -1154,7 +1165,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                       onClick={() => setSelectedUserForModal(null)}
                       className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-all cursor-pointer"
                     >
-                      మూసివేయి (Close)
+                      Close
                     </button>
                   </div>
                 </div>
@@ -1173,7 +1184,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                 <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
                   <Lock size={22} />
                 </span>
-                కార్యాచరణ అనుమతుల నియంత్రణ (RBAC Permissions Matrix)
+                RBAC Permissions Matrix
               </h3>
               <p className="text-slate-400 font-bold mt-1 text-xs uppercase tracking-widest pl-14">
                 Configure module-level View, Edit, and Delete privileges for each role tier
@@ -1217,9 +1228,9 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-wider">
                   <th className="py-4 pl-6 text-left">Module / Feature Name</th>
-                  <th className="py-4 text-center">VIEW (చూడవచ్చు)</th>
-                  <th className="py-4 text-center">EDIT (మార్చవచ్చు)</th>
-                  <th className="py-4 text-center">DELETE (తొలగింపు)</th>
+                  <th className="py-4 text-center">VIEW</th>
+                  <th className="py-4 text-center">EDIT</th>
+                  <th className="py-4 text-center">DELETE</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -1234,7 +1245,7 @@ export function RolesAndPermissionsControl({ currentUser, addToast, initialRoleF
                     <tr key={key} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-4 pl-6 pr-4">
                         <p className="font-bold text-slate-900 text-xs leading-tight">
-                          {def.name} <span className="text-slate-400 font-normal">({def.telugu})</span>
+                          {def.name}
                         </p>
                         <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
                           {def.desc}

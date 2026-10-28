@@ -76,7 +76,7 @@ export function SitemapSeoGenerator() {
       });
       
       if (res.ok) {
-        setStatusMsg("సitemap విజయవంతంగా పునరుత్పత్తి చేయబడింది! (Sitemap successfully regenerated!)");
+        setStatusMsg("Sitemap successfully regenerated!");
         await fetchSitemapData();
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -105,7 +105,7 @@ export function SitemapSeoGenerator() {
       });
       
       if (res.ok) {
-        setStatusMsg("robots.txt విజయవంతంగా సేవ్ చేయబడింది! (robots.txt saved successfully!)");
+        setStatusMsg("robots.txt saved successfully!");
       } else {
         const errData = await res.json().catch(() => ({}));
         setErrorMsg(errData.error || "Failed to save robots.txt.");
@@ -210,13 +210,13 @@ export function SitemapSeoGenerator() {
                   <tr>
                     <td colSpan={4} className="p-8 text-center text-slate-400 font-bold">
                       <RefreshCw size={16} className="animate-spin mx-auto mb-2 text-slate-300" />
-                      యూఆర్‌ఎల్‌లు లోడ్ అవుతున్నాయి... (Loading URLs...)
+                      Loading URLs...
                     </td>
                   </tr>
                 ) : urls.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="p-8 text-center text-slate-400 font-bold">
-                      సitemapలో ఎటువంటి యూఆర్‌ఎల్‌లు లేవు. (No URLs in sitemap. Click regenerate to create one.)
+                      No URLs in sitemap. Click regenerate to create one.
                     </td>
                   </tr>
                 ) : (

@@ -69,10 +69,10 @@ export function AdminInbox({ user }: any) {
 
   const getStatusBadge = (status: string) => {
     switch(status) {
-      case "new": return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">కొత్తవి (New)</span>;
-      case "read": return <span className="px-2 py-1 bg-slate-100 text-slate-800 rounded-full text-xs font-bold">చదివినవి (Read)</span>;
-      case "pending": return <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">పెండింగ్ (Pending)</span>;
-      case "resolved": return <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">పరిష్కరించబడినవి (Resolved)</span>;
+      case "new": return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">New</span>;
+      case "read": return <span className="px-2 py-1 bg-slate-100 text-slate-800 rounded-full text-xs font-bold">Read</span>;
+      case "pending": return <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">Pending</span>;
+      case "resolved": return <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">Resolved</span>;
       default: return null;
     }
   };
