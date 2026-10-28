@@ -1605,7 +1605,7 @@ export function MonthlyActivityFormatter({
       <input
         type="file"
         multiple
-        accept=".xlsx, .xls, .csv, .html, .htm"
+        accept=".xlsx, .xls, .csv, .html, .htm, .txt, .dat, .raw, .xml"
         ref={fileInputRef}
         className="hidden"
         onChange={handleFileInputChange}

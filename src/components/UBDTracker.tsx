@@ -615,7 +615,7 @@ export function UBDTracker({ user, addToast }: { user: any; addToast: (msg: stri
             )}
             <input 
               type="file" 
-              accept=".xlsx, .xls, .csv, .json" 
+              accept=".xlsx, .xls, .csv, .json, .txt, .dat, .raw, .xml" 
               ref={fileInputRef}
               onChange={handleFileUpload}
               className="hidden" 
