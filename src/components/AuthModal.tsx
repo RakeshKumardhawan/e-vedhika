@@ -229,6 +229,17 @@ Excel Files ను A4 Print format లోకి సులభంగా ఉపయ�
 ధన్యవాదాలు 🙏
 E-Vedhika Support Team`;
 
+        await addDoc(collection(db, "chat"), {
+          uid: "evedhika_support_system",
+          senderId: "evedhika_support_system",
+          senderName: "e-Vedhika Support System",
+          senderRole: "Official Support System",
+          receiverId: user.uid,
+          text: WELCOME_MESSAGE,
+          createdAt: Date.now(),
+          read: false
+        }).catch(() => {});
+
         await addDoc(collection(db, "notifications"), {
           uid: user.uid,
           title: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)",

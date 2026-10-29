@@ -83,6 +83,33 @@ export function SuperAdminDashboard({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastActive, setBroadcastActive] = useState(false);
 
+  // Welcome Message Delivery Report Modal State
+  const [showWelcomeReportModal, setShowWelcomeReportModal] = useState(false);
+  const [welcomeReportLoading, setWelcomeReportLoading] = useState(false);
+  const [welcomeReportData, setWelcomeReportData] = useState<any>(null);
+  const [welcomeFilter, setWelcomeFilter] = useState<'all' | 'delivered' | 'already_received' | 'failed'>('all');
+  const [welcomeSearch, setWelcomeSearch] = useState('');
+
+  const handleRunWelcomeBroadcast = async () => {
+    setWelcomeReportLoading(true);
+    setShowWelcomeReportModal(true);
+    try {
+      const res = await fetch('/api/admin/broadcast-welcome-messages');
+      const data = await res.json();
+      if (data.success) {
+        setWelcomeReportData(data);
+        if (addToast) addToast(`వెల్కమ్ మెసేజ్ విడుదల పూర్తయింది! (${data.deliveredCount} కొత్తవి, ${data.alreadyHadCount} ఇప్పటికే పంపినవి)`, "success");
+      } else {
+        if (addToast) addToast("విడుదల విఫలమైంది: " + (data.error || "Unknown error"), "error");
+      }
+    } catch (err: any) {
+      console.error("Welcome broadcast trigger error:", err);
+      if (addToast) addToast("వెల్కమ్ మెసేజ్ విడుదలలో లోపం జరిగింది", "error");
+    } finally {
+      setWelcomeReportLoading(false);
+    }
+  };
+
   // Global Search Modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [adminUserRoleFilter, setAdminUserRoleFilter] = useState<string>("all");
@@ -920,7 +947,7 @@ export function SuperAdminDashboard({
                     { l: "Database Backups", i: "db_backup", icon: Database, color: "text-cyan-400", bg: "bg-cyan-400/10" },
                     { l: "Software Hub & Files", i: "admin_software_hub", icon: HardDrive, color: "text-indigo-400", bg: "bg-indigo-400/10" },
                     { l: "Security & Audit", i: "security", icon: ShieldAlert, color: "text-pink-400", bg: "bg-pink-400/10" },
-                    { l: "Broadcast Welcome DM", i: "broadcast_dm", icon: MessageCircle, color: "text-rose-400", bg: "bg-rose-400/10", action: onBroadcastWelcomeDM },
+                    { l: "Broadcast Welcome DM", i: "broadcast_dm", icon: MessageCircle, color: "text-rose-400", bg: "bg-rose-400/10", action: () => { if (onBroadcastWelcomeDM) onBroadcastWelcomeDM(); handleRunWelcomeBroadcast(); } },
                   ].map((btn, i) => (
                     <button 
                       key={i} 
@@ -1328,6 +1355,188 @@ export function SuperAdminDashboard({
                   <button onClick={() => exportToCSV(recentVisitors, "visitors_backup")} className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-all">CSV</button>
                   <button onClick={() => exportToJSON(recentVisitors, "visitors_backup")} className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black transition-all">JSON</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Welcome Message Delivery Report Modal */}
+      {showWelcomeReportModal && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-5 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-white/10 text-emerald-400 border border-white/10">
+                  <MessageCircle size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                    💬 వెల్కమ్ మెసేజ్ డెలివరీ రిపోర్ట్ (Welcome Message Delivery Report)
+                  </h3>
+                  <p className="text-xs text-blue-200 font-medium">
+                    నమోదిత యూజర్లందరికీ స్వాగత సందేశం విడుదల ఫలితాలు & డెలివరీ స్టేటస్
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowWelcomeReportModal(false)}
+                className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+              {welcomeReportLoading ? (
+                <div className="py-16 text-center space-y-3">
+                  <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-sm font-bold text-slate-800">యూజర్లందరికీ వెల్కమ్ మెసేజ్ ప్రాసెస్ చేయబడుతోంది...</p>
+                  <p className="text-xs text-slate-500">Firestore చాట్ డొక్యుమెంట్స్ & నోటిఫికేషన్లు తనిఖీ చేసి పంపబడుతున్నాయి.</p>
+                </div>
+              ) : welcomeReportData ? (
+                <>
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">మొత్తం యూజర్లు</p>
+                      <p className="text-2xl font-black text-slate-900 mt-1">{welcomeReportData.totalUsers || 0}</p>
+                    </div>
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+                      <p className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">ఇప్పుడే పంపినవి</p>
+                      <p className="text-2xl font-black text-emerald-800 mt-1">+{welcomeReportData.deliveredCount || 0}</p>
+                    </div>
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+                      <p className="text-[10px] font-black uppercase text-blue-700 tracking-wider">గతంలో పంపినవి</p>
+                      <p className="text-2xl font-black text-blue-800 mt-1">{welcomeReportData.alreadyHadCount || 0}</p>
+                    </div>
+                    <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-center">
+                      <p className="text-[10px] font-black uppercase text-rose-700 tracking-wider">విఫలమైనవి</p>
+                      <p className="text-2xl font-black text-rose-800 mt-1">{welcomeReportData.failedCount || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Filter & Search Bar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                    <div className="flex bg-white p-1 rounded-xl border border-slate-200 text-[10px] font-black uppercase w-full sm:w-auto">
+                      {(['all', 'delivered', 'already_received', 'failed'] as const).map(f => (
+                        <button
+                          key={f}
+                          onClick={() => setWelcomeFilter(f)}
+                          className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                            welcomeFilter === f ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {f === 'all' ? 'అన్నీ (All)' : f === 'delivered' ? 'కొత్తవి (Delivered)' : f === 'already_received' ? 'గతంలో పంపినవి' : 'విఫలమైనవి'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative w-full sm:w-64">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by name, district..."
+                        value={welcomeSearch}
+                        onChange={e => setWelcomeSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Detailed Log Table */}
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-slate-100 sticky top-0 font-black uppercase text-[10px] text-slate-600 border-b border-slate-200">
+                          <tr>
+                            <th className="p-3">#</th>
+                            <th className="p-3">యూజర్ పేరు (Name)</th>
+                            <th className="p-3">యూజర్‌నేమ్ / ఈమెయిల్</th>
+                            <th className="p-3">జిల్లా (District)</th>
+                            <th className="p-3">డెలివరీ స్టేటస్</th>
+                            <th className="p-3 text-right">సమయం</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {(welcomeReportData.deliveryLog || [])
+                            .filter((log: any) => {
+                              if (welcomeFilter !== 'all' && log.status !== welcomeFilter) return false;
+                              if (!welcomeSearch) return true;
+                              const q = welcomeSearch.toLowerCase();
+                              return (
+                                (log.name || '').toLowerCase().includes(q) ||
+                                (log.username || '').toLowerCase().includes(q) ||
+                                (log.email || '').toLowerCase().includes(q) ||
+                                (log.district || '').toLowerCase().includes(q)
+                              );
+                            })
+                            .map((log: any, idx: number) => (
+                              <tr key={log.uid || idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-3 text-slate-400 font-mono text-[10px]">{idx + 1}</td>
+                                <td className="p-3 font-bold text-slate-800">{log.name || 'User'}</td>
+                                <td className="p-3 text-slate-500 font-mono text-[11px]">{log.email || log.username || log.uid}</td>
+                                <td className="p-3 text-slate-600">{log.district || 'Telangana'}</td>
+                                <td className="p-3">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+                                    log.status === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    log.status === 'already_received' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    'bg-rose-50 text-rose-700 border-rose-200'
+                                  }`}>
+                                    {log.status === 'delivered' ? '✅ Delivered' : log.status === 'already_received' ? 'ℹ️ Previously Delivered' : '❌ Failed'}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right text-slate-400 font-mono text-[10px]">{log.deliveredAt || 'Just Now'}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-12 text-center text-slate-400">
+                  <MessageCircle size={40} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-sm font-semibold text-slate-600">వెల్కమ్ మెసేజ్ రిపోర్ట్ ప్రారంభించడానికి క్రింది బటన్ నొక్కండి.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportToCSV(welcomeReportData?.deliveryLog || [], "welcome_messages_report")}
+                  disabled={!welcomeReportData?.deliveryLog?.length}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Download size={14} /> Export CSV
+                </button>
+                <button
+                  onClick={() => exportToJSON(welcomeReportData?.deliveryLog || [], "welcome_messages_report")}
+                  disabled={!welcomeReportData?.deliveryLog?.length}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <FileText size={14} /> Export JSON
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRunWelcomeBroadcast}
+                  disabled={welcomeReportLoading}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                >
+                  <RefreshCw size={14} className={welcomeReportLoading ? "animate-spin" : ""} /> మళ్లీ విడుదల చేయి (Re-Run)
+                </button>
+                <button
+                  onClick={() => setShowWelcomeReportModal(false)}
+                  className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-black transition-all cursor-pointer"
+                >
+                  ముగించు (Close)
+                </button>
               </div>
             </div>
           </div>

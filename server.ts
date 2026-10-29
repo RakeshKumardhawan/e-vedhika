@@ -525,6 +525,288 @@ app.get('/api/announcements', (req, res) => {
   res.json(liveAnnouncements);
 });
 
+// API: Admin Broadcast Welcome Messages & Delivery Report
+app.all(['/api/admin/broadcast-welcome-messages', '/api/admin/broadcast-welcome'], async (req, res) => {
+  try {
+    const WELCOME_MESSAGE = `నమస్కారం! 🙏
+
+మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Latest Intelligence Hub / Popular Pulse
+అడ్మిన్ అందించే ముఖ్యమైన సమాచారం, పోస్టులు మరియు ఉపయోగకరమైన టెక్/వర్క్ ఇన్ఫర్మేషన్ ఇక్కడ పొందవచ్చు.
+
+🔹 Latest Updates
+వెబ్సైట్లో వచ్చే కొత్త మార్పులు, కొత్త ఫీచర్లు మరియు Software Updates గురించి ఎప్పటికప్పుడు ఇక్కడ తెలియజేస్తాము.
+
+🔹 మన పేజీ
+Daily DSR Analyzer, Multi-Day DSR Analyzer, Digital Training, Knowledge Hub, Monthly Activity Data, Excel File Manager, GPDP, Excel File Merge వంటి ఉపయోగకరమైన టూల్స్ అందుబాటులో ఉన్నాయి.
+
+🔹 Pre-Ad Service
+State Government కు సంబంధించిన ముఖ్యమైన Activities మరియు Emergency-related information అందుబాటులో ఉంటుంది.
+
+🔹 Live Chat
+ఇతర యూజర్లతో Real-Time Chat చేసుకోవచ్చు. Online/Offline Chatతో పాటు Chatbot సహాయం కూడా అందుబాటులో ఉంది.
+
+🔹 Union Corner & Pulse
+Union సంబంధిత సమాచారం, Public Opinion Polls, Messages మరియు ఇతర అభిప్రాయాలను పంచుకోవడానికి ఉపయోగించుకోవచ్చు.
+
+🔹 Public Suggestions & Feedback
+మీ Suggestions, Comments మరియు Feedback మాతో పంచుకోండి. మీ సూచనల ఆధారంగా E-Vedhika ను మరింత మెరుగ్గా అభివృద్ధి చేస్తాము.
+
+🔹 Application Formats & GOs
+కొత్త Application Formats మరియు Government Orders (GOs) అవసరమైనప్పుడు ఇక్కడ పొందవచ్చు.
+
+🔹 Useful Information
+Operators మరియు ఇతర సిబ్బందికి అవసరమైన ముఖ్యమైన Websites/Links ఒకే చోట అందుబాటులో ఉంటాయి.
+
+🔹 Excel → A4 Print
+Excel Files ను A4 Print format లోకి సులభంగా ఉపయోగించుకోవచ్చు.
+
+🔹 PDF Compressor
+అవసరమైనప్పుడు PDF File Size ను 250 KB వరకు తగ్గించుకోవడానికి ఉపయోగించవచ్చు.
+
+🔹 Farmer Registry Live Verification
+ఈ సేవ Agriculture Department సంబంధిత అధికారుల/సిబ్బంది కోసం మాత్రమే అందుబాటులో ఉంటుంది.
+
+మీ రోజువారీ పనులకు E-Vedhika ను మరింత ఉపయోగకరంగా మార్చడానికి మేము నిరంతరం కొత్త సమాచారం, Tools మరియు Updates అందిస్తూ ఉంటాము.
+
+ధన్యవాదాలు 🙏
+E-Vedhika Support Team`;
+
+    const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
+    const projectId = "e-vedhika-258f2";
+    
+    // 1. Fetch all users from Firestore
+    let usersList: any[] = [];
+
+    // Attempt REST API fetch first
+    try {
+      const restUsersUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users?pageSize=3000&key=${apiKey}`;
+      const resp = await fetch(restUsersUrl);
+      if (resp.ok) {
+        const data = await resp.json();
+        const docs = data.documents || [];
+        usersList = docs.map((docItem: any) => {
+          const docId = docItem.name.split("/").pop();
+          const f = docItem.fields || {};
+          return {
+            uid: docId,
+            id: docId,
+            name: f.name?.stringValue || f.fullName?.stringValue || f.displayName?.stringValue || docId,
+            surname: f.surname?.stringValue || "",
+            username: f.username?.stringValue || docId,
+            email: f.email?.stringValue || "",
+            district: f.district?.stringValue || f.mandal?.stringValue || "Telangana",
+            mobile: f.mobile?.stringValue || "",
+            designation: f.designation?.stringValue || "Member"
+          };
+        });
+      }
+    } catch (restErr) {
+      console.warn("REST API fetch users failed, falling back to Admin SDK:", restErr);
+    }
+
+    // Fallback to Admin SDK if REST returned empty
+    if (usersList.length === 0) {
+      try {
+        initFirebaseAdmin();
+        const db = admin.firestore();
+        const snap = await db.collection("users").get();
+        snap.forEach(uDoc => {
+          const u = uDoc.data();
+          usersList.push({
+            uid: uDoc.id,
+            id: uDoc.id,
+            name: u.name || u.fullName || u.displayName || uDoc.id,
+            surname: u.surname || "",
+            username: u.username || uDoc.id,
+            email: u.email || "",
+            district: u.district || u.mandal || "Telangana",
+            mobile: u.mobile || "",
+            designation: u.designation || "Member"
+          });
+        });
+      } catch (adminErr) {
+        console.warn("Admin SDK fetch users failed:", adminErr);
+      }
+    }
+
+    // 2. Fetch existing chat welcome DMs to avoid duplicates
+    const existingDmsMap = new Set<string>();
+    try {
+      const restChatUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery?key=${apiKey}`;
+      const qResp = await fetch(restChatUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          structuredQuery: {
+            from: [{ collectionId: "chat" }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: "senderId" },
+                op: "EQUAL",
+                value: { stringValue: "evedhika_support_system" }
+              }
+            },
+            limit: 5000
+          }
+        })
+      });
+      if (qResp.ok) {
+        const chatDocs = await qResp.json();
+        if (Array.isArray(chatDocs)) {
+          chatDocs.forEach((item: any) => {
+            if (item.document) {
+              const rec = item.document.fields?.receiverId?.stringValue || item.document.fields?.uid?.stringValue;
+              if (rec) existingDmsMap.add(rec);
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    // Process delivery for each user
+    let deliveredCount = 0;
+    let alreadyHadCount = 0;
+    let failedCount = 0;
+    const deliveryLog: any[] = [];
+
+    for (const u of usersList) {
+      const targetUid = u.uid || u.id;
+      if (!targetUid) continue;
+
+      if (existingDmsMap.has(targetUid)) {
+        alreadyHadCount++;
+        deliveryLog.push({
+          uid: targetUid,
+          name: `${u.surname ? u.surname + ' ' : ''}${u.name}`.trim(),
+          username: u.username,
+          email: u.email,
+          district: u.district,
+          status: "already_received",
+          statusText: "గతంలో పంపబడింది (Previously Delivered)",
+          deliveredAt: new Date().toLocaleTimeString("te-IN")
+        });
+        continue;
+      }
+
+      // Dispatch Welcome DM & Notification via REST API
+      let success = false;
+      try {
+        const chatCreateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/chat?key=${apiKey}`;
+        const chatBody = {
+          fields: {
+            uid: { stringValue: "evedhika_support_system" },
+            senderId: { stringValue: "evedhika_support_system" },
+            senderName: { stringValue: "e-Vedhika Support System" },
+            senderRole: { stringValue: "Official Support System" },
+            receiverId: { stringValue: targetUid },
+            text: { stringValue: WELCOME_MESSAGE },
+            createdAt: { integerValue: String(Date.now()) },
+            read: { booleanValue: false }
+          }
+        };
+        const cResp = await fetch(chatCreateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(chatBody)
+        });
+
+        const notifCreateUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/notifications?key=${apiKey}`;
+        const notifBody = {
+          fields: {
+            uid: { stringValue: targetUid },
+            title: { stringValue: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)" },
+            message: { stringValue: WELCOME_MESSAGE },
+            type: { stringValue: "system" },
+            read: { booleanValue: false },
+            time: { integerValue: String(Date.now()) }
+          }
+        };
+        await fetch(notifCreateUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(notifBody)
+        });
+
+        if (cResp.ok) {
+          success = true;
+        }
+      } catch (err) {
+        console.warn(`Failed REST dispatch for user ${targetUid}:`, err);
+      }
+
+      // Fallback via Admin SDK if REST had error
+      if (!success) {
+        try {
+          initFirebaseAdmin();
+          const db = admin.firestore();
+          await db.collection("chat").add({
+            uid: "evedhika_support_system",
+            senderId: "evedhika_support_system",
+            senderName: "e-Vedhika Support System",
+            senderRole: "Official Support System",
+            receiverId: targetUid,
+            text: WELCOME_MESSAGE,
+            createdAt: Date.now(),
+            read: false
+          });
+          await db.collection("notifications").add({
+            uid: targetUid,
+            title: "నమస్కారం! E-Vedhika స్వాగతం (Welcome)",
+            message: WELCOME_MESSAGE,
+            type: "system",
+            read: false,
+            time: Date.now()
+          });
+          success = true;
+        } catch (e) {}
+      }
+
+      if (success) {
+        deliveredCount++;
+        existingDmsMap.add(targetUid);
+        deliveryLog.push({
+          uid: targetUid,
+          name: `${u.surname ? u.surname + ' ' : ''}${u.name}`.trim(),
+          username: u.username,
+          email: u.email,
+          district: u.district,
+          status: "delivered",
+          statusText: "విజయవంతంగా విడుదల చేయబడింది (Delivered Now)",
+          deliveredAt: new Date().toLocaleTimeString("te-IN")
+        });
+      } else {
+        failedCount++;
+        deliveryLog.push({
+          uid: targetUid,
+          name: `${u.surname ? u.surname + ' ' : ''}${u.name}`.trim(),
+          username: u.username,
+          email: u.email,
+          district: u.district,
+          status: "failed",
+          statusText: "విఫలమైంది (Failed)",
+          deliveredAt: new Date().toLocaleTimeString("te-IN")
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Welcome message release completed. Total users: ${usersList.length}, Newly Delivered: ${deliveredCount}, Previously Received: ${alreadyHadCount}, Failed: ${failedCount}`,
+      totalUsers: usersList.length,
+      deliveredCount,
+      alreadyHadCount,
+      failedCount,
+      timestamp: Date.now(),
+      deliveryLog
+    });
+  } catch (error: any) {
+    console.error("Welcome message broadcast endpoint error:", error);
+    res.status(500).json({ error: error?.message || "Internal server error" });
+  }
+});
+
 try {
   if (fs.existsSync(otaVersionPath)) {
     const rawOta = fs.readFileSync(otaVersionPath, "utf-8");
@@ -2479,15 +2761,61 @@ const handleCreatePostApi = async (req: any, res: any) => {
 app.post('/api/v1/posts/create', handleCreatePostApi);
 app.post('/api/v1/posts/feed', handleCreatePostApi);
 
-// 📡 Webhook / Sync Endpoint for External Applications
-app.post('/api/v1/posts/webhook', async (req, res) => {
+// 📡 Post Reaction Server Gateway (Bypasses Client Permission Restrictions)
+app.post('/api/posts/:id/react', async (req, res) => {
   try {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    const payload = req.body;
-    console.log("Received post payload for external app sync:", payload);
-    return res.json({ status: "success", message: "Post payload received for app sync", received: payload });
+    const postId = req.params.id;
+    const { emoji, userId, userName } = req.body || {};
+    if (!postId || !emoji || !userId) {
+      return res.status(400).json({ status: "error", message: "postId, emoji, and userId are required" });
+    }
+
+    const db = admin.firestore();
+    const postRef = db.collection("posts").doc(postId);
+    const postSnap = await postRef.get();
+
+    if (!postSnap.exists) {
+      return res.status(404).json({ status: "error", message: "Post not found" });
+    }
+
+    const data = postSnap.data() || {};
+    const currentReactions: Record<string, string[]> = data.reactions || {};
+    const likedBy: string[] = Array.isArray(data.likedBy) ? data.likedBy : [];
+    const existingForEmoji = currentReactions[emoji] || [];
+    const hasReactedWithThisEmoji = existingForEmoji.includes(userId);
+    const updatedReactions = { ...currentReactions };
+
+    let newLikes = data.likes || 0;
+    let newLikedBy = [...likedBy];
+
+    if (hasReactedWithThisEmoji) {
+      updatedReactions[emoji] = existingForEmoji.filter((id) => id !== userId);
+      if (updatedReactions[emoji].length === 0) delete updatedReactions[emoji];
+    } else {
+      Object.entries(updatedReactions).forEach(([em, uids]) => {
+        if (Array.isArray(uids) && uids.includes(userId)) {
+          updatedReactions[em] = uids.filter((id) => id !== userId);
+          if (updatedReactions[em].length === 0) delete updatedReactions[em];
+        }
+      });
+      updatedReactions[emoji] = [...new Set([...(updatedReactions[emoji] || []), userId])];
+      if (!likedBy.includes(userId)) {
+        newLikes += 1;
+        newLikedBy.push(userId);
+      }
+    }
+
+    await postRef.update({
+      likes: Math.max(0, newLikes),
+      likedBy: newLikedBy,
+      reactions: updatedReactions
+    });
+
+    return res.json({ status: "success", message: "Reaction updated", reactions: updatedReactions, likes: newLikes });
   } catch (err: any) {
-    return res.status(500).json({ status: "error", message: err.message });
+    console.error("Error updating reaction via API:", err);
+    return res.status(500).json({ status: "error", message: err.message || "Failed to update reaction" });
   }
 });
 

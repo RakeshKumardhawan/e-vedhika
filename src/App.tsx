@@ -448,7 +448,7 @@ export async function sendCommentNotifications(
       time: time,
       postId: postId,
       senderUid: authorUid,
-    });
+    }).catch(() => {});
 
     const mentionRegex = /@([a-zA-Z0-9_]+)/g;
     const mentions = [...commentText.matchAll(mentionRegex)].map((m) =>
@@ -3342,13 +3342,32 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!allUsers || allUsers.length === 0 || !user) return;
-    const sessionKey = "ev_auto_broadcast_done_" + user.uid;
+    if (!user?.uid) return;
+    const sessionKey = "ev_auto_welcome_check_" + user.uid;
     if (sessionStorage.getItem(sessionKey)) return;
     sessionStorage.setItem(sessionKey, "true");
 
-    const autoDispatchWelcomeDM = async () => {
-      const WELCOME_MESSAGE = `నమస్కారం! 🙏
+    const checkAndSendWelcomeDM = async () => {
+      try {
+        const q = query(
+          collection(db, "chat"),
+          where("receiverId", "==", user.uid)
+        );
+        const snap = await getDocs(q).catch(() => null);
+        const alreadyHas = snap?.docs.some((d) => {
+          const data = d.data();
+          const sender = data.senderId || data.uid;
+          const text = data.text || "";
+          return (
+            sender === "evedhika_support_system" ||
+            sender === "evedhika_support_team" ||
+            text.includes("e-Vedhika") ||
+            text.includes("E-Vedhika")
+          );
+        });
+
+        if (!alreadyHas) {
+          const WELCOME_MESSAGE = `నమస్కారం! 🙏
 
 మీ కోసం e-Vedhika పోర్టల్‌లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి:
 
@@ -3393,35 +3412,38 @@ Excel Files ను A4 Print format లోకి సులభంగా ఉపయ�
 ధన్యవాదాలు 🙏
 e-Vedhika Support System`;
 
-      for (const u of allUsers) {
-        if (!u.id) continue;
-        try {
-          const q = query(
-            collection(db, "chat"),
-            where("receiverId", "==", u.id),
-            where("senderId", "==", "evedhika_support_system")
-          );
-          const snap = await getDocs(q).catch(() => null);
-          const alreadyHas = snap?.docs.some((d) => (d.data().text || "").includes("e-Vedhika") || (d.data().text || "").includes("E-Vedhika"));
-          
-          if (!alreadyHas) {
-            await addDoc(collection(db, "chat"), {
-              uid: "evedhika_support_system",
-              senderId: "evedhika_support_system",
-              senderName: "e-Vedhika Support System",
-              senderRole: "Official Support System",
-              receiverId: u.id,
-              text: WELCOME_MESSAGE,
-              createdAt: Date.now(),
-              read: false
-            }).catch(() => {});
-          }
-        } catch (e) {}
+          // Add to chat DM Inbox
+          await addDoc(collection(db, "chat"), {
+            uid: "evedhika_support_system",
+            senderId: "evedhika_support_system",
+            senderName: "e-Vedhika Support System",
+            senderRole: "Official Support System",
+            receiverId: user.uid,
+            text: WELCOME_MESSAGE,
+            createdAt: Date.now(),
+            read: false
+          }).catch(console.error);
+
+          // Add to user notifications
+          await addDoc(collection(db, "notifications"), {
+            uid: user.uid,
+            senderUid: "evedhika_support_system",
+            type: "system",
+            title: "నమస్కారం! e-Vedhika కు స్వాగతం (Welcome)",
+            message: WELCOME_MESSAGE,
+            time: Date.now(),
+            read: false
+          }).catch(() => {});
+
+          updateDoc(doc(db, "users", user.uid), { welcomeNotificationSent: true }).catch(() => {});
+        }
+      } catch (e) {
+        console.warn("Welcome DM check note:", e);
       }
     };
 
-    autoDispatchWelcomeDM();
-  }, [allUsers, user]);
+    checkAndSendWelcomeDM();
+  }, [user]);
 
   useEffect(() => {
     let interval: any;
@@ -4268,7 +4290,7 @@ e-Vedhika Support System`;
 
                 // Deliver directly to the user's Direct Messages Inbox!
                 await addDoc(collection(db, "chat"), {
-                  uid: "evedhika_support_system",
+                  uid: user.uid,
                   senderId: "evedhika_support_system",
                   senderName: "e-Vedhika Support System",
                   senderRole: "Official Support System",
@@ -4276,9 +4298,9 @@ e-Vedhika Support System`;
                   text: WELCOME_MESSAGE,
                   createdAt: Date.now(),
                   read: false
-                }).catch(console.error);
+                }).catch(() => {});
               }
-            }).catch(console.error);
+            }).catch(() => {});
           }
 
           if (p.name || p.username) {
@@ -23026,7 +23048,12 @@ function PostCard({
           reactions: updatedReactions,
         });
       } catch (err: any) {
-        addToast(getFriendlyError(err));
+        console.warn("Client updateDoc failed for reaction removal, falling back to server API:", err);
+        fetch(`/api/posts/${post.id}/react`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emoji, userId, userName: auth.currentUser?.displayName || "User" })
+        }).catch((e) => console.error("Server reaction fallback failed:", e));
       }
     } else {
       Object.entries(updatedReactions).forEach(([em, uids]) => {
@@ -23082,7 +23109,12 @@ function PostCard({
           }
         }
       } catch (err: any) {
-        addToast(getFriendlyError(err));
+        console.warn("Client updateDoc failed for reaction addition, falling back to server API:", err);
+        fetch(`/api/posts/${post.id}/react`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emoji, userId, userName: auth.currentUser?.displayName || "User" })
+        }).catch((e) => console.error("Server reaction fallback failed:", e));
       }
     }
   };
@@ -28026,7 +28058,12 @@ function PostDetail({
           reactions: updatedReactions,
         });
       } catch (err: any) {
-        addToast(getFriendlyError(err));
+        console.warn("Client updateDoc failed for SinglePostView reaction removal, falling back to server API:", err);
+        fetch(`/api/posts/${post.id}/react`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emoji, userId, userName: auth.currentUser?.displayName || "User" })
+        }).catch((e) => console.error("Server reaction fallback failed:", e));
       }
     } else {
       Object.entries(updatedReactions).forEach(([em, uids]) => {
@@ -28060,7 +28097,12 @@ function PostDetail({
           }
         }
       } catch (err: any) {
-        addToast(getFriendlyError(err));
+        console.warn("Client updateDoc failed for SinglePostView reaction addition, falling back to server API:", err);
+        fetch(`/api/posts/${post.id}/react`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emoji, userId, userName: auth.currentUser?.displayName || "User" })
+        }).catch((e) => console.error("Server reaction fallback failed:", e));
       }
     }
   };
