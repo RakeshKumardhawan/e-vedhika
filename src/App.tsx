@@ -7415,7 +7415,7 @@ E-Vedhika Support System`;
                           ? siteConfig.elements
                           : DEFAULT_HOME_ELEMENTS
                         )
-                          .filter((el: any) => !el.hidden)
+                          .filter((el: any) => !el.hidden && el.type !== "Post Grid")
                           .map((el: any) => {
                             let sizeClass = "w-full";
                             if (el.size === "small")
@@ -7968,100 +7968,6 @@ E-Vedhika Support System`;
 
                                 {el.type === "E-Vedhika Core Feed" && (
                                   <>
-                                    <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 p-6 sm:p-8 mb-8 flex flex-col gap-6">
-                                      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
-                                        <div className="flex-1 w-full">
-                                          <h3 className="text-xl sm:text-2xl font-black text-primary uppercase tracking-tighter text-center sm:text-left">
-                                            {el.title || "🔔 Updates"}
-                                          </h3>
-                                        </div>
-                                        <button
-                                          onClick={() => {
-                                            if (!user) requireLoginAlert();
-                                            else setShowPostForm(true);
-                                          }}
-                                          className="px-6 py-3 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all text-xs sm:text-sm w-max flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-                                        >
-                                                                                     <PlusCircle size={18} /> Public Post
-                                         </button>
-                                       </div>
-
-                                       {/* Main Dashboard Search Bar Component */}
-                                       <div className="bg-gradient-to-r from-blue-900/5 via-sky-900/5 to-emerald-900/5 p-3.5 sm:p-5 rounded-3xl border border-blue-100 shadow-sm mb-5">
-                                         <div className="relative flex items-center">
-                                           <div className="absolute left-4 text-blue-600 pointer-events-none">
-                                             <Search size={18} />
-                                           </div>
-                                           <input
-                                             type="text"
-                                             value={searchQuery}
-                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                             placeholder="పోస్ట్ లేదా డాక్యుమెంట్ పేరు, కీవర్డ్ ద్వారా వెతకండి (Search posts, documents by title or keyword)..."
-                                             className="w-full bg-white text-slate-800 placeholder-slate-400 text-xs sm:text-sm font-bold pl-11 pr-10 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-inner transition-all"
-                                           />
-                                           {searchQuery && (
-                                             <button
-                                               onClick={() => setSearchQuery("")}
-                                               className="absolute right-3.5 p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-                                               title="Clear Search"
-                                             >
-                                               <X size={16} />
-                                             </button>
-                                           )}
-                                         </div>
-                                         {searchQuery && (
-                                           <div className="flex items-center justify-between mt-2.5 px-2 text-[11px] font-bold text-slate-500">
-                                             <span>శోధన ఫలితాలు (Results for &quot;{searchQuery}&quot;): <strong className="text-primary">{filteredPosts.length}</strong> కనుగొనబడ్డాయి</span>
-                                             <button
-                                               onClick={() => setSearchQuery("")}
-                                               className="text-blue-600 hover:underline cursor-pointer"
-                                             >
-                                               అన్నీ చూపించు (Reset)
-                                             </button>
-                                           </div>
-                                         )}
-                                       </div>
-
-
-
-                                      <div className="border-t border-slate-100 pt-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                          <Filter size={14} className="text-primary animate-pulse" />
-                                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            కేటగిరీ స్మార్ట్ ఫిల్టర్లు (Smart Filters)
-                                          </span>
-                                        </div>
-                                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
-                                          {[
-                                            { id: "All", te: "అన్నీ", en: "All", icon: LayoutList, filter: "All" },
-                                            { id: "Following", te: "ఫాలోయింగ్", en: "Following", icon: UserCheck, filter: "Following" },
-                                            { id: "GOs", te: "సర్క్యులర్లు (GOs)", en: "GOs & Circulars", icon: FileText, filter: " GOs & Circulars" },
-                                            { id: "Updates", te: "అప్డేట్స్", en: "Updates", icon: Bell, filter: " Updates" },
-                                            { id: "General", te: "జనరల్ డిస్కషన్", en: "General Discussion", icon: MessageSquare, filter: " General" }
-                                          ].map((tab) => {
-                                            const TabIcon = tab.icon;
-                                            const isActive = currentFilter === tab.filter;
-                                            return (
-                                              <button
-                                                key={tab.id}
-                                                onClick={() => setCurrentFilter(tab.filter)}
-                                                className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 cursor-pointer ${
-                                                  isActive
-                                                    ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]"
-                                                    : "bg-slate-50 text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 border border-transparent hover:border-slate-200"
-                                                }`}
-                                              >
-                                                <TabIcon size={14} className={isActive ? "text-white" : "text-slate-400"} />
-                                                <div className="flex flex-col items-start leading-none">
-                                                  <span className="text-[11px]">{tab.te}</span>
-                                                  <span className="text-[8px] opacity-70 font-bold">{tab.en}</span>
-                                                </div>
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    </div>
                                     <div className="space-y-4 sm:space-y-5">
                                       <AnimatePresence mode="popLayout">
                                         {filteredPosts
@@ -11597,7 +11503,7 @@ export const DEFAULT_HOME_ELEMENTS = [
     type: "Post Grid",
     title: "Latest Insight Hub",
     color: "indigo",
-    hidden: false,
+    hidden: true,
   },
   {
     id: 5,

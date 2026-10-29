@@ -4,6 +4,7 @@ import {createRoot} from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App.tsx';
+import { ToastProvider } from './components/Toast';
 import { registerSW } from 'virtual:pwa-register';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -207,8 +208,10 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ToastProvider>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </ToastProvider>
   </BrowserRouter>
 );
