@@ -2638,7 +2638,14 @@ export default function App() {
           const snap = await getDocs(collection(db, "tool_tutorials"));
           if (!snap.empty) {
             const loaded: ToolTutorial[] = [];
-            snap.forEach(d => loaded.push(d.data() as ToolTutorial));
+            snap.forEach(d => {
+              const item = d.data() as ToolTutorial;
+              if (item.youtubeUrl && item.youtubeUrl.includes('dQw4w9WgXcQ')) {
+                item.youtubeUrl = '';
+                item.embedUrl = '';
+              }
+              loaded.push(item);
+            });
             const merged = [...DEFAULT_TOOL_TUTORIALS];
             loaded.forEach(item => {
               const idx = merged.findIndex(m => m.id === item.id);
@@ -2659,22 +2666,50 @@ export default function App() {
     const handleOpenTutorial = (e: any) => {
       const toolId = e.detail?.toolId || e.detail?.id;
       if (toolId) {
-        const matched = allTutorials.find(
+        const rawMatched = allTutorials.find(
           t => t.id === toolId || t.id.toLowerCase() === toolId.toLowerCase() || t.id.includes(toolId)
-        ) || {
+        );
+        const cleanMatched = rawMatched ? {
+          ...rawMatched,
+          youtubeUrl: rawMatched.youtubeUrl?.includes('dQw4w9WgXcQ') ? '' : rawMatched.youtubeUrl,
+          embedUrl: rawMatched.embedUrl?.includes('dQw4w9WgXcQ') ? '' : rawMatched.embedUrl
+        } : null;
+
+        const matched = cleanMatched || {
           id: toolId,
           toolName: e.detail?.toolName || 'టూల్ ట్యుటోరియల్',
           category: 'టూల్స్',
-          youtubeUrl: e.detail?.youtubeUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-          embedUrl: parseYouTubeEmbedUrl(e.detail?.youtubeUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+          youtubeUrl: e.detail?.youtubeUrl || '',
+          embedUrl: parseYouTubeEmbedUrl(e.detail?.youtubeUrl || ''),
           description: 'ఈ టూల్ ఉపయోగించే విధానం గురించి స్పష్టంగా తెలుసుకోవడానికి ఈ వీడియో చూడగలరు.'
         };
         setActiveTutorial(matched);
         setIsTutorialModalOpen(true);
       }
     };
+
+    const handleTutorialUpdated = (e: any) => {
+      const updated = e.detail;
+      if (updated && updated.id) {
+        setAllTutorials(prev => {
+          const idx = prev.findIndex(t => t.id === updated.id);
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], ...updated };
+            return next;
+          }
+          return [...prev, updated];
+        });
+        setActiveTutorial(prev => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
+      }
+    };
+
     window.addEventListener("open-youtube-tutorial", handleOpenTutorial);
-    return () => window.removeEventListener("open-youtube-tutorial", handleOpenTutorial);
+    window.addEventListener("tutorial-updated", handleTutorialUpdated);
+    return () => {
+      window.removeEventListener("open-youtube-tutorial", handleOpenTutorial);
+      window.removeEventListener("tutorial-updated", handleTutorialUpdated);
+    };
   }, [allTutorials]);
 
   useEffect(() => {
@@ -9984,6 +10019,7 @@ E-Vedhika Support System`;
         isOpen={isTutorialModalOpen}
         onClose={() => setIsTutorialModalOpen(false)}
         tutorial={activeTutorial}
+        isAdmin={isAdmin}
       />
       {showBackToTop && (
         <button

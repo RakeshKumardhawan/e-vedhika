@@ -70,8 +70,13 @@ export const YouTubeTutorialsAdmin: React.FC = () => {
   const handleSaveItem = async (itemToSave: ToolTutorial) => {
     const embed = parseYouTubeEmbedUrl(itemToSave.youtubeUrl);
     const updatedItem: ToolTutorial = {
-      ...itemToSave,
-      embedUrl: embed,
+      id: String(itemToSave.id || 'tool'),
+      toolName: String(itemToSave.toolName || 'టూల్ ట్యుటోరియల్'),
+      category: String(itemToSave.category || 'టూల్స్'),
+      youtubeUrl: String(itemToSave.youtubeUrl || '').trim(),
+      embedUrl: String(embed || '').trim(),
+      description: String(itemToSave.description || '').trim(),
+      steps: Array.isArray(itemToSave.steps) ? itemToSave.steps : [],
       updatedAt: new Date().toISOString()
     };
 
@@ -82,6 +87,9 @@ export const YouTubeTutorialsAdmin: React.FC = () => {
     }
     setTutorials(newTutorials);
     setEditingItem(null);
+
+    // Broadcast update across the application
+    window.dispatchEvent(new CustomEvent('tutorial-updated', { detail: updatedItem }));
 
     // Save to Firestore if available
     try {
@@ -178,8 +186,8 @@ export const YouTubeTutorialsAdmin: React.FC = () => {
                 id: `tool_${Date.now()}`,
                 toolName: 'కొత్త టూల్ ట్యుటోరియల్',
                 category: 'సాధారణ',
-                youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                youtubeUrl: '',
+                embedUrl: '',
                 description: 'ఈ కొత్త టూల్ ఉపయోగించే విధానం.',
                 steps: ['పద్ధతి 1', 'పద్ధతి 2']
               })

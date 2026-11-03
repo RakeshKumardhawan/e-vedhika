@@ -18,6 +18,11 @@ export function parseYouTubeEmbedUrl(url: string): string {
   
   const trimmed = url.trim();
 
+  // Guard against dummy placeholder video
+  if (trimmed.includes('dQw4w9WgXcQ') || trimmed === '') {
+    return '';
+  }
+
   // Already embed format
   if (trimmed.includes('youtube.com/embed/')) {
     const cleanUrl = trimmed.split('?')[0];
@@ -90,8 +95,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'dsr_analyzer',
     toolName: 'Daily DSR Analyzer (రోజువారీ నివేదిక విశ్లేషణ)',
     category: 'రిపోర్టుల టూల్స్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // default demo tutorial link
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'రోజువారీ DSR ఫైళ్లను సులభంగా అప్‌లోడ్ చేసి విశ్లేషించే పూర్తి విధానం మరియు ఎర్రర్స్ పరిష్కారం.',
     steps: [
       'DSR ఎక్సెల్ ఫైల్‌ను టూల్‌లో అప్‌లోడ్ చేయండి.',
@@ -103,8 +108,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'multi_dsr',
     toolName: 'Multi-Day DSR Analyzer (మల్టీ డే DSR అనలైజర్)',
     category: 'రిపోర్టుల టూల్స్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'ఒకేసారి పలు రోజుల DSR డేటాను కంబైన్ చేసి సమగ్ర నివేదిక తయారుచేసే గైడ్.',
     steps: [
       'కంబైన్ చేయవలసిన పలు తేదీల DSR ఫైళ్లను ఎంచుకోండి.',
@@ -115,8 +120,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'excel_merger',
     toolName: 'Excel File Merge (ఎక్సెల్ ఫైళ్ల విలీనం)',
     category: 'డేటా ప్రాసెసింగ్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'పలు ఎక్సెల్ షీట్‌లను లేదా ఫైళ్లను సింగిల్ మాస్టర్ ఎక్సెల్ ఫైల్‌గా విలీనం చేయడం.',
     steps: [
       'మీ వద్ద ఉన్న అన్ని ఎక్సెల్ ఫైళ్లను ఒకేసారి డ్రాగ్ అండ్ డ్రాప్ చేయండి.',
@@ -127,8 +132,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'pdf_compressor',
     toolName: 'PDF Compressor & Converter (పిడిఎఫ్ కంప్రెసర్)',
     category: 'డాక్యుమెంట్ టూల్స్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'పెద్ద సైజ్ పిడిఎఫ్ ఫైళ్లను నాణ్యత తగ్గకుండా చిన్న సైజ్‌కి కంప్రెస్ చేయడం.',
     steps: [
       'PDF ఫైల్ ఎంచుకోండి, కంప్రెషన్ లెవల్ ఎంపిక చేయండి.',
@@ -139,8 +144,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'farmer_registry',
     toolName: 'Farmer Registry (రైతు రిజిస్ట్రీ సేవలు)',
     category: 'గ్రామీణ మరియు వ్యవసాయ సేవా టూల్స్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'రైతుల వివరాలు సేకరించడం, సరిచూసుకోవడం మరియు నివేదికలు తయారు చేయడం.',
     steps: [
       'రైతు ఆధార్ లేదా సర్వే నంబర్ నమోదు చేయండి.',
@@ -151,8 +156,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'gpdp',
     toolName: 'GPDP Planning Tool (గ్రామ పంచాయతీ ప్రణాళిక టూల్)',
     category: 'పంచాయతీ నిర్వహణ',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (GPDP) వివరాలను ఆన్‌లైన్‌లో తయారు చేయడం.',
     steps: [
       'పంచాయతీ సమాచారం మరియు పనుల వివరాలు ఎంటర్ చేయండి.',
@@ -163,8 +168,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'monthly_activity',
     toolName: 'Monthly Activity Formatter (నెలవారీ కార్యాచరణ ఫార్మాటర్)',
     category: 'రిపోర్టుల టూల్స్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'నెలవారీ పనుల నివేదికలను ప్రభుత్వ ప్రమాణాలకు అనుగుణంగా ఫార్మాట్ చేసే ట్యుటోరియల్.',
     steps: [
       'నెలవారీ సమాచారం అప్‌లోడ్ చేయండి.',
@@ -175,8 +180,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'cloud_storage',
     toolName: 'Excel File Manager & Cloud Storage (క్లౌడ్ స్టోరేజ్)',
     category: 'డేటా సెక్యూరిటీ & బ్యాకప్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'ముఖ్యమైన ఫైళ్లను సురక్షితంగా క్లౌడ్‌లో దాచుకోవడం మరియు ఎప్పుడైనా డౌన్‌లోడ్ చేసుకోవడం.',
     steps: [
       'ఫైల్ సెక్షన్ ఓపెన్ చేసి అప్‌లోడ్ చేయండి.',
@@ -187,8 +192,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'software_hub',
     toolName: 'Software Hub (సాఫ్ట్‌వేర్ డౌన్‌లోడ్ హబ్)',
     category: 'సాఫ్ట్‌వేర్‌లు & డ్రైవర్లు',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'అధికారిక డ్రైవర్లు, డిజిటల్ సిగ్నేచర్ (DSC) సాఫ్ట్‌వేర్లు ఉచితంగా పొందే విధానం.',
     steps: [
       'కావలసిన సాఫ్ట్‌వేర్ ఎంచుకోండి.',
@@ -199,8 +204,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'gos_formats',
     toolName: 'Application Formats & GOs (జీవోలు & అప్లికేషన్ ఫార్మాట్లు)',
     category: 'ప్రభుత్వ ఉత్తర్వులు',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'తాజా జీవోలు, దరఖాస్తు ఫార్మాట్‌లు మరియు ప్రొఫార్మాలను శోధించడం.',
     steps: [
       'కేటగిరీ లేదా కీవర్డ్ తో వెతకండి.',
@@ -211,8 +216,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'useful_links',
     toolName: 'Useful Web Links (ఉపయోగకరమైన లింక్‌లు)',
     category: 'పోర్టల్స్ & డైరెక్టరీలు',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'వివిధ ప్రభుత్వ వెబ్‌సైట్‌లు మరియు విభాగాల అధికారిక లింక్‌ల వినియోగం.',
     steps: [
       'కావలసిన విభాగం పై క్లిక్ చేయండి.',
@@ -223,8 +228,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'excel_a4_print',
     toolName: 'Excel → A4 Print Formatter (ఎక్సెల్ A4 ప్రింట్ ప్రిపరేషన్)',
     category: 'ప్రింటింగ్ టూల్స్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'ఎక్సెల్ పట్టికలను A4 పేజీలో కట్ కాకుండా సరిగ్గా అమర్చే విధానం.',
     steps: [
       'ఎక్సెల్ షీట్ ఎంచుకోండి.',
@@ -235,8 +240,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'knowledge_hub',
     toolName: 'Digital Training & Knowledge Hub (జ్ఞాన వేదిక)',
     category: 'శిక్షణ & నాలెడ్జ్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'వివిధ అధికారిక శిక్షణ మెటీరియల్స్, యూజర్ మాన్యువల్స్ మరియు వీడియోలు వీక్షించండి.',
     steps: [
       'విషయ సూచిక చూడండి.',
@@ -247,8 +252,8 @@ export const DEFAULT_TOOL_TUTORIALS: ToolTutorial[] = [
     id: 'ubd_monitoring',
     toolName: 'UBD Monitoring Center (UBD లైవ్ మానిటరింగ్ సిస్టమ్)',
     category: 'సిస్టమ్ మానిటరింగ్',
-    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    youtubeUrl: '',
+    embedUrl: '',
     description: 'వివిధ మండల పీసీల లైవ్ స్టేటస్ మరియు డయాగ్నోస్టిక్స్ రిపోర్ట్ మానిటర్ చేయడం.',
     steps: [
       'లైవ్ మానిటరింగ్ సెక్షన్ ఓపెన్ చేయండి.',
