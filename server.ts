@@ -393,15 +393,24 @@ const saveAnnouncements = () => {
 const telegramConfigPath = path.join(process.cwd(), "data", "telegram_config.json");
 const pcFiltersPath = path.join(process.cwd(), "data", "pc_filters.json");
 
+const DEFAULT_TELEGRAM_BOT_TOKEN = "9070613382:AAHgln-fTUEKk3RSAtOdRM0LitfndOcgC8E";
+const DEFAULT_TELEGRAM_CHAT_ID = "431228008";
+
 let telegramConfigStore = {
-  botToken: process.env.TELEGRAM_BOT_TOKEN || "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE",
-  chatId: process.env.TELEGRAM_CHAT_ID || "431228008",
+  botToken: (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_TOKEN !== "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE")
+    ? process.env.TELEGRAM_BOT_TOKEN
+    : DEFAULT_TELEGRAM_BOT_TOKEN,
+  chatId: process.env.TELEGRAM_CHAT_ID || DEFAULT_TELEGRAM_CHAT_ID,
   autoNotifyOnTelemetry: true
 };
 
 try {
   if (fs.existsSync(telegramConfigPath)) {
-    telegramConfigStore = { ...telegramConfigStore, ...JSON.parse(fs.readFileSync(telegramConfigPath, "utf-8")) };
+    const loaded = JSON.parse(fs.readFileSync(telegramConfigPath, "utf-8"));
+    if (loaded.botToken === "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE") {
+      loaded.botToken = DEFAULT_TELEGRAM_BOT_TOKEN;
+    }
+    telegramConfigStore = { ...telegramConfigStore, ...loaded };
   }
 } catch (e) {}
 
@@ -982,8 +991,8 @@ async function sendTelegramServerAlert(message: string, customChatId?: string, p
     return true; // Skipping alert for muted PC
   }
 
-  const botToken = telegramConfigStore.botToken || process.env.TELEGRAM_BOT_TOKEN || "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
-  const chatId = customChatId || telegramConfigStore.chatId || process.env.TELEGRAM_CHAT_ID || "431228008";
+  const botToken = telegramConfigStore.botToken || process.env.TELEGRAM_BOT_TOKEN || DEFAULT_TELEGRAM_BOT_TOKEN;
+  const chatId = customChatId || telegramConfigStore.chatId || process.env.TELEGRAM_CHAT_ID || DEFAULT_TELEGRAM_CHAT_ID;
 
   if (!botToken || !chatId) {
     console.warn("[TELEGRAM] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment");
@@ -1006,7 +1015,11 @@ async function sendTelegramServerAlert(message: string, customChatId?: string, p
 
     const data = await response.json();
     if (!data.ok) {
-      console.error("[TELEGRAM API ERROR]:", data);
+      if (data.error_code === 401) {
+        console.warn("[TELEGRAM ALERT WARN] Telegram bot unauthorized (401).");
+      } else {
+        console.warn("[TELEGRAM API WARNING]:", data?.description || data);
+      }
       // Still return true so UI test succeeds and logs locally
       return true;
     }
@@ -1056,8 +1069,8 @@ async function sendSupportTicketTelegramAlert(ticket: {
   isFollowUp?: boolean;
 }): Promise<boolean> {
   try {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const botToken = telegramConfigStore.botToken || process.env.TELEGRAM_BOT_TOKEN || DEFAULT_TELEGRAM_BOT_TOKEN;
+    const chatId = telegramConfigStore.chatId || process.env.TELEGRAM_CHAT_ID || DEFAULT_TELEGRAM_CHAT_ID;
     if (!botToken || !chatId) {
       console.warn("[TELEGRAM SUPPORT] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
       return false;
@@ -1112,18 +1125,23 @@ async function sendSupportTicketTelegramAlert(ticket: {
         text: msg,
         parse_mode: 'HTML',
         reply_markup: replyMarkup
-      })
+      }),
+      signal: AbortSignal.timeout(5000)
     });
 
     const data = await response.json();
     if (!data.ok) {
-      console.error("[TELEGRAM SUPPORT ALERT ERROR]:", data);
+      if (data.error_code === 401) {
+        console.warn("[TELEGRAM SUPPORT ALERT WARN] Telegram bot unauthorized (401).");
+      } else {
+        console.warn("[TELEGRAM SUPPORT ALERT WARNING]:", data?.description || data);
+      }
       return false;
     }
     console.log("[TELEGRAM SUPPORT ALERT SENT] Ticket:", ticket.ticketId);
     return true;
   } catch (err: any) {
-    console.error("[TELEGRAM SUPPORT ALERT EXCEPTION]:", err?.message);
+    console.warn("[TELEGRAM SUPPORT ALERT EXCEPTION (Non-blocking)]:", err?.message);
     return false;
   }
 }
@@ -1477,7 +1495,7 @@ let isPollingTelegram = false;
 
 function startTelegramPollingLoop() {
   if (isPollingTelegram) return;
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const botToken = telegramConfigStore.botToken || process.env.TELEGRAM_BOT_TOKEN || DEFAULT_TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     console.warn("[TELEGRAM BOT] No TELEGRAM_BOT_TOKEN provided, polling loop skipped.");
     return;
@@ -1491,6 +1509,7 @@ function startTelegramPollingLoop() {
       // Ensure botToken is properly formatted (should not contain spaces or be obviously dummy)
       if (!botToken || botToken.includes(" ") || botToken.length < 20) {
         console.warn("[TELEGRAM BOT] Invalid token format, polling loop suspended.");
+        isPollingTelegram = false;
         return;
       }
 
@@ -1504,10 +1523,14 @@ function startTelegramPollingLoop() {
             try {
               await handleTelegramUpdate(update);
             } catch (err) {
-              console.error("[TELEGRAM UPDATE ERROR]:", err);
+              console.warn("[TELEGRAM UPDATE WARN]:", err);
             }
           }
         }
+      } else if (res.status === 401) {
+        console.warn("[TELEGRAM BOT] Polling paused: 401 Unauthorized token.");
+        isPollingTelegram = false;
+        return;
       } else if (res.status === 409) {
         // Resolve webhook conflict
         await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`).catch(() => {});
@@ -1516,12 +1539,12 @@ function startTelegramPollingLoop() {
       }
     } catch (e: any) {
       // transient network wait or timeout
-      if (e.name !== 'TimeoutError') {
-        console.error("[TELEGRAM POLL EXCEPTION]", e?.message || e);
+      if (e.name !== 'TimeoutError' && !e.message?.includes('aborted')) {
+        console.warn("[TELEGRAM POLL EXCEPTION (Non-blocking)]", e?.message || e);
       }
     }
     // Exponential backoff or constant wait
-    setTimeout(poll, 2000);
+    setTimeout(poll, 3000);
   };
 
   poll();
@@ -1834,10 +1857,21 @@ const telemetryPostRoutes = [
   '/api/ubd-monitoring/report',
   '/api/live-monitoring/report',
   '/api/live-monitoring',
-  '/api/monitoring/report'
+  '/api/monitoring/report',
+  '/api/reporting/receiver'
 ];
 
 app.post(telemetryPostRoutes, telemetryPostHandler);
+
+// Fleet Status Tracking alias
+app.post('/api/reporting/receiver', (req, res) => {
+  return res.redirect(307, '/api/telemetry');
+});
+
+// Admin View Redirects
+app.get('/admin/telemetry', (req, res) => {
+  res.redirect('/?tab=telemetry-dashboard');
+});
 
 // Handle GET queries on /admin/exe_ubd_live for update checks, news, and export actions
 app.get(['/admin/exe_ubd_live.html', '/admin/exe_ubd_live', '/exe_ubd_live.html', '/admin/exe_ubd_live.php', '/exe_ubd_live.php'], (req, res, next) => {
@@ -1938,7 +1972,7 @@ function saveNormalizedConsolidatedPcs(data: Record<string, any>): void {
 async function sendUbdMonitoringTelegram(token: string, chat: string, message: string) {
   try {
     if (!token || !chat || !message) return;
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1946,10 +1980,15 @@ async function sendUbdMonitoringTelegram(token: string, chat: string, message: s
         text: message,
         parse_mode: "HTML",
         disable_web_page_preview: true
-      })
+      }),
+      signal: AbortSignal.timeout(4000)
     });
-  } catch (err) {
-    console.error("Telegram ubd_monitoring alert error:", err);
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok) {
+      console.warn("Telegram ubd_monitoring alert warning:", data?.description || data);
+    }
+  } catch (err: any) {
+    console.warn("Telegram ubd_monitoring alert (Non-blocking):", err?.message);
   }
 }
 
@@ -1962,8 +2001,8 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.html', '/admin/ubd_moni
     return res.status(200).end();
   }
 
-  const botToken = "8822107822:AAG9TIOX1lnRXpUuKCbs7ppM3r1TPTnNYrE";
-  const chatId = "431228008";
+  const botToken = telegramConfigStore.botToken || DEFAULT_TELEGRAM_BOT_TOKEN;
+  const chatId = telegramConfigStore.chatId || DEFAULT_TELEGRAM_CHAT_ID;
   const version = 'v1.0.9';
 
   // Clear Dummy Reports Action
@@ -3167,7 +3206,7 @@ app.get('/api/remote-commands', (req, res) => {
 
       try {
         const targetCol = isPostSource ? "posts" : "support_tickets";
-        if (initFirebaseAdmin()) {
+        if (!isFirestoreInCooldown() && initFirebaseAdmin()) {
           const db = admin.firestore();
           if (isPostSource) {
             await db.collection(targetCol).doc(ticketId).update({ status: "deleted" });
@@ -3175,8 +3214,10 @@ app.get('/api/remote-commands', (req, res) => {
             await db.collection(targetCol).doc(ticketId).delete();
           }
         }
-      } catch (firestoreErr) {
-        console.warn("Firestore delete warning:", firestoreErr);
+      } catch (firestoreErr: any) {
+        if (!handleFirestoreQuotaError(firestoreErr)) {
+          console.warn("Firestore delete non-quota warning:", firestoreErr?.message || firestoreErr);
+        }
       }
 
       return res.json({ success: true });
@@ -3287,17 +3328,24 @@ app.get('/api/remote-commands', (req, res) => {
     fs.writeFileSync(aboutContentPath, JSON.stringify(defaultAbout, null, 2));
   }
 
-  // C# టూల్ వెర్షన్ చెక్ చేసుకునే GET API
-  app.get(['/api/version', '/exe/api/version'], (req, res) => {
+  // C# టూల్ వెర్షన్ చెక్ చేసుకునే GET API & OTA Version Manifest
+  app.get(['/version.json', '/api/version', '/exe/api/version'], (req, res) => {
     res.json({
       success: true,
       status: "ok",
       name: "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
+      appName: "E-VEDHIKA All Problems One Solution & UBD Deployment Tool",
       portal: "e-vedhika.in",
-      latestVersion: otaVersionConfig.latestVersion || "v1.0.2",
-      versionCode: otaVersionConfig.versionCode || 101,
-      downloadUrl: otaVersionConfig.downloadUrl || "https://www.e-vedhika.in/EVedhikaUBDDeploymentTool.exe",
-      releaseNotes: otaVersionConfig.releaseNotes || "- New PC Boost Feature added.\n- Hidden terminal logs for clean UI.\n- Performance improvements."
+      executableName: otaVersionConfig.executableName || "EVedhika_Setup_v1.0.9.exe",
+      currentVersion: otaVersionConfig.latestVersion || "v1.0.9",
+      latestVersion: otaVersionConfig.latestVersion || "v1.0.9",
+      versionCode: otaVersionConfig.versionCode || 10090,
+      releaseDate: otaVersionConfig.releaseDate || "2026-11-03",
+      latestResourceBuild: otaVersionConfig.latestResourceBuild || "2026.11.03-R3",
+      resourceBuildDate: otaVersionConfig.resourceBuildDate || "2026-11-03",
+      downloadUrl: otaVersionConfig.downloadUrl || "https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.9.exe",
+      githubRepo: otaVersionConfig.githubRepo || "https://github.com/RakeshKumardhawan/UBDTOOLS",
+      releaseNotes: otaVersionConfig.releaseNotes || "Enterprise v1.0.9 Guardian Build (Resource Build 2026.11.03-R3) - Full Windows 7, 8, 10 & 11 (.NET 4.8 Architecture)."
     });
   });
 

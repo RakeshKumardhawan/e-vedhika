@@ -34,6 +34,7 @@ import {
   FileArchive,
   Layers,
   Filter,
+  Youtube
 } from "lucide-react";
 import { db, storage } from "../../firebase";
 import {
@@ -796,6 +797,16 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
               <HardDrive size={13} className="text-cyan-400" />
               <span>Storage Bank: <strong className="text-cyan-300 font-mono font-bold">{totalSoftwareStorage}</strong></span>
             </div>
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("open-youtube-tutorial", { detail: { toolId: "software_hub", toolName: "Software Hub & Drivers" } }));
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/80 hover:bg-red-600 text-white text-xs font-bold border border-red-500/40 shadow-sm transition-all cursor-pointer"
+              title="Software Hub యూట్యూబ్ ట్యుటోరియల్ చూడండి"
+            >
+              <Youtube size={14} />
+              <span>వాచ్ ట్యుటోరియల్</span>
+            </button>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight">

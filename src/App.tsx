@@ -25,7 +25,9 @@ import {
 import html2canvas from "html2canvas";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
 import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage, SitemapPage, SitemapContent, UbdDskTroubleshootingPage } from "./components/StaticPages";
-import { TabInfoBanner } from "./components/TabInfoBanner";
+import { TabInfoBanner, triggerYouTubeTutorial } from "./components/TabInfoBanner";
+import { YouTubeTutorialModal } from "./components/YouTubeTutorialModal";
+import { ToolTutorial, DEFAULT_TOOL_TUTORIALS, parseYouTubeEmbedUrl } from "./utils/youtube";
 import { SYSTEM_UPDATES } from "./data/updates";
 import { askMana } from "./services/geminiService";
 import { SecurityLogsSection } from "./components/SecurityLogsSection";
@@ -88,6 +90,7 @@ import {  DollarSign,
   LayoutDashboard,
   ShieldAlert,
   Lock,
+  KeyRound,
   Shield,
   Pin,
   Paperclip,
@@ -242,6 +245,8 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   updateProfile,
   User as FirebaseUser,
 } from "firebase/auth";
@@ -2621,6 +2626,57 @@ export default function App() {
   const [showTicketTracker, setShowTicketTracker] = useState(false);
   const [ticketTrackingCode, setTicketTrackingCode] = useState("");
 
+  // YouTube Tutorial Modal state
+  const [activeTutorial, setActiveTutorial] = useState<ToolTutorial | null>(null);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
+  const [allTutorials, setAllTutorials] = useState<ToolTutorial[]>(DEFAULT_TOOL_TUTORIALS);
+
+  useEffect(() => {
+    const fetchTutorials = async () => {
+      try {
+        if (db) {
+          const snap = await getDocs(collection(db, "tool_tutorials"));
+          if (!snap.empty) {
+            const loaded: ToolTutorial[] = [];
+            snap.forEach(d => loaded.push(d.data() as ToolTutorial));
+            const merged = [...DEFAULT_TOOL_TUTORIALS];
+            loaded.forEach(item => {
+              const idx = merged.findIndex(m => m.id === item.id);
+              if (idx !== -1) merged[idx] = { ...merged[idx], ...item };
+              else merged.push(item);
+            });
+            setAllTutorials(merged);
+          }
+        }
+      } catch (e) {
+        console.warn("Firestore tutorials fetch warning:", e);
+      }
+    };
+    fetchTutorials();
+  }, []);
+
+  useEffect(() => {
+    const handleOpenTutorial = (e: any) => {
+      const toolId = e.detail?.toolId || e.detail?.id;
+      if (toolId) {
+        const matched = allTutorials.find(
+          t => t.id === toolId || t.id.toLowerCase() === toolId.toLowerCase() || t.id.includes(toolId)
+        ) || {
+          id: toolId,
+          toolName: e.detail?.toolName || 'టూల్ ట్యుటోరియల్',
+          category: 'టూల్స్',
+          youtubeUrl: e.detail?.youtubeUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          embedUrl: parseYouTubeEmbedUrl(e.detail?.youtubeUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+          description: 'ఈ టూల్ ఉపయోగించే విధానం గురించి స్పష్టంగా తెలుసుకోవడానికి ఈ వీడియో చూడగలరు.'
+        };
+        setActiveTutorial(matched);
+        setIsTutorialModalOpen(true);
+      }
+    };
+    window.addEventListener("open-youtube-tutorial", handleOpenTutorial);
+    return () => window.removeEventListener("open-youtube-tutorial", handleOpenTutorial);
+  }, [allTutorials]);
+
   useEffect(() => {
     const handleOpenTracker = (e: any) => {
       if (e.detail?.code) {
@@ -3943,6 +3999,22 @@ e-Vedhika Support System`;
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          addToast("గూగుల్ లాగిన్ విజయవంతమైంది (Google Login Successful!)");
+          logUserActivity("Google Redirect Auth Return Success", {
+            email: result.user.email,
+            uid: result.user.uid,
+          }).catch(() => {});
+        }
+      })
+      .catch((err) => {
+        if (err && err.code !== "auth/popup-closed-by-user") {
+          console.warn("Google Redirect result check note:", err);
+        }
+      });
+
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (!u) {
@@ -4646,18 +4718,31 @@ e-Vedhika Support System`;
   };
 
   const handleGoogleLogin = async () => {
-    addToast("Google లాగిన్ కోసం పాపప్ ఓపెన్ అవుతోంది...");
+    addToast("Google లాగిన్ కోసం ప్రయత్నిస్తోంది...");
 
     const slowLoginWarning = setTimeout(() => {
       addToast(
-        "లాగిన్ ఆలస్యం అవుతుంటే, దయచేసి పైన ఉన్న బాణం గుర్తు ↗ పై క్లిక్ చేసి కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి. అప్పుడు త్వరగా జరుగుతుంది.",
+        "లాగిన్ పాపప్ ఆలస్యం అవుతుంటే, దయచేసి పైన ఉన్న బాణం గుర్తు ↗ పై క్లిక్ చేసి కొత్త ట్యాబ్‌లో ఓపెన్ చేయండి.",
       );
-    }, 2000);
+    }, 2500);
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    const isLegacyWin = typeof isLegacyWindows === "function" ? isLegacyWindows() : /Windows NT (6\.[0-3]|10\.0)/i.test(navigator.userAgent);
+    const isInIframe = window.self !== window.top;
 
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      const result = await signInWithPopup(auth, provider);
+      let result: any = null;
+
+      if (isLegacyWin && isInIframe) {
+        clearTimeout(slowLoginWarning);
+        addToast("Windows PC Iframe అనుకూలత కోసం రిడైరెక్ట్ లాగిన్ ప్రారంభించబడుతోంది...");
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+
+      result = await signInWithPopup(auth, provider);
       clearTimeout(slowLoginWarning);
       setShowAuthModal(false);
 
@@ -4801,14 +4886,31 @@ E-Vedhika Support System`;
       } catch (e) {}
     } catch (err: any) {
       clearTimeout(slowLoginWarning);
+      console.warn("Google Login error/notice:", err);
+
       if (
         err.code === "auth/cancelled-popup-request" ||
         err.code === "auth/popup-closed-by-user" ||
         err.code === "auth/popup-blocked"
       ) {
-        addToast(
-          "Login Failed: Popup closed or blocked. Try opening the app in a new tab (arrow on top right) if this persists.",
-        );
+        const confirmRedirect = await Swal.fire({
+          title: "పాపప్ ఓపెన్ కాలేదు (Popup Blocked / Closed)",
+          text: "మీ PC లేదా బ్రౌజర్‌లో పాపప్ బ్లాక్ అయ్యింది. నేరుగా రిడైరెక్ట్ లాగిన్ ద్వారా కొనసాగించాలనుకుంటున్నారా?",
+          icon: "info",
+          showCancelButton: true,
+          confirmButtonText: "🔑 రిడైరెక్ట్ లాగిన్ (Redirect Login)",
+          cancelButtonText: "రద్దు (Cancel)",
+          confirmButtonColor: "#0d3b66",
+        });
+
+        if (confirmRedirect.isConfirmed) {
+          try {
+            await signInWithRedirect(auth, provider);
+          } catch (rErr) {
+            console.error("Redirect login error:", rErr);
+            addToast("రిడైరెక్ట్ లాగిన్‌లో లోపం ఏర్పడింది.");
+          }
+        }
       } else if (
         err.code === "auth/unauthorized-domain" ||
         err.message?.includes("unauthorized-domain")
@@ -9877,6 +9979,12 @@ E-Vedhika Support System`;
           addToast={addToast}
         />
       )}
+
+      <YouTubeTutorialModal
+        isOpen={isTutorialModalOpen}
+        onClose={() => setIsTutorialModalOpen(false)}
+        tutorial={activeTutorial}
+      />
       {showBackToTop && (
         <button
           onClick={scrollToTop}
@@ -12835,7 +12943,12 @@ function AdminPanel({
                       icon: <Globe size={18} />,
                     },
                     {
-                      
+                      id: "google_auth_report",
+                      label: "గూగుల్ లాగిన్ & Win PC నివేదిక",
+                      icon: <KeyRound size={18} />,
+                    },
+                    {
+                      id: "ubd_monitoring",
                       label: "UBD Live Monitoring",
                       icon: <Activity size={18} />,
                     },
@@ -13629,7 +13742,7 @@ function AdminPanel({
             
             
             
-            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "ubd_monitoring", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management"].includes(activeSubTab) && (
+            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "ubd_monitoring", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management", "google_auth_report"].includes(activeSubTab) && (
               <SuperAdminDashboard 
                 user={userProfile || user} 
                 stats={stats} 
@@ -18621,7 +18734,7 @@ function DigitalWorkspaceSection({
         {tools.map((t) => (
           <div
             key={t.id}
-            className="mana-card relative group cursor-pointer"
+            className="mana-card relative group cursor-pointer flex flex-col items-center justify-between p-4"
             onClick={() => {
               if (!user && t.id !== "dsr") {
                 requireLoginAlert(user);
@@ -18630,18 +18743,31 @@ function DigitalWorkspaceSection({
               setActiveTool(t.id);
             }}
           >
-
-            <div
-              style={{
-                color: "var(--primary)",
-                marginBottom: "10px",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <t.icon size={32} />
+            <div className="flex flex-col items-center">
+              <div
+                style={{
+                  color: "var(--primary)",
+                  marginBottom: "10px",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <t.icon size={32} />
+              </div>
+              <h4>{t.title}</h4>
             </div>
-            <h4>{t.title}</h4>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerYouTubeTutorial(t.id, t.title);
+              }}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 rounded-xl transition-all shadow-xs cursor-pointer z-10"
+              title={`${t.title} యూట్యూబ్ వీడియో చూడండి`}
+            >
+              <Youtube size={14} className="shrink-0" />
+              <span>వాచ్ ట్యుటోరియల్</span>
+            </button>
           </div>
         ))}
       </div>
@@ -18662,6 +18788,17 @@ function DigitalWorkspaceSection({
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const currentToolObj = tools.find((t) => t.id === activeTool);
+                      triggerYouTubeTutorial(activeTool, currentToolObj?.title);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-bold text-xs sm:text-sm shadow-sm cursor-pointer"
+                    title="యూట్యూబ్ ట్యుటోరియల్ వీడియో చూడండి"
+                  >
+                    <Youtube size={16} />
+                    <span>వాచ్ ట్యుటోరియల్</span>
+                  </button>
                   <button
                     onClick={() => {
                       const currentToolObj = tools.find((t) => t.id === activeTool);

@@ -274,6 +274,14 @@ export function SupportCenter({ currentUser, addToast }: SupportCenterProps) {
         });
         const data = await response.json();
         if (data.success) {
+          try {
+            if (isPostSource) {
+              updateDoc(doc(db, "posts", ticketId), { status: "deleted" }).catch(() => {});
+            } else {
+              deleteDoc(doc(db, "support_tickets", ticketId)).catch(() => {});
+            }
+          } catch (_) {}
+
           setTickets(prev => prev.filter(t => t.id !== ticketId));
           if (selectedTicket?.id === ticketId) {
             setSelectedTicket(null);

@@ -43,6 +43,9 @@ import { PublicVisitorLogs } from './PublicVisitorLogs';
 import { CloudStorageManager } from './CloudStorageManager';
 import { AdminSoftwareHub } from './admin/AdminSoftwareHub';
 import { UBDMonitoringSection } from './admin/UBDMonitoringSection';
+import { GoogleAuthDiagnosticsReport } from './admin/GoogleAuthDiagnosticsReport';
+import { YouTubeTutorialsAdmin } from './admin/YouTubeTutorialsAdmin';
+import { Youtube } from 'lucide-react';
 
 
 interface SuperAdminDashboardProps {
@@ -711,6 +714,10 @@ export function SuperAdminDashboard({
           </div>
           <CloudStorageManager storageConfig={adminStorageProvider} />
         </div>
+      ) : effectiveTab === "google_auth_report" || effectiveTab === "google_auth_diagnostics" ? (
+        <GoogleAuthDiagnosticsReport />
+      ) : effectiveTab === "youtube_tutorials" || effectiveTab === "tool_tutorials" || effectiveTab === "tutorials" ? (
+        <YouTubeTutorialsAdmin />
       ) : effectiveTab === "security" || effectiveTab === "logs" ? (
         <SecurityLogsSection />
       ) : effectiveTab === "support" ? (
@@ -946,6 +953,7 @@ export function SuperAdminDashboard({
                     { l: "Emergency Broadcast", i: "broadcast", icon: Megaphone, color: "text-emerald-400", bg: "bg-emerald-400/10" },
                     { l: "Database Backups", i: "db_backup", icon: Database, color: "text-cyan-400", bg: "bg-cyan-400/10" },
                     { l: "Software Hub & Files", i: "admin_software_hub", icon: HardDrive, color: "text-indigo-400", bg: "bg-indigo-400/10" },
+                    { l: "యూట్యూబ్ ట్యుటోరియల్స్", i: "youtube_tutorials", icon: Youtube, color: "text-red-400", bg: "bg-red-400/10" },
                     { l: "Security & Audit", i: "security", icon: ShieldAlert, color: "text-pink-400", bg: "bg-pink-400/10" },
                     { l: "Broadcast Welcome DM", i: "broadcast_dm", icon: MessageCircle, color: "text-rose-400", bg: "bg-rose-400/10", action: () => { if (onBroadcastWelcomeDM) onBroadcastWelcomeDM(); handleRunWelcomeBroadcast(); } },
                   ].map((btn, i) => (
