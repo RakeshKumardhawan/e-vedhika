@@ -154,7 +154,21 @@ async function startServer() {
   app.use(express.text({ limit: '150mb', type: ['text/*', 'application/json'] }));
   app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
-  // WWW Redirect Middleware
+  // Google AdSense ads.txt - Guaranteed 200 OK without any redirects for crawler
+  app.get('/ads.txt', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.status(200).send("google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n");
+  });
+
+  // Robots.txt - explicitly permit Google AdSense crawler (Mediapartners-Google)
+  app.get('/robots.txt', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.status(200).send(`User-agent: Mediapartners-Google\nAllow: /\n\nUser-agent: Google-Adwords-DisplayAds\nAllow: /\n\nUser-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://www.e-vedhika.in/sitemap.xml\n`);
+  });
+
+  // WWW Redirect Middleware (for pages other than ads.txt and robots.txt)
   app.use((req, res, next) => {
     const host = req.get('host');
     if (host === 'e-vedhika.in') {
@@ -179,32 +193,6 @@ async function startServer() {
   app.use('/proxy/ubd', createProxyMiddleware(proxyOptions('https://ubd.telangana.gov.in')));
   app.use('/proxy/meetingonline', createProxyMiddleware(proxyOptions('https://meetingonline.gov.in')));
   app.use('/__/auth', createProxyMiddleware(proxyOptions('https://e-vedhika-258f2.firebaseapp.com')));
-
-  // Google AdSense ads.txt explicit route
-  app.get('/ads.txt', (req, res) => {
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    const adsTxtContent = "google.com, pub-4602643637986053, DIRECT, f08c47fec0942fa0\n";
-    
-    // Attempt to send file if it exists, otherwise send hardcoded verified content
-    const adsTxtPath = path.join(process.cwd(), 'public', 'ads.txt');
-    if (fs.existsSync(adsTxtPath)) {
-      return res.sendFile(adsTxtPath);
-    }
-    const distAdsTxtPath = path.join(process.cwd(), 'dist', 'ads.txt');
-    if (fs.existsSync(distAdsTxtPath)) {
-      return res.sendFile(distAdsTxtPath);
-    }
-    return res.send(adsTxtContent);
-  });
-
-  app.get('/robots.txt', (req, res) => {
-    res.type('text/plain');
-    const distRobotsPath = path.join(process.cwd(), 'dist', 'robots.txt');
-    if (fs.existsSync(distRobotsPath)) return res.sendFile(distRobotsPath);
-    const robotsPath = path.join(process.cwd(), 'public', 'robots.txt');
-    if (fs.existsSync(robotsPath)) return res.sendFile(robotsPath);
-    res.send("User-agent: *\nAllow: /\nSitemap: https://www.e-vedhika.in/sitemap.xml");
-  });
 
   app.get('/sitemap.xml', (req, res) => {
     res.type('application/xml');
@@ -5547,17 +5535,102 @@ app.get('/api/remote-commands', (req, res) => {
     });
   });
 
-  // Dedicated Open Graph Image API - Converts Base64 images to real binary images for WhatsApp/Telegram/Facebook crawlers
-  app.get(["/api/og-image", "/api/og-image/:postId"], async (req, res) => {
-    let postId = req.params.postId || (req.query.postId as string);
-    if (!postId) {
-      return res.redirect("/banner.jpg");
+  // Dedicated In-Memory Posts Cache for 0ms Social Media Preview (WhatsApp, Telegram, Twitter)
+  const postsCacheMap = new Map<string, any>();
+
+  // Global Helper: Resolves post details via Memory Cache -> Disk Cache -> Firebase Admin SDK -> REST API
+  async function resolvePostByIdOrSlug(postId: string): Promise<any | null> {
+    if (!postId) return null;
+    const targetNorm = postId.toLowerCase().trim();
+    const targetClean = targetNorm.replace(/[^a-z0-9]/g, "");
+
+    // 1. In-memory cache hit
+    if (postsCacheMap.has(targetNorm)) return postsCacheMap.get(targetNorm);
+    if (postsCacheMap.has(targetClean)) return postsCacheMap.get(targetClean);
+
+    // 2. Disk cache hit (public/admin/posts_cache.json or data/posts-manifest.json)
+    try {
+      const pathsToTry = [
+        path.join(process.cwd(), "public", "admin", "posts_cache.json"),
+        path.join(process.cwd(), "data", "posts-manifest.json")
+      ];
+      for (const pPath of pathsToTry) {
+        if (fs.existsSync(pPath)) {
+          const raw = fs.readFileSync(pPath, "utf-8");
+          const fileData = JSON.parse(raw);
+          const postsList = Array.isArray(fileData) ? fileData : (fileData.posts || []);
+          for (const p of postsList) {
+            const pId = String(p.id || "").toLowerCase();
+            const pSlug = String(p.slug || "").toLowerCase();
+            const pNum = String(p.postNumber || p.post_number || "").toLowerCase();
+
+            if (
+              pId === targetNorm ||
+              pSlug === targetNorm ||
+              (pSlug && pSlug.replace(/[^a-z0-9]/g, "") === targetClean) ||
+              pNum === targetNorm ||
+              (Array.isArray(p.aliases) && p.aliases.some((a: string) => String(a).toLowerCase() === targetNorm))
+            ) {
+              postsCacheMap.set(targetNorm, p);
+              return p;
+            }
+          }
+        }
+      }
+    } catch (mErr) {
+      console.warn("[OG Cache] Disk cache lookup warning:", mErr);
     }
-    // Trim trailing slashes and spaces
-    postId = String(postId).trim().replace(/\/+$/, "");
-    if (!postId) {
-      return res.redirect("/banner.jpg");
+
+    // 3. Firebase Admin SDK direct query (Bypasses Client API Key Quotas)
+    if (typeof initFirebaseAdmin === 'function' && initFirebaseAdmin()) {
+      try {
+        // 3a. Direct Doc ID
+        const docSnap = await admin.firestore().collection("posts").doc(postId).get().catch(() => null);
+        if (docSnap && docSnap.exists) {
+          const item = { id: docSnap.id, ...docSnap.data() };
+          postsCacheMap.set(targetNorm, item);
+          return item;
+        }
+
+        // 3b. Query by slug
+        const slugSnap = await admin.firestore().collection("posts").where("slug", "==", postId).limit(1).get().catch(() => null);
+        if (slugSnap && !slugSnap.empty) {
+          const dObj = slugSnap.docs[0];
+          const item = { id: dObj.id, ...dObj.data() };
+          postsCacheMap.set(targetNorm, item);
+          return item;
+        }
+
+        // 3c. Query by postNumber
+        const numVal = !isNaN(Number(postId)) ? Number(postId) : postId;
+        const numSnap = await admin.firestore().collection("posts").where("postNumber", "==", numVal).limit(1).get().catch(() => null);
+        if (numSnap && !numSnap.empty) {
+          const dObj = numSnap.docs[0];
+          const item = { id: dObj.id, ...dObj.data() };
+          postsCacheMap.set(targetNorm, item);
+          return item;
+        }
+
+        // 3d. Recent posts scan
+        const recentSnap = await admin.firestore().collection("posts").orderBy("createdAt", "desc").limit(30).get().catch(() => null);
+        if (recentSnap && !recentSnap.empty) {
+          for (const dObj of recentSnap.docs) {
+            const data = dObj.data();
+            const item = { id: dObj.id, ...data };
+            const pSlug = String(data.slug || "").toLowerCase();
+            const pId = String(dObj.id).toLowerCase();
+            if (pId === targetNorm || pSlug === targetNorm || (pSlug && pSlug.replace(/[^a-z0-9]/g, "") === targetClean)) {
+              postsCacheMap.set(targetNorm, item);
+              return item;
+            }
+          }
+        }
+      } catch (fErr) {
+        console.warn("[OG Admin SDK Error]:", fErr);
+      }
     }
+
+    // 4. Fallback REST API
     try {
       const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
       const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
@@ -5565,7 +5638,36 @@ app.get('/api/remote-commands', (req, res) => {
       if (resp.ok) {
         const data = await resp.json();
         const f = data.fields || {};
-        const mediaUrl = f.mediaUrl?.stringValue || f.imageUrl?.stringValue || f.poster?.stringValue || f.videoThumbnailUrl?.stringValue || "";
+        const item = {
+          id: postId,
+          title: f.title?.stringValue,
+          content: f.content?.stringValue,
+          mediaUrl: f.mediaUrl?.stringValue || f.imageUrl?.stringValue || f.poster?.stringValue,
+          imageUrl: f.imageUrl?.stringValue || f.mediaUrl?.stringValue,
+          slug: f.slug?.stringValue || postId
+        };
+        postsCacheMap.set(targetNorm, item);
+        return item;
+      }
+    } catch (e) {}
+
+    return null;
+  }
+
+  // Dedicated Open Graph Image API - Converts Base64 images to real binary images for WhatsApp/Telegram/Facebook crawlers
+  app.get(["/api/og-image", "/api/og-image/:postId"], async (req, res) => {
+    let postId = req.params.postId || (req.query.postId as string);
+    if (!postId) {
+      return res.redirect("/banner.jpg");
+    }
+    postId = String(postId).trim().replace(/\/+$/, "");
+    if (!postId) {
+      return res.redirect("/banner.jpg");
+    }
+    try {
+      const post = await resolvePostByIdOrSlug(postId);
+      if (post) {
+        const mediaUrl = post.mediaUrl || post.imageUrl || post.poster || post.videoThumbnailUrl || "";
         
         if (mediaUrl.startsWith("data:image/")) {
           const match = mediaUrl.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/);
@@ -5578,7 +5680,6 @@ app.get('/api/remote-commands', (req, res) => {
             return res.end(buffer);
           }
         } else if (mediaUrl.startsWith("http")) {
-          // Proxy external image instead of redirecting (WhatsApp prefers direct images)
           try {
             const imgResp = await fetch(mediaUrl, {
               headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" }
@@ -5594,7 +5695,6 @@ app.get('/api/remote-commands', (req, res) => {
           } catch (imgErr) {
             console.warn("[OG Proxy Error]:", imgErr);
           }
-          // Fallback to redirect if proxy fails
           return res.redirect(mediaUrl);
         }
       }
@@ -5699,13 +5799,11 @@ app.get('/api/remote-commands', (req, res) => {
 
     try {
       // 3. Check latest active post from Firestore for dynamic live preview updates
-      const postUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts?pageSize=1&orderBy=createdAt%20desc&key=${apiKey}`;
-      const postResp = await fetch(postUrl);
-      if (postResp.ok) {
-        const postData = await postResp.json();
-        const doc = postData.documents?.[0];
-        if (doc && doc.fields?.title?.stringValue) {
-          latestPostTitle = doc.fields.title.stringValue.trim();
+      if (typeof initFirebaseAdmin === 'function' && initFirebaseAdmin()) {
+        const snapshot = await admin.firestore().collection("posts").orderBy("createdAt", "desc").limit(1).get().catch(() => null);
+        if (snapshot && !snapshot.empty) {
+          const data = snapshot.docs[0].data();
+          latestPostTitle = (data.title || data.heading || "").trim();
         }
       }
     } catch (e) {}
@@ -5770,110 +5868,21 @@ app.get('/api/remote-commands', (req, res) => {
 
     // 1. Post Preview (Individual News / Notification / Issue / Slug / Numeric Permalink)
     if (postId) {
-      console.log(`[OG-DEBUG] Extracted postId: "${postId}" from origPath: "${origPath}"`);
       try {
-        const apiKey = "AIzaSyC_oLAFLdpErutmSmR9bQnm0ETq5hd9qnU";
-        let fields: any = null;
-        let actualDocId = postId;
-        let actualSlug = postId;
-
-        const targetNorm = postId.toLowerCase().trim();
-        const targetClean = targetNorm.replace(/[^a-z0-9]/g, "");
-
-        // 0. Check local posts-manifest.json on disk for fast offline resolution & aliases
-        try {
-          const manifestPath = path.join(process.cwd(), "data", "posts-manifest.json");
-          if (fs.existsSync(manifestPath)) {
-            const manifestData = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-            if (Array.isArray(manifestData)) {
-              const matchedManifest = manifestData.find((p: any) => {
-                if (p.id === postId || p.id?.toLowerCase() === targetNorm) return true;
-                if (p.slug && (p.slug.toLowerCase() === targetNorm || p.slug.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
-                if (p.postNumber && String(p.postNumber) === postId) return true;
-                if (Array.isArray(p.aliases)) {
-                  if (p.aliases.some((a: string) => a.toLowerCase() === targetNorm || a.toLowerCase().replace(/[^a-z0-9]/g, "") === targetClean)) return true;
-                }
-                if (targetClean.length >= 3 && p.slug && (p.slug.toLowerCase().replace(/[^a-z0-9]/g, "").includes(targetClean) || targetClean.includes(p.slug.toLowerCase().replace(/[^a-z0-9]/g, "")))) return true;
-                return false;
-              });
-
-              if (matchedManifest) {
-                fields = {
-                  title: { stringValue: matchedManifest.title },
-                  content: { stringValue: matchedManifest.content },
-                  imageUrl: { stringValue: matchedManifest.imageUrl },
-                  mediaUrl: { stringValue: matchedManifest.imageUrl },
-                  slug: { stringValue: matchedManifest.slug }
-                };
-                actualDocId = matchedManifest.id || postId;
-                actualSlug = matchedManifest.slug || postId;
-              }
-            }
-          }
-        } catch (mErr) {
-          console.warn("[OG] Manifest lookup error:", mErr);
-        }
-
-        // 1. Direct doc ID lookup
-        if (!fields) {
-          try {
-            const firestoreUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/posts/${postId}?key=${apiKey}`;
-            const firestoreResp = await fetch(firestoreUrl);
-            if (firestoreResp.ok) {
-              const data = await firestoreResp.json();
-              fields = data.fields || {};
-              actualDocId = postId;
-              actualSlug = fields.slug?.stringValue || postId;
-            }
-          } catch (e1) {}
-        }
-
-        // 2. Query Firestore by slug field
-        if (!fields) {
-          try {
-            const queryUrl = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents:runQuery?key=${apiKey}`;
-            const qResp = await fetch(queryUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                structuredQuery: {
-                  from: [{ collectionId: "posts" }],
-                  where: {
-                    fieldFilter: {
-                      field: { fieldPath: "slug" },
-                      op: "EQUAL",
-                      value: { stringValue: postId }
-                    }
-                  },
-                  limit: 1
-                }
-              })
-            });
-            if (qResp.ok) {
-              const results = await qResp.json();
-              if (Array.isArray(results) && results[0]?.document) {
-                fields = results[0].document.fields || {};
-                const nameParts = (results[0].document.name || "").split("/");
-                actualDocId = nameParts[nameParts.length - 1] || postId;
-                actualSlug = fields.slug?.stringValue || postId;
-              }
-            }
-          } catch (e2) {}
-        }
-
-        if (fields) {
-          const postTitle = (fields.title?.stringValue || "E-Vedhika Post").trim();
-          const rawContent = (fields.content?.stringValue || "").trim();
+        const post = await resolvePostByIdOrSlug(postId);
+        if (post) {
+          const postTitle = (post.title || post.heading || "E-Vedhika Post").trim();
+          const rawContent = (post.content || post.body || "").trim();
           const cleanContent = rawContent.replace(/<\/?[^>]+(>|$)/g, "").replace(/[*_#>~|`\r\n]/g, " ").replace(/\s+/g, " ").trim();
-          const postDesc = cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "");
-          const mediaUrl = fields.mediaUrl?.stringValue || fields.imageUrl?.stringValue || fields.poster?.stringValue || fields.videoThumbnailUrl?.stringValue || "";
+          const postDesc = cleanContent ? (cleanContent.slice(0, 160) + (cleanContent.length > 160 ? "..." : "")) : "ఈ-వేదిక (E-Vedhika) - తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్ల పోర్టల్.";
+          const mediaUrl = post.mediaUrl || post.imageUrl || post.poster || post.videoThumbnailUrl || post.image || "";
 
           title = `${postTitle} - E-Vedhika`;
           if (postDesc) description = postDesc;
           type = "article";
 
           if (mediaUrl.startsWith("data:image/")) {
-            imageUrl = `${fullBaseUrl}/api/og-image/${actualDocId}`;
+            imageUrl = `${fullBaseUrl}/api/og-image/${encodeURIComponent(post.id || postId)}`;
           } else if (mediaUrl.startsWith("http")) {
             imageUrl = mediaUrl;
           } else if (mediaUrl) {
@@ -6055,13 +6064,17 @@ app.get('/api/remote-commands', (req, res) => {
       // Add "About Us" and "Privacy" links explicitly for crawlers to ensure they are discovered and indexed
       extraHtml += `
         <div class="ssr-static-links" style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">
-          <h3>ముఖ్యమైన లింకులు (Essential Links & Policies)</h3>
+          <h3>ముఖ్యమైన లింకులు & పాలసీలు (Essential Links & Policies)</h3>
           <ul style="line-height:1.8;">
             <li><a href="/about">మా గురించి (About E-Vedhika)</a> - Learn about our mission to support Panchayat Secretaries and Operators.</li>
-            <li><a href="/privacy">గోప్యతా విధానం (Privacy Policy)</a> - Detailed information on how we handle data securely via Google Firebase.</li>
+            <li><a href="/privacy">గోప్యతా విధానం (Privacy Policy & AdSense Disclosures)</a> - Detailed information on how we handle data securely via Google Firebase and AdSense.</li>
             <li><a href="/terms">నిబంధనలు & షరతులు (Terms & Conditions)</a> - Usage guidelines for the E-Vedhika technical utility portal.</li>
+            <li><a href="/disclaimer">బాధ్యతా రాహిత్య ప్రకటన (Official Disclaimer)</a> - Independent non-governmental entity clarification.</li>
+            <li><a href="/cookie-policy">కుకీ విధానం (Cookie Policy)</a> - Explanation of cookies and advertising personalization management.</li>
+            <li><a href="/editorial-policy">ఎడిటోరియల్ విధానం (Editorial Policy)</a> - Fact-checking, sources, and correction standards.</li>
             <li><a href="/contact">సంప్రదించండి (Contact Support)</a> - Reach out to our technical team via email, WhatsApp, or Telegram.</li>
             <li><a href="/sitemap">సైట్ మ్యాప్ (Sitemap)</a> - Full directory of all technical tools and GO resources.</li>
+            <li><a href="/ubd-settings-dsk-issues">UBD Settings & DSK Guide</a> - Official troubleshooting for digital signatures.</li>
           </ul>
         </div>
         <div class="ssr-mission" style="margin-top:20px; color:#555; font-size:0.9em;">
@@ -6071,11 +6084,10 @@ app.get('/api/remote-commands', (req, res) => {
         </div>
       `;
       
-      const seoDivStart = '<div style="display:none;" id="seo-content">';
-      if (html.includes(seoDivStart)) {
-        const divIndex = html.indexOf(seoDivStart);
-        // We find the closing </div> of THIS specific div by looking for the next </div> after the start
-        // This assumes the seo-content div is simple and doesn't contain nested divs, which is true in index.html
+      const seoDivPattern = /<div\s+id=["']seo-content["'][^>]*>/i;
+      const match = html.match(seoDivPattern);
+      if (match && match.index !== undefined) {
+        const divIndex = match.index;
         const closingTagIndex = html.indexOf('</div>', divIndex);
         if (closingTagIndex !== -1) {
           html = html.substring(0, closingTagIndex) + extraHtml + html.substring(closingTagIndex);
@@ -6113,7 +6125,7 @@ app.get('/api/remote-commands', (req, res) => {
       }
 
       const userAgent = req.headers["user-agent"] || "";
-      const isBot = /bot|facebookexternalhit|whatsapp|telegram|twitterbot|pinterest|google|bing|duckduckbot|slackbot|discordbot|applebot|linkedinbot|vkshare|skypeuripreview|qwantify|bitlybot|tumblr|embedly/i.test(userAgent);
+      const isBot = /bot|mediapartners|adsense|crawler|spider|facebookexternalhit|whatsapp|telegram|twitterbot|pinterest|google|bing|duckduckbot|slackbot|discordbot|applebot|linkedinbot|vkshare|skypeuripreview|qwantify|bitlybot|tumblr|embedly/i.test(userAgent);
       const isStaticFile = req.path.includes('.') && !req.path.endsWith('.html');
       const acceptsHtml = (req.headers.accept?.includes("text/html") || !req.headers.accept) && !req.path.includes(".");
 

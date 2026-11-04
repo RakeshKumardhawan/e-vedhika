@@ -24,7 +24,7 @@ import {
 
 import html2canvas from "html2canvas";
 import { DEFAULT_DISTRICTS_DATA } from "./data/districts";
-import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage, SitemapPage, SitemapContent, UbdDskTroubleshootingPage } from "./components/StaticPages";
+import { PrivacyPolicyPage, TermsPage, AboutPage, ContactPage, SitemapPage, SitemapContent, UbdDskTroubleshootingPage, DisclaimerPage, CookiePolicyPage, EditorialPolicyPage } from "./components/StaticPages";
 import { TabInfoBanner, triggerYouTubeTutorial } from "./components/TabInfoBanner";
 import { YouTubeTutorialModal } from "./components/YouTubeTutorialModal";
 import { ToolTutorial, DEFAULT_TOOL_TUTORIALS, parseYouTubeEmbedUrl } from "./utils/youtube";
@@ -37,6 +37,7 @@ import { VisitorTracker } from "./components/VisitorTracker";
 import { CodeManager } from "./components/CodeManager";
 import { DynamicSection } from "./components/DynamicSection";
 import { AIVideoHomeSection } from "./components/AIVideoHomeSection";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import {  DollarSign,
   Bell,
   Menu,
@@ -2382,7 +2383,7 @@ function LandingPage({
 }: { 
   onEnterSite: () => void;
   onLoginClick: () => void;
-  onShowFooter: (type: "privacy" | "about" | "contact" | "terms" | "sitemap") => void;
+  onShowFooter: (type: "privacy" | "about" | "contact" | "terms" | "sitemap" | "disclaimer" | "cookies" | "editorial") => void;
   landingPageData: any;
 }) {
   const [isWarping, setIsWarping] = useState(false);
@@ -2573,10 +2574,13 @@ function LandingPage({
               </div>
               <span className="font-bold text-slate-800">E-VEDHIKA</span>
             </div>
-            <div className="flex gap-6 text-sm font-bold text-slate-500">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm font-bold text-slate-500">
               <button onClick={() => onShowFooter("privacy")} className="hover:text-blue-600 transition-colors">Privacy Policy</button>
               <button onClick={() => onShowFooter("about")} className="hover:text-blue-600 transition-colors">About Us</button>
               <button onClick={() => onShowFooter("terms")} className="hover:text-blue-600 transition-colors">Terms</button>
+              <button onClick={() => onShowFooter("disclaimer")} className="hover:text-blue-600 transition-colors">Disclaimer</button>
+              <button onClick={() => onShowFooter("cookies")} className="hover:text-blue-600 transition-colors">Cookie Policy</button>
+              <button onClick={() => onShowFooter("editorial")} className="hover:text-blue-600 transition-colors">Editorial Policy</button>
               <button onClick={() => onShowFooter("contact")} className="hover:text-blue-600 transition-colors">Contact Us</button>
               <button onClick={() => onShowFooter("sitemap")} className="hover:text-blue-600 transition-colors">Sitemap</button>
             </div>
@@ -3275,7 +3279,7 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [showFooterModal, setShowFooterModal] = useState<
-    "privacy" | "about" | "contact" | "terms" | "sitemap" | null
+    "privacy" | "about" | "contact" | "terms" | "sitemap" | "disclaimer" | "cookies" | "editorial" | null
   >(null);
 
   const [showPWABanner, setShowPWABanner] = useState(false);
@@ -5597,6 +5601,15 @@ E-Vedhika Support System`;
   if (location.pathname === "/contact") {
     return <ContactPage />;
   }
+  if (location.pathname === "/disclaimer") {
+    return <DisclaimerPage />;
+  }
+  if (location.pathname === "/cookies" || location.pathname === "/cookie-policy") {
+    return <CookiePolicyPage />;
+  }
+  if (location.pathname === "/editorial-policy") {
+    return <EditorialPolicyPage />;
+  }
   if (location.pathname === "/sitemap") {
     return <SitemapPage />;
   }
@@ -5629,6 +5642,7 @@ E-Vedhika Support System`;
   return (
     <div className={`h-screen h-[100dvh] overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-50 via-[#f8fafc] to-slate-100 text-slate-800 flex flex-col font-sans selection:bg-accent/20 selection:text-primary antialiased ${textZoom === "large" ? "text-zoom-large" : textZoom === "xlarge" ? "text-zoom-xlarge" : ""}`}>
       <VisitorTracker user={user} userProfile={userProfile} />
+      <CookieConsentBanner />
       {isOffline && (
         <div className="bg-red-500 text-white px-4 py-2 text-center text-sm font-bold flex items-center justify-center gap-2 z-[2000]">
           <WifiOff size={16} />
@@ -5658,6 +5672,9 @@ E-Vedhika Support System`;
                     {showFooterModal === "about" &&
                       (aboutContent?.title || "మా గురించి (About)")}
                     {showFooterModal === "terms" && "నిబంధనలు & షరతులు (Terms)"}
+                    {showFooterModal === "disclaimer" && "బాధ్యతా రాహిత్య ప్రకటన (Disclaimer)"}
+                    {showFooterModal === "cookies" && "కుకీ విధానం (Cookie Policy)"}
+                    {showFooterModal === "editorial" && "ఎడిటోరియల్ విధానం (Editorial Policy)"}
                     {showFooterModal === "contact" && "సంప్రదించండి (Contact)"}
                     {showFooterModal === "sitemap" && "Sitemap"}
                   </h2>
@@ -5715,6 +5732,39 @@ E-Vedhika Support System`;
                         3. మా ప్లాట్‌ఫారమ్ గరిష్ట భద్రతను అందిస్తుంది, కానీ యూజర్లు తమ లాగిన్ వివరాలను సురక్షితంగా ఉంచుకోవాలి.
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {showFooterModal === "disclaimer" && (
+                  <div className="space-y-4 text-slate-700 leading-relaxed font-medium">
+                    <div className="p-5 bg-amber-50 border border-amber-200 rounded-3xl text-xs font-semibold text-amber-900 leading-relaxed">
+                      <strong>బాధ్యతా రాహిత్య ప్రకటన (Disclaimer):</strong> E-VEDHIKA (e-vedhika.in) అనేది తెలంగాణ మరియు ఆంధ్రప్రదేశ్ పంచాయతీ సిబ్బందికి సాంకేతిక సహాయం అందించే స్వతంత్ర ప్రైవేట్ పోర్టల్. <strong>ఈ వెబ్‌సైట్‌కు ఏ రాష్ట్ర లేదా కేంద్ర ప్రభుత్వ శాఖతో, పంచాయతీ రాజ్ విభాగంతో ఎటువంటి అధికారిక సంబంధం లేదా భాగస్వామ్యం లేదు.</strong>
+                    </div>
+                    <p className="text-sm">
+                      ఈ పోర్టల్‌లో అందించబడిన UBD Settings, DSC / DSK గైడ్‌లు, DSR నివేదికల గణనలు మరియు జీవోలు కేవలం సాంకేతిక అవగాహన మరియు కార్యాలయ సహాయం కొరకు మాత్రమే. అధికారిక ధృవీకరణల కోసం అధికారిక ప్రభుత్వ వెబ్‌సైట్‌లను సంప్రదించాలి.
+                    </p>
+                  </div>
+                )}
+
+                {showFooterModal === "cookies" && (
+                  <div className="space-y-4 text-slate-700 leading-relaxed font-medium">
+                    <div className="p-5 bg-blue-50 border border-blue-200 rounded-3xl text-xs font-semibold text-blue-900 leading-relaxed">
+                      <strong>కుకీ విధానం (Cookie Policy):</strong> మా వెబ్‌సైట్ పనితీరు, సురక్షిత లాగిన్, మరియు గూగుల్ యాడ్‌సెన్స్ ప్రకటనల నిర్వహణ కోసం కుకీలను ఉపయోగిస్తుంది.
+                    </div>
+                    <p className="text-sm">
+                      వినియోగదారులు గూగుల్ ప్రకటనల సెట్టింగ్స్ <a href="https://adssettings.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-bold">Google Ads Settings</a> ద్వారా లేదా బ్రౌజర్ సెట్టింగ్స్ ద్వారా ప్రకటనల కుకీలను ఎప్పుడైనా నిర్వహించవచ్చు.
+                    </p>
+                  </div>
+                )}
+
+                {showFooterModal === "editorial" && (
+                  <div className="space-y-4 text-slate-700 leading-relaxed font-medium">
+                    <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-3xl text-xs font-semibold text-emerald-900 leading-relaxed">
+                      <strong>ఎడిటోరియల్ & వాస్తవ నిర్ధారణ విధానం (Editorial Policy):</strong> ప్రచురించబడే ప్రతి సాంకేతిక గైడ్, UBD విధానం, మరియు DSR మార్గదర్శకం సీనియర్ సాంకేతిక నిపుణులచే క్షుణ్ణంగా పరిశీలించబడుతుంది.
+                    </div>
+                    <p className="text-sm">
+                      ప్రభుత్వ ఆర్డర్లు (GOs) మరియు సర్క్యులర్లు కేవలం అధికారిక ప్రభుత్వ గెజిట్‌లు లేదా ధృవీకరించబడిన అధికారిక మూలాల నుండి మాత్రమే సేకరించబడతాయి.
+                    </p>
                   </div>
                 )}
 

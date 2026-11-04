@@ -337,6 +337,46 @@ export function ExcelMerger({ user, addToast }: { user: any; addToast: (s: strin
             </>
           )}
         </button>
+
+        {/* Detailed User Guide & Technical Documentation for AdSense & Field Staff */}
+        <div className="mt-8 border-t border-slate-100 pt-6 space-y-4 text-left">
+          <div className="flex items-center gap-2 text-slate-800 font-black text-sm">
+            <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs">📖</span>
+            <h3>ఎక్సెల్ ఫైల్ మెర్జర్ టూల్ గైడ్ (Excel File Merger Guide & Workflow)</h3>
+          </div>
+          
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            ఈ-వేదిక ఎక్సెల్ ఫైల్ మెర్జర్ అనేది పంచాయతీ కార్యదర్శులు, మండల కంప్యూటర్ ఆపరేటర్లు మరియు డివిజన్ అధికారుల కోసం రూపొందించబడిన ప్రత్యేక సాధనం. వివిధ గ్రామాలు లేదా మండలాల నుండి వచ్చే బహుళ ఎక్సెల్ స్ప్రెడ్‌షీట్లను (Excel Spreadsheets) ఎటువంటి ఫార్మాటింగ్ లోపాలు లేకుండా ఒకే సమగ్ర నివేదికగా ఏకీకృతం చేయడానికి ఇది ఉపయోగపడుతుంది.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[11px] font-bold text-emerald-700 block">1. బహుళ ఫైళ్ల ఎంపిక</span>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                మీ కంప్యూటర్‌లో ఉన్న 2 లేదా అంతకంటే ఎక్కువ .xlsx / .xls ఫైళ్లను ఒకేసారి డ్రాగ్ అండ్ డ్రాప్ చేయండి.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[11px] font-bold text-emerald-700 block">2. ఆటో-హెడర్ సమలేఖనం</span>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                కాలమ్ శీర్షికలు సరిపోలేలా సిస్టమ్ స్వయంచాలకంగా కాలమ్‌లను సమలేఖనం చేసి డేటాను క్రమబద్ధీకరిస్తుంది.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="text-[11px] font-bold text-emerald-700 block">3. తక్షణ డౌన్‌లోడ్</span>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                కలపబడిన ఏకీకృత ఎక్సెల్ ఫైల్‌ను సింగిల్ క్లిక్‌తో ఎలాంటి డేటా కోల్పోకుండా వేగంగా డౌన్‌లోడ్ చేసుకోండి.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
+            <strong>🔒 డేటా గోప్యత & క్లయింట్-సైడ్ భద్రత:</strong>
+            <p className="text-[11px] text-blue-800 leading-relaxed">
+              మీ ఎక్సెల్ ఫైల్స్ లోని సమాచారం బాహ్య సర్వర్‌లకు ఎక్కడా అప్‌లోడ్ కాకుండా మీ బ్రౌజర్‌లోనే సురక్షితంగా విశ్లేషించబడుతుంది.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
