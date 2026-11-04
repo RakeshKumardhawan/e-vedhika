@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Cookie, ShieldCheck, X } from "lucide-react";
+import { Cookie, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export function CookieConsentBanner() {
@@ -34,31 +34,31 @@ export function CookieConsentBanner() {
         <div className="space-y-1.5 flex-1 text-xs">
           <div className="flex items-center justify-between">
             <h4 className="font-black text-white text-sm flex items-center gap-1.5">
-              కుకీ సమ్మతి (Cookie Consent)
+              Cookie Consent
             </h4>
             <button
               onClick={handleAccept}
-              className="text-slate-400 hover:text-white transition-colors p-1"
+              className="text-slate-400 hover:text-white transition-colors p-1 cursor-pointer"
               aria-label="Close"
             >
               <X size={14} />
             </button>
           </div>
           <p className="text-slate-300 leading-relaxed font-medium">
-            ఈ-వేదిక (E-Vedhika) పోర్టల్ సమర్థవంతమైన సాంకేతిక పనితీరు, PWA ఆఫ్ లైన్ నిల్వ మరియు Google AdSense సంబంధిత ప్రకటనల కోసం కుకీలను ఉపయోగిస్తుంది.
+            E-Vedhika uses cookies to ensure optimal performance, support PWA offline storage, and personalize advertisements with Google AdSense.
           </p>
           <div className="flex items-center gap-2 pt-2">
             <button
               onClick={handleAccept}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md text-xs cursor-pointer"
             >
-              అంగీకరించు (Accept)
+              Accept
             </button>
             <Link
               to="/cookie-policy"
               className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all text-xs font-semibold"
             >
-              కుకీ పాలసీ (Policy)
+              Cookie Policy
             </Link>
           </div>
         </div>

@@ -4061,6 +4061,7 @@ e-Vedhika Support System`;
       if (!u) {
         setUserProfile(null);
         setUserRole("user");
+        setUnreadCount(0);
         setProfileLoading(false);
         hasGreetedRef.current = false;
         setHasEnteredSite(false);
@@ -4578,7 +4579,7 @@ e-Vedhika Support System`;
 
         setNotifications(nArr);
         setUnreadCount(
-          nArr.filter((n) => {
+          user ? nArr.filter((n) => {
             if (n.senderUid && user?.uid && n.senderUid === user.uid) return false;
             if (n.uid === "admin_only" && userRole !== "admin" && !isAdmin) return false;
             if (readNotifIds.has(n.id)) return false;
@@ -4586,7 +4587,7 @@ e-Vedhika Support System`;
               return !(Array.isArray((n as any).readBy) ? (n as any).readBy.includes(user?.uid || "") : false);
             }
             return !n.read;
-          }).length,
+          }).length : 0,
         );
 
         if (!initialNotificationsLoadedLocal) {
@@ -6087,7 +6088,7 @@ E-Vedhika Support System`;
                 size={20}
                 className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]"
               />
-              {unreadCount > 0 && (
+              {user && unreadCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border-2 border-[#0d2a4a] animate-bounce"
                 >
@@ -6123,7 +6124,7 @@ E-Vedhika Support System`;
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {notifications.length > 0 && (
+                      {user && notifications.length > 0 && (
                         <button
                           onClick={async () => {
                             const now = Date.now();
@@ -6185,8 +6186,34 @@ E-Vedhika Support System`;
                     </div>
                   </div>
 
-                  {/* Browser Push Permission Banner */}
-                  {"Notification" in window && Notification.permission === "default" && (
+                  {!user ? (
+                    <div className="p-8 sm:p-10 text-center space-y-4 my-auto">
+                      <div className="w-16 h-16 rounded-3xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto text-blue-600 shadow-sm">
+                        <Lock size={28} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                          లాగిన్ అవ్వండి (Sign In Required)
+                        </h4>
+                        <p className="text-xs text-slate-500 font-semibold max-w-[280px] mx-auto leading-relaxed">
+                          నోటిఫికేషన్‌లు చూడటానికి మరియు తాజా అప్‌డేట్లు పొందడానికి దయచేసి మీ అకౌంట్‌తో లాగిన్ చేయండి.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowNotifications(false);
+                          setShowAuthModal(true);
+                        }}
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-500/20 cursor-pointer inline-flex items-center gap-2 mx-auto"
+                      >
+                        <User size={15} />
+                        <span>సైన్ ఇన్ (Sign In)</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Browser Push Permission Banner */}
+                      {"Notification" in window && Notification.permission === "default" && (
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-2.5 border-b border-blue-100 flex items-center justify-between gap-2">
                       <div className="text-[11px] font-bold text-blue-900 leading-tight">
                         🔔 లైవ్ నోటిఫికేషన్లను పొందండి
@@ -6517,6 +6544,8 @@ E-Vedhika Support System`;
                         <span>Clear All</span>
                       </button>
                     </div>
+                  )}
+                    </>
                   )}
                 </motion.div>
               )}
