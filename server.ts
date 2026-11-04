@@ -58,6 +58,9 @@ function isFirestoreInCooldown() {
   return !isFirestoreAdminWorking || Date.now() < firestoreQuotaExceededUntil;
 }
 
+// Global In-Memory Posts Cache for 0ms lookup and fallback on Firestore quota cooldown
+const postsCacheMap = new Map<string, any>();
+
 function initFirebaseAdmin() {
   if (isFirebaseAdminInitialized) return true;
   if ((admin.apps || []).length > 0) {
@@ -2667,12 +2670,12 @@ app.get('/api/v1/posts/feed', async (req, res) => {
     let posts: any[] = [];
     const initOk = typeof initFirebaseAdmin === 'function' ? initFirebaseAdmin() : false;
 
-    if (initOk) {
+    if (initOk && !isFirestoreInCooldown()) {
       try {
         const snapshot = await admin.firestore().collection("posts").orderBy("createdAt", "desc").limit(30).get();
         posts = snapshot.docs.map(doc => {
           const data = doc.data();
-          return {
+          const item = {
             id: doc.id,
             title: data.title || data.heading || "E-Vedhika Update",
             category: data.category || "GENERAL",
@@ -2682,11 +2685,62 @@ app.get('/api/v1/posts/feed', async (req, res) => {
             image_url: data.imageUrl || data.image || null,
             file_url: data.fileUrl || data.attachment || null,
             pinned: Boolean(data.pinned),
-            link: `https://www.e-vedhika.in/?tab=posts&post=${doc.id}`
+            link: `https://www.e-vedhika.in/?tab=posts&post=${doc.id}`,
+            slug: data.slug || doc.id
           };
+          // Store into postsCacheMap for 0ms lookup
+          postsCacheMap.set(doc.id.toLowerCase(), item);
+          if (data.slug) postsCacheMap.set(data.slug.toLowerCase(), item);
+          return item;
         });
-      } catch (e) {
-        console.error("Failed to query posts collection for external feed:", e);
+
+        // Persist to posts_cache.json if we got fresh posts
+        if (posts.length > 0) {
+          try {
+            const cachePath = path.join(process.cwd(), "public", "admin", "posts_cache.json");
+            fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+            fs.writeFileSync(cachePath, JSON.stringify(posts, null, 2));
+          } catch (cacheSaveErr) {}
+        }
+      } catch (e: any) {
+        if (!handleFirestoreQuotaError(e)) {
+          console.error("Failed to query posts collection for external feed:", e);
+        }
+      }
+    }
+
+    // Fallback if Firestore query failed, was skipped due to cooldown, or returned 0 posts
+    if (posts.length === 0) {
+      try {
+        const pathsToTry = [
+          path.join(process.cwd(), "public", "admin", "posts_cache.json"),
+          path.join(process.cwd(), "data", "posts-manifest.json"),
+          path.join(process.cwd(), "public", "announcements.json")
+        ];
+        for (const pPath of pathsToTry) {
+          if (fs.existsSync(pPath)) {
+            const raw = fs.readFileSync(pPath, "utf-8");
+            const fileData = JSON.parse(raw);
+            const list = Array.isArray(fileData) ? fileData : (fileData.posts || []);
+            if (list.length > 0) {
+              posts = list.map((p: any, idx: number) => ({
+                id: p.id || `cached_${idx}`,
+                title: p.title || p.heading || "E-Vedhika Update",
+                category: p.category || "UPDATES",
+                content: p.content || p.body || "",
+                author: p.author || p.authorName || "Admin",
+                created_at: p.created_at || p.createdAt || (typeof p.time === 'number' ? new Date(p.time).toISOString() : new Date().toISOString()),
+                image_url: p.image_url || p.imageUrl || p.image || null,
+                file_url: p.file_url || p.fileUrl || p.attachment || null,
+                pinned: Boolean(p.pinned),
+                link: p.link || `https://www.e-vedhika.in/?tab=posts&post=${p.id || idx}`
+              }));
+              break;
+            }
+          }
+        }
+      } catch (cacheErr) {
+        console.warn("Error reading posts cache fallback:", cacheErr);
       }
     }
 
@@ -5534,9 +5588,6 @@ app.get('/api/remote-commands', (req, res) => {
       }
     });
   });
-
-  // Dedicated In-Memory Posts Cache for 0ms Social Media Preview (WhatsApp, Telegram, Twitter)
-  const postsCacheMap = new Map<string, any>();
 
   // Global Helper: Resolves post details via Memory Cache -> Disk Cache -> Firebase Admin SDK -> REST API
   async function resolvePostByIdOrSlug(postId: string): Promise<any | null> {
