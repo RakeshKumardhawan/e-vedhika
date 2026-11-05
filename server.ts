@@ -845,7 +845,7 @@ try {
       telemetryLogsStore = parsed.filter((l: any) => {
         if (!l || !l.id) return false;
         const strId = String(l.id);
-        if (strId.startsWith("TEL-SEED") || strId.startsWith("SEED")) return false;
+        if (strId.startsWith("TEL-SEED") || strId.startsWith("SEED") || strId.startsWith("TEL-INITIAL")) return false;
         if (l.pcName === "Test-PC") return false;
         return true;
       });
@@ -862,42 +862,9 @@ try {
   telemetryLogsStore = [];
 }
 
-// Seed default data if empty to ensure dashboard is not blank
+// Strictly NO fake/seed records injected when empty
 if (telemetryLogsStore.length === 0) {
-  telemetryLogsStore = [
-    {
-      id: "TEL-INITIAL-01",
-      pcId: "EVD-PC-1900-62E8",
-      pcName: "MPO-PC",
-      userName: "MPO e-Panchayat Sec",
-      officeLocation: "MPO Mandal Office, Telangana",
-      district: "Warangal",
-      status: "SUCCESS (17/17)",
-      healthScore: 100,
-      date: new Date().toISOString().slice(0, 10),
-      time: new Date().toLocaleTimeString(),
-      lastSeen: "Just Now",
-      livePresence: "ONLINE",
-      osVersion: "Windows 11 Pro",
-      dscStatus: "USB Token Active"
-    },
-    {
-      id: "TEL-INITIAL-02",
-      pcId: "EVD-TS-4A9B-12EF",
-      pcName: "TS-GP-KHAMMAM-01",
-      userName: "Srinivas Rao (Secretary)",
-      officeLocation: "Khammam Urban GP Office",
-      district: "Khammam",
-      status: "SUCCESS (17/17)",
-      healthScore: 100,
-      date: new Date().toISOString().slice(0, 10),
-      time: new Date().toLocaleTimeString(),
-      lastSeen: "2m ago",
-      livePresence: "ONLINE",
-      osVersion: "Windows 10 Pro",
-      dscStatus: "USB Token Active"
-    }
-  ];
+  telemetryLogsStore = [];
 }
 
 // Load Remote Queue from Disk
@@ -918,15 +885,62 @@ const saveTelemetryLogsToDisk = () => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(telemetryDataPath, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
 
-    // Also sync to public admin and api storage files for standalone PHP gateway
+    // Also sync to public admin and api storage files for standalone PHP/static gateway
     const adminStoragePath = path.join(process.cwd(), "public", "admin", "telemetry_storage.json");
     const apiStoragePath = path.join(process.cwd(), "public", "api", "telemetry", "telemetry_storage.json");
     const pubStoragePath = path.join(process.cwd(), "public", "telemetry_storage.json");
+    const consolidatedHealthPath = path.join(process.cwd(), "public", "admin", "consolidated_health.json");
+    const pcConsolidatedHealthPath = path.join(process.cwd(), "public", "admin", "pc_consolidated_health.json");
+
+    // Build consolidated PCs map (1 record per pcId)
+    const pcsMap: Record<string, any> = {};
+    for (const record of telemetryLogsStore) {
+      if (!record) continue;
+      const key = record.pcId || record.machineId || record.id;
+      if (!key) continue;
+      if (!pcsMap[key]) {
+        pcsMap[key] = {
+          machineId: key,
+          pcName: record.pcName || 'GP-DESK-PC',
+          userName: record.userName || 'Panchayat Operator',
+          officeLocation: record.officeLocation || record.panchayat || 'Grama Panchayat Office',
+          district: record.district || '',
+          state: record.state || 'TS',
+          os: record.osVersion || record.os || 'Windows 11',
+          osVersion: record.osVersion || record.os || 'Windows 11',
+          appVersion: record.version || 'v1.0.8',
+          overallStatus: (Number(record.healthScore) >= 80 && !String(record.status || '').toLowerCase().includes('fail')) ? 'ONLINE & READY' : 'DEGRADED',
+          stepsVerified: record.stepsVerified || `${record.passedCount || 17}/${record.totalChecks || '17/17'} Passed`,
+          dscStatus: record.dscStatus || 'USB Token Connected',
+          lastSeen: record.time ? `${record.date || ''} ${record.time}` : 'Just Now',
+          lastSummary: record.remarks || record.summary || 'Live telemetry update',
+          healthScore: record.healthScore || 100,
+          ...record
+        };
+      }
+    }
+
     [adminStoragePath, apiStoragePath, pubStoragePath].forEach(p => {
       try {
         const d = path.dirname(p);
         if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
         fs.writeFileSync(p, JSON.stringify(telemetryLogsStore, null, 2), "utf-8");
+      } catch (err) {}
+    });
+
+    [consolidatedHealthPath].forEach(p => {
+      try {
+        const d = path.dirname(p);
+        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+        fs.writeFileSync(p, JSON.stringify(Object.values(pcsMap), null, 2), "utf-8");
+      } catch (err) {}
+    });
+
+    [pcConsolidatedHealthPath].forEach(p => {
+      try {
+        const d = path.dirname(p);
+        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+        fs.writeFileSync(p, JSON.stringify(pcsMap, null, 2), "utf-8");
       } catch (err) {}
     });
   } catch (e) {
@@ -1992,12 +2006,10 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.html', '/admin/ubd_moni
     return res.status(200).end();
   }
 
-  const botToken = telegramConfigStore.botToken || DEFAULT_TELEGRAM_BOT_TOKEN;
-  const chatId = telegramConfigStore.chatId || DEFAULT_TELEGRAM_CHAT_ID;
-  const version = 'v1.0.9';
-
-  // Clear Dummy Reports Action
+  // Clear Reports Action
   if (req.query.clear === '1') {
+    telemetryLogsStore.length = 0;
+    saveTelemetryLogsToDisk();
     try {
       if (fs.existsSync(ubdMonitoringStoragePath)) fs.unlinkSync(ubdMonitoringStoragePath);
       const dataFile = path.join(process.cwd(), "public", "admin", "telemetry_storage.json");
@@ -2006,68 +2018,53 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.html', '/admin/ubd_moni
     return res.redirect('/admin/ubd_monitoring');
   }
 
-  // Handle Incoming POST Telemetry from C# App
+  // Handle Incoming POST Telemetry from C# App / UBD Tool
   if (req.method === 'POST') {
-    const data = (typeof req.body === 'object' && req.body !== null) ? req.body : {};
-    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    const pcName = String(data.pcName || data.computerName || 'Unknown-PC').trim();
-    const machineId = String(data.deviceInstallationId || data.machineId || data.pcId || pcName).trim();
-    const userName = String(data.userName || data.operatorName || 'Panchayat Operator').trim();
-    const location = String(data.officeLocation || data.office || 'Grama Panchayat Office').trim();
-    const os = String(data.osVersion || data.os || 'Windows 11').trim();
-    const remarks = String(data.remarks || data.summary || 'Report received from client machine.').trim();
-
-    const stepsTotal = parseInt(String(data.stepsTotal), 10) || 17;
-    const stepsVerified = parseInt(String(data.stepsVerified), 10) || (data.status === 'SUCCESS' ? 17 : 12);
-
-    const isIssue = String(data.status || '').toUpperCase().includes('ISSUE') || String(data.status || '').toUpperCase().includes('FAIL');
-    const overallStatus = isIssue ? 'DEGRADED' : 'ONLINE & READY';
-
-    const pcs = getNormalizedConsolidatedPcs();
-
-    // Strict Enforce: 1 Report per PC
-    pcs[machineId] = {
-      machineId,
-      pcName,
-      userName,
-      officeLocation: location,
-      os,
-      appVersion: version,
-      overallStatus,
-      stepsVerified: `${stepsVerified}/${stepsTotal} Passed`,
-      dscStatus: String(data.dscStatus || 'Connected').trim(),
-      lastSeen: now,
-      lastSummary: remarks
-    };
-    saveNormalizedConsolidatedPcs(pcs);
-
-    // Telegram Auto-Dispatch
-    const statusEmoji = isIssue ? '🚨' : '✅';
-    const tgMsg = `🏛️ <b>E-VEDHIKA TELEMETRY REPORT RECEIVED</b>\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `💻 <b>PC:</b> <code>${pcName}</code>\n` +
-      `🏢 <b>Office:</b> ${location}\n` +
-      `👤 <b>Operator:</b> ${userName}\n` +
-      `⚡ <b>Status:</b> ${statusEmoji} <b>${overallStatus}</b>\n` +
-      `⚙️ <b>Verification:</b> ${stepsVerified}/${stepsTotal} Steps Verified\n` +
-      `📝 <b>Summary:</b> ${remarks}\n` +
-      `⏰ <b>Timestamp:</b> ${now}\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `🌐 <b>Admin Gateway:</b> https://www.e-vedhika.in/admin/ubd_monitoring`;
-
-    sendUbdMonitoringTelegram(botToken, chatId, tgMsg).catch(() => {});
-
+    const record = processIncomingTelemetry(req);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    return res.json({ success: true, message: 'Telemetry logged successfully', pcId: machineId });
+    return res.json({
+      success: true,
+      message: 'Telemetry logged successfully at www.e-vedhika.in',
+      telegramNotified: true,
+      recordId: record.id,
+      pcId: record.pcId || 'EVD-TS-XXXX',
+      record,
+      log: record
+    });
   }
 
   // Handle GET - JSON response
   if (req.query.format === 'json' || req.headers.accept?.includes('application/json')) {
-    const pcs = getNormalizedConsolidatedPcs();
-    const pcsList = Object.values(pcs);
+    const pcsMap: Record<string, any> = {};
+    for (const record of telemetryLogsStore) {
+      if (!record) continue;
+      const key = record.pcId || record.machineId || record.id;
+      if (!key) continue;
+      if (!pcsMap[key]) {
+        pcsMap[key] = {
+          machineId: key,
+          pcName: record.pcName || 'GP-DESK-PC',
+          userName: record.userName || 'Panchayat Operator',
+          officeLocation: record.officeLocation || record.panchayat || 'Grama Panchayat Office',
+          district: record.district || '',
+          state: record.state || 'TS',
+          os: record.osVersion || record.os || 'Windows 11',
+          osVersion: record.osVersion || record.os || 'Windows 11',
+          appVersion: record.version || 'v1.0.8',
+          overallStatus: (Number(record.healthScore) >= 80 && !String(record.status || '').toLowerCase().includes('fail')) ? 'ONLINE & READY' : 'DEGRADED',
+          stepsVerified: record.stepsVerified || `${record.passedCount || 17}/${record.totalChecks || '17/17'} Passed`,
+          dscStatus: record.dscStatus || 'USB Token Connected',
+          lastSeen: record.time ? `${record.date || ''} ${record.time}` : 'Just Now',
+          lastSummary: record.remarks || record.summary || 'Live telemetry update',
+          healthScore: record.healthScore || 100,
+          ...record
+        };
+      }
+    }
+    const pcsList = Object.values(pcsMap);
     const totalPcs = pcsList.length;
-    const healthyPcs = pcsList.filter((p: any) => ['ONLINE & READY', 'HEALTHY', 'SUCCESS'].includes(p.overallStatus)).length;
-    const issueCount = totalPcs - healthyPcs;
+    const healthyPcs = pcsList.filter((p: any) => ['ONLINE & READY', 'HEALTHY', 'SUCCESS', 'ONLINE'].includes(String(p.overallStatus || '').toUpperCase())).length;
+    const issueCount = Math.max(0, totalPcs - healthyPcs);
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.json({
@@ -2075,7 +2072,9 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.html', '/admin/ubd_moni
       totalPcs,
       healthyPcs,
       issueCount,
-      pcs: pcsList
+      pcs: pcsList,
+      logs: telemetryLogsStore,
+      machines: pcsList
     });
   }
 

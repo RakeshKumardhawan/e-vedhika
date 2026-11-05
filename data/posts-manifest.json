@@ -2,23 +2,109 @@
   {
     "id": "7t6TkrzU7hwspvjI0xsl",
     "slug": "continuation-orders-2026-27",
-    "aliases": ["continuation", "continuation-orders", "continuation-order", "continuation-orders-2026"],
     "title": "📢 తెలంగాణ పంచాయతీరాజ్ శాఖలో ఔట్‌సోర్సింగ్, కాంట్రాక్ట్ ఉద్యోగులకు కీలక అప్డేట్!",
-    "content": "తెలంగాణ రాష్ట్ర పంచాయతీరాజ్ మరియు గ్రామీణాభివృద్ధి శాఖ పరిధిలో విధులు నిర్వహిస్తున్న ఔట్‌సోర్సింగ్, కాంట్రాక్ట్ ఉద్యోగుల సర్వీస్ కొనసాగింపు (Continuation Orders) ఉత్తర్వుల తాజా వివరాలు, ప్రొసీడింగ్స్ కాపీలు మరియు సమాచారం. పూర్తి జీవో మరియు వివరాల కోసం ఈ-వేదిక పోర్టల్ సందర్శించండి.",
+    "content": "📢 తెలంగాణ పంచాయతీరాజ్ శాఖలో డేటా ఎంట్రీ ఆపరేటర్లకు కీలక అప్డేట్! G.O.Rt.No.1688 తేదీ: 23 10 2026 తెలంగాణ ప్రభుత్వం పంచాయతీరాజ్ మరియు గ్రామీణాభివృద్ధి శాఖ పర...",
     "imageUrl": "https://www.e-vedhika.in/banner.jpg",
-    "postNumber": "1",
-    "category": "ఉద్యోగుల సమాచారం",
-    "author": "E-Vedhika Team"
+    "category": " General"
   },
   {
     "id": "ubd-settings-dsk-issues",
     "slug": "ubd-settings-dsk-issues",
-    "aliases": ["ubdsetting", "ubdsettings", "ubd-settings", "ubd-setting", "ubd", "ubd-dsk", "ubd-dsc", "ubd-issues"],
+    "aliases": [
+      "ubdsetting",
+      "ubdsettings",
+      "ubd-settings",
+      "ubd-setting",
+      "ubd",
+      "ubd-dsk",
+      "ubd-dsc",
+      "ubd-issues"
+    ],
     "title": "UBD Settings, DSC & DSK Issues Solution | Telangana & AP Panchayath Portal",
     "content": "Bilingual comprehensive guide & troubleshooting for UBD Settings, Digital Signature Certificate (DSC), DSK service errors, Telangana UBD website DSK errors, and AP UBD portal issues on E-Vedhika.",
     "imageUrl": "https://www.e-vedhika.in/banner.jpg",
     "postNumber": "2",
     "category": "టెక్నికల్ గైడ్స్",
     "author": "E-Vedhika Technical Team"
+  },
+  {
+    "id": "8cSJDDm9rSKdiymMv7d9",
+    "slug": "మ-ఖ-య-గమన-క-చ-య-త-ప-న-షన-ల-ల-వ-అథ-ట-క-షన-2026",
+    "title": "📢 ముఖ్య గమనిక: చేయూత పెన్షన్ల లైవ్ అథెంటికేషన్ (2026)",
+    "content": "📢 ముఖ్య గమనిక: చేయూత పెన్షన్ల లైవ్ అథెంటికేషన్ (2026) తెలంగాణ ప్రభుత్వ గ్రామీణాభివృద్ధి శాఖ (SERP) ఆదేశాల మేరకు, రాష్ట్రవ్యాప్తంగా పెన్షన్ పొందుతున్న లబ్ధిద...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": "📌 General"
+  },
+  {
+    "id": "8gDhXuQuOJSCudl1jfDO",
+    "slug": "అలర-ట-పన-చ-యన-ఈ-ప-చ-యత-స-ట",
+    "title": "అలర్ట్: పనిచేయని ఈ-పంచాయతీ సైట్.",
+    "content": "ఈ పంచాయతీ పోర్టల్ టెక్నికల్ ఇష్యూ వల్ల సరిగ్గా ఓపెన్ కావడం లేదు. దీనివల్ల పంచాయతీ కార్యాలయాల్లో పనులు స్తంభించాయి. ఆపరేటర్లు వర్క్ చేయలేకపోతున్నారు. త్వరగా స...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": "Updates"
+  },
+  {
+    "id": "91IbDiB9tnSp5ejsgTK1",
+    "slug": "data-entry-bot",
+    "title": "🚀 Introducing Data Entry Bot v1.0.0 – Smart Desktop Automation Tool for Fast Web Portals",
+    "content": "Hello Friends, Are you tired of doing repetitive manual data entries on web portals? Do you want to save hours of your valuable time and avoid human typing e...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": " General"
+  },
+  {
+    "id": "AZPOaVFqPnwppKLjgYLj",
+    "slug": "ubd-settings-for-windows-11-for-ubd.ap.gov.in",
+    "title": "Ubd settings for windows 11 for ubd.ap.gov.in",
+    "content": "Ubd settings for ap site",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": " Technical Support"
+  },
+  {
+    "id": "BROLcgJsRGrMr7C3llh4",
+    "slug": "ubd-portal-error",
+    "title": "UBD Portal Error",
+    "content": "e వేదిక లో చూపిన విధంగా అన్ని సెట్టింగ్ లు చేశాను కాని లాస్ట్ కి ఎర్రొర్ Unbale to Sing in (obect error) అని రావడం జరుగుతుంది. 🐛 Bug Fixes text",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": " General"
+  },
+  {
+    "id": "T5zVhSjryHQjno14sFEr",
+    "slug": "త-ల-గ-ణ-గ-ర-మ-ప-చ-యత-లక-శ-భవ-ర-త-ఆత-మన-ర-భర-ప-చ-యత-ప-ర-గ-ర-మ-2026-27",
+    "title": "🌾 తెలంగాణ గ్రామ పంచాయతీలకు శుభవార్త – ఆత్మనిర్భర్ పంచాయత్ ప్రోగ్రామ్ 2026-27",
+    "content": "గ్రామ పంచాయతీలు కేవలం ప్రభుత్వ గ్రాంట్లపై ఆధారపడకుండా స్వంత ఆదాయ వనరులను పెంచుకుని ఆర్థికంగా బలోపేతం కావాలనే లక్ష్యంతో భారత ప్రభుత్వ పంచాయతీరాజ్ మంత్రిత్వ శా...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": "🏛️ Gram Panchayat"
+  },
+  {
+    "id": "UJgNcNhbHElLEXB0NHB2",
+    "slug": "క-ట-బ-యజమ-న-న-క-ల-ప-య-న-ప-దలక-20-000-ప-రభ-త-వ-స-య-nfbs-పథక-ప-ర-త-వ-వర-ల",
+    "title": "కుటుంబ యజమానిని కోల్పోయిన పేదలకు ₹20,000 ప్రభుత్వ సాయం – NFBS పథకం పూర్తి వివరాలు!",
+    "content": "కుటుంబంలో సంపాదించే వ్యక్తి అకాల మరణం చెందితే ఆ కుటుంబం ఆర్థికంగా కుంగిపోకుండా అండగా నిలవడానికి కేంద్ర ప్రభుత్వం నేషనల్ ఫ్యామిలీ బెనిఫిట్ స్కీమ్ (NFBS) అమలు ...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": "📌 General"
+  },
+  {
+    "id": "UbBLqq30iXNz7mypNeLJ",
+    "slug": "ubd-and-egramswaraj-signing-issues",
+    "title": "ubd and egramswaraj signing issues",
+    "content": "egramswaraj and ubd issues clear cheyandi Bro",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": " General"
+  },
+  {
+    "id": "VSvFJz9oIPF5Cbi5icIu",
+    "slug": "చ-య-త-ప-న-షన-దరఖ-స-త-ద-ర-లక-శ-భవ-ర-త",
+    "title": "📢 చేయూత పెన్షన్ దరఖాస్తుదారులకు శుభవార్త! 🌟",
+    "content": "📢 చేయూత పెన్షన్ దరఖాస్తుదారులకు అలెర్ట్ & శుభవార్త! 🌟 తెలంగాణ ప్రభుత్వం కొత్తగా చేయూత పెన్షన్ల కోసం దరఖాస్తులను ఆహ్వానిస్తోంది! అర్హులైన వారు దరఖాస్తు చేసు...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": " General"
+  },
+  {
+    "id": "qkQ9PDCxO0myy5l2seda",
+    "slug": "ubdsetting",
+    "title": "🌟 UBD సెట్టింగ్స్ ISSUES కి ఫుల్ స్టాప్! 🛑🚀 వన్ క్లిక్ ఆల్ సెటప్ (ONE-CLICK ALL SETUP)",
+    "content": "🏛️ E VEDHIKA UBD DEPLOYMENT TOOL v1.0.8 RELEASED 🚀 🛡️ GUARDIAN BUILD — Smart Background Monitoring & Universal UBD Solution 🌟 తెలంగాణ & ఆంధ్రప్రదేశ్ గ్రా...",
+    "imageUrl": "https://www.e-vedhika.in/banner.jpg",
+    "category": "Updates"
   }
 ]

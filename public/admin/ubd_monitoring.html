@@ -178,51 +178,7 @@
                     }
                 }
 
-                // Default active fallback PCs if no backend records yet
-                if (!pcs || pcs.length === 0) {
-                    const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-                    pcs = [
-                        {
-                            pcName: 'MPO-PC-WARANGAL',
-                            pcId: 'EVD-PC-1900-62E8',
-                            officeLocation: 'MPO Mandal Office, Warangal',
-                            userName: 'MPO e-Panchayat Sec',
-                            os: 'Windows 11 Pro (64-bit Build 22631)',
-                            overallStatus: 'ONLINE & READY',
-                            stepsVerified: '17/17 Passed',
-                            dscStatus: 'USB Token Active (Class 3)',
-                            lastSummary: 'Auto-Healed: Guardian System active and monitoring this node.',
-                            lastSeen: nowStr
-                        },
-                        {
-                            pcName: 'TS-GP-KHAMMAM-01',
-                            pcId: 'EVD-TS-4A9B-12EF',
-                            officeLocation: 'Khammam Urban GP Office',
-                            userName: 'Srinivas Rao (Secretary)',
-                            os: 'Windows 10 Pro (64-bit Build 19045)',
-                            overallStatus: 'ONLINE & READY',
-                            stepsVerified: '17/17 Passed',
-                            dscStatus: 'USB Token Connected',
-                            lastSummary: 'Live Sync Active: Zero-Manual Auto-Repair engaged.',
-                            lastSeen: nowStr
-                        },
-                        {
-                            pcName: 'GP-COMPUTER-NIZAMABAD',
-                            pcId: 'EVD-TS-77B1-4091',
-                            officeLocation: 'Armoor Grama Panchayat',
-                            userName: 'Panchayat Operator',
-                            os: 'Windows 7 Enterprise (SP1 64-bit)',
-                            overallStatus: 'ONLINE & READY',
-                            stepsVerified: '17/17 Passed',
-                            dscStatus: 'USB Token Active',
-                            lastSummary: 'Windows 7 Legacy Drivers Loaded (Win 7-11 Compatible).',
-                            lastSeen: nowStr
-                        }
-                    ];
-                    total = pcs.length;
-                    healthy = pcs.length;
-                    issues = 0;
-                }
+                if (!pcs) pcs = [];
 
                 allPcsList = pcs;
 

@@ -98,62 +98,9 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
         }
       }
 
-      // Default active telemetry state if empty
-      if (!loadedLogs || loadedLogs.length === 0) {
-        const nowStr = new Date().toLocaleString('en-IN');
-        loadedLogs = [
-          {
-            id: 'EVD-PC-1900-62E8',
-            pcId: 'EVD-PC-1900-62E8',
-            pcName: 'MPO-PC-WARANGAL',
-            userName: 'MPO e-Panchayat Sec',
-            officeLocation: 'MPO Mandal Office, Warangal',
-            district: 'Warangal',
-            os: 'Windows 11 Pro (64-bit Build 22631)',
-            overallStatus: 'ONLINE & READY',
-            stepsVerified: '17/17 Passed',
-            healthScore: 100,
-            dscStatus: 'USB Token Active (Class 3 PKCS#11)',
-            lastSummary: 'Auto-Healed: Guardian System active and monitoring this node.',
-            lastSeen: nowStr,
-            date: nowStr.split(',')[0],
-            time: nowStr.split(',')[1] || ''
-          },
-          {
-            id: 'EVD-TS-4A9B-12EF',
-            pcId: 'EVD-TS-4A9B-12EF',
-            pcName: 'TS-GP-KHAMMAM-01',
-            userName: 'Srinivas Rao (Secretary)',
-            officeLocation: 'Khammam Urban GP Office',
-            district: 'Khammam',
-            os: 'Windows 10 Pro (64-bit Build 19045)',
-            overallStatus: 'ONLINE & READY',
-            stepsVerified: '17/17 Passed',
-            healthScore: 100,
-            dscStatus: 'USB Token Connected',
-            lastSummary: 'Live Sync Active: Zero-Manual Auto-Repair engaged.',
-            lastSeen: nowStr,
-            date: nowStr.split(',')[0],
-            time: nowStr.split(',')[1] || ''
-          },
-          {
-            id: 'EVD-TS-77B1-4091',
-            pcId: 'EVD-TS-77B1-4091',
-            pcName: 'GP-COMPUTER-NIZAMABAD',
-            userName: 'Panchayat Operator',
-            officeLocation: 'Armoor Grama Panchayat',
-            district: 'Nizamabad',
-            os: 'Windows 7 Enterprise (SP1 64-bit)',
-            overallStatus: 'ONLINE & READY',
-            stepsVerified: '17/17 Passed',
-            healthScore: 100,
-            dscStatus: 'USB Token Active',
-            lastSummary: 'Windows 7 Legacy Drivers Loaded (Win 7-11 Compatible).',
-            lastSeen: nowStr,
-            date: nowStr.split(',')[0],
-            time: nowStr.split(',')[1] || ''
-          }
-        ];
+      // Keep clean state if no backend telemetry logs exist yet
+      if (!loadedLogs) {
+        loadedLogs = [];
       }
 
       setTelemetryLogs(loadedLogs);
