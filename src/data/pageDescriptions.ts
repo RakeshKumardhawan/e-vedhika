@@ -1,22 +1,82 @@
 export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, { title: string; description: string }> = {
-  home: { title: "🏛️ E-Vedhika | Digital Governance Portal", description: "E-Vedhika - All Problems One Solution. Comprehensive digital portal for Telangana & AP Panchayat Secretaries, Computer Operators, and Citizens. Featuring DSR Analyzer, Multi-Day Attendance, Farmer Registry, GOs & Formats." },
-  workspace: { title: "డిజిటల్ వర్క్‌స్పేస్ (Digital Workspace)", description: "ఈ-పంచాయత్ ఆపరేటర్లు తమ రోజువారీ పనులను నిర్వహించుకోవడానికి, రిపోర్టులు తయారుచేయడానికి ఉపయోగపడే డిజిటల్ వేదిక." },
-  logs: { title: "భద్రతా లాగ్స్ (Security Logs)", description: "సిస్టమ్‌లోని యాక్టివిటీ మరియు భద్రతా లాగ్‌లను వీక్షించడానికి." },
-  chat: { title: "చాట్ రూమ్ (Chat Room)", description: "తోటి ఈ-పంచాయత్ ఆపరేటర్లు మరియు అధికారులతో సమాచారం పంచుకోవడానికి చాట్ చేయండి." },
-  union: { title: "యూనియన్ పోల్స్ (Union Polls)", description: "యూనియన్ మరియు వివిధ నిర్ణయాలపై మీ అభిప్రాయాన్ని పోల్స్ ద్వారా తెలియజేయండి." },
-  changelog: { title: "సిస్టమ్ అప్‌డేట్స్ (System Updates)", description: "యాప్‌లో కొత్తగా వచ్చిన ఫీచర్లు మరియు మార్పుల గురించి తెలుసుకోండి." },
-  emergency: { title: "ఎమర్జెన్సీ కాంటాక్ట్స్ (Emergency Contacts)", description: "అత్యవసర పరిస్థితులలో సంప్రదించాల్సిన ముఖ్యమైన ఫోన్ నంబర్లు." },
-  suggestions: { title: "సూచనలు & ఫీడ్‌బ్యాక్ (Suggestions & Feedback)", description: "పోర్టల్ అభివృద్ధి కోసం మీ విలువైన సూచనలు మరియు సమస్యలను ఇక్కడ తెలియజేయండి." },
-  gos_formats: { title: "జీఓలు & ఫార్మాట్లు (GOs & Formats)", description: "అన్ని రకాల ప్రభుత్వ జీఓలు, అప్లికేషన్ ఫార్మాట్‌లు మరియు ఇతర ఫైల్స్ డౌన్‌లోడ్ చేసుకోండి." },
-  useful_links: { title: "ఉపయోగకరమైన లింక్‌లు (Useful Links)", description: "వివిధ ప్రభుత్వ వెబ్‌సైట్లు మరియు ముఖ్యమైన పోర్టల్స్ యొక్క డైరెక్ట్ లింకులు." },
-  excel_print: { title: "ఎక్సెల్ A4 ప్రింట్ (Excel A4 Print)", description: "డేటాను ఎక్సెల్ ఫార్మాట్‌లో సరిచేసుకుని A4 సైజులో ప్రింట్ తీసుకోవడానికి ఈ టూల్ ఉపయోగపడుతుంది." },
-  farmer_registry: { title: "రైతు రిజిస్ట్రీ (Farmer Registry)", description: "రైతుల డేటా, వ్యవసాయ రికార్డులను నిర్వహించడానికి మరియు సరిచూసుకోవడానికి." },
-  my_activity: { title: "నా యాక్టివిటీ (My Activity)", description: "మీరు పోర్టల్‌లో చేసిన పనులు, యాక్టివిటీస్ మరియు రికార్డులను ఇక్కడ చూసుకోవచ్చు." },
-  directlinks: { title: "డైరెక్ట్ లింక్స్ (Direct Links) / UBD ట్రాకర్", description: "UBD డేటా ట్రాక్ చేయడానికి మరియు జనన మరణాల వివరాలను సులభంగా నిర్వహించడానికి." },
-  dsr: { title: "DSR ఎనలైజర్ (DSR Analyzer)", description: "మీ రోజువారీ స్టేటస్ రిపోర్ట్స్ (DSR) ను విశ్లేషించి రిపోర్ట్ జనరేట్ చేయడానికి ఈ టూల్ ఉపయోగపడుతుంది." },
-  multiday: { title: "మల్టీ-డే అటెండెన్స్ (Multi-Day Attendance)", description: "ఒకటి కంటే ఎక్కువ రోజుల హాజరు వివరాలను ఒకేసారి నమోదు చేయడానికి మరియు సరిచూడటానికి ఈ టూల్ ఉపయోగపడుతుంది." },
-  training: { title: "డిజిటల్ ట్రైనింగ్ (Digital Training)", description: "డిజిటల్ వర్క్‌ఫ్లోస్ మరియు ట్యుటోరియల్స్ ద్వారా వివిధ పనులను ఎలా చేయాలో నేర్చుకోండి." },
-  pract: { title: "నాలెడ్జ్ హబ్ (PR Act Guide)", description: "పంచాయతీరాజ్ చట్టం (PR Act) మరియు ఇతర ముఖ్యమైన సమాచారం గురించి తెలుసుకోవడానికి ఈ నాలెడ్జ్ హబ్ ఉపయోగపడుతుంది." },
-  "MAS": { title: "Monthly Activity Monitoring (MAS)", description: "Streamlined monthly activity data monitoring and comprehensive Mandal & District MAS reporting." },
-  "excel-merge": { title: "ఎక్సెల్ ఫైల్ మెర్జర్ (Excel File Merger)", description: "వేర్వేరు ఎక్సెల్ ఫైల్స్ (Excel files) లో ఉన్న సమాచారాన్ని ఒకే ఫైల్ గా కలపడానికి ఈ టూల్ ఉపయోగపడుతుంది." },
+  home: { 
+    title: "🏛️ E-Vedhika | Digital Governance Portal", 
+    description: "E-Vedhika - All Problems One Solution. Comprehensive digital portal for Telangana & AP Panchayat Secretaries, Computer Operators, and Citizens. Featuring DSR Analyzer, Multi-Day Attendance, Farmer Registry, GOs & Formats." 
+  },
+  workspace: { 
+    title: "Digital Workspace", 
+    description: "Digital platform for E-Panchayat operators to manage daily tasks and generate official reports efficiently." 
+  },
+  logs: { 
+    title: "Security & Audit Logs", 
+    description: "View real-time system activity, user logins, and security audit logs." 
+  },
+  chat: { 
+    title: "Live Chat Room", 
+    description: "Connect and share information with fellow E-Panchayat operators and officials in real time." 
+  },
+  union: { 
+    title: "Union Corner & Polls", 
+    description: "Participate in union polls and express your opinion on key administrative decisions." 
+  },
+  changelog: { 
+    title: "System Updates & Release Notes", 
+    description: "Explore the latest features, enhancements, and system releases on E-Vedhika." 
+  },
+  emergency: { 
+    title: "Emergency Contacts Directory", 
+    description: "Quick access to essential helpline numbers and key official emergency contacts." 
+  },
+  suggestions: { 
+    title: "Public Suggestions & Feedback", 
+    description: "Submit your valuable suggestions and report technical portal issues to improve service delivery." 
+  },
+  gos_formats: { 
+    title: "GOs & Official Formats", 
+    description: "Download government orders (GOs), official application formats, and essential documents." 
+  },
+  useful_links: { 
+    title: "Useful Government Links", 
+    description: "Direct links to key government portals, official departmental websites, and online services." 
+  },
+  excel_print: { 
+    title: "Excel A4 Print Formatting Tool", 
+    description: "Format and optimize Excel spreadsheet data seamlessly for standard A4 printing." 
+  },
+  farmer_registry: { 
+    title: "Farmer Registry Portal", 
+    description: "Manage, verify, and streamline agricultural records and farmer database information." 
+  },
+  my_activity: { 
+    title: "My Activity Dashboard", 
+    description: "Track your personal activity history, submitted reports, and portal interactions." 
+  },
+  directlinks: { 
+    title: "UBD Tool Tracker & Direct Links", 
+    description: "Track UBD entry status and manage vital statistics (birth & death records) efficiently." 
+  },
+  dsr: { 
+    title: "DSR Analyzer Tool", 
+    description: "Analyze daily status reports (DSR) and generate structured summary reports automatically." 
+  },
+  multiday: { 
+    title: "Multi-Day Attendance Tracker", 
+    description: "Record, batch-process, and verify employee attendance across multiple dates simultaneously." 
+  },
+  training: { 
+    title: "Digital Training Hub", 
+    description: "Learn digital workflows, watch step-by-step video tutorials, and master portal utilities." 
+  },
+  pract: { 
+    title: "PR Act Knowledge Base", 
+    description: "Comprehensive guide to the Panchayat Raj Act, administrative rules, and governance guidelines." 
+  },
+  "MAS": { 
+    title: "Monthly Activity Monitoring (MAS)", 
+    description: "Streamlined monthly activity data monitoring and comprehensive Mandal & District MAS reporting." 
+  },
+  "excel-merge": { 
+    title: "Excel File Merger Tool", 
+    description: "Merge data from multiple Excel workbooks into a single consolidated master spreadsheet." 
+  },
 };

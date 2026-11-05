@@ -8454,7 +8454,7 @@ E-Vedhika Support System`;
                                   id="footer-pwa-btn"
                                 >
                                   <Smartphone size={13} className="text-amber-300" />
-                                  <span>Install App (మొబైల్ యాప్)</span>
+                                  <span>Install App</span>
                                 </button>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <Link
@@ -23609,11 +23609,11 @@ function PostCard({
             )}
             {post.submissionType === "complaint" ? (
               <span className="bg-rose-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-xs border border-rose-700">
-                🚨 కంప్లైంట్ / రిపోర్ట్
+                🚨 Complaint / Report
               </span>
             ) : (
               <span className="bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
-                📢 పోస్ట్ / అప్‌డేట్
+                📢 Post / Update
               </span>
             )}
             {post.userPhone && (isAdmin || isAuthor) && (
@@ -23660,10 +23660,10 @@ function PostCard({
                   handleEditPostTimings(post, addToast, isAdmin);
                 }}
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-colors shadow-xs ml-0.5 cursor-pointer"
-                title="సమయాలు మార్చండి (Edit Created / Last Update Timings)"
+                title="Edit Created / Last Update Timings"
               >
                 <Calendar size={10} className="text-amber-600" />
-                <span>సమయం ఎడిట్ (Edit Time)</span>
+                <span>Edit Time</span>
               </button>
             )}
             <span>•</span>
@@ -29305,7 +29305,7 @@ function PostDetail({
                 </div>
                 <div>
                   <div className="text-sm font-black uppercase tracking-wider text-blue-900 flex items-center gap-2">
-                    <span>🎧 సపోర్ట్ సిస్టమ్‌కి పంపబడింది (Sent to Support System)</span>
+                    <span>🎧 Sent to Support System</span>
                     {post.supportTicketId && (
                       <span className="px-2.5 py-0.5 bg-blue-200/80 text-blue-900 rounded-md text-xs font-black">
                         Ticket #{post.supportTicketId.substring(0, 6).toUpperCase()}
@@ -29313,12 +29313,12 @@ function PostDetail({
                     )}
                   </div>
                   <p className="text-xs text-blue-700 font-medium mt-0.5">
-                    మీ పోస్ట్‌ను అడ్మిన్ సపోర్ట్ సిస్టమ్‌కి పంపించారు. సపోర్ట్ టీమ్ త్వరలోనే మీ సమస్యను పరిశీలించి పరిష్కరిస్తుంది.
+                    Your post has been routed to the support system. The admin team will review and address your issue shortly.
                   </p>
                 </div>
               </div>
               <span className="hidden sm:inline-block px-3 py-1.5 bg-blue-200/80 border border-blue-300 text-blue-900 rounded-xl text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
-                🔒 ఇన్ రివ్యూ (Under Review)
+                🔒 Under Review
               </span>
             </div>
           ) : (
@@ -29329,15 +29329,15 @@ function PostDetail({
                 </div>
                 <div>
                   <div className="text-sm font-black uppercase tracking-wider text-amber-900 flex items-center gap-2">
-                    <span>⏳ అడ్మిన్ ఆమోదం కోసం వేచి ఉంది (Pending Admin Approval)</span>
+                    <span>⏳ Pending Admin Approval</span>
                   </div>
                   <p className="text-xs text-amber-700 font-medium mt-0.5">
-                    మీ {post.submissionType === 'complaint' ? 'ఫిర్యాదు' : 'పోస్ట్'} సమర్పించబడింది. అడ్మిన్ ఆమోదించిన తర్వాత మాత్రమే ఇది పబ్లిక్‌గా అందరికీ కనిపిస్తుంది. ప్రస్తుతానికి మీకు మాత్రమే కనిపిస్తోంది.
+                    Your {post.submissionType === 'complaint' ? 'complaint' : 'post'} has been submitted. It will become publicly visible once approved by an admin. Currently visible only to you.
                   </p>
                 </div>
               </div>
               <span className="hidden sm:inline-block px-3 py-1.5 bg-amber-200/80 border border-amber-300 text-amber-900 rounded-xl text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
-                🔒 మీకు మాత్రమే (Only You)
+                🔒 Only You
               </span>
             </div>
           )}
@@ -29377,14 +29377,14 @@ function PostDetail({
                     }
                   }}
                   className="ml-2 text-blue-600 hover:bg-blue-50 p-1 rounded-full transition-colors inline-flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-blue-200"
-                  title="మెసేజ్ పంపండి (Direct Message)"
+                  title="Direct Message"
                 >
                   <MessageCircle size={12} /> <span className="hidden sm:inline">Message</span>
                 </button>
               )}
             </span>
             <span className="text-slate-300">•</span>
-            <span>ప్రచురణ: <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}</strong></span>
+            <span>Published: <strong className="text-slate-700 font-semibold">{new Date(getValidTime(post)).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}</strong></span>
             {(post.lastEditedAt || post.updatedAt) && (
               <>
                 <span className="text-slate-300">•</span>
@@ -29398,10 +29398,10 @@ function PostDetail({
                 type="button"
                 onClick={() => handleEditPostTimings(post, addToast, isAdmin)}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 transition-colors shadow-xs cursor-pointer ml-1"
-                title="సమయాలు మార్చండి (Edit Timings)"
+                title="Edit Timings"
               >
                 <Clock size={11} className="text-amber-700" />
-                <span>సమయం ఎడిట్ (Edit Time)</span>
+                <span>Edit Time</span>
               </button>
             )}
             <span className="text-slate-300">•</span>
@@ -29660,7 +29660,7 @@ function PostDetail({
         {/* Additional Attachments/Files if present */}
         {post.attachments && post.attachments.length > 0 && (
           <div className="mt-6 pt-4 border-t border-slate-100">
-            <h5 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">అటాచ్‌మెంట్‌లు (Attachments)</h5>
+            <h5 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">Attachments</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {post.attachments.map((att: any, idx: number) => {
                 const fileInfo = getFileTypeInfo(att.name || att.url || "");
@@ -29697,7 +29697,7 @@ function PostDetail({
                         </span>
                       </div>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-medium">డౌన్‌లోడ్ చేయండి</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Download</span>
                   </div>
                   <Download size={16} className="text-slate-400 group-hover:text-red-600 transition-colors" />
                 </a>
@@ -29715,10 +29715,10 @@ function PostDetail({
                     handleDetailQuickAddAttachmentLink();
                   }}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-xl px-4 py-2.5 transition-all text-blue-700 hover:text-blue-900 group shadow-xs cursor-pointer text-xs font-black"
-                  title="ఈ పోస్ట్‌కి నేరుగా కొత్త డౌన్‌లోడ్ లింక్ ఇవ్వండి (అడ్మిన్‌లకు మాత్రమే)"
+                  title="Add direct download link to this post (Admins only)"
                 >
                   <Plus size={14} strokeWidth={3} />
-                  <span>+ 🔗 లింక్ ఇవ్వండి (ఆటోమేటిక్ ఫైల్ యాడ్)</span>
+                  <span>+ 🔗 Add Direct File Link</span>
                 </button>
               </div>
             )}
@@ -29788,7 +29788,7 @@ function PostDetail({
                     {post.likes || 0}
                   </span>
                   <span className="text-xs uppercase font-bold hidden sm:inline">
-                    {userReactionEmoji ? "స్పందన" : "Likes"}
+                    {userReactionEmoji ? "Reaction" : "Likes"}
                   </span>
                 </button>
 
@@ -29799,7 +29799,7 @@ function PostDetail({
                     e.stopPropagation();
                     setShowReactionsBar(!showReactionsBar);
                   }}
-                  title="ఎమోజి స్పందనలు (Emoji Reactions)"
+                  title="Emoji Reactions"
                   className="p-1.5 ml-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer text-xs"
                 >
                   <Smile size={16} />
@@ -29814,7 +29814,7 @@ function PostDetail({
                     setShowLikesModal(!showLikesModal);
                   }}
                   className="hidden sm:flex items-center -space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity pl-1"
-                  title="స్పందించిన వారి జాబితా (View Likers)"
+                  title="View Likers & Reactions"
                 >
                   {likedBy.slice(0, 3).map((uid, idx) => {
                     const u = allUsers.find((usr) => usr.id === uid);
@@ -29840,7 +29840,7 @@ function PostDetail({
               <AnimatePresence>
                 {showLikesModal && (
                   <UsersListPopover
-                    title="స్పందించిన వారు (Liked / Reacted By)"
+                    title="Liked / Reacted By"
                     uids={post.likedBy || []}
                     allUsers={allUsers}
                     onClose={() => setShowLikesModal(false)}
@@ -29868,7 +29868,7 @@ function PostDetail({
               <AnimatePresence>
                 {showViewsModal && (
                   <UsersListPopover
-                    title="వీక్షించిన వారు (Viewed By)"
+                    title="Viewed By"
                     uids={post.viewedBy || []}
                     allUsers={allUsers}
                     onClose={() => setShowViewsModal(false)}
@@ -29889,7 +29889,7 @@ function PostDetail({
             className="flex items-center gap-2 text-emerald-700 hover:text-white hover:bg-emerald-600 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl transition-all cursor-pointer font-bold text-xs"
           >
             <Smartphone size={18} />
-            <span className="hidden sm:inline">వాట్సాప్ కార్డ్</span>
+            <span className="hidden sm:inline">WhatsApp Poster</span>
           </button>
         </div>
       </div>
@@ -29912,13 +29912,13 @@ function PostDetail({
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span>
-              రీసెంట్ పోస్ట్స్ (Recent Posts)
+              Recent Posts
             </h3>
             <button
               onClick={onBack}
               className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full border border-red-100 transition-colors cursor-pointer"
             >
-              అన్ని పోస్ట్‌లు చూడండి →
+              View All Posts →
             </button>
           </div>
 
@@ -29948,7 +29948,7 @@ function PostDetail({
                       </div>
                     )}
                     <span className="absolute top-2 left-2 bg-red-600 text-white text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-wider shadow-xs">
-                      {rp.categories?.[0] || rp.category || "తాజా వార్తలు"}
+                      {rp.categories?.[0] || rp.category || "Latest News"}
                     </span>
                   </div>
                   <div className="p-3.5 flex flex-col flex-1 justify-between gap-2">
@@ -29956,7 +29956,7 @@ function PostDetail({
                       {rp.title}
                     </h4>
                     <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium pt-2 border-t border-slate-100">
-                      <span>{new Date(getValidTime(rp)).toLocaleDateString("te-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      <span>{new Date(getValidTime(rp)).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}</span>
                       <span className="flex items-center gap-1">
                         <Eye size={12} /> {getPostDisplayViews(rp, isAdmin)}
                       </span>
@@ -29985,7 +29985,7 @@ function PostDetail({
                     ? "bg-rose-50 border-rose-200 text-rose-700 shadow-2xs scale-105"
                     : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                 }`}
-                title={`${uids.length} మంది స్పందించారు`}
+                title={`${uids.length} reactions`}
               >
                 <span>{emoji}</span>
                 <span className="text-[11px]">{uids.length}</span>
@@ -30108,17 +30108,17 @@ function CommentRoleBadge({
     <div className="inline-flex items-center gap-1.5 flex-wrap">
       {isOfficialAdmin && (
         <span className="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <ShieldCheck size={9} /> అడ్మిన్ (Admin)
+          <ShieldCheck size={9} /> Admin
         </span>
       )}
       {isPostAuthor && (
         <span className="bg-emerald-600 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <UserCheck size={9} /> రచయిత (Author)
+          <UserCheck size={9} /> Author
         </span>
       )}
       {isModerator && !isOfficialAdmin && (
         <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <Shield size={9} /> మోడరేటర్ (Moderator)
+          <Shield size={9} /> Moderator
         </span>
       )}
     </div>
@@ -30743,14 +30743,14 @@ function PostComments({
               size={24}
               className="text-amber-500"
             />
-            కామెంట్స్ (Comments){" "}
+            Comments{" "}
             <span className="bg-slate-100 text-slate-500 text-sm py-1 px-3 rounded-full font-black">
               {commentsLoaded ? comments.reduce((acc: number, c: any) => acc + 1 + (c.replies?.length || 0), 0) : (post.commentCount ?? post.comments?.length ?? 0)}
             </span>
           </h3>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            లైవ్ అప్‌డేట్స్ (Live)
+            Live
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -30759,19 +30759,19 @@ function PostComments({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm border ${showAdminOnly ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-200'}`}
           >
             <Filter size={14} />
-            అడ్మిన్ రిప్లైస్
+            Admin Replies
           </button>
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm">
           <ArrowUpDown size={14} className="text-slate-500" />
-          <span className="text-xs font-bold text-slate-500">వరసక్రమం:</span>
+          <span className="text-xs font-bold text-slate-500">Sort By:</span>
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as any)}
             className="bg-transparent text-xs font-black text-primary border-none outline-none cursor-pointer"
           >
-            <option value="newest">కొత్తవి మొదట (Newest First)</option>
-            <option value="oldest">పాతవి మొదట (Oldest First)</option>
-            <option value="popular">అత్యంత ప్రజాదరణ పొందినవి (Most Popular)</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="popular">Most Popular</option>
           </select>
         </div>
         </div>
@@ -30779,10 +30779,10 @@ function PostComments({
       <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
           <label className="block text-sm font-black text-primary">
-            మీ అభిప్రాయాన్ని తెలపండి (Add your perspective)
+            Add your perspective
           </label>
           <div className="flex items-center gap-1 flex-wrap">
-            <span className="text-[11px] font-medium text-slate-400 mr-1 hidden sm:inline">త్వరిత ఎమోజీలు:</span>
+            <span className="text-[11px] font-medium text-slate-400 mr-1 hidden sm:inline">Quick Emojis:</span>
             {["❤️", "👍", "👏", "🔥", "💡", "🙏", "🎉", "✨"].map((emoji) => (
               <button
                 key={emoji}
@@ -30842,14 +30842,14 @@ function PostComments({
                     }
                   }
                 }}
-                placeholder="మీ కామెంట్ లేదా అభిప్రాయాన్ని ఇక్కడ టైప్ చేయండి..."
+                placeholder="Type your comment or perspective here..."
                 className="flex-1 text-base bg-white p-4 pr-12 rounded-xl border-2 border-slate-200 focus:border-accent outline-none shadow-sm transition-all text-slate-800 placeholder:text-slate-400"
               />
               <button
                 type="button"
                 onClick={() => uploadFileInputRef.current?.click()}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-primary transition-colors bg-white rounded-lg cursor-pointer"
-                title="స్క్రీన్‌షాట్/ఫోటో జోడించండి"
+                title="Add screenshot / photo"
               >
                 <Paperclip size={20} />
               </button>
@@ -30878,7 +30878,7 @@ function PostComments({
             ) : (
               <Send size={18} />
             )}
-            కామెంట్ పంపండి (Post)
+            Post Comment
           </button>
         </div>
 
@@ -30886,14 +30886,14 @@ function PostComments({
           <div className="mt-3 bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900">
             <div className="flex items-center gap-2 text-xs font-bold text-center sm:text-left">
               <Info size={16} className="text-amber-600 shrink-0" />
-              <span>కామెంట్ పబ్లిష్ చేయడానికి లేదా లైక్ చేయడానికి దయచేసి లాగిన్ అవ్వండి.</span>
+              <span>Please log in to post a comment or like.</span>
             </div>
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event("open-login-modal"))}
               className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-black text-xs transition-colors shadow-sm cursor-pointer whitespace-nowrap"
             >
-              🔑 లాగిన్ / రిజిస్టర్ అవ్వండి
+              🔑 Log In / Register
             </button>
           </div>
         )}
@@ -31090,10 +31090,10 @@ function PostComments({
                         setOpenReactionPickerCommentId((prev) => (prev === c.id ? null : c.id));
                       }}
                       className="text-xs text-slate-500 hover:text-primary bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full flex items-center gap-1 transition-colors font-bold cursor-pointer"
-                      title="స్పందించండి (Add Reaction)"
+                      title="Add Reaction"
                     >
                       <Smile size={13} className="text-amber-500" />
-                      <span className="text-[11px]">స్పందించు (React)</span>
+                      <span className="text-[11px]">React</span>
                     </button>
                     {/* Reaction Popup Dock with zero-gap hover bridge */}
                     <div 
@@ -31129,7 +31129,7 @@ function PostComments({
                     }
                     className="text-[11px] font-bold text-slate-400 hover:text-primary transition-colors ml-1"
                   >
-                    ({c.likes.length} లైక్స్)
+                    ({c.likes.length} Likes)
                   </button>
                 )}
 
@@ -31144,10 +31144,10 @@ function PostComments({
                               ? "text-indigo-700 bg-indigo-50 border-indigo-200 shadow-2xs font-extrabold"
                               : "text-slate-400 bg-slate-50/80 border-slate-200/60"
                           }`}
-                          title={`మొత్తం సమాధానాలు: ${replyCount}`}
+                          title={`Total replies: ${replyCount}`}
                         >
                           <CornerDownRight size={11} className={replyCount > 0 ? "text-indigo-600" : "text-slate-400"} />
-                          <span>{replyCount} {replyCount === 1 ? "రిప్లై" : "రిప్లైలు"}</span>
+                          <span>{replyCount} {replyCount === 1 ? "Reply" : "Replies"}</span>
                         </span>
 
                         <button
@@ -31159,10 +31159,10 @@ function PostComments({
                               ? "bg-primary text-white border-primary shadow-xs"
                               : "text-slate-600 hover:text-primary hover:bg-slate-100 bg-slate-50 border-slate-200"
                           }`}
-                          title={replyingToId === c.id ? "రిప్లై బాక్స్ మూసివేయండి" : "సమాధానం ఇవ్వండి (Reply)"}
+                          title={replyingToId === c.id ? "Close Reply Box" : "Reply"}
                         >
                           <MessageCircle size={12} />
-                          <span>రిప్లై (Reply)</span>
+                          <span>Reply</span>
                         </button>
                       </>
                     );
@@ -31531,10 +31531,10 @@ function SuggestionForm({
           <CheckCircle2 size={40} />
         </motion.div>
         <h2 className="text-2xl font-black text-slate-800 tracking-tighter">
-          విజయవంతంగా పంపబడింది!
+          Successfully Submitted!
         </h2>
         <p className="text-slate-500 font-bold">
-          మీ సూచన మా దృష్టికి వచ్చింది. ధన్యవాదాలు.
+          Your suggestion has been received. Thank you!
         </p>
 
         <div className="gap-3 flex flex-col pt-4">
@@ -31550,14 +31550,14 @@ function SuggestionForm({
             }}
             className="bg-[#a855f7] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90"
           >
-            మరో సూచన పంపండి
+            Submit Another Suggestion
           </button>
           <button
             aria-label="Go back"
             onClick={onCancel}
             className="bg-slate-100 text-slate-600 py-4 rounded-2xl font-black hover:bg-slate-200"
           >
-            తిరిగి వెళ్ళండి
+            Go Back
           </button>
         </div>
       </div>
@@ -31571,7 +31571,7 @@ function SuggestionForm({
           Portal Feedback & Suggestions
         </h2>
         <p className="text-white/80 font-bold text-sm">
-          మీ విలువైన సూచనలను ఇక్కడ తెలియజేయండి
+          Share your valuable feedback and ideas with us
         </p>
         <button
           aria-label="Close suggestion form"
@@ -31586,7 +31586,7 @@ function SuggestionForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              మీ పేరు
+              Your Name
             </label>
             <input
               value={name}
@@ -31597,7 +31597,7 @@ function SuggestionForm({
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-              మొబైల్ నంబర్ (ఐచ్ఛికం)
+              Mobile Number (Optional)
             </label>
             <input
               value={mobile}
@@ -31611,7 +31611,7 @@ function SuggestionForm({
 
         <div className="space-y-1.5">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            విలేజ్ / మండలం
+            Village / Mandal
           </label>
           <input
             value={village}
@@ -31623,7 +31623,7 @@ function SuggestionForm({
 
         <div className="space-y-1.5">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            విభాగం
+            Category / Topic
           </label>
           <select
             value={category || "General Suggestion"}
@@ -31640,12 +31640,12 @@ function SuggestionForm({
 
         <div className="space-y-1.5">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            మీ సూచన
+            Your Suggestion
           </label>
           <textarea
             value={suggestion}
             onChange={(e) => setSuggestion(e.target.value)}
-            placeholder="మీ సూచనను ఇక్కడ వ్రాయండి..."
+            placeholder="Type your suggestion or feedback here..."
             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-[#a855f7]/50 min-h-[120px] font-bold text-slate-700"
           />
         </div>
@@ -31657,7 +31657,7 @@ function SuggestionForm({
             onClick={handleSubmit}
             className="flex-1 bg-[#a855f7] text-white py-4 rounded-2xl font-black shadow-lg hover:opacity-90 disabled:opacity-50 transition-all active:scale-[0.98]"
           >
-            {isSubmitting ? "పంపిస్తున్నాము..." : "Submit Suggestion"}
+            {isSubmitting ? "Submitting..." : "Submit Suggestion"}
           </button>
         </div>
       </div>

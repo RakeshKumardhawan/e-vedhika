@@ -40,10 +40,10 @@ export function TabInfoBanner({
         <button
           onClick={() => triggerYouTubeTutorial(currentTab, banner.title)}
           className="shrink-0 flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:scale-95 rounded-xl shadow-md transition-all border border-red-500/30 cursor-pointer"
-          title={`${banner.title} యూట్యూబ్ ట్యుటోరియల్ చూడండి`}
+          title={`Watch ${banner.title} YouTube Tutorial`}
         >
           <Youtube size={16} className="text-white" />
-          <span>వాచ్ ట్యుటోరియల్</span>
+          <span>Watch Tutorial</span>
         </button>
       </motion.div>
     </AnimatePresence>
