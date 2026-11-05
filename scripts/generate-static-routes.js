@@ -234,7 +234,7 @@ async function handlePostGeneration() {
         const rawTitle = (f.title?.stringValue || "E-Vedhika Post").trim();
         const rawContent = f.content?.stringValue || "";
         const cleaned = cleanMarkdown(rawContent);
-        const description = cleaned ? (cleaned.length > 160 ? cleaned.slice(0, 157) + "..." : cleaned) : "ఈ-వేదిక (E-Vedhika) - All Problems One Solution.";
+        const description = cleaned ? (cleaned.length > 160 ? cleaned.slice(0, 157) + "..." : cleaned) : "E-Vedhika - All Problems One Solution. Digital Governance Portal for Telangana & AP Panchayats.";
 
         let mediaUrl = f.mediaUrl?.stringValue || f.imageUrl?.stringValue || f.poster?.stringValue || f.videoThumbnailUrl?.stringValue || "";
         let imageUrl = DEFAULT_BANNER;

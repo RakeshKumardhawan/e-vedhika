@@ -38,6 +38,7 @@ import { CodeManager } from "./components/CodeManager";
 import { DynamicSection } from "./components/DynamicSection";
 import { AIVideoHomeSection } from "./components/AIVideoHomeSection";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { triggerDiwaliCrackers } from "./utils/diwaliCrackers";
 import {  DollarSign,
   Bell,
   Menu,
@@ -3171,6 +3172,21 @@ export default function App() {
   }, [suggestions]);
   const [problemsGlobal, setProblemsGlobal] = useState<ProblemReport[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [lang, setLangState] = useState<"en" | "te">(() => {
+    try {
+      const saved = localStorage.getItem("evedhika_lang");
+      if (saved === "te" || saved === "en") return saved;
+    } catch (e) {}
+    return "en"; // Default is English as requested!
+  });
+
+  const setLang = (newLang: "en" | "te") => {
+    setLangState(newLang);
+    try {
+      localStorage.setItem("evedhika_lang", newLang);
+      document.documentElement.lang = newLang;
+    } catch (e) {}
+  };
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem("evedhika_read_notifs");
@@ -6059,6 +6075,20 @@ E-Vedhika Support System`;
 
           {/* Right Action Icons & User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Language Selector Toggle (ENG | తెలుగు) */}
+            <div className="relative shrink-0 mr-1 sm:mr-2">
+              <button
+                onClick={() => setLang(lang === "en" ? "te" : "en")}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-300/40 text-white transition-all text-xs font-black cursor-pointer shadow-sm active:scale-95 hover:border-amber-400 group"
+                title={lang === "en" ? "తెలుగు భాషకి మార్చండి (Switch to Telugu)" : "Switch to English"}
+              >
+                <Globe size={15} className="text-amber-300 shrink-0 group-hover:rotate-12 transition-transform" />
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-200">
+                  {lang === "en" ? "ENG" : "తెలుగు"}
+                </span>
+              </button>
+            </div>
+
             {/* Direct Messages Button */}
             <div
               className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
@@ -6563,7 +6593,7 @@ E-Vedhika Support System`;
               title="అడ్మిన్ ప్యానెల్ లోకి వెళ్లండి"
             >
               <Shield size={15} className="text-amber-400" />
-              <span className="hidden sm:inline">అడ్మిన్ ప్యానెల్</span>
+              <span className="hidden sm:inline">{lang === "te" ? "అడ్మిన్ ప్యానెల్" : "Admin Panel"}</span>
               <span className="sm:hidden">Admin</span>
             </button>
           )}
@@ -6688,7 +6718,7 @@ E-Vedhika Support System`;
             >
               <User size={14} className="text-[#0f2e4a] w-[14px] h-[14px]" />
               <span className="whitespace-nowrap hidden min-[360px]:inline">
-                Sign In
+                {lang === "te" ? "సైన్ ఇన్" : "Sign In"}
               </span>
             </button>
           )}
@@ -6703,7 +6733,7 @@ E-Vedhika Support System`;
           <div className="flex items-center flex-1 min-w-0">
             <div className="latest-label whitespace-nowrap shrink-0 flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
-              Latest Updates
+              {lang === "te" ? "తాజా సమాచారం" : "Latest Updates"}
             </div>
             <div className="latest-text flex-1">
             <span>
@@ -6755,21 +6785,19 @@ E-Vedhika Support System`;
                 .nav-trigger-bar div::-webkit-scrollbar { display: none; }
               `}} />
                   {[
-                    { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
-
-                    { id: "workspace", label: "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
-                    { id: "priority_services", label: "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
-                    { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
-                    { id: "union", label: "Union Corner & Polls", icon: Users, colorTheme: "orange" },
-                    { id: "ubd_tracker", label: "UBD Tool Tracker", icon: Megaphone, colorTheme: "purple" },
-                                                                                { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
-                    { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
-                    { id: "useful_links", label: "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
-                    { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
-                    { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
-                    { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
-                    { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
-                    
+                    { id: "home", label: lang === "te" ? "హోమ్" : "Home", icon: Home, colorTheme: "blue" },
+                    { id: "workspace", label: lang === "te" ? "మన పంచాయతీ" : "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
+                    { id: "priority_services", label: lang === "te" ? "ప్రాధాన్యత సేవలు" : "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
+                    { id: "chat", label: lang === "te" ? "లైవ్ చాట్" : "Live Chat", icon: MessageCircle, colorTheme: "slate" },
+                    { id: "union", label: lang === "te" ? "యూనియన్ కార్నర్" : "Union Corner & Polls", icon: Users, colorTheme: "orange" },
+                    { id: "ubd_tracker", label: lang === "te" ? "UBD టూల్ ట్రాకర్" : "UBD Tool Tracker", icon: Megaphone, colorTheme: "purple" },
+                    { id: "suggestions", label: lang === "te" ? "సూచనలు & సలహాలు" : "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
+                    { id: "gos_formats", label: lang === "te" ? "జీవోలు & ఫార్మాట్లు" : "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
+                    { id: "useful_links", label: lang === "te" ? "ముఖ్యమైన సమాచారం" : "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
+                    { id: "excel_print", label: lang === "te" ? "ఎక్సెల్ ప్రింట్" : "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
+                    { id: "pdf_compress", label: lang === "te" ? "పీడీఎఫ్ కంప్రెసర్" : "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
+                    { id: "farmer_registry", label: lang === "te" ? "రైతు రిజిస్ట్రీ" : "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
+                    { id: "software_hub", label: lang === "te" ? "సాఫ్ట్‌వేర్ హబ్" : "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
                   ].map((item, index) => {
                     const isActive = currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity"));
                     const Icon = item.icon;
@@ -12388,7 +12416,7 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
               rows={4}
               value={formData.metaDescription || ""}
               onChange={handleChange}
-              placeholder="ఉదా: ఈ-వేదిక (E-Vedhika) - తెలంగాణ పంచాయతీ ఆపరేటర్లు మరియు మండల ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
+              placeholder="e.g. E-Vedhika - All Problems One Solution. Comprehensive digital portal for Telangana & AP Panchayat Secretaries, Computer Operators, and Citizens. DSR Analyzer, Multi-Day Attendance, Farmer Registry, GOs & Formats."
               className="w-full bg-white border border-slate-300 p-4 rounded-xl text-slate-800 text-sm md:text-base leading-relaxed focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all resize-y min-h-[110px]"
             />
 
@@ -12416,7 +12444,7 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
                   type="button"
                   onClick={() => setFormData((prev: any) => ({
                     ...prev,
-                    metaDescription: "ఈ-వేదిక (E-Vedhika) - All Problems One Solution. తెలంగాణ పంచాయతీ ఆపరేటర్లు మరియు మండల ఆపరేటర్లు & పౌరుల సమగ్ర డిజిటల్ పోర్టల్. DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, రైతు రిజిస్ట్రీ, జీవోలు & ఫార్మాట్లు."
+                    metaDescription: "E-Vedhika - All Problems One Solution. Comprehensive digital portal for Telangana & AP Panchayat Secretaries, Computer Operators, and Citizens. DSR Analyzer, Multi-Day Attendance, Farmer Registry, GOs & Formats."
                   }))}
                   className="px-3 py-1.5 text-xs font-bold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg transition-all flex items-center gap-1.5"
                 >
@@ -12439,7 +12467,7 @@ function LandingPageConfigAdmin({ landingPageData, fetchLandingPageData, addToas
                 <span className="text-slate-800 font-medium">https://www.e-vedhika.in</span>
               </div>
               <h5 className="text-[#1a0dab] hover:underline text-base md:text-lg font-medium cursor-pointer leading-snug">
-                🏛️ ఈ-వేదిక (E-Vedhika) | డిజిటల్ పరిపాలనా పోర్టల్
+                🏛️ E-Vedhika | Digital Governance Portal
               </h5>
               <p className="text-xs md:text-sm text-[#4d5156] leading-relaxed">
                 {formData.metaDescription?.trim() ? (
@@ -23198,6 +23226,10 @@ function PostCard({
     const hasReactedWithThisEmoji = existingForThisEmoji.includes(userId);
     const updatedReactions: Record<string, string[]> = { ...currentReactions };
 
+    if (!hasReactedWithThisEmoji) {
+      triggerDiwaliCrackers(e);
+    }
+
     if (hasReactedWithThisEmoji) {
       updatedReactions[emoji] = existingForThisEmoji.filter((id) => id !== userId);
       if (updatedReactions[emoji].length === 0) delete updatedReactions[emoji];
@@ -23283,6 +23315,7 @@ function PostCard({
     const now = Date.now();
     if (now - lastTapRef.current < 320) {
       setShowDoubleTapHeart(true);
+      triggerDiwaliCrackers(e);
       setTimeout(() => setShowDoubleTapHeart(false), 900);
       const userId = auth.currentUser?.uid;
       if (userId && !likedBy.includes(userId)) {
@@ -30458,7 +30491,7 @@ function PostComments({
     }
   }, [dbComments, optimisticComments, post.id, liveLegacyComments, sortOrder, showAdminOnly, allUsers]);
 
-  const handleToggleReaction = async (commentId: string, emoji: string) => {
+  const handleToggleReaction = async (commentId: string, emoji: string, e?: React.MouseEvent | MouseEvent | { clientX?: number; clientY?: number }) => {
     const uid = auth.currentUser?.uid;
     if (requireLoginAlert()) return;
     const targetComment = comments.find((c) => c.id === commentId);
@@ -30468,6 +30501,10 @@ function PostComments({
     const currentReactions: Record<string, string[]> = targetComment.reactions || {};
     const existingUids: string[] = currentReactions[emoji] || [];
     const hasReacted = existingUids.includes(uid);
+
+    if (!hasReacted) {
+      triggerDiwaliCrackers(e);
+    }
     const newUids = hasReacted
       ? existingUids.filter((id) => id !== uid)
       : [...existingUids, uid];
@@ -31031,7 +31068,7 @@ function PostComments({
                     return (
                       <button
                         key={emoji}
-                        onClick={() => handleToggleReaction(c.id, emoji)}
+                        onClick={(e) => handleToggleReaction(c.id, emoji, e)}
                         className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all ${
                           userHasReacted
                             ? "bg-amber-50 border-amber-300 text-amber-800 font-bold scale-105 shadow-sm"
@@ -31070,8 +31107,8 @@ function PostComments({
                           <button
                             key={emoji}
                             type="button"
-                            onClick={() => {
-                              handleToggleReaction(c.id, emoji);
+                            onClick={(e) => {
+                              handleToggleReaction(c.id, emoji, e);
                               setOpenReactionPickerCommentId(null);
                             }}
                             className="hover:scale-130 active:scale-95 transition-transform p-1 text-base hover:bg-amber-50 rounded-full cursor-pointer select-none"
