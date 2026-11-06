@@ -27,8 +27,11 @@
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2.5">
+                <button onclick="sendTestReport()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition shadow cursor-pointer flex items-center gap-1.5">
+                    🧪 లైవ్ టెస్ట్ రిపోర్ట్ పంపు
+                </button>
                 <button onclick="clearReports()" class="px-3.5 py-2 bg-rose-600/80 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer flex items-center gap-1.5">
-                    🗑️ క్లియర్ డమ్మి రిపోర్ట్స్
+                    🗑️ క్లియర్ రిపోర్ట్స్
                 </button>
                 <button onclick="fetchData()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow cursor-pointer flex items-center gap-1.5">
                     🔄 రిఫ్రెష్ (Refresh)
@@ -257,6 +260,34 @@
                 await fetchData();
             } catch (e) {
                 await fetchData();
+            }
+        }
+
+        async function sendTestReport() {
+            try {
+                const testPayload = {
+                    pcName: 'GP-KHAMMAM-WORKSTATION-01',
+                    userName: 'Panchayat Secretary (Live Test)',
+                    officeLocation: 'Khammam Urban Grama Panchayat Office',
+                    district: 'Khammam',
+                    state: 'TS',
+                    osVersion: 'Windows 11 Pro (64-Bit Build 22631)',
+                    status: 'SUCCESS (17/17)',
+                    healthScore: 100,
+                    dscStatus: 'USB Token Connected (Class 3 PKCS#11)',
+                    remarks: 'Live Telemetry Test Report submitted from Gateway.'
+                };
+                const res = await fetch('/api/telemetry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testPayload)
+                });
+                if (res.ok) {
+                    alert('✅ ప్రయోగాత్మక లైవ్ టెలిమెట్రీ రిపోర్ట్ సక్సెస్‌ఫుల్‌గా పంపబడింది!');
+                    fetchData();
+                }
+            } catch (e) {
+                alert('Failed to send test report: ' + e.message);
             }
         }
 

@@ -537,11 +537,18 @@ E-Vedhika Support Team`;
                 type="button"
                 disabled={googleLoading || loading}
                 onClick={async () => {
+                  if (googleLoading) return;
                   setGoogleLoading(true);
+                  const safetyTimer = setTimeout(() => {
+                    setGoogleLoading(false);
+                  }, 4000);
+
                   try {
                     await handleGoogleLogin();
-                    onClose();
                   } catch (e) {
+                    console.error("Google Auth error:", e);
+                  } finally {
+                    clearTimeout(safetyTimer);
                     setGoogleLoading(false);
                   }
                 }}

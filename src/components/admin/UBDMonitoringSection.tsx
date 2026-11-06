@@ -136,6 +136,37 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
     }
   };
 
+  // Handle Send Live Test Telemetry Report
+  const handleSendTestTelemetry = async () => {
+    try {
+      const testRecord = {
+        pcName: 'GP-KHAMMAM-WORKSTATION-01',
+        userName: 'Panchayat Secretary (Live Test)',
+        officeLocation: 'Khammam Urban Grama Panchayat Office',
+        district: 'Khammam',
+        state: 'TS',
+        osVersion: 'Windows 11 Pro 64-bit (Build 22631)',
+        status: 'SUCCESS (17/17)',
+        healthScore: 100,
+        dscStatus: 'USB Token Connected (Class 3 PKCS#11)',
+        remarks: 'Live Telemetry Test Report submitted from Admin Dashboard.'
+      };
+      const res = await fetch('/api/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testRecord)
+      });
+      if (res.ok) {
+        if (addToast) addToast('ప్రయోగాత్మక లైవ్ టెలిమెట్రీ రిపోర్ట్ పంపబడింది! (Telegram Notification sent)', 'success');
+        await fetchTelemetryLogs();
+      } else {
+        if (addToast) addToast('Test telemetry submission failed', 'error');
+      }
+    } catch (e) {
+      if (addToast) addToast('Error sending test telemetry', 'error');
+    }
+  };
+
   // Handle Individual Log Delete
   const handleDeleteLogItem = async (pcId: string) => {
     if (!window.confirm(`PC ID ${pcId} రిపోర్ట్‌ను తొలగించాలనుకుంటున్నారా?`)) return;
@@ -260,7 +291,16 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 z-10 shrink-0">
+        <div className="flex items-center gap-2.5 z-10 shrink-0 flex-wrap">
+          <button
+            onClick={handleSendTestTelemetry}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border border-emerald-400/30"
+            title="ప్రయోగాత్మక లైవ్ టెలిమెట్రీ రిపోర్ట్ పంపండి (Send Test Live Telemetry Report)"
+          >
+            <Activity size={15} />
+            <span>🧪 లైవ్ టెస్ట్ రిపోర్ట్ పంపు</span>
+          </button>
+
           <button
             onClick={fetchTelemetryLogs}
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border border-indigo-400/30"

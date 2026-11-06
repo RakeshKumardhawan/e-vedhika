@@ -1956,12 +1956,41 @@ function getNormalizedConsolidatedPcs(): Record<string, any> {
   try {
     if (fs.existsSync(ubdMonitoringStoragePath)) {
       const raw = JSON.parse(fs.readFileSync(ubdMonitoringStoragePath, "utf-8"));
-      if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
+      if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.keys(raw).length > 0) return raw;
     }
   } catch (e) {
     console.error("Error reading consolidated pcs:", e);
   }
-  return {};
+
+  const pcsMap: Record<string, any> = {};
+  for (const record of (telemetryLogsStore || [])) {
+    if (!record) continue;
+    const key = record.pcId || record.machineId || record.id || record.pcName;
+    if (!key || String(key).startsWith("TEL-SEED") || String(key).startsWith("SEED")) continue;
+    if (!pcsMap[key]) {
+      pcsMap[key] = {
+        machineId: key,
+        pcName: record.pcName || 'GP-DESK-PC',
+        userName: record.userName || 'Panchayat Operator',
+        officeLocation: record.officeLocation || record.panchayat || 'Grama Panchayat Office',
+        district: record.district || '',
+        mandal: record.mandal || '',
+        panchayat: record.panchayat || '',
+        state: record.state || 'TS',
+        os: record.osVersion || record.os || 'Windows 11',
+        osVersion: record.osVersion || record.os || 'Windows 11',
+        appVersion: record.version || record.appVersion || 'v1.0.8',
+        overallStatus: (Number(record.healthScore || 100) >= 80 && !String(record.status || '').toLowerCase().includes('fail')) ? 'ONLINE & READY' : 'DEGRADED',
+        stepsVerified: record.stepsVerified || `${record.passedCount || 17}/${record.totalChecks || '17/17'} Passed`,
+        dscStatus: record.dscStatus || 'USB Token Connected',
+        lastSeen: record.time ? `${record.date || ''} ${record.time}` : 'Just Now',
+        lastSummary: record.remarks || record.summary || 'Live telemetry update',
+        healthScore: record.healthScore || 100,
+        ...record
+      };
+    }
+  }
+  return pcsMap;
 }
 
 function saveNormalizedConsolidatedPcs(data: Record<string, any>): void {
@@ -2178,13 +2207,16 @@ app.get(telemetryGetRoutes, async (req, res) => {
     if (!isFirestoreInCooldown() && initFirebaseAdmin()) {
       try {
         const db = admin.firestore();
-        // Fetch last 100 logs from Firestore
-        const snapshot = await db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
+        // Fetch last 100 logs from Firestore with a 1.5s timeout guard
+        const fsPromise = db.collection("telemetryLogs").orderBy("createdAt", "desc").limit(100).get();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore fetch timeout")), 1500));
+        const snapshot: any = await Promise.race([fsPromise, timeoutPromise]);
+        
         const firestoreLogs: any[] = [];
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc: any) => {
           const d = doc.data();
           // Exclude seeds
-          if (d && d.id && !String(d.id).startsWith("TEL-SEED")) {
+          if (d && d.id && !String(d.id).startsWith("TEL-SEED") && !String(d.id).startsWith("SEED")) {
             firestoreLogs.push({ ...d, id: d.id || doc.id });
           }
         });
@@ -2209,7 +2241,7 @@ app.get(telemetryGetRoutes, async (req, res) => {
         return res.json({ success: true, logs: merged });
       } catch (fsErr) {
         if (!handleFirestoreQuotaError(fsErr)) {
-          console.error("Firestore telemetry fetch error, falling back to memory store:", fsErr);
+          console.warn("Firestore telemetry fetch skipped/timed out, returning memory store:", fsErr);
         }
         // Fallback to memory store
         return res.json({ success: true, logs: telemetryLogsStore });

@@ -4785,7 +4785,8 @@ e-Vedhika Support System`;
     }, 2500);
 
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
+    provider.addScope('email');
+    provider.addScope('profile');
 
     const isLegacyWin = typeof isLegacyWindows === "function" ? isLegacyWindows() : /Windows NT (6\.[0-3]|10\.0)/i.test(navigator.userAgent);
     const isInIframe = window.self !== window.top;
@@ -4802,9 +4803,15 @@ e-Vedhika Support System`;
 
       result = await signInWithPopup(auth, provider);
       clearTimeout(slowLoginWarning);
+      
+      // Instantly dismiss modal and notify user for maximum responsiveness (<100ms UI update)
       setShowAuthModal(false);
+      addToast("విజయవంతంగా Google ద్వారా లాగిన్ అయ్యారు!");
 
-      const WELCOME_MESSAGE = `నమస్కారం! 🙏
+      // Perform Firestore user record initialization asynchronously in background without blocking UI
+      Promise.resolve().then(async () => {
+        if (!result?.user) return;
+        const WELCOME_MESSAGE = `నమస్కారం! 🙏
 
 మీ కోసం E-Vedhika లో అనేక ఉపయోగకరమైన సేవలు, సమాచారం మరియు టూల్స్ అందుబాటులో ఉన్నాయి.
 
@@ -4849,99 +4856,95 @@ Excel Files ను A4 Print format లోకి సులభంగా ఉపయ�
 ధన్యవాదాలు 🙏
 E-Vedhika Support System`;
 
-      try {
-        const docRef = doc(db, "users", result.user.uid);
-        const docSnap = await getDoc(docRef);
-        let isNewUser = false;
-        if (!docSnap.exists()) {
-          isNewUser = true;
-          const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
-          let detectedDistrict = "Ranga Reddy";
-          try {
-            const rawLoc = localStorage.getItem("evedhika_user_district");
-            if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
-          } catch(e) {}
-
-          await setDoc(docRef, {
-            name: result.user.displayName || "System User",
-            email: result.user.email,
-            photoURL: result.user.photoURL,
-            gender: "",
-            designation: "",
-            district: detectedDistrict,
-            location: `${detectedDistrict}, TELANGANA`,
-            role: isDev ? "super_admin" : "user",
-            time: Date.now(),
-          });
-
-          notifyUserProfileUpdate({
-            action: "registered",
-            user: {
-              name: result.user.displayName || "User",
-              email: result.user.email || "",
-              role: isDev ? "super_admin" : "user",
-              uid: result.user.uid
-            }
-          }).catch(() => {});
-        } else {
-          const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
-          const existingData = docSnap.data();
-          if (isDev && existingData?.role !== "super_admin") {
-            await updateDoc(docRef, { role: "super_admin" }).catch(() => {});
-          }
-
-          if (!existingData?.district || existingData?.district?.toLowerCase() === "undefined") {
+        try {
+          const docRef = doc(db, "users", result.user.uid);
+          const docSnap = await getDoc(docRef);
+          let isNewUser = false;
+          if (!docSnap.exists()) {
+            isNewUser = true;
+            const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
             let detectedDistrict = "Ranga Reddy";
             try {
               const rawLoc = localStorage.getItem("evedhika_user_district");
               if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
             } catch(e) {}
-            await updateDoc(docRef, {
+
+            await setDoc(docRef, {
+              name: result.user.displayName || "System User",
+              email: result.user.email,
+              photoURL: result.user.photoURL,
+              gender: "",
+              designation: "",
               district: detectedDistrict,
-              location: `${detectedDistrict}, TELANGANA`
+              location: `${detectedDistrict}, TELANGANA`,
+              role: isDev ? "super_admin" : "user",
+              time: Date.now(),
+            });
+
+            notifyUserProfileUpdate({
+              action: "registered",
+              user: {
+                name: result.user.displayName || "User",
+                email: result.user.email || "",
+                role: isDev ? "super_admin" : "user",
+                uid: result.user.uid
+              }
+            }).catch(() => {});
+          } else {
+            const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
+            const existingData = docSnap.data();
+            if (isDev && existingData?.role !== "super_admin") {
+              await updateDoc(docRef, { role: "super_admin" }).catch(() => {});
+            }
+
+            if (!existingData?.district || existingData?.district?.toLowerCase() === "undefined") {
+              let detectedDistrict = "Ranga Reddy";
+              try {
+                const rawLoc = localStorage.getItem("evedhika_user_district");
+                if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
+              } catch(e) {}
+              await updateDoc(docRef, {
+                district: detectedDistrict,
+                location: `${detectedDistrict}, TELANGANA`
+              }).catch(() => {});
+            }
+          }
+
+          if (isNewUser) {
+            const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
+            await addDoc(collection(db, "notifications"), {
+              uid: "admin_only",
+              title: "కొత్త సభ్యుడు (New Sign Up)",
+              message: `${loginName} వారు Google ద్వారా కొత్తగా జాయిన్ అయ్యారు.`,
+              type: "admin_alert",
+              read: false,
+              time: Date.now()
+            }).catch(() => {});
+
+            await addDoc(collection(db, "chat"), {
+              uid: "evedhika_support_system",
+              senderId: "evedhika_support_system",
+              senderName: "e-Vedhika Support System",
+              senderRole: "Official Support System",
+              receiverId: result.user.uid,
+              text: WELCOME_MESSAGE,
+              createdAt: Date.now(),
+              read: false
             }).catch(() => {});
           }
 
-
-        }
-
-        if (isNewUser) {
-          const loginName = result.user.displayName || result.user.email?.split("@")[0] || "User";
-          await addDoc(collection(db, "notifications"), {
-            uid: "admin_only",
-            title: "కొత్త సభ్యుడు (New Sign Up)",
-            message: `${loginName} వారు Google ద్వారా కొత్తగా జాయిన్ అయ్యారు.`,
-            type: "admin_alert",
-            read: false,
-            time: Date.now()
+          const isAdminEmail = ["rakeshkumardhawan123@gmail.com"].includes(
+            result.user.email?.toLowerCase() || "",
+          );
+          await addDoc(collection(db, "security_logs"), {
+            [isAdminEmail ? "admin" : "userEmail"]: result.user.email,
+            action: `Google Login (${navigator.userAgent.substring(0, 50)}...)`,
+            time: Date.now(),
           }).catch(() => {});
-
-          // Send Welcome DM to new user as requested
-          await addDoc(collection(db, "chat"), {
-            uid: "evedhika_support_system",
-            senderId: "evedhika_support_system",
-            senderName: "e-Vedhika Support System",
-            senderRole: "Official Support System",
-            receiverId: result.user.uid,
-            text: WELCOME_MESSAGE,
-            createdAt: Date.now(),
-            read: false
-          }).catch(() => {});
+        } catch (e) {
+          console.warn("Background user profile sync notice:", e);
         }
-      } catch (e) {}
-
-      setShowAuthModal(false);
-
-      try {
-        const isAdminEmail = ["rakeshkumardhawan123@gmail.com"].includes(
-          result.user.email?.toLowerCase() || "",
-        );
-        await addDoc(collection(db, "security_logs"), {
-          [isAdminEmail ? "admin" : "userEmail"]: result.user.email,
-          action: `Google Login (${navigator.userAgent.substring(0, 50)}...)`,
-          time: Date.now(),
-        });
-      } catch (e) {}
+      });
     } catch (err: any) {
       clearTimeout(slowLoginWarning);
       console.warn("Google Login error/notice:", err);
