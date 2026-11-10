@@ -904,5 +904,147 @@ html, body, #root {
   }
 }
 
+/* ==============================================================
+   🌟 MULTI-DEVICE SCREEN COMPATIBILITY (DESKTOP, LAPTOP, MOBILE) 🌟
+   ============================================================== */
+
+/* 1. Mobile Bottom Thumb-Zone Navigation Bar */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 1040;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 4px 0;
+  color: #64748b;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-btn:active {
+  transform: scale(0.92);
+}
+
+.mobile-nav-btn.active {
+  color: #1d4ed8;
+}
+
+.mobile-nav-btn.active .mobile-nav-icon-wrap {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 12px;
+}
+
+.mobile-nav-icon-wrap {
+  width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.mobile-nav-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+  line-height: 1;
+}
+
+/* 2. Responsive Table Scroll Enhancements */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* 3. Screen Compatibility Media Breakpoints */
+/* Mobile Portrait & Small Screens (< 640px) */
+@media (max-width: 639px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .content-area,
+  main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  button, 
+  a, 
+  input[type="button"], 
+  input[type="submit"] {
+    min-height: 38px;
+  }
+}
+
+/* Tablet & iPad Portrait (640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .content-area,
+  main {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+
+/* Laptop Screens (1024px - 1366px) */
+@media (min-width: 1024px) and (max-width: 1366px) {
+  .max-w-7xl {
+    max-width: 95% !important;
+  }
+  
+  .content-area,
+  main {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+}
+
+/* Large Desktop Screens (>= 1440px) */
+@media (min-width: 1440px) {
+  .max-w-7xl {
+    max-width: 1380px !important;
+  }
+}
+
 
 
