@@ -667,6 +667,8 @@ interface Post {
   subCategory?: string;
   tags?: string[];
   websiteName?: string;
+  youtubeUrl?: string;
+  embedUrl?: string;
   mediaUrl?: string;
   mediaType?: string;
   mediaName?: string;
@@ -23940,7 +23942,22 @@ function PostCard({
               </div>
             )}
 
-            {post.mediaUrl && (
+            {/* YouTube Video Player */}
+            {(post.youtubeUrl || post.embedUrl || (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")))) && (
+              <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-black">
+                <div className="relative aspect-video w-full">
+                  <iframe
+                    src={parseYouTubeEmbedUrl(post.youtubeUrl || post.embedUrl || post.mediaUrl || '')}
+                    title={post.title || "YouTube Video"}
+                    className="absolute top-0 left-0 w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
+
+            {post.mediaUrl && !(post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")) && (
               <div className="mb-4">
                 {post.mediaType?.startsWith("video") ? (
                   <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = 'none'; }} />
@@ -24320,7 +24337,22 @@ function PostCard({
       </div>
     )}
 
-    {post.mediaUrl && (
+    {/* YouTube Video Player */}
+    {(post.youtubeUrl || post.embedUrl || (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")))) && (
+      <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-black">
+        <div className="relative aspect-video w-full">
+          <iframe
+            src={parseYouTubeEmbedUrl(post.youtubeUrl || post.embedUrl || post.mediaUrl || '')}
+            title={post.title || "YouTube Video"}
+            className="absolute top-0 left-0 w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    )}
+
+    {post.mediaUrl && !(post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")) && (
       <div className="mb-4">
         {post.mediaType?.startsWith("video") ? (
           <video src={post.mediaUrl} controls className="post-media" onError={(e) => { (e.currentTarget as HTMLVideoElement).style.display = "none"; }} />
@@ -25113,6 +25145,9 @@ function PostForm({
     return raw.map((cat) => mapping[cat] || cat);
   });
   const [tags, setTags] = useState(editingPost?.tags?.join(", ") || "");
+  const [youtubeUrl, setYoutubeUrl] = useState(
+    editingPost?.youtubeUrl || editingPost?.embedUrl || "",
+  );
   const [websiteName, setWebsiteName] = useState(
     editingPost?.websiteName || "",
   );
@@ -25412,6 +25447,8 @@ function PostForm({
         categories: selectedCategories,
         tags: finalTags,
         websiteName,
+        youtubeUrl: youtubeUrl.trim(),
+        embedUrl: parseYouTubeEmbedUrl(youtubeUrl.trim()),
         mediaUrl: finalMediaUrl,
         mediaType: media?.type || "",
         mediaName: media?.name || "",
@@ -25771,13 +25808,113 @@ function PostForm({
                 </div>
               )}
 
+              {/* Dedicated YouTube Video Link Box in Main Left Column */}
+              <div className="p-3 bg-gradient-to-r from-red-50 via-white to-red-50/60 border-2 border-red-200 rounded-sm shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-bold text-red-950 flex items-center gap-2">
+                    <div className="w-6 h-6 rounded bg-red-600 text-white flex items-center justify-center shadow-xs">
+                      <Youtube size={15} />
+                    </div>
+                    <span>🎬 YouTube Video Link (యూట్యూబ్ వీడియో లింక్ - Optional):</span>
+                  </label>
+                  {youtubeUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setYoutubeUrl("");
+                        addToast("యూట్యూబ్ వీడియో లింక్ తీసివేయబడింది.");
+                      }}
+                      className="text-[11px] text-red-600 hover:text-red-800 font-bold hover:underline cursor-pointer"
+                    >
+                      ✕ Remove (తీసివేయి)
+                    </button>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="url"
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      placeholder="ఇక్కడ యూట్యూబ్ లింక్ పేస్ట్ చేయండి: https://www.youtube.com/watch?v=... లేదా https://youtu.be/..."
+                      className="w-full bg-white border border-red-300 rounded px-3 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-100 font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        if (navigator.clipboard) {
+                          const text = await navigator.clipboard.readText();
+                          if (text && (text.includes("youtube.com") || text.includes("youtu.be"))) {
+                            setYoutubeUrl(text.trim());
+                            addToast("✅ యూట్యూబ్ లింక్ పేస్ట్ చేయబడింది!");
+                            return;
+                          }
+                        }
+                      } catch {}
+                      const manual = prompt("యూట్యూబ్ వీడియో లింక్ పేస్ట్ చేయండి (Paste YouTube Video URL):", youtubeUrl);
+                      if (manual !== null) {
+                        setYoutubeUrl(manual.trim());
+                        if (manual.trim()) addToast("✅ యూట్యూబ్ లింక్ జోడించబడింది!");
+                      }
+                    }}
+                    className="px-3 py-2 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs rounded transition-all shrink-0 flex items-center gap-1 shadow-xs cursor-pointer"
+                    title="పేస్ట్ చేయండి"
+                  >
+                    <Copy size={13} />
+                    <span>Paste Link</span>
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between text-[11px] text-slate-600">
+                  <span>📌 లింక్ ఇవ్వగానే పోస్ట్‌పై HD యూట్యూబ్ వీడియో ప్లేయర్ ఆటోమేటిక్‌గా ప్రదర్శించబడుతుంది.</span>
+                  {youtubeUrl && (
+                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ✓ Video Active
+                    </span>
+                  )}
+                </div>
+
+                {youtubeUrl && (
+                  <div className="mt-2 rounded overflow-hidden border border-red-200 bg-black shadow-md max-w-xl mx-auto">
+                    <div className="relative aspect-video w-full">
+                      <iframe
+                        src={parseYouTubeEmbedUrl(youtubeUrl)}
+                        title="YouTube Video Preview"
+                        className="absolute top-0 left-0 w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Editor Area */}
               <div className="bg-white border border-[#c3c4c7]">
                 {/* Media Button Bar */}
-                <div className="p-2 border-b border-[#c3c4c7] bg-[#f0f0f1] flex justify-between items-center">
-                  <button type="button" onClick={() => contentImageInputRef.current?.click()} className="flex items-center gap-1.5 text-[13px] text-[#3c434a] hover:text-[#2271b1] border border-[#8c8f94] bg-[#f6f7f7] px-2 py-1 rounded-[3px] transition-colors">
-                    <ImageIcon size={14} /> Add Media
-                  </button>
+                <div className="p-2 border-b border-[#c3c4c7] bg-[#f0f0f1] flex flex-wrap justify-between items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => contentImageInputRef.current?.click()} className="flex items-center gap-1.5 text-[13px] text-[#3c434a] hover:text-[#2271b1] border border-[#8c8f94] bg-[#f6f7f7] px-2 py-1 rounded-[3px] transition-colors cursor-pointer">
+                      <ImageIcon size={14} /> Add Media (ఫోటోలు)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const entered = prompt("యూట్యూబ్ వీడియో లింక్ ఎంటర్ చేయండి (Paste YouTube Video URL):", youtubeUrl);
+                        if (entered !== null) {
+                          setYoutubeUrl(entered.trim());
+                          if (entered.trim()) addToast("✅ యూట్యూబ్ వీడియో లింక్ జోడించబడింది!");
+                        }
+                      }}
+                      className="flex items-center gap-1.5 text-[13px] text-red-700 hover:text-red-800 border border-red-300 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-[3px] font-bold transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <Youtube size={15} className="text-red-600" />
+                      <span>{youtubeUrl ? "✓ Video Attached" : "+ Add YouTube Video (వీడియో జోడించు)"}</span>
+                    </button>
+                  </div>
                   <div className="flex text-[13px] border border-[#c3c4c7] rounded-[3px] overflow-hidden">
                     <button type="button" onClick={() => setShowMarkdownPreview(false)} className={`px-3 py-1 font-medium ${!showMarkdownPreview ? "bg-white text-[#3c434a] border-b-white shadow-sm" : "bg-[#f0f0f1] text-[#50575e] hover:bg-[#f6f7f7]"}`}>Visual</button>
                     <button type="button" onClick={() => setShowMarkdownPreview(true)} className={`px-3 py-1 font-medium border-l border-[#c3c4c7] ${showMarkdownPreview ? "bg-white text-[#3c434a] border-b-white shadow-sm" : "bg-[#f0f0f1] text-[#50575e] hover:bg-[#f6f7f7]"}`}>Text</button>
@@ -25793,6 +25930,23 @@ function PostForm({
                     <button type="button" onClick={() => insertFormatting("# ", "")} title="Heading 1" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">H1</button>
                     <button type="button" onClick={() => insertFormatting("## ", "")} title="Heading 2" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">H2</button>
                     <button type="button" onClick={() => insertFormatting("[", "](url)")} title="Insert Link" className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Link2 size={14} strokeWidth={2.5} /></button>
+                    
+                    {/* YouTube embed in body */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const vUrl = prompt("యూట్యూబ్ వీడియో లింక్ ఎంటర్ చేయండి (Insert YouTube URL into text):", "https://www.youtube.com/watch?v=");
+                        if (vUrl && vUrl.trim() && vUrl !== "https://www.youtube.com/watch?v=") {
+                          insertFormatting(`\n\n[YouTube Video](${vUrl.trim()})\n\n`, "");
+                          if (!youtubeUrl) setYoutubeUrl(vUrl.trim());
+                        }
+                      }}
+                      title="Insert YouTube Video into Content"
+                      className="px-2 py-1 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-300 border border-transparent rounded-[3px] transition-colors flex items-center gap-1"
+                    >
+                      <Youtube size={13} className="text-red-600" /> Video
+                    </button>
+
                     <button type="button" onClick={() => insertFormatting("> ", "")} title="Quote" className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><Quote size={14} strokeWidth={2.5} /></button>
                     <button type="button" onClick={() => insertFormatting("- ", "")} title="Bullet List" className="p-1.5 text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors"><List size={14} strokeWidth={2.5} /></button>
                     <button type="button" onClick={() => insertFormatting("1. ", "")} title="Numbered List" className="px-2 py-1 text-xs font-bold text-[#50575e] hover:text-[#2271b1] hover:bg-white hover:border-[#8c8f94] border border-transparent rounded-[3px] transition-colors">1.</button>
@@ -25930,6 +26084,36 @@ function PostForm({
                       className="border border-emerald-600 text-emerald-700 bg-emerald-50 px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-emerald-100 font-medium transition-colors flex items-center gap-1.5"
                     >
                       <Plus size={13} /> + Add via Public Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const link = prompt("యూట్యూబ్ వీడియో లింక్ పేస్ట్ చేయండి (Paste YouTube Video URL):", youtubeUrl);
+                        if (link && link.trim()) {
+                          setYoutubeUrl(link.trim());
+                          setAttachments(prev => {
+                            const hasVideoAtt = prev.some(a => a.fileType === "youtube" || a.url === link.trim());
+                            if (hasVideoAtt) return prev;
+                            return [
+                              ...prev,
+                              {
+                                name: "YouTube Video Tutorial & Guide",
+                                url: link.trim(),
+                                fallbackUrl: link.trim(),
+                                version: "HD",
+                                status: "New" as const,
+                                badgePrefix: "Video",
+                                fileType: "youtube",
+                                isDirect: true
+                              }
+                            ];
+                          });
+                          addToast("✅ యూట్యూబ్ వీడియో పోస్ట్‌కు లింక్ చేయబడింది!");
+                        }
+                      }}
+                      className="border border-red-500 text-red-700 bg-red-50 px-3 py-1.5 text-[13px] rounded-[3px] hover:bg-red-100 font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Youtube size={14} className="text-red-600" /> + Add YouTube Video
                     </button>
                   </div>
 
@@ -26286,6 +26470,38 @@ function PostForm({
                 </div>
               </div>
 
+              {/* YouTube Video Link Meta Box */}
+              <div className="bg-white border border-[#c3c4c7] shadow-sm">
+                <div className="px-3 py-2 border-b border-[#c3c4c7] font-semibold text-[14px] flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-rose-700 font-bold">
+                    <Youtube size={15} className="text-rose-600" /> YouTube Video
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-normal">Optional</span>
+                </div>
+                <div className="p-3 space-y-2">
+                  <input
+                    type="url"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=... లేదా shorts/..."
+                    className="w-full border border-[#8c8f94] px-2 py-1.5 text-[12px] bg-white rounded focus:border-rose-600 focus:ring-1 focus:ring-rose-500 outline-none"
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    యూట్యూబ్ వీడియో URL పేస్ట్ చేయండి. పోస్ట్‌లో నేరుగా వీడియో ప్లేయర్ ప్రదర్శించబడుతుంది.
+                  </p>
+                  {youtubeUrl && (
+                    <div className="relative aspect-video w-full rounded border border-slate-200 overflow-hidden bg-black mt-2 shadow-xs">
+                      <iframe
+                        src={parseYouTubeEmbedUrl(youtubeUrl)}
+                        title="YouTube Preview"
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -26395,6 +26611,30 @@ function PostForm({
             placeholder="e.g. help, important, notice"
             className="w-full bg-slate-50 text-xs font-bold p-3 rounded-xl border-2 border-transparent focus:border-primary/20 outline-none transition-all"
           />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest ml-1 mb-1 flex items-center gap-1.5">
+            <Youtube size={15} className="text-rose-600" />
+            యూట్యూబ్ వీడియో లింక్ (YouTube Video Link - Optional)
+          </label>
+          <input
+            name="youtubeUrl"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=... లేదా shorts/..."
+            className="w-full bg-slate-50 text-xs font-bold p-3 rounded-xl border-2 border-transparent focus:border-rose-500/30 focus:bg-white outline-none transition-all"
+          />
+          {youtubeUrl && (
+            <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 bg-black mt-2 shadow-xs">
+              <iframe
+                src={parseYouTubeEmbedUrl(youtubeUrl)}
+                title="YouTube Preview"
+                className="w-full h-full border-0"
+                allowFullScreen
+              />
+            </div>
+          )}
         </div>
 
         {/* POST IMAGE UPLOAD SECTION */}
@@ -29430,8 +29670,73 @@ function PostDetail({
           </div>
         )}
 
+        {/* YouTube Video Player */}
+        {(post.youtubeUrl || post.embedUrl || (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")))) ? (
+          <div className="my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-black relative group">
+            <div className="relative aspect-video w-full">
+              <iframe
+                src={parseYouTubeEmbedUrl(post.youtubeUrl || post.embedUrl || post.mediaUrl || '')}
+                title={post.title || "YouTube Video"}
+                className="absolute top-0 left-0 w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            {(isAdmin || isAuthor) && (
+              <div className="p-2.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs gap-2">
+                <span className="text-slate-300 font-mono text-[11px] truncate flex items-center gap-1.5">
+                  <Youtube size={15} className="text-red-500 shrink-0" /> {post.youtubeUrl || post.mediaUrl}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const newUrl = prompt("యూట్యూబ్ వీడియో లింక్ మార్చండి (Update YouTube Video URL):", post.youtubeUrl || post.mediaUrl || "");
+                    if (newUrl !== null) {
+                      await updateDoc(doc(db, "posts", post.id), {
+                        youtubeUrl: newUrl.trim(),
+                        embedUrl: parseYouTubeEmbedUrl(newUrl.trim())
+                      });
+                      setPost(prev => prev ? { ...prev, youtubeUrl: newUrl.trim(), embedUrl: parseYouTubeEmbedUrl(newUrl.trim()) } : null);
+                      addToast("✅ వీడియో అప్‌డేట్ చేయబడింది!");
+                    }
+                  }}
+                  className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-[11px] flex items-center gap-1 transition-colors shrink-0 cursor-pointer"
+                >
+                  <Edit3 size={12} /> మార్చు (Edit Video)
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (isAdmin || isAuthor) ? (
+          <div className="my-2.5 p-3 bg-red-50/80 border border-dashed border-red-300 rounded-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 text-red-950 text-xs font-bold">
+              <div className="w-7 h-7 rounded bg-red-600 text-white flex items-center justify-center shrink-0">
+                <Youtube size={16} />
+              </div>
+              <span>ఈ పోస్ట్‌కు యూట్యూబ్ వీడియో లింక్ చేయాలా? (Link YouTube Video to this post)</span>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const newUrl = prompt("యూట్యూబ్ వీడియో లింక్ పేస్ట్ చేయండి (Paste YouTube Video URL):", "");
+                if (newUrl && newUrl.trim()) {
+                  await updateDoc(doc(db, "posts", post.id), {
+                    youtubeUrl: newUrl.trim(),
+                    embedUrl: parseYouTubeEmbedUrl(newUrl.trim())
+                  });
+                  setPost(prev => prev ? { ...prev, youtubeUrl: newUrl.trim(), embedUrl: parseYouTubeEmbedUrl(newUrl.trim()) } : null);
+                  addToast("✅ యూట్యూబ్ వీడియో పోస్ట్‌కు లింక్ చేయబడింది!");
+                }
+              }}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-xs flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+            >
+              <Plus size={13} /> + వీడియో జోడించు (Add Video)
+            </button>
+          </div>
+        ) : null}
+
         {/* Featured Image */}
-        {post.mediaUrl && (
+        {post.mediaUrl && !(post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")) && (
           <div className="my-2 rounded-lg overflow-hidden border border-slate-200 shadow-xs bg-slate-900">
             {post.mediaType?.startsWith("video") ? (
               <video
