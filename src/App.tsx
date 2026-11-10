@@ -2220,6 +2220,32 @@ export const handleForceDownload = async (
           if (document.body.contains(link)) document.body.removeChild(link);
         }, 10000);
         blobDownloadSuccess = true;
+
+        const isExe = extractedFilename.toLowerCase().endsWith(".exe") || sanitizedTargetUrl.toLowerCase().includes(".exe");
+        if (isExe) {
+          setTimeout(() => {
+            Swal.fire({
+              icon: "info",
+              title: "🛡️ Edge / Windows SmartScreen హెచ్చరిక సూచన",
+              html: `
+                <div style="text-align: left; font-size: 13px; line-height: 1.6;" class="text-slate-700">
+                  <p class="mb-2 font-bold text-slate-900">Microsoft Edge బ్రౌజర్‌లో <strong>"...isn't commonly downloaded"</strong> అని మెసేజ్ వస్తే పరిష్కారం:</p>
+                  <ol style="list-style-type: decimal; padding-left: 18px;" class="space-y-1.5 font-medium">
+                    <li>Edge Downloads విండోలో (కుడివైపు పైన) ఫైల్ పక్కన ఉన్న <strong>... (మూడు చుక్కలు)</strong> క్లిక్ చేయండి.</li>
+                    <li><strong>Keep (ఉంచండి)</strong> ఆప్షన్ ఎంచుకోండి.</li>
+                    <li>ఒకవేళ "This app might harm your device" అని వస్తే, <strong>Show more (మరిన్ని చూపించు)</strong> క్లిక్ చేసి <strong>Keep anyway (ఏది ఏమైనా ఉంచండి)</strong> పై క్లిక్ చేయండి.</li>
+                  </ol>
+                  <div class="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                    <strong>గమనిక:</strong> E-Vedhika Setup ఫైల్స్ 100% సురక్షితమైనవి. మైక్రోసాఫ్ట్ ఎడ్జ్ కొత్తగా ఉన్న .exe ఫైళ్లకు చూపే డిఫాల్ట్ హెచ్చరిక ఇది.
+                  </div>
+                </div>
+              `,
+              confirmButtonText: "అర్థమైంది (Got it)",
+              confirmButtonColor: "#2563eb"
+            });
+          }, 1000);
+        }
+
         return;
       }
     } catch (blobErr) {
@@ -2227,7 +2253,6 @@ export const handleForceDownload = async (
     }
 
     // 3. Fallback: Direct Anchor click with target="_blank" and download attribute
-    // Cloudflare R2 serves Content-Disposition: attachment so the browser download manager directly handles it
     if (!blobDownloadSuccess) {
       try {
         const link = document.createElement("a");
@@ -2237,6 +2262,32 @@ export const handleForceDownload = async (
         link.rel = "noopener noreferrer";
         document.body.appendChild(link);
         link.click();
+
+        const isExe = extractedFilename.toLowerCase().endsWith(".exe") || sanitizedTargetUrl.toLowerCase().includes(".exe");
+        if (isExe) {
+          setTimeout(() => {
+            Swal.fire({
+              icon: "info",
+              title: "🛡️ Edge / Windows SmartScreen హెచ్చరిక సూచన",
+              html: `
+                <div style="text-align: left; font-size: 13px; line-height: 1.6;" class="text-slate-700">
+                  <p class="mb-2 font-bold text-slate-900">Microsoft Edge బ్రౌజర్‌లో <strong>"...isn't commonly downloaded"</strong> అని మెసేజ్ వస్తే పరిష్కారం:</p>
+                  <ol style="list-style-type: decimal; padding-left: 18px;" class="space-y-1.5 font-medium">
+                    <li>Edge Downloads విండోలో (కుడివైపు పైన) ఫైల్ పక్కన ఉన్న <strong>... (మూడు చుక్కలు)</strong> క్లిక్ చేయండి.</li>
+                    <li><strong>Keep (ఉంచండి)</strong> ఆప్షన్ ఎంచుకోండి.</li>
+                    <li>ఒకవేళ "This app might harm your device" అని వస్తే, <strong>Show more (మరిన్ని చూపించు)</strong> క్లిక్ చేసి <strong>Keep anyway (ఏది ఏమైనా ఉంచండి)</strong> పై క్లిక్ చేయండి.</li>
+                  </ol>
+                  <div class="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                    <strong>గమనిక:</strong> E-Vedhika Setup ఫైల్స్ 100% సురక్షితమైనవి. మైక్రోసాఫ్ట్ ఎడ్జ్ కొత్తగా ఉన్న .exe ఫైళ్లకు చూపే డిఫాల్ట్ హెచ్చరిక ఇది.
+                  </div>
+                </div>
+              `,
+              confirmButtonText: "అర్థమైంది (Got it)",
+              confirmButtonColor: "#2563eb"
+            });
+          }, 1000);
+        }
+
         setTimeout(() => {
           if (document.body.contains(link)) document.body.removeChild(link);
         }, 3000);
