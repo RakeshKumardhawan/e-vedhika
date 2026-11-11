@@ -1860,8 +1860,21 @@ const processIncomingTelemetry = (req: express.Request) => {
 // ====================================================================================
 const UBD_GATEWAY_VERSION = 'v1.0.9';
 const UBD_RESOURCE_BUILD = '2026.11.11.R3';
-const UBD_EXPECTED_PASSCODE_HASH = process.env.EVEDHIKA_ADMIN_PASSCODE_HASH
+const ubdAdminAuthConfigPath = path.join(process.cwd(), "data", "ubd_admin_auth.json");
+const DEFAULT_UBD_PASSCODE_HASH = process.env.EVEDHIKA_ADMIN_PASSCODE_HASH
   || (process.env.EVEDHIKA_ADMIN_PASSCODE ? crypto.createHash('sha256').update(process.env.EVEDHIKA_ADMIN_PASSCODE).digest('hex') : 'c827db7ed0970d77bbecfd2545fdbfab6d5b713b53285121630d7d00be8e41f9');
+
+function getUbdExpectedPasscodeHash(): string {
+  try {
+    if (fs.existsSync(ubdAdminAuthConfigPath)) {
+      const parsed = JSON.parse(fs.readFileSync(ubdAdminAuthConfigPath, "utf-8"));
+      if (parsed && typeof parsed.passcodeHash === 'string' && parsed.passcodeHash.length === 64) {
+        return parsed.passcodeHash;
+      }
+    }
+  } catch {}
+  return DEFAULT_UBD_PASSCODE_HASH;
+}
 
 const ubdMonitoringStoragePath = path.join(process.cwd(), "public", "admin", "pc_consolidated_health.json");
 const ubdReportsArchivePath = path.join(process.cwd(), "public", "admin", "reports_archive.json");
@@ -1870,7 +1883,8 @@ function verifyUbdAdminToken(candidateRaw: string): boolean {
   const candidate = String(candidateRaw || '').trim();
   if (!candidate) return false;
   try {
-    const expectedBuf = Buffer.from(UBD_EXPECTED_PASSCODE_HASH, 'utf8');
+    const expectedHash = getUbdExpectedPasscodeHash();
+    const expectedBuf = Buffer.from(expectedHash, 'utf8');
     const directBuf = Buffer.from(candidate, 'utf8');
     if (directBuf.length === expectedBuf.length && crypto.timingSafeEqual(directBuf, expectedBuf)) {
       return true;
@@ -2274,7 +2288,7 @@ function escapeHtmlServer(val: any): string {
     .replace(/'/g, '&#039;');
 }
 
-function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: string, consolidatedPcs: Record<string, any>, allReports: any[], updateHistory: any[]): string {
+function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: string, consolidatedPcs: Record<string, any>, allReports: any[], updateHistory: any[], statusBanner = ''): string {
   if (!isAuthenticated) {
     return `<!DOCTYPE html>
 <html lang="te">
@@ -2480,11 +2494,15 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
                 <a href="/admin/ubd_monitoring?t=${Date.now()}" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow font-mono">
                     🔄 Refresh Live
                 </a>
+                <button type="button" onclick="openPasswordModal()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition shadow font-mono cursor-pointer">
+                    🔑 పాస్‌వర్డ్ మార్చు (Change Password)
+                </button>
                 <a href="/admin/ubd_monitoring?logout=1" class="px-3.5 py-2 bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition font-mono">
                     🔒 Logout
                 </a>
             </div>
         </div>
+        ${statusBanner ? `<div class="p-4 rounded-2xl border ${statusBanner.startsWith('✅') ? 'bg-emerald-950/80 border-emerald-700 text-emerald-200' : 'bg-rose-950/80 border-rose-700 text-rose-200'} text-xs font-bold flex items-center justify-between"><span>${escapeHtmlServer(statusBanner)}</span></div>` : ''}
 
         <!-- 8 Summary KPI Metric Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 font-mono">
@@ -2696,7 +2714,47 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
         function closePcModal() {
             document.getElementById('pcDetailModal').classList.add('hidden');
         }
+
+        function openPasswordModal() {
+            document.getElementById('passwordChangeModal').classList.remove('hidden');
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordChangeModal').classList.add('hidden');
+        }
     </script>
+
+    <!-- Change Password Modal -->
+    <div id="passwordChangeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-black text-white flex items-center gap-2">🔑 అడ్మిన్ పాస్‌వర్డ్ మార్చు (Change Password)</h3>
+                <button type="button" onclick="closePasswordModal()" class="px-2.5 py-1 bg-slate-800 hover:bg-rose-600 text-white rounded-xl text-xs font-bold cursor-pointer">✕</button>
+            </div>
+            <form method="POST" action="/admin/ubd_monitoring" class="space-y-4">
+                <input type="hidden" name="action" value="change_passcode">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">ప్రస్తుత పాస్‌వర్డ్ (Current Password)</label>
+                    <input type="password" name="current_passcode" required placeholder="ప్రస్తుత పాస్‌వర్డ్ ఎంటర్ చేయండి"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">కొత్త పాస్‌వర్డ్ (New Password - కనీసం 6 అక్షరాలు)</label>
+                    <input type="password" name="new_passcode" required minlength="6" placeholder="కొత్త పాస్‌వర్డ్ ఎంటర్ చేయండి"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">కొత్త పాస్‌వర్డ్ నిర్ధారణ (Confirm New Password)</label>
+                    <input type="password" name="confirm_passcode" required minlength="6" placeholder="కొత్త పాస్‌వర్డ్ మళ్ళీ ఎంటర్ చేయండి"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closePasswordModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">రద్దు (Cancel)</button>
+                    <button type="submit" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-black cursor-pointer">సేవ్ చేయండి (Update Password)</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>`;
 }
@@ -2861,6 +2919,7 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.php', '/ubd_monitoring.
 
   let isAuthenticated = isUbdAdminAuthenticated(req);
   let loginError = '';
+  let statusBanner = '';
 
   // Handle Passcode POST Login Form Submission
   if (req.method === 'POST' && req.body && req.body.admin_passcode !== undefined) {
@@ -2869,11 +2928,46 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.php', '/ubd_monitoring.
       const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
       res.setHeader(
         'Set-Cookie',
-        `evedhika_admin_auth=${UBD_EXPECTED_PASSCODE_HASH}; Max-Age=${86400 * 30}; Path=/; HttpOnly; SameSite=Lax${isHttps ? '; Secure' : ''}`
+        `evedhika_admin_auth=${getUbdExpectedPasscodeHash()}; Max-Age=${86400 * 30}; Path=/; HttpOnly; SameSite=Lax${isHttps ? '; Secure' : ''}`
       );
       isAuthenticated = true;
     } else {
       loginError = 'చెల్లని అడ్మిన్ పాస్‌కోడ్! (Invalid Admin Passcode)';
+    }
+  }
+
+  // Handle Admin Password Change Form Submission
+  if (req.method === 'POST' && req.body && req.body.action === 'change_passcode') {
+    const currentPass = String(req.body.current_passcode || '').trim();
+    const newPass = String(req.body.new_passcode || '').trim();
+    const confirmPass = String(req.body.confirm_passcode || '').trim();
+
+    if (!verifyUbdAdminToken(currentPass)) {
+      statusBanner = '❌ ప్రస్తుత పాస్‌వర్డ్ తప్పుగా ఉంది! (Current password is incorrect)';
+    } else if (newPass.length < 6) {
+      statusBanner = '❌ కొత్త పాస్‌వర్డ్ కనీసం 6 అక్షరాలు ఉండాలి! (New password must be at least 6 characters)';
+    } else if (newPass !== confirmPass) {
+      statusBanner = '❌ కొత్త పాస్‌వర్డ్ మరియు నిర్ధారణ పాస్‌వర్డ్ సరిపోలలేదు! (Passwords do not match)';
+    } else {
+      const newHash = crypto.createHash('sha256').update(newPass).digest('hex');
+      try {
+        const dir = path.dirname(ubdAdminAuthConfigPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(
+          ubdAdminAuthConfigPath,
+          JSON.stringify({ passcodeHash: newHash, updatedAt: new Date().toISOString() }, null, 2),
+          'utf-8'
+        );
+        const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+        res.setHeader(
+          'Set-Cookie',
+          `evedhika_admin_auth=${newHash}; Max-Age=${86400 * 30}; Path=/; HttpOnly; SameSite=Lax${isHttps ? '; Secure' : ''}`
+        );
+        isAuthenticated = true;
+        statusBanner = '✅ అడ్మిన్ పాస్‌వర్డ్ విజయవంతంగా మార్చబడింది! (Admin Password Updated Successfully)';
+      } catch (e: any) {
+        statusBanner = `❌ పాస్‌వర్డ్ సేవ్ చేయడంలో లోపం: ${e.message}`;
+      }
     }
   }
 
@@ -2913,7 +3007,7 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.php', '/ubd_monitoring.
   }
 
   // Handle Incoming POST Telemetry / Reports from C# Desktop Application
-  if (req.method === 'POST' && req.body?.admin_passcode === undefined) {
+  if (req.method === 'POST' && req.body?.admin_passcode === undefined && req.body?.action !== 'change_passcode') {
     return telemetryPostHandler(req, res);
   }
 
@@ -2977,7 +3071,7 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.php', '/ubd_monitoring.
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  return res.send(renderUbdMonitoringHtmlPage(isAuthenticated, loginError, consolidatedPcs, allReports, updateHistory));
+  return res.send(renderUbdMonitoringHtmlPage(isAuthenticated, loginError, consolidatedPcs, allReports, updateHistory, statusBanner));
 });
 
 // Seed / Restore default telemetry reports - Fake reports disabled

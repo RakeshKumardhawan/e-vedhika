@@ -66,7 +66,17 @@ $version = 'v1.0.9';
 $resourceBuild = '2026.11.11.R3';
 
 // SHA-256 digest verification for Admin Passcode (no plaintext password in code)
-$expectedPasscodeHash = getenv('EVEDHIKA_ADMIN_PASSCODE_HASH')
+$authConfigFile = dirname(__DIR__, 2) . '/data/ubd_admin_auth.json';
+$customSavedHash = '';
+if (file_exists($authConfigFile) && is_readable($authConfigFile)) {
+    $parsedAuth = json_decode((string)file_get_contents($authConfigFile), true);
+    if (is_array($parsedAuth) && !empty($parsedAuth['passcodeHash']) && strlen((string)$parsedAuth['passcodeHash']) === 64) {
+        $customSavedHash = (string)$parsedAuth['passcodeHash'];
+    }
+}
+
+$expectedPasscodeHash = $customSavedHash
+    ?: getenv('EVEDHIKA_ADMIN_PASSCODE_HASH')
     ?: ($envVars['EVEDHIKA_ADMIN_PASSCODE_HASH'] ?? '')
     ?: (getenv('EVEDHIKA_ADMIN_PASSCODE') ? hash('sha256', getenv('EVEDHIKA_ADMIN_PASSCODE')) : 'c827db7ed0970d77bbecfd2545fdbfab6d5b713b53285121630d7d00be8e41f9');
 
@@ -94,6 +104,8 @@ if (isset($_SESSION['evedhika_admin_authenticated']) && $_SESSION['evedhika_admi
     }
 }
 
+$statusBanner = '';
+
 // Handle Passcode POST Login Form Submission
 if (isset($_POST['admin_passcode'])) {
     $submittedPasscode = trim((string)$_POST['admin_passcode']);
@@ -110,6 +122,42 @@ if (isset($_POST['admin_passcode'])) {
         $isAuthenticated = true;
     } else {
         $loginError = 'చెల్లని అడ్మిన్ పాస్‌కోడ్! (Invalid Admin Passcode)';
+    }
+}
+
+// Handle Admin Password Change Form Submission
+if (isset($_POST['action']) && $_POST['action'] === 'change_passcode') {
+    $currentPass = trim((string)($_POST['current_passcode'] ?? ''));
+    $newPass = trim((string)($_POST['new_passcode'] ?? ''));
+    $confirmPass = trim((string)($_POST['confirm_passcode'] ?? ''));
+
+    if (!verifyAdminTokenValue($currentPass, $expectedPasscodeHash)) {
+        $statusBanner = '❌ ప్రస్తుత పాస్‌వర్డ్ తప్పుగా ఉంది! (Current password is incorrect)';
+    } elseif (strlen($newPass) < 6) {
+        $statusBanner = '❌ కొత్త పాస్‌వర్డ్ కనీసం 6 అక్షరాలు ఉండాలి! (New password must be at least 6 characters)';
+    } elseif ($newPass !== $confirmPass) {
+        $statusBanner = '❌ కొత్త పాస్‌వర్డ్ మరియు నిర్ధారణ పాస్‌వర్డ్ సరిపోలలేదు! (Passwords do not match)';
+    } else {
+        $newHash = hash('sha256', $newPass);
+        $authDir = dirname($authConfigFile);
+        if (!is_dir($authDir)) {
+            @mkdir($authDir, 0750, true);
+        }
+        @file_put_contents($authConfigFile, json_encode([
+            'passcodeHash' => $newHash,
+            'updatedAt' => gmdate('Y-m-d\TH:i:s\Z')
+        ], JSON_PRETTY_PRINT));
+        $expectedPasscodeHash = $newHash;
+        $_SESSION['evedhika_admin_authenticated'] = true;
+        setcookie('evedhika_admin_auth', $newHash, [
+            'expires' => time() + 86400 * 30,
+            'path' => '/',
+            'secure' => $isHttps,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+        $isAuthenticated = true;
+        $statusBanner = '✅ అడ్మిన్ పాస్‌వర్డ్ విజయవంతంగా మార్చబడింది! (Admin Password Updated Successfully)';
     }
 }
 
@@ -772,11 +820,19 @@ endif;
                 <a href="?t=<?= time() ?>" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow font-mono">
                     🔄 Refresh Live
                 </a>
+                <button type="button" onclick="openPasswordModal()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition shadow font-mono cursor-pointer">
+                    🔑 పాస్‌వర్డ్ మార్చు (Change Password)
+                </button>
                 <a href="?logout=1" class="px-3.5 py-2 bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition font-mono">
                     🔒 Logout
                 </a>
             </div>
         </div>
+        <?php if (!empty($statusBanner)): ?>
+        <div class="p-4 rounded-2xl border <?= strpos($statusBanner, '✅') === 0 ? 'bg-emerald-950/80 border-emerald-700 text-emerald-200' : 'bg-rose-950/80 border-rose-700 text-rose-200' ?> text-xs font-bold">
+            <?= htmlspecialchars($statusBanner) ?>
+        </div>
+        <?php endif; ?>
 
         <!-- 8 Summary KPI Metric Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 font-mono">
@@ -1116,6 +1172,46 @@ endif;
         function closePcModal() {
             document.getElementById('pcDetailModal').classList.add('hidden');
         }
+
+        function openPasswordModal() {
+            document.getElementById('passwordChangeModal').classList.remove('hidden');
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordChangeModal').classList.add('hidden');
+        }
     </script>
+
+    <!-- Change Password Modal -->
+    <div id="passwordChangeModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-black text-white flex items-center gap-2">🔑 అడ్మిన్ పాస్‌వర్డ్ మార్చు (Change Password)</h3>
+                <button type="button" onclick="closePasswordModal()" class="px-2.5 py-1 bg-slate-800 hover:bg-rose-600 text-white rounded-xl text-xs font-bold cursor-pointer">✕</button>
+            </div>
+            <form method="POST" action="" class="space-y-4">
+                <input type="hidden" name="action" value="change_passcode">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">ప్రస్తుత పాస్‌వర్డ్ (Current Password)</label>
+                    <input type="password" name="current_passcode" required placeholder="ప్రస్తుత పాస్‌వర్డ్ ఎంటర్ చేయండి"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">కొత్త పాస్‌వర్డ్ (New Password - కనీసం 6 అక్షరాలు)</label>
+                    <input type="password" name="new_passcode" required minlength="6" placeholder="కొత్త పాస్‌వర్డ్ ఎంటర్ చేయండి"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">కొత్త పాస్‌వర్డ్ నిర్ధారణ (Confirm New Password)</label>
+                    <input type="password" name="confirm_passcode" required minlength="6" placeholder="కొత్త పాస్‌వర్డ్ మళ్ళీ ఎంటర్ చేయండి"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closePasswordModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">రద్దు (Cancel)</button>
+                    <button type="submit" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-black cursor-pointer">సేవ్ చేయండి (Update Password)</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
