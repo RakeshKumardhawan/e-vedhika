@@ -408,9 +408,9 @@ function ensureGitHubPagesAssets() {
     fs.writeFileSync(distCname, "www.e-vedhika.in\n", "utf-8");
   }
 
-  // 4. Banner images
+  // 4. Banner & AdSense assets
   const publicDir = path.resolve(rootDir, "public");
-  ["banner.jpg", "banner.png", "ev-logo-v2.png", "ev_logo.png"].forEach(file => {
+  ["banner.jpg", "banner.png", "ev-logo-v2.png", "ev_logo.png", "ads.txt"].forEach(file => {
     const pubFile = path.join(publicDir, file);
     const distFile = path.join(distDir, file);
     if (fs.existsSync(pubFile)) {
