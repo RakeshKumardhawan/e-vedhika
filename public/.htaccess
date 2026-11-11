@@ -4,18 +4,9 @@
 
 RewriteEngine On
 
-# Allow CORS for external tools and C# executables
-<IfModule mod_headers.c>
-    Header set Access-Control-Allow-Origin "*"
-    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
-    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-</IfModule>
-
-# Handle /admin/exe_ubd_live directly to /admin/exe_ubd_live.php
-RewriteRule ^admin/exe_ubd_live/?$ admin/exe_ubd_live.php [L,QSA]
-
-# Handle /exe_ubd_live directly to /admin/exe_ubd_live.php
-RewriteRule ^exe_ubd_live/?$ admin/exe_ubd_live.php [L,QSA]
+# Route /admin/ubd_monitoring directly to /admin/ubd_monitoring.php
+RewriteRule ^admin/ubd_monitoring/?$ admin/ubd_monitoring.php [L,QSA]
+RewriteRule ^ubd_monitoring/?$ admin/ubd_monitoring.php [L,QSA]
 
 # If the requested file or directory exists, serve it directly
 RewriteCond %{REQUEST_FILENAME} -f [OR]

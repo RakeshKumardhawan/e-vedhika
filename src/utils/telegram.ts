@@ -1,6 +1,6 @@
-// src/utils/telegram.ts - v1.0.8 17-Step Report
+// src/utils/telegram.ts - v1.0.9 (Build 2026.11.11.R3) 17-Step Report
 export async function SendDeploymentSummaryToTelegram(summary: any) {
-  const message = `📋 <b>E-Vedhika UBD Deployment Tool v1.0.8 Report</b>\n` +
+  const message = `📋 <b>E-Vedhika UBD Deployment Tool v1.0.9 Report</b>\n` +
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
     `🖥️ <b>Machine:</b> ${summary.pcName || 'N/A'} (${summary.pcId || 'N/A'})\n` +
     `🏢 <b>Office:</b> ${summary.profileName || summary.officeLocation || 'N/A'}\n\n` +
@@ -23,7 +23,7 @@ export async function SendDeploymentSummaryToTelegram(summary: any) {
     `16. Final Handshake: ✅ Verified\n` +
     `17. Central Dashboard Sync: ✅ Success\n\n` +
     `📌 <b>Developer:</b> Rakesh Kumar Dhawan\n` +
-    `🌐 <b>Live Dashboard:</b> https://www.e-vedhika.in/admin/exe_ubd_live`;
+    `🌐 <b>Admin Gateway:</b> https://www.e-vedhika.in/admin/ubd_monitoring`;
 
   try {
     const response = await fetch('/api/telegram-notify', {
