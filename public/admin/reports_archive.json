@@ -1,0 +1,19 @@
+[
+  {
+    "eventId": "TEL-1794508224571-123940",
+    "reportId": "TEL-1794508224571-123940",
+    "reportType": "LIVE_MONITORING",
+    "recordSource": "LIVE_RECEIVED",
+    "pcId": "EVD-67FC13E50664",
+    "pcName": "MeeSeva-PC",
+    "userName": "MeeSeva Operator",
+    "officeLocation": "MeeSeva Center, Telangana",
+    "appVersion": "v1.0.9",
+    "resourceBuild": "2026.11.12.R4",
+    "status": "Success (15/15)",
+    "appState": "RUNNING",
+    "timestampUtc": "2026-11-12T18:30:24.575Z",
+    "timestampIst": "2026-11-12 18:30:24 IST",
+    "details": "Telemetry report received from EXE runner."
+  }
+]

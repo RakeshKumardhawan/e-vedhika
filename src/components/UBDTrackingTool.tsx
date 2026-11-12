@@ -16,6 +16,87 @@ export default function UBDTrackingTool({ addToast }: { addToast?: (msg: string)
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
+  const [retryCount, setRetryCount] = useState(0);
+
+  async function executeSearchWithRetry(id: string) {
+    setLoading(true);
+    setError("");
+    setOfficialUrl("");
+    setRecordsData(null);
+    setSearchTerm("");
+    setCurrentPage(1);
+    setRetryCount(0);
+
+    const isDeath = section === "Death" || section === "DEA" || String(section).toLowerCase().includes("death");
+    const fallbackOfficialUrl = isDeath
+      ? `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`
+      : `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+
+    const maxAttempts = 3;
+    let lastErrorMsg = "";
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      setRetryCount(attempt);
+      try {
+        const response = await fetch("/api/ubd/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            section,
+            unitId: id
+          })
+        });
+
+        const contentType = response.headers.get("content-type") || "";
+        let data: any = {};
+
+        if (contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          const textResp = await response.text();
+          console.warn("[UBD Tracking] Received non-JSON response from server:", textResp.substring(0, 100));
+          data = {
+            error: "తెలంగాణ ప్రభుత్వ UBDMIS పోర్టల్ (ubdmis.telangana.gov.in) Cross-Origin (CORS) మరియు NIC ఇంట్రానెట్ ఫైర్‌వాల్ ఆంక్షల వల్ల నేరుగా డేటా రాలేదు. 3 సార్లు రీ-ట్రై చేసినప్పటికీ కనెక్షన్ టైమౌట్ అయింది. క్రింది అధికారిక పేజీని నేరుగా ఓపెన్ చేసి చూడవచ్చు.",
+            officialUrl: fallbackOfficialUrl
+          };
+        }
+
+        if (data.officialUrl) {
+          setOfficialUrl(data.officialUrl);
+        } else {
+          setOfficialUrl(fallbackOfficialUrl);
+        }
+
+        if (!response.ok || data.error) {
+          lastErrorMsg = data.error || data.message || "రికార్డులను పొందలేకపోయాము.";
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 800 * attempt));
+            continue;
+          }
+          throw new Error(lastErrorMsg);
+        }
+
+        setRecordsData(data);
+        if (addToast) {
+          addToast(`Unit ID [${id}] కొరకు ${data.totalRecords || 0} రికార్డులు కనుగొనబడ్డాయి!`);
+        }
+        setLoading(false);
+        return;
+      } catch (err: any) {
+        lastErrorMsg = err.message || "సర్వర్‌తో కనెక్షన్ విఫలమైంది.";
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 800 * attempt));
+        }
+      }
+    }
+
+    setOfficialUrl((prev) => prev || fallbackOfficialUrl);
+    setError(lastErrorMsg || "UBDMIS సర్వర్‌తో కనెక్షన్ విఫలమైంది (3 సార్లు రీ-ట్రై చేయబడింది).");
+    setLoading(false);
+  }
+
   async function searchRecords(e: React.FormEvent) {
     e.preventDefault();
 
@@ -26,65 +107,7 @@ export default function UBDTrackingTool({ addToast }: { addToast?: (msg: string)
       return;
     }
 
-    setLoading(true);
-    setError("");
-    setOfficialUrl("");
-    setRecordsData(null);
-    setSearchTerm("");
-    setCurrentPage(1);
-
-    try {
-      const response = await fetch("/api/ubd/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          section,
-          unitId: id
-        })
-      });
-
-      const contentType = response.headers.get("content-type") || "";
-      let data: any = {};
-
-      if (contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const textResp = await response.text();
-        console.warn("[UBD Tracking] Received non-JSON response from server:", textResp.substring(0, 100));
-        const isDeath = section === "Death" || section === "DEA" || String(section).toLowerCase().includes("death");
-        const fallbackOfficialUrl = isDeath
-          ? `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`
-          : `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=${id}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
-        
-        data = {
-          error: "తెలంగాణ ప్రభుత్వ UBDMIS పోర్టల్ (ubdmis.telangana.gov.in) తో నెట్‌వర్క్ కనెక్షన్ టైమౌట్ అయింది. అధికారిక సర్వర్ ఇంట్రానెట్/ఫైర్‌వాల్ సెక్యూరిటీ ఆంక్షల వల్ల నేరుగా డేటా రాలేదు. అధికారిక పేజీని నేరుగా ఓపెన్ చేసి చూడవచ్చు.",
-          officialUrl: fallbackOfficialUrl
-        };
-      }
-
-      if (data.officialUrl) {
-        setOfficialUrl(data.officialUrl);
-      }
-
-      if (!response.ok || data.error) {
-        throw new Error(
-          data.error || data.message || "రికార్డులను పొందలేకపోయాము."
-        );
-      }
-
-      setRecordsData(data);
-      if (addToast) {
-        addToast(`Unit ID [${id}] కొరకు ${data.totalRecords || 0} రికార్డులు కనుగొనబడ్డాయి!`);
-      }
-    } catch (err: any) {
-      setError(
-        err.message || "సర్వర్‌తో కనెక్షన్ విఫలమైంది."
-      );
-    } finally {
-      setLoading(false);
-    }
+    await executeSearchWithRetry(id);
   }
 
   // Filter records locally if present
@@ -199,7 +222,7 @@ export default function UBDTrackingTool({ addToast }: { addToast?: (msg: string)
           >
             {loading ? (
               <>
-                <RefreshCw size={18} className="animate-spin" /> వెతుకుతున్నాము...
+                <RefreshCw size={18} className="animate-spin" /> వెతుకుతున్నాము... {retryCount > 1 ? `(రీ-ట్రై ప్రయత్నం ${retryCount}/3)` : ""}
               </>
             ) : (
               <>
@@ -216,7 +239,7 @@ export default function UBDTrackingTool({ addToast }: { addToast?: (msg: string)
               <AlertCircle size={20} className="text-rose-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h4 className="font-extrabold text-xs uppercase tracking-wider text-rose-950">
-                  స్టేటస్ సూచన / సమస్య వివరాలు
+                  UBD MIS పోర్టల్ నెట్‌వర్క్ &amp; Cross-Origin (CORS) సూచన
                 </h4>
                 <p className="text-xs font-medium leading-relaxed">
                   {error}
@@ -224,22 +247,32 @@ export default function UBDTrackingTool({ addToast }: { addToast?: (msg: string)
               </div>
             </div>
 
-            {/* Direct Official Link Fallback Button */}
-            {officialUrl && (
-              <div className="pt-2 border-t border-rose-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <span className="text-[11px] font-bold text-rose-800">
-                  అధికారిక UBDMIS పోర్టల్ ద్వారా నేరుగా చూడాలనుకుంటే:
-                </span>
-                <a
-                  href={officialUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors whitespace-nowrap cursor-pointer"
+            {/* Retry + Direct Official Link Fallback Buttons */}
+            <div className="pt-2 border-t border-rose-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-[11px] font-bold text-rose-800">
+                మళ్ళీ ప్రయత్నించండి లేదా అధికారిక UBDMIS పోర్టల్ తెరవండి:
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => unitId.trim() && executeSearchWithRetry(unitId.trim())}
+                  disabled={loading}
+                  className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60"
                 >
-                  <ExternalLink size={14} /> అధికారిక UBDMIS పేజీ తెరవండి &rarr;
-                </a>
+                  <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> మళ్ళీ ప్రయత్నించండి (Retry 3x)
+                </button>
+                {officialUrl && (
+                  <a
+                    href={officialUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors whitespace-nowrap cursor-pointer"
+                  >
+                    <ExternalLink size={14} /> అధికారిక UBDMIS పేజీ తెరవండి &rarr;
+                  </a>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
