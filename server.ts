@@ -2694,30 +2694,7 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
         </div>
         ${statusBanner ? `<div class="p-4 rounded-2xl border ${statusBanner.startsWith('✅') ? 'bg-emerald-950/80 border-emerald-700 text-emerald-200' : 'bg-rose-950/80 border-rose-700 text-rose-200'} text-xs font-bold flex items-center justify-between"><span>${escapeHtmlServer(statusBanner)}</span></div>` : ''}
 
-        <!-- UBD & UBD MIS Portal Network Connectivity, Cross-Origin & Retry Diagnostic Bar -->
-        <div id="ubdNetworkDiagBar" class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs font-mono">
-            <div class="flex flex-wrap items-center gap-3">
-                <span class="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-bold flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Gateway &amp; Firestore Sync: ACTIVE (${totalPcs} PCs • ${allReports.length} Reports)
-                </span>
-                <span id="diagUbdPortalBadge" class="px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 font-bold">
-                    🌐 UBD Portal (ubd.telangana.gov.in): Checking...
-                </span>
-                <span id="diagUbdMisBadge" class="px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 font-bold">
-                    📊 UBD MIS Status (ubdmis.telangana.gov.in): Checking...
-                </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <button type="button" onclick="checkUbdNetworkAndPortalConnectivity(true)" id="btnRetryPortals" class="px-3 py-1.5 bg-indigo-950 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 rounded-xl font-bold transition cursor-pointer">
-                    🔄 కనెక్షన్ రీ-ట్రై (Retry 3x)
-                </button>
-                <a href="https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=20001&status=A&rlb_type=3&pstcode=35&style=bluetheme" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-xl font-bold transition">
-                    ↗ UBD MIS Direct Link
-                </a>
-            </div>
-        </div>
-        <div id="ubdNetworkErrorBox" class="hidden p-4 rounded-2xl border bg-amber-950/80 border-amber-700/80 text-amber-200 text-xs space-y-2"></div>
+
 
         <!-- 8 Summary KPI Metric Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 font-mono">

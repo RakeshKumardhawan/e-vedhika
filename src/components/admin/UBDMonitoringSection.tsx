@@ -600,75 +600,7 @@ export function UBDMonitoringSection({ addToast }: UBDMonitoringSectionProps) {
         </div>
       </div>
 
-      {/* Network Connectivity, Cross-Origin (CORS) & UBD MIS Portal Diagnostic Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs font-mono">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="px-3 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-bold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Gateway &amp; Firestore Sync: ACTIVE ({totalPcs} PCs • {totalArchiveCount} Reports)
-          </span>
-          {portalStatuses.map((p) => {
-            const isOnline = p.status === 'online';
-            if (p.id !== 'ubd' && p.id !== 'ubdmis') return null;
-            return (
-              <span
-                key={p.id}
-                className={`px-3 py-1 rounded-lg border font-bold ${
-                  isOnline
-                    ? 'bg-emerald-950 text-emerald-300 border-emerald-700/60'
-                    : 'bg-amber-950/90 text-amber-300 border-amber-700/60'
-                }`}
-              >
-                {isOnline
-                  ? `🟢 ${p.name}: ONLINE (${p.latencyMs}ms)`
-                  : `🟠 ${p.name}: CORS / NIC Firewall Restricted (${p.attempts || 2}x tried)`}
-              </span>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              fetchGatewayData();
-              checkPortalConnectivity(true);
-            }}
-            disabled={isPingingPortals || isLoading}
-            className="px-3 py-1.5 bg-indigo-950 hover:bg-indigo-800 text-indigo-200 border border-indigo-700/60 rounded-xl font-bold transition cursor-pointer disabled:opacity-60"
-          >
-            {isPingingPortals ? '⏳ Checking Portals...' : '🔄 కనెక్షన్ రీ-ట్రై (Retry 3x)'}
-          </button>
-          <a
-            href="https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=20001&status=A&rlb_type=3&pstcode=35&style=bluetheme"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-xl font-bold transition"
-          >
-            ↗ UBD MIS Direct Portal
-          </a>
-        </div>
-      </div>
 
-      {/* Clear Error / Cross-Origin Explanation Banner for Admin */}
-      {(networkError || portalStatuses.some((p) => (p.id === 'ubd' || p.id === 'ubdmis') && p.status !== 'online')) && (
-        <div className="p-4 rounded-2xl border bg-amber-950/80 border-amber-700/70 text-amber-200 text-xs space-y-2 shadow-md">
-          {networkError && (
-            <div className="p-2.5 rounded-xl bg-rose-950/90 border border-rose-700 text-rose-200 font-bold flex items-center justify-between gap-3">
-              <span>⚠️ {networkError}</span>
-              <button
-                onClick={fetchGatewayData}
-                className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold shrink-0 cursor-pointer"
-              >
-                🔄 మళ్ళీ ప్రయత్నించండి (Retry)
-              </button>
-            </div>
-          )}
-          <div className="leading-relaxed">
-            <strong>ℹ️ UBD MIS స్టేటస్ పోర్టల్ నెట్‌వర్క్ &amp; క్రాస్-ఆరిజిన్ సమాచారం (Network &amp; CORS Diagnostic):</strong>{' '}
-            తెలంగాణ అధికారిక <code>ubd.telangana.gov.in</code> మరియు <code>ubdmis.telangana.gov.in</code> సర్వర్లు NIC ఇంట్రానెట్ ఫైర్‌వాల్ మరియు Cross-Origin (CORS) భద్రతా నియమాలను కలిగి ఉంటాయి. దీనివల్ల బ్రౌజర్ నుండి నేరుగా Cross-Origin రిక్వెస్ట్‌లు బ్లాక్ చేయబడినప్పటికీ, <strong>మీ E-Vedhika UBD Monitoring రిపోర్టులు ({totalPcs} PCలు &amp; {totalArchiveCount} రిపోర్టులు) Firebase &amp; బ్యాకెండ్ ద్వారా 100% సురక్షితంగా లోడ్ అవుతున్నాయి.</strong> అధికారిక UBD MIS స్టేటస్ పేజీని నేరుగా చూడటానికి పైన ఉన్న <strong>&ldquo;↗ UBD MIS Direct Portal&rdquo;</strong> లింక్ లేదా C# డెస్క్‌టాప్ అప్లికేషన్ (Zone 2 IE Mode) ఉపయోగించండి.
-          </div>
-        </div>
-      )}
 
       {/* 8 KPI Summary Cards matching /admin/ubd_monitoring.php */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
