@@ -10,8 +10,9 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const basePath = process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || '/';
   return {
-    base: '/',
+    base: basePath,
     plugins: [
       react(),
       tailwindcss(),
@@ -20,7 +21,7 @@ export default defineConfig(({ mode }) => {
         manifestFilename: 'manifest.json',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'ev-logo-v2.png'],
         manifest: {
-          id: '/',
+          id: basePath,
           name: 'E-Vedhika',
           short_name: 'E-Vedhika',
           description: 'E-Vedhika: Comprehensive Digital Portal for Panchayat Secretaries - All Problems One Solution',
@@ -29,17 +30,17 @@ export default defineConfig(({ mode }) => {
           display: 'standalone',
           display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
           orientation: 'any',
-          start_url: '/',
-          scope: '/',
+          start_url: basePath,
+          scope: basePath,
           lang: 'te',
           dir: 'ltr',
           categories: ['productivity', 'government', 'utilities', 'business'],
           icons: [
-            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: '/ev-logo-v2.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-            { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+            { src: `${basePath}pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${basePath}pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${basePath}ev-logo-v2.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${basePath}pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+            { src: `${basePath}pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' }
           ],
           shortcuts: [
             {
@@ -290,10 +291,10 @@ export default defineConfig(({ mode }) => {
               return;
             }
 
-            if (req.url && (req.url.startsWith('/admin/exe_ubd_live') || req.url.startsWith('/exe_ubd_live'))) {
-              res.setHeader('Access-Control-Allow-Origin', '*');
+            if (req.url && (req.url.startsWith('/admin/ubd_monitoring') || req.url.startsWith('/ubd_monitoring'))) {
+              res.setHeader('Access-Control-Allow-Origin', 'https://rakeshkumardhawan.github.io');
               res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
-              res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Token');
               if (req.method === 'OPTIONS') {
                 res.statusCode = 200;
                 res.end();
@@ -303,7 +304,7 @@ export default defineConfig(({ mode }) => {
               const action = (urlObj.searchParams.get('action') || '').toLowerCase().trim();
               const format = (urlObj.searchParams.get('format') || '').toLowerCase().trim();
 
-              if (action === 'check_update' || action === 'version') {
+              if (action === 'ota_check' || action === 'check_update' || action === 'version') {
                 res.setHeader('Content-Type', 'application/json; charset=utf-8');
                 res.end(JSON.stringify({
                   success: true,
@@ -312,15 +313,16 @@ export default defineConfig(({ mode }) => {
                   executableName: 'EVedhika_Setup_v1.0.9.exe',
                   currentVersion: 'v1.0.9',
                   latestVersion: 'v1.0.9',
+                  resourceBuild: '2026.11.11.R3',
                   versionCode: 10090,
-                  releaseDate: '2026-10-28',
+                  releaseDate: '2026-11-11',
                   downloadUrl: 'https://github.com/RakeshKumardhawan/UBDTOOLS/releases/download/latest/EVedhika_Setup_v1.0.9.exe',
                   githubRepo: 'https://github.com/RakeshKumardhawan/UBDTOOLS',
                   updateRequired: false,
                   silent: false,
-                  releaseNotes: 'Enterprise v1.0.9: Instant Install Reporting, Zone 2 Automation, Telegram Live Heartbeat & Windows 7/8/10/11 Full Support.',
-                  publisher: 'E-Vedhika.in (Rakesh Dhawan)',
-                  telemetryRelayUrl: 'https://www.e-vedhika.in/admin/exe_ubd_live'
+                  releaseNotes: 'Enterprise v1.0.9 (Build 2026.11.11.R3): Complete Application-to-Website Report Sync, 17-Step Deployment Audit & 24x7 Guardian.',
+                  publisher: 'E-Vedhika (Rakesh Kumar Dhawan)',
+                  telemetryRelayUrl: 'https://rakeshkumardhawan.github.io/e-vedhika/admin/ubd_monitoring'
                 }, null, 2));
                 return;
               }

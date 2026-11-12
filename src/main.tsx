@@ -206,8 +206,14 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+const routerBasename =
+  typeof window !== 'undefined' &&
+  (window.location.pathname === '/e-vedhika' || window.location.pathname.startsWith('/e-vedhika/'))
+    ? '/e-vedhika'
+    : '/';
+
 createRoot(document.getElementById('root')!).render(
-  <BrowserRouter>
+  <BrowserRouter basename={routerBasename}>
     <ToastProvider>
       <ErrorBoundary>
         <App />

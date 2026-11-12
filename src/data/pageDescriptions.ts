@@ -1,82 +1,234 @@
-export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, { title: string; description: string }> = {
+export interface PageDescriptionEntry {
+  title: string;
+  description: string;
+  highlights?: string[];
+  guideSteps?: string[];
+}
+
+export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
   home: { 
-    title: "🏛️ E-Vedhika | Digital Governance Portal", 
-    description: "E-Vedhika - All Problems One Solution. Comprehensive digital portal for Telangana & AP Panchayat Secretaries, Computer Operators, and Citizens. Featuring DSR Analyzer, Multi-Day Attendance, Farmer Registry, GOs & Formats." 
+    title: "🏛️ E-Vedhika | మన పంచాయతీ & డిజిటల్ గవర్నెన్స్ పోర్టల్ (Digital Governance Portal)", 
+    description: "E-Vedhika (ఈ-వేదిక) – తెలంగాణ & ఆంధ్రప్రదేశ్ గ్రామ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు, మండల పరిషత్ సిబ్బంది మరియు పౌరుల కొరకు సమగ్ర సాంకేతిక & విద్యా వేదిక. ఇందులో DSR ఎనలైజర్, మల్టీ-డే అటెండెన్స్, UBD DSK/DSC పరిష్కారాలు, రైతు రిజిస్ట్రీ, జీవోలు మరియు అధికారిక ఫార్మాట్లు అందుబాటులో ఉన్నాయి.",
+    highlights: [
+      "మన పంచాయతీ (Mana Panchayath): DSR Analyzer, Multi-Day Attendance & Monthly Activity (MAS)",
+      "UBD టూల్స్ (UBD Tools): Windows 7/10/11 DSC/DSK సైనింగ్ పరిష్కారాలు & 17-Step ఆటో సెటప్",
+      "ప్రభుత్వ అప్‌డేట్స్ & డౌన్‌లోడ్స్: తాజా జీవోలు, సర్క్యులర్లు, అప్లికేషన్ ఫార్మాట్లు & సాఫ్ట్‌వేర్ హబ్"
+    ]
   },
   workspace: { 
-    title: "Digital Workspace", 
-    description: "Digital platform for E-Panchayat operators to manage daily tasks and generate official reports efficiently." 
-  },
-  logs: { 
-    title: "Security & Audit Logs", 
-    description: "View real-time system activity, user logins, and security audit logs." 
-  },
-  chat: { 
-    title: "Live Chat Room", 
-    description: "Connect and share information with fellow E-Panchayat operators and officials in real time." 
-  },
-  union: { 
-    title: "Union Corner & Polls", 
-    description: "Participate in union polls and express your opinion on key administrative decisions." 
-  },
-  changelog: { 
-    title: "System Updates & Release Notes", 
-    description: "Explore the latest features, enhancements, and system releases on E-Vedhika." 
-  },
-  emergency: { 
-    title: "Emergency Contacts Directory", 
-    description: "Quick access to essential helpline numbers and key official emergency contacts." 
-  },
-  suggestions: { 
-    title: "Public Suggestions & Feedback", 
-    description: "Submit your valuable suggestions and report technical portal issues to improve service delivery." 
-  },
-  gos_formats: { 
-    title: "GOs & Official Formats", 
-    description: "Download government orders (GOs), official application formats, and essential documents." 
-  },
-  useful_links: { 
-    title: "Useful Government Links", 
-    description: "Direct links to key government portals, official departmental websites, and online services." 
-  },
-  excel_print: { 
-    title: "Excel A4 Print Formatting Tool", 
-    description: "Format and optimize Excel spreadsheet data seamlessly for standard A4 printing." 
-  },
-  farmer_registry: { 
-    title: "Farmer Registry Portal", 
-    description: "Manage, verify, and streamline agricultural records and farmer database information." 
-  },
-  my_activity: { 
-    title: "My Activity Dashboard", 
-    description: "Track your personal activity history, submitted reports, and portal interactions." 
-  },
-  directlinks: { 
-    title: "UBD Tool Tracker & Direct Links", 
-    description: "Track UBD entry status and manage vital statistics (birth & death records) efficiently." 
+    title: "💻 మన పంచాయతీ డిజిటల్ వర్క్‌స్పేస్ (Mana Panchayath Digital Workspace)", 
+    description: "ఈ-పంచాయతీ ఆపరేటర్లు మరియు పంచాయతీ కార్యదర్శులు తమ రోజువారీ ఆఫీసు పనులను, మండల స్థాయి నివేదికలను మరియు ఎక్సెల్ గణనలను వేగంగా పూర్తి చేయడానికి రూపొందించబడిన ఆన్‌లైన్ వర్క్‌స్పేస్ (DSR Analyzer, Multi-Day Attendance, Monthly Activity, Excel Merger, PR Act 2018 & Digital Training).",
+    highlights: [
+      "100% ప్రైవసీ: మీరు అప్‌లోడ్ చేసే ఎక్సెల్ ఫైల్స్ మీ బ్రౌజర్‌లోనే లోకల్‌గా ప్రాసెస్ అవుతాయి",
+      "మండల & జిల్లా స్థాయి ఆటోమేటిక్ సారాంశ నివేదికలు (Instant Summary & Export)",
+      "మొబైల్, ట్యాబ్లెట్, ల్యాప్‌టాప్ మరియు డెస్క్‌టాప్ పరికరాలలో సులభంగా పనిచేస్తుంది"
+    ]
   },
   dsr: { 
-    title: "DSR Analyzer Tool", 
-    description: "Analyze daily status reports (DSR) and generate structured summary reports automatically." 
+    title: "📊 DSR ఎనలైజర్ టూల్ (Daily Status Report Analyzer)", 
+    description: "మన పంచాయతీ (Mana Panchayati) పోర్టల్ నుండి డౌన్‌లోడ్ చేసిన Daily Status Report (DSR) ఎక్సెల్ ఫైల్‌ను అప్‌లోడ్ చేసి, క్షణాల్లో పంచాయతీ కార్యదర్శుల హాజరు (PS Attendance), శానిటేషన్, స్ట్రీట్ లైట్స్ మరియు Not Reported గ్రామ పంచాయతీల జాబితాను ఆటోమేటిక్‌గా విశ్లేషించే సాధనం.",
+    highlights: [
+      "మండలాల వారీగా Reported vs Not Reported గ్రామ పంచాయతీల తక్షణ గుర్తింపు",
+      "WhatsApp మరియు Telegram గ్రూపులలో షేర్ చేయడానికి అనువైన HD ఇమేజ్ & Excel రిపోర్ట్",
+      "DPMలు, MPDOలు మరియు కంప్యూటర్ ఆపరేటర్ల రోజువారీ మానిటరింగ్‌కు అత్యంత ఉపయోగకరం"
+    ],
+    guideSteps: [
+      "Step 1: మన పంచాయతీ పోర్టల్ నుండి రోజువారీ DSR Excel (.xls/.xlsx) ఫైల్ డౌన్‌లోడ్ చేసుకోండి.",
+      "Step 2: ఈ పేజీలోని Upload బటన్ ద్వారా ఆ ఎక్సెల్ షీట్‌ను ఎంచుకోండి.",
+      "Step 3: ఆటోమేటిక్‌గా జనరేట్ అయిన మండల/గ్రామ స్థాయి టేబుల్స్ మరియు పెండింగ్ జాబితాను PDF/Excel/Image రూపంలో డౌన్‌లోడ్ చేసుకోండి."
+    ]
   },
   multiday: { 
-    title: "Multi-Day Attendance Tracker", 
-    description: "Record, batch-process, and verify employee attendance across multiple dates simultaneously." 
+    title: "📅 మల్టీ-డే అటెండెన్స్ ట్రాకర్ (Multi-Day Attendance Analyzer)", 
+    description: "ఒకటి కంటే ఎక్కువ రోజుల (వారం లేదా నెల మొత్తం) హాజరు ఎక్సెల్ రిపోర్టులను ఒకేసారి అప్‌లోడ్ చేసి, ఏ గ్రామ పంచాయతీ ఎన్ని రోజులు రిపోర్ట్ చేసింది మరియు ఎన్ని రోజులు పెండింగ్‌లో ఉందో కన్సాలిడేటెడ్ రిపోర్ట్ రూపొందించే సాధనం.",
+    highlights: [
+      "బహుళ తేదీల ఎక్సెల్ ఫైల్స్ ఒకేసారి బ్యాచ్ ప్రాసెసింగ్ (Batch Processing)",
+      "శాతం వారీగా (Attendance Percentage) గ్రామ పంచాయతీల ర్యాంకింగ్ మరియు సారాంశం",
+      "నెలవారీ సమీక్షా సమావేశాలకు (Monthly Review Meetings) సిద్ధమైన ఎక్సెల్ అవుట్‌పుట్"
+    ]
   },
-  training: { 
-    title: "Digital Training Hub", 
-    description: "Learn digital workflows, watch step-by-step video tutorials, and master portal utilities." 
-  },
-  pract: { 
-    title: "PR Act Knowledge Base", 
-    description: "Comprehensive guide to the Panchayat Raj Act, administrative rules, and governance guidelines." 
+  "monthly-activity": { 
+    title: "📈 మంత్లీ యాక్టివిటీ మానిటరింగ్ (Monthly Activity - MAS Formatter)", 
+    description: "గ్రామ పంచాయతీల నెలవారీ కార్యకలాపాలు (Monthly Activity Statement - MAS), పన్నుల వసూళ్లు, పారిశుధ్య పనులు మరియు రికార్డుల నిర్వహణ వివరాలను క్రమబద్ధీకరించి మండల స్థాయి నివేదికలు తయారు చేసే సాధనం.",
+    highlights: [
+      "నెలవారీ పంచాయతీ ప్రగతి నివేదికల ఆటోమేటిక్ కంపైలేషన్",
+      "తప్పులు లేకుండా వేగంగా మండల & జిల్లా స్థాయి MAS షీట్ల తయారీ"
+    ]
   },
   "MAS": { 
-    title: "Monthly Activity Monitoring (MAS)", 
-    description: "Streamlined monthly activity data monitoring and comprehensive Mandal & District MAS reporting." 
+    title: "📈 మంత్లీ యాక్టివిటీ మానిటరింగ్ (MAS Reporting Tool)", 
+    description: "గ్రామ పంచాయతీల నెలవారీ పనితీరు మరియు MAS (Monthly Activity Statement) డేటాను విశ్లేషించి, మండల మరియు జిల్లా స్థాయి సమ్మరీ రిపోర్టులను రూపొందించే ప్రత్యేక సాధనం.",
+    highlights: [
+      "మండలాల వారీగా పెండింగ్ మరియు పూర్తయిన ఎంట్రీల తక్షణ విశ్లేషణ",
+      "అధికారిక ప్రింటింగ్ మరియు ఎక్సెల్ ఎక్స్‌పోర్ట్ సదుపాయం"
+    ]
+  },
+  training: { 
+    title: "🎓 డిజిటల్ ట్రైనింగ్ హబ్ & ట్యుటోరియల్స్ (Guides and Tutorials Hub)", 
+    description: "కొత్తగా చేరిన మరియు సీనియర్ ఈ-పంచాయతీ ఆపరేటర్లు, పంచాయతీ కార్యదర్శుల కోసం మన పంచాయతీ, UBD, eGramSwaraj, PFMS మరియు ఆఫీస్ ఆటోమేషన్ టూల్స్ ఎలా ఉపయోగించాలో దశలవారీగా (Step-by-Step) వీడియో మరియు టెక్స్ట్ రూపంలో నేర్పించే శిక్షణా వేదిక.",
+    highlights: [
+      "తెలుగు మరియు ఇంగ్లీష్ భాషలలో సులభంగా అర్థమయ్యే వర్క్‌ఫ్లో గైడ్‌లు",
+      "ప్రతి ఆన్‌లైన్ టూల్‌కు సంబంధించిన ప్రత్యక్ష వీడియో ట్యుటోరియల్స్"
+    ]
+  },
+  pract: { 
+    title: "⚖️ పంచాయతీ రాజ్ చట్టం నాలెడ్జ్ హబ్ (PR Act 2018 & Rules Guide)", 
+    description: "తెలంగాణ పంచాయతీ రాజ్ చట్టం 2018 (Telangana PR Act 2018) లోని ముఖ్యమైన సెక్షన్లు, గ్రామ సభ నిబంధనలు, భవన నిర్మాణ అనుమతులు, పన్నుల విధింపు, మరియు పంచాయతీ కార్యదర్శి విధులు-బాధ్యతల గురించి సమగ్ర సమాచారం అందించే విజ్ఞాన వేదిక.",
+    highlights: [
+      "సెక్షన్ల వారీగా సరళమైన తెలుగు వివరణ మరియు అధికారిక నిబంధనలు",
+      "గ్రామ పంచాయతీ పరిపాలన మరియు రికార్డుల నిర్వహణకు ప్రామాణిక గైడ్"
+    ]
   },
   "excel-merge": { 
-    title: "Excel File Merger Tool", 
-    description: "Merge data from multiple Excel workbooks into a single consolidated master spreadsheet." 
+    title: "📑 ఎక్సెల్ ఫైల్ మెర్జర్ టూల్ (Excel Workbook Merger)", 
+    description: "వివిధ గ్రామ పంచాయతీల నుండి వచ్చిన పదుల సంఖ్యలోని వేర్వేరు ఎక్సెల్ ఫైల్స్ (Excel Workbooks) లోని డేటాను కాపీ-పేస్ట్ చేసే శ్రమ లేకుండా ఒకే క్లిక్‌తో ఒకే మాస్టర్ ఎక్సెల్ షీట్‌గా (Consolidated Master Sheet) విలీనం చేసే సాధనం.",
+    highlights: [
+      "ఎన్ని ఎక్సెల్ ఫైల్స్ అయినా సెకన్లలో ఒకే షీట్‌లోకి విలీనం",
+      "హెడర్ వరుసలను (Header Rows) ఆటోమేటిక్‌గా గుర్తించి డూప్లికేట్ కాకుండా కలిపే సౌకర్యం"
+    ]
+  },
+  "gpdp-planning": { 
+    title: "📋 GPDP గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (GPDP Planning Tool)", 
+    description: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (Gram Panchayat Development Plan - GPDP) తయారీ, వనరుల అంచనా (Resource Envelope), మరియు వార్షిక కార్యాచరణ ప్రణాళికల రూపకల్పనకు అవసరమైన గణనలు మరియు ఫార్మాట్ల సాధనం.",
+    highlights: [
+      "15వ ఆర్థిక సంఘం (15th Finance Commission) Tied & Untied గ్రాంట్ల అంచనా",
+      "eGramSwaraj పోర్టల్ ఎంట్రీకి అనుగుణమైన పనుల కేటాయింపు మార్గదర్శిని"
+    ]
+  },
+  gpdp_setup: { 
+    title: "📋 GPDP సెటప్ & ప్లానింగ్ గైడ్ (GPDP Setup & Resources)", 
+    description: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (GPDP) మరియు eGramSwaraj పోర్టల్‌లో గ్రామ సభ తీర్మానాలు, పనుల ఎంపిక మరియు బడ్జెట్ కేటాయింపులు చేయడానికి సమగ్ర మార్గదర్శకాలు.",
+    highlights: [
+      "Tied (Sanitation & Drinking Water) మరియు Untied నిధుల శాతాల ఆటోమేటిక్ గణన",
+      "GPDP ఫ్రంట్‌షీట్ మరియు తీర్మాన నమూనా ఫార్మాట్లు"
+    ]
+  },
+  gos_formats: { 
+    title: "📥 ప్రభుత్వ జీవోలు & అధికారిక ఫార్మాట్లు (GOs, Proceedings & Formats Downloads)", 
+    description: "పంచాయతీ రాజ్ మరియు గ్రామీణాభివృద్ధి శాఖకు సంబంధించిన అన్ని ముఖ్యమైన ప్రభుత్వ ఉత్తర్వులు (GOs), సర్క్యులర్లు, ప్రొసీడింగ్స్, జనన/మరణ/వివాహ ధృవీకరణ దరఖాస్తు ఫార్మాట్లు మరియు కార్యాలయ రిజిస్టర్ నమూనాలను ఉచితంగా డౌన్‌లోడ్ చేసుకునే విభాగం.",
+    highlights: [
+      "కేటగిరీల వారీగా (GOs, Application Formats, Proceedings, Circulars) సులభమైన సెర్చ్",
+      "ప్రింట్ తీసుకోవడానికి సిద్ధంగా ఉన్న A4 PDF మరియు Word ఫార్మాట్లు"
+    ]
+  },
+  suggestions: { 
+    title: "💡 సమస్యలు & సూచనలు (Public Suggestions & Technical Grievance Redressal)", 
+    description: "ఈ-పంచాయతీ, UBD, DSR లేదా పోర్టల్ వినియోగంలో మీరు ఎదుర్కొంటున్న సాంకేతిక సమస్యలను మా టెక్నికల్ టీమ్ దృష్టికి తీసుకురావడానికి మరియు పోర్టల్ అభివృద్ధికి మీ విలువైన సూచనలను అందించడానికి ఏర్పాటు చేసిన వేదిక.",
+    highlights: [
+      "సాంకేతిక సమస్యలపై వేగవంతమైన పరిష్కారం మరియు అడ్మిన్ రెస్పాన్స్ ట్రాకింగ్",
+      "ఉద్యోగులు మరియు పౌరుల అవసరాలకు అనుగుణంగా కొత్త టూల్స్ రూపకల్పన"
+    ]
+  },
+  emergency: { 
+    title: "🚨 అత్యవసర సేవల డైరెక్టరీ (Emergency Helplines & Official Directory)", 
+    description: "తెలంగాణ & ఆంధ్రప్రదేశ్ రాష్ట్రాలలోని అత్యవసర హెల్ప్‌లైన్ నంబర్లు (పోలీస్ 100/112, అంబులెన్స్ 108, ఫైర్ 101, సైబర్ క్రైమ్ 1930, ఉమెన్ హెల్ప్‌లైన్ 181) మరియు ప్రభుత్వ శాఖల టోల్-ఫ్రీ నంబర్ల సమగ్ర డైరెక్టరీ.",
+    highlights: [
+      "గ్రామ పంచాయతీ నోటీసు బోర్డులు మరియు పౌరుల అత్యవసర సమాచారం కోసం ఒకే చోట అన్ని నంబర్లు",
+      "మొబైల్ నుండి ఒకే క్లిక్‌తో నేరుగా కాల్ చేసే (Click-to-Call) సదుపాయం"
+    ]
+  },
+  my_activity: { 
+    title: "👤 నా యాక్టివిటీ & ప్రొఫైల్ డ్యాష్‌బోర్డ్ (My Activity & Work Tracker)", 
+    description: "పోర్టల్‌లో మీ ప్రొఫైల్ వివరాలు, మీరు ఉపయోగించిన ఆన్‌లైన్ టూల్స్ చరిత్ర, డౌన్‌లోడ్ చేసిన ఫార్మాట్లు మరియు సమర్పించిన సూచనల స్థితిని ట్రాక్ చేసుకునే వ్యక్తిగత డ్యాష్‌బోర్డ్.",
+    highlights: [
+      "మీ గ్రామ పంచాయతీ మరియు మండల ప్రొఫైల్ సమాచార నిర్వహణ",
+      "భద్రతా పిన్ (4-Digit PIN) మరియు ఖాతా సెట్టింగ్స్ నియంత్రణ"
+    ]
+  },
+  priority_services: { 
+    title: "⚡ ప్రాధాన్యత సేవలు (Priority e-Panchayat Services)", 
+    description: "పంచాయతీ కార్యదర్శులు మరియు ఆపరేటర్లకు ప్రతిరోజూ అత్యవసరంగా ఉపయోగపడే రైతు రిజిస్ట్రీ వెరిఫికేషన్, ఎమర్జెన్సీ డైరెక్టరీ మరియు వ్యక్తిగత వర్క్ యాక్టివిటీ సేవల విభాగం.",
+    highlights: [
+      "అత్యధికంగా ఉపయోగించే కీలక సాధనాలకు వేగవంతమైన యాక్సెస్",
+      "క్షేత్రస్థాయి పరిశీలన (Field Verification) కోసం మొబైల్-ఫ్రెండ్లీ ఇంటర్‌ఫేస్"
+    ]
+  },
+  directlinks: { 
+    title: "🔗 UBD టూల్స్ & అధికారిక పోర్టల్ డైరెక్ట్ లింక్స్ (UBD Tools & Official Portals)", 
+    description: "తెలంగాణ & ఏపీ UBD (Unified Birth & Death) పోర్టల్, eGramSwaraj, Mana Panchayati, PFMS, MeeSeva మరియు ఇతర ప్రభుత్వ శాఖల అధికారిక వెబ్‌సైట్లకు నేరుగా వెళ్లే డైరెక్ట్ లింకులు మరియు UBD డెస్క్‌టాప్ యుటిలిటీ సమాచారం.",
+    highlights: [
+      "అధికారిక ప్రభుత్వ పోర్టల్‌లకు ధృవీకరించబడిన సురక్షిత లింకులు",
+      "UBD DSK/DSC సైనింగ్ మరియు బ్రౌజర్ సెట్టింగ్స్ గైడ్‌లకు తక్షణ కనెక్టివిటీ"
+    ]
+  },
+  ubd_tracker: { 
+    title: "🛡️ UBD ట్రాకర్ & డెస్క్‌టాప్ ఆటో-హీలింగ్ టూల్స్ (UBD Tracker & DSC/DSK Utility)", 
+    description: "తెలంగాణ & ఏపీ పంచాయతీలలో జనన, మరణ ధృవీకరణ పత్రాల డిజిటల్ సంతకం (DSC/DSK) కోసం అవసరమైన 17-Step సిస్టమ్ కాన్ఫిగరేషన్, Edge IE5 Emulation, Java/ActiveX మరియు టోకెన్ డ్రైవర్ల స్థితిని పర్యవేక్షించే విభాగం.",
+    highlights: [
+      "Windows 7, 8.1, 10 & 11 (32-bit/64-bit) కంప్యూటర్లలో DSC సైనింగ్ సమస్యలకు శాశ్వత పరిష్కారం",
+      "ePass2003, mToken, WatchData ProxKey టోకెన్ల గుర్తింపు మరియు NIC DSign పోర్ట్ తనిఖీ"
+    ]
+  },
+  useful_links: { 
+    title: "🌐 ముఖ్యమైన ప్రభుత్వ వెబ్‌సైట్ లింకులు (Useful Government Portals Directory)", 
+    description: "గ్రామ పంచాయతీ పరిపాలన, రెవెన్యూ, వ్యవసాయం, పెన్షన్లు (Aasara/Cheyutha), ఆధార్, ఓటర్ కార్డ్ మరియు పౌర సేవలకు సంబంధించిన అన్ని కీలక వెబ్‌సైట్ల సమగ్ర డైరెక్టరీ.",
+    highlights: [
+      "విభాగాల వారీగా వర్గీకరించబడిన అధికారిక వెబ్‌సైట్ లింకులు",
+      "ఆపరేటర్లు ప్రతిసారీ URL వెతకకుండా ఒకే క్లిక్‌తో ఓపెన్ చేసే సౌలభ్యం"
+    ]
+  },
+  chat: { 
+    title: "💬 కమ్యూనిటీ & టెక్నికల్ సపోర్ట్ చాట్ (Operator Support Community)", 
+    description: "రాష్ట్రవ్యాప్తంగా ఉన్న ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు, పంచాయతీ కార్యదర్శులు మరియు సాంకేతిక నిపుణులు పరస్పరం సందేహాలను నివృత్తి చేసుకోవడానికి మరియు సమాచారాన్ని పంచుకోవడానికి ఏర్పాటు చేసిన రియల్-టైమ్ చర్చా వేదిక.",
+    highlights: [
+      "తోటి ఆపరేటర్లతో తక్షణ సాంకేతిక సందేహాల నివృత్తి",
+      "సర్వర్ స్టేటస్ (UBD / Mana Panchayati పనితీరు) పై ప్రత్యక్ష అప్‌డేట్లు"
+    ]
+  },
+  logs: { 
+    title: "🛡️ సిస్టమ్ భద్రత & ఆడిట్ లాగ్స్ (Security & Audit Logs)", 
+    description: "పోర్టల్ భద్రత, వినియోగదారుల లాగిన్ కార్యకలాపాలు మరియు సిస్టమ్ ఆడిట్ రికార్డులను పారదర్శకంగా పర్యవేక్షించే భద్రతా విభాగం.",
+    highlights: [
+      "256-bit SSL మరియు Firebase Enterprise ఆధారిత భద్రతా పర్యవేక్షణ"
+    ]
+  },
+  union: { 
+    title: "🤝 ఉద్యోగ సంఘాల సమాచారం & పోల్స్ (Employees Union Corner & Polls)", 
+    description: "పంచాయతీ కార్యదర్శుల సంఘం మరియు ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్ల సంఘం యొక్క తాజా ప్రకటనలు, వినతిపత్రాలు, సర్వీస్ కొనసాగింపు ఉత్తర్వులు (Continuation Orders) మరియు అభిప్రాయ సేకరణ (Polls) వేదిక.",
+    highlights: [
+      "ఉద్యోగుల సమస్యలు మరియు సంఘం కార్యక్రమాలపై అధికారిక సమాచారం",
+      "కీలక అంశాలపై ప్రజాస్వామ్యబద్ధమైన ఆన్‌లైన్ పోల్స్"
+    ]
+  },
+  changelog: { 
+    title: "🚀 సిస్టమ్ అప్‌డేట్స్ & రిలీజ్ నోట్స్ (What's New & Changelog)", 
+    description: "E-Vedhika పోర్టల్‌లో కొత్తగా ప్రవేశపెట్టిన టూల్స్, సాఫ్ట్‌వేర్ వెర్షన్ అప్‌డేట్లు, బగ్ ఫిక్స్‌లు మరియు సాంకేతిక మెరుగుదలల పూర్తి చరిత్ర (Release Notes).",
+    highlights: [
+      "ప్రతి వెర్షన్‌లో వచ్చిన కొత్త ఫీచర్ల పూర్తి తెలుగు వివరణ",
+      "నిరంతర సాంకేతిక అభివృద్ధి మరియు యూజర్ ఫీడ్‌బ్యాక్ అమలు"
+    ]
+  },
+  farmer_registry: { 
+    title: "🌾 రైతు రిజిస్ట్రీ వెరిఫికేషన్ పోర్టల్ (Farmer Registry & Land Verification Tool)", 
+    description: "గ్రామ స్థాయిలో రైతుల వ్యవసాయ భూముల వివరాలు (Survey Numbers & Extent), ఆధార్ సీడింగ్ మరియు రైతు రిజిస్ట్రీ (AgriStack / Farmer Registry) ఎన్‌రోల్‌మెంట్ డేటాను సులభంగా సరిచూసుకోవడానికి మరియు విలీనం చేయడానికి రూపొందించిన సాధనం.",
+    highlights: [
+      "ఒకే రైతుకు ఉన్న బహుళ సర్వే నంబర్ల ఆటోమేటిక్ విలీనం మరియు పరిశీలన",
+      "పెండింగ్ ఎన్‌రోల్‌మెంట్ జాబితాల తయారీ మరియు ఎక్సెల్ ఎక్స్‌పోర్ట్"
+    ]
+  },
+  excel_print: { 
+    title: "🖨️ ఎక్సెల్ A4 ప్రింట్ ఫార్మాటింగ్ టూల్ (Excel to Clean A4 Print/PDF Tool)", 
+    description: "పెద్ద ఎక్సెల్ షీట్లను ప్రింట్ తీసేటప్పుడు కాలమ్స్ కట్ అయిపోకుండా, ఆటోమేటిక్‌గా A4 పేజీ సైజుకు సరిపడేలా (Auto-fit Columns, Repeat Headers & Clean Borders) మార్చి ప్రింట్ లేదా PDF తీసుకునే సాధనం.",
+    highlights: [
+      "గ్రామ సభ జాబితాలు మరియు పన్నుల రిజిస్టర్ల ప్రింటింగ్‌కు అత్యంత అనుకూలం",
+      "ప్రతి పేజీలో టేబుల్ హెడర్ మరియు పేజీ నంబర్లు ఆటోమేటిక్‌గా వచ్చే సదుపాయం"
+    ]
+  },
+  pdf_compress: { 
+    title: "🗜️ పీడీఎఫ్ కంప్రెసర్ టూల్ (Online PDF Size Reducer for Government Portals)", 
+    description: "ప్రభుత్వ పోర్టల్‌లలో (UBD, eGramSwaraj, Mana Panchayati) అప్‌లోడ్ చేయాల్సిన స్కాన్ చేసిన PDF డాక్యుమెంట్లు మరియు జీవోల ఫైల్ సైజును నాణ్యత (Clarity) తగ్గకుండా 100KB / 200KB / 500KB పరిమితిలోకి తగ్గించే సాధనం.",
+    highlights: [
+      "100% బ్రౌజర్-ఆధారిత కంప్రెషన్ — మీ పత్రాలు ఏ సర్వర్‌కు అప్‌లోడ్ కావు",
+      "UBD జనన/మరణ ధృవీకరణ పత్రాల అటాచ్‌మెంట్ల కోసం ప్రత్యేక ఆప్టిమైజేషన్"
+    ]
+  },
+  software_hub: { 
+    title: "💿 సాఫ్ట్‌వేర్ హబ్ & డ్రైవర్ల డౌన్‌లోడ్ (Panchayat Office Software Hub)", 
+    description: "గ్రామ పంచాయతీ మరియు మండల కార్యాలయ కంప్యూటర్లకు అత్యవసరమైన డిజిటల్ సిగ్నేచర్ (DSC) టోకెన్ డ్రైవర్లు (ePass2003, WatchData ProxKey, mToken), Java Runtime (JRE 8), NIC DSign Utility, మరియు తెలుగు ఫాంట్లను సురక్షితంగా డౌన్‌లోడ్ చేసుకునే వేదిక.",
+    highlights: [
+      "SHA-256 చెక్‌సమ్ మరియు వైరస్ స్కాన్ ద్వారా ధృవీకరించబడిన అసలైన డ్రైవర్ ప్యాకేజీలు",
+      "ప్రతి సాఫ్ట్‌వేర్‌ను ఎలా ఇన్‌స్టాల్ చేయాలో వివరించే తెలుగు ఇన్‌స్టాలేషన్ గైడ్"
+    ]
   },
 };
+

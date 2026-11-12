@@ -995,11 +995,33 @@ html, body, #root {
   border-radius: 4px;
 }
 
-/* 3. Screen Compatibility Media Breakpoints */
+/* 3. Screen Compatibility Media Breakpoints (Mobile, Tablet, Laptop, Desktop) */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body,
+.post-card,
+.service-card {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.markdown-body table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Mobile Portrait & Small Screens (< 640px) */
 @media (max-width: 639px) {
-  body {
+  html, body {
     font-size: 14px;
+    overflow-x: hidden;
+    width: 100%;
   }
   
   .content-area,
@@ -1017,19 +1039,24 @@ html, body, #root {
   }
 }
 
-/* Tablet & iPad Portrait (640px - 1023px) */
+/* Tablet & iPad Portrait / Landscape (640px - 1023px) */
 @media (min-width: 640px) and (max-width: 1023px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
   .content-area,
   main {
     padding-left: 20px !important;
     padding-right: 20px !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
 /* Laptop Screens (1024px - 1366px) */
 @media (min-width: 1024px) and (max-width: 1366px) {
   .max-w-7xl {
-    max-width: 95% !important;
+    max-width: 96% !important;
   }
   
   .content-area,
@@ -1039,12 +1066,13 @@ html, body, #root {
   }
 }
 
-/* Large Desktop Screens (>= 1440px) */
+/* Large Desktop & Widescreen Monitors (>= 1440px) */
 @media (min-width: 1440px) {
   .max-w-7xl {
     max-width: 1380px !important;
   }
 }
+
 
 
 

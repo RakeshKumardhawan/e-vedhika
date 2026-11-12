@@ -8493,16 +8493,16 @@ E-Vedhika Support System`;
                                   className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
                                   id="footer-about-btn"
                                 >
-                                  About
+                                  About Us
                                 </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
-                                <button
-                                  onClick={() => setShowFooterModal("contact")}
+                                <Link
+                                  to="/contact"
                                   className="opacity-90 hover:opacity-100 hover:text-[#fbe947] hover:scale-105 hover:-translate-y-0.5 hover:bg-white/15 active:scale-95 transition-all duration-300 ease-out cursor-pointer flex items-center gap-1 font-extrabold text-[#fbe947] bg-white/5 px-2.5 py-1 rounded-xl border border-white/10 shadow-xs hover:border-[#fbe947]/40"
                                   id="footer-contact-btn"
                                 >
-                                  Support & Contact
-                                </button>
+                                  Contact Us
+                                </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
                                 <button
                                   onClick={handlePWAInstall}
@@ -8524,16 +8524,41 @@ E-Vedhika Support System`;
                                   to="/terms"
                                   className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
                                 >
-                                  Terms & Conditions
+                                  Terms &amp; Conditions
                                 </Link>
                                 <div className="w-1 h-1 rounded-full bg-white/30" />
-                                <button
-                                  onClick={() => setShowFooterModal("sitemap")}
+                                <Link
+                                  to="/disclaimer"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
+                                >
+                                  Disclaimer
+                                </Link>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <Link
+                                  to="/cookie-policy"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
+                                >
+                                  Cookie Policy
+                                </Link>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <Link
+                                  to="/editorial-policy"
+                                  className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out inline-block cursor-pointer font-bold"
+                                >
+                                  Editorial Policy
+                                </Link>
+                                <div className="w-1 h-1 rounded-full bg-white/30" />
+                                <Link
+                                  to="/sitemap"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowFooterModal("sitemap");
+                                  }}
                                   className="opacity-80 hover:opacity-100 text-white hover:text-[#fbe947] hover:underline hover:decoration-[#fbe947]/80 hover:underline-offset-4 hover:scale-105 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 ease-out cursor-pointer flex items-center gap-1 font-bold"
                                   id="footer-sitemap-btn"
                                 >
                                   Sitemap
-                                </button>
+                                </Link>
                               </div>
                             </footer>
                           </div>
