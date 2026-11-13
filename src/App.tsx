@@ -24188,7 +24188,7 @@ function PostCard({
                     </div>
                   </a>
                 )}
-              {post.attachments?.map((att, idx) => {
+              {post.attachments?.filter((att: any) => (isAdmin || (userProfile?.role || "").toLowerCase() === "editor") ? true : (att.isHidden !== true && !((att.status || "Old").toLowerCase() === "old" && att.isHidden !== false))).map((att, idx) => {
                 const fileInfo = getFileTypeInfo(att.name || att.url || "");
                 const statusTag = (att.status || "Old").toUpperCase();
                 let statusColor = "bg-[#ff1744]"; // Default OLD
@@ -24890,7 +24890,7 @@ function PostForm({
     editingPost?.versionStatus,
   );
   const [attachments, setAttachments] = useState<
-    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean; fileType?: string; size?: number; }[]
+    { name: string; url: string; fallbackUrl?: string; version?: string; status?: "New" | "Old"; badgePrefix?: string; isDirect?: boolean; fileType?: string; size?: number; isHidden?: boolean; }[]
   >(editingPost?.attachments || []);
   const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
   const [downloadStyle, setDownloadStyle] = useState<"classic" | "techspot">(
@@ -26250,6 +26250,26 @@ function PostForm({
                               >
                                 {currentStatus === "New" ? "NEW" : "OLD"}
                                 <span className="text-[9px] opacity-75 font-normal">↻</span>
+                              </button>
+
+                              {/* Admin Hide/Unhide Toggle Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAttachments(prev => prev.map((item, idx) => {
+                                    if (idx !== i) return item;
+                                    const isCurrentlyHidden = item.isHidden === true || ((item.status || "Old").toLowerCase() === "old" && item.isHidden !== false);
+                                    return { ...item, isHidden: !isCurrentlyHidden };
+                                  }));
+                                }}
+                                className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase transition-all shadow-sm flex items-center gap-1 cursor-pointer select-none ${
+                                  (att.isHidden === true || ((att.status || "Old").toLowerCase() === "old" && att.isHidden !== false))
+                                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                    : "bg-slate-700 hover:bg-slate-800 text-white"
+                                }`}
+                                title="యూజర్లకు చూపించాలా లేదా దాచాలా? (Hide/Unhide for users)"
+                              >
+                                {(att.isHidden === true || ((att.status || "Old").toLowerCase() === "old" && att.isHidden !== false)) ? "🙈 దాచు" : "👁️ చూపు"}
                               </button>
                             </div>
 
@@ -30046,7 +30066,7 @@ function PostDetail({
           <div className="mt-6 pt-4 border-t border-slate-100">
             <h5 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">Attachments</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {post.attachments.map((att: any, idx: number) => {
+              {post.attachments.filter((att: any) => (isAdmin || (userProfile?.role || "").toLowerCase() === "editor") ? true : (att.isHidden !== true && !((att.status || "Old").toLowerCase() === "old" && att.isHidden !== false))).map((att: any, idx: number) => {
                 const fileInfo = getFileTypeInfo(att.name || att.url || "");
                 const statusTag = (att.status || "Old").toUpperCase();
                 let statusColor = "bg-[#ff1744]";
