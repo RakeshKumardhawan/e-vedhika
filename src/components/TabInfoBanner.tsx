@@ -5,9 +5,10 @@ import { DEFAULT_PAGE_DESCRIPTIONS, PageDescriptionEntry } from "../data/pageDes
 interface TabInfoBannerProps {
   currentTab: string;
   customDescriptions?: Record<string, PageDescriptionEntry>;
+  lang?: "en" | "te";
 }
 
-export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBannerProps) {
+export function TabInfoBanner({ currentTab, customDescriptions = {}, lang = "en" }: TabInfoBannerProps) {
   const [showFullDocs, setShowFullDocs] = useState(true);
   if (!currentTab || currentTab === "admin" || currentTab === "editor" || currentTab === "logs") {
     return null;
@@ -15,21 +16,27 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
 
   const defaultEntry = DEFAULT_PAGE_DESCRIPTIONS[currentTab];
   const customEntry = customDescriptions[currentTab];
+  const isEn = lang === "en";
 
-  const title = customEntry?.title || defaultEntry?.title;
-  const description = customEntry?.description || defaultEntry?.description;
-  const guideSteps =
-    customEntry?.guideSteps && customEntry.guideSteps.length > 0
-      ? customEntry.guideSteps
-      : defaultEntry?.guideSteps || [];
+  const title = isEn
+    ? (customEntry?.titleEn || defaultEntry?.titleEn || customEntry?.title || defaultEntry?.title)
+    : (customEntry?.title || defaultEntry?.title);
 
-  const purpose = customEntry?.purpose || defaultEntry?.purpose;
-  const targetAudience = customEntry?.targetAudience || defaultEntry?.targetAudience;
-  const realLifeUseCases = customEntry?.realLifeUseCases || defaultEntry?.realLifeUseCases || [];
-  const limitations = customEntry?.limitations || defaultEntry?.limitations;
-  const dataPrivacy = customEntry?.dataPrivacy || defaultEntry?.dataPrivacy;
-  const officialReference = customEntry?.officialReference || defaultEntry?.officialReference;
-  const lastVerified = customEntry?.lastVerified || defaultEntry?.lastVerified;
+  const description = isEn
+    ? (customEntry?.descriptionEn || defaultEntry?.descriptionEn || customEntry?.description || defaultEntry?.description)
+    : (customEntry?.description || defaultEntry?.description);
+
+  const guideSteps = isEn
+    ? (customEntry?.guideStepsEn && customEntry.guideStepsEn.length > 0 ? customEntry.guideStepsEn : defaultEntry?.guideStepsEn || customEntry?.guideSteps || defaultEntry?.guideSteps || [])
+    : (customEntry?.guideSteps && customEntry.guideSteps.length > 0 ? customEntry.guideSteps : defaultEntry?.guideSteps || []);
+
+  const purpose = isEn ? (customEntry?.purposeEn || defaultEntry?.purposeEn || customEntry?.purpose || defaultEntry?.purpose) : (customEntry?.purpose || defaultEntry?.purpose);
+  const targetAudience = isEn ? (customEntry?.targetAudienceEn || defaultEntry?.targetAudienceEn || customEntry?.targetAudience || defaultEntry?.targetAudience) : (customEntry?.targetAudience || defaultEntry?.targetAudience);
+  const realLifeUseCases = isEn ? (customEntry?.realLifeUseCasesEn || defaultEntry?.realLifeUseCasesEn || customEntry?.realLifeUseCases || defaultEntry?.realLifeUseCases || []) : (customEntry?.realLifeUseCases || defaultEntry?.realLifeUseCases || []);
+  const limitations = isEn ? (customEntry?.limitationsEn || defaultEntry?.limitationsEn || customEntry?.limitations || defaultEntry?.limitations) : (customEntry?.limitations || defaultEntry?.limitations);
+  const dataPrivacy = isEn ? (customEntry?.dataPrivacyEn || defaultEntry?.dataPrivacyEn || customEntry?.dataPrivacy || defaultEntry?.dataPrivacy) : (customEntry?.dataPrivacy || defaultEntry?.dataPrivacy);
+  const officialReference = isEn ? (customEntry?.officialReferenceEn || defaultEntry?.officialReferenceEn || customEntry?.officialReference || defaultEntry?.officialReference) : (customEntry?.officialReference || defaultEntry?.officialReference);
+  const lastVerified = isEn ? (customEntry?.lastVerifiedEn || defaultEntry?.lastVerifiedEn || customEntry?.lastVerified || defaultEntry?.lastVerified) : (customEntry?.lastVerified || defaultEntry?.lastVerified);
 
   if (!description) return null;
 
@@ -50,7 +57,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
                 </h2>
                 {lastVerified && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                    <Calendar size={10} /> ధృవీకరించబడింది: {lastVerified}
+                    <Calendar size={10} /> {isEn ? "Verified:" : "ధృవీకరించబడింది:"} {lastVerified}
                   </span>
                 )}
               </div>
@@ -67,10 +74,10 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
               type="button"
               onClick={() => setShowFullDocs((prev) => !prev)}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl transition-all shadow-xs cursor-pointer"
-              title="టూల్ పూర్తి మార్గదర్శిని & డాక్యుమెంటేషన్ చూడండి"
+              title={isEn ? "View full tool guide & documentation" : "టూల్ పూర్తి మార్గదర్శిని & డాక్యుమెంటేషన్ చూడండి"}
             >
               <ListChecks size={14} />
-              <span>{showFullDocs ? "గైడ్ కుదించు" : "పూర్తి గైడ్ & వివరాలు"}</span>
+              <span>{showFullDocs ? (isEn ? "Collapse Guide" : "గైడ్ కుదించు") : (isEn ? "Full Guide & Details" : "పూర్తి గైడ్ & వివరాలు")}</span>
               {showFullDocs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
           )}
@@ -78,10 +85,10 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
             type="button"
             onClick={() => triggerYouTubeTutorial(currentTab, title)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer"
-            title="యూట్యూబ్ ట్యుటోరియల్ వీడియో చూడండి"
+            title={isEn ? "Watch YouTube tutorial video" : "యూట్యూబ్ ట్యుటోరియల్ వీడియో చూడండి"}
           >
             <Youtube size={16} className="shrink-0" />
-            <span>వాచ్ ట్యుటోరియల్</span>
+            <span>{isEn ? "Watch Tutorial" : "వాచ్ ట్యుటోరియల్"}</span>
           </button>
         </div>
       </div>
@@ -95,7 +102,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
                 <div className="bg-white/90 rounded-xl p-3.5 border border-blue-100 shadow-2xs">
                   <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wide mb-1.5">
                     <Target size={14} className="text-blue-600 shrink-0" />
-                    <span>ఈ టూల్ ఉపయోగం ఏమిటి? (Purpose of this Tool)</span>
+                    <span>{isEn ? "Purpose of this Tool" : "ఈ టూల్ ఉపయోగం ఏమిటి? (Purpose)"}</span>
                   </div>
                   <p className="text-xs text-slate-700 leading-relaxed font-medium">
                     {purpose}
@@ -106,7 +113,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
                 <div className="bg-white/90 rounded-xl p-3.5 border border-blue-100 shadow-2xs">
                   <div className="flex items-center gap-1.5 text-xs font-black text-indigo-900 uppercase tracking-wide mb-1.5">
                     <Users size={14} className="text-indigo-600 shrink-0" />
-                    <span>ఎవరు ఉపయోగించవచ్చు? (Who Can Use It)</span>
+                    <span>{isEn ? "Who Can Use It" : "ఎవరు ఉపయోగించవచ్చు? (Audience)"}</span>
                   </div>
                   <p className="text-xs text-slate-700 leading-relaxed font-medium">
                     {targetAudience}
@@ -121,7 +128,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
             <div className="bg-white/90 rounded-xl p-3.5 border border-blue-100 shadow-2xs">
               <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wide mb-2">
                 <ListChecks size={15} className="text-blue-600 shrink-0" />
-                <span>ఎలా ఉపయోగించాలి? దశలవారీ విధానం (Step-by-Step Workflow):</span>
+                <span>{isEn ? "Step-by-Step Workflow:" : "ఎలా ఉపయోగించాలి? దశలవారీ విధానం (Workflow):"}</span>
               </div>
               <ol className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {guideSteps.map((step, idx) => (
@@ -141,7 +148,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
             <div className="bg-white/90 rounded-xl p-3.5 border border-emerald-100 shadow-2xs">
               <div className="flex items-center gap-1.5 text-xs font-black text-emerald-900 uppercase tracking-wide mb-2">
                 <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                <span>నిజ జీవిత వినియోగ సందర్భాలు (Real-Life Practical Use Cases):</span>
+                <span>{isEn ? "Real-Life Practical Use Cases:" : "నిజ జీవిత వినియోగ సందర్భాలు (Use Cases):"}</span>
               </div>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {realLifeUseCases.map((uc, idx) => (
@@ -161,7 +168,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
                 <div className="bg-amber-50/80 rounded-xl p-3 border border-amber-200/80 text-xs">
                   <div className="flex items-center gap-1.5 font-black text-amber-900 mb-1">
                     <AlertCircle size={13} className="text-amber-600 shrink-0" />
-                    <span>పరిమితులు & గమనిక (Limitations)</span>
+                    <span>{isEn ? "Limitations & Notes" : "పరిమితులు & గమనిక"}</span>
                   </div>
                   <p className="text-[11px] text-amber-900/90 leading-relaxed font-medium">
                     {limitations}
@@ -172,7 +179,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
                 <div className="bg-emerald-50/80 rounded-xl p-3 border border-emerald-200/80 text-xs">
                   <div className="flex items-center gap-1.5 font-black text-emerald-900 mb-1">
                     <ShieldCheck size={13} className="text-emerald-600 shrink-0" />
-                    <span>డేటా భద్రత & గోప్యత (Data Security)</span>
+                    <span>{isEn ? "Data Security & Privacy" : "డేటా భద్రత & గోప్యత"}</span>
                   </div>
                   <p className="text-[11px] text-emerald-900/90 leading-relaxed font-medium">
                     {dataPrivacy}
@@ -183,7 +190,7 @@ export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBa
                 <div className="bg-slate-100/90 rounded-xl p-3 border border-slate-200 text-xs">
                   <div className="flex items-center gap-1.5 font-black text-slate-800 mb-1">
                     <ExternalLink size={13} className="text-blue-600 shrink-0" />
-                    <span>అధికారిక రిఫరెన్స్ (Official Source)</span>
+                    <span>{isEn ? "Official Reference" : "అధికారిక రిఫరెన్స్"}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
                     {officialReference}

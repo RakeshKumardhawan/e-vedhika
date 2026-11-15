@@ -10,6 +10,18 @@ export interface PageDescriptionEntry {
   dataPrivacy?: string;
   officialReference?: string;
   lastVerified?: string;
+
+  // English counterparts
+  titleEn?: string;
+  descriptionEn?: string;
+  guideStepsEn?: string[];
+  purposeEn?: string;
+  targetAudienceEn?: string;
+  realLifeUseCasesEn?: string[];
+  limitationsEn?: string;
+  dataPrivacyEn?: string;
+  officialReferenceEn?: string;
+  lastVerifiedEn?: string;
 }
 
 export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
@@ -17,6 +29,10 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     title: "హోమ్ (E-Vedhika Digital Governance & Technical Knowledge Portal)",
     description:
       "ఈ-వేదిక (E-Vedhika - All Problems One Solution at One Place) అనేది తెలంగాణ మరియు ఆంధ్రప్రదేశ్ గ్రామ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు, టెక్నికల్ అసిస్టెంట్లు, సర్పంచులు, గ్రామ పంచాయతీ సిబ్బంది మరియు పౌరుల కోసం రూపొందించబడిన స్వతంత్ర డిజిటల్ నాలెడ్జ్ మరియు యూటిలిటీ పోర్టల్. రోజువారీ హాజరు విశ్లేషణ, జీవోలు, UBD/DSC టెక్నికల్ పరిష్కారాలు మరియు ఆఫీస్ ఆటోమేషన్ టూల్స్ ఇక్కడ అందుబాటులో ఉన్నాయి.",
+    titleEn: "Home - E-Vedhika Digital Governance & Technical Knowledge Portal",
+    descriptionEn: "E-Vedhika (All Problems One Solution at One Place) is an independent digital knowledge and utility portal designed for Telangana & AP Panchayat Secretaries, e-Panchayat Computer Operators, Technical Assistants, Sarpanches, Gram Panchayat staff, and citizens. Daily attendance analytics, GOs, UBD/DSC technical solutions, and office automation tools are available here.",
+    lastVerified: "నవంబర్ 2026",
+    lastVerifiedEn: "November 2026"
   },
   workspace: {
     title: "మన పంచాయతీ - డిజిటల్ వర్క్‌స్పేస్ (Mana Panchayath Digital Workspace)",
@@ -41,7 +57,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% క్లయింట్-సైడ్ ప్రాసెసింగ్ (Client-Side Browser Processing): మీరు అప్‌లోడ్ చేసే ఎక్సెల్ ఫైళ్లు మీ కంప్యూటర్/మొబైల్ బ్రౌజర్ మెమరీలోనే ప్రాసెస్ చేయబడతాయి. ఏ సర్వర్‌కూ అప్‌లోడ్ కావు.",
     officialReference: "Telangana e-Panchayat Portal (epanchayat.telangana.gov.in) & eGramSwaraj (egramswaraj.gov.in)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Mana Panchayath - Digital Workspace",
+    descriptionEn: "Comprehensive online tools platform for Gram Panchayat Secretaries, Computer Operators, and Mandal technical staff to streamline daily administrative tasks. Automated DSR analysis, multi-day attendance, Monthly Activity Report (MAS), Excel merger, GPDP budget planning, and Panchayat Raj Act Knowledge Hub.",
+    purposeEn: "Speeding up manual Excel calculations, attendance reviews, GPDP budget allocations, and report formatting tasks in GP and MPDO offices with 100% accuracy within seconds.",
+    targetAudienceEn: "Panchayat Secretaries, e-Panchayat Computer Operators, Technical Assistants, Sarpanches, and GP staff.",
+    guideStepsEn: [
+      "Click on the desired online tool card (DSR Analyzer, Multi-Day Attendance, MAS, Excel Merger, GPDP Planning, or Knowledge Hub).",
+      "Read the step-by-step instructions at the top of each tool and upload your official Excel or data file.",
+      "Review the automatically analyzed summary tables, Mandal/GP-wise reports, and download in Excel or A4 PDF format."
+    ],
+    realLifeUseCasesEn: [
+      "Quickly preparing Mandal-wise Panchayat Secretary attendance & DSR entry status before 9:00 AM and 11:00 AM.",
+      "Generating 30-day multi-day attendance and MAS activity matrix reports for monthly review meetings.",
+      "Creating GPDP annual budget plans according to the 9 government themes for Gram Sabha approval."
+    ],
+    limitationsEn: "Tools in this workspace are designed to analyze raw data files downloaded from official government portals; they do not modify government server data directly.",
+    dataPrivacyEn: "100% Client-Side Browser Processing: The Excel files you upload are processed entirely in your computer/mobile browser memory. Nothing is uploaded to any external server.",
+    officialReferenceEn: "Telangana e-Panchayat Portal & eGramSwaraj",
+    lastVerifiedEn: "November 2026"
   },
   dsr: {
     title: "డైలీ DSR & అటెండెన్స్ అనలైజర్ (Daily DSR & Attendance Analyzer)",
@@ -68,7 +103,28 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% సురక్షితం & ప్రైవేట్: మీరు ఎంచుకునే DSR ఎక్సెల్ ఫైల్ మీ బ్రౌజర్ (Local RAM) లో మాత్రమే చదవబడుతుంది. ఈ-వేదిక సర్వర్‌లో గానీ, క్లౌడ్ డేటాబేస్‌లో గానీ ఉద్యోగుల హాజరు ఫైళ్లు నిల్వ చేయబడవు.",
     officialReference: "Mana Panchayati Attendance & DSR Reporting Format (Telangana PR & RD)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Daily DSR & Attendance Analyzer",
+    descriptionEn: "Automated tool that analyzes daily DSR and attendance Excel/HTML files downloaded from the Mana Panchayati portal in seconds, generating comprehensive Mandal-wise and Gram Panchayat-wise reports (Before 9 AM, 9-11 AM, After 11 AM, Leave, Meeting, Not Reported, DSR Entered).",
+    purposeEn: "Eliminating the manual effort of filtering attendance times and DSR entry status for hundreds of Gram Panchayats daily, generating official summary tables, Excel, and PDF reports with a single click.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, Mandal Parishad staff, and Technical Assistants.",
+    guideStepsEn: [
+      "Download your district or Mandal daily Attendance / DSR Excel (.xlsx / .xls / .html) file from Mana Panchayati portal.",
+      "Click 'Select DSR Excel File' button and choose the downloaded file. Automatic analysis occurs immediately in the browser.",
+      "Mandal-wise attendance and DSR status statistics appear in the table.",
+      "Click any Mandal to view individual Gram Panchayat (GP-wise) attendance times and DSR entry details.",
+      "Copy to WhatsApp/Excel via 'Copy Table' or download official reports using 'Mandal Excel', 'Full GP Excel', and 'Summary PDF' buttons."
+    ],
+    realLifeUseCasesEn: [
+      "Preparing attendance reports including percentage of Panchayat Secretaries who registered attendance before 9:00 AM.",
+      "Identifying pending GPs by filtering Gram Panchayats that entered DSR before 11:00 AM versus after 11:00 AM.",
+      "Generating individual Mandal-wise A4 PDF reports with one click to share in Mandal WhatsApp groups."
+    ],
+    limitationsEn: "Accurate results are generated only for files with Mana Panchayati portal standard Excel/HTML column formats.",
+    dataPrivacyEn: "100% Secure & Private: The DSR Excel file you select is read solely in your browser (Local RAM). Employee attendance files are not stored on E-Vedhika servers.",
+    officialReferenceEn: "Mana Panchayati Attendance & DSR Reporting Format (Telangana PR & RD)",
+    lastVerifiedEn: "November 2026"
   },
   multiday: {
     title: "మల్టీ-డే హాజరు విశ్లేషణ (Multi-Day Attendance Analyzer)",
@@ -95,7 +151,28 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "మీరు అప్‌లోడ్ చేసే బహుళ ఎక్సెల్ ఫైళ్లు పూర్తిగా మీ బ్రౌజర్‌లోనే (Client-Side JavaScript Engine) ప్రాసెస్ అవుతాయి. బయటి సర్వర్‌లకు ఎలాంటి డేటా పంపబడదు.",
     officialReference: "Telangana Panchayat Raj Multi-Day Attendance Consolidation Standards",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Multi-Day Attendance Analyzer",
+    descriptionEn: "Advanced tool that uploads weekly, fortnightly, or monthly attendance Excel files simultaneously to consolidate total working days, days present, leaves, late arrivals, and attendance percentage for each Gram Panchayat and Secretary.",
+    purposeEn: "Saving time compared to manual VLOOKUP merging of multi-day files. This tool reads daily files up to 30 days at once and prepares comprehensive monthly attendance reports in date-wise matrix and employee-wise formats.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, and Mandal administrative staff.",
+    guideStepsEn: [
+      "Keep daily attendance Excel files for the desired dates ready in a folder.",
+      "Click file upload box in Multi-Day Attendance tool and select all daily Excel files at once (Multiple Selection).",
+      "System identifies dates from each file and maps daily attendance status per Mandal and Gram Panchayat.",
+      "Inspect monthly attendance patterns and percentages of specific Gram Panchayats via Mandal filter or search box.",
+      "Download full consolidated multi-day matrix in Excel (.xlsx) or print-ready PDF format."
+    ],
+    realLifeUseCasesEn: [
+      "Accurately identifying dates when attendance was not recorded (Not Reported Days) during monthly salary bill preparation and service reviews.",
+      "Analyzing statistics of Gram Panchayats that consistently fail to register or register late (After 11 AM).",
+      "Submitting comprehensive attendance reports for Mandal-level monthly review meetings."
+    ],
+    limitationsEn: "Mandal and Gram Panchayat names must have standard spelling across all daily files.",
+    dataPrivacyEn: "Multiple Excel files you upload are processed entirely in your browser. No data is sent to external servers.",
+    officialReferenceEn: "Telangana Panchayat Raj Multi-Day Attendance Consolidation Standards",
+    lastVerifiedEn: "November 2026"
   },
   training: {
     title: "డిజిటల్ ట్రైనింగ్ & ప్రాక్టికల్ ట్యుటోరియల్స్ (Digital Training & Practical Tutorials Hub)",
@@ -120,7 +197,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "ఈ శిక్షణా మాడ్యూల్ పూర్తిగా పబ్లిక్ ఎడ్యుకేషనల్ రిసోర్స్. ఇందులో ఎలాంటి వ్యక్తిగత సమాచారం సేకరించబడదు.",
     officialReference: "ubd.telangana.gov.in, crsorgi.gov.in, epanchayat.telangana.gov.in, egramswaraj.gov.in",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Digital Training & Practical Tutorials Hub",
+    descriptionEn: "Comprehensive technical training center designed for Gram Panchayat Secretaries and e-Panchayat Computer Operators. 11 practical tutorials on Telangana & AP UBD portals, birth/death registration, DSC tokens (ProxKey, HYP2003/ePass2003), Edge IE Mode, GPDP planning, and office automation.",
+    purposeEn: "Providing step-by-step training so field-level operators and secretaries can independently resolve technical issues without relying on external technicians.",
+    targetAudienceEn: "Newly joined and senior e-Panchayat Computer Operators, Panchayat Secretaries, Technical Assistants, and GP staff.",
+    guideStepsEn: [
+      "Select desired practical tutorial modules from the list.",
+      "Follow the 11 sections given in each tutorial sequentially.",
+      "Click 'Watch Tutorial' button for video demos or directly open the respective online tool to practice."
+    ],
+    realLifeUseCasesEn: [
+      "Setting up DSC token drivers and Edge IE Mode for UBD portal after installing Windows 10/11 on a new computer.",
+      "Resolving 'Error in Signing / Port 8080 blocked' issues during birth/death certificate digital signing within 5 minutes.",
+      "Gaining clear understanding of GP record maintenance and online reporting procedures."
+    ],
+    limitationsEn: "These tutorials are independent guidelines for technical understanding and troubleshooting. Official circulars from the respective department should be treated as standard.",
+    dataPrivacyEn: "This training module is a completely public educational resource. No personal data is collected.",
+    officialReferenceEn: "ubd.telangana.gov.in, crsorgi.gov.in, epanchayat.telangana.gov.in, egramswaraj.gov.in",
+    lastVerifiedEn: "November 2026"
   },
   pract: {
     title: "నాలెడ్జ్ హబ్ - తెలంగాణ పంచాయతీరాజ్ చట్టం 2018 & GP గైడ్ (Knowledge Hub)",
@@ -145,7 +241,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "ఈ నాలెడ్జ్ హబ్ పూర్తిగా ఉచిత పబ్లిక్ రిఫరెన్స్ విభాగం. ఇందులో యూజర్ డేటా ఏదీ సేకరించబడదు.",
     officialReference: "Telangana Panchayat Raj Act, 2018 (Act No. 5 of 2018) - Government of Telangana Gazette",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Knowledge Hub - Telangana Panchayat Raj Act 2018 & GP Guide",
+    descriptionEn: "Reference hub providing key sections of Telangana Panchayat Raj Act 2018, Gram Sabha regulations, duties of Sarpanch and Panchayat Secretary, building permissions, tax collections, and Gram Panchayat digital documentation in clear language.",
+    purposeEn: "Providing immediate awareness to secretaries, sarpanches, operators, and citizens on statutory procedures, sections, and responsibilities in Gram Panchayat administration.",
+    targetAudienceEn: "Panchayat Secretaries, Sarpanches, Ward Members, e-Panchayat Operators, competitive exam aspirants, and citizens.",
+    guideStepsEn: [
+      "Type section number or keyword in search box.",
+      "Or click category filter buttons to filter.",
+      "Click on section card to read full legal explanation and field highlights."
+    ],
+    realLifeUseCasesEn: [
+      "Checking Gram Sabha meeting quorum and annual meeting rules (Section 6).",
+      "Understanding statutory duties and responsibilities of Panchayat Secretary (Section 42).",
+      "Examining Gram Panchayat powers regarding unauthorized layouts and building constructions (Section 113 & 114)."
+    ],
+    limitationsEn: "This is an educational summary designed for easy understanding. For court cases or official notices, only the original Act (Act No. 5 of 2018) published in Telangana Government Gazette should be considered standard.",
+    dataPrivacyEn: "This Knowledge Hub is a completely free public reference section. No user data is collected.",
+    officialReferenceEn: "Telangana Panchayat Raj Act, 2018 (Act No. 5 of 2018) - Government of Telangana Gazette",
+    lastVerifiedEn: "November 2026"
   },
   "monthly-activity": {
     title: "మాసాంతపు యాక్టివిటీ రిపోర్ట్ - MAS (E-Panchayat Monthly Activity Report)",
@@ -169,7 +284,25 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% లోకల్ బ్రౌజర్ ప్రాసెసింగ్: అప్‌లోడ్ చేసిన ఫైల్ డేటా ఏ సర్వర్‌కూ పంపబడదు.",
     officialReference: "Telangana e-Panchayat Monthly Activity Monitoring Guidelines",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Monthly Activity Report - MAS (E-Panchayat Monthly Activity Report)",
+    descriptionEn: "Tool to automatically format monthly e-Panchayat activity reports (Monthly Activity Status - GP Matrix) and analyze pending and completed entries across Mandals and Gram Panchayats.",
+    purposeEn: "Streamlining monthly progress of tax collections, birth/death registration, sanitation, streetlights, and financial transactions in Gram Panchayats into Mandal/GP matrix format.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, and Mandal Parishad staff.",
+    guideStepsEn: [
+      "Select and upload Monthly Activity Status (MAS) Excel or HTML file downloaded from portal.",
+      "Select Mandal level or GP level view and examine recorded statistics in each section.",
+      "Highlight pending Gram Panchayats and download full report in formatted Excel or A4 PDF."
+    ],
+    realLifeUseCasesEn: [
+      "Reviewing online data entry progress of all Gram Panchayats in Mandal on a single sheet at month-end.",
+      "Promptly identifying Gram Panchayats with zero entries and notifying operators."
+    ],
+    limitationsEn: "Only files with official MAS report column structure should be uploaded.",
+    dataPrivacyEn: "100% Local Browser Processing: Uploaded file data is never sent to any server.",
+    officialReferenceEn: "Telangana e-Panchayat Monthly Activity Monitoring Guidelines",
+    lastVerifiedEn: "November 2026"
   },
   MAS: {
     title: "మాసాంతపు యాక్టివిటీ రిపోర్ట్ - MAS (E-Panchayat Monthly Activity Report)",
@@ -193,7 +326,25 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% లోకల్ బ్రౌజర్ ప్రాసెసింగ్: అప్‌లోడ్ చేసిన ఫైల్ డేటా ఏ సర్వర్‌కూ పంపబడదు.",
     officialReference: "Telangana e-Panchayat Monthly Activity Monitoring Guidelines",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Monthly Activity Report - MAS (E-Panchayat Monthly Activity Report)",
+    descriptionEn: "Tool to automatically format monthly e-Panchayat activity reports (Monthly Activity Status - GP Matrix) and analyze pending and completed entries across Mandals and Gram Panchayats.",
+    purposeEn: "Streamlining monthly progress of online modules in Gram Panchayats into Mandal/GP matrix format and generating pending lists.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, and Mandal Parishad staff.",
+    guideStepsEn: [
+      "Select and upload Monthly Activity Status (MAS) Excel or HTML file downloaded from portal.",
+      "Select Mandal level or GP level view and examine recorded statistics in each section.",
+      "Highlight pending Gram Panchayats and download full report in formatted Excel or A4 PDF."
+    ],
+    realLifeUseCasesEn: [
+      "Reviewing online data entry progress of all Gram Panchayats in Mandal on a single sheet at month-end.",
+      "Identifying pending modules and completing 100% entries on time."
+    ],
+    limitationsEn: "Only files with official MAS report column structure should be uploaded.",
+    dataPrivacyEn: "100% Local Browser Processing: Uploaded file data is never sent to any server.",
+    officialReferenceEn: "Telangana e-Panchayat Monthly Activity Monitoring Guidelines",
+    lastVerifiedEn: "November 2026"
   },
   "excel-merge": {
     title: "ఎక్సెల్ ఫైల్ మెర్జర్ (Multi-File Excel Merger & Consolidator)",
@@ -218,7 +369,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% బ్రౌజర్-ఆధారిత విలీనం: మీ ఎక్సెల్ ఫైళ్లలోని డేటా మీ కంప్యూటర్ బ్రౌజర్ దాటి బయటకు వెళ్లదు.",
     officialReference: "Standard Office Spreadsheet Consolidation Utility",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Multi-File Excel Merger & Consolidator",
+    descriptionEn: "Smart office tool to merge dozens of Excel files (.xlsx, .xls, .csv) from different Gram Panchayats or Mandals into a single master Excel sheet without copy-paste effort.",
+    purposeEn: "Saving time of opening and copy-pasting individual Excel sheets received separately from 20 to 40 Gram Panchayats in Mandal office.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, Technical Assistants, and office data entry staff.",
+    guideStepsEn: [
+      "Keep all Excel files with identical column headers in one folder.",
+      "Click 'Select Excel Files to Merge' button and choose all files at once.",
+      "Select 'Merge Files' option to keep first file header and append data rows from other files.",
+      "Check total consolidated row count in preview and download as single master file using 'Download Merged Excel' button."
+    ],
+    realLifeUseCasesEn: [
+      "Combining House Tax or tap tax collection sheets of all Gram Panchayats in Mandal into one master Mandal file.",
+      "Merging ward voter lists or beneficiary Excel sheets into a single Gram Panchayat master sheet."
+    ],
+    limitationsEn: "Column order must be identical across all Excel files. Encrypted Excel files must be unlocked before uploading.",
+    dataPrivacyEn: "100% Browser-based merging: Data in your Excel files never leaves your computer browser.",
+    officialReferenceEn: "Standard Office Spreadsheet Consolidation Utility",
+    lastVerifiedEn: "November 2026"
   },
   "gpdp-planning": {
     title: "GPDP బడ్జెట్ & అభివృద్ధి ప్రణాళిక (GPDP Planning & Budget Allocation Tool)",
@@ -243,7 +413,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "మీరు నమోదు చేసే గ్రామ పంచాయతీ బడ్జెట్ గణాంకాలు మీ బ్రౌజర్‌లోనే లెక్కించబడతాయి.",
     officialReference: "Ministry of Panchayati Raj (MoPR) GPDP & 15th Finance Commission Guidelines (egramswaraj.gov.in)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "GPDP Planning & Budget Allocation Tool",
+    descriptionEn: "Tool to generate Gram Panchayat Development Plan (GPDP) and annual budget allocations according to government 9 LSDG themes and fund sources with precise percentages.",
+    purposeEn: "Calculating budget distribution for sanitation, drinking water, streetlights, and infrastructure works according to rules based on GP population and available funds before entering action plan in eGramSwaraj portal.",
+    targetAudienceEn: "Panchayat Secretaries, Sarpanches, e-Panchayat Computer Operators, and GPDP Planning Committee members.",
+    guideStepsEn: [
+      "Enter Gram Panchayat name, Mandal, population, and estimated annual funds.",
+      "Check automatic distribution of Tied Grants and Untied Grants according to government guidelines.",
+      "Select identified works in Gram Sabha and allocate estimated cost to each work.",
+      "Print completed GPDP budget worksheet for Gram Sabha approval and eGramSwaraj online entry."
+    ],
+    realLifeUseCasesEn: [
+      "Preparing advance draft action plan without calculation errors in 15th Finance Commission Tied and Untied allocations.",
+      "Explaining fund allocation details in clear table format to Sarpanch and ward members in Gram Sabha."
+    ],
+    limitationsEn: "This tool is for GPDP advance planning and budget calculation only. Final official plan must be entered in central government 'eGramSwaraj' portal.",
+    dataPrivacyEn: "Gram Panchayat budget statistics you enter are calculated within your browser.",
+    officialReferenceEn: "Ministry of Panchayati Raj (MoPR) GPDP & 15th Finance Commission Guidelines",
+    lastVerifiedEn: "November 2026"
   },
   gpdp_setup: {
     title: "GPDP ప్రణాళిక & మార్గదర్శకాలు (GPDP Setup & Digital Planning Guide)",
@@ -267,7 +456,25 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% సురక్షితమైన బ్రౌజర్ ప్రాసెసింగ్.",
     officialReference: "eGramSwaraj (egramswaraj.gov.in) & Panchayat Nirnay (meetingonline.gov.in)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "GPDP Setup & Digital Planning Guide",
+    descriptionEn: "Comprehensive guide on Gram Panchayat Development Plan (GPDP) preparation process, Gram Sabha resolutions, Panchayat Nirnay app usage, 9 local sustainable development goals (LSDG Themes), and eGramSwaraj entry process.",
+    purposeEn: "Providing step-by-step rules to be followed by facilitators, secretaries, and operators in Gram Panchayat annual plan preparation in one place.",
+    targetAudienceEn: "Panchayat Secretaries, Sarpanches, e-Panchayat Computer Operators, and GPDP facilitators.",
+    guideStepsEn: [
+      "Identify your Gram Panchayat's selected priority theme among GPDP 9 themes.",
+      "Review Gram Sabha schedule and resolution recording procedure.",
+      "Complete fund allocation task-wise using budget allocation tool and upload in eGramSwaraj portal."
+    ],
+    realLifeUseCasesEn: [
+      "Preparing GPDP documentation checklist before annual Gram Sabha.",
+      "Streamlining records required for eGramSwaraj and AuditOnline portals."
+    ],
+    limitationsEn: "Official GPDP approval and fund release are subject to eGramSwaraj-PFMS portal rules.",
+    dataPrivacyEn: "100% secure browser processing.",
+    officialReferenceEn: "eGramSwaraj & Panchayat Nirnay",
+    lastVerifiedEn: "November 2026"
   },
   gos_formats: {
     title: "ప్రభుత్వ జీవోలు & ఆఫీస్ ఫార్మాట్లు (GOs & Official Office Formats Hub)",
@@ -291,7 +498,25 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "పబ్లిక్ డాక్యుమెంట్ డౌన్‌లోడ్లకు ఎలాంటి వ్యక్తిగత డేటా అవసరం లేదు.",
     officialReference: "Telangana Government Orders Issue Register (goir.telangana.gov.in)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "GOs & Official Office Formats Hub",
+    descriptionEn: "Reference library to download government orders (GOs), memos, circulars, and blank application formats (PDF/Word/Excel) used daily in Gram Panchayat offices related to Telangana and AP Panchayat Raj & Rural Development departments.",
+    purposeEn: "Making official formats required by secretaries and operators and GOs instantly accessible.",
+    targetAudienceEn: "Panchayat Secretaries, e-Panchayat Computer Operators, Sarpanches, and citizens.",
+    guideStepsEn: [
+      "Select 'Government Orders (GOs)' or 'Office Formats (Formats)' sub-tab.",
+      "Type GO number, date, or format name in search box to find.",
+      "Click 'Download / View PDF' button to directly download or print file."
+    ],
+    realLifeUseCasesEn: [
+      "Instantly printing and providing required application form to citizens visiting Gram Panchayat office.",
+      "Reviewing past and recent government orders (GOs) issued by Panchayat Raj department for reference."
+    ],
+    limitationsEn: "GOs available here are for informational and reference purposes only. Before taking official action, verify with original order on Telangana government GOIR portal.",
+    dataPrivacyEn: "No personal data is required for public document downloads.",
+    officialReferenceEn: "Telangana Government Orders Issue Register",
+    lastVerifiedEn: "November 2026"
   },
   ubd_tracker: {
     title: "UBD లైవ్ ట్రాకర్ & ఆఫీస్ కోడ్ డైరెక్టరీ (UBD Birth/Death Tracker & GP Directory)",
@@ -315,7 +540,25 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "ఈ ట్రాకర్‌లో పౌరుల వ్యక్తిగత ఆధార్ లేదా సున్నితమైన సమాచారం నిల్వ చేయబడదు.",
     officialReference: "Telangana UBD Portal (ubd.telangana.gov.in) & UBD MIS (ubdmis.telangana.gov.in)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "UBD Birth/Death Tracker & GP Directory",
+    descriptionEn: "Monitoring tool designed to track birth, death, and stillbirth registration progress across Gram Panchayats in Unified Birth & Death (UBD) portal and reconcile offline registers with online entries.",
+    purposeEn: "Easily tracking whether birth and death events in Gram Panchayats are 100% registered in online UBD portal and whether any applications are pending digital signature.",
+    targetAudienceEn: "Panchayat Secretaries, e-Panchayat Computer Operators, and Mandal staff.",
+    guideStepsEn: [
+      "Select District, Mandal, and Gram Panchayat or search by Office Code.",
+      "Examine birth/death registration status of respective Gram Panchayats based on UBD MIS report or Excel data.",
+      "Export list of pending Gram Panchayats in Excel or PDF format."
+    ],
+    realLifeUseCasesEn: [
+      "Reconciling number of entries in GP offline birth/death register with online UBD MIS number.",
+      "Instantly finding exact RLB / Office Code of Gram Panchayat in UBD portal."
+    ],
+    limitationsEn: "Issuance of official birth/death certificates and application approval happens exclusively in government UBD portal.",
+    dataPrivacyEn: "No citizen personal Aadhaar or sensitive information is stored in this tracker.",
+    officialReferenceEn: "Telangana UBD Portal & UBD MIS",
+    lastVerifiedEn: "November 2026"
   },
   software_hub: {
     title: "సాఫ్ట్‌వేర్ హబ్ - DSK, DSC & ఆఫీస్ డ్రైవర్లు (Software & Drivers Hub)",
@@ -339,7 +582,25 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "ఇక్కడ ఉన్న అన్ని ఇన్‌స్టాలర్లు SHA-256 చెక్‌సమ్ మరియు మాల్వేర్ స్కానింగ్ ద్వారా ధృవీకరించబడినవి.",
     officialReference: "Official Token Vendor Middleware & NIC/State Portal System Requirements",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Software & Drivers Hub - DSK, DSC & Office Drivers",
+    descriptionEn: "Download center for official DSC token drivers (WatchData ProxKey, ePass2003/HYP2003), Java JRE 8, Digital Signer services, and office utilities essential for UBD, eGramSwaraj, and online portals to work in Gram Panchayat and Mandal computers.",
+    purposeEn: "Providing secure DSC & Java installers tested on Windows 7 / 10 / 11 systems in one place, preventing operators from searching unverified driver sites.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, and Technical Assistants.",
+    guideStepsEn: [
+      "Identify your computer operating system and DSC USB token model.",
+      "Click 'Download' button on respective driver card in Software Hub to download installer file.",
+      "Uninstall older version drivers before installing, right-click new file and install via 'Run as Administrator'."
+    ],
+    realLifeUseCasesEn: [
+      "Installing Java 8 (32-bit) and Digital Signer service for digital signature in UBD portal.",
+      "Installing correct middleware driver if newly issued DSC USB token is not recognized by PC."
+    ],
+    limitationsEn: "Administrator privileges are required on your Windows computer for software installation.",
+    dataPrivacyEn: "All installers here are verified via SHA-256 checksum and malware scanning.",
+    officialReferenceEn: "Official Token Vendor Middleware & NIC/State Portal System Requirements",
+    lastVerifiedEn: "November 2026"
   },
   farmer_registry: {
     title: "రైతు రిజిస్ట్రీ వెరిఫికేషన్ టూల్ (Farmer Registry Land Matching & Verification)",
@@ -364,7 +625,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "ఆధార్ గోప్యతా నిబంధనల ప్రకారం మొదటి 8 అంకెలు ఆటోమేటిక్‌గా మాస్క్ చేయబడతాయి మరియు ఫైల్ ప్రాసెసింగ్ సురక్షితంగా జరుగుతుంది.",
     officialReference: "AgriStack / State Farmer Registry Field Verification Standards",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Farmer Registry Land Matching & Verification Tool",
+    descriptionEn: "Tool that automatically matches and verifies FILE 1 (Bucket ID / Land Data) and FILE 2 (PPB NO / Pattadar Passbook Data) Excel sheets in Farmer Registry (AgriStack) survey and enrollment process, preparing lists of pending and completed farmers.",
+    purposeEn: "Eliminating delays caused by manual cross-verification of survey numbers, Bucket IDs, and pattadar passbook numbers of thousands of farmers in Gram Panchayats from two separate Excel sheets.",
+    targetAudienceEn: "Panchayat Secretaries, e-Panchayat Computer Operators, Agricultural Extension Officers (AEOs), and field survey staff.",
+    guideStepsEn: [
+      "Select FILE 1 and FILE 2 Excel sheets per Gram Panchayat.",
+      "System automatically merges and matches both files based on farmer name, pattadar passbook number, and Bucket ID.",
+      "Aadhaar numbers are automatically masked according to security regulations.",
+      "Download completed verified Excel sheet and use for field farmer registry enrollment."
+    ],
+    realLifeUseCasesEn: [
+      "Consolidating land details under a single farmer account based on Bucket ID when a farmer has multiple survey numbers.",
+      "Preparing ward-wise list of pattadars whose Farmer Registry enrollment is still pending in the village."
+    ],
+    limitationsEn: "This tool is for Excel data reconciliation only. Final farmer registry e-KYC and official enrollment must be done on government AgriStack portal.",
+    dataPrivacyEn: "According to Aadhaar privacy regulations, first 8 digits are automatically masked and file processing is secure.",
+    officialReferenceEn: "AgriStack / State Farmer Registry Field Verification Standards",
+    lastVerifiedEn: "November 2026"
   },
   excel_print: {
     title: "ఎక్సెల్ A4 ప్రింట్ ఫార్మాటర్ (Smart Excel to A4 Print & PDF Formatter)",
@@ -389,7 +669,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% క్లయింట్-సైడ్ ప్రింట్ ఇంజిన్: మీ ఎక్సెల్ ఫైల్ మీ బ్రౌజర్‌లోనే రెండర్ అవుతుంది, ఏ సర్వర్‌కూ పంపబడదు.",
     officialReference: "Standard A4 Official Report Formatting Specification (ISO 216 A4)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Smart Excel to A4 Print & PDF Formatter",
+    descriptionEn: "Tool that auto-fits all columns of wide Excel sheets onto a single A4 page without cutting off during printing, providing professional PDF/Print output with office title header, page numbers, and signature space on every page.",
+    purposeEn: "Completely solving the issue where last 2-3 columns spill onto a second page when printing Excel reports in Gram Panchayat and Mandal offices.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, Technical Assistants, and office staff.",
+    guideStepsEn: [
+      "Upload Excel file you want to print.",
+      "Uncheck extra columns not needed in print and select only desired columns.",
+      "Select page orientation, font size, and type Gram Panchayat/Mandal office title.",
+      "Click 'Print A4' or 'Download PDF' button to print with all columns fitting page width."
+    ],
+    realLifeUseCasesEn: [
+      "Printing 20-column DSR or House Tax DCB report on A4 Landscape page without cutting off any column.",
+      "Printing beneficiary list for Gram Sabha notice board with clear table borders and secretary signature box."
+    ],
+    limitationsEn: "If there are more than 25 columns in a single row, choosing Landscape mode and Compact font size is recommended.",
+    dataPrivacyEn: "100% Client-side print engine: Your Excel file renders entirely in your browser, never sent to any server.",
+    officialReferenceEn: "Standard A4 Official Report Formatting Specification (ISO 216 A4)",
+    lastVerifiedEn: "November 2026"
   },
   pdf_compress: {
     title: "PDF కంప్రెసర్ & సైజ్ రిడ్యూసర్ (Client-Side PDF Compressor for Govt Portals)",
@@ -401,7 +700,7 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
       "ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు, గ్రామ పంచాయతీ కార్యదర్శులు మరియు సామాన్య పౌరులు.",
     guideSteps: [
       "'Select PDF File' బటన్‌పై క్లిక్ చేసి మీ కంప్యూటర్ లేదా మొబైల్ నుండి పెద్ద సైజు PDF ఫైల్‌ను ఎంచుకోండి.",
-      "మీకు కావలసిన టార్గెట్ సైజు (ఉదా: UBD కోసం < 200 KB లేదా eGramSwaraj కోసం < 1 MB) క్వాలిటీ స్లైడర్‌ను ఎంచుకోండి.",
+      " మీకు కావలసిన టార్గెట్ సైజు (ఉదా: UBD కోసం < 200 KB లేదా eGramSwaraj కోసం < 1 MB) క్వాలిటీ స్లైడర్‌ను ఎంచుకోండి.",
       "'Compress PDF' క్లిక్ చేయగానే బ్రౌజర్‌లోనే ఫైల్ పరిమాణం తగ్గించబడి, పాత సైజు మరియు కొత్త సైజు తేడా కనిపిస్తుంది.",
       "'Download Compressed PDF' బటన్ నొక్కి ఫైల్‌ను సేవ్ చేసుకుని ప్రభుత్వ పోర్టల్‌లో అప్‌లోడ్ చేయండి."
     ],
@@ -414,7 +713,26 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "100% ప్రైవేట్ & ఆఫ్‌లైన్-రెడీ: ఇతర ఆన్‌లైన్ PDF సైట్లలాగా మీ అధికారిక పత్రాలు ఏ సర్వర్‌కూ అప్‌లోడ్ కావు. మొత్తం కంప్రెషన్ మీ బ్రౌజర్ (HTML5 Canvas & PDF Engine) లోనే జరుగుతుంది.",
     officialReference: "Standard Government Portal Upload Limits (UBD / CRS / eGramSwaraj)",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Client-Side PDF Compressor for Govt Portals",
+    descriptionEn: "Browser-based tool to reduce file size of scanned PDF documents required for government online portals down below 100 KB, 200 KB, 500 KB, or 1 MB without sacrificing text clarity.",
+    purposeEn: "Instantly resolving 'File size exceeds maximum limit' errors when uploading documents in UBD or eGramSwaraj portals.",
+    targetAudienceEn: "e-Panchayat Computer Operators, Panchayat Secretaries, and citizens.",
+    guideStepsEn: [
+      "Click 'Select PDF File' button and choose large size PDF file from computer or mobile.",
+      "Select desired target size quality slider.",
+      "Click 'Compress PDF' to reduce file size right in browser.",
+      "Click 'Download Compressed PDF' button to save file and upload to government portal."
+    ],
+    realLifeUseCasesEn: [
+      "Compressing 5 MB affidavit PDF taken with mobile camera or scanner down below 180 KB for UBD portal upload.",
+      "Converting Gram Panchayat audit reports and voucher PDFs into specified KB limits."
+    ],
+    limitationsEn: "Small PDF files already containing only text with minimal DPI may not reduce much further; works best for scanned image-based PDFs.",
+    dataPrivacyEn: "100% Private & Offline-ready: Unlike other online PDF sites, your official documents are not uploaded to any server. Entire compression happens in your browser.",
+    officialReferenceEn: "Standard Government Portal Upload Limits (UBD / CRS / eGramSwaraj)",
+    lastVerifiedEn: "November 2026"
   },
   useful_links: {
     title: "ముఖ్యమైన ప్రభుత్వ పోర్టల్ లింకులు (Official Government Portals Directory)",
@@ -437,45 +755,103 @@ export const DEFAULT_PAGE_DESCRIPTIONS: Record<string, PageDescriptionEntry> = {
     dataPrivacy:
       "ఈ-వేదిక కేవలం అధికారిక లింకులను మాత్రమే అందిస్తుంది; ప్రభుత్వ పోర్టల్స్‌లో మీరు చేసే లాగిన్ వివరాలను ఈ-వేదిక సేకరించదు.",
     officialReference: "epanchayat.telangana.gov.in, egramswaraj.gov.in, ubd.telangana.gov.in",
-    lastVerified: "నవంబర్ 2026 (November 2026)"
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Official Government Portals Directory",
+    descriptionEn: "Secure directory to access official websites of Telangana e-Panchayat, House Tax DCB, UBD portal, UBD MIS status, eGramSwaraj, AuditOnline, Panchayat Nirnay, IFMIS, and Telangana Government GOs (GOIR).",
+    purposeEn: "Providing error-free verified official URLs of central and state government websites used daily by Gram Panchayat staff in one place.",
+    targetAudienceEn: "Panchayat Secretaries, e-Panchayat Computer Operators, Sarpanches, and citizens.",
+    guideStepsEn: [
+      "Click on required government portal card.",
+      "For security reasons, government site opens directly in official domain in a new tab."
+    ],
+    realLifeUseCasesEn: [
+      "Instantly checking daily house tax collection report.",
+      "Opening Telangana Government official GOs portal and IFMIS treasury site."
+    ],
+    limitationsEn: "These are external websites managed by government departments. Server performance is under control of government NIC/IT divisions.",
+    dataPrivacyEn: "E-Vedhika only provides official links; E-Vedhika does not collect login details you enter on government portals.",
+    officialReferenceEn: "epanchayat.telangana.gov.in, egramswaraj.gov.in, ubd.telangana.gov.in",
+    lastVerifiedEn: "November 2026"
   },
   suggestions: {
     title: "సూచనలు & టెక్నికల్ హెల్ప్‌డెస్క్ (Public Suggestions & Technical Support)",
     description:
-      "గ్రామ పంచాయతీ డిజిటల్ పాలనలో ఎదురయ్యే సాంకేతిక సమస్యలు, UBD/DSC సందేహాలు లేదా ఈ-వేదిక పోర్టల్‌లో కొత్తగా చేర్చాల్సిన టూల్స్ గురించి మీ సూచనలను నేరుగా అడ్మిన్ బృందానికి తెలియజేసే వేదిక.",
+      "గ్రామ పంచాయతీ డిజిటల్ పాలనలో ఎదురయ్యే సాంకేతిక సమస్యలు, UBD/DSC సందేహాలు లేదా ఈ-వేదిక పోర్టల్‌లో కొత్తగా చేర్చాల్సిన ఫీచర్లపై మీ అమూల్యమైన సలహాలు, సూచనలు మరియు ఫిర్యాదులను నేరుగా అడ్మిన్‌కు పంపే హెల్ప్‌డెస్క్.",
     purpose:
-      "క్షేత్రస్థాయిలో ఆపరేటర్లు మరియు కార్యదర్శులు ఎదుర్కొంటున్న వాస్తవ సమస్యలను తెలుసుకుని, వాటికి తగిన సాంకేతిక గైడ్‌లు మరియు ఆటోమేషన్ టూల్స్‌ను అభివృద్ధి చేయడం.",
+      "క్షేత్రస్థాయిలో ఆపరేటర్లు మరియు కార్యదర్శులు ఎదుర్కొనే సమస్యలను అడ్మిన్ దృష్టికి తీసుకువచ్చి సత్వర పరిష్కారం పొందడం.",
     targetAudience:
-      "గ్రామ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు, గ్రామ పంచాయతీ సిబ్బంది మరియు పౌరులు.",
+      "గ్రామ పంచాయతీ కార్యదర్శులు, కంప్యూటర్ ఆపరేటర్లు మరియు పౌరులు.",
     guideSteps: [
-      "మీ పేరు, మండలం/జిల్లా మరియు సమస్య/సూచన విభాగాన్ని ఎంచుకోండి.",
-      "మీ సాంకేతిక సమస్యను లేదా సూచనను వివరంగా టైప్ చేసి సబ్మిట్ చేయండి.",
-      "అడ్మిన్ బృందం మీ సూచనను పరిశీలించి పోర్టల్‌లో తగిన పరిష్కారాన్ని అందుబాటులోకి తెస్తుంది."
-    ]
-  },
-  emergency: {
-    title: "అత్యవసర హెల్ప్‌లైన్ నంబర్లు (Public Emergency & Citizen Helplines)",
-    description:
-      "గ్రామ పంచాయతీ కార్యాలయాలు మరియు పౌరులకు అత్యవసర సమయాల్లో ఉపయోగపడే పోలీస్ (100), అంబులెన్స్ (108), అగ్నిమాపక (101), మహిళా భద్రత (1091/181), చైల్డ్ హెల్ప్‌లైన్ (1098), సైబర్ క్రైమ్ (1930) మరియు రైతు హెల్ప్‌లైన్ టోల్-ఫ్రీ నంబర్ల డైరెక్టరీ.",
-  },
-  changelog: {
-    title: "సిస్టమ్ అప్‌డేట్స్ & విడుదల చరిత్ర (E-Vedhika Platform Changelog)",
-    description:
-      "ఈ-వేదిక పోర్టల్‌లో కొత్తగా ప్రవేశపెట్టిన ఆన్‌లైన్ టూల్స్, బగ్ ఫిక్సెస్, UBD టెక్నికల్ గైడ్ అప్‌డేట్లు మరియు భద్రతా మెరుగుదలల పూర్తి టైమ్‌లైన్.",
-  },
-  my_activity: {
-    title: "నా కార్యకలాపాలు & ప్రొఫైల్ (My Activity & User Dashboard)",
-    description:
-      "లాగిన్ అయిన యూజర్లు తాము సమర్పించిన పోస్ట్‌లు, సూచనలు మరియు ప్రొఫైల్ వివరాలను ట్రాక్ చేసుకునే వ్యక్తిగత విభాగం.",
+      "మీ పేరు, జిల్లా, మండలం మరియు సందేశాన్ని ఫారమ్‌లో టైప్ చేయండి.",
+      "సబ్మిట్ చేయగానే మీ సందేశం సిస్టమ్‌లో భద్రపరచப்பட்டு అడ్మిన్‌కు నోటిఫికేషన్ వెళుతుంది."
+    ],
+    realLifeUseCases: [
+      "DSC లేదా UBD పోర్టల్ సమస్యలపై సహాయం కోరడం.",
+      "పోర్టల్‌లో కొత్త ఆఫీస్ ఫార్మాట్ లేదా టూల్ జోడించాలని కోరడం."
+    ],
+    limitations:
+      "సహాయక సలహాలు మరియు సాంకేతిక మద్దతు ఉత్తమ ప్రయత్న ప్రాతిపదికన అందించబడతాయి.",
+    dataPrivacy:
+      "సమర్పించబడిన సంప్రదింపు వివరాలు అత్యంత గోప్యంగా ఉంచబడతాయి.",
+    officialReference: "E-Vedhika Support Desk & Feedback System",
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Public Suggestions & Technical Support Desk",
+    descriptionEn: "Dedicated helpdesk for reporting technical issues in Gram Panchayat digital governance, UBD/DSC queries, or requesting new features on E-Vedhika portal.",
+    purposeEn: "Bridging communication between field operators, secretaries, and portal administrators for quick technical assistance and feedback.",
+    targetAudienceEn: "Panchayat Secretaries, Computer Operators, and citizens.",
+    guideStepsEn: [
+      "Fill out suggestion or query form with your name, district, Mandal, and message.",
+      "Submit query to save in system and notify admin support via Telegram."
+    ],
+    realLifeUseCasesEn: [
+      "Reporting DSC signing error or requesting a new office format.",
+      "Providing constructive feedback for portal improvement."
+    ],
+    limitationsEn: "Support responses are provided on best-effort educational basis.",
+    dataPrivacyEn: "Contact details submitted are kept secure and used only for support communication.",
+    officialReferenceEn: "E-Vedhika Support Desk & Community Feedback Channel",
+    lastVerifiedEn: "November 2026"
   },
   union: {
-    title: "అభిప్రాయ సేకరణ & పోల్స్ (Community Polls & Feedback)",
+    title: "యూనియన్ కార్నర్ & పోల్స్ (Union Corner & Employee Polls)",
     description:
-      "పంచాయతీరాజ్ సాంకేతిక అంశాలు మరియు పోర్టల్ ఫీచర్లపై ఉద్యోగుల అభిప్రాయాలను సేకరించే విభాగం.",
-  },
-  chat: {
-    title: "కమ్యూనిటీ చర్చా వేదిక (Operator & Secretary Discussion Forum)",
-    description:
-      "గ్రామ పంచాయతీ ఆపరేటర్లు మరియు కార్యదర్శులు తమ సాంకేతిక సందేహాలను పరస్పరం చర్చించుకునే కమ్యూనిటీ చాట్ విభాగం.",
-  },
+      "తెలంగాణ మరియు ఆంధ్రప్రదేశ్ పంచాయతీ కార్యదర్శులు, కంప్యూటర్ ఆపరేటర్ల సంక్షేమం, సర్వీస్ సమస్యలు, డిమాండ్లు మరియు అభిప్రాయ సేకరణ కోసం ప్రత్యేకంగా ఏర్పాటు చేసిన ఇంటరాక్టివ్ యూనియన్ కార్నర్.",
+    purpose:
+      "ఉద్యోగ సంఘాల డిమాండ్లు, సర్వీస్ క్రమబద్ధీకరణ మరియు అధికారిక పోల్స్‌పై అభిప్రాయాలను పంచుకోవడం.",
+    targetAudience:
+      "పంచాయతీ కార్యదర్శులు, కంప్యూటర్ ఆపరేటర్లు మరియు అసోసియేషన్ సభ్యులు.",
+    guideSteps: [
+      "యూనియన్ అప్‌డేట్లు మరియు సర్వే పోల్స్‌ను వీక్షించండి.",
+      "మీ అభిప్రాయాన్ని పోల్స్‌లో ఓటు వేసి ప్రత్యక్ష ఫలితాలను గమనించండి."
+    ],
+    realLifeUseCases: [
+      "ఉద్యోగ సర్వీస్ విషయాలపై అభిప్రాయ సేకరణలో పాల్గొనడం.",
+      "తాజా యూనియన్ సర్క్యులర్లు మరియు ప్రకటనలను తెలుసుకోవడం."
+    ],
+    limitations:
+      "పోల్స్ మరియు చర్చలు ఉద్యోగుల ఏకాభిప్రాయం కోసం మాత్రమే; అధికారిక విజ్ఞప్తులు సరైన శాఖా పరమైన ఛానళ్ల ద్వారా సమర్పించాలి.",
+    dataPrivacy:
+      "ఉద్యోగ గోప్యత కోసం అనామక ఓటింగ్ (Anonymous Voting) సౌకర్యం కలదు.",
+    officialReference: "Telangana & AP Panchayat Secretaries Association Guidelines",
+    lastVerified: "నవంబర్ 2026",
+
+    titleEn: "Union Corner, Polls & Employee Voice",
+    descriptionEn: "Dedicated interactive corner for Panchayat Secretaries and Computer Operators to discuss welfare demands, service regularization, pay scales, and participate in official opinion polls.",
+    purposeEn: "Providing a democratic platform for employees to voice service matters and vote on community polls.",
+    targetAudienceEn: "Panchayat Secretaries, Computer Operators, and association members.",
+    guideStepsEn: [
+      "View active union updates, announcements, and polls.",
+      "Cast your vote in interactive polls and view live results."
+    ],
+    realLifeUseCasesEn: [
+      "Participating in association polls regarding service conditions.",
+      "Reading latest union announcements and circular updates."
+    ],
+    limitationsEn: "Polls and discussions are for staff consensus and expression; official representations must be submitted through proper departmental channels.",
+    dataPrivacyEn: "Anonymous voting option available for employee privacy.",
+    officialReferenceEn: "Telangana & AP Panchayat Secretaries Association Guidelines",
+    lastVerifiedEn: "November 2026"
+  }
 };

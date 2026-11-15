@@ -5644,7 +5644,7 @@ E-Vedhika Support System`;
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <TabInfoBanner currentTab="farmer_registry" customDescriptions={pageDescriptions} />
+            <TabInfoBanner currentTab="farmer_registry" customDescriptions={pageDescriptions} lang={lang} />
             <FarmerRegistryTool
               user={user}
               onLoginClick={() => setShowAuthModal(true)}
@@ -7689,7 +7689,7 @@ E-Vedhika Support System`;
               />
             ) : (
               <div className="flex flex-col w-full h-full">
-                <TabInfoBanner currentTab={currentTab} customDescriptions={pageDescriptions} />
+                <TabInfoBanner currentTab={currentTab} customDescriptions={pageDescriptions} lang={lang} />
                 <AnimatePresence mode="wait">
                   {currentTab === "home" && (
                   <motion.div
@@ -8422,7 +8422,7 @@ E-Vedhika Support System`;
                                       className={`p-2.5 bg-white/10 ${s.color} text-white hover:text-white rounded-xl transition-all duration-300 ease-out transform hover:-translate-y-1.5 hover:scale-110 hover:shadow-xl border border-white/15 flex items-center justify-center cursor-pointer group active:scale-95`}
                                       title={s.label}
                                     >
-                                      <IconComp size={16} className="transition-transform duration-300 group-hover:rotate-6" />
+                                      <IconComp size={18} className="transition-transform duration-300 group-hover:rotate-6 text-[#fbe947] group-hover:text-white drop-shadow-sm" />
                                     </a>
                                   );
                                 })}
@@ -8578,7 +8578,7 @@ E-Vedhika Support System`;
                   >
                     <DynamicSection id="mana_panchayath_html" />
                     <AdBanner />
-                    <DigitalWorkspaceSection addToast={addToast} user={user} activeTool={workspaceActiveTool} setActiveTool={setWorkspaceActiveTool} pageDescriptions={pageDescriptions} />
+                    <DigitalWorkspaceSection addToast={addToast} user={user} activeTool={workspaceActiveTool} setActiveTool={setWorkspaceActiveTool} pageDescriptions={pageDescriptions} lang={lang} />
                   </motion.div>
                 )}
 
@@ -18853,12 +18853,14 @@ function DigitalWorkspaceSection({
   activeTool,
   setActiveTool,
   pageDescriptions,
+  lang,
 }: {
   addToast: (s: string) => void;
   user: FirebaseUser | null;
   activeTool: string | null;
   setActiveTool: (tool: string | null) => void;
-  pageDescriptions: Record<string, { title: string; description: string }>;
+  pageDescriptions: Record<string, any>;
+  lang: "en" | "te";
 }) {
   const tools = [
     {
@@ -19103,7 +19105,7 @@ function DigitalWorkspaceSection({
                   </button>
                 </div>
               </div>
-              <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} />
+              <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} lang={lang} />
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative">
               {!user && activeTool === "ticket-tracker" ? (
