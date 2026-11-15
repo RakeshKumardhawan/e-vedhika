@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Vedhika UBD Live Monitoring Dashboard (www.e-vedhika.in)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-3xl border border-indigo-500/30 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-2 mb-1.5">
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] font-bold flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            LIVE TELEMETRY RECEIVER ACTIVE
+          </span>
+          <span class="px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono text-[10px] font-bold">
+            v1.0.9 • Firebase Firestore + Cloudflare
+          </span>
+        </div>
+        <h1 class="text-xl md:text-2xl font-black text-white tracking-tight">
+          🏛️ E-Vedhika UBD Live PC Monitoring Dashboard
+        </h1>
+        <p class="text-xs text-slate-300 mt-1">
+          Telangana &amp; AP Grama Panchayat Real-Time PC Health, RAM, DSC Token &amp; Edge IE Mode Status
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5 font-mono text-xs">
+        <span id="countdownChip" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-cyan-300 font-bold">
+          Next Refresh: 30s
+        </span>
+        <button onclick="fetchLiveTelemetry()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow cursor-pointer transition">
+          🔄 Refresh Now
+        </button>
+        <a href="/admin/ubd_monitoring" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow transition">
+          🔐 Full Admin Gateway
+        </a>
+      </div>
+    </header>
+
+    <!-- KPI Summary Row -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+      <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+        <span class="text-[10px] text-slate-400 font-bold uppercase block">Total Monitored PCs</span>
+        <span id="kpiTotal" class="text-2xl font-black text-white mt-1 block">0</span>
+      </div>
+      <div class="bg-slate-900 p-4 rounded-2xl border border-emerald-500/30">
+        <span class="text-[10px] text-emerald-300 font-bold uppercase block">Healthy (&ge;70%)</span>
+        <span id="kpiHealthy" class="text-2xl font-black text-emerald-400 mt-1 block">0</span>
+      </div>
+      <div class="bg-slate-900 p-4 rounded-2xl border border-amber-500/30">
+        <span class="text-[10px] text-amber-300 font-bold uppercase block">Warning (50–69%)</span>
+        <span id="kpiWarning" class="text-2xl font-black text-amber-400 mt-1 block">0</span>
+      </div>
+      <div class="bg-slate-900 p-4 rounded-2xl border border-rose-500/30">
+        <span class="text-[10px] text-rose-300 font-bold uppercase block">Critical (&lt;50% / Error)</span>
+        <span id="kpiCritical" class="text-2xl font-black text-rose-400 mt-1 block">0</span>
+      </div>
+    </section>
+
+    <!-- Search & Filter Bar -->
+    <section class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <input
+        id="searchInput"
+        type="text"
+        oninput="renderCards()"
+        placeholder="🔍 Search PC Name, ID, Office Location or User..."
+        class="w-full sm:w-96 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+      />
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <select id="severityFilter" onchange="renderCards()" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono">
+          <option value="ALL">All Health States</option>
+          <option value="healthy">🟢 Healthy Only</option>
+          <option value="warning">🟠 Warning Only</option>
+          <option value="critical">🔴 Critical Only</option>
+        </select>
+        <span id="lastUpdatedLabel" class="text-[11px] text-slate-400 font-mono whitespace-nowrap">Syncing...</span>
+      </div>
+    </section>
+
+    <!-- Error Notice -->
+    <div id="errorBanner" class="hidden p-4 rounded-2xl bg-rose-950/70 border border-rose-700 text-rose-200 text-xs font-mono flex items-center justify-between gap-3">
+      <span id="errorBannerText"></span>
+      <button onclick="fetchLiveTelemetry()" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded-xl font-bold cursor-pointer">Retry</button>
+    </div>
+
+    <!-- Live Color-Coded PC Health Cards -->
+    <main id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div class="col-span-full p-10 text-center text-slate-400 font-mono bg-slate-900 rounded-3xl border border-slate-800">
+        Loading live Gram Panchayat PC telemetry...
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const FIREBASE_FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/telemetryLogs?pageSize=200';
+    const CLOUDFLARE_WORKER_URL = 'https://e-vedhika.rakeshkumardhawan123.workers.dev/api/reporting/receiver';
+
+    let telemetryRecords = [];
+    let secondsRemaining = 30;
+
+    function esc(val) {
+      return String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function classifyHealth(scoreInput, statusInput) {
+      const score = Number(scoreInput ?? 100);
+      const st = String(statusInput || '').toUpperCase();
+      if (score < 50 || st.includes('ERROR') || st.includes('CRITICAL') || st.includes('FAIL')) return 'critical';
+      if (score < 70 || st.includes('WARN')) return 'warning';
+      return 'healthy';
+    }
+
+    function normalizeRecord(item) {
+      return {
+        pcId: item.pc_id || item.pcId || item.machineId || 'EVD-PC',
+        pcName: item.pc_name || item.pcName || 'GP-PC',
+        userName: item.user_name || item.userName || 'Operator',
+        officeLocation: item.office_location || item.officeLocation || 'Grama Panchayat Office',
+        healthScore: Number(item.health_score ?? item.healthScore ?? 100),
+        ramUsagePct: Number(item.ram_usage_pct ?? item.ramUsagePct ?? 45),
+        dscStatus: item.dsc_status || item.dscStatus || 'USB Token Active',
+        edgeIeMode: item.edge_ie_mode || item.edgeIeMode || item.edgePolicy || 'IE5 Quirks Active',
+        status: item.status || item.overallStatus || 'SUCCESS',
+        isOnline: Boolean(item.isOnline ?? String(item.overallStatus || item.status || '').toUpperCase().includes('ONLINE')),
+        lastHeartbeatEpoch: Number(item.lastHeartbeatEpoch || 0),
+        lastUpdated: item.last_updated || item.lastSeen || 'Synced'
+      };
+    }
+
+    function parseFirestoreDocuments(docs) {
+      const byPc = {};
+      const nowEpoch = Math.floor(Date.now() / 1000);
+      for (const doc of docs) {
+        const f = doc && doc.fields ? doc.fields : {};
+        const val = (k, def = '') => {
+          const e = f[k];
+          if (!e) return def;
+          if (e.stringValue !== undefined) return e.stringValue;
+          if (e.integerValue !== undefined) return Number(e.integerValue);
+          if (e.doubleValue !== undefined) return Number(e.doubleValue);
+          return def;
+        };
+        const pcId = String(val('pcId') || val('machineId') || doc.name?.split('/').pop() || '');
+        if (!pcId || pcId.startsWith('TEL-SEED') || pcId.startsWith('SEED')) continue;
+        const epoch = Number(val('lastHeartbeatEpoch', 0)) || 0;
+        const rec = {
+          pcId,
+          pcName: String(val('pcName') || 'GP-PC'),
+          userName: String(val('userName') || 'Operator'),
+          officeLocation: String(val('officeLocation') || 'Grama Panchayat Office'),
+          healthScore: Number(val('healthScore', 100)),
+          ramUsagePct: Number(val('ramUsagePct', 45)),
+          dscStatus: String(val('dscStatus') || 'USB Token Active'),
+          edgeIeMode: String(val('edgeIeMode') || val('edgePolicy') || 'IE5 Quirks Active'),
+          status: String(val('status') || 'SUCCESS'),
+          isOnline: epoch > 0 && Math.abs(nowEpoch - epoch) <= 180,
+          lastHeartbeatEpoch: epoch,
+          lastSeen: String(val('lastSeen') || 'Synced')
+        };
+        if (!byPc[pcId] || epoch >= (byPc[pcId].lastHeartbeatEpoch || 0)) {
+          byPc[pcId] = rec;
+        }
+      }
+      return Object.values(byPc);
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('cardsGrid');
+      const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const sevFilter = document.getElementById('severityFilter').value;
+
+      let healthy = 0, warning = 0, critical = 0;
+      telemetryRecords.forEach(r => {
+        const s = classifyHealth(r.healthScore, r.status);
+        if (s === 'healthy') healthy++;
+        else if (s === 'warning') warning++;
+        else critical++;
+      });
+
+      document.getElementById('kpiTotal').innerText = telemetryRecords.length;
+      document.getElementById('kpiHealthy').innerText = healthy;
+      document.getElementById('kpiWarning').innerText = warning;
+      document.getElementById('kpiCritical').innerText = critical;
+
+      const sevRank = (r) => {
+        const s = classifyHealth(r.healthScore, r.status);
+        return s === 'critical' ? 0 : (s === 'warning' ? 1 : 2);
+      };
+
+      const filtered = telemetryRecords.filter(r => {
+        const sev = classifyHealth(r.healthScore, r.status);
+        if (sevFilter !== 'ALL' && sev !== sevFilter) return false;
+        if (!query) return true;
+        return (
+          r.pcName.toLowerCase().includes(query) ||
+          r.pcId.toLowerCase().includes(query) ||
+          r.officeLocation.toLowerCase().includes(query) ||
+          r.userName.toLowerCase().includes(query)
+        );
+      }).sort((a, b) => {
+        const aLive = a.isOnline ? 0 : 1;
+        const bLive = b.isOnline ? 0 : 1;
+        if (aLive !== bLive) return aLive - bLive;
+        const diff = sevRank(a) - sevRank(b);
+        return diff !== 0 ? diff : Number(a.healthScore) - Number(b.healthScore);
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div class="col-span-full p-10 text-center text-slate-400 font-mono bg-slate-900 rounded-3xl border border-slate-800">No matching PC telemetry records found.</div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(pc => {
+        const sev = classifyHealth(pc.healthScore, pc.status);
+        const cardBorder = sev === 'critical'
+          ? 'border-rose-500/75 bg-rose-950/20'
+          : (sev === 'warning' ? 'border-amber-500/65 bg-amber-950/15' : 'border-emerald-500/50 bg-emerald-950/10');
+        const badgeClass = sev === 'critical'
+          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+          : (sev === 'warning' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40');
+
+        return `
+          <article class="p-5 rounded-3xl border ${cardBorder} shadow-lg space-y-3 transition hover:brightness-110">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <h2 class="font-black text-white font-mono text-sm truncate">${esc(pc.pcName)}</h2>
+                <p class="text-[10px] text-cyan-400 font-mono truncate">${esc(pc.pcId)}</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-xl text-xs font-black font-mono border ${badgeClass} shrink-0">
+                ${pc.healthScore}%
+              </span>
+            </div>
+
+            <div class="text-xs font-semibold text-slate-200 truncate">${esc(pc.officeLocation)}</div>
+            <div class="text-[11px] text-slate-400 font-mono flex items-center justify-between gap-2">
+              <span class="truncate">👤 ${esc(pc.userName)}</span>
+              <span class="${sev === 'critical' ? 'text-rose-400' : (sev === 'warning' ? 'text-amber-300' : (pc.isOnline ? 'text-emerald-400' : 'text-slate-400'))} font-bold truncate">${esc(pc.status)}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[11px] font-mono">
+              <div class="bg-slate-950/70 px-2.5 py-1.5 rounded-xl text-slate-300">
+                RAM: <strong class="text-white">${pc.ramUsagePct}%</strong>
+              </div>
+              <div class="bg-slate-950/70 px-2.5 py-1.5 rounded-xl text-slate-300 truncate" title="${esc(pc.dscStatus)}">
+                DSC: <strong class="text-purple-300">${esc(pc.dscStatus)}</strong>
+              </div>
+              <div class="col-span-2 bg-slate-950/70 px-2.5 py-1.5 rounded-xl text-slate-300 truncate">
+                Edge IE Mode: <strong class="text-cyan-300">${esc(pc.edgeIeMode)}</strong>
+              </div>
+            </div>
+
+            <div class="text-[10px] text-slate-500 font-mono pt-1">
+              Last Updated: ${esc(pc.lastUpdated)}
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function fetchLiveTelemetry() {
+      const errorBanner = document.getElementById('errorBanner');
+      const errorBannerText = document.getElementById('errorBannerText');
+
+      try {
+        let rawList = null;
+
+        // 1. Primary: Origin /api/reporting/receiver (Express / Cloud Run / Cloudflare Worker route)
+        try {
+          const res = await fetch('/api/reporting/receiver?t=' + Date.now(), {
+            headers: { 'Accept': 'application/json' }
+          });
+          if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
+            const data = await res.json();
+            rawList = Array.isArray(data?.fleetSummary) ? data.fleetSummary : (Array.isArray(data?.machines) ? data.machines : []);
+          }
+        } catch {}
+
+        // 2. Fallback for Static GitHub Pages: Cloudflare Worker Endpoint
+        if (!rawList) {
+          try {
+            const wRes = await fetch(CLOUDFLARE_WORKER_URL + '?t=' + Date.now(), {
+              headers: { 'Accept': 'application/json' }
+            });
+            if (wRes.ok) {
+              const wData = await wRes.json();
+              rawList = Array.isArray(wData?.fleetSummary) ? wData.fleetSummary : [];
+            }
+          } catch {}
+        }
+
+        // 3. Direct Firebase Firestore (default) REST API Fallback
+        if (!rawList) {
+          const fsRes = await fetch(FIREBASE_FIRESTORE_URL);
+          if (!fsRes.ok) throw new Error('HTTP ' + fsRes.status);
+          const fsData = await fsRes.json();
+          rawList = parseFirestoreDocuments(Array.isArray(fsData?.documents) ? fsData.documents : []);
+        }
+
+        telemetryRecords = rawList.map(normalizeRecord);
+        errorBanner.classList.add('hidden');
+        document.getElementById('lastUpdatedLabel').innerText = 'Updated: ' + new Date().toLocaleTimeString('en-IN');
+        secondsRemaining = 30;
+        renderCards();
+      } catch (err) {
+        errorBanner.classList.remove('hidden');
+        errorBannerText.innerText = '⚠️ డేటా లోడ్ చేయడంలో సమస్య (Fetch Error): ' + (err && err.message ? err.message : 'Network error');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchLiveTelemetry();
+      setInterval(() => {
+        secondsRemaining -= 1;
+        if (secondsRemaining <= 0) {
+          secondsRemaining = 30;
+          fetchLiveTelemetry();
+        }
+        const chip = document.getElementById('countdownChip');
+        if (chip) chip.innerText = 'Next Refresh: ' + secondsRemaining + 's';
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

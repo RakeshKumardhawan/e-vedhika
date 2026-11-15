@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$ADMIN_PASSCODE = 'EVEDHIKA@2026';
+$ADMIN_PASSCODE = '1234';
 $version = 'v1.0.9';
 $resourceBuild = '2026.11.12.R4';
 

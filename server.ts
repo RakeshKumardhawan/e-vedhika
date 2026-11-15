@@ -25,8 +25,14 @@ if (!(admin as any).firestore) {
 if (!(admin as any).auth) {
   (admin as any).auth = getAuth;
 }
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
+import {
+  extractMergedTelemetryPayload,
+  normalizeTelemetryRecord,
+  buildFirestoreTelemetryFields,
+  parseFirestoreTelemetryDoc,
+  classifyTelemetryHealth
+} from './src/utils/telemetryParser';
 
 let isFirebaseAdminInitialized = false;
 let isFirestoreAdminWorking = true;
@@ -1675,31 +1681,25 @@ const stringHashCode = (str: string): number => {
   return hash;
 };
 
-// Helper to normalize and save incoming telemetry record
+// Helper to normalize and save incoming telemetry record (Raw JSON, Base64 Form Data, and GET Base64)
 const processIncomingTelemetry = (req: express.Request) => {
-  let body: any = {};
-  if (typeof req.body === 'object' && req.body !== null) {
-    body = { ...req.body };
-  } else if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
-    try { body = JSON.parse(req.body); } catch(e) {}
-  }
-  // Merge query params if available
-  if (req.query && Object.keys(req.query).length > 0) {
-    body = { ...req.query, ...body };
-  }
+  const body = extractMergedTelemetryPayload(
+    req.body,
+    req.query as Record<string, any>
+  );
 
   const recordId = body.id || `TEL-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
   const now = new Date();
   const timeFormatted = body.time || now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   const dateFormatted = body.date || now.toISOString().slice(0, 10);
 
-  const pcName = body.pcName || body.PcName || body.PCName || body.computerName || body.ComputerName || body.machineName || body.MachineName || body.pc || 'GP-DESK-PC';
-  const userName = body.userName || body.UserName || body.user || body.User || body.username || 'Gram-Panchayat-User';
-  const officeLocation = body.officeLocation || body.OfficeLocation || body.office || body.Office || body.location || body.panchayat || 'Grama Panchayat Office';
-  const state = body.state || (officeLocation?.toLowerCase().includes('ap') || officeLocation?.toLowerCase().includes('andhra') ? 'AP' : 'TS');
+  const pcName = body.pcName || body.PcName || body.PCName || body.pc_name || body.computerName || body.ComputerName || body.machineName || body.MachineName || body.pc || 'GP-DESK-PC';
+  const userName = body.userName || body.UserName || body.user_name || body.user || body.User || body.username || 'Gram-Panchayat-User';
+  const officeLocation = body.officeLocation || body.OfficeLocation || body.office_location || body.office || body.Office || body.location || body.panchayat || 'Grama Panchayat Office';
+  const state = body.state || (String(officeLocation).toLowerCase().includes('ap') || String(officeLocation).toLowerCase().includes('andhra') ? 'AP' : 'TS');
 
   // క్లయింట్ నుండి pcId రాకపోతే సర్వర్ ఆటోమేటిక్గా ఒక యూనిక్ ID కేటాయిస్తుంది (EVD-TS-4A9B-81C2)
-  let pcId = body.pcId || body.machineId || body.uniqueId;
+  let pcId = body.pcId || body.PcId || body.pc_id || body.machineId || body.uniqueId;
   if (!pcId) {
     const hash = Math.abs(stringHashCode(pcName + userName)).toString(16).toUpperCase();
     pcId = `EVD-${state === 'AP' ? 'AP' : 'TS'}-${hash.slice(0, 4)}-${hash.slice(4) || '9A1F'}`;
@@ -1711,14 +1711,19 @@ const processIncomingTelemetry = (req: express.Request) => {
   const internet = body.internet || body.Internet || 'Online (Active)';
   const dotNet = body.dotNet || body.DotNet || body.dotnet || 'v3.5 & v4.8 Active';
   const nicDigiSigner = body.nicDigiSigner || body.NicDigiSigner || 'Port 8080 Active';
-  const dscStatus = body.dscStatus || body.DscStatus || 'USB Token Connected';
+  const dscStatus = body.dscStatus || body.DscStatus || body.dsc_status || 'USB Token Connected';
   const trustedSites = body.trustedSites || body.TrustedSites || 'Zone 2 Configured';
-  const edgeIeMode = body.edgeIeMode || body.EdgeIeMode || 'IE5 Quirks Active';
+  const edgeIeMode = body.edgeIeMode || body.EdgeIeMode || body.edge_ie_mode || body.edgePolicy || 'IE5 Quirks Active';
   const sitesXml = body.sitesXml || body.SitesXml || 'Active';
   const verification = body.verification || body.Verification || 'Passed';
   const version = body.version || body.Version || 'v3.5';
   const status = body.status || body.Status || 'Success (15/15)';
-  const healthScore = body.healthScore !== undefined ? Number(body.healthScore) : (body.HealthScore !== undefined ? Number(body.HealthScore) : 100);
+  const rawHealth = body.healthScore ?? body.HealthScore ?? body.health_score;
+  const healthScore = rawHealth !== undefined && !Number.isNaN(Number(rawHealth)) ? Math.max(0, Math.min(100, Math.round(Number(rawHealth)))) : 100;
+  const rawRamPct = body.ramUsagePct ?? body.RamUsagePct ?? body.ram_usage_pct;
+  const ramUsagePct = rawRamPct !== undefined && !Number.isNaN(Number(rawRamPct)) ? Math.max(0, Math.min(100, Math.round(Number(rawRamPct)))) : 45;
+  const ramUsageMB = Number(body.ramUsageMB ?? body.memoryUsageMB ?? 120);
+  const cpuUsage = Number(body.cpuUsage ?? body.cpuUsagePct ?? 3.5);
   const remarks = body.remarks || body.Remarks || body.summary || body.Summary || 'Telemetry report received from EXE runner.';
 
   const totalChecks = body.totalChecks || body.TotalChecks || '90/90';
@@ -1734,6 +1739,7 @@ const processIncomingTelemetry = (req: express.Request) => {
     pcId: pcId,
     livePresence: 'ONLINE',
     lastSeen: 'Just Now',
+    lastHeartbeatEpoch: Math.floor(Date.now() / 1000),
     serverReceivedDate: now.toISOString().slice(0, 10),
     serverReceivedTime: now.toLocaleTimeString(),
     date: dateFormatted,
@@ -1751,12 +1757,16 @@ const processIncomingTelemetry = (req: express.Request) => {
     dscStatus,
     trustedSites,
     edgeIeMode,
+    edgePolicy: edgeIeMode,
     sitesXml,
     verification,
     version,
     status,
     healthScore,
-    state: body.state || (officeLocation?.toLowerCase().includes('ap') || officeLocation?.toLowerCase().includes('andhra') ? 'AP' : 'TS'),
+    ramUsagePct,
+    ramUsageMB,
+    cpuUsage,
+    state: body.state || (String(officeLocation).toLowerCase().includes('ap') || String(officeLocation).toLowerCase().includes('andhra') ? 'AP' : 'TS'),
     timestamp: body.timestamp || `${dateFormatted} ${timeFormatted}`,
     networkIp: body.networkIp || body.ipAddress || (req.ip || '192.168.1.10'),
     windowsVersion: body.windowsVersion || osVersion,
@@ -1780,7 +1790,17 @@ const processIncomingTelemetry = (req: express.Request) => {
     fileUrl: fileLink || null,
     fileName: fileName || null,
     hasFile: !!fileLink,
-    ...body
+    ...body,
+    pcId,
+    pcName,
+    userName,
+    officeLocation,
+    healthScore,
+    ramUsagePct,
+    dscStatus,
+    edgeIeMode,
+    edgePolicy: edgeIeMode,
+    status
   };
 
   // 1:1 Telegram notification deduplication (1 PC = 1 Report per day)
@@ -1791,7 +1811,7 @@ const processIncomingTelemetry = (req: express.Request) => {
   // Cap at 1000 records
   if (telemetryLogsStore.length > 1000) telemetryLogsStore.length = 1000;
   saveTelemetryLogsToDisk();
-  console.log(`[E-VEDHIKA REPORT RECEIVED] PC: ${newRecord.pcName} | Loc: ${newRecord.officeLocation} | ID: ${newRecord.id}`);
+  console.log(`[E-VEDHIKA REPORT RECEIVED] PC: ${newRecord.pcName} | Loc: ${newRecord.officeLocation} | Health: ${newRecord.healthScore}% | ID: ${newRecord.id}`);
 
   // Send Telegram Notification for incoming telemetry with deduplication
   try {
@@ -1800,10 +1820,11 @@ const processIncomingTelemetry = (req: express.Request) => {
 
     if (!hasAlreadySent) {
       const locName = newRecord.officeLocation || [newRecord.panchayat, newRecord.mandal, newRecord.district].filter(Boolean).join(', ') || 'Grama Panchayat';
-      let telegramMsg = `🏛️ <b>E-VEDHIKA TELEMETRY REPORT (v1.0.9 • 2026.11.11.R3)</b>\n` +
+      let telegramMsg = `🏛️ <b>E-VEDHIKA TELEMETRY REPORT (v1.0.9 • 2026.11.12.R4)</b>\n` +
         `💻 <b>PC:</b> <code>${newRecord.pcName || 'Unknown PC'}</code> (${pcId})\n` +
         `👤 <b>User:</b> ${newRecord.userName || 'Panchayat User'}\n` +
         `📍 <b>Location:</b> ${locName}\n` +
+        `❤️ <b>Health:</b> ${newRecord.healthScore}% | <b>RAM:</b> ${newRecord.ramUsagePct}%\n` +
         `🪟 <b>OS:</b> ${newRecord.osVersion || 'Windows'}\n` +
         `📊 <b>Status:</b> <b>${newRecord.status || 'SUCCESS'}</b>\n`;
 
@@ -1820,7 +1841,7 @@ const processIncomingTelemetry = (req: express.Request) => {
     console.warn("Telegram alert trigger notice:", tgErr);
   }
 
-  // Save to Firestore asynchronously (Admin SDK + REST API fallback so reports always persist to Cloud)
+  // Save to Firebase Firestore (default) asynchronously (Admin SDK + REST API fallback so reports always persist to Cloud)
   try {
     if (!isFirestoreInCooldown() && initFirebaseAdmin()) {
       const db = admin.firestore();
@@ -1828,7 +1849,10 @@ const processIncomingTelemetry = (req: express.Request) => {
         ...newRecord,
         ip: req.ip || "",
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(e => handleFirestoreQuotaError(e));
+      }).catch(e => {
+        handleFirestoreQuotaError(e);
+        pushTelemetryToFirestoreRest(newRecord).catch(err => console.warn("Firestore REST telemetry sync notice:", err));
+      });
       db.collection("deploymentLogs").doc(newRecord.id).set({
         ...newRecord,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -1836,8 +1860,9 @@ const processIncomingTelemetry = (req: express.Request) => {
     } else {
       pushTelemetryToFirestoreRest(newRecord).catch(err => console.warn("Firestore REST telemetry sync notice:", err));
     }
-  } catch(e) {
+  } catch (e) {
     handleFirestoreQuotaError(e);
+    pushTelemetryToFirestoreRest(newRecord).catch(err => console.warn("Firestore REST telemetry sync notice:", err));
   }
 
   // Broadcast to all active SSE streaming clients in real-time
@@ -1976,7 +2001,7 @@ function getApplicationUpdateHistory() {
         'Fixed 3-attempt exponential backoff retry for Telangana UBD MIS status portal queries'
       ],
       securityUpdates: [
-        'Enforced SHA-256 session token authentication with EVEDHIKA@2026 passcode',
+        'Enforced SHA-256 session token authentication with 1234 passcode',
         'Protected administrative endpoints with server-side authentication validation'
       ],
       performanceImprovements: [
@@ -2086,41 +2111,8 @@ let lastFirestoreRestSyncEpoch = 0;
 async function pushTelemetryToFirestoreRest(record: any): Promise<void> {
   const docId = String(record.id || record.eventId || `EVT-${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '_');
   const url = `https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/telemetryLogs/${docId}`;
-  const str = (v: any, def = '') => ({ stringValue: String(v ?? def) });
   const payload = {
-    fields: {
-      id: str(docId),
-      eventId: str(record.eventId || record.id || docId),
-      reportId: str(record.reportId || record.id || docId),
-      reportType: str(record.reportType || record.eventType || 'LIVE_MONITORING'),
-      recordSource: str('LIVE_RECEIVED'),
-      pcId: str(record.pcId || record.machineId || 'EVD-PC-01'),
-      machineId: str(record.machineId || record.pcId || 'EVD-PC-01'),
-      pcName: str(record.pcName || 'GP-OFFICE-PC'),
-      userName: str(record.userName || 'Operator'),
-      officeLocation: str(record.officeLocation || 'Grama Panchayat Office'),
-      district: str(record.district || 'Telangana'),
-      state: str(record.state || 'Telangana'),
-      os: str(record.osVersion || record.os || 'Windows 10/11 Pro'),
-      osVersion: str(record.osVersion || record.os || 'Windows 10/11 Pro'),
-      buildNumber: str(record.buildNumber || record.winBuild || 'Build 22631'),
-      appVersion: str(record.appVersion || record.version || UBD_GATEWAY_VERSION),
-      version: str(record.version || record.appVersion || UBD_GATEWAY_VERSION),
-      resourceBuild: str(record.resourceBuild || UBD_RESOURCE_BUILD),
-      status: str(record.status || 'SUCCESS'),
-      overallStatus: str('ONLINE'),
-      appState: str(record.appState || 'RUNNING'),
-      stepsVerified: str(record.verification || record.stepsVerified || '17/17 Passed'),
-      verification: str(record.verification || record.stepsVerified || '17/17 Passed'),
-      dscStatus: str(record.dscStatus || 'USB Token Active'),
-      edgePolicy: str(record.edgeIeMode || record.edgePolicy || 'IE5 Quirks Active'),
-      sitesXml: str(record.sitesXml || 'Validated'),
-      details: str(record.remarks || record.details || 'Report synchronized from C# Desktop Application'),
-      remarks: str(record.remarks || record.details || 'Report synchronized from C# Desktop Application'),
-      lastSeen: str(record.lastSeen && record.lastSeen !== 'Just Now' ? record.lastSeen : new Date().toISOString().slice(0, 19).replace('T', ' ')),
-      timestampIst: str(`${new Date().toISOString().slice(0, 19).replace('T', ' ')} IST`),
-      lastHeartbeatEpoch: { integerValue: String(Math.floor(Date.now() / 1000)) }
-    }
+    fields: buildFirestoreTelemetryFields(record, UBD_GATEWAY_VERSION, UBD_RESOURCE_BUILD)
   };
   await fetch(url, {
     method: 'PATCH',
@@ -2144,52 +2136,18 @@ async function hydrateTelemetryFromFirestoreRest(force = false): Promise<void> {
       const data: any = await res.json();
       const docs = Array.isArray(data?.documents) ? data.documents : [];
       for (const doc of docs) {
-        const f = doc?.fields || {};
-        const getVal = (k: string, def = '') => f[k]?.stringValue ?? f[k]?.integerValue ?? f[k]?.doubleValue ?? def;
-        const docId = String(getVal('id') || getVal('eventId') || doc.name?.split('/').pop() || '');
-        if (!docId || docId.startsWith('TEL-SEED') || docId.startsWith('SEED')) continue;
+        const mapped = parseFirestoreTelemetryDoc(doc, UBD_GATEWAY_VERSION, UBD_RESOURCE_BUILD);
+        if (!mapped) continue;
 
-        const pcId = String(getVal('pcId') || getVal('machineId') || docId);
-        const existingIdx = telemetryLogsStore.findIndex(r => r && (r.id === docId || r.eventId === docId));
-        const mapped = {
-          id: docId,
-          eventId: String(getVal('eventId') || docId),
-          reportId: String(getVal('reportId') || docId),
-          reportType: String(getVal('reportType') || getVal('eventType') || 'LIVE_MONITORING'),
-          recordSource: String(getVal('recordSource') || 'LIVE_RECEIVED'),
-          pcId,
-          machineId: pcId,
-          pcName: String(getVal('pcName') || 'GP-OFFICE-PC'),
-          userName: String(getVal('userName') || 'Operator'),
-          officeLocation: String(getVal('officeLocation') || getVal('panchayat') || 'Grama Panchayat Office'),
-          district: String(getVal('district') || 'Telangana'),
-          state: String(getVal('state') || 'Telangana'),
-          os: String(getVal('os') || getVal('osVersion') || 'Windows 10/11 Pro'),
-          osVersion: String(getVal('osVersion') || getVal('os') || 'Windows 10/11 Pro'),
-          buildNumber: String(getVal('buildNumber') || getVal('winBuild') || 'Build 22631'),
-          appVersion: String(getVal('appVersion') || getVal('version') || UBD_GATEWAY_VERSION),
-          version: String(getVal('version') || getVal('appVersion') || UBD_GATEWAY_VERSION),
-          resourceBuild: String(getVal('resourceBuild') || UBD_RESOURCE_BUILD),
-          status: String(getVal('status') || 'SUCCESS'),
-          overallStatus: String(getVal('overallStatus') || 'ONLINE'),
-          appState: String(getVal('appState') || 'RUNNING'),
-          stepsVerified: String(getVal('stepsVerified') || getVal('verification') || '17/17 Passed'),
-          verification: String(getVal('verification') || getVal('stepsVerified') || '17/17 Passed'),
-          dscStatus: String(getVal('dscStatus') || 'USB Token Active'),
-          edgePolicy: String(getVal('edgePolicy') || getVal('edgeIeMode') || 'IE5 Quirks Active'),
-          sitesXml: String(getVal('sitesXml') || 'Validated'),
-          remarks: String(getVal('remarks') || getVal('details') || 'Telemetry report synchronized from Firestore'),
-          details: String(getVal('details') || getVal('remarks') || 'Telemetry report synchronized from Firestore'),
-          lastSeen: String(getVal('lastSeen') || getVal('date') || new Date().toISOString().slice(0, 19).replace('T', ' ')),
-          timestampIst: String(getVal('timestampIst') || `${getVal('lastSeen') || new Date().toISOString().slice(0, 19).replace('T', ' ')} IST`),
-          lastHeartbeatEpoch: Number(getVal('lastHeartbeatEpoch') || 0) || Math.floor(Date.now() / 1000)
-        };
-
+        const existingIdx = telemetryLogsStore.findIndex(r => r && (r.id === mapped.id || r.eventId === mapped.id));
         if (existingIdx === -1) {
           telemetryLogsStore.unshift(mapped);
           addedAny = true;
         } else {
-          telemetryLogsStore[existingIdx] = { ...telemetryLogsStore[existingIdx], ...mapped };
+          const prevEpoch = Number(telemetryLogsStore[existingIdx]?.lastHeartbeatEpoch || 0);
+          if (Number(mapped.lastHeartbeatEpoch || 0) >= prevEpoch) {
+            telemetryLogsStore[existingIdx] = { ...telemetryLogsStore[existingIdx], ...mapped };
+          }
         }
       }
     } catch {
@@ -2198,6 +2156,8 @@ async function hydrateTelemetryFromFirestoreRest(force = false): Promise<void> {
   }
 
   if (addedAny) {
+    telemetryLogsStore.sort((a: any, b: any) => Number(b?.lastHeartbeatEpoch || 0) - Number(a?.lastHeartbeatEpoch || 0));
+    if (telemetryLogsStore.length > 1000) telemetryLogsStore.length = 1000;
     saveTelemetryLogsToDisk();
   }
 }
@@ -2250,11 +2210,19 @@ function getNormalizedConsolidatedPcs(): Record<string, any> {
     }
   }
 
-  for (const record of (telemetryLogsStore || [])) {
+  // Merge telemetryLogsStore ensuring newer heartbeat timestamps always take precedence over older entries
+  const orderedRecords = [...(telemetryLogsStore || [])].sort(
+    (a: any, b: any) => Number(a?.lastHeartbeatEpoch || 0) - Number(b?.lastHeartbeatEpoch || 0)
+  );
+  for (const record of orderedRecords) {
     if (!record) continue;
     const key = record.pcId || record.machineId || record.id || record.pcName;
     if (!key || String(key).startsWith("TEL-SEED") || String(key).startsWith("SEED")) continue;
-    rawPcs[key] = { ...(rawPcs[key] || {}), ...record };
+    const prevEpoch = Number(rawPcs[key]?.lastHeartbeatEpoch || 0);
+    const curEpoch = Number(record.lastHeartbeatEpoch || 0);
+    if (!rawPcs[key] || curEpoch >= prevEpoch) {
+      rawPcs[key] = { ...(rawPcs[key] || {}), ...record };
+    }
   }
 
   const normalized: Record<string, any> = {};
@@ -2304,11 +2272,17 @@ function getNormalizedConsolidatedPcs(): Record<string, any> {
 
     const lastSeenStr = item.lastHeartbeatTime || item.lastTelemetryUpdate || item.lastSeen || (item.date && item.time ? `${item.date} ${item.time}` : 'N/A');
 
+    const healthScoreRaw = Number(item.healthScore ?? item.health_score ?? item.HealthScore ?? 100);
+    const healthScore = Number.isFinite(healthScoreRaw) ? Math.max(0, Math.min(100, Math.round(healthScoreRaw))) : 100;
+    const ramUsagePctRaw = Number(item.ramUsagePct ?? item.ram_usage_pct ?? item.RamUsagePct ?? 45);
+    const ramUsagePct = Number.isFinite(ramUsagePctRaw) ? Math.max(0, Math.min(100, Math.round(ramUsagePctRaw))) : 45;
+    const statusStr = String(item.status || (isOnline ? 'SUCCESS' : 'OFFLINE'));
+
     normalized[id] = {
       machineId: id,
       pcId: id,
       pcName,
-      userName: item.userName || 'Operator',
+      userName: item.userName || item.user_name || 'Operator',
       officeLocation: officeLoc,
       district: item.district || officeLoc.split(',')[0] || 'District',
       state: item.state || 'Telangana',
@@ -2317,23 +2291,28 @@ function getNormalizedConsolidatedPcs(): Record<string, any> {
       appVersion: item.appVersion || item.version || UBD_GATEWAY_VERSION,
       resourceBuild: item.resourceBuild || UBD_RESOURCE_BUILD,
       overallStatus: st,
+      status: statusStr,
+      healthScore,
+      healthSeverity: classifyTelemetryHealth(healthScore, statusStr),
       isOnline,
       appState,
       classification,
       recordSource: item.recordSource || 'HISTORICAL_AND_LIVE',
       cpuUsage: item.cpuUsagePct ?? item.cpuUsage ?? 0,
-      ramUsageMB: item.memoryUsageMB ?? item.ramUsagePct ?? 0,
+      ramUsagePct,
+      ramUsageMB: item.memoryUsageMB ?? item.ramUsageMB ?? 120,
       diskFreeGB: item.diskFreeGB ?? 'N/A',
       stepsVerified: steps,
       dscStatus: dsc,
       digiSignerStatus: item.nicDigiSigner || 'Not Reported',
-      edgePolicy: item.edgePolicy || item.edgeIeMode || 'Not Reported',
+      edgePolicy: item.edgePolicy || item.edgeIeMode || item.edge_ie_mode || 'Not Reported',
+      edgeIeMode: item.edgeIeMode || item.edgePolicy || item.edge_ie_mode || 'Not Reported',
       sitesXml: item.sitesXml || 'Not Reported',
       dotNetStatus: item.dotNet || item.netFramework35 || 'Installed',
       trustedSites: item.trustedSites || 'Zone 2 Configured',
       activeXStatus: item.activeXControls || 'Enabled',
       guardianStatus: item.guardianStatus || '24x7 Active & Watching',
-      otaStatus: (item.resourceBuild || '') === UBD_RESOURCE_BUILD ? 'Up to Date (R3)' : 'Update Available (R3)',
+      otaStatus: (item.resourceBuild || '') === UBD_RESOURCE_BUILD ? 'Up to Date (R4)' : 'Update Available (R4)',
       activeIssue: typeof item.activeIssue === 'object' && item.activeIssue !== null ? (item.activeIssue.summary || 'None') : (item.activeIssue || 'None'),
       firstSeen: item.firstSeen || item.initialInstallDate || lastSeenStr,
       lastSeen: lastSeenStr,
@@ -2462,6 +2441,23 @@ function escapeHtmlServer(val: any): string {
     .replace(/'/g, '&#039;');
 }
 
+function sortFleetByPriority(list: any[]): any[] {
+  const rankSeverity = (pc: any) => {
+    const sev = pc.healthSeverity || classifyTelemetryHealth(pc.healthScore, pc.status);
+    if (sev === 'critical') return 0;
+    if (sev === 'warning') return 1;
+    return 2;
+  };
+  return [...list].sort((a, b) => {
+    const aLive = a.isOnline ? 0 : 1;
+    const bLive = b.isOnline ? 0 : 1;
+    if (aLive !== bLive) return aLive - bLive;
+    const sevDiff = rankSeverity(a) - rankSeverity(b);
+    if (sevDiff !== 0) return sevDiff;
+    return Number(a.healthScore ?? 100) - Number(b.healthScore ?? 100);
+  });
+}
+
 function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: string, consolidatedPcs: Record<string, any>, allReports: any[], updateHistory: any[], statusBanner = ''): string {
   if (!isAuthenticated) {
     return `<!DOCTYPE html>
@@ -2500,7 +2496,7 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
 </html>`;
   }
 
-  const pcsArray = Object.values(consolidatedPcs);
+  const pcsArray = sortFleetByPriority(Object.values(consolidatedPcs));
   const totalPcs = pcsArray.length;
   const onlinePcs = pcsArray.filter(p => Boolean(p.isOnline)).length;
   const offlinePcs = totalPcs - onlinePcs;
@@ -2510,6 +2506,46 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
   const testPcs = pcsArray.filter(p => p.classification === 'TEST').length;
   const duplicatePcs = pcsArray.filter(p => p.classification === 'DUPLICATE').length;
 
+  const healthCardsHtml = pcsArray.length === 0
+    ? `<div class="col-span-full p-8 text-center text-slate-400 font-mono bg-slate-950/60 rounded-2xl border border-slate-800">ఎటువంటి లైవ్ PC హెల్త్ కార్డులు ఇంకా లేవు.</div>`
+    : pcsArray.map(pc => {
+        const severity = pc.healthSeverity || classifyTelemetryHealth(pc.healthScore, pc.status);
+        const healthScore = Number(pc.healthScore ?? 100);
+        const ramPct = Number(pc.ramUsagePct ?? 45);
+        const cardBorder = severity === 'critical'
+          ? 'border-rose-500/70 bg-rose-950/20'
+          : (severity === 'warning' ? 'border-amber-500/60 bg-amber-950/15' : 'border-emerald-500/50 bg-emerald-950/10');
+        const badgeCls = severity === 'critical'
+          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+          : (severity === 'warning' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40');
+        const safeJson = JSON.stringify(pc).replace(/'/g, '&#39;').replace(/</g, '\\u003c');
+        return `<div onclick='openPcModal(${safeJson})' class="p-4 rounded-2xl border ${cardBorder} hover:brightness-110 transition cursor-pointer shadow-md space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+                <div>
+                    <div class="font-black text-white font-mono text-sm">${escapeHtmlServer(pc.pcName)}</div>
+                    <div class="text-[10px] text-cyan-400 font-mono">${escapeHtmlServer(pc.pcId)}</div>
+                </div>
+                <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-black font-mono border ${badgeCls}">
+                    ${healthScore}%
+                </span>
+            </div>
+            <div class="text-xs text-slate-200 font-semibold truncate">${escapeHtmlServer(pc.officeLocation)}</div>
+            <div class="text-[11px] text-slate-400 flex items-center justify-between font-mono">
+                <span>👤 ${escapeHtmlServer(pc.userName)}</span>
+                <span class="${pc.isOnline ? 'text-emerald-400' : 'text-slate-500'} font-bold">${pc.isOnline ? '● ONLINE' : '○ OFFLINE'}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-800/80 text-[10px] font-mono">
+                <div class="bg-slate-950/70 px-2 py-1 rounded-lg text-slate-300">RAM: <strong class="text-white">${ramPct}%</strong></div>
+                <div class="bg-slate-950/70 px-2 py-1 rounded-lg text-slate-300 truncate" title="${escapeHtmlServer(pc.dscStatus)}">DSC: <strong class="text-purple-300">${escapeHtmlServer(pc.dscStatus)}</strong></div>
+                <div class="col-span-2 bg-slate-950/70 px-2 py-1 rounded-lg text-slate-300 truncate">IE Mode: <strong class="text-cyan-300">${escapeHtmlServer(pc.edgePolicy || pc.edgeIeMode)}</strong></div>
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono flex justify-between items-center">
+                <span>Synced: ${escapeHtmlServer(pc.lastSeen)}</span>
+                <span class="text-indigo-400 font-bold">Inspect ➔</span>
+            </div>
+        </div>`;
+      }).join('');
+
   const pcRowsHtml = pcsArray.length === 0
     ? `<tr><td colspan="10" class="p-12 text-center text-slate-400 font-mono">ఎటువంటి PC రికార్డులు ఇంకా నమోదు కాలేదు. C# UBD డెస్క్‌టాప్ అప్లికేషన్ నుండి రిపోర్ట్ రాగానే ఇక్కడ రియల్-టైమ్‌లో కనిపిస్తాయి.</td></tr>`
     : pcsArray.map(pc => {
@@ -2517,6 +2553,10 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
         const clsBadge = cls === 'AUTHENTIC'
           ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
           : (cls === 'TEST' ? 'bg-amber-950 text-amber-300 border-amber-700' : 'bg-rose-950 text-rose-300 border-rose-700');
+        const severity = pc.healthSeverity || classifyTelemetryHealth(pc.healthScore, pc.status);
+        const healthScore = Number(pc.healthScore ?? 100);
+        const ramPct = Number(pc.ramUsagePct ?? 45);
+        const healthColor = severity === 'critical' ? 'text-rose-400' : (severity === 'warning' ? 'text-amber-400' : 'text-emerald-400');
         const safeJson = JSON.stringify(pc).replace(/'/g, '&#39;').replace(/</g, '\\u003c');
         return `<tr class="hover:bg-slate-800/50 transition cursor-pointer" onclick='openPcModal(${safeJson})'>
             <td class="p-3.5">
@@ -2532,7 +2572,7 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
             </td>
             <td class="p-3.5 font-mono text-[11px]">
                 <div class="text-slate-300">${escapeHtmlServer(pc.os)}</div>
-                <div class="text-[10px] text-slate-500">RAM: ${escapeHtmlServer(pc.ramUsageMB)}MB | CPU: ${escapeHtmlServer(pc.cpuUsage)}%</div>
+                <div class="text-[10px] text-slate-500">RAM: ${ramPct}% (${escapeHtmlServer(pc.ramUsageMB)}MB) | CPU: ${escapeHtmlServer(pc.cpuUsage)}%</div>
             </td>
             <td class="p-3.5 font-mono">
                 <div class="font-bold text-indigo-300">${escapeHtmlServer(pc.appVersion)}</div>
@@ -2546,7 +2586,10 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
                     APP: ${escapeHtmlServer(pc.appState)}
                 </div>
             </td>
-            <td class="p-3.5 font-mono font-bold text-emerald-400">${escapeHtmlServer(pc.stepsVerified)}</td>
+            <td class="p-3.5 font-mono">
+                <div class="font-black ${healthColor}">${healthScore}% Health</div>
+                <div class="text-[10px] text-emerald-400">${escapeHtmlServer(pc.stepsVerified)}</div>
+            </td>
             <td class="p-3.5 text-[11px]">
                 <div class="text-slate-200">${escapeHtmlServer(pc.dscStatus)}</div>
                 <div class="text-[10px] text-cyan-400 font-mono">${escapeHtmlServer(pc.edgePolicy)}</div>
@@ -2753,36 +2796,58 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
             </button>
         </div>
 
-        <!-- TAB 1: LIVE PC MONITORING TABLE -->
-        <div id="tab-content-pcs" class="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
-            <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                    <h2 class="text-sm font-black text-white uppercase tracking-wider">⚡ PC-WISE LIVE TELEMETRY, CLASSIFICATION &amp; 17-STEP AUDIT MATRIX</h2>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Click any PC row to inspect its complete 17-Step Deployment Audit, Hardware Specs, Guardian &amp; OTA History</p>
+        <!-- TAB 1: LIVE PC MONITORING TABLE & COLOR-CODED HEALTH CARDS -->
+        <div id="tab-content-pcs" class="space-y-6">
+            <div class="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-xl p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            LIVE GRAM PANCHAYAT PC HEALTH CARDS (30s AUTO-SYNC)
+                        </h2>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Green (&ge;70%) Healthy • Amber (50-69%) Warning • Red (&lt;50% / ERROR) Critical | Receiver: <code class="text-cyan-400">/api/reporting/receiver</code></p>
+                    </div>
+                    <div class="flex items-center gap-2 font-mono text-[11px]">
+                        <span id="liveCountdownBadge" class="px-3 py-1.5 rounded-xl bg-indigo-950/80 border border-indigo-500/40 text-indigo-200 font-bold">Auto-Sync: 30s</span>
+                        <button type="button" onclick="refreshLiveTelemetryData()" class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer">🔄 Sync Now</button>
+                    </div>
                 </div>
-                <input type="text" id="pcSearchInput" onkeyup="filterPcTable()" placeholder="Search PC Name, ID, Office or Classification..."
-                    class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono w-full sm:w-72 focus:outline-none focus:border-indigo-500">
+                <div id="liveTelemetryErrorBox" class="hidden p-3.5 rounded-2xl border border-rose-500/50 bg-rose-950/40 text-rose-200 text-xs font-mono"></div>
+                <div id="liveHealthCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    ${healthCardsHtml}
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs" id="pcMonitoringTable">
-                    <thead class="bg-slate-950/80 text-slate-400 text-[10px] uppercase font-bold tracking-wider font-mono">
-                        <tr>
-                            <th class="p-3.5">PC NAME &amp; DEVICE ID</th>
-                            <th class="p-3.5">CLASSIFICATION</th>
-                            <th class="p-3.5">OFFICE / GP / MANDAL</th>
-                            <th class="p-3.5">OS &amp; RAM/CPU</th>
-                            <th class="p-3.5">VERSION &amp; BUILD</th>
-                            <th class="p-3.5">PC / APP STATE</th>
-                            <th class="p-3.5">17-STEP AUDIT</th>
-                            <th class="p-3.5">DSC &amp; IE MODE</th>
-                            <th class="p-3.5">LAST HEARTBEAT</th>
-                            <th class="p-3.5">ACTION</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800/60">
-                        ${pcRowsHtml}
-                    </tbody>
-                </table>
+
+            <div class="bg-slate-900/90 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                        <h2 class="text-sm font-black text-white uppercase tracking-wider">⚡ PC-WISE LIVE TELEMETRY, CLASSIFICATION &amp; 17-STEP AUDIT MATRIX</h2>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Click any PC row to inspect its complete 17-Step Deployment Audit, Hardware Specs, Guardian &amp; OTA History</p>
+                    </div>
+                    <input type="text" id="pcSearchInput" onkeyup="filterPcTable()" placeholder="Search PC Name, ID, Office or Classification..."
+                        class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white font-mono w-full sm:w-72 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs" id="pcMonitoringTable">
+                        <thead class="bg-slate-950/80 text-slate-400 text-[10px] uppercase font-bold tracking-wider font-mono">
+                            <tr>
+                                <th class="p-3.5">PC NAME &amp; DEVICE ID</th>
+                                <th class="p-3.5">CLASSIFICATION</th>
+                                <th class="p-3.5">OFFICE / GP / MANDAL</th>
+                                <th class="p-3.5">OS &amp; RAM/CPU</th>
+                                <th class="p-3.5">VERSION &amp; BUILD</th>
+                                <th class="p-3.5">PC / APP STATE</th>
+                                <th class="p-3.5">HEALTH &amp; 17-STEP AUDIT</th>
+                                <th class="p-3.5">DSC &amp; IE MODE</th>
+                                <th class="p-3.5">LAST HEARTBEAT</th>
+                                <th class="p-3.5">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pcMonitoringTableBody" class="divide-y divide-slate-800/60">
+                            ${pcRowsHtml}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -3046,8 +3111,118 @@ function renderUbdMonitoringHtmlPage(isAuthenticated: boolean, loginError: strin
             }
         }
 
+        let autoRefreshCountdown = 30;
+
+        function escClientHtml(v) {
+            return String(v ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getHealthSeverityClient(score, status) {
+            const num = Number(score ?? 100);
+            const st = String(status || '').toUpperCase();
+            if (num < 50 || st.includes('ERROR') || st.includes('CRITICAL') || st.includes('FAIL')) return 'critical';
+            if (num < 70 || st.includes('WARN')) return 'warning';
+            return 'healthy';
+        }
+
+        window.__livePcsCache = [];
+        function openPcModalByIndex(idx) {
+            const pc = window.__livePcsCache && window.__livePcsCache[idx];
+            if (pc) openPcModal(pc);
+        }
+
+        async function refreshLiveTelemetryData() {
+            try {
+                const res = await fetch('/admin/ubd_monitoring?action=get_live_pcs&t=' + Date.now(), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const list = Array.isArray(data && data.machines) ? data.machines : [];
+                window.__livePcsCache = list;
+                const cardsGrid = document.getElementById('liveHealthCardsGrid');
+                const tbody = document.getElementById('pcMonitoringTableBody');
+
+                if (cardsGrid && list.length > 0) {
+                    cardsGrid.innerHTML = list.map((pc, idx) => {
+                        const sev = pc.healthSeverity || getHealthSeverityClient(pc.healthScore, pc.status);
+                        const score = Number(pc.healthScore ?? 100);
+                        const ramPct = Number(pc.ramUsagePct ?? 45);
+                        const cardBorder = sev === 'critical'
+                            ? 'border-rose-500/70 bg-rose-950/20'
+                            : (sev === 'warning' ? 'border-amber-500/60 bg-amber-950/15' : 'border-emerald-500/50 bg-emerald-950/10');
+                        const badgeCls = sev === 'critical'
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                            : (sev === 'warning' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40');
+                        return '<div onclick="openPcModalByIndex(' + idx + ')" class="p-4 rounded-2xl border ' + cardBorder + ' hover:brightness-110 transition cursor-pointer shadow-md space-y-2.5">' +
+                            '<div class="flex items-start justify-between gap-2">' +
+                            '<div><div class="font-black text-white font-mono text-sm">' + escClientHtml(pc.pcName) + '</div>' +
+                            '<div class="text-[10px] text-cyan-400 font-mono">' + escClientHtml(pc.pcId) + '</div></div>' +
+                            '<span class="px-2.5 py-0.5 rounded-lg text-[11px] font-black font-mono border ' + badgeCls + '">' + score + '%</span></div>' +
+                            '<div class="text-xs text-slate-200 font-semibold truncate">' + escClientHtml(pc.officeLocation) + '</div>' +
+                            '<div class="text-[11px] text-slate-400 flex items-center justify-between font-mono">' +
+                            '<span>👤 ' + escClientHtml(pc.userName) + '</span>' +
+                            '<span class="' + (pc.isOnline ? 'text-emerald-400' : 'text-slate-500') + ' font-bold">' + (pc.isOnline ? '● ONLINE' : '○ OFFLINE') + '</span></div>' +
+                            '<div class="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-800/80 text-[10px] font-mono">' +
+                            '<div class="bg-slate-950/70 px-2 py-1 rounded-lg text-slate-300">RAM: <strong class="text-white">' + ramPct + '%</strong></div>' +
+                            '<div class="bg-slate-950/70 px-2 py-1 rounded-lg text-slate-300 truncate">DSC: <strong class="text-purple-300">' + escClientHtml(pc.dscStatus) + '</strong></div>' +
+                            '<div class="col-span-2 bg-slate-950/70 px-2 py-1 rounded-lg text-slate-300 truncate">IE Mode: <strong class="text-cyan-300">' + escClientHtml(pc.edgePolicy || pc.edgeIeMode) + '</strong></div></div>' +
+                            '<div class="text-[10px] text-slate-500 font-mono flex justify-between items-center">' +
+                            '<span>Synced: ' + escClientHtml(pc.lastSeen) + '</span><span class="text-indigo-400 font-bold">Inspect ➔</span></div></div>';
+                    }).join('');
+                }
+
+                if (tbody && list.length > 0) {
+                    tbody.innerHTML = list.map((pc, idx) => {
+                        const cls = pc.classification || 'AUTHENTIC';
+                        const clsBadge = cls === 'AUTHENTIC' ? 'bg-emerald-950 text-emerald-300 border-emerald-700' : (cls === 'TEST' ? 'bg-amber-950 text-amber-300 border-amber-700' : 'bg-rose-950 text-rose-300 border-rose-700');
+                        const sev = pc.healthSeverity || getHealthSeverityClient(pc.healthScore, pc.status);
+                        const score = Number(pc.healthScore ?? 100);
+                        const ramPct = Number(pc.ramUsagePct ?? 45);
+                        const healthColor = sev === 'critical' ? 'text-rose-400' : (sev === 'warning' ? 'text-amber-400' : 'text-emerald-400');
+                        return '<tr class="hover:bg-slate-800/50 transition cursor-pointer" onclick="openPcModalByIndex(' + idx + ')">' +
+                            '<td class="p-3.5"><div class="font-bold text-white font-mono">' + escClientHtml(pc.pcName) + '</div><div class="text-[10px] text-cyan-400 font-mono">' + escClientHtml(pc.pcId) + '</div></td>' +
+                            '<td class="p-3.5 font-mono"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ' + clsBadge + '">' + escClientHtml(cls) + '</span></td>' +
+                            '<td class="p-3.5"><div class="text-slate-200 font-medium">' + escClientHtml(pc.officeLocation) + '</div><div class="text-[10px] text-slate-400">' + escClientHtml(pc.userName) + ' • ' + escClientHtml(pc.state) + '</div></td>' +
+                            '<td class="p-3.5 font-mono text-[11px]"><div class="text-slate-300">' + escClientHtml(pc.os) + '</div><div class="text-[10px] text-slate-500">RAM: ' + ramPct + '% (' + escClientHtml(pc.ramUsageMB) + 'MB) | CPU: ' + escClientHtml(pc.cpuUsage) + '%</div></td>' +
+                            '<td class="p-3.5 font-mono"><div class="font-bold text-indigo-300">' + escClientHtml(pc.appVersion) + '</div><div class="text-[10px] text-emerald-400">' + escClientHtml(pc.resourceBuild) + '</div></td>' +
+                            '<td class="p-3.5 font-mono"><span class="px-2 py-0.5 rounded text-[10px] font-bold ' + (pc.isOnline ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400') + '">PC: ' + escClientHtml(pc.overallStatus) + '</span><div class="text-[10px] mt-1 ' + (pc.appState === 'RUNNING' ? 'text-cyan-400' : 'text-amber-400') + '">APP: ' + escClientHtml(pc.appState) + '</div></td>' +
+                            '<td class="p-3.5 font-mono"><div class="font-black ' + healthColor + '">' + score + '% Health</div><div class="text-[10px] text-emerald-400">' + escClientHtml(pc.stepsVerified) + '</div></td>' +
+                            '<td class="p-3.5 text-[11px]"><div class="text-slate-200">' + escClientHtml(pc.dscStatus) + '</div><div class="text-[10px] text-cyan-400 font-mono">' + escClientHtml(pc.edgePolicy) + '</div></td>' +
+                            '<td class="p-3.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">' + escClientHtml(pc.lastSeen) + '</td>' +
+                            '<td class="p-3.5"><div class="flex items-center gap-2"><button type="button" class="px-2 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/40 rounded-lg text-[10px] font-mono font-bold transition">Inspect ➔</button>' +
+                            '<a href="/admin/ubd_monitoring?action=delete_pc&pcId=' + encodeURIComponent(pc.pcId) + '" onclick="event.stopPropagation();" class="px-2 py-1 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-700/60 rounded-lg text-[10px] font-mono font-bold transition">🗑️ Delete</a></div></td></tr>';
+                    }).join('');
+                }
+                const errEl = document.getElementById('liveTelemetryErrorBox');
+                if (errEl) errEl.classList.add('hidden');
+                autoRefreshCountdown = 30;
+            } catch (err) {
+                console.warn('Live telemetry refresh warning:', err);
+                const errEl = document.getElementById('liveTelemetryErrorBox');
+                if (errEl) {
+                    errEl.classList.remove('hidden');
+                    errEl.innerText = '⚠️ Telemetry auto-sync warning: ' + (err && err.message ? err.message : 'Unable to reach gateway');
+                }
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             checkUbdNetworkAndPortalConnectivity(false);
+            setInterval(() => {
+                autoRefreshCountdown -= 1;
+                if (autoRefreshCountdown <= 0) {
+                    autoRefreshCountdown = 30;
+                    refreshLiveTelemetryData();
+                }
+                const badge = document.getElementById('liveCountdownBadge');
+                if (badge) badge.innerText = 'Auto-Sync: ' + autoRefreshCountdown + 's';
+            }, 1000);
         });
     </script>
 
@@ -3239,8 +3414,7 @@ const telemetryPostRoutes = [
   '/api/ubd-monitoring/report',
   '/api/live-monitoring/report',
   '/api/live-monitoring',
-  '/api/monitoring/report',
-  '/api/reporting/receiver'
+  '/api/monitoring/report'
 ];
 
 app.post(telemetryPostRoutes, telemetryPostHandler);
@@ -3387,7 +3561,7 @@ app.all(['/admin/ubd_monitoring', '/admin/ubd_monitoring.php', '/ubd_monitoring.
     }
     await hydrateTelemetryFromFirestoreRest(Boolean(req.query.t));
     const consolidatedPcs = getNormalizedConsolidatedPcs();
-    const machinesList = Object.values(consolidatedPcs).filter((p: any) => !isDummyRecord(p.pcId || p.machineId, p.pcName));
+    const machinesList = sortFleetByPriority(Object.values(consolidatedPcs).filter((p: any) => !isDummyRecord(p.pcId || p.machineId, p.pcName)));
     return res.json({
       success: true,
       version: UBD_GATEWAY_VERSION,
@@ -3582,21 +3756,133 @@ app.get(['/api/consolidated-health', '/api/consolidated-data', '/api/reports/con
   return res.json(pcsList);
 });
 
-app.get('/api/reporting/receiver', async (req, res) => {
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Access-Control-Allow-Origin", "*");
+// Unified E-Vedhika Telemetry Receiver Endpoint (/api/reporting/receiver)
+// Supports Raw JSON POST, Base64 URL-encoded POST (payload_b64), Base64 GET query, OPTIONS CORS & Live Fleet Summary
+app.all('/api/reporting/receiver', async (req, res) => {
+  const allowedOrigins = [
+    'https://www.e-vedhika.in',
+    'https://e-vedhika.in',
+    'https://rakeshkumardhawan.github.io',
+    'https://e-vedhika.rakeshkumardhawan123.workers.dev',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ];
+  const origin = String(req.headers.origin || '');
+  const isApproved = allowedOrigins.includes(origin) || origin.endsWith('.run.app') || origin.endsWith('.github.io') || origin.endsWith('.workers.dev');
+  if (isApproved && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Admin-Token, X-EVedhika-Client');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
-  await hydrateTelemetryFromFirestoreRest(false);
-  const pcs = getNormalizedConsolidatedPcs();
-  const pcsList = Object.values(pcs);
-  return res.json({
-    success: true,
-    totalLivePcs: pcsList.length,
-    activeNodes: pcsList.filter((p: any) => String(p.overallStatus || '').toUpperCase().includes('ONLINE') || String(p.status || '').toUpperCase().includes('SUCCESS')).length,
-    fleetSummary: pcsList,
-    receiverTimestamp: new Date().toISOString()
-  });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    const mergedPayload = extractMergedTelemetryPayload(req.body, req.query as Record<string, any>);
+    const action = String(mergedPayload.action || '').toLowerCase().trim();
+
+    if (action === 'ping') {
+      return res.status(200).json({
+        success: true,
+        status: 'INGEST_OK',
+        message: 'INGEST_OK',
+        version: UBD_GATEWAY_VERSION,
+        resourceBuild: UBD_RESOURCE_BUILD,
+        time: new Date().toISOString()
+      });
+    }
+
+    const hasIngestAttempt =
+      req.method === 'POST' ||
+      Boolean(req.query.payload_b64 || req.query.pcId || req.query.pcName || req.query.PcName || action === 'ingest_report');
+
+    if (hasIngestAttempt) {
+      const validatedRow = normalizeTelemetryRecord(mergedPayload);
+      if (!validatedRow) {
+        return res.status(400).json({ success: false, message: 'Invalid Payload' });
+      }
+
+      const record = processIncomingTelemetry(req);
+      const machineId = String(record.pcId || record.id);
+      if (isDummyRecord(machineId, record.pcName)) {
+        return res.status(200).json({ success: false, ignored: 'dummy' });
+      }
+
+      const pcs = getNormalizedConsolidatedPcs();
+      pcs[machineId] = {
+        ...(pcs[machineId] || {}),
+        machineId,
+        pcId: machineId,
+        pcName: record.pcName,
+        userName: record.userName,
+        officeLocation: record.officeLocation,
+        district: record.district,
+        state: record.state,
+        os: record.osVersion,
+        buildNumber: record.buildNumber || record.winBuild || 'N/A',
+        appVersion: record.appVersion || record.version || UBD_GATEWAY_VERSION,
+        resourceBuild: record.resourceBuild || UBD_RESOURCE_BUILD,
+        overallStatus: 'ONLINE',
+        status: record.status || 'SUCCESS',
+        healthScore: Number(record.healthScore ?? 100),
+        ramUsagePct: Number(record.ramUsagePct ?? 45),
+        appState: String(record.appState || 'RUNNING').toUpperCase(),
+        lastHeartbeatEpoch: Math.floor(Date.now() / 1000),
+        stepsVerified: record.verification || record.stepsVerified || '17/17 Passed',
+        dscStatus: record.dscStatus || 'USB Token Active',
+        edgePolicy: record.edgeIeMode || 'IE5 Quirks Active',
+        edgeIeMode: record.edgeIeMode || 'IE5 Quirks Active',
+        sitesXml: record.sitesXml || 'Validated',
+        lastSeen: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        lastSummary: record.remarks
+      };
+
+      try {
+        const dir = path.dirname(ubdMonitoringStoragePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(ubdMonitoringStoragePath, JSON.stringify(pcs, null, 2), 'utf-8');
+      } catch (persistErr) {
+        console.warn('Warning persisting consolidated JSON:', persistErr);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'INGEST_OK',
+        database: 'firebase-firestore',
+        gatewayVersion: `${UBD_GATEWAY_VERSION} (${UBD_RESOURCE_BUILD})`,
+        eventId: record.id,
+        pcId: machineId,
+        pcName: record.pcName,
+        healthScore: record.healthScore,
+        resourceBuild: record.resourceBuild || UBD_RESOURCE_BUILD
+      });
+    }
+
+    // Plain GET without ingest params: hydrate from Firebase Firestore (default) & return priority-sorted live fleet summary
+    await hydrateTelemetryFromFirestoreRest(false);
+    const pcs = getNormalizedConsolidatedPcs();
+    const pcsList = sortFleetByPriority(Object.values(pcs).filter((p: any) => !isDummyRecord(p.pcId || p.machineId, p.pcName)));
+    return res.status(200).json({
+      success: true,
+      database: 'firebase-firestore',
+      storage: 'cloudflare-r2',
+      totalLivePcs: pcsList.length,
+      activeNodes: pcsList.filter((p: any) => String(p.overallStatus || '').toUpperCase().includes('ONLINE') || String(p.status || '').toUpperCase().includes('SUCCESS')).length,
+      fleetSummary: pcsList,
+      receiverTimestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('[ERROR] Telemetry Ingest Failed:', err);
+    return res.status(500).json({ success: false, message: 'Server Error', error: err?.message });
+  }
 });
 
 const telemetryGetRoutes = [
@@ -5124,37 +5410,7 @@ app.get('/api/remote-commands', (req, res) => {
 
             return res.json({ url: finalUrl, r2: true, provider: "cloudflare" });
           } catch (r2Error: any) {
-            console.error("Cloudflare R2 Upload Error, attempting Supabase fallback:", r2Error);
-          }
-        }
-
-        // Supabase Storage Server Fallback
-        const sbUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://vjylwkgbkybylzuxpksm.supabase.co").trim();
-        const sbKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqeWx3a2dia3lieWx6dXhwa3NtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg1MDU4NDQsImV4cCI6MjA1NDA4MTg0NH0.f3c7k8kQ9P5d3L6o1Z3q-placeholder").trim();
-        const sbBucket = (process.env.SUPABASE_BUCKET_NAME || "e-vedhika-files").trim();
-
-        if (sbUrl && sbKey) {
-          try {
-            const supabaseServer = createSupabaseClient(sbUrl, sbKey);
-            const fileBuffer = fs.readFileSync(uploadedFile.path);
-            const sbPath = `uploads/${Date.now()}_${uploadedFile.filename}`;
-            const { data: sbData, error: sbErr } = await supabaseServer.storage
-              .from(sbBucket)
-              .upload(sbPath, fileBuffer, {
-                contentType: uploadedFile.mimetype || "application/octet-stream",
-                upsert: true,
-              });
-
-            if (!sbErr && sbData) {
-              const { data: pubData } = supabaseServer.storage.from(sbBucket).getPublicUrl(sbData.path);
-              if (pubData?.publicUrl) {
-                console.log("Supabase Storage Upload Success:", pubData.publicUrl);
-                try { fs.unlinkSync(uploadedFile.path); } catch (e) {}
-                return res.json({ url: pubData.publicUrl, supabase: true, provider: "supabase" });
-              }
-            }
-          } catch (sbEx: any) {
-            console.warn("Supabase server storage fallback exception:", sbEx?.message);
+            console.error("Cloudflare R2 Upload Error, falling back to local disk storage:", r2Error);
           }
         }
 
