@@ -48,9 +48,18 @@ export const UbdSettingManagerView: React.FC = () => {
   const fetchTelemetryData = async () => {
     setRefreshing(true);
     try {
-      const res = await fetch('/api/consolidated-health');
-      if (res.ok) {
-        const json = await res.json();
+      let json: any = null;
+      const res = await fetch('/api/consolidated-health', { headers: { Accept: 'application/json' } });
+      if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
+        json = await res.json();
+      } else {
+        const staticRes = await fetch('/admin/pc_consolidated_health.json');
+        if (staticRes.ok) {
+          const rawStatic = await staticRes.json();
+          json = { machines: Array.isArray(rawStatic) ? rawStatic : Object.values(rawStatic || {}) };
+        }
+      }
+      if (json) {
         const data = json.machines || [];
         if (Array.isArray(data)) {
           const mapped: MachineRecord[] = data.map((item: any) => ({

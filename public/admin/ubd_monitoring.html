@@ -101,8 +101,11 @@
   </div>
 
   <script>
-    const FIREBASE_FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/telemetryLogs?pageSize=200';
+    const FIREBASE_FIRESTORE_URL = 'https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/telemetryLogs?pageSize=60';
     const CLOUDFLARE_WORKER_URL = 'https://e-vedhika.rakeshkumardhawan123.workers.dev/api/reporting/receiver';
+    const STATIC_HEALTH_SNAPSHOT_URL = '/admin/pc_consolidated_health.json';
+    const CACHE_KEY = 'evd_ubd_telemetry_cache_v1';
+    const COOLDOWN_KEY = 'evd_firestore_429_until';
 
     let telemetryRecords = [];
     let secondsRemaining = 30;
@@ -277,42 +280,108 @@
 
       try {
         let rawList = null;
+        let sourceLabel = 'Live';
+        let quotaLimited = false;
 
-        // 1. Primary: Origin /api/reporting/receiver (Express / Cloud Run / Cloudflare Worker route)
+        // 1. Primary: Same-Origin /api/reporting/receiver (Express / Cloud Run / Cloudflare Worker route)
         try {
           const res = await fetch('/api/reporting/receiver?t=' + Date.now(), {
             headers: { 'Accept': 'application/json' }
           });
           if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) {
             const data = await res.json();
-            rawList = Array.isArray(data?.fleetSummary) ? data.fleetSummary : (Array.isArray(data?.machines) ? data.machines : []);
+            const arr = Array.isArray(data?.fleetSummary) ? data.fleetSummary : (Array.isArray(data?.machines) ? data.machines : []);
+            if (arr.length > 0) {
+              rawList = arr;
+              sourceLabel = 'Live Gateway';
+            }
           }
         } catch {}
 
-        // 2. Fallback for Static GitHub Pages: Cloudflare Worker Endpoint
+        // 2. Secondary: Cloudflare Edge Worker (Edge-cached 60s to prevent Firestore 429 spikes)
         if (!rawList) {
           try {
-            const wRes = await fetch(CLOUDFLARE_WORKER_URL + '?t=' + Date.now(), {
+            const wRes = await fetch(CLOUDFLARE_WORKER_URL, {
               headers: { 'Accept': 'application/json' }
             });
-            if (wRes.ok) {
+            if (wRes.ok && (wRes.headers.get('content-type') || '').includes('application/json')) {
               const wData = await wRes.json();
-              rawList = Array.isArray(wData?.fleetSummary) ? wData.fleetSummary : [];
+              if (Array.isArray(wData?.fleetSummary) && wData.fleetSummary.length > 0) {
+                rawList = wData.fleetSummary;
+                sourceLabel = 'Cloudflare + Firestore';
+              }
+            } else if (wRes.status === 429) {
+              quotaLimited = true;
             }
           } catch {}
         }
 
-        // 3. Direct Firebase Firestore (default) REST API Fallback
+        // 3. Direct Firebase Firestore (default) REST API (guarded against HTTP 429 Quota Cooldown)
+        const cooldownUntil = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
+        if (!rawList && Date.now() > cooldownUntil) {
+          try {
+            const fsRes = await fetch(FIREBASE_FIRESTORE_URL);
+            if (fsRes.status === 429) {
+              quotaLimited = true;
+              localStorage.setItem(COOLDOWN_KEY, String(Date.now() + 10 * 60 * 1000));
+            } else if (fsRes.ok) {
+              const fsData = await fsRes.json();
+              const parsedDocs = parseFirestoreDocuments(Array.isArray(fsData?.documents) ? fsData.documents : []);
+              if (parsedDocs.length > 0) {
+                rawList = parsedDocs;
+                sourceLabel = 'Firestore Live';
+              }
+            }
+          } catch {}
+        } else if (!rawList && Date.now() <= cooldownUntil) {
+          quotaLimited = true;
+        }
+
+        // 4. Static Snapshot Fallback (/admin/pc_consolidated_health.json on GitHub Pages) & localStorage Cache
         if (!rawList) {
-          const fsRes = await fetch(FIREBASE_FIRESTORE_URL);
-          if (!fsRes.ok) throw new Error('HTTP ' + fsRes.status);
-          const fsData = await fsRes.json();
-          rawList = parseFirestoreDocuments(Array.isArray(fsData?.documents) ? fsData.documents : []);
+          try {
+            const cachedRaw = localStorage.getItem(CACHE_KEY);
+            if (cachedRaw) {
+              const parsedCache = JSON.parse(cachedRaw);
+              if (Array.isArray(parsedCache?.list) && parsedCache.list.length > 0) {
+                rawList = parsedCache.list;
+                sourceLabel = quotaLimited ? 'Cached (Firestore 429 Cooldown)' : 'Cached Snapshot';
+              }
+            }
+          } catch {}
+        }
+
+        if (!rawList) {
+          try {
+            const sRes = await fetch(STATIC_HEALTH_SNAPSHOT_URL + '?t=' + Date.now());
+            if (sRes.ok) {
+              const sJson = await sRes.json();
+              const arr = Array.isArray(sJson) ? sJson : (sJson && typeof sJson === 'object' ? Object.values(sJson) : []);
+              if (arr.length > 0) {
+                rawList = arr;
+                sourceLabel = quotaLimited ? 'Static Snapshot (Firestore 429 Cooldown)' : 'Static Snapshot';
+              }
+            }
+          } catch {}
+        }
+
+        if (!rawList) {
+          throw new Error(quotaLimited ? 'Firestore Daily Read Quota Exceeded (HTTP 429)' : 'Unable to fetch telemetry from API or Snapshot');
         }
 
         telemetryRecords = rawList.map(normalizeRecord);
-        errorBanner.classList.add('hidden');
-        document.getElementById('lastUpdatedLabel').innerText = 'Updated: ' + new Date().toLocaleTimeString('en-IN');
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), list: rawList }));
+        } catch {}
+
+        if (quotaLimited) {
+          errorBanner.classList.remove('hidden');
+          errorBannerText.innerText = 'ℹ️ Firebase Firestore ఉచిత కోటా (HTTP 429) తాత్కాలికంగా నిండినందున, సేవ్ అయిన తాజా Snapshot డేటా చూపించబడుతోంది.';
+        } else {
+          errorBanner.classList.add('hidden');
+        }
+
+        document.getElementById('lastUpdatedLabel').innerText = `${sourceLabel} • ${new Date().toLocaleTimeString('en-IN')}`;
         secondsRemaining = 30;
         renderCards();
       } catch (err) {

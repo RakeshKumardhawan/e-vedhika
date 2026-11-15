@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Send, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, Key, MessageSquare, Bot, HelpCircle, Copy, Check } from 'lucide-react';
+import { Send } from 'lucide-react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../../firebase';
 
 interface TelegramConfig {
   hasBotToken: boolean;
@@ -10,6 +12,21 @@ interface TelegramConfig {
 
 interface TelegramNotificationCardProps {
   addToast?: (msg: string, type?: "success" | "error" | "info") => void;
+}
+
+async function safeParseJson(resp: Response): Promise<any | null> {
+  const ct = (resp.headers.get('content-type') || '').toLowerCase();
+  const text = await resp.text();
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.startsWith('<')) return null;
+  if (!ct.includes('application/json') && !trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return null;
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
 }
 
 export function TelegramNotificationCard({ addToast }: TelegramNotificationCardProps) {
@@ -30,32 +47,92 @@ export function TelegramNotificationCard({ addToast }: TelegramNotificationCardP
 
   const [pcFilters, setPcFilters] = useState<{ blockedPcs: string[]; allPcs: any[] }>({ blockedPcs: [], allPcs: [] });
 
+  const fetchConfigFromFirestore = async () => {
+    try {
+      const snap = await getDoc(doc(db, 'settings', 'telegram_config'));
+      if (snap.exists()) {
+        const d = snap.data() || {};
+        const token = String(d.botToken || '');
+        const masked = token.length > 8 ? `${token.slice(0, 5)}••••${token.slice(-4)}` : (d.botTokenMasked || '');
+        setConfig({
+          hasBotToken: Boolean(token || d.hasBotToken),
+          botTokenMasked: masked,
+          chatId: String(d.chatId || ''),
+          autoNotifyOnTelemetry: d.autoNotifyOnTelemetry !== false
+        });
+        setInputChatId(String(d.chatId || ''));
+        setAutoNotify(d.autoNotifyOnTelemetry !== false);
+        return;
+      }
+    } catch {
+      // Fallback gracefully if Firestore offline or quota limited
+    }
+    try {
+      const cached = localStorage.getItem('evd_telegram_config_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        setConfig(parsed);
+        setInputChatId(parsed.chatId || '');
+        setAutoNotify(parsed.autoNotifyOnTelemetry !== false);
+      }
+    } catch {}
+  };
+
   const fetchConfig = async () => {
     try {
-      const resp = await fetch('/api/telegram-config');
+      const resp = await fetch('/api/telegram-config', { headers: { Accept: 'application/json' } });
       if (resp.ok) {
-        const data = await resp.json();
-        if (data.success) {
+        const data = await safeParseJson(resp);
+        if (data?.success) {
           setConfig(data);
           setInputChatId(data.chatId || '');
           setAutoNotify(data.autoNotifyOnTelemetry !== false);
+          return;
         }
       }
-    } catch (e) {
-      console.warn('Failed to fetch Telegram config:', e);
+    } catch {
+      // Static GitHub Pages fallback
     }
+    await fetchConfigFromFirestore();
   };
 
   const fetchPcFilters = async () => {
     try {
-      const resp = await fetch('/api/telegram-pc-filters');
+      const resp = await fetch('/api/telegram-pc-filters', { headers: { Accept: 'application/json' } });
       if (resp.ok) {
-        const data = await resp.json();
-        if (data.success) {
+        const data = await safeParseJson(resp);
+        if (data?.success) {
           setPcFilters(data);
+          return;
         }
       }
-    } catch (e) {}
+    } catch {}
+
+    // Fallback for static GitHub Pages: Firestore settings + static /admin/pc_consolidated_health.json
+    try {
+      let blockedPcs: string[] = [];
+      try {
+        const filterSnap = await getDoc(doc(db, 'settings', 'telegram_pc_filters'));
+        if (filterSnap.exists() && Array.isArray(filterSnap.data()?.blockedPcs)) {
+          blockedPcs = filterSnap.data().blockedPcs;
+        }
+      } catch {}
+
+      let allPcs: any[] = [];
+      try {
+        const staticResp = await fetch('/admin/pc_consolidated_health.json');
+        if (staticResp.ok) {
+          const raw = await safeParseJson(staticResp);
+          const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+          allPcs = list.map((pc: any) => {
+            const key = pc.pcId || pc.pcName;
+            return { ...pc, isBlocked: blockedPcs.includes(key) };
+          });
+        }
+      } catch {}
+
+      setPcFilters({ blockedPcs, allPcs });
+    } catch {}
   };
 
   useEffect(() => {
@@ -68,18 +145,41 @@ export function TelegramNotificationCard({ addToast }: TelegramNotificationCardP
     try {
       const resp = await fetch('/api/telegram-pc-filters', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ pcKey, action })
       });
-      const data = await resp.json();
-      if (resp.ok && data.success) {
+      const data = await safeParseJson(resp);
+      if (resp.ok && data?.success) {
         const msg = `✅ PC ${pcKey} successfully ${action === 'block' ? 'blocked / muted' : 'allowed'} for Telegram alerts.`;
         setStatusMsg({ type: 'success', text: msg });
         if (addToast) addToast(msg, "success");
         fetchPcFilters();
+        return;
       }
+    } catch {}
+
+    // Firebase Firestore fallback on static GitHub Pages
+    try {
+      const nextBlocked = action === 'block'
+        ? Array.from(new Set([...pcFilters.blockedPcs, pcKey]))
+        : pcFilters.blockedPcs.filter((k) => k !== pcKey);
+
+      await setDoc(doc(db, 'settings', 'telegram_pc_filters'), {
+        blockedPcs: nextBlocked,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      setPcFilters((prev) => ({
+        blockedPcs: nextBlocked,
+        allPcs: prev.allPcs.map((pc: any) =>
+          (pc.pcId || pc.pcName) === pcKey ? { ...pc, isBlocked: action === 'block' } : pc
+        )
+      }));
+      const msg = `✅ PC ${pcKey} ${action === 'block' ? 'muted' : 'allowed'} (Firebase Firestore Synced).`;
+      setStatusMsg({ type: 'success', text: msg });
+      if (addToast) addToast(msg, "success");
     } catch (e: any) {
-      const errMsg = e.message || 'Failed to update PC filter.';
+      const errMsg = e?.message || 'Failed to update PC filter.';
       setStatusMsg({ type: 'error', text: errMsg });
       if (addToast) addToast(errMsg, "error");
     }
@@ -91,27 +191,51 @@ export function TelegramNotificationCard({ addToast }: TelegramNotificationCardP
     try {
       const resp = await fetch('/api/telegram-config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
           botToken: inputBotToken ? inputBotToken.trim() : undefined,
           chatId: inputChatId.trim(),
           autoNotifyOnTelemetry: autoNotify
         })
       });
-      const data = await resp.json();
-      if (resp.ok && data.success) {
+      const data = await safeParseJson(resp);
+      if (resp.ok && data?.success) {
         const msg = '✅ Telegram Bot configuration saved successfully!';
         setStatusMsg({ type: 'success', text: msg });
         if (addToast) addToast(msg, "success");
         setInputBotToken('');
         fetchConfig();
-      } else {
-        const errMsg = data.error || 'Failed to save configuration.';
-        setStatusMsg({ type: 'error', text: errMsg });
-        if (addToast) addToast(errMsg, "error");
+        return;
       }
+
+      // If running statically (GitHub Pages 404/HTML), save to Firebase Firestore
+      const nextToken = inputBotToken.trim();
+      const masked = nextToken.length > 8 ? `${nextToken.slice(0, 5)}••••${nextToken.slice(-4)}` : config.botTokenMasked;
+      const payload: Record<string, any> = {
+        chatId: inputChatId.trim(),
+        autoNotifyOnTelemetry: autoNotify,
+        updatedAt: Date.now()
+      };
+      if (nextToken) {
+        payload.botToken = nextToken;
+        payload.botTokenMasked = masked;
+        payload.hasBotToken = true;
+      }
+      await setDoc(doc(db, 'settings', 'telegram_config'), payload, { merge: true });
+      const nextCfg: TelegramConfig = {
+        hasBotToken: Boolean(nextToken || config.hasBotToken),
+        botTokenMasked: masked || config.botTokenMasked,
+        chatId: inputChatId.trim(),
+        autoNotifyOnTelemetry: autoNotify
+      };
+      localStorage.setItem('evd_telegram_config_v1', JSON.stringify(nextCfg));
+      setConfig(nextCfg);
+      setInputBotToken('');
+      const msg = '✅ Telegram Bot configuration saved to Firebase Firestore!';
+      setStatusMsg({ type: 'success', text: msg });
+      if (addToast) addToast(msg, "success");
     } catch (e: any) {
-      const errMsg = e.message || 'Server error while saving.';
+      const errMsg = e?.message || 'Failed to save Telegram configuration.';
       setStatusMsg({ type: 'error', text: errMsg });
       if (addToast) addToast(errMsg, "error");
     } finally {
@@ -122,31 +246,67 @@ export function TelegramNotificationCard({ addToast }: TelegramNotificationCardP
   const handleSendTestAlert = async () => {
     setIsSendingTest(true);
     setStatusMsg(null);
+    const messageText = `🛡️ <b>E-VEDHIKA CENTRAL TELEMETRY TEST</b>\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `✅ <b>Status:</b> Telegram Gateway is Live & Connected!\n` +
+      `🌐 <b>Portal:</b> www.e-vedhika.in\n`;
+
     try {
       const resp = await fetch('/api/telegram-notify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
-          message: `🛡️ <b>E-VEDHIKA CENTRAL TELEMETRY TEST</b>\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `✅ <b>Status:</b> Telegram Gateway is Live & Connected!\n` +
-            `🌐 <b>Portal:</b> www.e-vedhika.in\n`,
+          message: messageText,
           botToken: inputBotToken.trim() || undefined,
           chatId: inputChatId.trim() || undefined
         })
       });
-      const data = await resp.json();
-      if (resp.ok && (data.success || data.ok)) {
+      const data = await safeParseJson(resp);
+      if (resp.ok && data && (data.success || data.ok)) {
         const msg = '🚀 Telegram Test message delivered successfully!';
         setStatusMsg({ type: 'success', text: msg });
         if (addToast) addToast(msg, "success");
+        return;
+      }
+
+      // Static GitHub Pages fallback: read token from input or Firestore & send via Bot API directly
+      let token = inputBotToken.trim();
+      let chatId = inputChatId.trim();
+      if (!token || !chatId) {
+        try {
+          const snap = await getDoc(doc(db, 'settings', 'telegram_config'));
+          if (snap.exists()) {
+            const d = snap.data() || {};
+            if (!token && d.botToken) token = String(d.botToken);
+            if (!chatId && d.chatId) chatId = String(d.chatId);
+          }
+        } catch {}
+      }
+
+      if (!token || !chatId) {
+        const msg = '⚠️ స్టాటిక్ హోస్టింగ్ మోడ్‌లో టెస్ట్ పంపడానికి Telegram Bot Token మరియు Chat ID ఎంటర్ చేసి "Save Telegram Config" క్లిక్ చేయండి.';
+        setStatusMsg({ type: 'error', text: msg });
+        if (addToast) addToast(msg, "error");
+        return;
+      }
+
+      const tgRes = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: messageText, parse_mode: 'HTML' })
+      });
+      const tgJson = await safeParseJson(tgRes);
+      if (tgRes.ok && tgJson?.ok) {
+        const msg = '🚀 Telegram Test message delivered directly via Telegram Bot API!';
+        setStatusMsg({ type: 'success', text: msg });
+        if (addToast) addToast(msg, "success");
       } else {
-        const errMsg = data.error || 'Failed to dispatch Telegram message.';
+        const errMsg = tgJson?.description || 'Failed to dispatch Telegram message. Please verify Bot Token & Chat ID.';
         setStatusMsg({ type: 'error', text: errMsg });
         if (addToast) addToast(errMsg, "error");
       }
     } catch (e: any) {
-      const errMsg = e.message || 'Network error sending message.';
+      const errMsg = e?.message || 'Network error sending message.';
       setStatusMsg({ type: 'error', text: errMsg });
       if (addToast) addToast(errMsg, "error");
     } finally {

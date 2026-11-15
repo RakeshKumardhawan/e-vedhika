@@ -1889,7 +1889,7 @@ const UBD_GATEWAY_VERSION = 'v1.0.9';
 const UBD_RESOURCE_BUILD = '2026.11.12.R4';
 const ubdAdminAuthConfigPath = path.join(process.cwd(), "data", "ubd_admin_auth.json");
 const DEFAULT_UBD_PASSCODE_HASH = process.env.EVEDHIKA_ADMIN_PASSCODE_HASH
-  || (process.env.EVEDHIKA_ADMIN_PASSCODE ? crypto.createHash('sha256').update(process.env.EVEDHIKA_ADMIN_PASSCODE).digest('hex') : 'c827db7ed0970d77bbecfd2545fdbfab6d5b713b53285121630d7d00be8e41f9');
+  || (process.env.EVEDHIKA_ADMIN_PASSCODE ? crypto.createHash('sha256').update(process.env.EVEDHIKA_ADMIN_PASSCODE).digest('hex') : '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4');
 
 // Helper: Dummy filter matching C# and PHP ubd_monitoring.php specifications
 const DUMMY_PC_IDS = ['EVD-PC-9942-A1B2', 'DEMO-PC', 'SAMPLE-PC', 'DUMMY-PC'];
@@ -2121,17 +2121,25 @@ async function pushTelemetryToFirestoreRest(record: any): Promise<void> {
   });
 }
 
+let firestoreRest429CooldownUntil = 0;
+
 async function hydrateTelemetryFromFirestoreRest(force = false): Promise<void> {
   const now = Date.now();
-  if (!force && now - lastFirestoreRestSyncEpoch < 15000) return;
+  if (now < firestoreRest429CooldownUntil) return;
+  if (!force && now - lastFirestoreRestSyncEpoch < 120000) return;
   lastFirestoreRestSyncEpoch = now;
 
-  const collections = ['telemetryLogs', 'deploymentLogs', 'exe_telemetry'];
+  const collections = ['telemetryLogs', 'deploymentLogs'];
   let addedAny = false;
 
   for (const col of collections) {
     try {
-      const res = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/${col}?pageSize=150`);
+      const res = await fetch(`https://firestore.googleapis.com/v1/projects/e-vedhika-258f2/databases/(default)/documents/${col}?pageSize=60`);
+      if (res.status === 429) {
+        firestoreRest429CooldownUntil = Date.now() + 10 * 60 * 1000;
+        console.warn('Firestore REST read quota exceeded (429). Entering 10-minute cooldown using local store.');
+        break;
+      }
       if (!res.ok) continue;
       const data: any = await res.json();
       const docs = Array.isArray(data?.documents) ? data.documents : [];

@@ -364,10 +364,25 @@ export default {
       }
     }
 
-    // 1D. LIVE FLEET SUMMARY READ FROM FIREBASE FIRESTORE (for static GitHub Pages dashboard)
+    // 1D. LIVE FLEET SUMMARY READ FROM FIREBASE FIRESTORE (Edge-Cached 60s to prevent 429 Quota spikes)
     if (isReportingReceiver && method === "GET") {
+      const cache = caches.default;
+      const cacheKey = new Request(`${url.origin}/api/reporting/receiver`, { method: "GET" });
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const headers = new Headers(cached.headers);
+        Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, v));
+        return new Response(cached.body, { status: cached.status, headers });
+      }
+
       try {
-        const fsRes = await fetch(`${FIRESTORE_BASE_URL}/telemetryLogs?pageSize=200`);
+        const fsRes = await fetch(`${FIRESTORE_BASE_URL}/telemetryLogs?pageSize=60`);
+        if (fsRes.status === 429) {
+          return new Response(
+            JSON.stringify({ success: false, code: 429, message: "Firestore daily read quota exceeded (429)" }),
+            { status: 429, headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders } }
+          );
+        }
         if (!fsRes.ok) throw new Error(`Firestore HTTP ${fsRes.status}`);
         const fsJson = await fsRes.json();
         const docs = Array.isArray(fsJson?.documents) ? fsJson.documents : [];
@@ -391,7 +406,7 @@ export default {
           return diff !== 0 ? diff : Number(b.lastHeartbeatEpoch || 0) - Number(a.lastHeartbeatEpoch || 0);
         });
 
-        return new Response(
+        const response = new Response(
           JSON.stringify({
             success: true,
             database: "firebase-firestore",
@@ -405,11 +420,15 @@ export default {
             status: 200,
             headers: {
               "Content-Type": "application/json; charset=utf-8",
-              "Cache-Control": "no-cache, no-store, must-revalidate",
+              "Cache-Control": `public, max-age=${CACHE_TTL_SECONDS}, s-maxage=${CACHE_TTL_SECONDS}`,
+              "X-EVedhika-Cache": "EDGE-FIRESTORE-60S",
               ...corsHeaders
             }
           }
         );
+
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
       } catch (err) {
         return new Response(
           JSON.stringify({ success: false, message: "Firestore read error", error: err?.message }),
