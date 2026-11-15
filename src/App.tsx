@@ -172,7 +172,7 @@ import { GosAndFormatsPublic, GosAndFormatsAdmin } from "./GosAndFormats";
 import { PR_ACT_DB, PRSection } from "./data/prActData";
 import { ExcelPrinterTool } from "./ExcelPrinterTool";
 import { GPDPPlanningTool } from "./components/GPDPPlanningTool";
-import { KnowledgeHubSection, PRActHub } from "./components/KnowledgeHub";
+import { KnowledgeHubSection, PRActHub, PracticalTutorialsHub } from "./components/KnowledgeHub";
 import { EVAnimatedLogo } from "./components/EVAnimatedLogo";
 import { AuthModal } from "./components/AuthModal";
 import { PollsScreen } from "./components/PollsScreen";
@@ -5644,6 +5644,7 @@ E-Vedhika Support System`;
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
+            <TabInfoBanner currentTab="farmer_registry" customDescriptions={pageDescriptions} />
             <FarmerRegistryTool
               user={user}
               onLoginClick={() => setShowAuthModal(true)}
@@ -18962,7 +18963,7 @@ function DigitalWorkspaceSection({
             key={t.id}
             className="mana-card relative group cursor-pointer flex flex-col items-center justify-between p-4"
             onClick={() => {
-              if (!user && t.id !== "dsr") {
+              if (!user && t.id === "ticket-tracker") {
                 requireLoginAlert(user);
                 return;
               }
@@ -18981,6 +18982,9 @@ function DigitalWorkspaceSection({
                 <t.icon size={32} />
               </div>
               <h4>{t.title}</h4>
+              <p className="text-[11px] text-slate-500 mt-1 text-center font-medium leading-snug">
+                {t.desc}
+              </p>
             </div>
 
             <button
@@ -18996,6 +19000,54 @@ function DigitalWorkspaceSection({
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Comprehensive Workspace Documentation & Gram Panchayat Knowledge Guide */}
+      <div className="mt-8 pt-6 border-t border-slate-200/80 space-y-6">
+        <div className="bg-slate-50 rounded-2xl p-5 sm:p-6 border border-slate-200/90 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="text-[11px] font-black uppercase tracking-wider text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-md">
+                Comprehensive Tool Documentation & Reference
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5">
+                మన పంచాయతీ ఆన్‌లైన్ టూల్స్ - సంపూర్ణ వినియోగ మార్గదర్శిని (Workspace Tools Documentation)
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200">
+              🔒 100% Client-Side Local Browser Processing
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+            గ్రామ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు, టెక్నికల్ అసిస్టెంట్లు, సర్పంచులు మరియు గ్రామ పంచాయతీ సిబ్బంది తమ రోజువారీ పరిపాలనా నివేదికలను వేగంగా, ఎలాంటి మాన్యువల్ క్యాలిక్యులేషన్ తప్పులు లేకుండా రూపొందించుకోవడానికి ఈ-వేదిక (E-Vedhika) ఈ క్రింది ఆటోమేషన్ టూల్స్‌ను అందిస్తోంది:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <h4 className="text-xs sm:text-sm font-black text-[#0d3b66]">1. డైలీ DSR & అటెండెన్స్ అనలైజర్ (Daily DSR Analyzer)</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                మన పంచాయతీ పోర్టల్ నుండి డౌన్‌లోడ్ చేసిన DSR/Attendance ఎక్సెల్ లేదా HTML ఫైల్‌ను అప్‌లోడ్ చేయగానే మండలాల వారీగా 6-7 AM, 7-8 AM, 8-9 AM, Before 9 AM %, After 11 AM %, Leave, Meeting, Not Reported మరియు DSR Status గణాంకాలను విశ్లేషించి Master Excel & A4 PDF రిపోర్టులను అందిస్తుంది.
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <h4 className="text-xs sm:text-sm font-black text-[#0d3b66]">2. మల్టీ-డే హాజరు విశ్లేషణ (Multi-Day Attendance Consolidator)</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                వారం లేదా నెల రోజుల (30 రోజుల వరకు) డైలీ అటెండెన్స్ ఎక్సెల్ ఫైళ్లను ఒకేసారి అప్‌లోడ్ చేస్తే, ప్రతి గ్రామ పంచాయతీ వారీగా మొత్తం హాజరైన రోజులు, సెలవులు, మీటింగ్‌లు మరియు నెలవారీ హాజరు శాతాన్ని (Attendance %) కన్సాలిడేట్ చేస్తుంది.
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <h4 className="text-xs sm:text-sm font-black text-[#0d3b66]">3. మాసాంతపు యాక్టివిటీ రిపోర్ట్ (MAS GP Matrix Formatter)</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                మండల మరియు గ్రామ పంచాయతీ స్థాయిలో మాసాంతపు ఈ-పంచాయతీ కార్యకలాపాల (Monthly Activity Status) పురోగతిని విశ్లేషించి, జీరో ఎంట్రీ లేదా పెండింగ్ ఉన్న గ్రామ పంచాయతీలను తక్షణమే గుర్తిస్తుంది.
+              </p>
+            </div>
+            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5">
+              <h4 className="text-xs sm:text-sm font-black text-[#0d3b66]">4. GPDP బడ్జెట్ కేటాయింపు & ఎక్సెల్ మెర్జర్ (GPDP & Excel Merger)</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                15వ ఆర్థిక సంఘం Tied (60% - పారిశుద్ధ్యం 30% & తాగునీరు 30%) మరియు Untied (40%) నిబంధనల ప్రకారం GPDP వార్షిక బడ్జెట్ ప్రణాళికను రూపొందించడానికి, అలాగే పదుల సంఖ్యలోని GP ఎక్సెల్ ఫైళ్లను ఒకే మాస్టర్ షీట్‌గా కలపడానికి ఉపయోగపడతాయి.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -19054,7 +19106,7 @@ function DigitalWorkspaceSection({
               <TabInfoBanner currentTab={activeTool} customDescriptions={pageDescriptions} />
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 relative">
-              {!user && activeTool !== "dsr" ? (
+              {!user && activeTool === "ticket-tracker" ? (
                 <div className="max-w-xl mx-auto my-10 bg-white rounded-[32px] p-8 sm:p-12 border border-slate-200 shadow-xl text-center flex flex-col items-center">
                   <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center mb-5 shadow-sm">
                     <Lock size={32} />
@@ -19063,7 +19115,7 @@ function DigitalWorkspaceSection({
                     {tools.find((t) => t.id === activeTool)?.title || "ఈ టూల్"} ఉపయోగించడానికి లాగిన్ అవ్వండి
                   </h3>
                   <p className="text-slate-500 font-medium text-xs sm:text-sm mb-6 max-w-md leading-relaxed">
-                    ఈ సాధనాన్ని ఉపయోగించడానికి దయచేసి మీ ఖాతాతో లాగిన్ అవ్వండి.
+                    మీ వ్యక్తిగత సపోర్ట్ టికెట్లను ట్రాక్ చేయడానికి దయచేసి మీ ఖాతాతో లాగిన్ అవ్వండి.
                   </p>
                   <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                     <button
@@ -19091,83 +19143,7 @@ function DigitalWorkspaceSection({
                 <MultiDayAnalyzer addToast={addToast} user={user} />
               )}
               {activeTool === "training" && (
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "15px",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        color: "var(--primary)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        margin: 0,
-                      }}
-                    >
-                      <GraduationCap /> Digital Workflows
-                    </h3>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "10px 0",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "15px",
-                    }}
-                  >
-                    {[1, 2, 3].map((step) => (
-                      <div
-                        key={step}
-                        style={{ display: "flex", alignItems: "center", gap: "15px" }}
-                      >
-                        <div
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            background: "var(--primary)",
-                            color: "white",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: "800",
-                          }}
-                        >
-                          {step}
-                        </div>
-                        <div
-                          style={{
-                            flex: 1,
-                            background: "#f8fafc",
-                            padding: "15px",
-                            borderRadius: "12px",
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <span style={{ fontWeight: 700 }}>
-                            Workflow Step {step}
-                          </span>
-                          <p
-                            style={{
-                              fontSize: "12px",
-                              color: "#64748b",
-                              margin: "4px 0 0 0",
-                            }}
-                          >
-                            Detailed tutorial content for step {step} will appear
-                            here.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <PracticalTutorialsHub />
               )}
               {activeTool === "pract" && <PRActHub user={user} />}
               {activeTool === "MAS" && (
@@ -21508,7 +21484,7 @@ function DSRAnalyzer({
     const aoa: any[][] = [];
     aoa.push(["Telangana State"]);
     aoa.push([
-      `Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance (${reportDate}) ${reportTime}`,
+      `Report District & Mandal wise Status of Panchayat Operators & Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
     ]);
     aoa.push([]);
     aoa.push(DSR_REPORT_HEADERS);
@@ -21578,7 +21554,7 @@ function DSRAnalyzer({
     const aoa: any[][] = [];
     aoa.push(["Telangana State"]);
     aoa.push([
-      `Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance (${reportDate}) ${reportTime}`,
+      `Report District & Mandal wise Status of Panchayat Operators & Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
     ]);
     aoa.push([]);
     aoa.push(DSR_REPORT_HEADERS);
@@ -21682,7 +21658,7 @@ function DSRAnalyzer({
     doc.setFont("helvetica", "normal");
     doc.setTextColor(203, 213, 225); // slate-300
     doc.text(
-      `District & Mandal-wise Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance & DSR Report (${reportDate} - ${reportTime || currentTime})`,
+      `District & Mandal-wise Panchayat Operators & Panchayat Secretaries Attendance & DSR Report (${reportDate} - ${reportTime || currentTime})`,
       12,
       16
     );
@@ -21922,7 +21898,7 @@ function DSRAnalyzer({
     const lines: string[] = [];
     lines.push("Telangana State");
     lines.push(
-      `Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance (${reportDate}) ${reportTime}`,
+      `Report District & Mandal wise Status of Panchayat Operators & Panchayat Secretaries Attendance (${reportDate}) ${reportTime}`,
     );
     lines.push(DSR_REPORT_HEADERS.join("\t"));
 
@@ -22207,7 +22183,7 @@ function DSRAnalyzer({
                   Telangana State
                 </h2>
                 <p className="text-sm sm:text-base font-medium text-slate-300">
-                  Report District & Mandal wise Status of Panchayat Operators, Panchayat Secretaries & District Project Manager (DPM) Attendance ({reportDate}) {reportTime}
+                  Report District & Mandal wise Status of Panchayat Operators & Panchayat Secretaries Attendance ({reportDate}) {reportTime}
                 </p>
                 {/* Date / Time Edit inputs */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">

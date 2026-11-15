@@ -91,8 +91,39 @@ export const unmuteAdsLocally = (): void => {
 };
 
 export const canShowAds = (siteConfig?: any): boolean => {
+    if (typeof window === "undefined") return false;
     if (isLegacyWindows()) return false;
     if (isAdsMuted(siteConfig)) return false;
+
+    // Google AdSense Policy Guardrail: Never render ads on private, admin, account-only, or utility-login pages
+    const pathname = (window.location.pathname || "/").toLowerCase().replace(/\/+$/, "") || "/";
+    const search = (window.location.search || "").toLowerCase();
+
+    const privatePathPrefixes = [
+        "/admin",
+        "/evdka",
+        "/my_activity",
+        "/priority_services/my_activity",
+        "/chat",
+        "/logs",
+        "/union",
+        "/workspace/ticket-tracker",
+        "/workspace/messages",
+        "/vault",
+    ];
+
+    if (privatePathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+        return false;
+    }
+
+    const privateTabParams = ["tab=admin", "tab=editor", "tab=my_activity", "tab=logs", "tab=chat", "tab=union"];
+    if (privateTabParams.some((param) => search.includes(param))) {
+        return false;
+    }
+
+    if (siteConfig && (siteConfig.isMaintenanceMode || siteConfig.governanceMode === "MAINTENANCE")) {
+        return false;
+    }
 
     const limit = siteConfig?.ads?.adLimitPerUser;
     if (!limit) return true;

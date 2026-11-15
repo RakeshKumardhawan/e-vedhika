@@ -1,87 +1,207 @@
-import React from 'react';
-import { Info, Youtube, CheckCircle2, BookOpen } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { DEFAULT_PAGE_DESCRIPTIONS, PageDescriptionEntry } from '../data/pageDescriptions';
+import React, { useState } from "react";
+import { Info, Youtube, ListChecks, ShieldCheck, Users, Target, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, Calendar } from "lucide-react";
+import { DEFAULT_PAGE_DESCRIPTIONS, PageDescriptionEntry } from "../data/pageDescriptions";
 
-export function triggerYouTubeTutorial(toolId: string, toolName?: string) {
-  window.dispatchEvent(new CustomEvent("open-youtube-tutorial", { detail: { toolId, toolName } }));
+interface TabInfoBannerProps {
+  currentTab: string;
+  customDescriptions?: Record<string, PageDescriptionEntry>;
 }
 
-export function TabInfoBanner({ 
-  currentTab, 
-  customDescriptions 
-}: { 
-  currentTab: string; 
-  customDescriptions?: Record<string, { title: string; description: string }> 
-}) {
+export function TabInfoBanner({ currentTab, customDescriptions = {} }: TabInfoBannerProps) {
+  const [showFullDocs, setShowFullDocs] = useState(true);
+  if (!currentTab || currentTab === "admin" || currentTab === "editor" || currentTab === "logs") {
+    return null;
+  }
+
   const defaultEntry = DEFAULT_PAGE_DESCRIPTIONS[currentTab];
-  const customEntry = customDescriptions?.[currentTab];
-  const banner: PageDescriptionEntry | undefined = customEntry
-    ? {
-        ...defaultEntry,
-        title: customEntry.title || defaultEntry?.title || "",
-        description: customEntry.description || defaultEntry?.description || "",
-      }
-    : defaultEntry;
-  
-  if (!banner) return null;
+  const customEntry = customDescriptions[currentTab];
+
+  const title = customEntry?.title || defaultEntry?.title;
+  const description = customEntry?.description || defaultEntry?.description;
+  const guideSteps =
+    customEntry?.guideSteps && customEntry.guideSteps.length > 0
+      ? customEntry.guideSteps
+      : defaultEntry?.guideSteps || [];
+
+  const purpose = customEntry?.purpose || defaultEntry?.purpose;
+  const targetAudience = customEntry?.targetAudience || defaultEntry?.targetAudience;
+  const realLifeUseCases = customEntry?.realLifeUseCases || defaultEntry?.realLifeUseCases || [];
+  const limitations = customEntry?.limitations || defaultEntry?.limitations;
+  const dataPrivacy = customEntry?.dataPrivacy || defaultEntry?.dataPrivacy;
+  const officialReference = customEntry?.officialReference || defaultEntry?.officialReference;
+  const lastVerified = customEntry?.lastVerified || defaultEntry?.lastVerified;
+
+  if (!description) return null;
+
+  const hasExtendedDocs = Boolean(purpose || targetAudience || realLifeUseCases.length > 0 || limitations || dataPrivacy || guideSteps.length > 0);
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div 
-        key={currentTab}
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        className="bg-gradient-to-r from-blue-50 via-indigo-50/70 to-slate-50 backdrop-blur border border-blue-100 rounded-2xl p-4 sm:p-5 mb-6 space-y-3 shadow-sm"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-100 text-blue-600 p-2 rounded-xl shrink-0 mt-0.5">
-              <Info size={18} />
-            </div>
-            <div>
-              <h2 className="font-black text-blue-950 text-sm sm:text-base tracking-tight leading-snug">{banner.title}</h2>
-              <p className="text-blue-900/90 text-xs sm:text-[13px] mt-1 font-medium leading-relaxed">{banner.description}</p>
-            </div>
+    <div className="mb-4 rounded-2xl bg-gradient-to-r from-blue-50/95 via-indigo-50/80 to-slate-50 border border-blue-200/80 p-4 sm:p-5 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+            <Info size={18} />
           </div>
-
-          <button
-            onClick={() => triggerYouTubeTutorial(currentTab, banner.title)}
-            className="shrink-0 flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 active:scale-95 rounded-xl shadow-md transition-all border border-red-500/30 cursor-pointer self-start sm:self-center"
-            title={`Watch ${banner.title} YouTube Tutorial`}
-          >
-            <Youtube size={16} className="text-white" />
-            <span>Watch Tutorial</span>
-          </button>
+          <div className="flex-1 min-w-0">
+            {title && (
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  {title}
+                </h2>
+                {lastVerified && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                    <Calendar size={10} /> ధృవీకరించబడింది: {lastVerified}
+                  </span>
+                )}
+              </div>
+            )}
+            <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
+              {description}
+            </p>
+          </div>
         </div>
 
-        {(banner.highlights && banner.highlights.length > 0) && (
-          <div className="pt-2.5 border-t border-blue-200/50 grid grid-cols-1 md:grid-cols-3 gap-2">
-            {banner.highlights.map((hl, idx) => (
-              <div key={idx} className="flex items-start gap-1.5 text-[11px] sm:text-xs text-slate-700 font-semibold bg-white/80 px-3 py-2 rounded-xl border border-blue-100/80">
-                <CheckCircle2 size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span>{hl}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2 self-end sm:self-start shrink-0">
+          {hasExtendedDocs && (
+            <button
+              type="button"
+              onClick={() => setShowFullDocs((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl transition-all shadow-xs cursor-pointer"
+              title="టూల్ పూర్తి మార్గదర్శిని & డాక్యుమెంటేషన్ చూడండి"
+            >
+              <ListChecks size={14} />
+              <span>{showFullDocs ? "గైడ్ కుదించు" : "పూర్తి గైడ్ & వివరాలు"}</span>
+              {showFullDocs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => triggerYouTubeTutorial(currentTab, title)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer"
+            title="యూట్యూబ్ ట్యుటోరియల్ వీడియో చూడండి"
+          >
+            <Youtube size={16} className="shrink-0" />
+            <span>వాచ్ ట్యుటోరియల్</span>
+          </button>
+        </div>
+      </div>
 
-        {(banner.guideSteps && banner.guideSteps.length > 0) && (
-          <div className="bg-white/90 border border-indigo-100 rounded-xl p-3 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-extrabold text-indigo-900">
-              <BookOpen size={14} className="text-indigo-600" />
-              <span>వినియోగ మార్గదర్శిని (How to Use This Tool):</span>
+      {hasExtendedDocs && showFullDocs && (
+        <div className="mt-4 pt-4 border-t border-blue-200/60 space-y-3">
+          {/* Purpose & Target Audience Grid */}
+          {(purpose || targetAudience) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {purpose && (
+                <div className="bg-white/90 rounded-xl p-3.5 border border-blue-100 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wide mb-1.5">
+                    <Target size={14} className="text-blue-600 shrink-0" />
+                    <span>ఈ టూల్ ఉపయోగం ఏమిటి? (Purpose of this Tool)</span>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                    {purpose}
+                  </p>
+                </div>
+              )}
+              {targetAudience && (
+                <div className="bg-white/90 rounded-xl p-3.5 border border-blue-100 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-indigo-900 uppercase tracking-wide mb-1.5">
+                    <Users size={14} className="text-indigo-600 shrink-0" />
+                    <span>ఎవరు ఉపయోగించవచ్చు? (Who Can Use It)</span>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                    {targetAudience}
+                  </p>
+                </div>
+              )}
             </div>
-            <ul className="space-y-1 text-[11px] sm:text-xs text-slate-700 font-medium list-disc list-inside">
-              {banner.guideSteps.map((step, i) => (
-                <li key={i}>{step}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </motion.div>
-    </AnimatePresence>
+          )}
+
+          {/* Step-by-Step Guide */}
+          {guideSteps.length > 0 && (
+            <div className="bg-white/90 rounded-xl p-3.5 border border-blue-100 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 uppercase tracking-wide mb-2">
+                <ListChecks size={15} className="text-blue-600 shrink-0" />
+                <span>ఎలా ఉపయోగించాలి? దశలవారీ విధానం (Step-by-Step Workflow):</span>
+              </div>
+              <ol className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {guideSteps.map((step, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50/90 px-3 py-2 rounded-lg border border-slate-200/70">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span className="leading-relaxed font-medium">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Real-Life Use Cases */}
+          {realLifeUseCases.length > 0 && (
+            <div className="bg-white/90 rounded-xl p-3.5 border border-emerald-100 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-xs font-black text-emerald-900 uppercase tracking-wide mb-2">
+                <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                <span>నిజ జీవిత వినియోగ సందర్భాలు (Real-Life Practical Use Cases):</span>
+              </div>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {realLifeUseCases.map((uc, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-xs text-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 mt-1.5" />
+                    <span className="leading-relaxed font-medium">{uc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Limitations, Privacy & Official Reference */}
+          {(limitations || dataPrivacy || officialReference) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {limitations && (
+                <div className="bg-amber-50/80 rounded-xl p-3 border border-amber-200/80 text-xs">
+                  <div className="flex items-center gap-1.5 font-black text-amber-900 mb-1">
+                    <AlertCircle size={13} className="text-amber-600 shrink-0" />
+                    <span>పరిమితులు & గమనిక (Limitations)</span>
+                  </div>
+                  <p className="text-[11px] text-amber-900/90 leading-relaxed font-medium">
+                    {limitations}
+                  </p>
+                </div>
+              )}
+              {dataPrivacy && (
+                <div className="bg-emerald-50/80 rounded-xl p-3 border border-emerald-200/80 text-xs">
+                  <div className="flex items-center gap-1.5 font-black text-emerald-900 mb-1">
+                    <ShieldCheck size={13} className="text-emerald-600 shrink-0" />
+                    <span>డేటా భద్రత & గోప్యత (Data Security)</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-900/90 leading-relaxed font-medium">
+                    {dataPrivacy}
+                  </p>
+                </div>
+              )}
+              {officialReference && (
+                <div className="bg-slate-100/90 rounded-xl p-3 border border-slate-200 text-xs">
+                  <div className="flex items-center gap-1.5 font-black text-slate-800 mb-1">
+                    <ExternalLink size={13} className="text-blue-600 shrink-0" />
+                    <span>అధికారిక రిఫరెన్స్ (Official Source)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                    {officialReference}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
+export function triggerYouTubeTutorial(tabKey: string, fallbackTitle?: string) {
+  window.dispatchEvent(
+    new CustomEvent("open-youtube-tutorial", {
+      detail: { tabKey, fallbackTitle },
+    })
+  );
+}

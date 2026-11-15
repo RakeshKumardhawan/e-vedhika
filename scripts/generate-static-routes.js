@@ -62,7 +62,7 @@ function generatePostSlug(title, fallbackId) {
   return clean;
 }
 
-function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, type = "website", bodyHtml = "" }) {
+function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, type = "website", bodyHtml = "", noindex = false }) {
   let html = baseHtml;
   const safeTitle = escapeHtml(title);
   const safeDesc = escapeHtml(description);
@@ -89,6 +89,13 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
   };
 
   upsertMeta("name", "description", description);
+  upsertMeta(
+    "name",
+    "robots",
+    noindex
+      ? "noindex, nofollow"
+      : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+  );
   upsertMeta("property", "og:site_name", "E-Vedhika");
   upsertMeta("property", "og:type", type);
   upsertMeta("property", "og:title", title);
@@ -229,12 +236,14 @@ const standardRoutes = [
     path: "gos_formats/Application",
     title: "అప్లికేషన్ ఫార్మాట్లు (Official Application Formats) | E-Vedhika",
     desc: "గ్రామ పంచాయతీ కార్యాలయ దరఖాస్తు ఫార్మాట్లు — జనన, మరణ, వివాహ నమోదు, ఇంటి పన్ను మ్యుటేషన్ మరియు భవన అనుమతి దరఖాస్తు నమూనాలు.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Panchayat Citizen &amp; Office Application Formats</h2><p>A4 ప్రింటింగ్‌కు సిద్ధంగా ఉన్న గ్రామ పంచాయతీ అధికారిక దరఖాస్తు ఫార్మాట్లు మరియు ధృవీకరణ పత్రాల నమూనాలు.</p></section>`
   },
   {
     path: "gos_formats/GO",
     title: "ప్రభుత్వ జీవోలు (Panchayat Raj Government Orders) | E-Vedhika",
     desc: "తెలంగాణ & ఏపీ పంచాయతీరాజ్ మరియు గ్రామీణాభివృద్ధి శాఖ తాజా జీవోలు, సర్క్యులర్లు మరియు ఉత్తర్వుల సంగ్రహం.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Panchayat Raj &amp; Rural Development GOs Archive</h2><p>పంచాయతీ కార్యదర్శులు, ఆపరేటర్లు మరియు స్థానిక సంస్థల పరిపాలనకు సంబంధించిన తాజా ప్రభుత్వ ఉత్తర్వులు మరియు మార్గదర్శకాలు.</p></section>`
   },
   {
@@ -247,12 +256,14 @@ const standardRoutes = [
     path: "suggestions/problems",
     title: "సాంకేతిక సమస్యల నివేదిక (Technical Issues Support) | E-Vedhika",
     desc: "ఈ-పంచాయతీ, UBD DSC/DSK, మరియు ఆన్‌లైన్ పోర్టల్ సమస్యల నమోదు మరియు పరిష్కార ట్రాకింగ్.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Report Technical Issues &amp; Track Resolutions</h2><p>UBD సైనింగ్ లోపాలు, బ్రౌజర్ కాన్ఫిగరేషన్ లేదా ఎక్సెల్ టూల్స్ సమస్యలను మా సాంకేతిక బృందానికి తెలియజేయండి.</p></section>`
   },
   {
     path: "suggestions/suggestions",
     title: "సూచనలు & సలహాలు (Portal Improvement Suggestions) | E-Vedhika",
     desc: "ఈ-వేదిక పోర్టల్‌లో కొత్త ఫీచర్లు మరియు మార్పుల కోసం మీ సలహాలను అందించండి.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Share Your Ideas for New Panchayat Automation Tools</h2><p>గ్రామ పంచాయతీ సిబ్బంది పని భారాన్ని తగ్గించేందుకు ఎలాంటి కొత్త ఆన్‌లైన్ టూల్స్ కావాలో మాకు సూచించండి.</p></section>`
   },
   {
@@ -265,12 +276,15 @@ const standardRoutes = [
     path: "my_activity",
     title: "నా యాక్టివిటీ & రిపోర్ట్స్ (My Activity Dashboard) | E-Vedhika",
     desc: "మీ యూజర్ ప్రొఫైల్, ఉపయోగించిన టూల్స్ చరిత్ర, చేసిన పనులు మరియు డౌన్‌లోడ్స్ ట్రాకర్.",
+    excludeFromSitemap: true,
+    noindex: true,
     bodyHtml: `<section><h2>Personal Workspace Activity &amp; Profile Management</h2><p>మీ గ్రామ పంచాయతీ ప్రొఫైల్ వివరాలు మరియు పోర్టల్‌లో మీరు నిర్వహించిన నివేదికల చరిత్ర.</p></section>`
   },
   {
     path: "priority_services",
     title: "ప్రాధాన్యత సేవలు (Priority e-Panchayat Services) | E-Vedhika",
     desc: "పంచాయతీ కార్యదర్శులు మరియు ఆపరేటర్ల అత్యంత ముఖ్యమైన రోజువారీ సేవలు — Farmer Registry, Emergency Directory & Activity Tracker.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Priority Services for Panchayat Secretaries &amp; Operators</h2><p>రోజువారీ క్షేత్రస్థాయి పరిశీలన మరియు కార్యాలయ నిర్వహణకు అత్యవసరమైన ప్రాధాన్యత సేవలు.</p></section>`
   },
   {
@@ -283,12 +297,15 @@ const standardRoutes = [
     path: "priority_services/my_activity",
     title: "నా యాక్టివిటీ ట్రాకర్ | E-Vedhika",
     desc: "యూజర్ ప్రొఫైల్ మరియు యాక్టివిటీ ట్రాకర్.",
-    isAlias: true
+    isAlias: true,
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "directlinks",
     title: "UBD టూల్స్ & అధికారిక ప్రభుత్వ పోర్టల్ లింక్స్ (Direct Links) | E-Vedhika",
     desc: "తెలంగాణ & ఏపీ UBD పోర్టల్, Mana Panchayati, eGramSwaraj, PFMS మరియు ఇతర ప్రభుత్వ శాఖల అధికారిక వెబ్‌సైట్లకు డైరెక్ట్ లింకులు.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Official e-Governance Portals &amp; UBD Direct Links</h2><p>గ్రామ పంచాయతీ ఆపరేటర్లు ప్రతిరోజూ ఉపయోగించే అధికారిక ప్రభుత్వ వెబ్‌సైట్లకు ధృవీకరించబడిన డైరెక్ట్ లింకులు.</p></section>`
   },
   {
@@ -301,18 +318,23 @@ const standardRoutes = [
     path: "chat",
     title: "సపోర్ట్ & కమ్యూనిటీ చాట్ (Operator Support Community) | E-Vedhika",
     desc: "రాష్ట్రవ్యాప్తంగా ఉన్న పంచాయతీ కార్యదర్శులు, కంప్యూటర్ ఆపరేటర్లు మరియు సాంకేతిక నిపుణులతో రియల్-టైమ్ చర్చా వేదిక.",
+    excludeFromSitemap: true,
+    noindex: true,
     bodyHtml: `<section><h2>e-Panchayat Operators &amp; Secretaries Support Community</h2><p>సాంకేతిక సందేహాల నివృత్తి మరియు సర్వర్ పనితీరు అప్‌డేట్ల కోసం తోటి ఉద్యోగులతో ప్రత్యక్ష చర్చా వేదిక.</p></section>`
   },
   {
     path: "logs",
     title: "సిస్టమ్ లాగ్స్ | E-Vedhika",
     desc: "సిస్టమ్ స్థితి మరియు ఆడిట్ లాగ్స్.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "union",
     title: "ఉద్యోగ సంఘాల సమాచారం (Employees Union Corner & Polls) | E-Vedhika",
     desc: "పంచాయతీ కార్యదర్శుల సంఘం మరియు ఈ-పంచాయతీ ఆపరేటర్ల సంఘం తాజా సమాచారం, సర్వీస్ కొనసాగింపు ఉత్తర్వులు మరియు పోల్స్.",
+    excludeFromSitemap: true,
+    noindex: true,
     bodyHtml: `<section><h2>Panchayat Employees &amp; Operators Union Corner</h2><p>ఉద్యోగ సంఘాల ప్రకటనలు, ప్రాతినిధ్యాలు, సర్వీస్ కొనసాగింపు ఉత్తర్వులు (Continuation Orders) మరియు ఆన్‌లైన్ అభిప్రాయ సేకరణ.</p></section>`
   },
   {
@@ -331,13 +353,15 @@ const standardRoutes = [
     path: "farmer-registry",
     title: "రైతు రిజిస్ట్రీ | E-Vedhika",
     desc: "రైతు సమాచారం మరియు సేవల వేదిక.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "farmer",
     title: "రైతు రిజిస్ట్రీ | E-Vedhika",
     desc: "రైతు సమాచారం మరియు సేవల వేదిక.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "excel_print",
@@ -366,8 +390,8 @@ const standardRoutes = [
   {
     path: "ubd-settings-dsk-issues",
     title: "UBD Settings, DSC & DSK Issues Solution | Telangana & AP Panchayath Portal - E-Vedhika",
-    desc: "Bilingual guide & troubleshooting for UBD Settings, DSC, DSK issues, Telangana UBD website DSK errors, and AP UBD portal issues on E-Vedhika.",
-    bodyHtml: `<section><h2>Complete UBD Settings, DSC Token &amp; DSK Signing Troubleshooting Guide</h2><p>Windows 7, 10 మరియు 11 కంప్యూటర్లలో UBD పోర్టల్ (ubd.telangana.gov.in / ubd.ap.gov.in) మరియు eGramSwaraj డిజిటల్ సంతకం (DSK/DSC) పనిచేయకపోతే పరిష్కరించుకునే పూర్తి తెలుగు &amp; ఇంగ్లీష్ గైడ్. Pop-ups allow చేయడం, Edge IE5 Mode, Java JRE 8, ePass2003 / mToken డ్రైవర్లు మరియు NIC DSign పోర్ట్ 8080 కాన్ఫిగరేషన్ వివరాలు.</p></section>`
+    desc: "Bilingual guide & troubleshooting for UBD Settings, DSC, DSK issues, ProxKey, HYP2003/ePass2003 tokens, Edge IE Mode, and Telangana/AP UBD portal issues on E-Vedhika.",
+    bodyHtml: `<section><h2>Complete UBD Settings, DSC Token (ProxKey / HYP2003) &amp; Edge IE Mode 11-Point Troubleshooting Guide</h2><p>Windows 7, 10 మరియు 11 కంప్యూటర్లలో UBD పోర్టల్ (ubd.telangana.gov.in / crsorgi.gov.in) మరియు eGramSwaraj డిజిటల్ సంతకం (DSK/DSC) పనిచేయకపోతే పరిష్కరించుకునే పూర్తి 11-అంశాల తెలుగు &amp; ఇంగ్లీష్ గైడ్. Pop-ups allow చేయడం, Edge IE5 Mode, Java JRE 8 (32-bit), WatchData ProxKey, HYP2003/ePass2003 డ్రైవర్లు మరియు పోర్ట్ 8080/8443 కాన్ఫిగరేషన్ వివరాలు.</p></section>`
   },
   {
     path: "software_hub",
@@ -379,25 +403,29 @@ const standardRoutes = [
     path: "admin",
     title: "అడ్మిన్ పోర్టల్ | E-Vedhika",
     desc: "ఈ-వేదిక నిర్వహణ మరియు అడ్మినిస్ట్రేషన్.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "admin/ubd_monitoring",
     title: "UBD Central Monitoring & Report Center (v1.0.9 • Build 2026.11.11.R3) | E-Vedhika",
     desc: "E-Vedhika UBD Central Monitoring, 17-Step Deployment Audit, Historical & Live Application Reports Archive & OTA Release History.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "evdka",
     title: "ఈ-వేదిక పోర్టల్ | E-Vedhika",
     desc: "All Problems One Solution.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "evedhika",
     title: "ఈ-వేదిక పోర్టల్ | E-Vedhika",
     desc: "All Problems One Solution.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   },
   {
     path: "privacy",
@@ -445,7 +473,7 @@ const standardRoutes = [
   {
     path: "contact",
     title: "మమ్మల్ని సంప్రదించండి (Contact Us & Technical Helpdesk) | E-Vedhika",
-    desc: "ఈ-వేదిక సపోర్ట్ టీమ్ అధికారిక ఈమెయిల్ (support@e-vedhika.in, evedhikasupport@gmail.com), టెలిగ్రామ్ మరియు వాట్సాప్ హెల్ప్‌డెస్క్ సంప్రదింపు వివరాలు.",
+    desc: "ఈ-వేదిక సపోర్ట్ టీమ్ అధికారిక ఈమెయిల్ (support@e-vedhika.in, evedhikasupport@gmail.com), సంప్రదింపు ఫారమ్, టెలిగ్రామ్ మరియు వాట్సాప్ హెల్ప్‌డెస్క్ వివరాలు.",
     bodyHtml: `<section><h2>మమ్మల్ని సంప్రదించండి (Contact E-Vedhika Support &amp; Administration)</h2><ul><li><strong>Support Helpdesk Email:</strong> <a href="mailto:support@e-vedhika.in">support@e-vedhika.in</a></li><li><strong>Administration Email:</strong> <a href="mailto:evedhikasupport@gmail.com">evedhikasupport@gmail.com</a></li><li><strong>Telegram Support Bot:</strong> <a href="https://t.me/e_vedhika_alerts_bot">@e_vedhika_alerts_bot</a></li><li><strong>WhatsApp Helpdesk:</strong> +91 99854 02310</li><li><strong>Working Hours:</strong> సోమవారం – శనివారం (09:30 AM – 06:30 PM IST)</li></ul></section>`
   },
   {
@@ -458,13 +486,15 @@ const standardRoutes = [
     path: "home/post",
     title: "తాజా పోస్ట్‌లు, జీవోలు & సాంకేతిక వ్యాసాలు (Articles & Updates) | E-Vedhika",
     desc: "తెలంగాణ & ఏపీ పంచాయతీరాజ్ తాజా జీవోలు, నోటిఫికేషన్లు, UBD DSK ట్రబుల్‌షూటింగ్ వ్యాసాలు మరియు అప్‌డేట్స్.",
+    excludeFromSitemap: true,
     bodyHtml: `<section><h2>Latest e-Panchayat Articles, GOs &amp; Technical Guides</h2><p>గ్రామ పంచాయతీ సిబ్బంది మరియు పౌరుల కోసం తాజా ప్రభుత్వ ఉత్తర్వుల విశ్లేషణ, పెన్షన్ అప్‌డేట్లు మరియు కంప్యూటర్ ట్రబుల్‌షూటింగ్ వ్యాసాలు.</p></section>`
   },
   {
     path: "post",
     title: "తాజా పోస్ట్‌లు & నోటిఫికేషన్లు | E-Vedhika",
     desc: "తెలంగాణ పంచాయతీరాజ్ తాజా జీవోలు మరియు సమాచారం.",
-    excludeFromSitemap: true
+    excludeFromSitemap: true,
+    noindex: true
   }
 ];
 
@@ -477,7 +507,8 @@ standardRoutes.forEach((route) => {
     imageUrl: DEFAULT_BANNER,
     canonicalUrl,
     type: "website",
-    bodyHtml: route.bodyHtml || ""
+    bodyHtml: route.bodyHtml || "",
+    noindex: Boolean(route.noindex)
   });
   writePage(route.path, html);
 });
@@ -673,7 +704,7 @@ function generateSitemap(allPostUrls) {
   fs.writeFileSync(path.join(distDir, "sitemap.xml"), xml, "utf-8");
   console.log(`[generate-static-routes] Generated dist/sitemap.xml with ${seenUrls.size} unique canonical URLs.`);
 
-  const robots = `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nUser-agent: Mediapartners-Google\nAllow: /\n\nSitemap: ${BASE_URL}/sitemap.xml\n`;
+  const robots = `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nDisallow: /my_activity\nDisallow: /priority_services/my_activity\nDisallow: /chat\nDisallow: /logs\nDisallow: /union\nDisallow: /workspace/ticket-tracker\nDisallow: /workspace/messages\nDisallow: /vault\n\nUser-agent: Mediapartners-Google\nAllow: /\nDisallow: /admin/\nDisallow: /my_activity\nDisallow: /chat\nDisallow: /logs\n\nSitemap: ${BASE_URL}/sitemap.xml\n`;
   fs.writeFileSync(path.join(distDir, "robots.txt"), robots, "utf-8");
   console.log("[generate-static-routes] Generated dist/robots.txt.");
 

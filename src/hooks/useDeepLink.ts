@@ -265,6 +265,180 @@ export function useDeepLink({
     navigate,
   ]);
 
+  // 3. Dynamic Per-Route SEO & Public vs. Private Robots Meta Synchronization
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const rawPath = (location.pathname || "/").replace(/\/+$/, "") || "/";
+    const lowerPath = rawPath.toLowerCase();
+
+    // Do not overwrite post-specific SEO when viewing an individual post
+    if (lowerPath.startsWith("/home/post/") || lowerPath.startsWith("/post/")) {
+      return;
+    }
+
+    const privateRoutes = [
+      "/admin",
+      "/evdka",
+      "/my_activity",
+      "/priority_services/my_activity",
+      "/chat",
+      "/logs",
+      "/union",
+      "/workspace/ticket-tracker",
+      "/workspace/messages",
+      "/vault",
+    ];
+    const isPrivate =
+      privateRoutes.some((p) => lowerPath === p || lowerPath.startsWith(`${p}/`)) ||
+      ["admin", "editor", "my_activity", "logs", "chat", "union"].includes(currentTab) ||
+      workspaceActiveTool === "ticket-tracker";
+
+    // Update <meta name="robots">
+    let robotsEl = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    if (!robotsEl) {
+      robotsEl = document.createElement("meta");
+      robotsEl.setAttribute("name", "robots");
+      document.head.appendChild(robotsEl);
+    }
+    robotsEl.setAttribute(
+      "content",
+      isPrivate
+        ? "noindex, nofollow"
+        : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    );
+
+    const staticSeoMap: Record<string, { title: string; desc: string }> = {
+      "/": {
+        title: "E-Vedhika (ఈ-వేదిక) – All Problems One Solution at One Place | e-Panchayat & UBD Portal",
+        desc: "ఈ-వేదిక (E-Vedhika) - గ్రామ పంచాయతీ కార్యదర్శులు, ఈ-పంచాయతీ కంప్యూటర్ ఆపరేటర్లు మరియు పౌరుల కోసం సమగ్ర డిజిటల్ పోర్టల్. DSR Analyzer, Multi-Day Attendance, UBD/DSC Guides, GOs & Formats.",
+      },
+      "/about": {
+        title: "మా గురించి (About E-Vedhika Portal) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika - All Problems One Solution at One Place) లక్ష్యాలు, సేవలు, ఆన్‌లైన్ టూల్స్ మరియు స్వతంత్ర సాంకేతిక వేదిక వివరాలు.",
+      },
+      "/contact": {
+        title: "మమ్మల్ని సంప్రదించండి (Contact Us & Technical Helpdesk) | E-Vedhika",
+        desc: "ఈ-వేదిక సపోర్ట్ టీమ్ అధికారిక ఇమెయిల్ (support@e-vedhika.in), సంప్రదింపు ఫారమ్ (Contact Form), టెలిగ్రామ్ మరియు వాట్సాప్ హెల్ప్‌డెస్క్ వివరాలు.",
+      },
+      "/privacy": {
+        title: "గోప్యతా విధానం (Privacy Policy) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika) యూజర్ డేటా భద్రత, క్లయింట్-సైడ్ ఫైల్ ప్రాసెసింగ్ మరియు Google AdSense DART కుకీ నిబంధనలు.",
+      },
+      "/terms": {
+        title: "నిబంధనలు & షరతులు (Terms & Conditions) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika) పోర్టల్ మరియు ఆన్‌లైన్ టూల్స్ వినియోగ నిబంధనలు మరియు షరతులు.",
+      },
+      "/disclaimer": {
+        title: "బాధ్యతా రాహిత్య ప్రకటన (Non-Governmental Disclaimer) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika) స్వతంత్ర సాంకేతిక వేదిక హోదా మరియు అధికారిక ప్రభుత్వ సమాచార నిర్ధారణ ప్రకటన.",
+      },
+      "/cookie-policy": {
+        title: "కుకీ విధానం (Cookie Policy) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika) కుకీల వినియోగం, Firebase Auth మరియు Google AdSense కుకీల సమాచారం.",
+      },
+      "/editorial-policy": {
+        title: "ఎడిటోరియల్ పాలసీ (Editorial & Verification Policy) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika) కంటెంట్ నాణ్యతా ప్రమాణాలు, ప్రామాణిక వనరుల పరిశీలన మరియు మానవ సంపాదకీయ ధృవీకరణ విధానం.",
+      },
+      "/sitemap": {
+        title: "సైట్‌మ్యాప్ & డైరెక్టరీ (Complete Sitemap Directory) | E-Vedhika",
+        desc: "ఈ-వేదిక (E-Vedhika) లోని అన్ని పబ్లిక్ పేజీలు, ఆన్‌లైన్ వర్క్‌స్పేస్ టూల్స్, UBD గైడ్‌లు మరియు పాలసీ పేజీల పూర్తి డైరెక్టరీ.",
+      },
+      "/ubd-settings-dsk-issues": {
+        title: "UBD Settings, DSC, ProxKey, HYP2003 & Edge IE Mode 11-Point Guides | E-Vedhika",
+        desc: "తెలంగాణ & ఏపీ UBD పోర్టల్ జనన మరణ నమోదు, డిజిటల్ సిగ్నేచర్ (DSC), ProxKey, HYP2003 టోకెన్లు మరియు Edge IE Mode సమస్యల 11-అంశాల పరిష్కార మార్గదర్శిని.",
+      },
+      "/workspace": {
+        title: "మన పంచాయతీ డిజిటల్ వర్క్‌స్పేస్ (Mana Panchayath Tools) | E-Vedhika",
+        desc: "గ్రామ పంచాయతీ కార్యదర్శులు మరియు కంప్యూటర్ ఆపరేటర్ల కోసం DSR Analyzer, Multi-Day Attendance, MAS, Excel Merger, GPDP Planning మరియు PR Act గైడ్.",
+      },
+      "/workspace/dsr": {
+        title: "డైలీ DSR & అటెండెన్స్ అనలైజర్ (Daily DSR Analyzer) | E-Vedhika",
+        desc: "మన పంచాయతీ పోర్టల్ రోజువారీ DSR మరియు హాజరు ఎక్సెల్ ఫైళ్లను సెకన్లలో విశ్లేషించి మండల మరియు GP వారీగా నివేదికలు రూపొందించే టూల్.",
+      },
+      "/workspace/multiday": {
+        title: "మల్టీ-డే హాజరు విశ్లేషణ (Multi-Day Attendance Analyzer) | E-Vedhika",
+        desc: "బహుళ రోజుల హాజరు ఎక్సెల్ ఫైళ్లను ఒకేసారి అప్‌లోడ్ చేసి గ్రామ పంచాయతీ వారీగా నెలవారీ హాజరు శాతాన్ని కన్సాలిడేట్ చేసే టూల్.",
+      },
+      "/workspace/training": {
+        title: "డిజిటల్ ట్రైనింగ్ & 11-అంశాల ప్రాక్టికల్ ట్యుటోరియల్స్ | E-Vedhika",
+        desc: "UBD పోర్టల్, DSC టోకెన్లు (ProxKey, HYP2003), Edge IE Mode, Windows సెక్యూరిటీ మరియు GPDP ప్రణాళికపై 11-అంశాల ప్రాక్టికల్ ట్యుటోరియల్స్.",
+      },
+      "/workspace/pract": {
+        title: "నాలెడ్జ్ హబ్ - తెలంగాణ పంచాయతీరాజ్ చట్టం 2018 గైడ్ | E-Vedhika",
+        desc: "తెలంగాణ పంచాయతీరాజ్ చట్టం 2018 సెక్షన్లు, గ్రామ సభ నిబంధనలు, సర్పంచ్ మరియు పంచాయతీ కార్యదర్శి విధులు, రిజిస్టర్ల సమగ్ర తెలుగు గైడ్.",
+      },
+      "/workspace/monthly-activity": {
+        title: "మాసాంతపు యాక్టివిటీ రిపోర్ట్ (MAS GP Matrix Formatter) | E-Vedhika",
+        desc: "మండల మరియు జిల్లా స్థాయి మాసాంతపు ఈ-పంచాయతీ కార్యకలాపాల (Monthly Activity Status) నివేదికలను ఆటోమేటిక్‌గా ఫార్మాట్ చేసే సాధనం.",
+      },
+      "/workspace/mas": {
+        title: "మాసాంతపు యాక్టివిటీ రిపోర్ట్ (MAS GP Matrix Formatter) | E-Vedhika",
+        desc: "మండల మరియు జిల్లా స్థాయి మాసాంతపు ఈ-పంచాయతీ కార్యకలాపాల (Monthly Activity Status) నివేదికలను ఆటోమేటిక్‌గా ఫార్మాట్ చేసే సాధనం.",
+      },
+      "/workspace/excel-merge": {
+        title: "మల్టీ-ఫైల్ ఎక్సెల్ మెర్జర్ (Excel File Merger Tool) | E-Vedhika",
+        desc: "వివిధ గ్రామ పంచాయతీల నుండి వచ్చిన పదుల సంఖ్యలోని ఎక్సెల్ ఫైళ్లను ఒక్క క్లిక్‌తో ఒకే మాస్టర్ షీట్‌గా విలీనం చేసే ఆఫీస్ టూల్.",
+      },
+      "/workspace/gpdp-planning": {
+        title: "GPDP బడ్జెట్ & అభివృద్ధి ప్రణాళిక టూల్ (GPDP Planning) | E-Vedhika",
+        desc: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (GPDP) మరియు 15వ ఆర్థిక సంఘం Tied (60%) / Untied (40%) నిధుల కేటాయింపు క్యాలిక్యులేటర్.",
+      },
+      "/gos_formats": {
+        title: "ప్రభుత్వ జీవోలు & ఆఫీస్ ఫార్మాట్లు (GOs & Official Formats) | E-Vedhika",
+        desc: "తెలంగాణ & ఏపీ పంచాయతీరాజ్ శాఖ ప్రభుత్వ ఉత్తర్వులు (GOs) మరియు గ్రామ పంచాయతీ కార్యాలయ దరఖాస్తు ఫార్మాట్లు (PDF/Excel).",
+      },
+      "/software_hub": {
+        title: "సాఫ్ట్‌వేర్ హబ్ - DSC, ProxKey, HYP2003 & Java 32-Bit డ్రైవర్స్ | E-Vedhika",
+        desc: "గ్రామ పంచాయతీ కంప్యూటర్లలో UBD మరియు ఆన్‌లైన్ పోర్టల్స్ పనిచేయడానికి అవసరమైన అధికారిక DSC టోకెన్ డ్రైవర్లు, Java 8 మరియు DSK Signer డౌన్‌లోడ్ కేంద్రం.",
+      },
+      "/ubd_tracker": {
+        title: "UBD లైవ్ ట్రాకర్ & ఆఫీస్ కోడ్ డైరెక్టరీ (UBD Birth/Death Tracker) | E-Vedhika",
+        desc: "గ్రామ పంచాయతీల వారీగా జనన మరణ నమోదు పురోగతి ట్రాకింగ్ మరియు UBD RLB ఆఫీస్ కోడ్ డైరెక్టరీ.",
+      },
+      "/farmer_registry": {
+        title: "రైతు రిజిస్ట్రీ ల్యాండ్ వెరిఫికేషన్ టూల్ (Farmer Registry Tool) | E-Vedhika",
+        desc: "రైతు రిజిస్ట్రీ ఎన్‌రోల్‌మెంట్ కోసం Bucket ID మరియు పట్టాదార్ పాస్‌బుక్ ఎక్సెల్ ఫైళ్లను ఆటోమేటిక్‌గా సరిపోల్చే సాధనం.",
+      },
+      "/excel_print": {
+        title: "ఎక్సెల్ A4 ప్రింట్ ఫార్మాటర్ (Smart Excel to A4 Print & PDF) | E-Vedhika",
+        desc: "పెద్ద ఎక్సెల్ షీట్లలోని కాలమ్‌లు కట్ అవ్వకుండా ఒకే A4 పేజీకి ఆటో-ఫిట్ చేసి ఆఫీస్ హెడర్లతో ప్రింట్ తీసే సాధనం.",
+      },
+      "/pdf_compress": {
+        title: "ఆన్‌లైన్ PDF కంప్రెసర్ (Client-Side PDF Size Reducer) | E-Vedhika",
+        desc: "ప్రభుత్వ పోర్టల్స్‌లో అప్‌లోడ్ చేయాల్సిన PDF ఫైళ్ల సైజును క్వాలిటీ తగ్గకుండా 200 KB లోపుకు తగ్గించే సురక్షిత బ్రౌజర్ టూల్.",
+      },
+    };
+
+    const matchedSeo = staticSeoMap[lowerPath] || staticSeoMap["/"];
+    document.title = matchedSeo.title;
+
+    const setMetaContent = (selector: string, attrName: string, attrVal: string, content: string) => {
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attrName, attrVal);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    setMetaContent('meta[name="description"]', "name", "description", matchedSeo.desc);
+    setMetaContent('meta[property="og:title"]', "property", "og:title", matchedSeo.title);
+    setMetaContent('meta[property="og:description"]', "property", "og:description", matchedSeo.desc);
+
+    const canonicalHref = `https://www.e-vedhika.in${rawPath === "/" ? "/" : rawPath}`;
+    setMetaContent('meta[property="og:url"]', "property", "og:url", canonicalHref);
+
+    let canonicalEl = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonicalEl) {
+      canonicalEl = document.createElement("link");
+      canonicalEl.setAttribute("rel", "canonical");
+      document.head.appendChild(canonicalEl);
+    }
+    canonicalEl.setAttribute("href", canonicalHref);
+  }, [location.pathname, currentTab, workspaceActiveTool]);
+
   // Helper function to build a deep link URL string for public tools
   const getDeepLink = (mainTab: string, subTool?: string) => {
     const baseUrl = window.location.origin;
