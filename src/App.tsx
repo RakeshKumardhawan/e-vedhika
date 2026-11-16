@@ -1,4 +1,4 @@
-import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmuteAdsLocally, recordAdImpression, isLegacyWindows } from "./adManager";
+import { canShowAds, isAdsMuted, getMuteRemainingSeconds, muteAdsLocally, unmuteAdsLocally, recordAdImpression, isLegacyWindows, canLoadThirdPartyAdTag, markThirdPartyAdTagLoaded, DEFAULT_DAILY_AD_LIMIT } from "./adManager";
 import { StaticPagesAdmin } from "./components/StaticPagesAdmin";
 import { PageDescriptionsAdmin } from "./components/PageDescriptionsAdmin";
 import { SeoMetaAdmin, updateDOMMetaTags } from "./components/SeoMetaAdmin";
@@ -753,6 +753,33 @@ interface UserProfile {
   timeSpentMinutes?: number;
   loginCount?: number;
   lastLoginTime?: number;
+  profileCompleted?: boolean;
+  profileCompletedAt?: number;
+}
+
+function isUserProfileComplete(profile: UserProfile | null | undefined): boolean {
+  if (!profile) return false;
+  if (profile.profileCompleted !== true) return false;
+  const surname = (profile.surname || "").trim();
+  const name = (profile.name || "").trim();
+  const username = (profile.username || "").trim();
+  const gender = (profile.gender || "").trim();
+  const mobile = (profile.mobile || profile.phone || "").trim();
+  const district = (profile.district || "").trim();
+  const mandal = (profile.mandal || "").trim();
+  const village = (profile.village || "").trim();
+  const designation = (profile.designation || "").trim();
+
+  if (!surname || !name || name === "System User" || name === "User") return false;
+  if (!username) return false;
+  if (!gender) return false;
+  if (gender !== "Female" && mobile.replace(/\D/g, "").length < 10) return false;
+  if (!district || district.toLowerCase() === "undefined") return false;
+  if (!mandal) return false;
+  if (!village) return false;
+  if (!designation) return false;
+
+  return true;
 }
 
 interface Suggestion {
@@ -3143,6 +3170,27 @@ export default function App() {
     return () => clearInterval(interval);
   }, [siteConfig]);
 
+  // Controlled low-frequency loader for third-party MultiTag (disabled by default, max once per 12h on public articles only)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!canLoadThirdPartyAdTag(siteConfig, isAdmin)) return;
+    if (document.querySelector('script[data-zone="310671"]')) return;
+
+    const timer = setTimeout(() => {
+      if (!canLoadThirdPartyAdTag(siteConfig, isAdmin)) return;
+      if (document.querySelector('script[data-zone="310671"]')) return;
+      const script = document.createElement("script");
+      script.src = "https://quge5.com/88/tag.min.js";
+      script.setAttribute("data-zone", "310671");
+      script.async = true;
+      script.setAttribute("data-cfasync", "false");
+      document.head.appendChild(script);
+      markThirdPartyAdTagLoaded();
+    }, 25000);
+
+    return () => clearTimeout(timer);
+  }, [siteConfig, isAdmin, currentTab]);
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "custom_code", "global_css"), (snap) => {
       if (snap.exists()) {
@@ -4143,6 +4191,7 @@ e-Vedhika Support System`;
           }, 2000);
         }
       } else {
+        setProfileLoading(true);
         if (!sessionStorage.getItem("ev_user_access_logged_" + u.uid)) {
           sessionStorage.setItem("ev_user_access_logged_" + u.uid, "true");
           setTimeout(() => {
@@ -4167,7 +4216,7 @@ e-Vedhika Support System`;
       } catch (e) {
         try {
           await setDoc(doc(db, "users", user.uid), {
-            name: user.displayName || "User",
+            username: user.displayName || "",
             email: user.email,
             isOnline: true,
             lastActive: Date.now()
@@ -4381,9 +4430,14 @@ e-Vedhika Support System`;
   useEffect(() => {
     if (!user) return;
 
+    const profileSafetyTimeout = setTimeout(() => {
+      setProfileLoading(false);
+    }, 4500);
+
     const unsubProfile = onSnapshot(
       doc(db, "users", user.uid),
       (snap) => {
+        clearTimeout(profileSafetyTimeout);
         if (snap.exists()) {
           const p = { id: snap.id, ...snap.data() } as UserProfile & { welcomeMessageSent?: boolean };
           setUserProfile(p);
@@ -4593,6 +4647,7 @@ e-Vedhika Support System`;
     );
 
     return () => {
+      clearTimeout(profileSafetyTimeout);
       unsubProfile();
       unsubAdminCheck();
       unsubChat();
@@ -4699,19 +4754,15 @@ e-Vedhika Support System`;
     };
   }, [user?.uid, userRole, isAdmin, dismissedNotifIds, readNotifIds, notifClearedBefore]);
 
-  // 3. Dynamically control forced profile setup - only show it when in "suggestions" tab and profile is incomplete
+  // 3. Dynamically control forced profile setup - require complete profile for all signed-in users (both new signups and returning users) before accessing the portal
   useEffect(() => {
-    if (!user || profileLoading) {
+    if (!user || user.isAnonymous || profileLoading) {
       setShowForcedProfileSetup(false);
       return;
     }
-    const needsSetup = !userProfile || (!userProfile.name && !userProfile.username);
-    if (needsSetup && currentTab === "suggestions") {
-      setShowForcedProfileSetup(true);
-    } else {
-      setShowForcedProfileSetup(false);
-    }
-  }, [currentTab, userProfile, user, profileLoading]);
+    const needsSetup = !isUserProfileComplete(userProfile);
+    setShowForcedProfileSetup(needsSetup);
+  }, [userProfile, user, profileLoading]);
 
   // 4. Auto-clean post qkQ9PDCxO0myy5l2seda image attachment when the admin logs in
   useEffect(() => {
@@ -4912,27 +4963,34 @@ E-Vedhika Support System`;
         try {
           const docRef = doc(db, "users", result.user.uid);
           const docSnap = await getDoc(docRef);
-          let isNewUser = false;
-          if (!docSnap.exists()) {
-            isNewUser = true;
-            const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
-            let detectedDistrict = "Ranga Reddy";
-            try {
-              const rawLoc = localStorage.getItem("evedhika_user_district");
-              if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
-            } catch(e) {}
+          const existingData = docSnap.exists() ? docSnap.data() : null;
+          const isNewUser =
+            !docSnap.exists() ||
+            (!existingData?.time && !existingData?.profileCompleted && !existingData?.surname);
+          const isDev =
+            (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
 
-            await setDoc(docRef, {
-              name: result.user.displayName || "System User",
-              email: result.user.email,
-              photoURL: result.user.photoURL,
-              gender: "",
-              designation: "",
-              district: detectedDistrict,
-              location: `${detectedDistrict}, TELANGANA`,
-              role: isDev ? "super_admin" : "user",
-              time: Date.now(),
-            });
+          if (isNewUser) {
+            await setDoc(
+              docRef,
+              {
+                name: existingData?.name && existingData.name !== "User" && existingData.name !== "System User" ? existingData.name : "",
+                surname: existingData?.surname || "",
+                username: existingData?.username || result.user.displayName || "",
+                email: result.user.email,
+                photoURL: existingData?.photoURL || result.user.photoURL,
+                gender: existingData?.gender || "",
+                designation: existingData?.designation || "",
+                district: existingData?.district && existingData.district.toLowerCase() !== "undefined" ? existingData.district : "",
+                mandal: existingData?.mandal || "",
+                village: existingData?.village || "",
+                mobile: existingData?.mobile || "",
+                profileCompleted: false,
+                role: isDev ? "super_admin" : (existingData?.role || "user"),
+                time: existingData?.time || Date.now(),
+              },
+              { merge: true },
+            );
 
             notifyUserProfileUpdate({
               action: "registered",
@@ -4940,26 +4998,12 @@ E-Vedhika Support System`;
                 name: result.user.displayName || "User",
                 email: result.user.email || "",
                 role: isDev ? "super_admin" : "user",
-                uid: result.user.uid
-              }
+                uid: result.user.uid,
+              },
             }).catch(() => {});
           } else {
-            const isDev = (result.user.email || "").toLowerCase() === "rakeshkumardhawan123@gmail.com";
-            const existingData = docSnap.data();
             if (isDev && existingData?.role !== "super_admin") {
               await updateDoc(docRef, { role: "super_admin" }).catch(() => {});
-            }
-
-            if (!existingData?.district || existingData?.district?.toLowerCase() === "undefined") {
-              let detectedDistrict = "Ranga Reddy";
-              try {
-                const rawLoc = localStorage.getItem("evedhika_user_district");
-                if (rawLoc && rawLoc.toLowerCase() !== "undefined") detectedDistrict = rawLoc;
-              } catch(e) {}
-              await updateDoc(docRef, {
-                district: detectedDistrict,
-                location: `${detectedDistrict}, TELANGANA`
-              }).catch(() => {});
             }
           }
 
@@ -5305,6 +5349,73 @@ E-Vedhika Support System`;
 
     recognition.start();
   };
+
+  // MANDATORY PROFILE COMPLETION GATE FOR ALL SIGNED-IN USERS (NEW SIGNUPS & EXISTING USERS)
+  if (user && !user.isAnonymous) {
+    if (authLoading || profileLoading) {
+      return (
+        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans antialiased flex flex-col justify-center items-center p-4 text-center">
+          <div className="relative w-12 h-12 mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-t-amber-400 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-4 border-white/10"></div>
+          </div>
+          <p className="text-sm font-bold tracking-wide text-white mb-1">
+            మీ ప్రొఫైల్ వివరాలు తనిఖీ చేయబడుతున్నాయి...
+          </p>
+          <p className="text-xs font-medium text-slate-400">
+            దయచేసి వేచి ఉండండి (Verifying your profile details...)
+          </p>
+        </div>
+      );
+    }
+
+    if (!isUserProfileComplete(userProfile)) {
+      return (
+        <div className="h-[100dvh] overflow-y-auto bg-slate-950 font-sans antialiased relative">
+          <AnimatePresence>
+            {toasts.map((t) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed top-4 right-4 z-[15000] bg-primary text-white px-6 py-3 rounded-2xl shadow-xl font-bold flex items-center gap-3"
+                style={{ background: "#0d3b66" }}
+              >
+                <div
+                  className="w-1.5 h-1.5 rounded-full bg-accent"
+                  style={{ background: "#fbbf24" }}
+                ></div>
+                {t.msg}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          <EditProfileModal
+            onClose={() => {
+              addToast("పోర్టల్ యాక్సెస్ కోసం దయచేసి ముందుగా మీ ప్రొఫైల్ వివరాలను పూర్తి చేయండి.");
+            }}
+            user={user}
+            userProfile={userProfile}
+            addToast={addToast}
+            isForced={true}
+            onComplete={() => setShowForcedProfileSetup(false)}
+            onProfileSaved={(updated) => {
+              setUserProfile((prev) => ({
+                ...(prev || ({ id: user.uid, username: "", time: Date.now() } as UserProfile)),
+                ...updated,
+                profileCompleted: true,
+              }));
+              setShowForcedProfileSetup(false);
+              setShowProfileModal(false);
+            }}
+            districtsData={districtsData}
+            rbacPermissions={rbacPermissions}
+          />
+        </div>
+      );
+    }
+  }
 
   const isTargetingAdminRoute =
     isEvdkaPath || currentTab === "admin" || currentTab === "editor";
@@ -9812,21 +9923,27 @@ E-Vedhika Support System`;
               <EditProfileModal
                 onClose={() => {
                   if (showForcedProfileSetup) {
-                    addToast("Please complete your profile first.");
+                    addToast("పోర్టల్ యాక్సెస్ కోసం దయచేసి ముందుగా మీ ప్రొఫైల్ వివరాలను పూర్తి చేయండి.");
                     return;
                   }
                   setShowProfileModal(false);
-                }}
-                onExitForced={() => {
-                  setShowForcedProfileSetup(false);
-                  setShowProfileModal(false);
-                  setCurrentTab("home");
                 }}
                 user={user}
                 userProfile={userProfile}
                 addToast={addToast}
                 isForced={showForcedProfileSetup}
                 onComplete={() => setShowForcedProfileSetup(false)}
+                onProfileSaved={(updated) => {
+                  if (user) {
+                    setUserProfile((prev) => ({
+                      ...(prev || ({ id: user.uid, username: "", time: Date.now() } as UserProfile)),
+                      ...updated,
+                      profileCompleted: true,
+                    }));
+                  }
+                  setShowForcedProfileSetup(false);
+                  setShowProfileModal(false);
+                }}
                 districtsData={districtsData}
                 rbacPermissions={rbacPermissions}
               />
@@ -10523,12 +10640,12 @@ E-Vedhika Support System`;
 
 function EditProfileModal({
   onClose,
-  onExitForced,
   user,
   userProfile,
   addToast,
   isForced,
   onComplete,
+  onProfileSaved,
   districtsData,
   rbacPermissions,
 }: {
@@ -10539,20 +10656,33 @@ function EditProfileModal({
   addToast: (s: string) => void;
   isForced?: boolean;
   onComplete?: () => void;
+  onProfileSaved?: (updated: Partial<UserProfile>) => void;
   districtsData: Record<string, string[]>;
   rbacPermissions: any;
 }) {
+  const cleanInitialName =
+    userProfile?.name &&
+    userProfile.name !== "System User" &&
+    userProfile.name !== "User"
+      ? userProfile.name
+      : "";
+  const cleanInitialDistrict =
+    userProfile?.district &&
+    userProfile.district.toLowerCase() !== "undefined"
+      ? userProfile.district
+      : "";
+
   const [surname, setSurname] = useState(userProfile?.surname || "");
-  const [name, setName] = useState(userProfile?.name || "");
+  const [name, setName] = useState(cleanInitialName);
   const [username, setUsername] = useState(
     userProfile?.username || user?.displayName || "",
   );
   const [gender, setGender] = useState(userProfile?.gender || "");
   const [state, setState] = useState(userProfile?.state || "Telangana");
-  const [district, setDistrict] = useState(userProfile?.district || "");
+  const [district, setDistrict] = useState(cleanInitialDistrict);
   const [mandal, setMandal] = useState(userProfile?.mandal || "");
   const [village, setVillage] = useState(userProfile?.village || "");
-  const [mobile, setMobile] = useState(userProfile?.mobile || "");
+  const [mobile, setMobile] = useState(userProfile?.mobile || userProfile?.phone || "");
   const [email, setEmail] = useState(userProfile?.email || user?.email || "");
   const [photoURL, setPhotoURL] = useState(
     userProfile?.photoURL || user?.photoURL || "",
@@ -10562,6 +10692,62 @@ function EditProfileModal({
   );
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [designation, setDesignation] = useState(
+    userProfile?.designation || "",
+  );
+  const [office, setOffice] = useState(userProfile?.office || "");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(
+    userProfile?.theme || "system",
+  );
+  const [notifications, setNotifications] = useState(
+    userProfile?.notifications ?? true,
+  );
+  const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Sync existing user profile details if userProfile loads after mount
+  useEffect(() => {
+    if (!userProfile) return;
+    if (userProfile.surname && !surname) setSurname(userProfile.surname);
+    if (
+      userProfile.name &&
+      userProfile.name !== "System User" &&
+      userProfile.name !== "User" &&
+      !name
+    ) {
+      setName(userProfile.name);
+    }
+    if ((userProfile.username || user?.displayName) && !username) {
+      setUsername(userProfile.username || user?.displayName || "");
+    }
+    if (userProfile.gender && !gender) setGender(userProfile.gender);
+    if (userProfile.state) setState(userProfile.state);
+    if (
+      userProfile.district &&
+      userProfile.district.toLowerCase() !== "undefined" &&
+      !district
+    ) {
+      setDistrict(userProfile.district);
+    }
+    if (userProfile.mandal && !mandal) setMandal(userProfile.mandal);
+    if (userProfile.village && !village) setVillage(userProfile.village);
+    if ((userProfile.mobile || userProfile.phone) && !mobile) {
+      setMobile(userProfile.mobile || userProfile.phone || "");
+    }
+    if ((userProfile.email || user?.email) && !email) {
+      setEmail(userProfile.email || user?.email || "");
+    }
+    if ((userProfile.photoURL || user?.photoURL) && !photoURL) {
+      setPhotoURL(userProfile.photoURL || user?.photoURL || "");
+    }
+    if (userProfile.coverPhotoURL && !coverPhotoURL) {
+      setCoverPhotoURL(userProfile.coverPhotoURL);
+    }
+    if (userProfile.designation && !designation) {
+      setDesignation(userProfile.designation);
+    }
+    if (userProfile.office && !office) setOffice(userProfile.office);
+  }, [userProfile, user]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -10572,18 +10758,20 @@ function EditProfileModal({
       try {
         const token = await auth.currentUser?.getIdToken().catch(() => null);
         const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            'X-Admin-Auth': 'true'
+        formData.append("file", file);
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "X-Admin-Auth": "true",
           },
-          body: formData
+          body: formData,
         });
         const resText = await response.text();
         let data: any = null;
-        try { data = JSON.parse(resText); } catch {}
+        try {
+          data = JSON.parse(resText);
+        } catch {}
         if (response.ok && data?.url) {
           finalUrl = data.url;
         }
@@ -10592,11 +10780,14 @@ function EditProfileModal({
       }
 
       if (!finalUrl) {
-        finalUrl = await uploadFileSafe(file, `uploads/avatars/${Date.now()}_${file.name}`);
+        finalUrl = await uploadFileSafe(
+          file,
+          `uploads/avatars/${Date.now()}_${file.name}`,
+        );
       }
 
       setPhotoURL(finalUrl);
-      addToast("Profile photo uploaded!");
+      addToast("ప్రొఫైల్ ఫోటో అప్‌లోడ్ చేయబడింది (Profile photo uploaded)!");
     } catch (err) {
       addToast("Failed to upload avatar");
     } finally {
@@ -10613,18 +10804,20 @@ function EditProfileModal({
       try {
         const token = await auth.currentUser?.getIdToken().catch(() => null);
         const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            'X-Admin-Auth': 'true'
+        formData.append("file", file);
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "X-Admin-Auth": "true",
           },
-          body: formData
+          body: formData,
         });
         const resText = await response.text();
         let data: any = null;
-        try { data = JSON.parse(resText); } catch {}
+        try {
+          data = JSON.parse(resText);
+        } catch {}
         if (response.ok && data?.url) {
           finalUrl = data.url;
         }
@@ -10633,45 +10826,66 @@ function EditProfileModal({
       }
 
       if (!finalUrl) {
-        finalUrl = await uploadFileSafe(file, `uploads/covers/${Date.now()}_${file.name}`);
+        finalUrl = await uploadFileSafe(
+          file,
+          `uploads/covers/${Date.now()}_${file.name}`,
+        );
       }
 
       setCoverPhotoURL(finalUrl);
-      addToast("Cover photo uploaded successfully!");
+      addToast("కవర్ ఫోటో అప్‌లోడ్ చేయబడింది (Cover photo uploaded)!");
     } catch (err) {
       addToast("Failed to upload cover photo");
     } finally {
       setUploadingCover(false);
     }
   };
-  const [designation, setDesignation] = useState(
-    userProfile?.designation || "",
-  );
-  const [office, setOffice] = useState(userProfile?.office || "");
-  const [theme, setTheme] = useState<"light" | "dark" | "system">(
-    userProfile?.theme || "system",
-  );
-  const [notifications, setNotifications] = useState(
-    userProfile?.notifications ?? true,
-  );
-  const [saving, setSaving] = useState(false);
 
   const mandals = district ? districtsData[district] || [] : [];
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!username || !name || !surname || (gender !== "Female" && !mobile)) {
-      addToast("Please fill all required fields (*)");
+    setValidationError(null);
+
+    const cleanSurname = surname.trim();
+    const cleanName = name.trim();
+    const cleanUsername = username.trim();
+    const cleanGender = gender.trim();
+    const cleanMobile = mobile.trim();
+    const cleanDistrict = district.trim();
+    const cleanMandal = mandal.trim();
+    const cleanVillage = village.trim();
+    const cleanDesignation = designation.trim();
+
+    if (
+      !cleanSurname ||
+      !cleanName ||
+      !cleanUsername ||
+      !cleanGender ||
+      (cleanGender !== "Female" && cleanMobile.replace(/\D/g, "").length < 10) ||
+      !cleanDistrict ||
+      !cleanMandal ||
+      !cleanVillage ||
+      !cleanDesignation
+    ) {
+      const msg =
+        "దయచేసి నక్షత్రం (*) గుర్తు ఉన్న అన్ని ప్రొఫైల్ వివరాలను (ఇంటి పేరు, పేరు, యూజర్ నేమ్, లింగం, 10 అంకెల మొబైల్ నంబర్, జిల్లా, మండలం, గ్రామ పంచాయతీ, హోదా) పూర్తిగా నమోదు చేయండి!";
+      setValidationError(msg);
+      addToast(msg);
       return;
     }
+
     setSaving(true);
     try {
-      if (username !== userProfile?.username) {
-        const lowerUsername = username.toLowerCase().trim();
+      if (cleanUsername !== userProfile?.username) {
+        const lowerUsername = cleanUsername.toLowerCase();
         const usernameDoc = await getDoc(doc(db, "usernames", lowerUsername));
         if (usernameDoc.exists() && usernameDoc.data().uid !== user.uid) {
-          addToast("Username already taken. Please choose another.");
+          const takenMsg =
+            "ఈ యూజర్ నేమ్ (Username) ఇప్పటికే మరొకరు వాడుతున్నారు. దయచేసి వేరొకటి ఎంచుకోండి.";
+          setValidationError(takenMsg);
+          addToast(takenMsg);
           setSaving(false);
           return;
         }
@@ -10679,57 +10893,58 @@ function EditProfileModal({
         if (userProfile?.username) {
           await deleteDoc(
             doc(db, "usernames", userProfile.username.toLowerCase().trim()),
-          );
+          ).catch(() => {});
         }
 
         await setDoc(doc(db, "usernames", lowerUsername), { uid: user.uid });
       }
 
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
-          surname,
-          name,
-          username,
-          gender,
-          state,
-          district,
-          mandal,
-          village,
-          designation,
-          office,
-          mobile,
-          email,
-          photoURL,
-          coverPhotoURL,
-          theme,
-          notifications,
-          time: userProfile?.time || Date.now(),
-          loginCount: userProfile?.loginCount || 1,
-          lastLoginTime: userProfile?.lastLoginTime || Date.now(),
-        },
-        { merge: true },
-      );
+      const savedData: Partial<UserProfile> = {
+        surname: cleanSurname,
+        name: cleanName,
+        username: cleanUsername,
+        gender: cleanGender,
+        state: state || "Telangana",
+        district: cleanDistrict,
+        mandal: cleanMandal,
+        village: cleanVillage,
+        designation: cleanDesignation,
+        office: office.trim(),
+        mobile: cleanMobile,
+        email: email.trim() || user.email || "",
+        photoURL,
+        coverPhotoURL,
+        theme,
+        notifications,
+        profileCompleted: true,
+        profileCompletedAt: Date.now(),
+        status: userProfile?.status || "published",
+        time: userProfile?.time || Date.now(),
+        loginCount: userProfile?.loginCount || 1,
+        lastLoginTime: userProfile?.lastLoginTime || Date.now(),
+      };
+
+      await setDoc(doc(db, "users", user.uid), savedData, { merge: true });
 
       notifyUserProfileUpdate({
         action: "profile_updated",
         user: {
-          name,
-          surname,
-          username,
-          gender,
-          district,
-          mandal,
-          village,
-          designation,
-          mobile,
-          email,
+          name: cleanName,
+          surname: cleanSurname,
+          username: cleanUsername,
+          gender: cleanGender,
+          district: cleanDistrict,
+          mandal: cleanMandal,
+          village: cleanVillage,
+          designation: cleanDesignation,
+          mobile: cleanMobile,
+          email: email.trim() || user.email || "",
           role: userProfile?.role || "user",
-          uid: user.uid
-        }
+          uid: user.uid,
+        },
       }).catch(() => {});
 
-      if (designation === "Citizen") {
+      if (cleanDesignation === "Citizen") {
         Swal.fire({
           title: "సిటిజన్ గారికి నమస్కారం",
           text: "ప్రస్తుతం ఈ వేదిక Webportal సిటిజన్ సర్వీస్ ఇంకా అందుబాటులోకి రాలేదు. రాగానే మీ మొబైల్ నెంబర్ కి మెసేజ్ లేదా ఇమెయిల్ ద్వారా మీకు సమాచారం ఇవ్వడం జరుగుతుంది.",
@@ -10738,11 +10953,14 @@ function EditProfileModal({
           confirmButtonColor: "#0d3b66",
         });
       } else {
-        addToast("Profile updated successfully!");
+        addToast(
+          "✅ మీ ప్రొఫైల్ వివరాలు విజయవంతంగా సేవ్ చేయబడ్డాయి! E-Vedhika పోర్టల్‌కు స్వాగతం.",
+        );
       }
 
+      if (onProfileSaved) onProfileSaved(savedData);
       if (onComplete) onComplete();
-      onClose();
+      if (!isForced) onClose();
     } catch (err: any) {
       handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
       if (err.message.includes("offline")) {
@@ -10758,44 +10976,60 @@ function EditProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[4000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[12000] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-lg bg-white rounded-[32px] shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-xl bg-white rounded-[28px] shadow-2xl p-5 sm:p-6 relative max-h-[92vh] overflow-y-auto border border-slate-200"
       >
         {!isForced && (
           <button
             aria-label="Close profile modal"
             onClick={onClose}
-            className="absolute top-6 right-6 bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-colors"
+            className="absolute top-5 right-5 bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
         )}
 
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-black text-primary uppercase tracking-tighter">
-            Profile Setup
+        <div className="text-center mb-4">
+          <h2 className="text-xl sm:text-2xl font-black text-primary uppercase tracking-tight">
+            {isForced
+              ? "ముందుగా మీ ప్రొఫైల్ వివరాలను పూర్తి చేయండి"
+              : "ప్రొఫైల్ వివరాలు (Profile Setup)"}
           </h2>
-          <div className="flex justify-center mt-1">
-            <p className="bg-accent text-primary px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-[0.12em] shadow-sm">
+          <div className="flex justify-center mt-1.5">
+            <p className="bg-amber-400 text-slate-950 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-xs">
               {isForced
-                ? "Complete your identity to continue"
-                : "Update your portal credentials & Workplace Details"}
+                ? "ప్రొఫైల్ పూర్తి చేసిన తర్వాతే E-Vedhika పోర్టల్ యాక్సెస్ లభిస్తుంది"
+                : "Update Your Portal Credentials & Workplace Details"}
             </p>
           </div>
         </div>
+
+        {isForced && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-left">
+            <p className="text-xs font-bold text-blue-950 leading-relaxed">
+              🙏 <span className="font-black text-blue-800">గమనిక:</span> కొత్తగా సైన్ అప్ అయిన యూజర్లు మరియు ఇప్పటికే ఉన్న యూజర్లు పోర్టల్‌లోని సేవలను ఉపయోగించుకోవడానికి ముందుగా క్రింది ప్రొఫైల్ వివరాలను (ఇంటి పేరు, పేరు, మొబైల్, జిల్లా, మండలం, గ్రామ పంచాయతీ, హోదా) తప్పనిసరిగా నమోదు చేసి సేవ్ చేయాలి.
+            </p>
+          </div>
+        )}
+
+        {validationError && (
+          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold text-left">
+            ⚠️ {validationError}
+          </div>
+        )}
 
         <form onSubmit={handleSave} className="space-y-3">
           {/* Permissions Matrix Summary for Staff */}
           {(userProfile?.role === "admin" ||
             userProfile?.role === "editor" ||
             userProfile?.role === "moderator") && (
-            <div className="mb-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 text-left">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                  <Lock size={16} />
+            <div className="mb-4 p-3.5 bg-blue-50/50 rounded-2xl border border-blue-100/50 text-left">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                  <Lock size={14} />
                 </div>
                 <div>
                   <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-widest leading-none">
@@ -10806,333 +11040,306 @@ function EditProfileModal({
                   </p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
-                {[
-                  "dash",
-                  "reports",
-                  "gos_formats",
-                  "updates",
-                  "users",
-                  "builder",
-                  "locations",
-                  "suggestions",
-                  "trash",
-                  "logs",
-                  "settings",
-                  "ai",
-                ].map((tab) => {
-                  const perms =
-                    rbacPermissions?.[userProfile.role!]?.[tab] || {};
-                  if (!perms.view) return null;
-                  return (
-                    <div
-                      key={tab}
-                      className="bg-white/80 p-2 rounded-xl flex items-center justify-between border border-blue-50 shadow-sm"
-                    >
-                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-tighter truncate max-w-[70px]">
-                        {tab === "gos_formats"
-                          ? "GOs"
-                          : tab === "dash"
-                            ? "Home"
-                            : tab}
-                      </span>
-                      <div className="flex gap-0.5">
-                        {perms.view && (
-                          <div
-                            className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.5)]"
-                            title="View"
-                          />
-                        )}
-                        {perms.edit && (
-                          <div
-                            className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_rgba(59,130,246,0.5)]"
-                            title="Edit"
-                          />
-                        )}
-                        {perms.delete && (
-                          <div
-                            className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.5)]"
-                            title="Delete"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 
-          {/* User Visit Stats (విజిటర్ గణాంకాలు - ఆ యూజర్ కి మాత్రమే) */}
-          <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 mb-4 text-left shadow-sm">
+          {/* User Visit Stats */}
+          <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-3.5 mb-3 text-left shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
-                  <Activity size={18} className="animate-pulse" />
+                <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <Activity size={16} />
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-widest leading-none">
+                  <h4 className="text-[10px] font-black text-amber-900 uppercase tracking-widest leading-none">
                     మీ లాగిన్ వివరాలు (Login Stats)
                   </h4>
-                  <p className="text-[9px] font-bold text-amber-600 uppercase mt-1 tracking-tight">
-                    ఈ వెబ్‌సైట్‌లో మీ సందర్శనల సంఖ్య
+                  <p className="text-[9px] font-bold text-amber-700 mt-1">
+                    {user?.email || email}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-sm font-black text-amber-800 block">
+                <span className="text-xs font-black text-amber-900 block">
                   {userProfile?.loginCount || 1} సార్లు
                 </span>
-                <span className="text-[8px] font-bold text-amber-500 uppercase tracking-tighter">
+                <span className="text-[8px] font-bold text-amber-600 uppercase">
                   Total Visits
                 </span>
               </div>
             </div>
-            {userProfile?.lastLoginTime && (
-              <div className="mt-2.5 pt-2 border-t border-amber-200/20 flex justify-between items-center text-[9px] font-bold text-slate-500">
-                <span>చివరిగా లాగిన్ అయిన సమయం:</span>
-                <span className="text-slate-700">
-                  {new Date(userProfile.lastLoginTime).toLocaleString("te-IN", {
-                    hour12: true,
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </span>
+          </div>
+
+          {/* Cover & Profile Photos */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center mb-2">
+            <div className="sm:col-span-2">
+              <label className="text-[10px] font-black text-slate-600 uppercase mb-1 block ml-1">
+                Cover Photo (కవర్ ఫోటో - ఐచ్ఛికం)
+              </label>
+              <div className="w-full h-20 rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-100 relative group flex items-center justify-center">
+                {coverPhotoURL ? (
+                  <img
+                    src={coverPhotoURL}
+                    alt="Cover Preview"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="text-slate-400 text-[10px] font-bold flex items-center gap-1">
+                    <ImageIcon size={14} /> Add Cover Photo
+                  </div>
+                )}
+                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white text-xs font-bold gap-1.5">
+                  <Camera size={14} />{" "}
+                  {uploadingCover ? "Uploading..." : "Upload Cover"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Cover Photo Section */}
-          <div className="mb-4">
-            <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-              Cover Photo (కవర్ ఫోటో)
-            </label>
-            <div className="w-full h-28 rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-100 relative group flex items-center justify-center">
-              {coverPhotoURL ? (
-                <img
-                  src={coverPhotoURL}
-                  alt="Cover Preview"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="text-slate-400 text-[10px] font-bold flex items-center gap-1">
-                  <ImageIcon size={16} /> Add Header Cover Photo
-                </div>
-              )}
-              <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white text-xs font-bold gap-2">
-                <Camera size={16} /> {uploadingCover ? "Uploading..." : "Upload Cover"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverUpload}
-                  className="hidden"
-                />
+            <div className="flex flex-col items-center">
+              <label className="text-[10px] font-black text-slate-600 uppercase mb-1 block">
+                ప్రొఫైల్ ఫోటో (Photo)
               </label>
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-inner bg-slate-50 flex items-center justify-center relative group">
+                {photoURL ? (
+                  <img
+                    src={photoURL}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <User size={28} className="text-slate-300" />
+                )}
+                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white">
+                  <Camera size={16} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-[20px] overflow-hidden border-2 border-slate-100 shadow-inner bg-slate-50 flex items-center justify-center relative group">
-              {photoURL ? (
-                <img
-                  src={photoURL}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <User size={30} className="text-slate-300" />
-              )}
-              <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white">
-                <Camera size={16} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Surname *
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                ఇంటి పేరు (Surname) <span className="text-rose-600">*</span>
               </label>
               <input
                 value={surname}
                 onChange={(e) => setSurname(e.target.value)}
                 required
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
-                placeholder="Surname"
+                className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+                placeholder="మీ ఇంటి పేరు (Surname)"
               />
             </div>
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Name *
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                పేరు (Name) <span className="text-rose-600">*</span>
               </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
-                placeholder="Name"
+                className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+                placeholder="మీ పూర్తి పేరు (Name)"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-              Display Name / Username *
+          <div className="text-left">
+            <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+              డిస్‌ప్లే పేరు / యూజర్ నేమ్ (Display Name / Username){" "}
+              <span className="text-rose-600">*</span>
             </label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
-              placeholder="Username"
+              className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+              placeholder="పోర్టల్‌లో కనిపించే పేరు (Username)"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Gender
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                లింగం (Gender) <span className="text-rose-600">*</span>
               </label>
               <select
                 value={gender}
+                required
                 onChange={(e) => {
                   setGender(e.target.value);
                   if (e.target.value === "Female") setMobile("");
                 }}
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
+                className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
               >
-                <option value="">Select Gender</option>
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
+                <option value="">ఎంచుకోండి (Select Gender)</option>
+                <option value="Male">పురుషుడు (Male)</option>
+                <option value="Female">స్త్రీ (Female)</option>
+                <option value="Other">ఇతరులు (Other)</option>
               </select>
             </div>
             {gender !== "Female" && (
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                  Mobile No *
+                <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                  మొబైల్ నంబర్ (Mobile No) <span className="text-rose-600">*</span>
                 </label>
                 <input
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   required
-                  className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
-                  placeholder="Mobile Number"
+                  maxLength={15}
+                  className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+                  placeholder="10 అంకెల మొబైల్ నంబర్"
                 />
               </div>
             )}
           </div>
 
-          <div className="mt-4 mb-2 px-1 pb-1 border-b border-slate-100">
-            <h3 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
-               <Building size={12} />
-               Office / Workplace Address
+          <div className="mt-4 mb-2 px-1 pb-1 border-b border-slate-200 text-left">
+            <h3 className="text-[11px] font-black text-primary uppercase tracking-wider flex items-center gap-1.5">
+              <Building size={13} />
+              కార్యాలయ వివరాలు (Office / Workplace Details)
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Office State
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                రాష్ట్రం (Office State) <span className="text-rose-600">*</span>
               </label>
               <select
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl outline-none font-bold text-xs cursor-not-allowed"
-                disabled
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
               >
-                <option>Telangana</option>
+                <option value="Telangana">తెలంగాణ (Telangana)</option>
+                <option value="Andhra Pradesh">ఆంధ్రప్రదేశ్ (Andhra Pradesh)</option>
               </select>
             </div>
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Office District
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                జిల్లా (Office District) <span className="text-rose-600">*</span>
               </label>
               <select
                 value={district}
+                required
                 onChange={(e) => {
                   setDistrict(e.target.value);
                   setMandal("");
                 }}
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
+                className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
               >
-                <option value="">Select District</option>
+                <option value="">జిల్లా ఎంచుకోండి (Select District)</option>
                 {Object.keys(districtsData)
                   .sort()
                   .map((d) => (
-                    <option key={d}>{d}</option>
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
                   ))}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Office Mandal
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                మండలం (Office Mandal) <span className="text-rose-600">*</span>
               </label>
-              <select
-                value={mandal}
-                onChange={(e) => setMandal(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
-                disabled={!district}
-              >
-                <option value="">Select Mandal</option>
-                {mandals.map((m, idx) => (
-                  <option key={`${m}_${idx}`} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+              {mandals.length > 0 ? (
+                <select
+                  value={mandal}
+                  required
+                  onChange={(e) => setMandal(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+                  disabled={!district}
+                >
+                  <option value="">మండలం ఎంచుకోండి (Select Mandal)</option>
+                  {mandals.map((m, idx) => (
+                    <option key={`${m}_${idx}`} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={mandal}
+                  required
+                  onChange={(e) => setMandal(e.target.value)}
+                  placeholder="మండలం పేరు నమోదు చేయండి (Mandal)"
+                  className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+                />
+              )}
             </div>
             <div>
-              <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-                Office Village / GP
+              <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+                గ్రామ పంచాయతీ / గ్రామం (Village / GP){" "}
+                <span className="text-rose-600">*</span>
               </label>
               <input
                 value={village}
+                required
                 onChange={(e) => setVillage(e.target.value)}
-                className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
-                placeholder="Village"
+                className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
+                placeholder="గ్రామ పంచాయతీ పేరు (Village / GP)"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-              Designation
+          <div className="text-left">
+            <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+              హోదా / పదవి (Designation) <span className="text-rose-600">*</span>
             </label>
             <input
+              list="evedhika-designations-list"
               value={designation}
+              required
               onChange={(e) => setDesignation(e.target.value)}
-              placeholder="Type Designation (e.g. e-Panchayat, MPO)"
-              className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
+              placeholder="ఉదా: Panchayat Secretary, Computer Operator, MPO..."
+              className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
             />
+            <datalist id="evedhika-designations-list">
+              <option value="Panchayat Secretary (పంచాయతీ కార్యదర్శి)" />
+              <option value="Junior Panchayat Secretary (JPS)" />
+              <option value="Computer Operator / UBD Operator" />
+              <option value="e-Panchayat Computer Operator" />
+              <option value="Mandal Panchayat Officer (MPO)" />
+              <option value="MPDO" />
+              <option value="Grama Panchayat Staff" />
+              <option value="MeeSeva Operator" />
+              <option value="Citizen" />
+            </datalist>
           </div>
 
-          <div>
-            <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block ml-1 tracking-wider">
-              Office Address
+          <div className="text-left">
+            <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
+              కార్యాలయ చిరునామా (Office Address - ఐచ్ఛికం)
             </label>
             <input
               value={office}
               onChange={(e) => setOffice(e.target.value)}
-              placeholder="Office location / Building"
-              className="w-full bg-slate-50 border-2 border-transparent p-2 rounded-xl focus:border-primary/20 outline-none font-bold text-xs"
+              placeholder="గ్రామ పంచాయతీ / మండల కార్యాలయం చిరునామా"
+              className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-100">
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <label className="flex items-center justify-between cursor-pointer">
                 <span className="text-[10px] font-black uppercase text-slate-600">
                   Theme
@@ -11150,7 +11357,7 @@ function EditProfileModal({
                 </select>
               </label>
             </div>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
               <label className="flex items-center justify-between cursor-pointer">
                 <span className="text-[10px] font-black uppercase text-slate-600">
                   Notifications
@@ -11165,52 +11372,42 @@ function EditProfileModal({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-4">
+          <div className="flex flex-wrap gap-3 mt-4 pt-2">
             {!isForced && (
-              <>
-                <button
-                  aria-label="Cancel"
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 min-w-[120px] bg-slate-100 text-slate-600 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  aria-label="Logout"
-                  type="button"
-                  onClick={() => {
-                    auth.signOut();
-                    onClose();
-                  }}
-                  className="flex-1 min-w-[120px] bg-red-50 text-red-600 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-100 transition-all active:scale-95 border border-red-200 flex items-center justify-center gap-2"
-                >
-                  <LogOut size={16} />
-                  Logout
-                </button>
-              </>
-            )}
-            {isForced && (
               <button
-                aria-label="Exit to Home"
+                aria-label="Cancel"
                 type="button"
-                onClick={onExitForced}
-                className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                onClick={onClose}
+                className="flex-1 min-w-[120px] bg-slate-100 text-slate-600 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all active:scale-95 cursor-pointer"
               >
-                Exit to Home
+                రద్దు (Cancel)
               </button>
             )}
+            <button
+              aria-label="Logout"
+              type="button"
+              onClick={() => {
+                auth.signOut();
+                if (!isForced) onClose();
+              }}
+              className="flex-1 min-w-[120px] bg-red-50 text-red-600 py-3 rounded-xl font-black uppercase text-xs tracking-wider hover:bg-red-100 transition-all active:scale-95 border border-red-200 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogOut size={16} />
+              లాగ్ అవుట్ (Logout)
+            </button>
             <button
               aria-label="Save Profile Changes"
               type="submit"
               disabled={saving}
-              className="w-full bg-primary text-white py-4 rounded-xl font-black uppercase text-sm tracking-[0.2em] shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center gap-3"
+              className="w-full bg-primary text-white py-3.5 rounded-xl font-black uppercase text-xs sm:text-sm tracking-wider shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2.5 cursor-pointer"
               style={{ background: "#0d3b66" }}
             >
               {saving ? (
                 <Loader2 className="animate-spin" size={20} />
+              ) : isForced ? (
+                "✅ ప్రొఫైల్ సేవ్ చేసి పోర్టల్ యాక్సెస్ చేయండి (Save & Enter Portal)"
               ) : (
-                "Save Profile Changes"
+                "✅ ప్రొఫైల్ వివరాలు సేవ్ చేయండి (Save Profile Changes)"
               )}
             </button>
           </div>
@@ -11888,10 +12085,12 @@ function AdsenseUnit({
   client,
   slot,
   className,
+  siteConfig,
 }: {
   client?: string;
   slot?: string;
   className?: string;
+  siteConfig?: any;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -11899,7 +12098,7 @@ function AdsenseUnit({
   const isPushed = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !client || !slot || !canShowAds() || isLegacyWindows()) return;
+    if (typeof window === "undefined" || !client || !slot || !canShowAds(siteConfig) || isLegacyWindows()) return;
     
     // Dynamically ensure Google AdSense script is present when allowed
     if (!document.querySelector('script[src*="pagead2.googlesyndication.com"]')) {
@@ -11929,10 +12128,10 @@ function AdsenseUnit({
       observer.observe(containerRef.current);
     }
     return () => observer.disconnect();
-  }, [client, slot]);
+  }, [client, slot, siteConfig]);
 
   useEffect(() => {
-    if (!isVisible || !canShowAds()) return;
+    if (!isVisible || !canShowAds(siteConfig)) return;
     if (isPushed.current) return;
     const timer = setTimeout(() => {
       try {
@@ -11947,9 +12146,9 @@ function AdsenseUnit({
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [isVisible]);
+  }, [isVisible, siteConfig]);
 
-  if (!client || !slot || !canShowAds()) return null;
+  if (!client || !slot || !canShowAds(siteConfig)) return null;
 
   return (
     <div
@@ -17649,6 +17848,59 @@ Respond dynamically, constructively, and concisely in Telugu or English dependin
                       <span className="font-bold text-slate-700">Enable All Ads on Website</span>
                     </label>
 
+                    <div className="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                          రోజువారీ యాడ్స్ పరిమితి (Daily Ad Limit Per User)
+                        </label>
+                        <select
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-700 focus:border-indigo-500 outline-none"
+                          value={siteConfig?.ads?.adLimitPerUser || DEFAULT_DAILY_AD_LIMIT}
+                          onChange={async (e) => {
+                            const updatedAds = { ...(siteConfig?.ads || {}), adLimitPerUser: Number(e.target.value) };
+                            setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                            try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                            await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                            addToast(`రోజువారీ యాడ్స్ పరిమితి ${e.target.value} కి మార్చబడింది`);
+                          }}
+                        >
+                          <option value={2}>2 Ads / Day (చాలా తక్కువ)</option>
+                          <option value={3}>3 Ads / Day (తక్కువ - Recommended)</option>
+                          <option value={5}>5 Ads / Day (సాధారణం)</option>
+                          <option value={8}>8 Ads / Day (అధికం)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col justify-center">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={siteConfig?.ads?.thirdPartyTagEnabled === true}
+                            onChange={async (e) => {
+                              const updatedAds = { ...(siteConfig?.ads || {}), thirdPartyTagEnabled: e.target.checked };
+                              setSiteConfig((prev: any) => ({ ...prev, ads: updatedAds }));
+                              try { localStorage.setItem("e_vedhika_ad_config", JSON.stringify(updatedAds)); } catch (err) {}
+                              await setDoc(doc(db, "site_settings", "home_page"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                              await setDoc(doc(db, "settings", "site_config"), { ads: updatedAds }, { merge: true }).catch(() => {});
+                              addToast(
+                                e.target.checked
+                                  ? "Third-Party MultiTag Enabled (12h Cooldown)"
+                                  : "Third-Party Pop/MultiTag Ads Disabled (పాప్-అప్ యాడ్స్ ఆపివేయబడ్డాయి)"
+                              );
+                            }}
+                          />
+                          <span className="text-xs font-bold text-slate-700">
+                            Third-Party Pop/MultiTag Ads (Zone 310671)
+                          </span>
+                        </label>
+                        <p className="text-[10px] text-slate-500 mt-1 pl-6">
+                          ఆఫ్‌లో ఉంటే పాప్-అప్ / విగ్నెట్ యాడ్స్ రావు (Google AdSense మాత్రమే సురక్షితంగా పనిచేస్తుంది).
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="pt-4 border-t border-slate-100">
                       <div className="flex items-center justify-between mb-2">
                         <label className="block text-xs font-bold text-slate-700">Mute Ads Temporarily (తాత్కాలికంగా యాడ్స్ నిలిపివేత)</label>
@@ -22787,8 +23039,13 @@ function AdBanner({ slotId = "5641797386" }: { slotId?: string }) {
   return null;
 }
 
-function CustomAdUnit({ id, code, className }: { id: string; code?: string; className?: string }) {
-  if (!code || !canShowAds()) return null;
+function CustomAdUnit({ id, code, className, siteConfig }: { id: string; code?: string; className?: string; siteConfig?: any }) {
+  useEffect(() => {
+    if (code && canShowAds(siteConfig)) {
+      recordAdImpression();
+    }
+  }, [code, siteConfig]);
+  if (!code || !canShowAds(siteConfig)) return null;
   return (
     <div id={id} className={className} dangerouslySetInnerHTML={{ __html: code }} />
   );
@@ -29956,11 +30213,12 @@ function PostDetail({
         </div>
 
         
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig) && (
-          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} className="w-full my-4 flex justify-center items-center" />
-        )}
-        {siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeInArticle && canShowAds(siteConfig) && (
-          <CustomAdUnit id="in-article-custom-ad" code={siteConfig.ads.customAdCodeInArticle} className="my-4" />
+        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle && canShowAds(siteConfig) ? (
+          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotInArticle} siteConfig={siteConfig} className="w-full my-4 flex justify-center items-center" />
+        ) : (
+          siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeInArticle && canShowAds(siteConfig) && (
+            <CustomAdUnit id="in-article-custom-ad" code={siteConfig.ads.customAdCodeInArticle} siteConfig={siteConfig} className="my-4" />
+          )
         )}
 
         {/* Article Body Matter */}
@@ -30419,13 +30677,18 @@ function PostDetail({
           </div>
         )}
 
-        {/* AdSense Placeholder */}
-        {siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar && canShowAds(siteConfig) && (
-          <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} className="w-full flex items-center justify-center" />
-        )}
-        {/* Custom Ad Placeholder */}
-        {siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeSidebar && canShowAds(siteConfig) && (
-          <CustomAdUnit id="sidebar-custom-ad" code={siteConfig.ads.customAdCodeSidebar} className="w-full flex items-center justify-center" />
+        {/* Sidebar Ad (shown only when no in-article ad is rendered, to keep max 1 ad per post) */}
+        {!(
+          (siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotInArticle) ||
+          (siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeInArticle)
+        ) && canShowAds(siteConfig) && (
+          siteConfig?.ads?.adsenseEnabled && siteConfig.ads.adsenseClient && siteConfig.ads.adsenseSlotSidebar ? (
+            <AdsenseUnit client={siteConfig.ads.adsenseClient} slot={siteConfig.ads.adsenseSlotSidebar} siteConfig={siteConfig} className="w-full flex items-center justify-center" />
+          ) : (
+            siteConfig?.ads?.customAdsEnabled && siteConfig.ads.customAdCodeSidebar && (
+              <CustomAdUnit id="sidebar-custom-ad" code={siteConfig.ads.customAdCodeSidebar} siteConfig={siteConfig} className="w-full flex items-center justify-center" />
+            )
+          )
         )}
 
         {recentPostsList.length > 4 && (

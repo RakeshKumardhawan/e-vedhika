@@ -13,19 +13,6 @@ const getFriendlyError = (err: any) => {
   return err.message;
 };
 
-function AdBanner() {
-  return (
-    <div className="bg-slate-100 p-4 rounded-2xl text-center mb-6 border border-slate-200">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-        Sponsored Ad
-      </p>
-      <div className="h-20 bg-slate-200 rounded-xl flex items-center justify-center text-slate-400 font-bold italic">
-        Your Ad Here
-      </div>
-    </div>
-  );
-}
-
 export function PollsScreen({
   user,
   isAdmin,
@@ -125,7 +112,6 @@ export function PollsScreen({
 
   return (
     <div className="space-y-6">
-      <AdBanner />
       <div className="flex items-center gap-3 mb-6">
         <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
           <Vote size={24} />
