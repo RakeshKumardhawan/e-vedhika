@@ -20,12 +20,13 @@ export function SafeMarkdown(props: ReactMarkdownProps) {
             if (embed) {
               return (
                 <div className="my-3 block">
-                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-200 bg-black shadow-md">
+                  <div className="relative aspect-video w-full min-h-[230px] sm:min-h-[320px] rounded-2xl overflow-hidden border border-slate-200 bg-black shadow-md">
                     <iframe
-                      src={embed}
+                      src={`${embed}${embed.includes('?') ? '&' : '?'}controls=1&fs=1&rel=0&playsinline=1&modestbranding=0&iv_load_policy=3`}
                       title="Embedded YouTube Video"
                       className="absolute top-0 left-0 w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
                   </div>

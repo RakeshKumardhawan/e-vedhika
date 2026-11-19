@@ -26,6 +26,7 @@ import {
   KeyRound,
   ClipboardCheck
 } from 'lucide-react';
+import { LearningCenterTracks, PrActInteractiveAssistant } from './LearningCenterTracks';
 
 export interface PracticalTutorial {
   id: string;
@@ -898,8 +899,8 @@ export function PracticalTutorialsHub() {
   );
 }
 
-export function KnowledgeHubSection() {
-  const [activeView, setActiveView] = useState<'pr_act' | 'tutorials' | 'gp_records'>('pr_act');
+export function KnowledgeHubSection({ initialTab = 'pr_act' }: { initialTab?: 'pr_act' | 'tutorials' | 'gp_records' | 'coding_analytics' } = {}) {
+  const [activeView, setActiveView] = useState<'pr_act' | 'tutorials' | 'gp_records' | 'coding_analytics'>(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeSection, setActiveSection] = useState<ActSection | null>(PR_ACT_SECTIONS[4]); // Default to Section 42 (Panchayat Secretary Duties)
@@ -943,6 +944,18 @@ export function KnowledgeHubSection() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveView('coding_analytics')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            activeView === 'coding_analytics'
+              ? 'bg-[#0d3b66] text-white shadow-sm'
+              : 'text-slate-700 hover:bg-slate-100'
+          }`}
+        >
+          <Terminal size={15} />
+          <span>2. Excel, Sheets, Python, NumPy, Pandas & Power BI హబ్</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveView('tutorials')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
             activeView === 'tutorials'
@@ -951,7 +964,7 @@ export function KnowledgeHubSection() {
           }`}
         >
           <GraduationCap size={15} />
-          <span>2. 11-అంశాల ప్రాక్టికల్ టెక్నికల్ ట్యుటోరియల్స్ (UBD, DSC, IE Mode)</span>
+          <span>3. 11-అంశాల UBD, DSC & IE Mode ట్యుటోరియల్స్</span>
         </button>
         <button
           type="button"
@@ -963,11 +976,18 @@ export function KnowledgeHubSection() {
           }`}
         >
           <FileText size={15} />
-          <span>3. గ్రామ పంచాయతీ రిజిస్టర్లు & డిజిటల్ డాక్యుమెంటేషన్</span>
+          <span>4. గ్రామ పంచాయతీ రిజిస్టర్లు & డిజిటల్ డాక్యుమెంటేషన్</span>
         </button>
       </div>
 
-      {activeView === 'tutorials' && <PracticalTutorialsHub />}
+      {activeView === 'coding_analytics' && <LearningCenterTracks />}
+
+      {activeView === 'tutorials' && (
+        <div className="space-y-8">
+          <PracticalTutorialsHub />
+          <LearningCenterTracks />
+        </div>
+      )}
 
       {activeView === 'gp_records' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
@@ -1050,6 +1070,8 @@ export function KnowledgeHubSection() {
               </p>
             </div>
           </div>
+
+          <PrActInteractiveAssistant />
 
           {/* Search & Category Filter */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">

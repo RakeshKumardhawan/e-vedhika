@@ -183,6 +183,11 @@ import { UBDTracker } from "./components/UBDTracker";
 import UBDTrackingTool from "./components/UBDTrackingTool";
 import { ExcelMerger } from "./components/ExcelMerger";
 import { MonthlyActivityFormatter } from "./components/MonthlyActivityFormatter";
+import { UnsupportedExcelViewer } from "./components/UnsupportedExcelViewer";
+import { DcbReportAnalyzer } from "./components/DcbReportAnalyzer";
+import { ExcelStudioManager } from "./components/ExcelStudioManager";
+import { EPanchayatCitizenCenter } from "./components/EPanchayatCitizenCenter";
+import { YouTubeInteractivePlayer } from "./components/YouTubeInteractivePlayer";
 import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
 import { notifySupportTicketToTelegram, pushPostToSupportSystem } from "./services/supportTicketService";
 import { notifyPostUpdate, notifyUserProfileUpdate, notifyWebsiteUpdate, notifyEmergencyBroadcast } from "./services/telegramService";
@@ -7169,11 +7174,16 @@ E-Vedhika Support System`;
                                     {[
                                       { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} />, isFree: true },
                                       { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: false },
-                                      { id: 'training', label: 'Digital Training', icon: <GraduationCap size={16} />, isFree: false },
-                                      { id: 'pract', label: 'Knowledge Hub', icon: <Book size={16} />, isFree: false },
                                       { id: 'MAS', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: false },
+                                      { id: 'dcb-reports', label: 'DCB Tax Reports Analyzer', icon: <BarChart3 size={16} />, isFree: true },
+                                      { id: 'unsupported-excel', label: 'Unsupported / HTML Excel Viewer', icon: <FileSpreadsheet size={16} />, isFree: true },
+                                      { id: 'excel-studio', label: '28-in-1 Excel File Manager & Compare', icon: <FileSpreadsheet size={16} />, isFree: true },
                                       { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} />, isFree: false },
                                       { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} />, isFree: false },
+                                      { id: 'epanchayat-tutorials', label: 'ePanchayat Citizen Services Guide', icon: <Building2 size={16} />, isFree: true },
+                                      { id: 'training', label: 'Digital Training & Learning Center', icon: <GraduationCap size={16} />, isFree: true },
+                                      { id: 'pract', label: 'Knowledge Hub & PR Act 2018 Assistant', icon: <Book size={16} />, isFree: true },
+                                      { id: 'gallery', label: 'Training & Event Media Gallery', icon: <ImageIcon size={16} />, isFree: true },
                                     ].map(tool => (
                                       <button
                                         key={tool.id}
@@ -19128,22 +19138,28 @@ function DigitalWorkspaceSection({
       desc: "Multiple Attendance Records",
     },
     {
-      id: "training",
-      title: "Digital Training",
-      icon: GraduationCap,
-      desc: "Workflows & Tutorials",
-    },
-    {
-      id: "pract",
-      title: "Knowledge Hub",
-      icon: Book,
-      desc: "నాలెడ్జ్ హబ్ (PR Act Guide)",
-    },
-    {
       id: "MAS",
       title: "E-Panchayat Monthly Activity Report (MAS)",
       icon: FileSpreadsheet,
       desc: "మండల/జిల్లా స్థాయి మాసాంతపు యాక్టివిటీ రిపోర్ట్ (GP Matrix)",
+    },
+    {
+      id: "dcb-reports",
+      title: "DCB Tax Reports Analyzer",
+      icon: BarChart3,
+      desc: "Demand, Collection & Balance (పన్నుల వసూళ్ల విశ్లేషణ)",
+    },
+    {
+      id: "unsupported-excel",
+      title: "Unsupported / HTML Excel Viewer",
+      icon: FileSpreadsheet,
+      desc: "Open Corrupted / Govt Portal HTML .xls Files & Convert to .xlsx",
+    },
+    {
+      id: "excel-studio",
+      title: "28-in-1 Excel File Manager & Compare",
+      icon: FileSpreadsheet,
+      desc: "2-File Compare (6 Sheets), Clean, Transform, Unpivot & Formula Helper",
     },
     {
       id: "excel-merge",
@@ -19155,7 +19171,31 @@ function DigitalWorkspaceSection({
       id: "gpdp-planning",
       title: "(GPDP) – Planning & Budget Allocation",
       icon: ClipboardList,
-      desc: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక",
+      desc: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (15వ ఆర్థిక సంఘం నిబంధనలు)",
+    },
+    {
+      id: "epanchayat-tutorials",
+      title: "ePanchayat Citizen Services Guide",
+      icon: Building2,
+      desc: "12 ePanchayat సేవలు: Layout, Building, House Tax, Mutation, Birth/Death",
+    },
+    {
+      id: "training",
+      title: "Digital Training & Learning Center",
+      icon: GraduationCap,
+      desc: "Excel, Google Sheets, Python, NumPy, Pandas, Power BI & GP Workflows",
+    },
+    {
+      id: "pract",
+      title: "Knowledge Hub & PR Act 2018 Assistant",
+      icon: Book,
+      desc: "తెలంగాణ పంచాయతీ రాజ్ చట్టం 2018 & ఇంటరాక్టివ్ గైడ్",
+    },
+    {
+      id: "gallery",
+      title: "Training & Event Media Gallery",
+      icon: ImageIcon,
+      desc: "శిక్షణా కార్యక్రమాలు, ఈవెంట్ ఫోటోలు మరియు వీడియో ట్యుటోరియల్స్",
     },
     {
       id: "ticket-tracker",
@@ -19409,6 +19449,21 @@ function DigitalWorkspaceSection({
               )}
               {activeTool === "excel-merge" && (
                 <ExcelMerger user={user} addToast={addToast} />
+              )}
+              {activeTool === "excel-studio" && (
+                <ExcelStudioManager user={user} addToast={addToast} />
+              )}
+              {activeTool === "unsupported-excel" && (
+                <UnsupportedExcelViewer addToast={addToast} />
+              )}
+              {activeTool === "dcb-reports" && (
+                <DcbReportAnalyzer addToast={addToast} />
+              )}
+              {activeTool === "epanchayat-tutorials" && (
+                <EPanchayatCitizenCenter user={user} addToast={addToast} initialSection="citizen_services" />
+              )}
+              {activeTool === "gallery" && (
+                <EPanchayatCitizenCenter user={user} addToast={addToast} initialSection="gallery" />
               )}
               {activeTool === "gpdp-planning" && (
                 <GPDPPlanningTool user={user} addToast={addToast} />
@@ -23203,6 +23258,13 @@ function PostCard({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [localExpanded, setLocalExpanded] = useState(false);
+  const [isVideoTheaterMode, setIsVideoTheaterMode] = useState(false);
+  const postYouTubeUrl =
+    post.youtubeUrl ||
+    post.embedUrl ||
+    (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be"))
+      ? post.mediaUrl
+      : "");
   const isAuthor = Boolean(auth.currentUser?.uid && post.uid && auth.currentUser.uid === post.uid);
   const { content: remoteContent, loading: remoteLoading } = useRemoteContent(post);
 
@@ -24099,8 +24161,44 @@ function PostCard({
       {post.attachments &&
       (post.downloadStyle === "techspot" ||
         (!post.downloadStyle && post.attachments.length >= 2)) ? (
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 mt-4">
-          <div className="flex-1 min-w-0">
+        <div className="mt-4">
+          {/* Full-Width Theater Mode Video Above Both Columns */}
+          {postYouTubeUrl && isVideoTheaterMode && (
+            <YouTubeInteractivePlayer
+              url={postYouTubeUrl}
+              title={post.title || "YouTube Video"}
+              websiteName={post.websiteName}
+              isTheaterMode={true}
+              onToggleTheaterMode={() => setIsVideoTheaterMode(false)}
+            />
+          )}
+
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+            <div className="flex-1 min-w-0">
+              {/* Issue / Problem Banner + Large Interactive YouTube Video Player (Top of Post Card) */}
+              {postYouTubeUrl && !isVideoTheaterMode ? (
+                <YouTubeInteractivePlayer
+                  url={postYouTubeUrl}
+                  title={post.title || "YouTube Video"}
+                  websiteName={post.websiteName}
+                  isTheaterMode={false}
+                  onToggleTheaterMode={() => setIsVideoTheaterMode(true)}
+                />
+              ) : !postYouTubeUrl && post.websiteName ? (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between group hover:bg-blue-100/50 transition-colors">
+                  <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
+                    <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center shrink-0">
+                      <ExternalLink size={12} strokeWidth={3} />
+                    </div>
+                    {post.websiteName} Issue / Problem
+                  </div>
+                  <Target
+                    size={14}
+                    className="text-primary/40 group-hover:text-primary transition-colors shrink-0"
+                  />
+                </div>
+              ) : null}
+
             <div
               className={`post-body mb-4 relative ${isActualExpanded ? "" : "max-h-[220px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
             >
@@ -24238,36 +24336,6 @@ function PostCard({
               </div>
             )}
 
-            {post.websiteName && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-                <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-                  <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-                    <ExternalLink size={12} strokeWidth={3} />
-                  </div>
-                  {post.websiteName} Issue / Problem
-                </div>
-                <Target
-                  size={14}
-                  className="text-primary/40 group-hover:text-primary transition-colors"
-                />
-              </div>
-            )}
-
-            {/* YouTube Video Player */}
-            {(post.youtubeUrl || post.embedUrl || (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")))) && (
-              <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-black">
-                <div className="relative aspect-video w-full">
-                  <iframe
-                    src={parseYouTubeEmbedUrl(post.youtubeUrl || post.embedUrl || post.mediaUrl || '')}
-                    title={post.title || "YouTube Video"}
-                    className="absolute top-0 left-0 w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            )}
-
             {post.mediaUrl && !(post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")) && (
               <div className="mb-4">
                 {post.mediaType?.startsWith("video") ? (
@@ -24350,47 +24418,87 @@ function PostCard({
             )}
           </div>
 
-          <div className="w-full lg:w-[280px] xl:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6 flex flex-col">
-            <div className="mb-5">
-              <a
-                href="#download"
-                onClick={(e) => {
-                  const attToDownload = getLatestAttachment(post.attachments) || post.attachments[0]; if (!attToDownload) return;
-                  handleForceDownload(e, attToDownload.url, attToDownload.name || "Download.zip", attToDownload.isDirect, attToDownload.fallbackUrl);
-                }}
-                className="inline-flex items-center gap-4 text-white rounded shadow-sm transition-colors border border-[#0d47a1] overflow-hidden group w-full"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, #2b88d8 0%, #1565c0 100%)",
-                  padding: "10px",
-                }}
-              >
-                <div className="bg-black/15 p-2.5 flex items-center justify-center border-r border-black/10">
-                  <ArrowDown
-                    size={28}
-                    color="white"
-                    strokeWidth={3}
-                    className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform"
-                  />
-                </div>
-                <span
-                  className="text-[20px] font-semibold pr-6 tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)] flex-1 truncate"
-                  title={(() => {
-                    const att = getLatestAttachment(post.attachments);
-                    return att ? `Download Now (${att.name})` : "Download Now";
-                  })()}
-                >
-                  {getLatestAttachment(post.attachments)
-                    ? "Download Latest Version"
-                    : "Download Now"}
-                </span>
-              </a>
+          <div className="w-full lg:w-[300px] xl:w-[330px] shrink-0 lg:self-start bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 flex flex-col gap-4 shadow-2xs">
+            {/* Primary Latest Download CTA */}
+            <div>
+              {(() => {
+                const latestAtt = getLatestAttachment(post.attachments);
+                return (
+                  <a
+                    href="#download"
+                    onClick={(e) => {
+                      const attToDownload = latestAtt || post.attachments[0];
+                      if (!attToDownload) return;
+                      handleForceDownload(
+                        e,
+                        attToDownload.url,
+                        attToDownload.name || "Download.zip",
+                        attToDownload.isDirect,
+                        attToDownload.fallbackUrl,
+                      );
+                    }}
+                    className="flex items-center gap-3 text-white rounded-xl shadow-sm hover:shadow-md transition-all border border-[#0d47a1] px-3.5 py-3 group w-full bg-gradient-to-b from-[#2185d5] to-[#1565c0] hover:from-[#1b76c2] hover:to-[#0f4fa0] active:scale-[0.99]"
+                    title={
+                      latestAtt
+                        ? `Download Latest Version (${latestAtt.name})`
+                        : "Download Now"
+                    }
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+                      <ArrowDown
+                        size={20}
+                        color="white"
+                        strokeWidth={2.75}
+                        className="group-hover:translate-y-0.5 transition-transform"
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1 text-left">
+                      <span className="text-[14px] font-bold tracking-tight leading-tight whitespace-nowrap">
+                        {latestAtt ? "Download Latest Version" : "Download Now"}
+                      </span>
+                      {latestAtt?.name && (
+                        <span className="text-[11px] text-blue-100/90 font-medium truncate mt-0.5">
+                          {latestAtt.name}
+                        </span>
+                      )}
+                    </div>
+                  </a>
+                );
+              })()}
             </div>
 
-            <div className="text-[13px] text-gray-800 mb-2 font-sans font-black uppercase tracking-wider">
-              Download
+            {/* Section Header */}
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+              <span className="text-[12px] text-slate-800 font-black uppercase tracking-wider">
+                Downloads
+              </span>
+              <span className="text-[11px] font-semibold text-slate-500 tabular-nums">
+                {(post.attachments?.filter((att: any) =>
+                  isAdmin || (userProfile?.role || "").toLowerCase() === "editor"
+                    ? true
+                    : att.isHidden !== true &&
+                      !(
+                        (att.status || "Old").toLowerCase() === "old" &&
+                        att.isHidden !== false
+                      ),
+                ).length || 0) + extractedLinksFromContent.length}{" "}
+                {(post.attachments?.filter((att: any) =>
+                  isAdmin || (userProfile?.role || "").toLowerCase() === "editor"
+                    ? true
+                    : att.isHidden !== true &&
+                      !(
+                        (att.status || "Old").toLowerCase() === "old" &&
+                        att.isHidden !== false
+                      ),
+                ).length || 0) +
+                  extractedLinksFromContent.length ===
+                1
+                  ? "File"
+                  : "Files"}
+              </span>
             </div>
-            <div className="flex flex-col gap-2 w-full">
+
+            <div className="flex flex-col gap-2.5 w-full">
               {post.mediaUrl &&
                 !post.mediaType?.startsWith("video") &&
                 !(post.mediaType?.startsWith("image") || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(post.mediaUrl || "") || (post.mediaUrl || "").includes("image")) &&
@@ -24403,31 +24511,31 @@ function PostCard({
                     onClick={(e) => {
                       handleForceDownload(e, post.mediaUrl || "", post.mediaName || "Document");
                     }}
-                    className="flex items-center justify-between bg-white border border-[#cccccc] shadow-sm group hover:border-blue-500 transition-all overflow-hidden h-[46px] w-full"
+                    className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3 shadow-2xs group hover:border-blue-400 hover:bg-blue-50/30 transition-all w-full"
                   >
-                    <div className="flex items-center h-full min-w-0">
-                      <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                          <ArrowDown
-                            size={12}
-                            className="text-[#666666]"
-                            strokeWidth={4}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex flex-col px-3 min-w-0">
-                        <span className="text-[11px] font-bold text-[#0055aa] truncate leading-tight">
-                          {post.mediaName || "Attached Document"}
-                        </span>
-                      </div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center shrink-0 transition-colors">
+                      <ArrowDown
+                        size={14}
+                        className="text-slate-600 group-hover:text-blue-600"
+                        strokeWidth={3}
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[12px] font-bold text-slate-800 group-hover:text-blue-700 truncate leading-snug">
+                        {post.mediaName || "Attached Document"}
+                      </span>
+                      <span className="text-[10px] font-medium text-slate-400">
+                        Attached File
+                      </span>
                     </div>
                   </a>
                 )}
+
               {post.attachments?.filter((att: any) => (isAdmin || (userProfile?.role || "").toLowerCase() === "editor") ? true : (att.isHidden !== true && !((att.status || "Old").toLowerCase() === "old" && att.isHidden !== false))).map((att, idx) => {
                 const fileInfo = getFileTypeInfo(att.name || att.url || "");
                 const statusTag = (att.status || "Old").toUpperCase();
                 let statusColor = "bg-[#ff1744]"; // Default OLD
-                if (statusTag === "NEW") statusColor = "bg-[#00c853]";
+                if (statusTag === "NEW") statusColor = "bg-emerald-600";
                 else if (statusTag === "COMMITTEE") statusColor = "bg-blue-600";
 
                 return (
@@ -24437,67 +24545,63 @@ function PostCard({
                   onClick={(e) =>
                     handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect, att.fallbackUrl)
                   }
-                  className={`flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full ${
+                  className={`flex flex-col gap-2 rounded-xl p-3 shadow-2xs group transition-all w-full ${
                     att.isDirect
-                      ? "bg-blue-50/70 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-100/50"
-                      : "bg-white border border-[#cccccc] hover:border-blue-500"
+                      ? "bg-white border border-blue-300 hover:border-blue-500 hover:shadow-sm"
+                      : "bg-white border border-slate-200 hover:border-blue-400 hover:shadow-sm"
                   }`}
                 >
-                  <div className="flex items-center h-full min-w-0">
-                    <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                        <ArrowDown
-                          size={12}
-                          className="text-[#666666]"
-                          strokeWidth={4}
-                        />
-                      </div>
+                  {/* Top Row: Icon + Clear File Name */}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      att.isDirect
+                        ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white"
+                        : "bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600"
+                    }`}>
+                      <ArrowDown size={14} strokeWidth={3} />
                     </div>
-                    <div className="flex flex-col px-3 min-w-0">
-                      <span className={`text-[11px] font-bold truncate leading-tight ${att.isDirect ? "text-blue-700" : "text-[#0055aa]"}`}>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span
+                        className={`text-[12px] font-bold leading-snug truncate ${
+                          att.isDirect ? "text-slate-900 group-hover:text-blue-700" : "text-slate-800 group-hover:text-blue-700"
+                        }`}
+                        title={att.name}
+                      >
                         {att.name}
                       </span>
+                      {att.isDirect && (
+                        <span className="text-[10px] font-semibold text-blue-600 flex items-center gap-1 mt-0.5">
+                          <Download size={10} strokeWidth={2.75} /> డైరెక్ట్ డౌన్‌లోడ్
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pr-3 shrink-0">
-                    {att.isDirect && (
-                      <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[9px] px-2 py-0.5 rounded font-black shadow-md flex items-center gap-1 shrink-0">
-                        <Download size={10} strokeWidth={3} /> డైరెక్ట్ డౌన్‌లోడ్
-                      </span>
-                    )}
-                    <div className="flex items-center gap-1.5">
-                      {att.version && (
-                        <div
-                          className="flex items-center gap-0.5 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50"
-                          title="Version Number"
-                        >
-                          <span className="text-[9px] font-black text-blue-500 uppercase leading-none">
-                            {att.badgePrefix || "v"}
-                          </span>
-                          <span className="text-[9px] font-bold text-blue-600 leading-none">
-                            {att.version}
-                          </span>
-                        </div>
-                      )}
 
-                      {/* File Classification Type and OLD / NEW Status Badges */}
-                      <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
-                        {/* File Classification Type */}
-                        <span 
-                          className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${fileInfo.badgeBg} shadow-2xs`}
-                          title={`Type: ${fileInfo.label}`}
-                        >
-                          {att.fileType || fileInfo.type}
+                  {/* Bottom Row: Clean Aligned Version + File Type + Status */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[10px]">
+                    <div className="flex items-center gap-1.5 text-slate-500 font-semibold min-w-0">
+                      {att.version ? (
+                        <span className="font-mono font-bold text-slate-700 tabular-nums">
+                          {att.badgePrefix || "v"} {att.version}
                         </span>
-                        {/* Exact OLD / NEW Badge (Green for NEW, Red for OLD, Blue for Committee) */}
-                        <span
-                          className={`${statusColor} text-white text-[9px] px-2 py-0.5 rounded font-black tracking-widest uppercase shadow-sm flex items-center gap-0.5`}
-                          title={`Status: ${statusTag}`}
-                        >
-                          {statusTag}
-                        </span>
-                      </div>
+                      ) : (
+                        <span className="text-slate-400 font-medium">Direct File</span>
+                      )}
+                      <span aria-hidden="true" className="text-slate-300">·</span>
+                      <span
+                        className="font-bold uppercase tracking-wider text-slate-600"
+                        title={`Type: ${fileInfo.label}`}
+                      >
+                        {att.fileType || fileInfo.type}
+                      </span>
                     </div>
+
+                    <span
+                      className={`${statusColor} text-white text-[9px] px-2 py-0.5 rounded-md font-bold tracking-wider uppercase shrink-0`}
+                      title={`Status: ${statusTag}`}
+                    >
+                      {statusTag}
+                    </span>
                   </div>
                 </a>
               );
@@ -24505,7 +24609,6 @@ function PostCard({
 
               {/* Auto-extracted download links from post content if any */}
               {extractedLinksFromContent.map((att, idx) => {
-                const fileInfo = getFileTypeInfo(att.name || att.url || "");
                 return (
                   <a
                     key={`ext-${idx}`}
@@ -24513,25 +24616,19 @@ function PostCard({
                     onClick={(e) =>
                       handleForceDownload(e, att.url, att.name || "Attachment", att.isDirect, att.fallbackUrl)
                     }
-                    className="flex items-center justify-between shadow-sm group transition-all overflow-hidden h-[46px] w-full bg-emerald-50/70 border border-emerald-300 hover:border-emerald-500"
+                    className="flex items-center justify-between gap-2.5 rounded-xl p-3 shadow-2xs group transition-all w-full bg-emerald-50/50 border border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50"
                   >
-                    <div className="flex items-center h-full min-w-0">
-                      <div className="w-11 h-full bg-[#f2f2f2] flex items-center justify-center shrink-0 border-r border-[#cccccc]">
-                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center border border-[#dddddd] shadow-sm">
-                          <ArrowDown size={12} className="text-emerald-600" strokeWidth={4} />
-                        </div>
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <ArrowDown size={14} strokeWidth={3} />
                       </div>
-                      <div className="flex flex-col px-3 min-w-0">
-                        <span className="text-[11px] font-bold text-emerald-800 truncate leading-tight">
-                          {att.name}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 pr-3 shrink-0">
-                      <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase shadow-2xs">
-                        AUTO
+                      <span className="text-[12px] font-bold text-emerald-900 truncate leading-snug">
+                        {att.name}
                       </span>
                     </div>
+                    <span className="bg-emerald-600 text-white text-[9px] px-2 py-0.5 rounded-md font-bold tracking-wider uppercase shrink-0">
+                      AUTO
+                    </span>
                   </a>
                 );
               })}
@@ -24545,22 +24642,49 @@ function PostCard({
                     e.stopPropagation();
                     handleQuickAddAttachmentLink();
                   }}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-xl p-3 transition-all text-blue-700 hover:text-blue-900 group shadow-xs mt-2.5 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 bg-white hover:bg-blue-50 border border-dashed border-blue-300 hover:border-blue-500 rounded-xl px-3 py-2.5 transition-all text-blue-700 hover:text-blue-900 group mt-1 cursor-pointer"
                   title="ఈ పోస్ట్‌కి నేరుగా కొత్త డౌన్‌లోడ్ లింక్ ఇవ్వండి - ఫైల్ ఆటోమేటిక్‌గా కింద యాడ్ అవుతుంది (అడ్మిన్‌లకు మాత్రమే)"
                 >
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                    <Plus size={14} strokeWidth={3} />
+                  <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                    <Plus size={12} strokeWidth={3} />
                   </div>
-                  <span className="text-xs font-black tracking-wide">
-                    + 🔗 లింక్ ఇవ్వండి (ఆటోమేటిక్ ఫైల్ యాడ్)
+                  <span className="text-[11px] font-bold tracking-wide">
+                    లింక్ ఇవ్వండి (ఆటోమేటిక్ ఫైల్ యాడ్)
                   </span>
                 </button>
               )}
           </div>
           </div>
+          </div>
         </div>
       ) : (
         <>
+          {/* Issue / Problem Banner + Large Interactive YouTube Video Player (Top of Post Card) */}
+          {postYouTubeUrl ? (
+            <div className="mt-3">
+              <YouTubeInteractivePlayer
+                url={postYouTubeUrl}
+                title={post.title || "YouTube Video"}
+                websiteName={post.websiteName}
+                isTheaterMode={isVideoTheaterMode}
+                onToggleTheaterMode={() => setIsVideoTheaterMode((prev) => !prev)}
+              />
+            </div>
+          ) : post.websiteName ? (
+            <div className="mt-3 mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between group hover:bg-blue-100/50 transition-colors">
+              <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
+                <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center shrink-0">
+                  <ExternalLink size={12} strokeWidth={3} />
+                </div>
+                {post.websiteName} Issue / Problem
+              </div>
+              <Target
+                size={14}
+                className="text-primary/40 group-hover:text-primary transition-colors shrink-0"
+              />
+            </div>
+          ) : null}
+
           <div
             className={`post-body mb-4 relative ${isActualExpanded ? "" : "max-h-[220px] overflow-hidden"} [&_pre]:bg-slate-800 [&_pre]:text-slate-100 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_code]:bg-slate-100 [&_code]:text-rose-500 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:px-0 [&_pre_code]:py-0 [&_p]:mb-2 [&_a]:text-blue-600 [&_a]:underline`}
           >
@@ -24633,35 +24757,15 @@ function PostCard({
           <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
         )}
       </div>
-      {post.websiteName && (
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between mb-4 group hover:bg-blue-100/50 transition-colors">
-        <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-wider">
-          <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center">
-            <ExternalLink size={12} strokeWidth={3} />
-          </div>
-          {post.websiteName} Issue / Problem
-        </div>
-        <Target
-          size={14}
-          className="text-primary/40 group-hover:text-primary transition-colors"
-        />
-      </div>
-    )}
 
-    {/* YouTube Video Player */}
-    {(post.youtubeUrl || post.embedUrl || (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")))) && (
-      <div className="mb-4 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-black">
-        <div className="relative aspect-video w-full">
-          <iframe
-            src={parseYouTubeEmbedUrl(post.youtubeUrl || post.embedUrl || post.mediaUrl || '')}
-            title={post.title || "YouTube Video"}
-            className="absolute top-0 left-0 w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      </div>
-    )}
+      {post.content && (post.content.length > 120 || post.content.includes("\n")) && (
+        <button
+          onClick={openPostDetail}
+          className="text-red-600 hover:text-red-700 font-bold text-[12px] uppercase tracking-wider flex items-center gap-1.5 mt-1 mb-4 cursor-pointer hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-100 transition-colors w-fit"
+        >
+          <ChevronRight size={14} strokeWidth={2.5} /> మొత్తం చదవండి (Read More)
+        </button>
+      )}
 
     {post.mediaUrl && !(post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")) && (
       <div className="mb-4">
@@ -30003,18 +30107,15 @@ function PostDetail({
 
         {/* YouTube Video Player */}
         {(post.youtubeUrl || post.embedUrl || (post.mediaUrl && (post.mediaUrl.includes("youtube.com") || post.mediaUrl.includes("youtu.be")))) ? (
-          <div className="my-3 rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-black relative group">
-            <div className="relative aspect-video w-full">
-              <iframe
-                src={parseYouTubeEmbedUrl(post.youtubeUrl || post.embedUrl || post.mediaUrl || '')}
-                title={post.title || "YouTube Video"}
-                className="absolute top-0 left-0 w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
+          <div className="my-3">
+            <YouTubeInteractivePlayer
+              url={post.youtubeUrl || post.embedUrl || post.mediaUrl || ""}
+              title={post.title || "YouTube Video"}
+              websiteName={post.websiteName}
+              isTheaterMode={true}
+            />
             {(isAdmin || isAuthor) && (
-              <div className="p-2.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs gap-2">
+              <div className="-mt-2 mb-3 p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between text-xs gap-2">
                 <span className="text-slate-300 font-mono text-[11px] truncate flex items-center gap-1.5">
                   <Youtube size={15} className="text-red-500 shrink-0" /> {post.youtubeUrl || post.mediaUrl}
                 </span>

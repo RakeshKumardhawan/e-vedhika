@@ -240,5 +240,9 @@ service cloud.firestore {
     match /gpdp_plans/{planId} {
       allow read, write: if true;
     }
+
+    match /gallery_media/{mediaId} {
+      allow read, write: if true;
+    }
   }
 }

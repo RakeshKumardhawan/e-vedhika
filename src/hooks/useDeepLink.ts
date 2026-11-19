@@ -85,6 +85,11 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
       )
         workspaceTool = "excel-merge";
       else if (norm === "gpdpplanning" || norm === "gpdp") workspaceTool = "gpdp-planning";
+      else if (norm === "unsupportedexcel" || norm === "unsupportedexcelviewer" || norm === "htmlxls") workspaceTool = "unsupported-excel";
+      else if (norm === "dcbreports" || norm === "dcb" || norm === "dcbanalyzer") workspaceTool = "dcb-reports";
+      else if (norm === "excelstudio" || norm === "excelfilemanager" || norm === "excelcompare") workspaceTool = "excel-studio";
+      else if (norm === "epanchayattutorials" || norm === "epanchayat" || norm === "citizenservices") workspaceTool = "epanchayat-tutorials";
+      else if (norm === "gallery" || norm === "mediacenter") workspaceTool = "gallery";
       else workspaceTool = subToolFromUrl === "monthly-activity" ? "MAS" : subToolFromUrl;
     } else {
       workspaceTool = null;
@@ -383,6 +388,26 @@ export function useDeepLink({
       "/workspace/gpdp-planning": {
         title: "GPDP బడ్జెట్ & అభివృద్ధి ప్రణాళిక టూల్ (GPDP Planning) | E-Vedhika",
         desc: "గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (GPDP) మరియు 15వ ఆర్థిక సంఘం Tied (60%) / Untied (40%) నిధుల కేటాయింపు క్యాలిక్యులేటర్.",
+      },
+      "/workspace/unsupported-excel": {
+        title: "సపోర్ట్ చేయని HTML .xls ఎక్సెల్ వ్యూయర్ (Unsupported Excel Viewer) | E-Vedhika",
+        desc: "ప్రభుత్వ పోర్టల్స్ నుండి డౌన్‌లోడ్ అయ్యే HTML-based .xls ఫైళ్లను బ్రౌజర్‌లో ఓపెన్ చేసి స్వచ్ఛమైన .xlsx మరియు .csv గా మార్చే సాధనం.",
+      },
+      "/workspace/dcb-reports": {
+        title: "పంచాయతీ DCB రిపోర్ట్ అనలైజర్ (Tax Demand, Collection & Balance) | E-Vedhika",
+        desc: "గ్రామ పంచాయతీ మరియు మండల స్థాయి ఇంటి పన్ను DCB (Previous Balance, Current Demand, Collection, Pending Balance) విశ్లేషణ సాధనం.",
+      },
+      "/workspace/excel-studio": {
+        title: "28-in-1 అడ్వాన్స్‌డ్ ఎక్సెల్ స్టూడియో & ఫైల్ మేనేజర్ (Excel Studio) | E-Vedhika",
+        desc: "రెండు ఎక్సెల్ ఫైళ్ల పోలిక (6 Separate Output Sheets), మెర్జ్, అన్‌పివట్, ట్రాన్స్‌పోజ్, డూప్లికేట్ల తొలగింపు మరియు ఫార్ములా అసిస్టెంట్.",
+      },
+      "/workspace/epanchayat-tutorials": {
+        title: "ఈ-పంచాయతీ 12 పౌర సేవల ట్యుటోరియల్ సెంటర్ (ePanchayat Tutorials) | E-Vedhika",
+        desc: "లేఅవుట్, భవన నిర్మాణ అనుమతి, ఇంటి పన్ను అసెస్‌మెంట్, మ్యుటేషన్, ట్రేడ్ లైసెన్స్ మరియు జనన/మరణ నమోదు పూర్తి మార్గదర్శకాలు.",
+      },
+      "/workspace/gallery": {
+        title: "శిక్షణ & మీడియా గ్యాలరీ (Training & Video Gallery) | E-Vedhika",
+        desc: "గ్రామ పంచాయతీ కంప్యూటర్ ఆపరేటర్ల శిక్షణ ఫోటోలు, కార్యక్రమాలు మరియు ప్రాక్టికల్ వీడియో ట్యుటోరియల్స్ గ్యాలరీ.",
       },
       "/gos_formats": {
         title: "ప్రభుత్వ జీవోలు & ఆఫీస్ ఫార్మాట్లు (GOs & Official Formats) | E-Vedhika",
