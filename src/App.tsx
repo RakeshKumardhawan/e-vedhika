@@ -7173,13 +7173,13 @@ E-Vedhika Support System`;
 
                                     {[
                                       { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} />, isFree: true },
-                                      { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: false },
-                                      { id: 'MAS', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: false },
+                                      { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: true },
+                                      { id: 'MAS', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: true },
                                       { id: 'dcb-reports', label: 'DCB Tax Reports Analyzer', icon: <BarChart3 size={16} />, isFree: true },
                                       { id: 'unsupported-excel', label: 'Unsupported / HTML Excel Viewer', icon: <FileSpreadsheet size={16} />, isFree: true },
                                       { id: 'excel-studio', label: '28-in-1 Excel File Manager & Compare', icon: <FileSpreadsheet size={16} />, isFree: true },
-                                      { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} />, isFree: false },
-                                      { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} />, isFree: false },
+                                      { id: 'excel-merge', label: 'Excel File Merger', icon: <FileSpreadsheet size={16} />, isFree: true },
+                                      { id: 'gpdp-planning', label: '(GPDP) - Planning & Budget', icon: <ClipboardList size={16} />, isFree: true },
                                       { id: 'epanchayat-tutorials', label: 'ePanchayat Citizen Services Guide', icon: <Building2 size={16} />, isFree: true },
                                       { id: 'training', label: 'Digital Training & Learning Center', icon: <GraduationCap size={16} />, isFree: true },
                                       { id: 'pract', label: 'Knowledge Hub & PR Act 2018 Assistant', icon: <Book size={16} />, isFree: true },
