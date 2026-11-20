@@ -68,6 +68,7 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
   const safeDesc = escapeHtml(description);
   const safeImage = escapeHtml(imageUrl || DEFAULT_BANNER);
   const safeUrl = escapeHtml(canonicalUrl);
+  const squareLogo = `${BASE_URL}/ev_logo.png`;
 
   // Replace or inject <title>
   if (/<title>.*?<\/title>/i.test(html)) {
@@ -88,6 +89,7 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
     }
   };
 
+  upsertMeta("name", "title", title);
   upsertMeta("name", "description", description);
   upsertMeta(
     "name",
@@ -100,30 +102,39 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
   upsertMeta("property", "og:type", type);
   upsertMeta("property", "og:title", title);
   upsertMeta("property", "og:description", description);
-  upsertMeta("property", "og:image", imageUrl);
-  upsertMeta("property", "og:image:secure_url", imageUrl);
-  upsertMeta("property", "og:image:type", (imageUrl && imageUrl.endsWith(".png")) ? "image/png" : "image/jpeg");
+  upsertMeta("property", "og:image", safeImage);
+  upsertMeta("property", "og:image:secure_url", safeImage);
+  upsertMeta("property", "og:image:type", (safeImage && safeImage.endsWith(".png")) ? "image/png" : "image/jpeg");
   upsertMeta("property", "og:image:width", "1200");
   upsertMeta("property", "og:image:height", "630");
   upsertMeta("property", "og:image:alt", title);
   upsertMeta("property", "og:url", canonicalUrl);
   upsertMeta("property", "og:locale", "te_IN");
-  upsertMeta("name", "image", imageUrl);
+  upsertMeta("name", "image", safeImage);
 
-  // Ensure standard Open Graph namespace prefix
+  // Secondary square image for WhatsApp Web & square card viewports
+  if (!html.includes(squareLogo)) {
+    const squareTags = `  <meta property="og:image" content="${squareLogo}" />\n  <meta property="og:image:secure_url" content="${squareLogo}" />\n  <meta property="og:image:type" content="image/png" />\n  <meta property="og:image:width" content="512" />\n  <meta property="og:image:height" content="512" />`;
+    html = html.replace("</head>", `${squareTags}\n</head>`);
+  }
+
+  // Clean Open Graph namespace prefix from html tag
+  if (html.includes('prefix="og: http://ogp.me/ns#"')) {
+    html = html.replace('prefix="og: http://ogp.me/ns#"', '');
+  }
   if (html.includes('prefix="og: https://ogp.me/ns#"')) {
-    html = html.replace('prefix="og: https://ogp.me/ns#"', 'prefix="og: http://ogp.me/ns#"');
+    html = html.replace('prefix="og: https://ogp.me/ns#"', '');
   }
 
   upsertMeta("name", "twitter:card", "summary_large_image");
   upsertMeta("name", "twitter:title", title);
   upsertMeta("name", "twitter:description", description);
-  upsertMeta("name", "twitter:image", imageUrl);
+  upsertMeta("name", "twitter:image", safeImage);
   upsertMeta("name", "twitter:url", canonicalUrl);
 
   upsertMeta("itemprop", "name", title);
   upsertMeta("itemprop", "description", description);
-  upsertMeta("itemprop", "image", imageUrl);
+  upsertMeta("itemprop", "image", safeImage);
 
   // Link rel="image_src"
   if (/<link\s+[^>]*rel=["']image_src["'][^>]*>/i.test(html)) {
@@ -180,6 +191,17 @@ function writePage(relPath, content) {
   const targetDir = path.join(distDir, relPath);
   fs.mkdirSync(targetDir, { recursive: true });
   fs.writeFileSync(path.join(targetDir, "index.html"), content, "utf-8");
+
+  // Also write dist/${cleanPath}.html for clean URL matching on GitHub Pages (prevents 301 trailing-slash redirect!)
+  const cleanPath = relPath.replace(/\/+$/, "");
+  if (!cleanPath.endsWith(".html") && cleanPath.length > 0) {
+    const flatHtmlPath = path.join(distDir, `${cleanPath}.html`);
+    const parentDir = path.dirname(flatHtmlPath);
+    if (!fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
+    fs.writeFileSync(flatHtmlPath, content, "utf-8");
+  }
 }
 
 // Deep routes that must exist statically on GitHub Pages with HTTP 200 responses
@@ -389,8 +411,9 @@ const standardRoutes = [
   },
   {
     path: "ubd_tracker",
-    title: "UBD ట్రాకర్ & డెస్క్‌టాప్ ఆటో-హీలింగ్ టూల్స్ (UBD Tracker) | E-Vedhika",
-    desc: "UBD పోర్టల్ జనన మరణాల నమోదు, DSC/DSK డిజిటల్ సంతకాల స్థితి మరియు 17-Step సిస్టమ్ కాన్ఫిగరేషన్ ట్రాకర్.",
+    title: "UBD Tracker (యూబీడీ లైవ్ రిజిస్టర్స్ & ట్రాకర్) | E-Vedhika",
+    desc: "Live Telangana & AP UBD MIS Portal Birth and Death register tracker, DSC/DSK digital signature status, and 24/7 NIC gateway connectivity.",
+    imageUrl: DEFAULT_BANNER,
     bodyHtml: `<section><h2>UBD Portal Status Tracker &amp; DSC/DSK Desktop Automation</h2><p>తెలంగాణ &amp; ఏపీ UBD పోర్టల్‌లో జనన, మరణ ధృవీకరణ పత్రాల డిజిటల్ సంతకం కోసం అవసరమైన 17-Step సిస్టమ్ కాన్ఫిగరేషన్ మరియు టోకెన్ డ్రైవర్ల పర్యవేక్షణ.</p></section>`
   },
   {
