@@ -38,6 +38,7 @@ import { CodeManager } from "./components/CodeManager";
 import { DynamicSection } from "./components/DynamicSection";
 import { AIVideoHomeSection } from "./components/AIVideoHomeSection";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
+import { EVLogoLoader } from "./components/EVLogoLoader";
 import { triggerDiwaliCrackers } from "./utils/diwaliCrackers";
 import {  DollarSign,
   Bell,
@@ -1234,15 +1235,13 @@ function HeroSkeleton() {
   return (
     <div className="w-full max-w-5xl mx-auto rounded-[32px] p-6 sm:p-12 mb-8 min-h-[220px] sm:min-h-[260px] flex flex-col items-center justify-center text-center border border-slate-100 shadow-sm relative overflow-hidden bg-white">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50" />
-      <div className="relative z-10 flex flex-col items-center gap-5">
-        <div className="relative flex items-center justify-center">
-           <div className="w-12 h-12 border-4 border-slate-200 rounded-full"></div>
-           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-        </div>
-        <div className="space-y-2 animate-pulse">
-          <h3 className="text-lg sm:text-xl font-black text-slate-700 tracking-tight">లోడ్ అవుతోంది...</h3>
-          <p className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-widest">దయచేసి వేచి ఉండండి (Please wait...)</p>
-        </div>
+      <div className="relative z-10 flex flex-col items-center">
+        <EVLogoLoader
+          size={56}
+          fullScreen={false}
+          title="లోడ్ అవుతోంది..."
+          subtitle="దయచేసి వేచి ఉండండి (Please wait...)"
+        />
       </div>
     </div>
   );
@@ -5359,18 +5358,10 @@ E-Vedhika Support System`;
   if (user && !user.isAnonymous) {
     if (authLoading || profileLoading) {
       return (
-        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans antialiased flex flex-col justify-center items-center p-4 text-center">
-          <div className="relative w-12 h-12 mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-t-amber-400 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-            <div className="absolute inset-2 rounded-full border-4 border-white/10"></div>
-          </div>
-          <p className="text-sm font-bold tracking-wide text-white mb-1">
-            మీ ప్రొఫైల్ వివరాలు తనిఖీ చేయబడుతున్నాయి...
-          </p>
-          <p className="text-xs font-medium text-slate-400">
-            దయచేసి వేచి ఉండండి (Verifying your profile details...)
-          </p>
-        </div>
+        <EVLogoLoader
+          title="మీ ప్రొఫైల్ వివరాలు తనిఖీ చేయబడుతున్నాయి..."
+          subtitle="దయచేసి వేచి ఉండండి (Verifying your profile details...)"
+        />
       );
     }
 
@@ -5428,13 +5419,10 @@ E-Vedhika Support System`;
   if (isTargetingAdminRoute) {
     if (authLoading || (user && profileLoading)) {
       return (
-        <div className="h-[100dvh] overflow-hidden bg-slate-950 font-sans antialiased flex flex-col justify-center items-center p-4">
-          <div className="relative w-12 h-12 mb-4">
-            <div className="absolute inset-0 rounded-full border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-            <div className="absolute inset-2 rounded-full border-4 border-white/10"></div>
-          </div>
-          <p className="text-xs font-semibold tracking-wide text-white/75 font-sans">అడ్మిన్ డేటా లోడ్ అవుతోంది... దయచేసి వేచి ఉండండి...</p>
-        </div>
+        <EVLogoLoader
+          title="అడ్మిన్ డేటా లోడ్ అవుతోంది..."
+          subtitle="దయచేసి వేచి ఉండండి (Loading admin dashboard...)"
+        />
       );
     }
     if (!canAccessAdmin) {

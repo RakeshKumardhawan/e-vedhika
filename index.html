@@ -221,19 +221,37 @@
 </head>
   <body>
     <div id="root">
-      <div style="font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#020617;color:#fff;text-align:center;padding:20px;">
-        <div style="font-size:36px;margin-bottom:16px;">🏛️</div>
-        <h2 style="font-size:20px;font-weight:bold;margin-bottom:8px;">ఈ-వేదిక (E-Vedhika) లోడ్ అవుతోంది...</h2>
-        <p style="font-size:13px;color:#94a3b8;margin-bottom:20px;">దయచేసి వేచి ఉండండి (Please wait)...</p>
-        <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.1);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite;"></div>
-      </div>
+      <div style="font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#020617;color:#fff;text-align:center;padding:20px;user-select:none;">
+        <div style="position:relative;width:76px;height:76px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;inset:-12px;border-radius:50%;background:radial-gradient(circle,rgba(14,165,233,0.4) 0%,rgba(34,197,94,0.3) 45%,rgba(250,204,21,0.2) 70%,transparent 80%);filter:blur(16px);animation:glowPulse 2s infinite ease-in-out;"></div>
+          <svg viewBox="0 0 64 64" style="width:100%;height:100%;filter:drop-shadow(0 0 16px rgba(14,165,233,0.6));position:relative;z-index:2;">
+            <defs>
+              <linearGradient id="initG" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#22c55e" />
+                <stop offset="100%" stop-color="#0ea5e9" />
+              </linearGradient>
+              <linearGradient id="initRing" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#22c55e" />
+                <stop offset="50%" stop-color="#facc15" />
+                <stop offset="100%" stop-color="#0ea5e9" />
+              </linearGradient>
+            </defs>
+            <circle cx="32" cy="32" r="29" fill="none" stroke="url(#initRing)" stroke-width="2.8" stroke-dasharray="10 5" stroke-linecap="round" style="transform-origin:center;animation:spinLogo 8s linear infinite;" />
+            <circle cx="32" cy="32" r="25" fill="url(#initG)" />
+            <circle cx="32" cy="32" r="21" fill="#0f172a" />
+            <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="900" font-family="Segoe UI, sans-serif" letter-spacing="0.5px">EV</text>
+          </svg>
+        </div>
+        <h2 style="font-size:18px;font-weight:bold;margin-bottom:8px;color:#f8fafc;font-family:'Mandali',system-ui,sans-serif;">ఈ-వేదిక (E-Vedhika) లోడ్ అవుతోంది...</h2>
+        <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">దయచేసి వేచి ఉండండి (Please wait)...</p>
         <div id="slow-network-hint" style="display:none;margin-top:16px;max-width:320px;padding:12px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid rgba(255,255,255,0.1);">
           <p style="font-size:12px;color:#94a3b8;margin:0 0 8px 0;">నెట్‌వర్క్ నెమ్మదిగా ఉన్నట్లుంది, ఫైల్స్ లోడ్ అవుతున్నాయి...</p>
           <button onclick="window.location.reload()" style="background:#6366f1;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;">రీలోడ్ చేయండి</button>
         </div>
       </div>
       <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spinLogo { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes glowPulse { 0% { filter: drop-shadow(0 0 5px #22c55e); } 50% { filter: drop-shadow(0 0 15px #0ea5e9); } 100% { filter: drop-shadow(0 0 5px #22c55e); } }
       </style>
     </div>
     <noscript>
