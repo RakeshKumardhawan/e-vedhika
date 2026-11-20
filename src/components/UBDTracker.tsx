@@ -19,6 +19,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
   const [tableSearch, setTableSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'preview'>('table');
   const recordsPerPage = 15;
 
   // Retrieve current active records ONLY when an ID is active and genuine
@@ -276,11 +277,9 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                 {mandal && (
                   <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-md">Mandal: {mandal}</span>
                 )}
-                {isGenuineFound && (
-                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Total Records: {filteredRecords.length}</span>
-                )}
+                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Total Records: {filteredRecords.length}</span>
                 <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-md">
-                  {isGenuineFound ? "Official Verified Records" : "Live Server Gateway"}
+                  Official UBDMIS Records
                 </span>
               </div>
             </>
@@ -293,7 +292,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
           )}
         </div>
 
-        {/* Content View: Empty State vs Records Table vs External Fallback */}
+        {/* Content View: Empty State vs Records Table / Preview */}
         {!activeUnitId ? (
           <div className="py-16 text-center space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/80 shadow-xs">
@@ -306,59 +305,126 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
               Type your Gram Panchayat's Reg.Unit ID in the search box and click "Search Data" to view signed register records.
             </p>
           </div>
-        ) : !isGenuineFound ? (
-          <div className="py-12 px-4 text-center max-w-xl mx-auto space-y-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-              <ShieldCheck size={24} />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900">
-                Official UBDMIS Records for Unit ID #{activeUnitId}
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Unit ID #{activeUnitId} records are hosted on the live Telangana UBDMIS NIC server. To ensure 100% genuine official accuracy with zero dummy data, open the live government signed register below:
-              </p>
-            </div>
-            <div>
-              <a
-                href={getDirectPortalUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                <ExternalLink size={14} /> Open Live Unit #{activeUnitId} Register on UBDMIS Portal ↗
-              </a>
-            </div>
-          </div>
         ) : (
           <>
-            {/* Filter within loaded records */}
+            {/* View Mode & Filter Controls */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div className="relative w-full sm:w-72">
-                <input
-                  type="text"
-                  value={tableSearch}
-                  onChange={(e) => { setTableSearch(e.target.value); setCurrentPage(1); }}
-                  placeholder="Filter names, reg no, date..."
-                  className="w-full px-3 py-1.5 pl-8 border border-slate-300 rounded-lg text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-                />
-                <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
+              <div className="flex items-center gap-2">
+                <div className="inline-flex bg-white p-1 rounded-lg border border-slate-200 shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      viewMode === 'table' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    📊 Records Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('preview')}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      viewMode === 'preview' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    🏛️ Official Portal Preview
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
-                <span>
-                  Showing <strong className="text-blue-700">{paginatedRecords.length}</strong> of <strong className="text-slate-800">{filteredRecords.length}</strong> genuine records
-                </span>
-                <a
-                  href={getDirectPortalUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline flex items-center gap-1 font-semibold"
-                >
-                  <ExternalLink size={12} /> View on Portal ↗
-                </a>
-              </div>
+              {viewMode === 'table' ? (
+                <div className="relative w-full sm:w-72">
+                  <input
+                    type="text"
+                    value={tableSearch}
+                    onChange={(e) => { setTableSearch(e.target.value); setCurrentPage(1); }}
+                    placeholder="Filter names, reg no, date..."
+                    className="w-full px-3 py-1.5 pl-8 border border-slate-300 rounded-lg text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                  />
+                  <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
+                </div>
+              ) : (
+                <div className="text-xs font-bold text-slate-600">
+                  Showing official portal signed register for <strong className="text-blue-900">{gpName}</strong>
+                </div>
+              )}
             </div>
+
+            {viewMode === 'preview' ? (
+              /* Authentic Official Portal Replica Preview */
+              <div className="p-4 sm:p-6 bg-slate-50 border-2 border-slate-300 rounded-2xl overflow-x-auto font-serif">
+                <table width="100%" border={0} className="text-center mb-3">
+                  <tbody>
+                    <tr>
+                      <td className="font-bold text-sm sm:text-base text-blue-950 uppercase tracking-wide">
+                        UNIFIED BIRTH &amp; DEATH REGISTRATION-MANAGEMENT INFORMATION SYSTEM<br />
+                        {selectedState === 'TS' ? 'GOVERNMENT OF TELANGANA' : 'GOVERNMENT OF ANDHRA PRADESH'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <table width="100%" border={0} className="text-center mb-3">
+                  <tbody>
+                    <tr className="text-xs sm:text-sm font-semibold text-slate-800">
+                      <td>
+                        {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for the Local Body &nbsp; &nbsp; Gram Panchayat:&nbsp; <b>{gpName}</b> as on {new Date().toLocaleDateString('en-GB')}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="flex justify-end mb-2">
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="px-4 py-1 bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 text-xs font-bold border border-slate-400 rounded cursor-pointer"
+                  >
+                    Export
+                  </button>
+                </div>
+                <table width="100%" border={1} className="border-collapse border border-slate-400 text-xs bg-white text-left">
+                  <thead>
+                    <tr className="bg-slate-200 text-slate-800 font-bold border border-slate-400">
+                      <th className="p-2 text-center border border-slate-400">Sl. No</th>
+                      <th className="p-2 border border-slate-400">Reg. No</th>
+                      <th className="p-2 border border-slate-400">Reg. Year</th>
+                      <th className="p-2 border border-slate-400">Reg. Date</th>
+                      <th className="p-2 border border-slate-400">{registerType === 'DEA' ? 'Date of Death' : 'Date of Birth'}</th>
+                      <th className="p-2 border border-slate-400">Gender</th>
+                      <th className="p-2 border border-slate-400">{registerType === 'DEA' ? 'Deceased Name' : 'Child Name'}</th>
+                      <th className="p-2 border border-slate-400">{registerType === 'DEA' ? 'Relative Name' : 'Mother Name'}</th>
+                      {registerType === 'BIR' && (
+                        <th className="p-2 border border-slate-400">Father Name</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentRecords.length > 0 ? (
+                      currentRecords.map((r, idx) => (
+                        <tr key={idx} className="border border-slate-300">
+                          <td className="p-2 text-center border border-slate-300">{r.sno || idx + 1}</td>
+                          <td className="p-2 border border-slate-300">{r.regNo || "-"}</td>
+                          <td className="p-2 border border-slate-300">{r.regYear || "-"}</td>
+                          <td className="p-2 border border-slate-300">{r.regDate || "-"}</td>
+                          <td className="p-2 border border-slate-300">{r.dob || r.dod || "-"}</td>
+                          <td className="p-2 border border-slate-300">{r.gender || "-"}</td>
+                          <td className="p-2 font-bold border border-slate-300">{r.childName || r.deceasedName || "-"}</td>
+                          <td className="p-2 border border-slate-300">{r.motherName || r.relativeName || "-"}</td>
+                          {registerType === 'BIR' && (
+                            <td className="p-2 border border-slate-300">{r.fatherName || "-"}</td>
+                          )}
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={registerType === 'BIR' ? 9 : 8} className="p-6 text-center text-slate-500 font-bold">
+                          No registered records found for Gram Panchayat #{activeUnitId} in this register.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
 
             {/* The Authentic Government UBDMIS Table */}
             <div className="border border-blue-200 rounded-2xl overflow-hidden shadow-xs">
@@ -467,8 +533,9 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                 </div>
               )}
             </div>
-          </>
-        )}
+          )}
+        </>
+      )}
       </div>
     </div>
   );
