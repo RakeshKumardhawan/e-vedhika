@@ -7916,27 +7916,25 @@ E-Vedhika Support System`;
                                     viewport={{ once: true }}
                                     className="relative overflow-hidden group"
                                   >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 rounded-[32px]" />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-2xl shadow-md" />
                                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
 
-                                    <div className="relative p-6 sm:p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 text-white">
+                                    <div className="relative p-5 sm:p-6 md:p-7 flex flex-col md:flex-row items-center justify-between gap-4 text-white">
                                       <div className="text-center md:text-left max-w-xl">
-                                        <h3 className="text-xl sm:text-2xl font-black mb-2 tracking-tight leading-snug">
-                                          {el.title ||
-                                            "Shape the transformation."}
+                                        <h3 className="text-lg sm:text-xl font-black mb-1.5 tracking-tight leading-snug font-mandali text-[#fbe947]">
+                                          {el.title && el.title !== "Voice your vision." && el.title !== "Shape the transformation." ? el.title : "సమస్యల పరిష్కారానికి మీ సలహాలు అందించండి"}
                                         </h3>
-                                        <p className="text-indigo-100/90 text-xs sm:text-sm font-medium leading-relaxed">
-                                          {el.content ||
-                                            "Your feedback is the catalyst for a better digital ecosystem. Join us in building a more transparent future."}
+                                        <p className="text-indigo-100/90 text-xs sm:text-sm font-medium leading-relaxed font-mandali">
+                                          {el.content && !el.content.includes("catalyst for a better digital") ? el.content : "తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్లు, కార్యదర్శుల కోసం నూతన ఫీచర్లు లేదా సాంకేతిక మెరుగుదలలు అవసరమైతే మీ విలువైన సలహాను తెలియజేయండి."}
                                         </p>
                                       </div>
                                       <button
                                         onClick={() =>
                                           setCurrentTab("suggestions")
                                         }
-                                        className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-950/10 whitespace-nowrap shrink-0"
+                                        className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl font-black text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all shadow-md whitespace-nowrap shrink-0 cursor-pointer"
                                       >
-                                        Reach Out Now
+                                        సలహా / వినతి పంపండి
                                       </button>
                                     </div>
 
@@ -8349,7 +8347,7 @@ E-Vedhika Support System`;
                                   </div>
                                 )}
 
-                                {/* Fallback for undefined types */}
+                                {/* Fallback for undefined types: return null for clean professional look */}
                                 {![
                                   "Ads Gallery",
                                   "Post Grid",
@@ -8367,16 +8365,7 @@ E-Vedhika Support System`;
                                   "Profiles / Staff",
                                   "Video Showcase",
                                   "Document Downloads",
-                                ].includes(el.type) && (
-                                  <div className="p-10 bg-white border-2 border-dashed border-slate-200 rounded-[40px] text-center">
-                                    <h3 className="text-xl font-black text-slate-400">
-                                      {el.title || el.type}
-                                    </h3>
-                                    <p className="text-slate-400 mt-2">
-                                      {el.content || "Dynamic content section."}
-                                    </p>
-                                  </div>
-                                )}
+                                ].includes(el.type) && null}
 
                                 {el.type === "E-Vedhika Core Feed" && (
                                   <>
@@ -12029,17 +12018,17 @@ function MyActivity({ user, userProfile, problems, suggestions, posts, setShowPr
 }
 export const DEFAULT_HOME_ELEMENTS = [
   {
-    id: 2,
-    type: "Post Grid",
-    title: "Latest Insight Hub",
-    color: "indigo",
-    hidden: true,
+    id: 1,
+    type: "E-Vedhika Core Feed",
+    title: "తాజా సమాచారం & ఉత్తర్వులు (Latest Updates & GOs)",
+    size: "large",
+    hidden: false,
   },
   {
     id: 5,
     type: "Contact Banner",
-    title: "Voice your vision.",
-    content: "We're listening. Build the future of e-governance with us.",
+    title: "సమస్యల పరిష్కారానికి మీ సలహాలు అందించండి",
+    content: "తెలంగాణ & ఏపీ పంచాయతీ ఆపరేటర్లు, కార్యదర్శుల కోసం నూతన ఫీచర్లు లేదా సాంకేతిక మెరుగుదలలు అవసరమైతే మీ విలువైన సలహాను తెలియజేయండి.",
     color: "slate",
     hidden: false,
   },

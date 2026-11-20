@@ -10,7 +10,7 @@ interface TabInfoBannerProps {
 
 export function TabInfoBanner({ currentTab, customDescriptions = {}, lang = "en" }: TabInfoBannerProps) {
   const [showFullDocs, setShowFullDocs] = useState(true);
-  if (!currentTab || currentTab === "admin" || currentTab === "editor" || currentTab === "logs") {
+  if (!currentTab || currentTab === "home" || currentTab === "admin" || currentTab === "editor" || currentTab === "logs") {
     return null;
   }
 
