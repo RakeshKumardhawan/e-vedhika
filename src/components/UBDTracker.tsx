@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Globe, Search, Download, ChevronLeft, ChevronRight,
-  Building, Maximize2, Minimize2, ExternalLink, ShieldCheck, AlertCircle, Loader2
+  Building, Maximize2, Minimize2, ExternalLink, ShieldCheck, AlertCircle, Loader2,
+  RotateCcw, Clock, X
 } from 'lucide-react';
 import XLSX from 'xlsx-js-style';
 import { UBD_REAL_RECORDS, UbdRecord } from '../data/ubdRecordsData';
@@ -22,6 +23,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'preview'>('table');
   const [isLoading, setIsLoading] = useState(false);
+  const [autoClearSeconds, setAutoClearSeconds] = useState<number | null>(null);
   const [liveServerData, setLiveServerData] = useState<{
     unitId: string;
     gpName: string;
@@ -179,6 +181,45 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
       handleSearchSubmit();
     }
   }, [registerType]);
+
+  // 60-Second Auto-Clear Security Timer for Loaded Records
+  useEffect(() => {
+    if (!activeUnitId) {
+      setAutoClearSeconds(null);
+      return;
+    }
+
+    // Reset countdown to 60s whenever new activeUnitId is loaded
+    setAutoClearSeconds(60);
+
+    const interval = setInterval(() => {
+      setAutoClearSeconds(prev => {
+        if (prev === null || prev <= 1) {
+          // Timer reached 0: clear all old records
+          setActiveUnitId('');
+          setLiveServerData(null);
+          setUnitIdInput('');
+          setTableSearch('');
+          setCurrentPage(1);
+          if (addToast) addToast("60-second timer completed: records cleared automatically.");
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeUnitId, registerType, addToast]);
+
+  const handleReset = () => {
+    setActiveUnitId('');
+    setUnitIdInput('');
+    setTableSearch('');
+    setCurrentPage(1);
+    setLiveServerData(null);
+    setAutoClearSeconds(null);
+    if (addToast) addToast("Records reset successfully.");
+  };
 
   const getDirectPortalUrl = (officeCode?: string) => {
     const cleanId = (officeCode || activeUnitId || unitIdInput).trim();
@@ -470,22 +511,40 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
 
         {/* Unit ID Search Bar */}
         <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-lg">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-xl">
             <div className="relative flex-1">
               <input
                 type="text"
                 value={unitIdInput}
                 onChange={(e) => setUnitIdInput(e.target.value)}
                 placeholder="ENTER REG  UNIT ID OR OFFICE ID"
-                className="w-full px-3.5 py-2.5 pl-9 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 shadow-inner tracking-wider"
+                className="w-full px-3.5 py-2.5 pl-9 pr-8 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 shadow-inner tracking-wider"
               />
               <Building size={15} className="absolute left-3 top-3 text-slate-400" />
+              {unitIdInput && (
+                <button
+                  type="button"
+                  onClick={() => setUnitIdInput('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Clear input text"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <button
               type="submit"
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
             >
               <Search size={14} /> Search Data
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 hover:border-rose-300 text-xs font-bold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+              title="Reset search and clear records"
+            >
+              <RotateCcw size={14} /> Reset
             </button>
           </div>
 
@@ -552,6 +611,20 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
                   24/7 Live
                 </span>
+                {autoClearSeconds !== null && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    title="Click to reset immediately (records auto-clear in 60s)"
+                    className="px-3 py-1 bg-amber-50 hover:bg-rose-50 text-amber-900 hover:text-rose-700 rounded-lg border border-amber-300 hover:border-rose-300 shadow-2xs flex items-center gap-1.5 font-bold cursor-pointer transition-all"
+                  >
+                    <Clock size={12} className="text-amber-600 animate-pulse" />
+                    Auto-clear: <strong className="font-mono text-amber-950">{autoClearSeconds}s</strong>
+                    <span className="text-[10px] bg-amber-200/70 hover:bg-rose-200 text-amber-900 hover:text-rose-900 px-1.5 py-0.5 rounded font-semibold ml-0.5">
+                      Reset Now
+                    </span>
+                  </button>
+                )}
               </div>
             </>
           )}
