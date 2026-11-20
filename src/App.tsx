@@ -6949,8 +6949,6 @@ E-Vedhika Support System`;
                     { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
                     { id: "workspace", label: "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
                     { id: "priority_services", label: "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
-                    { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
-                    { id: "union", label: "Union Corner & Polls", icon: Users, colorTheme: "orange" },
                     { id: "ubd_tracker", label: "UBD Tool Tracker", icon: Megaphone, colorTheme: "purple" },
                     { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
                     { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
@@ -6960,7 +6958,7 @@ E-Vedhika Support System`;
                     { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
                     { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
                   ].map((item, index) => {
-                    const isActive = currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity"));
+                    const isActive = currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity" || currentTab === "chat" || currentTab === "union"));
                     const Icon = item.icon;
                     
                     let themeClasses = {
@@ -7096,6 +7094,30 @@ E-Vedhika Support System`;
                                 {item.id === "priority_services" && (
                                   <>
                                     <button
+                                      onClick={() => { setCurrentTab("chat"); setOpenDropdown(null); }}
+                                      className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${currentTab === 'chat' ? 'bg-blue-50 border-blue-200 text-blue-700 font-bold' : 'bg-slate-50/50 hover:bg-slate-100 text-slate-700'} border border-slate-100 shadow-sm sm:shadow-none`}
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'chat' ? 'bg-blue-100 text-blue-600' : 'bg-slate-200/80 text-slate-600'}`}>
+                                        <MessageCircle size={16} />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[13px] font-bold">Live Chat</span>
+                                        <span className="text-[10px] text-slate-400">కమ్యూనిటీ లైవ్ చాట్ & చర్చలు</span>
+                                      </div>
+                                    </button>
+                                    <button
+                                      onClick={() => { setCurrentTab("union"); setOpenDropdown(null); }}
+                                      className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${currentTab === 'union' ? 'bg-amber-50 border-amber-200 text-amber-700 font-bold' : 'bg-slate-50/50 hover:bg-slate-100 text-slate-700'} border border-slate-100 shadow-sm sm:shadow-none`}
+                                    >
+                                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${currentTab === 'union' ? 'bg-amber-100 text-amber-600' : 'bg-slate-200/80 text-slate-600'}`}>
+                                        <Users size={16} />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="text-[13px] font-bold">Union Corner & Polls</span>
+                                        <span className="text-[10px] text-slate-400">యూనియన్ వేదిక & ఓటింగ్ పోల్స్</span>
+                                      </div>
+                                    </button>
+                                    <button
                                       onClick={() => { setCurrentTab("emergency"); setOpenDropdown(null); }}
                                       className={`flex items-center gap-3 w-full p-3 sm:p-2.5 rounded-xl transition-colors text-left ${currentTab === 'emergency' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-slate-50/50 hover:bg-slate-100 text-slate-700'} border border-slate-100 shadow-sm sm:shadow-none`}
                                     >
@@ -7104,6 +7126,7 @@ E-Vedhika Support System`;
                                       </div>
                                       <div className="flex flex-col">
                                         <span className="text-[13px] font-bold">Emergency Contacts</span>
+                                        <span className="text-[10px] text-slate-400">అత్యవసర సంప్రదింపు నంబర్లు</span>
                                       </div>
                                     </button>
                                     <button
@@ -7118,6 +7141,7 @@ E-Vedhika Support System`;
                                       </div>
                                       <div className="flex flex-col">
                                         <span className="text-[13px] font-bold">My Activity</span>
+                                        <span className="text-[10px] text-slate-400">నా కార్యాచరణ & రికార్డులు</span>
                                       </div>
                                     </button>
                                     <button
@@ -7132,6 +7156,7 @@ E-Vedhika Support System`;
                                       </div>
                                       <div className="flex flex-col">
                                         <span className="text-[13px] font-bold">Edit Profile</span>
+                                        <span className="text-[10px] text-slate-400">ప్రొఫైల్ వివరాల సవరణ</span>
                                       </div>
                                     </button>
                                   </>
@@ -7564,10 +7589,8 @@ E-Vedhika Support System`;
                   { id: "home", label: "Home", icon: Home },
                   { id: "workspace", label: "Mana Panchayath", icon: Building },
                   { id: "priority_services", label: "Priority Services", icon: Target },
-                  { id: "chat", label: "Live Chat", icon: MessageCircle },
-                  { id: "union", label: "Union Corner & Polls", icon: Users },
                   { id: "directlinks", label: "Direct Link", icon: Megaphone },
-                                                                        { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
+                  { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare },
                   { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText },
                   { id: "useful_links", label: "Useful Information", icon: Info },
                   { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet },
@@ -7575,13 +7598,12 @@ E-Vedhika Support System`;
                   { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat },
                   { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive },
                   { id: "gpdp_setup", label: "GPDP Initial Setup", icon: ClipboardList },
-                  
                 ].map((item) => (
                   <MenuButton
                     key={item.id}
                     label={item.label}
                     icon={item.icon}
-                    active={currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity"))}
+                    active={currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity" || currentTab === "chat" || currentTab === "union"))}
                     onClick={() => {
                       if (item.id === "workspace") {
                         setCurrentTab("workspace");
