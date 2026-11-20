@@ -9844,13 +9844,7 @@ E-Vedhika Support System`;
       </button>
     </div>
     <div className="space-y-6">
-      <UBDTrackingTool addToast={addToast} />
-      <div className="pt-6 border-t border-slate-200/80">
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3">
-          మాస్టర్ ట్రాకర్ &amp; ఆఫీస్ కోడ్ డైరెక్టరీ (Master GP Tracker &amp; Directory)
-        </h3>
-        <UBDTracker user={user} addToast={addToast} />
-      </div>
+      <UBDTracker user={user} addToast={addToast} />
     </div>
   </motion.div>
 )}
