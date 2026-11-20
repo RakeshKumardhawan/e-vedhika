@@ -108,6 +108,12 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
   upsertMeta("property", "og:image:alt", title);
   upsertMeta("property", "og:url", canonicalUrl);
   upsertMeta("property", "og:locale", "te_IN");
+  upsertMeta("name", "image", imageUrl);
+
+  // Ensure standard Open Graph namespace prefix
+  if (html.includes('prefix="og: https://ogp.me/ns#"')) {
+    html = html.replace('prefix="og: https://ogp.me/ns#"', 'prefix="og: http://ogp.me/ns#"');
+  }
 
   upsertMeta("name", "twitter:card", "summary_large_image");
   upsertMeta("name", "twitter:title", title);

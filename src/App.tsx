@@ -1660,9 +1660,7 @@ export const generatePostShareText = (post: any, postUrl?: string) => {
     (formattedDate ? `📅 *తేదీ / Date:* ${formattedDate}\n` : "") +
     (summary ? `\n📝 *వివరాలు / Summary:*\n_"${summary}"_\n` : "") +
     `\n👇 *పూర్తి వివరాలు & సమాచారం కోసం క్రింది లింక్ ఓపెన్ చేయండి:*\n` +
-    `${finalUrl}\n\n` +
-    `________________________\n` +
-    `✨ *E-Vedhika - పంచాయతీ ముఖ్యాంశాలు & డిజిటల్ సేవల పోర్టల్*`
+    `${finalUrl}`
   );
 };
 

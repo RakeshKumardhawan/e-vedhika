@@ -28,7 +28,7 @@ export const DEFAULT_SEO_CONFIG = {
   ogDescription:
     "All Problems One Solution. Access Panchayath forms, daily logs, GOs, and public e-services in one unified platform.",
   ogImage:
-    "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=1200&auto=format&fit=crop&q=80",
+    "https://www.e-vedhika.in/banner.jpg",
   ogType: "website",
   twitterCard: "summary_large_image",
   metaRobots: "index, follow",

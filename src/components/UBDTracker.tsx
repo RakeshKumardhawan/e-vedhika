@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Globe, Search, Download, ChevronLeft, ChevronRight,
   Building, Maximize2, Minimize2, ExternalLink, ShieldCheck, AlertCircle, Loader2,
-  RotateCcw, Clock, X
+  RotateCcw, Clock, X, Share2
 } from 'lucide-react';
 import XLSX from 'xlsx-js-style';
 import { UBD_REAL_RECORDS, UbdRecord } from '../data/ubdRecordsData';
@@ -219,6 +219,25 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
     setLiveServerData(null);
     setAutoClearSeconds(null);
     if (addToast) addToast("Records reset successfully.");
+  };
+
+  const handleShareOnWhatsApp = () => {
+    const isDeath = registerType === 'DEA';
+    const regLabel = isDeath ? 'మరణాల' : 'జననాల';
+    const gpInfo = activeUnitId ? `— గ్రామ పంచాయతీ: ${gpName} (ID: ${activeUnitId})` : '';
+    const shareText = `🏛️ *E-VEDHIKA | UBD MIS లైవ్ ట్రాకర్* 🏛️\n\nతెలంగాణ & ఏపీ UBD పోర్టల్ ${regLabel} రిజిస్టర్ మరియు సంతకాల వివరాలు తనిఖీ చేయండి ${gpInfo}.\n\n👇 *లైవ్ పోర్టల్ లింక్:*\nhttps://www.e-vedhika.in/ubd_tracker`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: "UBD MIS Live Tracker | E-Vedhika",
+        text: shareText,
+        url: "https://www.e-vedhika.in/ubd_tracker"
+      }).catch(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
+      });
+    } else {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
+    }
   };
 
   const getDirectPortalUrl = (officeCode?: string) => {
@@ -549,11 +568,19 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={handleShareOnWhatsApp}
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
+              title="Share UBD Tracker on WhatsApp"
+            >
+              <Share2 size={13} /> Share Link
+            </button>
             {activeUnitId && filteredRecords.length > 0 && (
               <button
                 type="button"
                 onClick={handleExportExcel}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap"
               >
                 <Download size={13} /> Export Excel
               </button>
