@@ -6931,8 +6931,8 @@ E-Vedhika Support System`;
           </div></div>
       )}
 
-      <nav className="nav-trigger-bar relative z-[10] py-1.5 bg-white shadow-sm border-b border-slate-200/50">
-        <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 relative flex items-center justify-center gap-1 sm:gap-2">
+      <nav className="nav-trigger-bar w-full relative z-[10] py-1.5 bg-white shadow-sm border-b border-slate-200/50">
+        <div className="w-full px-2 sm:px-4 relative flex items-center justify-between gap-1 sm:gap-2">
           {/* Scroll Left Button */}
           <button
             type="button"
@@ -6951,7 +6951,7 @@ E-Vedhika Support System`;
           <div className="flex-1 w-full min-w-0 relative">
             <div
               ref={navScrollRef}
-              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap gap-2 sm:gap-3 py-1.5 w-full scroll-smooth justify-start px-3 sm:px-6"
+              className="flex items-center overflow-x-auto whitespace-nowrap flex-nowrap gap-2 sm:gap-3 py-1.5 w-full scroll-smooth justify-start px-1"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               <style dangerouslySetInnerHTML={{__html: `
