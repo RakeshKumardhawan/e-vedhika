@@ -6941,11 +6941,11 @@ E-Vedhika Support System`;
                 navScrollRef.current.scrollBy({ left: -240, behavior: "smooth" });
               }
             }}
-            className="flex items-center justify-center shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white shadow-sm border border-slate-200/90 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:shadow-md transition-all z-10 active:scale-95 cursor-pointer"
+            className="flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all z-10 active:scale-95 cursor-pointer ml-1"
             aria-label="Scroll Left"
             title="Scroll Left"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
 
           <div className="flex-1 w-full min-w-0 relative">
@@ -6958,19 +6958,19 @@ E-Vedhika Support System`;
                 .nav-trigger-bar div::-webkit-scrollbar { display: none; }
               `}} />
                   {[
-                    { id: "home", label: lang === "te" ? "హోమ్" : "Home", icon: Home, colorTheme: "blue" },
-                    { id: "workspace", label: lang === "te" ? "మన పంచాయతీ" : "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
-                    { id: "priority_services", label: lang === "te" ? "ప్రాధాన్యత సేవలు" : "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
-                    { id: "chat", label: lang === "te" ? "లైవ్ చాట్" : "Live Chat", icon: MessageCircle, colorTheme: "slate" },
-                    { id: "union", label: lang === "te" ? "యూనియన్ కార్నర్" : "Union Corner & Polls", icon: Users, colorTheme: "orange" },
-                    { id: "ubd_tracker", label: lang === "te" ? "UBD టూల్ ట్రాకర్" : "UBD Tool Tracker", icon: Megaphone, colorTheme: "purple" },
-                    { id: "suggestions", label: lang === "te" ? "సూచనలు & సలహాలు" : "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
-                    { id: "gos_formats", label: lang === "te" ? "జీవోలు & ఫార్మాట్లు" : "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
-                    { id: "useful_links", label: lang === "te" ? "ముఖ్యమైన సమాచారం" : "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
-                    { id: "excel_print", label: lang === "te" ? "ఎక్సెల్ ప్రింట్" : "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
-                    { id: "pdf_compress", label: lang === "te" ? "పీడీఎఫ్ కంప్రెసర్" : "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
-                    { id: "farmer_registry", label: lang === "te" ? "రైతు రిజిస్ట్రీ" : "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
-                    { id: "software_hub", label: lang === "te" ? "సాఫ్ట్‌వేర్ హబ్" : "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
+                    { id: "home", label: "Home", icon: Home, colorTheme: "blue" },
+                    { id: "workspace", label: "Mana Panchayath", icon: Building, colorTheme: "blue", hasDropdown: true },
+                    { id: "priority_services", label: "Priority Services", icon: Target, colorTheme: "blue", hasDropdown: true },
+                    { id: "chat", label: "Live Chat", icon: MessageCircle, colorTheme: "slate" },
+                    { id: "union", label: "Union Corner & Polls", icon: Users, colorTheme: "orange" },
+                    { id: "ubd_tracker", label: "UBD Tool Tracker", icon: Megaphone, colorTheme: "purple" },
+                    { id: "suggestions", label: "Public Suggestions & Feedback", icon: MessageSquare, colorTheme: "pink" },
+                    { id: "gos_formats", label: "Applications, Formats & GOs", icon: FileText, colorTheme: "teal", hasDropdown: true },
+                    { id: "useful_links", label: "Useful Information", icon: Info, colorTheme: "cyan", hasDropdown: true },
+                    { id: "excel_print", label: "Excel A4 Print", icon: FileSpreadsheet, colorTheme: "green" },
+                    { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
+                    { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
+                    { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
                   ].map((item, index) => {
                     const isActive = currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity"));
                     const Icon = item.icon;
@@ -6982,19 +6982,19 @@ E-Vedhika Support System`;
                     };
                     if (isActive) {
                       themeClasses = {
-                        button: "bg-[#1d68ff] border-[#1d68ff] text-white shadow-md shadow-blue-500/25",
-                        iconBg: "bg-white/20 text-white border border-white/25",
+                        button: "bg-[#1877f2] border border-[#1877f2] text-white shadow-sm shadow-blue-500/20",
+                        iconBg: "bg-white/20 text-white border border-white/30",
                         text: "text-white font-bold"
                       };
                     } else {
                       switch(item.colorTheme) {
-                        case "blue": themeClasses = { button: "bg-white hover:bg-blue-50/50 border border-blue-100/90 shadow-sm hover:border-blue-300", iconBg: "bg-blue-50 text-blue-600", text: "text-slate-700 font-semibold" }; break;
+                        case "blue": themeClasses = { button: "bg-white hover:bg-blue-50/40 border border-[#bfdbfe] hover:border-blue-400 shadow-[0_1px_2px_rgba(0,0,0,0.03)]", iconBg: "bg-[#eff6ff] text-[#2563eb]", text: "text-slate-700 font-semibold" }; break;
                         case "red": themeClasses = { button: "bg-white hover:bg-red-50/50 border border-red-100/90 shadow-sm hover:border-red-300", iconBg: "bg-red-50 text-red-600", text: "text-slate-700 font-semibold" }; break;
                         case "emerald": themeClasses = { button: "bg-white hover:bg-emerald-50/50 border border-emerald-100/90 shadow-sm hover:border-emerald-300", iconBg: "bg-emerald-50 text-emerald-600", text: "text-slate-700 font-semibold" }; break;
-                        case "slate": themeClasses = { button: "bg-white hover:bg-slate-50 border border-slate-200/90 shadow-sm hover:border-slate-300", iconBg: "bg-slate-100 text-slate-600", text: "text-slate-700 font-semibold" }; break;
-                        case "orange": themeClasses = { button: "bg-white hover:bg-amber-50/50 border border-amber-200/80 shadow-sm hover:border-amber-300", iconBg: "bg-amber-50 text-amber-600", text: "text-slate-700 font-semibold" }; break;
-                        case "purple": themeClasses = { button: "bg-white hover:bg-purple-50/50 border border-purple-200/80 shadow-sm hover:border-purple-300", iconBg: "bg-purple-50 text-purple-600", text: "text-slate-700 font-semibold" }; break;
-                        case "pink": themeClasses = { button: "bg-white hover:bg-pink-50/50 border border-pink-200/80 shadow-sm hover:border-pink-300", iconBg: "bg-pink-50 text-pink-600", text: "text-slate-700 font-semibold" }; break;
+                        case "slate": themeClasses = { button: "bg-white hover:bg-slate-50 border border-[#e2e8f0] hover:border-slate-400 shadow-[0_1px_2px_rgba(0,0,0,0.03)]", iconBg: "bg-[#f1f5f9] text-[#475569]", text: "text-slate-700 font-semibold" }; break;
+                        case "orange": themeClasses = { button: "bg-white hover:bg-amber-50/40 border border-[#fde68a] hover:border-amber-400 shadow-[0_1px_2px_rgba(0,0,0,0.03)]", iconBg: "bg-[#fffbeb] text-[#d97706]", text: "text-slate-700 font-semibold" }; break;
+                        case "purple": themeClasses = { button: "bg-white hover:bg-purple-50/40 border border-[#e9d5ff] hover:border-purple-400 shadow-[0_1px_2px_rgba(0,0,0,0.03)]", iconBg: "bg-[#faf5ff] text-[#9333ea]", text: "text-slate-700 font-semibold" }; break;
+                        case "pink": themeClasses = { button: "bg-white hover:bg-pink-50/40 border border-[#fbcfe8] hover:border-pink-400 shadow-[0_1px_2px_rgba(0,0,0,0.03)]", iconBg: "bg-[#fdf2f8] text-[#db2777]", text: "text-slate-700 font-semibold" }; break;
                         case "teal": themeClasses = { button: "bg-white hover:bg-teal-50/50 border border-teal-100/90 shadow-sm hover:border-teal-300", iconBg: "bg-teal-50 text-teal-600", text: "text-slate-700 font-semibold" }; break;
                         case "cyan": themeClasses = { button: "bg-white hover:bg-cyan-50/50 border border-cyan-100/90 shadow-sm hover:border-cyan-300", iconBg: "bg-cyan-50 text-cyan-600", text: "text-slate-700 font-semibold" }; break;
                         case "green": themeClasses = { button: "bg-white hover:bg-green-50/50 border border-green-100/90 shadow-sm hover:border-green-300", iconBg: "bg-green-50 text-green-600", text: "text-slate-700 font-semibold" }; break;
@@ -7057,16 +7057,16 @@ E-Vedhika Support System`;
                               }
                             }
                           }}
-                          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
                         >
-                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-transform ${themeClasses.iconBg}`}>
-                            <Icon size={14} />
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-transform ${themeClasses.iconBg}`}>
+                            <Icon size={13} />
                           </div>
-                          <span className={`text-[12px] sm:text-[13px] tracking-tight ${themeClasses.text}`}>
+                          <span className={`text-[13px] tracking-tight ${themeClasses.text}`}>
                             {item.label}
                           </span>
                           {item.hasDropdown && (
-                            <ChevronDown size={14} className={isActive ? "ml-0.5 text-white/80" : "ml-0.5 text-slate-400"} />
+                            <ChevronDown size={14} className={isActive ? "ml-0.5 text-white/80" : "ml-0.5 text-slate-400 group-hover:text-slate-600 transition-colors"} />
                           )}
                         </button>
                         
@@ -7317,11 +7317,11 @@ E-Vedhika Support System`;
                 navScrollRef.current.scrollBy({ left: 240, behavior: "smooth" });
               }
             }}
-            className="flex items-center justify-center shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white shadow-sm border border-slate-200/90 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:shadow-md transition-all z-10 active:scale-95 cursor-pointer"
+            className="flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all z-10 active:scale-95 cursor-pointer mr-1"
             aria-label="Scroll Right"
             title="Scroll Right"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
         </div>
       </nav>
