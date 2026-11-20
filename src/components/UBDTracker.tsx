@@ -46,7 +46,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
     // Not in local cache
     return {
       gpName: `Gram Panchayat #${cleanId}`,
-      district: 'TELANGANA',
+      district: '',
       mandal: '',
       currentRecords: [],
       isGenuineFound: false
@@ -92,9 +92,12 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
   };
 
   const getDirectPortalUrl = (officeCode?: string) => {
-    const cleanId = (officeCode || activeUnitId).trim() || '20008';
+    const cleanId = (officeCode || activeUnitId || unitIdInput).trim();
     if (selectedState === 'AP') {
       return 'https://epanchayat.ap.gov.in/UBDMIS/';
+    }
+    if (!cleanId) {
+      return 'https://ubdmis.telangana.gov.in/';
     }
     if (registerType === 'DEA') {
       return `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${cleanId}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
@@ -247,30 +250,6 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
             </button>
           </div>
         </form>
-
-        {/* Quick Genuine Unit ID Suggestions */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 text-[11px] text-slate-500">
-          <span className="font-bold text-slate-600">Sample Genuine Unit IDs:</span>
-          {["20008", "280002", "10209", "20248", "10001", "10262", "1741"].map((uid) => (
-            <button
-              key={uid}
-              type="button"
-              onClick={() => {
-                setUnitIdInput(uid);
-                setActiveUnitId(uid);
-                setTableSearch('');
-                setCurrentPage(1);
-              }}
-              className={`px-2 py-0.5 rounded font-mono font-bold transition-colors cursor-pointer border ${
-                activeUnitId === uid 
-                  ? 'bg-blue-600 text-white border-blue-600' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-              }`}
-            >
-              #{uid}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Real Live UBD MIS Data Display Area */}
@@ -297,9 +276,11 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                 {mandal && (
                   <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-md">Mandal: {mandal}</span>
                 )}
-                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Total Records: {filteredRecords.length}</span>
-                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-md">
-                  {isGenuineFound ? "Official Verified Data" : "NIC Portal Gateway"}
+                {isGenuineFound && (
+                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Total Records: {filteredRecords.length}</span>
+                )}
+                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-md">
+                  {isGenuineFound ? "Official Verified Records" : "Live Server Gateway"}
                 </span>
               </div>
             </>
