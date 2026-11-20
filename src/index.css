@@ -1,11 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Mandali&family=Poppins:wght@400;500;600;700;800;900&family=Noto+Sans+Telugu:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Mandali&family=Noto+Serif+Telugu:wght@400;600;700;800;900&family=Ramabhadra&family=Poppins:wght@400;500;600;700;800;900&family=Noto+Sans+Telugu:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", "Noto Sans Telugu", ui-sans-serif, system-ui, sans-serif;
-  --font-heading: "Poppins", "Noto Sans Telugu", ui-sans-serif, system-ui, sans-serif;
-  --font-telugu: "Noto Sans Telugu", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mandali: "Mandali", "Noto Sans Telugu", sans-serif;
+  --font-heading: "Mandali", "Noto Serif Telugu", "Poppins", "Noto Sans Telugu", ui-sans-serif, system-ui, sans-serif;
+  --font-telugu: "Mandali", "Noto Sans Telugu", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mandali: "Mandali", "Noto Serif Telugu", "Ramabhadra", "Noto Sans Telugu", sans-serif;
+  --font-royal: "Mandali", "Noto Serif Telugu", "Ramabhadra", "Noto Sans Telugu", serif;
   --color-primary: var(--primary);
   --color-accent: var(--accent);
   --color-success: var(--success);
@@ -583,15 +584,30 @@ header {
 .post-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .cat-tag { display: inline-block; padding: 4px 12px; background: #f1f5f9; color: #475569; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid #e2e8f0; letter-spacing: 0.03em; }
 .sub-cat-tag { background: var(--danger); color: white; margin-left: 5px; border-color: transparent; }
-.post-title { margin: 0 0 8px 0; font-size: 19px; color: var(--primary); font-weight: 800; letter-spacing: -0.02em; line-height: 1.35; font-family: 'Poppins', 'Noto Sans Telugu', sans-serif; }
+.post-title { 
+  margin: 0 0 10px 0; 
+  font-size: 21px; 
+  color: var(--primary); 
+  font-weight: 700; 
+  letter-spacing: 0.01em; 
+  line-height: 1.5; 
+  font-family: 'Mandali', 'Noto Serif Telugu', 'Ramabhadra', 'Noto Sans Telugu', system-ui, sans-serif !important; 
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
 .post-body, .post-matter, .post-content-mandali, .post-body p, .post-body div, .post-body span, .post-body li, .ql-editor, .markdown-body p { 
-  font-family: 'Mandali', 'Noto Sans Telugu', system-ui, sans-serif !important; 
-  font-size: 16.5px; 
-  color: #334155; 
+  font-family: 'Mandali', 'Noto Serif Telugu', 'Noto Sans Telugu', system-ui, sans-serif !important; 
+  font-size: 17.5px; 
+  color: #1e293b; 
   line-height: 1.85; 
   word-break: break-word; 
   overflow-wrap: break-word; 
   letter-spacing: 0.015em;
+  text-rendering: optimizeLegibility;
+}
+.font-royal, .font-mandali {
+  font-family: 'Mandali', 'Noto Serif Telugu', 'Ramabhadra', 'Noto Sans Telugu', system-ui, sans-serif !important;
+  text-rendering: optimizeLegibility;
 }
 .post-media { width: 100%; max-height: 450px; object-fit: cover; border-radius: 16px; margin-top: 10px; background: #f8fafc; border: 1px solid #e2e8f0; }
 

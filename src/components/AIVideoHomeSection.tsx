@@ -238,11 +238,11 @@ export function AIVideoHomeSection({ posts: externalPosts }: AIVideoHomeSectionP
                       {post.date && <span>{post.date}</span>}
                     </div>
 
-                    <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug font-mandali text-[15px]">
                       {post.title}
                     </h3>
 
-                    <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed font-medium">
+                    <p className="text-xs text-slate-600 mt-2 line-clamp-3 leading-relaxed font-medium font-mandali text-[14px]">
                       {post.content}
                     </p>
 
