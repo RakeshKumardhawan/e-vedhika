@@ -1,69 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Globe, Search, Download, ChevronLeft, ChevronRight,
-  Building, Maximize2, Minimize2, ExternalLink
+  Building, Maximize2, Minimize2, ExternalLink, ShieldCheck, AlertCircle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { UBD_REAL_RECORDS, UbdRecord } from '../data/ubdRecordsData';
-import masterUbdList from '../../data/ubd_data.json';
 
 interface UBDTrackerProps {
   user?: any;
   addToast?: (msg: string) => void;
-}
-
-// Generate realistic records for any other Unit ID so data always loads
-function generateDynamicRecords(unitId: string, isDeath: boolean, gp: string): UbdRecord[] {
-  const numId = parseInt(unitId.replace(/\D/g, ''), 10) || 10209;
-  const count = 20 + (numId % 30);
-  const records: UbdRecord[] = [];
-  const baseYear = 2024;
-
-  const names = [
-    { child: "ANANYA", mother: "LAKSHMI", father: "SRINIVAS" },
-    { child: "SAI CHARAN", mother: "SARITHA", father: "VENKATESH" },
-    { child: "MANISH KUMAR", mother: "PADMA", father: "RAMESH" },
-    { child: "SINDHUJA", mother: "SUJATHA", father: "NARASIMHA" },
-    { child: "BHANU PRASAD", mother: "RENUKA", father: "SHANKAR" },
-    { child: "KEERTHANA", mother: "RADHA", father: "ANJANEYULU" },
-    { child: "KAVYA SREE", mother: "ANITHA", father: "CHANDRA SHEKAR" },
-    { child: "SHIVA REDDY", mother: "SUNITHA", father: "RAVI KUMAR" }
-  ];
-
-  for (let i = 1; i <= count; i++) {
-    const yr = baseYear - Math.floor(i / 8);
-    const day = String((i % 28) + 1).padStart(2, '0');
-    const month = String(((i * 3) % 12) + 1).padStart(2, '0');
-    const n = names[i % names.length];
-    const isFemale = i % 2 === 0;
-
-    if (isDeath) {
-      records.push({
-        sno: String(i),
-        regNo: String(i),
-        regYear: String(yr),
-        regDate: `${day}/${month}/${yr}`,
-        dod: `${day}/${month}/${yr}`,
-        gender: isFemale ? "Female" : "Male",
-        deceasedName: `${n.father} (${isFemale ? 'W/o' : 'S/o'} ${n.mother})`,
-        relativeName: n.mother
-      });
-    } else {
-      records.push({
-        sno: String(i),
-        regNo: String(i),
-        regYear: String(yr),
-        regDate: `${day}/${month}/${yr}`,
-        dob: `${day}/${month}/${yr}`,
-        gender: isFemale ? "Female" : "Male",
-        childName: `${n.child}`,
-        motherName: n.mother,
-        fatherName: n.father
-      });
-    }
-  }
-
-  return records;
 }
 
 export function UBDTracker({ user, addToast }: UBDTrackerProps) {
@@ -76,16 +21,16 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const recordsPerPage = 15;
 
-  // Retrieve current active records ONLY when an ID is active
-  const { gpName, district, mandal, currentRecords } = useMemo(() => {
+  // Retrieve current active records ONLY when an ID is active and genuine
+  const { gpName, district, mandal, currentRecords, isGenuineFound } = useMemo(() => {
     const cleanId = activeUnitId.trim();
     if (!cleanId) {
-      return { gpName: '', district: '', mandal: '', currentRecords: [] };
+      return { gpName: '', district: '', mandal: '', currentRecords: [], isGenuineFound: false };
     }
 
     const isDeath = registerType === 'DEA';
 
-    // 1. Check exact parsed real records first (e.g. 10209, 10001, 10262, 10425, 20001)
+    // Check exact parsed genuine records from official server
     if (UBD_REAL_RECORDS[cleanId]) {
       const data = UBD_REAL_RECORDS[cleanId];
       const records = isDeath && data.death ? data.death : data.birth;
@@ -93,25 +38,18 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
         gpName: data.gpName,
         district: data.district,
         mandal: data.mandal,
-        currentRecords: records || []
+        currentRecords: records || [],
+        isGenuineFound: true
       };
     }
 
-    // 2. Check master directory list for real GP, District, and Mandal names
-    const masterMatch = (masterUbdList as any[]).find(
-      item => String(item['Office id'] || item['office id'] || '').trim() === cleanId
-    );
-
-    const gp = masterMatch ? String(masterMatch['Gp Name'] || masterMatch['gp name']) : `Gram Panchayat #${cleanId}`;
-    const dist = masterMatch ? String(masterMatch['District Name'] || masterMatch['district name']) : 'TELANGANA';
-    const mand = masterMatch ? String(masterMatch['Mandal Name'] || masterMatch['mandal name']) : '';
-
-    const dynRecords = generateDynamicRecords(cleanId, isDeath, gp);
+    // Not in local cache
     return {
-      gpName: gp,
-      district: dist,
-      mandal: mand,
-      currentRecords: dynRecords
+      gpName: `Gram Panchayat #${cleanId}`,
+      district: 'TELANGANA',
+      mandal: '',
+      currentRecords: [],
+      isGenuineFound: false
     };
   }, [activeUnitId, registerType]);
 
@@ -151,6 +89,17 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
     setTableSearch('');
     setCurrentPage(1);
     if (addToast) addToast(`Loaded UBD Records for Unit ID: ${clean}`);
+  };
+
+  const getDirectPortalUrl = (officeCode?: string) => {
+    const cleanId = (officeCode || activeUnitId).trim() || '20008';
+    if (selectedState === 'AP') {
+      return 'https://epanchayat.ap.gov.in/UBDMIS/';
+    }
+    if (registerType === 'DEA') {
+      return `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${cleanId}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+    }
+    return `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=${cleanId}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
   };
 
   const handleExportExcel = () => {
@@ -298,6 +247,30 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
             </button>
           </div>
         </form>
+
+        {/* Quick Genuine Unit ID Suggestions */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 text-[11px] text-slate-500">
+          <span className="font-bold text-slate-600">Sample Genuine Unit IDs:</span>
+          {["20008", "280002", "10209", "20248", "10001", "10262", "1741"].map((uid) => (
+            <button
+              key={uid}
+              type="button"
+              onClick={() => {
+                setUnitIdInput(uid);
+                setActiveUnitId(uid);
+                setTableSearch('');
+                setCurrentPage(1);
+              }}
+              className={`px-2 py-0.5 rounded font-mono font-bold transition-colors cursor-pointer border ${
+                activeUnitId === uid 
+                  ? 'bg-blue-600 text-white border-blue-600' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              }`}
+            >
+              #{uid}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Real Live UBD MIS Data Display Area */}
@@ -312,7 +285,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
           </h3>
           
           {/* Only show GP name, Unit ID, Mandal, and Total Records when an ID is active */}
-          {activeUnitId ? (
+          {activeUnitId && (
             <>
               <p className="text-xs text-slate-700 font-bold mt-1.5">
                 {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for Local Body &mdash; Gram Panchayat: <span className="text-blue-900 underline font-black">{gpName}</span> (Unit ID: <span className="font-mono text-blue-900 font-black">{activeUnitId}</span>)
@@ -325,17 +298,21 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                   <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-md">Mandal: {mandal}</span>
                 )}
                 <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Total Records: {filteredRecords.length}</span>
-                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-md">Status: Active</span>
+                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 rounded-md">
+                  {isGenuineFound ? "Official Verified Data" : "NIC Portal Gateway"}
+                </span>
               </div>
             </>
-          ) : (
+          )}
+
+          {!activeUnitId && (
             <p className="text-xs text-slate-500 font-medium mt-1.5">
               {registerType === 'BIR' ? 'Birth Register' : 'Death Register'} Details for Local Body &mdash; Enter Reg.Unit ID to view records
             </p>
           )}
         </div>
 
-        {/* Content View: Empty State vs Records Table */}
+        {/* Content View: Empty State vs Records Table vs External Fallback */}
         {!activeUnitId ? (
           <div className="py-16 text-center space-y-3">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/80 shadow-xs">
@@ -347,6 +324,30 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
             <p className="text-xs text-slate-500 max-w-md mx-auto">
               Type your Gram Panchayat's Reg.Unit ID in the search box and click "Search Data" to view signed register records.
             </p>
+          </div>
+        ) : !isGenuineFound ? (
+          <div className="py-12 px-4 text-center max-w-xl mx-auto space-y-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+              <ShieldCheck size={24} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-900">
+                Official UBDMIS Records for Unit ID #{activeUnitId}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Unit ID #{activeUnitId} records are hosted on the live Telangana UBDMIS NIC server. To ensure 100% genuine official accuracy with zero dummy data, open the live government signed register below:
+              </p>
+            </div>
+            <div>
+              <a
+                href={getDirectPortalUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                <ExternalLink size={14} /> Open Live Unit #{activeUnitId} Register on UBDMIS Portal ↗
+              </a>
+            </div>
           </div>
         ) : (
           <>
@@ -363,9 +364,19 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                 <Search size={13} className="absolute left-2.5 top-2 text-slate-400" />
               </div>
 
-              <span className="text-xs font-bold text-slate-600">
-                Showing <strong className="text-blue-700">{paginatedRecords.length}</strong> of <strong className="text-slate-800">{filteredRecords.length}</strong> records
-              </span>
+              <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                <span>
+                  Showing <strong className="text-blue-700">{paginatedRecords.length}</strong> of <strong className="text-slate-800">{filteredRecords.length}</strong> genuine records
+                </span>
+                <a
+                  href={getDirectPortalUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                >
+                  <ExternalLink size={12} /> View on Portal ↗
+                </a>
+              </div>
             </div>
 
             {/* The Authentic Government UBDMIS Table */}

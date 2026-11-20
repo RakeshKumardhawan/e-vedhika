@@ -1,0 +1,35 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "1",
+        "regYear":  "2021",
+        "regDate":  "31/08/2021",
+        "dob":  "27/08/2021",
+        "gender":  "Female",
+        "childName":  "SOLAM RAJESHWARI",
+        "motherName":  "SOLAM GANGAMMA",
+        "fatherName":  "SOLAM MUTHAIAH"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "3",
+        "regYear":  "2025",
+        "regDate":  "21/05/2025",
+        "dob":  "10/10/2012",
+        "gender":  "Female",
+        "childName":  "CHERUKULA SANDHYA",
+        "motherName":  "CHERUKULA PUSHPA KUMARI",
+        "fatherName":  "CHERUKULA SAMMARAO"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "4",
+        "regYear":  "2025",
+        "regDate":  "27/10/2025",
+        "dob":  "21/09/2010",
+        "gender":  "Male",
+        "childName":  "KAPULA VIJAY",
+        "motherName":  "KAPULA SWAPNA",
+        "fatherName":  "KAPULA NAGESHWAR RAO"
+    }
+]

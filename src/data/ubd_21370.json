@@ -1,0 +1,68 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "1",
+        "regYear":  "2019",
+        "regDate":  "21/10/2019",
+        "dob":  "25/05/2014",
+        "gender":  "Male",
+        "childName":  "BEJAWADA GANESH",
+        "motherName":  "BEJAWADA TIRAPAMMA",
+        "fatherName":  "BEJAWADA DHANAMURTHY"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "1",
+        "regYear":  "2024",
+        "regDate":  "29/10/2024",
+        "dob":  "08/05/2007",
+        "gender":  "Female",
+        "childName":  "VALLAMKONDA SHAILAJA",
+        "motherName":  "VALLAMKONDA VENKATALAXMI",
+        "fatherName":  "VALLAMKONDA RAMARAO"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "2",
+        "regYear":  "2024",
+        "regDate":  "29/10/2024",
+        "dob":  "12/06/2009",
+        "gender":  "Female",
+        "childName":  "VALLAMKONDA UMARANI",
+        "motherName":  "VALLAMKONDA VENKATALAXMI",
+        "fatherName":  "VALLAMKONDA RAMARAO"
+    },
+    {
+        "sno":  "4",
+        "regNo":  "1",
+        "regYear":  "2025",
+        "regDate":  "15/01/2025",
+        "dob":  "15/08/2008",
+        "gender":  "Male",
+        "childName":  "MALADI VENU",
+        "motherName":  "MALADI NAGALAXMI",
+        "fatherName":  "MALADI ACHAIAH"
+    },
+    {
+        "sno":  "5",
+        "regNo":  "2",
+        "regYear":  "2025",
+        "regDate":  "19/02/2025",
+        "dob":  "13/07/2007",
+        "gender":  "Female",
+        "childName":  "MONDITHOKA MANASWINI",
+        "motherName":  "MONDITHOKA  KUMARI",
+        "fatherName":  "MONDITHOKA  LAXMAN RAO"
+    },
+    {
+        "sno":  "6",
+        "regNo":  "3",
+        "regYear":  "2025",
+        "regDate":  "06/03/2025",
+        "dob":  "18/09/2009",
+        "gender":  "Female",
+        "childName":  "SHAIK NASEEMA",
+        "motherName":  "SHAIK MUNNI",
+        "fatherName":  "SHAIK HUSSAIN"
+    }
+]

@@ -1,0 +1,222 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "1",
+        "regYear":  "2021",
+        "regDate":  "20/04/2021",
+        "dod":  "07/03/2021",
+        "gender":  "Female",
+        "deceasedName":  "CHAPIDI LAXMI",
+        "relativeName":  "NIL"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "2",
+        "regYear":  "2021",
+        "regDate":  "20/02/2021",
+        "dod":  "10/02/2021",
+        "gender":  "Male",
+        "deceasedName":  "CHAPIDI POCHAIAH",
+        "relativeName":  "NIL"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "3",
+        "regYear":  "2021",
+        "regDate":  "30/03/2021",
+        "dod":  "24/03/2021",
+        "gender":  "Male",
+        "deceasedName":  "DURGAM ANJAIAH",
+        "relativeName":  "NIL"
+    },
+    {
+        "sno":  "4",
+        "regNo":  "4",
+        "regYear":  "2021",
+        "regDate":  "03/08/2021",
+        "dod":  "16/07/2021",
+        "gender":  "Male",
+        "deceasedName":  "CHAPIDI THIRUPATHI",
+        "relativeName":  "CHAPIDI POSAKKA"
+    },
+    {
+        "sno":  "5",
+        "regNo":  "5",
+        "regYear":  "2021",
+        "regDate":  "22/10/2021",
+        "dod":  "12/10/2021",
+        "gender":  "Female",
+        "deceasedName":  "ARE KANTHA",
+        "relativeName":  "KURMMA YELLAKKA"
+    },
+    {
+        "sno":  "6",
+        "regNo":  "1",
+        "regYear":  "2022",
+        "regDate":  "14/10/2022",
+        "dod":  "10/10/2003",
+        "gender":  "Male",
+        "deceasedName":  "GOMASA ASHOK",
+        "relativeName":  "GOMASA"
+    },
+    {
+        "sno":  "7",
+        "regNo":  "2",
+        "regYear":  "2022",
+        "regDate":  "23/11/2022",
+        "dod":  "09/04/2022",
+        "gender":  "Male",
+        "deceasedName":  "KAREM SIDDAIAH",
+        "relativeName":  "KAREM ELLAMMA"
+    },
+    {
+        "sno":  "8",
+        "regNo":  "3",
+        "regYear":  "2022",
+        "regDate":  "23/11/2022",
+        "dod":  "13/10/2022",
+        "gender":  "Female",
+        "deceasedName":  "POLKA BAYYAKKA",
+        "relativeName":  "RAJAKKA"
+    },
+    {
+        "sno":  "9",
+        "regNo":  "4",
+        "regYear":  "2022",
+        "regDate":  "30/07/2022",
+        "dod":  "21/07/2022",
+        "gender":  "Male",
+        "deceasedName":  "POLKA MALLESH",
+        "relativeName":  "POLKA MALLAKKA"
+    },
+    {
+        "sno":  "10",
+        "regNo":  "1",
+        "regYear":  "2023",
+        "regDate":  "06/09/2023",
+        "dod":  "18/04/2023",
+        "gender":  "Female",
+        "deceasedName":  "DURGAM BHUDEVI",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "11",
+        "regNo":  "2",
+        "regYear":  "2023",
+        "regDate":  "16/11/2023",
+        "dod":  "30/10/2023",
+        "gender":  "Male",
+        "deceasedName":  "BURRI SHANKAR",
+        "relativeName":  "BURRI POSHAKKA"
+    },
+    {
+        "sno":  "12",
+        "regNo":  "3",
+        "regYear":  "2023",
+        "regDate":  "28/04/2023",
+        "dod":  "12/04/2023",
+        "gender":  "Male",
+        "deceasedName":  "ARE CHANDRA MOGILI",
+        "relativeName":  "ARE BHEEMAKKA"
+    },
+    {
+        "sno":  "13",
+        "regNo":  "1",
+        "regYear":  "2024",
+        "regDate":  "02/03/2024",
+        "dod":  "25/02/2024",
+        "gender":  "Male",
+        "deceasedName":  "DURGAM  ANKULU",
+        "relativeName":  "DURGAM LASMAKKA"
+    },
+    {
+        "sno":  "14",
+        "regNo":  "2",
+        "regYear":  "2024",
+        "regDate":  "14/08/2024",
+        "dod":  "22/07/2024",
+        "gender":  "Female",
+        "deceasedName":  "MANEPALLI AMRUTHA",
+        "relativeName":  "MANEPALLI LAXMI"
+    },
+    {
+        "sno":  "15",
+        "regNo":  "1",
+        "regYear":  "2025",
+        "regDate":  "24/01/2025",
+        "dod":  "11/05/2023",
+        "gender":  "Female",
+        "deceasedName":  "ARE BHIMAKKA",
+        "relativeName":  "DHADDI GANGAKKA"
+    },
+    {
+        "sno":  "16",
+        "regNo":  "2",
+        "regYear":  "2025",
+        "regDate":  "06/02/2025",
+        "dod":  "15/06/2024",
+        "gender":  "Male",
+        "deceasedName":  "DURGAM DHARMAIAH",
+        "relativeName":  "DURGAM LACHAKKA"
+    },
+    {
+        "sno":  "17",
+        "regNo":  "3",
+        "regYear":  "2025",
+        "regDate":  "06/02/2025",
+        "dod":  "13/08/2024",
+        "gender":  "Male",
+        "deceasedName":  "BURRI MALLAIAH",
+        "relativeName":  "BURRI  CHINNAKKA"
+    },
+    {
+        "sno":  "18",
+        "regNo":  "4",
+        "regYear":  "2025",
+        "regDate":  "02/06/2025",
+        "dod":  "10/05/2025",
+        "gender":  "Male",
+        "deceasedName":  "POLKA ARJAIAH",
+        "relativeName":  "POLKA MALLAKKA"
+    },
+    {
+        "sno":  "19",
+        "regNo":  "5",
+        "regYear":  "2025",
+        "regDate":  "08/09/2025",
+        "dod":  "05/08/2025",
+        "gender":  "Female",
+        "deceasedName":  "DURGAM LASMAKKA",
+        "relativeName":  "MUNJAM LANUBAI"
+    },
+    {
+        "sno":  "20",
+        "regNo":  "1",
+        "regYear":  "2026",
+        "regDate":  "08/02/2026",
+        "dod":  "06/09/2025",
+        "gender":  "Male",
+        "deceasedName":  "MISALA LASMAIAH",
+        "relativeName":  "MISALA AMMAKKA"
+    },
+    {
+        "sno":  "21",
+        "regNo":  "2",
+        "regYear":  "2026",
+        "regDate":  "18/02/2026",
+        "dod":  "07/02/2026",
+        "gender":  "Male",
+        "deceasedName":  "JODI KRISHNA PRASAD",
+        "relativeName":  "JODI VENKATAMMA"
+    },
+    {
+        "sno":  "22",
+        "regNo":  "3",
+        "regYear":  "2026",
+        "regDate":  "28/08/2026",
+        "dod":  "18/08/2026",
+        "gender":  "Male",
+        "deceasedName":  "SOLLA LACHANNA",
+        "relativeName":  "SOLLA CHINNAKKA"
+    }
+]

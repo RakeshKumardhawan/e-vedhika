@@ -1,0 +1,79 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "35",
+        "regYear":  "2017",
+        "regDate":  "10/04/2017",
+        "dob":  "01/04/2017",
+        "gender":  "Female",
+        "childName":  "NA",
+        "motherName":  "NA NA",
+        "fatherName":  "NA"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "6",
+        "regYear":  "2020",
+        "regDate":  "20/06/2020",
+        "dob":  "01/01/2020",
+        "gender":  "Male",
+        "childName":  "NA NA",
+        "motherName":  "NA NA",
+        "fatherName":  "NA NA"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "7",
+        "regYear":  "2020",
+        "regDate":  "20/06/2020",
+        "dob":  "16/06/2020",
+        "gender":  "Male",
+        "childName":  "PERUMALLA REYANSH",
+        "motherName":  "PERUMALLA RAJITHA",
+        "fatherName":  "PERUMALLA LAVAN"
+    },
+    {
+        "sno":  "4",
+        "regNo":  "1",
+        "regYear":  "2025",
+        "regDate":  "06/05/2025",
+        "dob":  "07/12/2009",
+        "gender":  "Male",
+        "childName":  "GANGINENI VENU",
+        "motherName":  "GANGINENI LAVANYA",
+        "fatherName":  "GANGINENI GANGADHAR"
+    },
+    {
+        "sno":  "5",
+        "regNo":  "2",
+        "regYear":  "2025",
+        "regDate":  "06/05/2025",
+        "dob":  "07/12/2009",
+        "gender":  "Male",
+        "childName":  "GANGINENI VENU",
+        "motherName":  "GANGINENI LAVANYA",
+        "fatherName":  "GANGINENI GANGADHAR"
+    },
+    {
+        "sno":  "6",
+        "regNo":  "1",
+        "regYear":  "2026",
+        "regDate":  "24/04/2026",
+        "dob":  "31/12/1988",
+        "gender":  "Male",
+        "childName":  "KANNAM VISHNU VARDHAN",
+        "motherName":  "KANNAM LAXMI",
+        "fatherName":  "KANNAM RAGHUPATHI"
+    },
+    {
+        "sno":  "7",
+        "regNo":  "2",
+        "regYear":  "2026",
+        "regDate":  "24/04/2026",
+        "dob":  "12/08/1996",
+        "gender":  "Female",
+        "childName":  "KANNAM SHRAVYA",
+        "motherName":  "KANNAM LAXMI",
+        "fatherName":  "KANNAM RAGHUPATHI"
+    }
+]

@@ -1,0 +1,35 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "1",
+        "regYear":  "2022",
+        "regDate":  "25/06/2022",
+        "dob":  "02/08/2005",
+        "gender":  "Male",
+        "childName":  "PENDELA GNANESHWAR",
+        "motherName":  "PRABHA",
+        "fatherName":  "PENDELA GURUVAIAH"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "1",
+        "regYear":  "2024",
+        "regDate":  "23/10/2024",
+        "dob":  "03/12/2005",
+        "gender":  "Male",
+        "childName":  "BOLLI RAJU",
+        "motherName":  "BOLLI SWAROOPA",
+        "fatherName":  "BOLLI SAMMAIAH"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "1",
+        "regYear":  "2025",
+        "regDate":  "07/11/2025",
+        "dob":  "20/11/2009",
+        "gender":  "Female",
+        "childName":  "KONKATA SRILEKHA",
+        "motherName":  "KONKATA  RUPA",
+        "fatherName":  "KONKATA RAJENDRAPRASAD"
+    }
+]

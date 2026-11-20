@@ -1,0 +1,1062 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "16",
+        "regYear":  "2014",
+        "regDate":  "19/02/2014",
+        "dod":  "20/09/1994",
+        "gender":  "Male",
+        "deceasedName":  "MOHAMMED ZAHURUL HAQ",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "72",
+        "regYear":  "2018",
+        "regDate":  "16/08/2018",
+        "dod":  "07/08/2018",
+        "gender":  "Male",
+        "deceasedName":  "SORTHE VITTAL",
+        "relativeName":  "SUNDARIBAI"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "1",
+        "regYear":  "2019",
+        "regDate":  "18/07/2019",
+        "dod":  "14/07/2019",
+        "gender":  "Male",
+        "deceasedName":  "KASARLA SUBBA RAO",
+        "relativeName":  "SARASWATHI BAI"
+    },
+    {
+        "sno":  "4",
+        "regNo":  "2",
+        "regYear":  "2019",
+        "regDate":  "22/07/2019",
+        "dod":  "07/03/2019",
+        "gender":  "Female",
+        "deceasedName":  "KARNEWAR LAXMI",
+        "relativeName":  "SUBADHRA"
+    },
+    {
+        "sno":  "5",
+        "regNo":  "3",
+        "regYear":  "2019",
+        "regDate":  "29/08/2019",
+        "dod":  "05/08/2019",
+        "gender":  "Male",
+        "deceasedName":  "NAGARTHU NARAYANA",
+        "relativeName":  "NAGARTHU RAJAKKA"
+    },
+    {
+        "sno":  "6",
+        "regNo":  "4",
+        "regYear":  "2019",
+        "regDate":  "24/09/2019",
+        "dod":  "07/09/2019",
+        "gender":  "Female",
+        "deceasedName":  "TAPRE  KONDU BAI",
+        "relativeName":  "MUKUNDA BAI"
+    },
+    {
+        "sno":  "7",
+        "regNo":  "5",
+        "regYear":  "2019",
+        "regDate":  "01/11/2019",
+        "dod":  "15/08/2019",
+        "gender":  "Male",
+        "deceasedName":  "DOTA DHARMAIAH",
+        "relativeName":  "DOTA GANGAMMA"
+    },
+    {
+        "sno":  "8",
+        "regNo":  "6",
+        "regYear":  "2019",
+        "regDate":  "25/11/2019",
+        "dod":  "15/11/2019",
+        "gender":  "Male",
+        "deceasedName":  "ABBADI DEVIDAS",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "9",
+        "regNo":  "7",
+        "regYear":  "2019",
+        "regDate":  "13/12/2019",
+        "dod":  "21/11/2019",
+        "gender":  "Male",
+        "deceasedName":  "POLPELLY BHAGAWANDLU",
+        "relativeName":  "POLPELLY RAMBAI"
+    },
+    {
+        "sno":  "10",
+        "regNo":  "33",
+        "regYear":  "2019",
+        "regDate":  "07/03/2019",
+        "dod":  "22/02/2019",
+        "gender":  "Male",
+        "deceasedName":  "POTHRAJ DEVANNA",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "11",
+        "regNo":  "1",
+        "regYear":  "2020",
+        "regDate":  "25/02/2020",
+        "dod":  "10/02/2020",
+        "gender":  "Female",
+        "deceasedName":  "KAMRE  SINDU BHAI",
+        "relativeName":  "MALLUBAI"
+    },
+    {
+        "sno":  "12",
+        "regNo":  "2",
+        "regYear":  "2020",
+        "regDate":  "04/03/2020",
+        "dod":  "05/02/2020",
+        "gender":  "Male",
+        "deceasedName":  "NAKKA  KISHAN RAO",
+        "relativeName":  "NARSAMMA"
+    },
+    {
+        "sno":  "13",
+        "regNo":  "3",
+        "regYear":  "2020",
+        "regDate":  "16/05/2020",
+        "dod":  "27/04/2020",
+        "gender":  "Male",
+        "deceasedName":  "POTHARAJ DEVIDAS",
+        "relativeName":  "POTHARJA RUKMA"
+    },
+    {
+        "sno":  "14",
+        "regNo":  "4",
+        "regYear":  "2020",
+        "regDate":  "27/05/2020",
+        "dod":  "04/05/2020",
+        "gender":  "Female",
+        "deceasedName":  "TULSI NARSAMMA",
+        "relativeName":  "KEERTHI MALLAMMA"
+    },
+    {
+        "sno":  "15",
+        "regNo":  "5",
+        "regYear":  "2020",
+        "regDate":  "01/07/2020",
+        "dod":  "25/05/2020",
+        "gender":  "Male",
+        "deceasedName":  "GOURU NARSINGU",
+        "relativeName":  "POCHAKKA"
+    },
+    {
+        "sno":  "16",
+        "regNo":  "6",
+        "regYear":  "2020",
+        "regDate":  "02/07/2020",
+        "dod":  "03/09/2019",
+        "gender":  "Female",
+        "deceasedName":  "TUMANE LAXMIBAI",
+        "relativeName":  "POCHAKKA"
+    },
+    {
+        "sno":  "17",
+        "regNo":  "7",
+        "regYear":  "2020",
+        "regDate":  "08/07/2020",
+        "dod":  "08/02/2020",
+        "gender":  "Female",
+        "deceasedName":  "GANDRATH LAXMI BAI",
+        "relativeName":  "LASUMBAI"
+    },
+    {
+        "sno":  "18",
+        "regNo":  "8",
+        "regYear":  "2020",
+        "regDate":  "12/08/2020",
+        "dod":  "28/07/2020",
+        "gender":  "Male",
+        "deceasedName":  "BOKDE SANTHOSH",
+        "relativeName":  "POCHUBAI"
+    },
+    {
+        "sno":  "19",
+        "regNo":  "9",
+        "regYear":  "2020",
+        "regDate":  "02/09/2020",
+        "dod":  "23/08/2020",
+        "gender":  "Male",
+        "deceasedName":  "THOTA LASUMBAI",
+        "relativeName":  "KISTAMMA"
+    },
+    {
+        "sno":  "20",
+        "regNo":  "10",
+        "regYear":  "2020",
+        "regDate":  "18/09/2020",
+        "dod":  "07/09/2020",
+        "gender":  "Female",
+        "deceasedName":  "ABBENA LAXMI",
+        "relativeName":  "KISTAMMA"
+    },
+    {
+        "sno":  "21",
+        "regNo":  "11",
+        "regYear":  "2020",
+        "regDate":  "28/09/2020",
+        "dod":  "23/08/2020",
+        "gender":  "Male",
+        "deceasedName":  "POTHARAJU BHUMANNA",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "22",
+        "regNo":  "12",
+        "regYear":  "2020",
+        "regDate":  "28/10/2020",
+        "dod":  "07/09/2020",
+        "gender":  "Male",
+        "deceasedName":  "BIKKI UTTAM",
+        "relativeName":  "POSANI"
+    },
+    {
+        "sno":  "23",
+        "regNo":  "13",
+        "regYear":  "2020",
+        "regDate":  "15/12/2020",
+        "dod":  "06/12/2020",
+        "gender":  "Male",
+        "deceasedName":  "ABBENA MOHAN RAO",
+        "relativeName":  "LASUMBAI"
+    },
+    {
+        "sno":  "24",
+        "regNo":  "14",
+        "regYear":  "2020",
+        "regDate":  "07/11/2020",
+        "dod":  "06/11/2020",
+        "gender":  "Male",
+        "deceasedName":  "KOLE  SURESH",
+        "relativeName":  "POCHUBAI"
+    },
+    {
+        "sno":  "25",
+        "regNo":  "34",
+        "regYear":  "2020",
+        "regDate":  "11/10/2020",
+        "dod":  "10/10/2020",
+        "gender":  "Female",
+        "deceasedName":  "POLPELLY  KUSUMA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "26",
+        "regNo":  "1",
+        "regYear":  "2021",
+        "regDate":  "04/01/2021",
+        "dod":  "11/12/2020",
+        "gender":  "Female",
+        "deceasedName":  "IPPA KAMALA",
+        "relativeName":  "AAMSAYI"
+    },
+    {
+        "sno":  "27",
+        "regNo":  "2",
+        "regYear":  "2021",
+        "regDate":  "11/01/2021",
+        "dod":  "03/01/2021",
+        "gender":  "Male",
+        "deceasedName":  "AVARAGONDA RAVI",
+        "relativeName":  "LASUMBAI"
+    },
+    {
+        "sno":  "28",
+        "regNo":  "3",
+        "regYear":  "2021",
+        "regDate":  "08/02/2021",
+        "dod":  "02/02/2021",
+        "gender":  "Female",
+        "deceasedName":  "MEKALA BHAGIRTHA",
+        "relativeName":  "BAYYAKKA"
+    },
+    {
+        "sno":  "29",
+        "regNo":  "4",
+        "regYear":  "2021",
+        "regDate":  "16/02/2021",
+        "dod":  "06/02/2021",
+        "gender":  "Male",
+        "deceasedName":  "BODDU POSHETTY",
+        "relativeName":  "RAJAMMA"
+    },
+    {
+        "sno":  "30",
+        "regNo":  "5",
+        "regYear":  "2021",
+        "regDate":  "05/03/2021",
+        "dod":  "04/10/2020",
+        "gender":  "Female",
+        "deceasedName":  "GUNDAWAR  MALLAMMA",
+        "relativeName":  "GUNDAWAR BHUCHAMMA"
+    },
+    {
+        "sno":  "31",
+        "regNo":  "6",
+        "regYear":  "2021",
+        "regDate":  "10/05/2021",
+        "dod":  "26/04/2021",
+        "gender":  "Male",
+        "deceasedName":  "BHEEMANAVENI  RAMULU",
+        "relativeName":  "LINGAMMA"
+    },
+    {
+        "sno":  "32",
+        "regNo":  "7",
+        "regYear":  "2021",
+        "regDate":  "17/05/2021",
+        "dod":  "30/04/2021",
+        "gender":  "Male",
+        "deceasedName":  "POLPELLY  JAYA RAMULU",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "33",
+        "regNo":  "8",
+        "regYear":  "2021",
+        "regDate":  "05/06/2021",
+        "dod":  "24/11/2020",
+        "gender":  "Female",
+        "deceasedName":  "OSAWAR GOURAMMA",
+        "relativeName":  "GANGAMMA"
+    },
+    {
+        "sno":  "34",
+        "regNo":  "9",
+        "regYear":  "2021",
+        "regDate":  "16/08/2021",
+        "dod":  "08/04/2021",
+        "gender":  "Male",
+        "deceasedName":  "IPPA NANA",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "35",
+        "regNo":  "10",
+        "regYear":  "2021",
+        "regDate":  "16/08/2021",
+        "dod":  "30/06/2021",
+        "gender":  "Female",
+        "deceasedName":  "IPPA LAXMI",
+        "relativeName":  "PARVATHI"
+    },
+    {
+        "sno":  "36",
+        "regNo":  "11",
+        "regYear":  "2021",
+        "regDate":  "27/09/2021",
+        "dod":  "05/09/2021",
+        "gender":  "Male",
+        "deceasedName":  "MARPAKA  BAPUJEE",
+        "relativeName":  "RUKMABAI"
+    },
+    {
+        "sno":  "37",
+        "regNo":  "12",
+        "regYear":  "2021",
+        "regDate":  "27/11/2021",
+        "dod":  "05/03/2010",
+        "gender":  "Female",
+        "deceasedName":  "CHANDA  SULOCHANA",
+        "relativeName":  "POCHUBAI"
+    },
+    {
+        "sno":  "38",
+        "regNo":  "2",
+        "regYear":  "2022",
+        "regDate":  "22/02/2022",
+        "dod":  "16/02/2022",
+        "gender":  "Female",
+        "deceasedName":  "BODDU RAJAMMA",
+        "relativeName":  "BHUDEVI"
+    },
+    {
+        "sno":  "39",
+        "regNo":  "3",
+        "regYear":  "2022",
+        "regDate":  "22/02/2022",
+        "dod":  "08/01/2022",
+        "gender":  "Male",
+        "deceasedName":  "PULI SANTHOSH",
+        "relativeName":  "VACHALA"
+    },
+    {
+        "sno":  "40",
+        "regNo":  "4",
+        "regYear":  "2022",
+        "regDate":  "31/03/2022",
+        "dod":  "11/03/2022",
+        "gender":  "Male",
+        "deceasedName":  "POTHARAJU DEVANNA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "41",
+        "regNo":  "7",
+        "regYear":  "2022",
+        "regDate":  "31/03/2022",
+        "dod":  "26/03/2022",
+        "gender":  "Male",
+        "deceasedName":  "JAKKULA RAMULU",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "42",
+        "regNo":  "8",
+        "regYear":  "2022",
+        "regDate":  "31/03/2022",
+        "dod":  "28/03/2022",
+        "gender":  "Female",
+        "deceasedName":  "RAVARTHI KALAVATHI",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "43",
+        "regNo":  "9",
+        "regYear":  "2022",
+        "regDate":  "30/04/2022",
+        "dod":  "19/04/2022",
+        "gender":  "Male",
+        "deceasedName":  "KUSHNAPALLI ARJUN",
+        "relativeName":  "RADHA"
+    },
+    {
+        "sno":  "44",
+        "regNo":  "10",
+        "regYear":  "2022",
+        "regDate":  "30/04/2022",
+        "dod":  "14/04/2022",
+        "gender":  "Male",
+        "deceasedName":  "RUMALA SUBHASH",
+        "relativeName":  "SHAKUNTALA"
+    },
+    {
+        "sno":  "45",
+        "regNo":  "11",
+        "regYear":  "2022",
+        "regDate":  "30/04/2022",
+        "dod":  "15/04/2022",
+        "gender":  "Male",
+        "deceasedName":  "LINGALA SURESH",
+        "relativeName":  "RAJAMMA"
+    },
+    {
+        "sno":  "46",
+        "regNo":  "12",
+        "regYear":  "2022",
+        "regDate":  "18/08/2022",
+        "dod":  "14/08/2022",
+        "gender":  "Male",
+        "deceasedName":  "SIRUPURE KASHIRAM",
+        "relativeName":  "GANGUBAI"
+    },
+    {
+        "sno":  "47",
+        "regNo":  "13",
+        "regYear":  "2022",
+        "regDate":  "22/08/2022",
+        "dod":  "15/08/2022",
+        "gender":  "Female",
+        "deceasedName":  "AVANURI LASUMDEVI",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "48",
+        "regNo":  "14",
+        "regYear":  "2022",
+        "regDate":  "22/08/2022",
+        "dod":  "17/08/2022",
+        "gender":  "Female",
+        "deceasedName":  "TELI ANUSUYA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "49",
+        "regNo":  "15",
+        "regYear":  "2022",
+        "regDate":  "23/08/2022",
+        "dod":  "17/08/2022",
+        "gender":  "Male",
+        "deceasedName":  "GIJJI USHANNA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "50",
+        "regNo":  "16",
+        "regYear":  "2022",
+        "regDate":  "26/08/2022",
+        "dod":  "24/08/2022",
+        "gender":  "Female",
+        "deceasedName":  "SIRIPURE AMBUBAI",
+        "relativeName":  "GANGUBAI"
+    },
+    {
+        "sno":  "51",
+        "regNo":  "17",
+        "regYear":  "2022",
+        "regDate":  "08/09/2022",
+        "dod":  "29/08/2022",
+        "gender":  "Male",
+        "deceasedName":  "SANTOBA GANGARAM BHENDRE",
+        "relativeName":  "POSANI"
+    },
+    {
+        "sno":  "52",
+        "regNo":  "18",
+        "regYear":  "2022",
+        "regDate":  "22/09/2022",
+        "dod":  "19/09/2022",
+        "gender":  "Female",
+        "deceasedName":  "BIKKI USHAMMA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "53",
+        "regNo":  "19",
+        "regYear":  "2022",
+        "regDate":  "23/09/2022",
+        "dod":  "19/09/2022",
+        "gender":  "Male",
+        "deceasedName":  "POTHRAJU RAMDAS",
+        "relativeName":  "SHIVAMMA"
+    },
+    {
+        "sno":  "54",
+        "regNo":  "20",
+        "regYear":  "2022",
+        "regDate":  "29/09/2022",
+        "dod":  "23/09/2022",
+        "gender":  "Female",
+        "deceasedName":  "PASULA GANGAMMA",
+        "relativeName":  "SHUSHEELA"
+    },
+    {
+        "sno":  "55",
+        "regNo":  "21",
+        "regYear":  "2022",
+        "regDate":  "25/10/2022",
+        "dod":  "14/09/2022",
+        "gender":  "Male",
+        "deceasedName":  "SANGOLE RAHUL",
+        "relativeName":  "SANGOLE LAXMI"
+    },
+    {
+        "sno":  "56",
+        "regNo":  "22",
+        "regYear":  "2022",
+        "regDate":  "25/10/2022",
+        "dod":  "14/09/2022",
+        "gender":  "Male",
+        "deceasedName":  "JAITALKAR MAHADEV",
+        "relativeName":  "JAITALKAR GODAVARI"
+    },
+    {
+        "sno":  "57",
+        "regNo":  "23",
+        "regYear":  "2022",
+        "regDate":  "22/11/2022",
+        "dod":  "19/08/2022",
+        "gender":  "Male",
+        "deceasedName":  "GATTU  NARSINGH",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "58",
+        "regNo":  "24",
+        "regYear":  "2022",
+        "regDate":  "22/11/2022",
+        "dod":  "20/11/2022",
+        "gender":  "Female",
+        "deceasedName":  "POTHURAJ BHUDEVI",
+        "relativeName":  "RATNA"
+    },
+    {
+        "sno":  "59",
+        "regNo":  "25",
+        "regYear":  "2022",
+        "regDate":  "28/11/2022",
+        "dod":  "21/11/2022",
+        "gender":  "Female",
+        "deceasedName":  "LADE VITABAI",
+        "relativeName":  "LAXMI"
+    },
+    {
+        "sno":  "60",
+        "regNo":  "26",
+        "regYear":  "2022",
+        "regDate":  "29/11/2022",
+        "dod":  "20/11/2022",
+        "gender":  "Female",
+        "deceasedName":  "POTHURAJ BHUDEVI",
+        "relativeName":  "POTHRAJ RATNA"
+    },
+    {
+        "sno":  "61",
+        "regNo":  "27",
+        "regYear":  "2022",
+        "regDate":  "30/11/2022",
+        "dod":  "19/08/2022",
+        "gender":  "Male",
+        "deceasedName":  "GATTU NARSINGU",
+        "relativeName":  "LASUM BAI"
+    },
+    {
+        "sno":  "62",
+        "regNo":  "28",
+        "regYear":  "2022",
+        "regDate":  "02/12/2022",
+        "dod":  "01/12/2022",
+        "gender":  "Female",
+        "deceasedName":  "DONTHULA RAMAKKA",
+        "relativeName":  "NARSAMMA"
+    },
+    {
+        "sno":  "63",
+        "regNo":  "29",
+        "regYear":  "2022",
+        "regDate":  "07/12/2022",
+        "dod":  "19/05/2022",
+        "gender":  "Male",
+        "deceasedName":  "ABBENI NARSAIAH",
+        "relativeName":  "VIJAYA"
+    },
+    {
+        "sno":  "64",
+        "regNo":  "33",
+        "regYear":  "2022",
+        "regDate":  "07/01/2022",
+        "dod":  "30/11/2021",
+        "gender":  "Male",
+        "deceasedName":  "BHAGATH  NAMDEV",
+        "relativeName":  "MALLU BAI"
+    },
+    {
+        "sno":  "65",
+        "regNo":  "34",
+        "regYear":  "2022",
+        "regDate":  "22/01/2022",
+        "dod":  "03/01/2022",
+        "gender":  "Male",
+        "deceasedName":  "PARATHE USHANNA",
+        "relativeName":  "LAXMIBAI"
+    },
+    {
+        "sno":  "66",
+        "regNo":  "35",
+        "regYear":  "2022",
+        "regDate":  "22/01/2022",
+        "dod":  "31/05/2021",
+        "gender":  "Female",
+        "deceasedName":  "ALWALA MALLAMMA",
+        "relativeName":  "MALLAMMA"
+    },
+    {
+        "sno":  "67",
+        "regNo":  "1",
+        "regYear":  "2023",
+        "regDate":  "18/01/2023",
+        "dod":  "17/10/2022",
+        "gender":  "Male",
+        "deceasedName":  "SIDAM BHARAT DEVRAO",
+        "relativeName":  "KOUSHAL"
+    },
+    {
+        "sno":  "68",
+        "regNo":  "2",
+        "regYear":  "2023",
+        "regDate":  "15/03/2023",
+        "dod":  "13/02/2023",
+        "gender":  "Female",
+        "deceasedName":  "GOWRU SANTEKKA",
+        "relativeName":  "LASUMBAI"
+    },
+    {
+        "sno":  "69",
+        "regNo":  "3",
+        "regYear":  "2023",
+        "regDate":  "04/04/2023",
+        "dod":  "18/06/2001",
+        "gender":  "Male",
+        "deceasedName":  "KURMA POCHANNA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "70",
+        "regNo":  "4",
+        "regYear":  "2023",
+        "regDate":  "13/04/2023",
+        "dod":  "10/03/2023",
+        "gender":  "Male",
+        "deceasedName":  "NIKAR SADASHIV",
+        "relativeName":  "GANGAMMA"
+    },
+    {
+        "sno":  "71",
+        "regNo":  "5",
+        "regYear":  "2023",
+        "regDate":  "21/04/2023",
+        "dod":  "07/04/2023",
+        "gender":  "Male",
+        "deceasedName":  "ADEPU GANGANNA",
+        "relativeName":  "ADEPU RAJAKKA"
+    },
+    {
+        "sno":  "72",
+        "regNo":  "6",
+        "regYear":  "2023",
+        "regDate":  "22/05/2023",
+        "dod":  "27/08/2010",
+        "gender":  "Male",
+        "deceasedName":  "AKULA LINGANNA",
+        "relativeName":  "GANGAMMA"
+    },
+    {
+        "sno":  "73",
+        "regNo":  "7",
+        "regYear":  "2023",
+        "regDate":  "11/08/2023",
+        "dod":  "24/06/2023",
+        "gender":  "Male",
+        "deceasedName":  "POLPELLY  NARSIMLU",
+        "relativeName":  "ESHWARAMMA"
+    },
+    {
+        "sno":  "74",
+        "regNo":  "8",
+        "regYear":  "2023",
+        "regDate":  "19/10/2023",
+        "dod":  "01/09/2023",
+        "gender":  "Female",
+        "deceasedName":  "VALGONDA GOURAMMA",
+        "relativeName":  "NARSAMMA"
+    },
+    {
+        "sno":  "75",
+        "regNo":  "9",
+        "regYear":  "2023",
+        "regDate":  "29/12/2023",
+        "dod":  "22/12/2023",
+        "gender":  "Female",
+        "deceasedName":  "NAKKA GOURAMMA",
+        "relativeName":  "RUKUMBHAI"
+    },
+    {
+        "sno":  "76",
+        "regNo":  "10",
+        "regYear":  "2023",
+        "regDate":  "29/12/2023",
+        "dod":  "17/08/2023",
+        "gender":  "Female",
+        "deceasedName":  "IPPA LAXMI",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "77",
+        "regNo":  "1",
+        "regYear":  "2024",
+        "regDate":  "22/03/2024",
+        "dod":  "18/02/2024",
+        "gender":  "Male",
+        "deceasedName":  "INDURI RAJALINGU",
+        "relativeName":  "DEVAMMA"
+    },
+    {
+        "sno":  "78",
+        "regNo":  "2",
+        "regYear":  "2024",
+        "regDate":  "15/04/2024",
+        "dod":  "04/04/2024",
+        "gender":  "Male",
+        "deceasedName":  "CHANDA KISHTU",
+        "relativeName":  "GANGAMMA"
+    },
+    {
+        "sno":  "79",
+        "regNo":  "3",
+        "regYear":  "2024",
+        "regDate":  "23/04/2024",
+        "dod":  "14/04/2024",
+        "gender":  "Male",
+        "deceasedName":  "BOKDE  ADELLU",
+        "relativeName":  "POCHUBAI"
+    },
+    {
+        "sno":  "80",
+        "regNo":  "4",
+        "regYear":  "2024",
+        "regDate":  "24/06/2024",
+        "dod":  "14/06/2024",
+        "gender":  "Female",
+        "deceasedName":  "BOKDE  PARVATHI",
+        "relativeName":  "GOURUBAI"
+    },
+    {
+        "sno":  "81",
+        "regNo":  "5",
+        "regYear":  "2024",
+        "regDate":  "30/07/2024",
+        "dod":  "31/05/2005",
+        "gender":  "Male",
+        "deceasedName":  "KUSHNAPALLI  USHANNA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "82",
+        "regNo":  "6",
+        "regYear":  "2024",
+        "regDate":  "30/09/2024",
+        "dod":  "03/09/2024",
+        "gender":  "Male",
+        "deceasedName":  "POTHARAJU ADELLU",
+        "relativeName":  "POTHARAJU RATHNA"
+    },
+    {
+        "sno":  "83",
+        "regNo":  "7",
+        "regYear":  "2024",
+        "regDate":  "30/09/2024",
+        "dod":  "11/09/2024",
+        "gender":  "Male",
+        "deceasedName":  "SAIAD USMAN",
+        "relativeName":  "SAIAD KULSMBI"
+    },
+    {
+        "sno":  "84",
+        "regNo":  "8",
+        "regYear":  "2024",
+        "regDate":  "30/09/2024",
+        "dod":  "14/09/2024",
+        "gender":  "Female",
+        "deceasedName":  "SHIVARAMWAR RENUKA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "85",
+        "regNo":  "9",
+        "regYear":  "2024",
+        "regDate":  "30/09/2024",
+        "dod":  "24/09/2024",
+        "gender":  "Male",
+        "deceasedName":  "SHIVARAMWAR SHANKAR",
+        "relativeName":  "SHIVARAMWAR JAMUNA"
+    },
+    {
+        "sno":  "86",
+        "regNo":  "10",
+        "regYear":  "2024",
+        "regDate":  "20/11/2024",
+        "dod":  "01/10/2024",
+        "gender":  "Male",
+        "deceasedName":  "ABBENAWAR RAMESH",
+        "relativeName":  "ERAKKA"
+    },
+    {
+        "sno":  "87",
+        "regNo":  "11",
+        "regYear":  "2024",
+        "regDate":  "20/11/2024",
+        "dod":  "20/10/2024",
+        "gender":  "Female",
+        "deceasedName":  "NALAGANTI ASHAMMA",
+        "relativeName":  "NA"
+    },
+    {
+        "sno":  "88",
+        "regNo":  "12",
+        "regYear":  "2024",
+        "regDate":  "29/12/2024",
+        "dod":  "18/12/2024",
+        "gender":  "Female",
+        "deceasedName":  "SILVERI KISHTABAI",
+        "relativeName":  "MALLAKKA"
+    },
+    {
+        "sno":  "89",
+        "regNo":  "1",
+        "regYear":  "2025",
+        "regDate":  "24/04/2025",
+        "dod":  "21/04/2025",
+        "gender":  "Male",
+        "deceasedName":  "GUNDAWAR VITTAL",
+        "relativeName":  "BHAIYAKKA"
+    },
+    {
+        "sno":  "90",
+        "regNo":  "2",
+        "regYear":  "2025",
+        "regDate":  "19/08/2025",
+        "dod":  "11/08/2025",
+        "gender":  "Male",
+        "deceasedName":  "SHIVARAMWAR DEVIDAS",
+        "relativeName":  "JAMUNA BAI"
+    },
+    {
+        "sno":  "91",
+        "regNo":  "3",
+        "regYear":  "2025",
+        "regDate":  "30/08/2025",
+        "dod":  "23/08/2025",
+        "gender":  "Male",
+        "deceasedName":  "SAVVAR WAR  VENKATARAMANA",
+        "relativeName":  "LINGAMMA"
+    },
+    {
+        "sno":  "92",
+        "regNo":  "4",
+        "regYear":  "2025",
+        "regDate":  "14/10/2025",
+        "dod":  "07/10/2025",
+        "gender":  "Female",
+        "deceasedName":  "DESHMUKH PRIYAVADANA",
+        "relativeName":  "DESHMUKH SHARADA"
+    },
+    {
+        "sno":  "93",
+        "regNo":  "5",
+        "regYear":  "2025",
+        "regDate":  "17/11/2025",
+        "dod":  "27/10/2025",
+        "gender":  "Male",
+        "deceasedName":  "JINGURE UTTAM",
+        "relativeName":  "RUKMA BAI"
+    },
+    {
+        "sno":  "94",
+        "regNo":  "6",
+        "regYear":  "2025",
+        "regDate":  "24/11/2025",
+        "dod":  "16/11/2025",
+        "gender":  "Male",
+        "deceasedName":  "NAGRADE VIJAY",
+        "relativeName":  "ANJANA BAI"
+    },
+    {
+        "sno":  "95",
+        "regNo":  "7",
+        "regYear":  "2025",
+        "regDate":  "29/12/2025",
+        "dod":  "25/12/2025",
+        "gender":  "Male",
+        "deceasedName":  "BOKDE POCHANNA",
+        "relativeName":  "GADDAM POCHU BAI"
+    },
+    {
+        "sno":  "96",
+        "regNo":  "1",
+        "regYear":  "2026",
+        "regDate":  "27/01/2026",
+        "dod":  "11/01/2026",
+        "gender":  "Male",
+        "deceasedName":  "PORANDLA SAI KUMAR",
+        "relativeName":  "PORANDLA NARSAMMA"
+    },
+    {
+        "sno":  "97",
+        "regNo":  "2",
+        "regYear":  "2026",
+        "regDate":  "24/02/2026",
+        "dod":  "25/01/2026",
+        "gender":  "Female",
+        "deceasedName":  "ABBIDI LAXMI BAI",
+        "relativeName":  "BAYYAKKA"
+    },
+    {
+        "sno":  "98",
+        "regNo":  "3",
+        "regYear":  "2026",
+        "regDate":  "13/03/2026",
+        "dod":  "10/03/2026",
+        "gender":  "Male",
+        "deceasedName":  "ABBENI LACHANNA",
+        "relativeName":  "EERAKKA"
+    },
+    {
+        "sno":  "99",
+        "regNo":  "4",
+        "regYear":  "2026",
+        "regDate":  "18/03/2026",
+        "dod":  "04/03/2026",
+        "gender":  "Male",
+        "deceasedName":  "POLPELLY MOHANRAO",
+        "relativeName":  "SATYAMMA"
+    },
+    {
+        "sno":  "100",
+        "regNo":  "5",
+        "regYear":  "2026",
+        "regDate":  "06/04/2026",
+        "dod":  "24/07/2025",
+        "gender":  "Female",
+        "deceasedName":  "GOURU  GANGAMMA",
+        "relativeName":  "NARSAKKA"
+    },
+    {
+        "sno":  "101",
+        "regNo":  "6",
+        "regYear":  "2026",
+        "regDate":  "06/05/2026",
+        "dod":  "23/04/2026",
+        "gender":  "Male",
+        "deceasedName":  "PATIL ANIL",
+        "relativeName":  "PATIL  RAMABAI"
+    },
+    {
+        "sno":  "102",
+        "regNo":  "7",
+        "regYear":  "2026",
+        "regDate":  "22/05/2026",
+        "dod":  "25/11/2025",
+        "gender":  "Male",
+        "deceasedName":  "IPPA RAMANNA",
+        "relativeName":  "IPPA THANU BAI"
+    },
+    {
+        "sno":  "103",
+        "regNo":  "8",
+        "regYear":  "2026",
+        "regDate":  "25/05/2026",
+        "dod":  "30/03/2026",
+        "gender":  "Female",
+        "deceasedName":  "BIKKI  POSANI",
+        "relativeName":  "NARSHAMMA"
+    },
+    {
+        "sno":  "104",
+        "regNo":  "9",
+        "regYear":  "2026",
+        "regDate":  "29/08/2026",
+        "dod":  "24/07/2026",
+        "gender":  "Female",
+        "deceasedName":  "AITHE POCHU BAI",
+        "relativeName":  "LASUM BAI"
+    },
+    {
+        "sno":  "105",
+        "regNo":  "10",
+        "regYear":  "2026",
+        "regDate":  "09/09/2026",
+        "dod":  "22/08/2026",
+        "gender":  "Female",
+        "deceasedName":  "POLPELLY LAXMI",
+        "relativeName":  "PAPAKKA"
+    },
+    {
+        "sno":  "106",
+        "regNo":  "11",
+        "regYear":  "2026",
+        "regDate":  "30/10/2026",
+        "dod":  "26/10/2026",
+        "gender":  "Male",
+        "deceasedName":  "TAPRE POCHIRAM",
+        "relativeName":  "LACHU BAI"
+    }
+]

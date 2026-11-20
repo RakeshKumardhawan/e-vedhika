@@ -1,0 +1,68 @@
+﻿[
+    {
+        "sno":  "1",
+        "regNo":  "1",
+        "regYear":  "2025",
+        "regDate":  "11/09/2025",
+        "dob":  "25/10/2020",
+        "gender":  "Male",
+        "childName":  "PODIYAM RAMAKRISHNA",
+        "motherName":  "PODIYAM MANGAMMA",
+        "fatherName":  "PODIYAM LACHU"
+    },
+    {
+        "sno":  "2",
+        "regNo":  "2",
+        "regYear":  "2025",
+        "regDate":  "11/09/2025",
+        "dob":  "27/05/2022",
+        "gender":  "Male",
+        "childName":  "PODIYAM RISHI KUMAR",
+        "motherName":  "PODIYAM MANGAMMA",
+        "fatherName":  "PODIYAM LACHU"
+    },
+    {
+        "sno":  "3",
+        "regNo":  "3",
+        "regYear":  "2025",
+        "regDate":  "11/09/2025",
+        "dob":  "14/08/2024",
+        "gender":  "Female",
+        "childName":  "PODIYAM GEETHA",
+        "motherName":  "PODIYAM MANGAMMA",
+        "fatherName":  "PODIYAM LACHU"
+    },
+    {
+        "sno":  "4",
+        "regNo":  "4",
+        "regYear":  "2025",
+        "regDate":  "11/09/2025",
+        "dob":  "15/01/2023",
+        "gender":  "Female",
+        "childName":  "PUNEM KOMALI",
+        "motherName":  "PUNEM DEVI",
+        "fatherName":  "PUNEM RAJU"
+    },
+    {
+        "sno":  "5",
+        "regNo":  "5",
+        "regYear":  "2025",
+        "regDate":  "11/09/2025",
+        "dob":  "07/10/2024",
+        "gender":  "Male",
+        "childName":  "PUNEM RADHA",
+        "motherName":  "PUNEM DEVI",
+        "fatherName":  "PUNEM RAJU"
+    },
+    {
+        "sno":  "6",
+        "regNo":  "6",
+        "regYear":  "2025",
+        "regDate":  "11/09/2025",
+        "dob":  "04/06/2023",
+        "gender":  "Female",
+        "childName":  "MADAKAMI KARISHMA",
+        "motherName":  "MADAKAMI RENAM",
+        "fatherName":  "MADAKAMI MANOJ"
+    }
+]
