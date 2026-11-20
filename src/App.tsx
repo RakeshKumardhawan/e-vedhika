@@ -6941,7 +6941,7 @@ E-Vedhika Support System`;
                 navScrollRef.current.scrollBy({ left: -240, behavior: "smooth" });
               }
             }}
-            className="hidden sm:flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
+            className="flex items-center justify-center shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white shadow-sm border border-slate-200/90 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:shadow-md transition-all z-10 active:scale-95 cursor-pointer"
             aria-label="Scroll Left"
             title="Scroll Left"
           >
@@ -6976,29 +6976,29 @@ E-Vedhika Support System`;
                     const Icon = item.icon;
                     
                     let themeClasses = {
-                      button: "hover:bg-slate-100 border border-transparent",
+                      button: "bg-white hover:bg-slate-50 border border-slate-200 shadow-sm",
                       iconBg: "bg-blue-50 text-blue-600",
-                      text: "text-slate-600 font-medium"
+                      text: "text-slate-700 font-semibold"
                     };
                     if (isActive) {
                       themeClasses = {
-                        button: "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-500/20",
-                        iconBg: "bg-white/20 text-white",
-                        text: "text-white font-semibold"
+                        button: "bg-[#1d68ff] border-[#1d68ff] text-white shadow-md shadow-blue-500/25",
+                        iconBg: "bg-white/20 text-white border border-white/25",
+                        text: "text-white font-bold"
                       };
                     } else {
                       switch(item.colorTheme) {
-                        case "blue": themeClasses = { button: "hover:bg-blue-50/50 border border-blue-100", iconBg: "bg-blue-100 text-blue-600", text: "text-slate-700 font-semibold" }; break;
-                        case "red": themeClasses = { button: "hover:bg-red-50/50 border border-red-100", iconBg: "bg-red-100 text-red-600", text: "text-slate-700 font-semibold" }; break;
-                        case "emerald": themeClasses = { button: "hover:bg-emerald-50/50 border border-emerald-100", iconBg: "bg-emerald-100 text-emerald-600", text: "text-slate-700 font-semibold" }; break;
-                        case "slate": themeClasses = { button: "hover:bg-slate-50/50 border border-slate-200", iconBg: "bg-slate-100 text-slate-600", text: "text-slate-700 font-semibold" }; break;
-                        case "orange": themeClasses = { button: "hover:bg-orange-50/50 border border-orange-100", iconBg: "bg-orange-100 text-orange-600", text: "text-slate-700 font-semibold" }; break;
-                        case "purple": themeClasses = { button: "hover:bg-purple-50/50 border border-purple-100", iconBg: "bg-purple-100 text-purple-600", text: "text-slate-700 font-semibold" }; break;
-                        case "pink": themeClasses = { button: "hover:bg-pink-50/50 border border-pink-100", iconBg: "bg-pink-100 text-pink-600", text: "text-slate-700 font-semibold" }; break;
-                        case "teal": themeClasses = { button: "hover:bg-teal-50/50 border border-teal-100", iconBg: "bg-teal-100 text-teal-600", text: "text-slate-700 font-semibold" }; break;
-                        case "cyan": themeClasses = { button: "hover:bg-cyan-50/50 border border-cyan-100", iconBg: "bg-cyan-100 text-cyan-600", text: "text-slate-700 font-semibold" }; break;
-                        case "green": themeClasses = { button: "hover:bg-green-50/50 border border-green-100", iconBg: "bg-green-100 text-green-600", text: "text-slate-700 font-semibold" }; break;
-                        case "amber": themeClasses = { button: "hover:bg-amber-50/50 border border-amber-100", iconBg: "bg-amber-100 text-amber-600", text: "text-slate-700 font-semibold" }; break;
+                        case "blue": themeClasses = { button: "bg-white hover:bg-blue-50/50 border border-blue-100/90 shadow-sm hover:border-blue-300", iconBg: "bg-blue-50 text-blue-600", text: "text-slate-700 font-semibold" }; break;
+                        case "red": themeClasses = { button: "bg-white hover:bg-red-50/50 border border-red-100/90 shadow-sm hover:border-red-300", iconBg: "bg-red-50 text-red-600", text: "text-slate-700 font-semibold" }; break;
+                        case "emerald": themeClasses = { button: "bg-white hover:bg-emerald-50/50 border border-emerald-100/90 shadow-sm hover:border-emerald-300", iconBg: "bg-emerald-50 text-emerald-600", text: "text-slate-700 font-semibold" }; break;
+                        case "slate": themeClasses = { button: "bg-white hover:bg-slate-50 border border-slate-200/90 shadow-sm hover:border-slate-300", iconBg: "bg-slate-100 text-slate-600", text: "text-slate-700 font-semibold" }; break;
+                        case "orange": themeClasses = { button: "bg-white hover:bg-amber-50/50 border border-amber-200/80 shadow-sm hover:border-amber-300", iconBg: "bg-amber-50 text-amber-600", text: "text-slate-700 font-semibold" }; break;
+                        case "purple": themeClasses = { button: "bg-white hover:bg-purple-50/50 border border-purple-200/80 shadow-sm hover:border-purple-300", iconBg: "bg-purple-50 text-purple-600", text: "text-slate-700 font-semibold" }; break;
+                        case "pink": themeClasses = { button: "bg-white hover:bg-pink-50/50 border border-pink-200/80 shadow-sm hover:border-pink-300", iconBg: "bg-pink-50 text-pink-600", text: "text-slate-700 font-semibold" }; break;
+                        case "teal": themeClasses = { button: "bg-white hover:bg-teal-50/50 border border-teal-100/90 shadow-sm hover:border-teal-300", iconBg: "bg-teal-50 text-teal-600", text: "text-slate-700 font-semibold" }; break;
+                        case "cyan": themeClasses = { button: "bg-white hover:bg-cyan-50/50 border border-cyan-100/90 shadow-sm hover:border-cyan-300", iconBg: "bg-cyan-50 text-cyan-600", text: "text-slate-700 font-semibold" }; break;
+                        case "green": themeClasses = { button: "bg-white hover:bg-green-50/50 border border-green-100/90 shadow-sm hover:border-green-300", iconBg: "bg-green-50 text-green-600", text: "text-slate-700 font-semibold" }; break;
+                        case "amber": themeClasses = { button: "bg-white hover:bg-amber-50/50 border border-amber-100/90 shadow-sm hover:border-amber-300", iconBg: "bg-amber-50 text-amber-600", text: "text-slate-700 font-semibold" }; break;
                       }
                     }
                     
@@ -7057,16 +7057,16 @@ E-Vedhika Support System`;
                               }
                             }
                           }}
-                          className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-[14px] whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
+                          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
                         >
-                          <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center shrink-0 ${themeClasses.iconBg}`}>
-                            <Icon size={12} className="sm:w-3.5 sm:h-3.5" />
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-transform ${themeClasses.iconBg}`}>
+                            <Icon size={14} />
                           </div>
-                          <span className={`text-[11px] sm:text-[12px] tracking-wide ${themeClasses.text}`}>
+                          <span className={`text-[12px] sm:text-[13px] tracking-tight ${themeClasses.text}`}>
                             {item.label}
                           </span>
                           {item.hasDropdown && (
-                            <ChevronDown size={14} className={`ml-0.5 opacity-70 ${themeClasses.text}`} />
+                            <ChevronDown size={14} className={isActive ? "ml-0.5 text-white/80" : "ml-0.5 text-slate-400"} />
                           )}
                         </button>
                         
@@ -7317,7 +7317,7 @@ E-Vedhika Support System`;
                 navScrollRef.current.scrollBy({ left: 240, behavior: "smooth" });
               }
             }}
-            className="hidden sm:flex items-center justify-center shrink-0 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all z-10 active:scale-95 cursor-pointer"
+            className="flex items-center justify-center shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white shadow-sm border border-slate-200/90 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:shadow-md transition-all z-10 active:scale-95 cursor-pointer"
             aria-label="Scroll Right"
             title="Scroll Right"
           >
