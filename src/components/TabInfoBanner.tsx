@@ -43,8 +43,8 @@ export function TabInfoBanner({ currentTab, customDescriptions = {}, lang = "en"
   const hasExtendedDocs = Boolean(purpose || targetAudience || realLifeUseCases.length > 0 || limitations || dataPrivacy || guideSteps.length > 0);
 
   return (
-    <div className="mb-4 rounded-2xl bg-gradient-to-r from-blue-50/95 via-indigo-50/80 to-slate-50 border border-blue-200/80 p-4 sm:p-5 shadow-xs">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+    <div className="mb-2.5 rounded-xl bg-gradient-to-r from-blue-50/95 via-indigo-50/80 to-slate-50 border border-blue-200/80 p-3 sm:p-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
             <Info size={18} />

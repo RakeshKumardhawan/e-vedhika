@@ -6136,7 +6136,7 @@ E-Vedhika Support System`;
       </AnimatePresence>
 
       <header className="sticky top-0 z-[1001] shadow-lg bg-[#0d2a4a] border-b border-[#fbe947]/40 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4 w-full">
+        <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           {/* Left Brand Area */}
           <div
             className="brand-wrapper cursor-pointer flex items-center gap-2 sm:gap-3 shrink-0"
@@ -7711,8 +7711,8 @@ E-Vedhika Support System`;
         </aside>
 
         <main
-          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar px-3 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-10"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}
+          className="flex-1 min-w-0 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar px-1 sm:px-3 lg:px-4 pt-1.5 sm:pt-2.5 pb-8"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 30px)" }}
         >
           {(isEvdkaPath || currentTab === "admin" || currentTab === "editor") &&
             (isAdmin || isEditor || isDevEmail) && (
@@ -7831,9 +7831,9 @@ E-Vedhika Support System`;
                           .map((el: any) => {
                             let sizeClass = "w-full";
                             if (el.size === "small")
-                              sizeClass = "max-w-3xl w-full mx-auto";
+                              sizeClass = "max-w-4xl w-full mx-auto";
                             else if (el.size === "medium")
-                              sizeClass = "max-w-6xl w-full mx-auto";
+                              sizeClass = "max-w-[1500px] w-full mx-auto";
                             else if (el.size === "large")
                               sizeClass = "w-full mx-auto";
 
@@ -8480,8 +8480,8 @@ E-Vedhika Support System`;
                           )}
 
                         {/* Unified Banner & Footer Section */}
-                        <div className="mt-12 -mx-3 sm:-mx-6 lg:-mx-8 bg-[#1565c0]/60 backdrop-blur-xl border-t border-white/20 shadow-2xl overflow-hidden rounded-t-[32px]">
-                          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                        <div className="mt-8 -mx-1 sm:-mx-3 lg:-mx-4 bg-[#1565c0]/60 backdrop-blur-xl border-t border-white/20 shadow-2xl overflow-hidden rounded-t-[24px]">
+                          <div className="max-w-[1600px] mx-auto w-full px-3 sm:px-5 py-4 sm:py-6">
                             <footer
                               className="flex flex-col lg:flex-row items-center justify-between font-sans gap-6 text-white relative"
                               id="vedhika-footer"
@@ -24161,7 +24161,7 @@ function PostCard({
             />
           )}
 
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
             <div className="flex-1 min-w-0">
               {/* Issue / Problem Banner + Large Interactive YouTube Video Player (Top of Post Card) */}
               {postYouTubeUrl && !isVideoTheaterMode ? (
@@ -29565,7 +29565,7 @@ function PostDetail({
   const mainCategory = post.categories?.[0] || post.category || "తాజా వార్తలు";
 
   return (
-    <div ref={postContainerRef} className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 relative items-start">
+    <div ref={postContainerRef} className="max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 relative items-start">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}

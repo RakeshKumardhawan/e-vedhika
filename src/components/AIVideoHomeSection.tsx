@@ -161,10 +161,10 @@ export function AIVideoHomeSection({ posts: externalPosts }: AIVideoHomeSectionP
   };
 
   return (
-    <section className="w-full max-w-7xl mx-auto my-6 px-3 sm:px-6">
+    <section className="w-full max-w-[1600px] mx-auto my-2.5 px-1 sm:px-2">
       
       {/* Clean Main Container */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden p-4 sm:p-6 space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-3.5 sm:p-5 space-y-4">
         
         {/* Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
