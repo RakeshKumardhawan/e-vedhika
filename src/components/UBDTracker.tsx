@@ -21,6 +21,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
   const [copied, setCopied] = useState(false);
   const [key, setKey] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Compute active government URL
   const getActiveUrl = () => {
@@ -328,7 +329,6 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
         <div className="relative w-full h-[650px] sm:h-[800px] bg-white">
           <iframe
             key={key}
-            ref={iframeRef}
             src={activeUrl}
             title="UBDMIS Live Portal Preview"
             className="w-full h-full border-none"
