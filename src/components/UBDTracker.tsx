@@ -3,8 +3,9 @@ import {
   Globe, Search, Download, ChevronLeft, ChevronRight,
   Building, Maximize2, Minimize2, ExternalLink, ShieldCheck, AlertCircle, Loader2
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import { UBD_REAL_RECORDS, UbdRecord } from '../data/ubdRecordsData';
+import TS_GP_DIRECTORY from '../data/tsGpDirectory.json';
 
 interface UBDTrackerProps {
   user?: any;
@@ -38,12 +39,18 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
       return { gpName: '', district: '', mandal: '', currentRecords: [], isLive: false };
     }
 
+    // Official Telangana GP Directory Lookup (covers all 13,000 units across TS)
+    const dirEntry = (TS_GP_DIRECTORY as Record<string, string[]>)[cleanId];
+    const defaultGp = dirEntry ? dirEntry[0] : `Gram Panchayat #${cleanId}`;
+    const defaultMandal = dirEntry ? dirEntry[1] : '';
+    const defaultDist = dirEntry ? dirEntry[2] : (selectedState === 'TS' ? 'TELANGANA' : 'ANDHRA PRADESH');
+
     // 1. Live server data takes precedence
     if (liveServerData && liveServerData.unitId === cleanId) {
       return {
-        gpName: liveServerData.gpName,
-        district: liveServerData.district,
-        mandal: liveServerData.mandal,
+        gpName: liveServerData.gpName || defaultGp,
+        district: (liveServerData.district && liveServerData.district !== 'TELANGANA') ? liveServerData.district : defaultDist,
+        mandal: liveServerData.mandal || defaultMandal,
         currentRecords: liveServerData.records || [],
         isLive: liveServerData.isLive
       };
@@ -55,22 +62,22 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
       const data = UBD_REAL_RECORDS[cleanId];
       const records = isDeath && data.death ? data.death : data.birth;
       return {
-        gpName: data.gpName,
-        district: data.district,
-        mandal: data.mandal,
+        gpName: data.gpName || defaultGp,
+        district: (data.district && data.district !== 'TELANGANA') ? data.district : defaultDist,
+        mandal: data.mandal || defaultMandal,
         currentRecords: records || [],
         isLive: false
       };
     }
 
     return {
-      gpName: `Gram Panchayat #${cleanId}`,
-      district: '',
-      mandal: '',
+      gpName: defaultGp,
+      district: defaultDist,
+      mandal: defaultMandal,
       currentRecords: [],
       isLive: false
     };
-  }, [activeUnitId, registerType, liveServerData]);
+  }, [activeUnitId, registerType, liveServerData, selectedState]);
 
   // Filter records based on table search
   const filteredRecords = useMemo(() => {
@@ -188,39 +195,209 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
   };
 
   const handleExportExcel = () => {
-    if (filteredRecords.length === 0) return;
+    if (filteredRecords.length === 0) {
+      if (addToast) addToast("No records available to export");
+      return;
+    }
+
     const isDeath = registerType === 'DEA';
-    const exportRows = filteredRecords.map(r => {
+    const totalCols = isDeath ? 8 : 9;
+    const stateName = selectedState === 'TS' ? 'GOVERNMENT OF TELANGANA' : 'GOVERNMENT OF ANDHRA PRADESH';
+    const regTitle = isDeath ? 'DEATH REGISTER' : 'BIRTH REGISTER';
+
+    // 1. Build Formatted Array of Arrays
+    const aoaData: any[][] = [
+      [stateName],
+      ['UNIFIED BIRTH & DEATH REGISTRATION - MANAGEMENT INFORMATION SYSTEM (UBDMIS)'],
+      [`${regTitle} DETAILS — GRAM PANCHAYAT: ${gpName.toUpperCase()} (UNIT ID: ${activeUnitId})`],
+      [`District: ${district || 'TELANGANA'}   |   Mandal: ${mandal || '-'}   |   Total Registered Records: ${filteredRecords.length}   |   Export Date: ${new Date().toLocaleDateString('en-GB')}`],
+      ['Official Register Export via E-Vedhika Digital Governance Platform (www.e-vedhika.in) — 24/7 Live'],
+      [], // Empty row separator
+      isDeath
+        ? ['Sl. No', 'Reg. No', 'Reg. Year', 'Reg. Date', 'Date of Death', 'Gender', 'Deceased Name', 'Relative Name']
+        : ['Sl. No', 'Reg. No', 'Reg. Year', 'Reg. Date', 'Date of Birth', 'Gender', 'Child Name', 'Mother Name', 'Father Name']
+    ];
+
+    // Data rows
+    filteredRecords.forEach((r, idx) => {
       if (isDeath) {
-        return {
-          "Sl. No": r.sno,
-          "Reg. No": r.regNo,
-          "Reg. Year": r.regYear,
-          "Reg. Date": r.regDate,
-          "Date of Death": r.dod,
-          "Gender": r.gender,
-          "Deceased Name": r.deceasedName,
-          "Relative Name": r.relativeName
-        };
+        aoaData.push([
+          r.sno || idx + 1,
+          r.regNo || '-',
+          r.regYear || '-',
+          r.regDate || '-',
+          r.dod || '-',
+          r.gender || '-',
+          r.deceasedName || '-',
+          r.relativeName || '-'
+        ]);
+      } else {
+        aoaData.push([
+          r.sno || idx + 1,
+          r.regNo || '-',
+          r.regYear || '-',
+          r.regDate || '-',
+          r.dob || '-',
+          r.gender || '-',
+          r.childName || '-',
+          r.motherName || '-',
+          r.fatherName || '-'
+        ]);
       }
-      return {
-        "Sl. No": r.sno,
-        "Reg. No": r.regNo,
-        "Reg. Year": r.regYear,
-        "Reg. Date": r.regDate,
-        "Date of Birth": r.dob,
-        "Gender": r.gender,
-        "Child Name": r.childName,
-        "Mother Name": r.motherName,
-        "Father Name": r.fatherName
-      };
     });
 
-    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const ws = XLSX.utils.aoa_to_sheet(aoaData);
+
+    // 2. Column Widths (Generous, crisp, professional)
+    ws['!cols'] = isDeath
+      ? [
+          { wch: 8 },  // Sl. No
+          { wch: 14 }, // Reg. No
+          { wch: 12 }, // Reg. Year
+          { wch: 15 }, // Reg. Date
+          { wch: 16 }, // Date of Death
+          { wch: 12 }, // Gender
+          { wch: 32 }, // Deceased Name
+          { wch: 32 }  // Relative Name
+        ]
+      : [
+          { wch: 8 },  // Sl. No
+          { wch: 14 }, // Reg. No
+          { wch: 12 }, // Reg. Year
+          { wch: 15 }, // Reg. Date
+          { wch: 16 }, // Date of Birth
+          { wch: 12 }, // Gender
+          { wch: 32 }, // Child Name
+          { wch: 32 }, // Mother Name
+          { wch: 32 }  // Father Name
+        ];
+
+    // 3. Merges for Title Banners
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } },
+      { s: { r: 4, c: 0 }, e: { r: 4, c: totalCols - 1 } },
+    ];
+
+    // 4. Row Heights
+    const rowHeights: any[] = [
+      { hpt: 28 }, // Row 1
+      { hpt: 22 }, // Row 2
+      { hpt: 22 }, // Row 3
+      { hpt: 20 }, // Row 4
+      { hpt: 18 }, // Row 5
+      { hpt: 10 }, // Row 6 (Spacer)
+      { hpt: 26 }, // Row 7 (Header)
+    ];
+    for (let i = 0; i < filteredRecords.length; i++) {
+      rowHeights.push({ hpt: 20 });
+    }
+    ws['!rows'] = rowHeights;
+
+    // 5. Apply Professional Executive Styles
+    if (ws['A1']) {
+      ws['A1'].s = {
+        fill: { fgColor: { rgb: '1E3A8A' } }, // Deep Navy
+        font: { name: 'Arial', sz: 14, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+
+    if (ws['A2']) {
+      ws['A2'].s = {
+        fill: { fgColor: { rgb: '1E40AF' } }, // Royal Blue
+        font: { name: 'Arial', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+
+    if (ws['A3']) {
+      ws['A3'].s = {
+        fill: { fgColor: { rgb: 'DBEAFE' } }, // Soft Ice Blue
+        font: { name: 'Arial', sz: 11, bold: true, color: { rgb: '1E3A8A' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+
+    if (ws['A4']) {
+      ws['A4'].s = {
+        fill: { fgColor: { rgb: 'F1F5F9' } },
+        font: { name: 'Arial', sz: 10, bold: true, color: { rgb: '334155' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+
+    if (ws['A5']) {
+      ws['A5'].s = {
+        fill: { fgColor: { rgb: 'F8FAFC' } },
+        font: { name: 'Arial', sz: 9, italic: true, color: { rgb: '64748B' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+    }
+
+    // Table Header Cells (Row 7)
+    const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].slice(0, totalCols);
+    headerCols.forEach(col => {
+      const cellRef = `${col}7`;
+      if (ws[cellRef]) {
+        ws[cellRef].s = {
+          fill: { fgColor: { rgb: '1E3A8A' } },
+          font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'medium', color: { rgb: '0F172A' } },
+            bottom: { style: 'medium', color: { rgb: '0F172A' } },
+            left: { style: 'thin', color: { rgb: '3B82F6' } },
+            right: { style: 'thin', color: { rgb: '3B82F6' } }
+          }
+        };
+      }
+    });
+
+    // Data Row Cells (Row 8 onwards)
+    const thinBorder = {
+      top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+      bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+      left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+      right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+    };
+
+    filteredRecords.forEach((_, rIdx) => {
+      const rowNum = rIdx + 8;
+      const isEven = rIdx % 2 === 0;
+      const rowBg = isEven ? 'FFFFFF' : 'F8FAFC';
+
+      headerCols.forEach((col, cIdx) => {
+        const cellRef = `${col}${rowNum}`;
+        if (ws[cellRef]) {
+          const isLeftAlign = cIdx >= 6;
+          const isBold = cIdx === 1 || cIdx === 6;
+          ws[cellRef].s = {
+            fill: { fgColor: { rgb: rowBg } },
+            font: { 
+              name: 'Arial', 
+              sz: 9.5, 
+              bold: isBold, 
+              color: isBold ? { rgb: '0F172A' } : { rgb: '334155' } 
+            },
+            alignment: { 
+              horizontal: isLeftAlign ? 'left' : 'center', 
+              vertical: 'center' 
+            },
+            border: thinBorder
+          };
+        }
+      });
+    });
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "UBDMIS_Register");
-    XLSX.writeFile(wb, `UBD_${selectedState}_${registerType}_Unit_${activeUnitId}.xlsx`);
-    if (addToast) addToast("Excel Report exported successfully!");
+    const cleanGp = (gpName || 'GP').replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanDist = (district || 'TS').replace(/[^a-zA-Z0-9]/g, '_');
+    XLSX.writeFile(wb, `UBDMIS_${cleanDist}_${cleanGp}_${registerType}_Unit_${activeUnitId}.xlsx`);
+    if (addToast) addToast("Official Styled Excel Report exported successfully!");
   };
 
   return (
@@ -351,17 +528,29 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
               <p className="text-xs text-slate-700 font-bold mt-1.5">
                 {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for Local Body &mdash; Gram Panchayat: <span className="text-blue-900 underline font-black">{gpName}</span> (Unit ID: <span className="font-mono text-blue-900 font-black">{activeUnitId}</span>)
               </p>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold text-slate-600">
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold">
+                <span className="px-3 py-1 bg-slate-100 text-slate-800 rounded-lg border border-slate-200 shadow-2xs">
+                  State: <strong className="text-blue-900">{selectedState === 'TS' ? 'TELANGANA' : 'ANDHRA PRADESH'}</strong>
+                </span>
                 {district && (
-                  <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-md">District: {district}</span>
+                  <span className="px-3 py-1 bg-blue-50 text-blue-900 rounded-lg border border-blue-200 shadow-2xs">
+                    District: <strong className="text-blue-950">{district}</strong>
+                  </span>
                 )}
                 {mandal && (
-                  <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 rounded-md">Mandal: {mandal}</span>
+                  <span className="px-3 py-1 bg-indigo-50 text-indigo-900 rounded-lg border border-indigo-200 shadow-2xs">
+                    Mandal: <strong className="text-indigo-950">{mandal}</strong>
+                  </span>
                 )}
-                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Total Records: {filteredRecords.length}</span>
-                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-md flex items-center gap-1.5 font-bold">
-                  <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-blue-600'}`}></span>
-                  {isLive ? "24/7 Live NIC Gateway" : "Official UBDMIS Records"}
+                <span className="px-3 py-1 bg-violet-50 text-violet-900 rounded-lg border border-violet-200 shadow-2xs">
+                  Gram Panchayat: <strong className="text-violet-950">{gpName}</strong>
+                </span>
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 shadow-2xs">
+                  Total Records: <strong className="text-emerald-950">{filteredRecords.length}</strong>
+                </span>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-900 rounded-lg border border-emerald-300 shadow-2xs flex items-center gap-1.5 font-extrabold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                  24/7 Live
                 </span>
               </div>
             </>
@@ -437,7 +626,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                 </div>
               ) : (
                 <div className="text-xs font-bold text-slate-600">
-                  Showing official portal signed register for <strong className="text-blue-900">{gpName}</strong>
+                  Showing official portal signed register for <strong className="text-blue-900">{gpName}</strong> ({mandal ? `${mandal} Mandal, ` : ''}{district ? `${district} Dist` : 'Telangana'})
                 </div>
               )}
             </div>
@@ -459,7 +648,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                   <tbody>
                     <tr className="text-xs sm:text-sm font-semibold text-slate-800">
                       <td>
-                        {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for the Local Body &nbsp; &nbsp; Gram Panchayat:&nbsp; <b>{gpName}</b> as on {new Date().toLocaleDateString('en-GB')}
+                        {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for the Local Body &nbsp; &nbsp; Gram Panchayat:&nbsp; <b>{gpName}</b> | Mandal: <b>{mandal || '-'}</b> | District: <b>{district || 'TELANGANA'}</b> as on {new Date().toLocaleDateString('en-GB')}
                       </td>
                     </tr>
                   </tbody>
