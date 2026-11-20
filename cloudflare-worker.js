@@ -20,6 +20,55 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:3000"
 ];
 
+function parseUbdHtml(html, isDeath, officeCode) {
+  const gpMatch = html.match(/Gram Panchayat:\s*(?:&nbsp;)?\s*([^<\r\n]+?)\s*as\s+on/i);
+  const gpName = gpMatch ? gpMatch[1].replace(/&nbsp;/g, " ").trim() : `Gram Panchayat #${officeCode}`;
+
+  const distMatch = html.match(/District:\s*([A-Za-z\s]+)/i);
+  const district = distMatch ? distMatch[1].trim() : "TELANGANA";
+
+  const rows = [];
+  const rowRegex = /<tr style="border: 1px"\s*>([\s\S]*?)<\/tr>/gi;
+  let match;
+  while ((match = rowRegex.exec(html)) !== null) {
+    const rowHtml = match[1];
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    let tdMatch;
+    const cells = [];
+    while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+      cells.push(tdMatch[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim());
+    }
+    if (cells.length >= 8) {
+      if (isDeath) {
+        rows.push({
+          sno: cells[0],
+          regNo: cells[1],
+          regYear: cells[2],
+          regDate: cells[3],
+          dod: cells[4],
+          gender: cells[5],
+          deceasedName: cells[6],
+          relativeName: cells[7]
+        });
+      } else {
+        rows.push({
+          sno: cells[0],
+          regNo: cells[1],
+          regYear: cells[2],
+          regDate: cells[3],
+          dob: cells[4],
+          gender: cells[5],
+          childName: cells[6],
+          motherName: cells[7],
+          fatherName: cells[8] || ""
+        });
+      }
+    }
+  }
+
+  return { gpName, district, records: rows, totalRecords: rows.length };
+}
+
 function getCorsHeaders(request) {
   const origin = request.headers.get("Origin") || "";
   const isAllowed =
@@ -162,6 +211,76 @@ export default {
 
     if (method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // 0. LIVE UBDMIS DIRECT SEARCH & PARSER (Zero Sleep, 24/7 Edge Gateway)
+    if (url.pathname === "/api/ubd/search" || url.pathname === "/api/ubd/live" || url.pathname === "/api/ubd") {
+      try {
+        let unitId = url.searchParams.get("unitId") || url.searchParams.get("officeCode") || "";
+        let registerType = url.searchParams.get("type") || url.searchParams.get("section") || "BIR";
+
+        if ((method === "POST" || method === "PUT") && !unitId) {
+          try {
+            const body = await request.json();
+            unitId = body.unitId || body.officeCode || "";
+            registerType = body.type || body.section || registerType;
+          } catch (_) {}
+        }
+
+        unitId = String(unitId || "").trim();
+        if (!unitId || !/^\d+$/.test(unitId)) {
+          return new Response(JSON.stringify({ success: false, error: "Please enter a valid numeric Reg.Unit ID" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders }
+          });
+        }
+
+        const isDeath = registerType === "DEA" || registerType === "Death" || String(registerType).toLowerCase().includes("death");
+        const targetUrl = isDeath
+          ? `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDEA_Details.do?officeCode=${unitId}&status=A&rlb_type=3&pstcode=35&style=bluetheme`
+          : `https://ubdmis.telangana.gov.in/ubdmisTGTotalStatusDetails.do?officeCode=${unitId}&status=A&rlb_type=3&pstcode=35&style=bluetheme`;
+
+        const ubdResp = await fetch(targetUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+          }
+        });
+
+        if (!ubdResp.ok) {
+          return new Response(JSON.stringify({ success: false, error: `Official UBDMIS portal returned HTTP ${ubdResp.status}` }), {
+            status: 502,
+            headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders }
+          });
+        }
+
+        const html = await ubdResp.text();
+        const parsed = parseUbdHtml(html, isDeath, unitId);
+
+        return new Response(JSON.stringify({
+          success: true,
+          unitId,
+          gpName: parsed.gpName,
+          district: parsed.district,
+          registerType: isDeath ? "DEA" : "BIR",
+          totalRecords: parsed.totalRecords,
+          records: parsed.records,
+          rawHtml: html,
+          source: "official_telangana_ubdmis_live"
+        }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, max-age=120",
+            ...corsHeaders
+          }
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ success: false, error: err.message || "Failed to fetch from UBDMIS server" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders }
+        });
+      }
     }
 
     const isReportingReceiver = url.pathname === "/api/reporting/receiver";
