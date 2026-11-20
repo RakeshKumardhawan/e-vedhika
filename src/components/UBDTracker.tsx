@@ -425,9 +425,7 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                 </table>
               </div>
             ) : (
-
-            {/* The Authentic Government UBDMIS Table */}
-            <div className="border border-blue-200 rounded-2xl overflow-hidden shadow-xs">
+              <div className="border border-blue-200 rounded-2xl overflow-hidden shadow-xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
