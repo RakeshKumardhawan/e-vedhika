@@ -68,7 +68,6 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
   const safeDesc = escapeHtml(description);
   const safeImage = escapeHtml(imageUrl || DEFAULT_BANNER);
   const safeUrl = escapeHtml(canonicalUrl);
-  const squareLogo = `${BASE_URL}/ev_logo.png`;
 
   // Replace or inject <title>
   if (/<title>.*?<\/title>/i.test(html)) {
@@ -111,12 +110,6 @@ function injectOgTags(baseHtml, { title, description, imageUrl, canonicalUrl, ty
   upsertMeta("property", "og:url", canonicalUrl);
   upsertMeta("property", "og:locale", "te_IN");
   upsertMeta("name", "image", safeImage);
-
-  // Secondary square image for WhatsApp Web & square card viewports
-  if (!html.includes(squareLogo)) {
-    const squareTags = `  <meta property="og:image" content="${squareLogo}" />\n  <meta property="og:image:secure_url" content="${squareLogo}" />\n  <meta property="og:image:type" content="image/png" />\n  <meta property="og:image:width" content="512" />\n  <meta property="og:image:height" content="512" />`;
-    html = html.replace("</head>", `${squareTags}\n</head>`);
-  }
 
   // Clean Open Graph namespace prefix from html tag
   if (html.includes('prefix="og: http://ogp.me/ns#"')) {
