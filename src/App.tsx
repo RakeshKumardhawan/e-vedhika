@@ -1299,7 +1299,7 @@ function OfficialPortalHero({
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-bold text-emerald-300">అధికారిక డిజిటల్ వేదిక</span>
               <span className="text-slate-500 hidden sm:inline">•</span>
-              <span className="text-slate-400 hidden sm:inline">AP &amp; TS పంచాయతీ సాంకేతిక సేవల కేంద్రం</span>
+              <span className="text-slate-400 hidden sm:inline">TS పంచాయతీ సాంకేతిక సేవల కేంద్రం</span>
             </div>
             <div className="flex items-center gap-2">
               <a
