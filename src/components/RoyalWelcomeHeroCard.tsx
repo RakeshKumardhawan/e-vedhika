@@ -188,16 +188,59 @@ export function RoyalWelcomeHeroCard({
                 </div>
               </div>
 
-              {/* Right Emblem - Sweet, Compact, Perfectly Scaled (no clipping) */}
-              <div className="shrink-0 flex items-center justify-center self-center md:self-auto py-1">
-                <div className="relative group/logo">
-                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-cyan-500/20 via-amber-400/20 to-blue-500/20 blur-md animate-pulse" />
-                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-0.5 bg-gradient-to-tr from-cyan-400 via-amber-300 to-blue-500 shadow-lg flex items-center justify-center">
-                    <div className="w-full h-full rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center p-1 text-center">
-                      <span className="text-xl sm:text-2xl font-black bg-gradient-to-b from-white via-cyan-200 to-blue-400 bg-clip-text text-transparent">
+              {/* Right Emblem - Vivid Glowing Royal Holographic EV Circle */}
+              <div className="shrink-0 flex items-center justify-center self-center md:self-auto py-2">
+                <div className="relative group/logo flex items-center justify-center">
+                  {/* Outer Pulsing Cyan & Gold Neon Glow Halos */}
+                  <div className="absolute -inset-4 rounded-full bg-cyan-400/40 blur-xl animate-pulse pointer-events-none" />
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-tr from-cyan-400/50 via-blue-500/40 to-amber-400/50 blur-lg animate-pulse pointer-events-none" />
+
+                  {/* Soft expanding ping ripple */}
+                  <div className="absolute -inset-2 rounded-full border-2 border-cyan-400/40 animate-ping opacity-30 pointer-events-none" />
+
+                  {/* Outer rotating neon cyber conic-border */}
+                  <div
+                    className="absolute -inset-1 rounded-full opacity-90 animate-spin pointer-events-none"
+                    style={{
+                      animationDuration: "8s",
+                      background: "conic-gradient(from 0deg, #00f0ff, #3b82f6, #facc15, #00f0ff)",
+                      filter: "drop-shadow(0 0 12px rgba(6, 182, 212, 0.9))"
+                    }}
+                  />
+
+                  {/* Core Glowing Medallion */}
+                  <div
+                    className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-[3px] bg-slate-950 flex items-center justify-center"
+                    style={{
+                      boxShadow: "0 0 25px rgba(6, 182, 212, 0.85), 0 0 50px rgba(14, 165, 233, 0.5), inset 0 0 18px rgba(6, 182, 212, 0.5)"
+                    }}
+                  >
+                    {/* Concentric rotating dashed neon ring */}
+                    <svg className="absolute inset-0 w-full h-full animate-spin pointer-events-none" style={{ animationDuration: "14s" }} viewBox="0 0 100 100">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="none"
+                        stroke="rgba(34, 211, 238, 0.85)"
+                        strokeWidth="2.5"
+                        strokeDasharray="14 7"
+                        strokeLinecap="round"
+                        filter="drop-shadow(0 0 4px #00f0ff)"
+                      />
+                    </svg>
+
+                    {/* Concentric inner glow border */}
+                    <div className="absolute inset-1 rounded-full border border-cyan-300/40 shadow-[0_0_10px_rgba(6,182,212,0.6)] pointer-events-none" />
+
+                    {/* Inner deep-space core with animated radial cyan flare */}
+                    <div className="w-full h-full rounded-full bg-gradient-to-b from-[#051736] to-[#020a1a] flex flex-col items-center justify-center relative overflow-hidden z-10 border border-cyan-500/30">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(6,182,212,0.5)_0%,_transparent_75%)] animate-pulse" />
+                      
+                      <span className="text-2xl sm:text-3xl font-black bg-gradient-to-b from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(6,182,212,0.9)] tracking-wider select-none">
                         EV
                       </span>
-                      <span className="text-[7px] font-black uppercase tracking-widest text-amber-300 -mt-0.5">
+                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-amber-300 drop-shadow-[0_0_6px_rgba(250,204,21,0.85)] -mt-0.5 select-none">
                         E-VEDHIKA
                       </span>
                     </div>
