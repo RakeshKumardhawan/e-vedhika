@@ -1297,7 +1297,7 @@ function OfficialPortalHero({
           <div className="p-2.5 sm:p-3 bg-slate-950/95 border-t border-blue-900/30 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 text-xs">
             <div className="flex items-center gap-2 text-slate-300">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-bold text-emerald-300">24/7 Live NIC Gateway Active</span>
+              <span className="font-bold text-emerald-300">అధికారిక డిజిటల్ వేదిక</span>
               <span className="text-slate-500 hidden sm:inline">•</span>
               <span className="text-slate-400 hidden sm:inline">AP &amp; TS పంచాయతీ సాంకేతిక సేవల కేంద్రం</span>
             </div>
