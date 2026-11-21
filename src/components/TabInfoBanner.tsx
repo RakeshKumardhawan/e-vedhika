@@ -9,7 +9,8 @@ interface TabInfoBannerProps {
 }
 
 export function TabInfoBanner({ currentTab, customDescriptions = {}, lang = "en" }: TabInfoBannerProps) {
-  const [showFullDocs, setShowFullDocs] = useState(true);
+  const [showFullDocs, setShowFullDocs] = useState(false);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
   if (!currentTab || currentTab === "home" || currentTab === "admin" || currentTab === "editor" || currentTab === "logs") {
     return null;
   }
@@ -43,51 +44,60 @@ export function TabInfoBanner({ currentTab, customDescriptions = {}, lang = "en"
   const hasExtendedDocs = Boolean(purpose || targetAudience || realLifeUseCases.length > 0 || limitations || dataPrivacy || guideSteps.length > 0);
 
   return (
-    <div className="mb-2.5 rounded-xl bg-gradient-to-r from-blue-50/95 via-indigo-50/80 to-slate-50 border border-blue-200/80 p-3 sm:p-4 shadow-xs">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-            <Info size={18} />
+    <div className="mb-2 rounded-xl bg-gradient-to-r from-blue-50/95 via-indigo-50/75 to-slate-50 border border-blue-200/70 p-2 sm:p-2.5 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <Info size={14} />
           </div>
           <div className="flex-1 min-w-0">
             {title && (
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">
                   {title}
                 </h2>
                 {lastVerified && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                    <Calendar size={10} /> {isEn ? "Verified:" : "ధృవీకరించబడింది:"} {lastVerified}
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-semibold border border-emerald-200">
+                    <Calendar size={9} /> {isEn ? "Verified:" : "ధృవీకరించబడింది:"} {lastVerified}
                   </span>
                 )}
               </div>
             )}
-            <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
+            <p className={`text-[11px] sm:text-xs text-slate-600 font-normal leading-snug mt-0.5 ${isDescExpanded ? "" : "line-clamp-2 sm:line-clamp-1"}`}>
               {description}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-start shrink-0">
+        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+          {description && description.length > 90 && (
+            <button
+              type="button"
+              onClick={() => setIsDescExpanded(!isDescExpanded)}
+              className="text-[10px] sm:text-[11px] font-semibold text-blue-600 hover:text-blue-800 px-1 cursor-pointer"
+            >
+              {isDescExpanded ? (isEn ? "Less" : "తక్కువ") : (isEn ? "More" : "మరింత")}
+            </button>
+          )}
           {hasExtendedDocs && (
             <button
               type="button"
               onClick={() => setShowFullDocs((prev) => !prev)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition-all shadow-2xs cursor-pointer"
               title={isEn ? "View full tool guide & documentation" : "టూల్ పూర్తి మార్గదర్శిని & డాక్యుమెంటేషన్ చూడండి"}
             >
-              <ListChecks size={14} />
-              <span>{showFullDocs ? (isEn ? "Collapse Guide" : "గైడ్ కుదించు") : (isEn ? "Full Guide & Details" : "పూర్తి గైడ్ & వివరాలు")}</span>
-              {showFullDocs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              <ListChecks size={12} />
+              <span>{showFullDocs ? (isEn ? "Collapse Guide" : "గైడ్ కుదించు") : (isEn ? "Full Guide" : "పూర్తి గైడ్")}</span>
+              {showFullDocs ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </button>
           )}
           <button
             type="button"
             onClick={() => triggerYouTubeTutorial(currentTab, title)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-xs shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all shadow-2xs shrink-0 cursor-pointer"
             title={isEn ? "Watch YouTube tutorial video" : "యూట్యూబ్ ట్యుటోరియల్ వీడియో చూడండి"}
           >
-            <Youtube size={16} className="shrink-0" />
+            <Youtube size={13} className="shrink-0" />
             <span>{isEn ? "Watch Tutorial" : "వాచ్ ట్యుటోరియల్"}</span>
           </button>
         </div>
