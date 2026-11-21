@@ -39,6 +39,7 @@ import { DynamicSection } from "./components/DynamicSection";
 import { AIVideoHomeSection } from "./components/AIVideoHomeSection";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { EVLogoLoader } from "./components/EVLogoLoader";
+import { RoyalWelcomeHeroCard } from "./components/RoyalWelcomeHeroCard";
 import { triggerDiwaliCrackers } from "./utils/diwaliCrackers";
 import {  DollarSign,
   Bell,
@@ -1231,20 +1232,165 @@ function PostSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
-function HeroSkeleton() {
+function OfficialPortalHero({
+  setCurrentTab,
+  dataLoading = false,
+}: {
+  setCurrentTab?: (tab: string) => void;
+  dataLoading?: boolean;
+}) {
+  const navigate = useNavigate();
+
+  const handleNav = (target: string, tabId?: string) => {
+    if (tabId && setCurrentTab) {
+      setCurrentTab(tabId);
+    }
+    if (target.startsWith("/")) {
+      navigate(target);
+    }
+  };
+
   return (
-    <div className="w-full max-w-5xl mx-auto rounded-[32px] p-6 sm:p-12 mb-8 min-h-[220px] sm:min-h-[260px] flex flex-col items-center justify-center text-center border border-slate-100 shadow-sm relative overflow-hidden bg-white">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-50/50" />
-      <div className="relative z-10 flex flex-col items-center">
-        <EVLogoLoader
-          size={56}
-          fullScreen={false}
-          title="లోడ్ అవుతోంది..."
-          subtitle="దయచేసి వేచి ఉండండి (Please wait...)"
-        />
+    <div className="w-full max-w-[1600px] mx-auto mb-6 space-y-3">
+      {/* Official HD Banner Card */}
+      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-blue-900/40 bg-slate-950 group">
+        {/* Ambient Glow Effects */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+
+        {/* The Banner Image */}
+        <div className="relative w-full overflow-hidden bg-slate-950 flex items-center justify-center">
+          <picture className="w-full block">
+            <source srcSet="/banner.png" type="image/png" media="(min-width: 1024px)" />
+            <img
+              src="/banner.jpg"
+              alt="E-Vedhika | All Problems One Solution - Official Portal"
+              className="w-full h-auto object-cover max-h-[360px] sm:max-h-[440px] md:max-h-[480px] transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+              loading="eager"
+            />
+          </picture>
+
+          {/* Subtle gradient overlay at bottom for smooth blending */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none" />
+        </div>
+
+        {/* Loading Progress Shimmer or Live Active Bar */}
+        {dataLoading ? (
+          <div className="p-3 sm:p-3.5 bg-slate-950/95 border-t border-cyan-500/20 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-2.5 px-4 sm:px-6">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-cyan-200">
+                పోర్టల్ సమాచారం &amp; తాజా ఉత్తర్వులు లోడ్ అవుతున్నాయి...
+              </span>
+              <span className="text-[11px] text-slate-400 hidden md:inline">
+                (Syncing live governance records...)
+              </span>
+            </div>
+            <div className="w-full sm:w-48 bg-slate-800 rounded-full h-1.5 overflow-hidden border border-cyan-500/30">
+              <div className="h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-amber-300 animate-pulse w-full" />
+            </div>
+          </div>
+        ) : (
+          <div className="p-2.5 sm:p-3 bg-slate-950/95 border-t border-blue-900/30 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 text-xs">
+            <div className="flex items-center gap-2 text-slate-300">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-bold text-emerald-300">24/7 Live NIC Gateway Active</span>
+              <span className="text-slate-500 hidden sm:inline">•</span>
+              <span className="text-slate-400 hidden sm:inline">AP &amp; TS పంచాయతీ సాంకేతిక సేవల కేంద్రం</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://www.e-vedhika.in"
+                className="text-[11px] font-mono text-cyan-400/90 hover:text-cyan-300 font-bold"
+              >
+                🌐 www.e-vedhika.in
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5 Core Feature Quick Buttons matching the Banner tags */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-2.5">
+        <button
+          type="button"
+          onClick={() => handleNav("/ubd_tracker", "ubd_tracker")}
+          className="p-3 bg-gradient-to-br from-slate-900 to-blue-950 hover:from-blue-900 hover:to-indigo-950 text-white rounded-xl sm:rounded-2xl border border-blue-800/40 hover:border-cyan-400/60 shadow-md hover:shadow-cyan-500/10 flex items-center gap-2.5 transition-all group cursor-pointer text-left"
+        >
+          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
+            <Settings size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-black text-cyan-300 truncate">UBD Settings &amp; DSK</div>
+            <div className="text-[10px] text-slate-400 truncate">లైవ్ రికార్డ్స్ &amp; ట్రాకర్</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleNav("/workspace/dsr", "workspace")}
+          className="p-3 bg-gradient-to-br from-slate-900 to-indigo-950 hover:from-indigo-900 hover:to-blue-950 text-white rounded-xl sm:rounded-2xl border border-indigo-800/40 hover:border-indigo-400/60 shadow-md hover:shadow-indigo-500/10 flex items-center gap-2.5 transition-all group cursor-pointer text-left"
+        >
+          <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform">
+            <BarChart3 size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-black text-indigo-300 truncate">DSR Analyzer</div>
+            <div className="text-[10px] text-slate-400 truncate">హాజరు &amp; శానిటేషన్</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleNav("/farmer_registry", "farmer_registry")}
+          className="p-3 bg-gradient-to-br from-slate-900 to-emerald-950 hover:from-emerald-900 hover:to-slate-900 text-white rounded-xl sm:rounded-2xl border border-emerald-800/40 hover:border-emerald-400/60 shadow-md hover:shadow-emerald-500/10 flex items-center gap-2.5 transition-all group cursor-pointer text-left"
+        >
+          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
+            <Wheat size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-black text-emerald-300 truncate">Farmer Registry</div>
+            <div className="text-[10px] text-slate-400 truncate">రైతు సర్వే &amp; వివరాలు</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleNav("/gos_formats", "gos_formats")}
+          className="p-3 bg-gradient-to-br from-slate-900 to-amber-950 hover:from-amber-900 hover:to-slate-900 text-white rounded-xl sm:rounded-2xl border border-amber-800/40 hover:border-amber-400/60 shadow-md hover:shadow-amber-500/10 flex items-center gap-2.5 transition-all group cursor-pointer text-left"
+        >
+          <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform">
+            <FileText size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-black text-amber-300 truncate">GOs &amp; Formats</div>
+            <div className="text-[10px] text-slate-400 truncate">అధికారిక జీవోలు</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleNav("/software_hub", "software_hub")}
+          className="p-3 bg-gradient-to-br from-slate-900 to-purple-950 hover:from-purple-900 hover:to-slate-900 text-white rounded-xl sm:rounded-2xl border border-purple-800/40 hover:border-purple-400/60 shadow-md hover:shadow-purple-500/10 flex items-center gap-2.5 transition-all group cursor-pointer text-left col-span-2 sm:col-span-1"
+        >
+          <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
+            <Download size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-black text-purple-300 truncate">Software Hub</div>
+            <div className="text-[10px] text-slate-400 truncate">టోకెన్ డ్రైవర్లు &amp; టూల్స్</div>
+          </div>
+        </button>
       </div>
     </div>
   );
+}
+
+function HeroSkeleton() {
+  return <RoyalWelcomeHeroCard dataLoading={true} setCurrentTab={() => {}} />;
 }
 
 function UpdateTickerSkeleton() {
@@ -7829,9 +7975,14 @@ E-Vedhika Support System`;
                     className="space-y-3 sm:space-y-4"
                   >
                     <DynamicSection id="home_tab_html" />
+                    <RoyalWelcomeHeroCard
+                      userProfile={userProfile}
+                      currentUser={user || auth.currentUser}
+                      setCurrentTab={setCurrentTab}
+                      dataLoading={dataLoading}
+                    />
                     {dataLoading ? (
                       <div className="space-y-4 animate-in fade-in duration-500">
-                        <HeroSkeleton />
                         <div className="max-w-4xl mx-auto space-y-4">
                           <div className="flex justify-between items-center px-4">
                             <div className="h-4 bg-slate-200 rounded-full w-32" />
