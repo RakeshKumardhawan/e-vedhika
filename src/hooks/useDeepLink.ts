@@ -59,6 +59,8 @@ export function parseTabFromUrl(params: URLSearchParams, pathname: string): Pars
     mainTab = "software_hub";
   } else if (normMain === "usefullinks" || normMain === "useful_links") {
     mainTab = "useful_links";
+  } else if (normMain === "onlineportal" || normMain === "online_portal" || normMain === "online-portal" || normMain === "online_portal_at_our_line") {
+    mainTab = "online_portal";
   }
 
   let workspaceTool: string | null = null;
@@ -432,6 +434,10 @@ export function useDeepLink({
       "/pdf_compress": {
         title: "ఆన్‌లైన్ PDF కంప్రెసర్ (Client-Side PDF Size Reducer) | E-Vedhika",
         desc: "ప్రభుత్వ పోర్టల్స్‌లో అప్‌లోడ్ చేయాల్సిన PDF ఫైళ్ల సైజును క్వాలిటీ తగ్గకుండా 200 KB లోపుకు తగ్గించే సురక్షిత బ్రౌజర్ టూల్.",
+      },
+      "/online_portal": {
+        title: "Online Portal at Our Line (నిర్మాణంలో ఉంది) | E-Vedhika",
+        desc: "Online Portal at Our Line - ప్రస్తుతం అభివృద్ధి మరియు నిర్మాణ దశలో ఉంది.",
       },
     };
 
