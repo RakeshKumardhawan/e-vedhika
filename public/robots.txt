@@ -2,8 +2,20 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
+Disallow: /my_activity
+Disallow: /priority_services/my_activity
+Disallow: /chat
+Disallow: /logs
+Disallow: /union
+Disallow: /workspace/ticket-tracker
+Disallow: /workspace/messages
+Disallow: /vault
 
 User-agent: Mediapartners-Google
 Allow: /
+Disallow: /admin/
+Disallow: /my_activity
+Disallow: /chat
+Disallow: /logs
 
 Sitemap: https://www.e-vedhika.in/sitemap.xml

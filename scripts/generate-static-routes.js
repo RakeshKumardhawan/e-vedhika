@@ -248,6 +248,78 @@ const standardRoutes = [
     bodyHtml: `<section><h2>GPDP Planning &amp; 15th Finance Commission Resource Calculator</h2><p>గ్రామ పంచాయతీ అభివృద్ధి ప్రణాళిక (GPDP) లో Tied (Sanitation &amp; Drinking Water) మరియు Untied నిధుల కేటాయింపు మరియు పనుల అంచనా సాధనం.</p></section>`
   },
   {
+    path: "workspace/portal-gateway",
+    title: "లైవ్ ప్రభుత్వ పోర్టల్స్ గేట్‌వే (Live Government Portals Gateway) | E-Vedhika",
+    desc: "ధరణి, TG-PRRD, Mana Panchayathi, CFMS, e-Panchayat, UBD & MeeSeva అధికారిక ప్రభుత్వ పోర్టల్స్ లైవ్ సర్వర్ పింగ్, కనెక్టివిటీ స్టేటస్ మరియు డైరెక్ట్ యాక్సెస్ గేట్‌వే.",
+    bodyHtml: `<section><h2>Live Government Portals Gateway &amp; Server Connectivity Status</h2><p>తెలంగాణ మరియు ఆంధ్రప్రదేశ్ పంచాయతీ కార్యదర్శులు, ఆపరేటర్ల కొరకు ధరణి, UBD, Mana Panchayati, CFMS, e-Panchayat పోర్టల్స్ సర్వర్ లైవ్ స్టేటస్ మరియు క్విక్ యాక్సెస్ గేట్‌వే.</p></section>`
+  },
+  {
+    path: "workspace/smart-letters",
+    title: "అధికారిక లేఖల జనరేటర్ (Smart Official Letters Generator) | E-Vedhika",
+    desc: "గ్రామ పంచాయతీ & MPDO అధికారిక లేఖలు, ప్రొసీడింగ్స్, 3 రకాల ఉత్తమ డ్రాఫ్ట్‌లు, డైనమిక్ సంతకాలు మరియు A4/Legal/A5 సైజ్ ప్రింటింగ్ సాధనం.",
+    bodyHtml: `<section><h2>Official Letters &amp; Proceedings Generator</h2><p>గ్రామ పంచాయతీ మరియు మండల పరిషత్ కార్యాలయ అధికారిక లేఖల తయారీ. విషయం నమోదు చేయగానే 3 రకాల నమూనాలు, కార్యదర్శి/సర్పంచ్/MPDO సంతకాల ఎంపిక మరియు రెడీ-టు-ప్రింట్ A4 డాక్యుమెంట్.</p></section>`
+  },
+  {
+    path: "workspace/payment-voucher",
+    title: "గ్రామ పంచాయతీ చెల్లింపు వోచర్ (GP Payment Voucher Generator) | E-Vedhika",
+    desc: "గ్రామ పంచాయతీ ఆడిట్ మరియు క్యాష్‌బుక్ రికార్డుల కోసం రెవెన్యూ స్టాంప్, హెడ్ ఆఫ్ అకౌంట్, సర్పంచ్ మరియు కార్యదర్శి సంతకాలతో కూడిన అధికారిక చెల్లింపు వోచర్.",
+    bodyHtml: `<section><h2>GP Official Payment Voucher Generator</h2><p>గ్రామ పంచాయతీ ఆడిట్ కొరకు రెవెన్యూ స్టాంప్ బాక్స్ మరియు అధికారిక సంతకాలతో కూడిన గ్రామ పంచాయతీ పేమెంట్ వోచర్.</p></section>`
+  },
+  {
+    path: "workspace/gp-certificates",
+    title: "ధ్రువీకరణ పత్రాలు & NOC (GP Certificates & NOC Generator) | E-Vedhika",
+    desc: "నివాస ధ్రువీకరణ, నల్లా కనెక్షన్ NOC, కరెంట్ మీటర్ NOC మరియు ఆస్తి యాజమాన్య ధ్రువీకరణ అధికారిక పత్రాల నమూనాలు.",
+    bodyHtml: `<section><h2>Gram Panchayat Certificates &amp; NOC Generator</h2><p>గ్రామ పంచాయతీ అధికారిక ముద్ర మరియు కార్యదర్శి సంతకంతో జారీ చేయు నివాస, నల్లా, కరెంట్ NOC పత్రాలు.</p></section>`
+  },
+  {
+    path: "workspace/public-notice-board",
+    title: "పబ్లిక్ నోటీస్ బోర్డు (Public Notice Board Poster) | E-Vedhika",
+    desc: "పన్నుల గడువు, తాగునీటి సరఫరా నిలిపివేత, డ్రై డే ప్రకటనల కోసం పెద్ద అక్షరాలతో కూడిన గ్రామ పంచాయతీ నోటీస్ బోర్డు పోస్టర్లు.",
+    bodyHtml: `<section><h2>Gram Panchayat Public Notice Board &amp; Posters</h2><p>గ్రామ పంచాయతీ నోటీస్ బోర్డుపై అంటించడానికి మరియు వాట్సాప్ గ్రూపులలో షేర్ చేయడానికి అధికారిక పోస్టర్లు.</p></section>`
+  },
+  {
+    path: "workspace/smart-admin-desk",
+    title: "స్మార్ట్ అడ్మిన్ డెస్క్ (Smart Admin Desk) | E-Vedhika",
+    desc: "పంచాయతీ కార్యదర్శులు మరియు ఆపరేటర్ల కొరకు రోజువారీ ఆఫీస్ రిమైండర్లు, టాస్క్ ట్రాకర్ మరియు అడ్మిన్ కంట్రోల్ డెస్క్.",
+    bodyHtml: `<section><h2>Smart Admin Desk &amp; Daily Office Workflow</h2><p>పంచాయతీ పాలనా విధుల పర్యవేక్షణ మరియు కార్యాలయ నిర్వహణ సాధనం.</p></section>`
+  },
+  {
+    path: "workspace/dcb-reports",
+    title: "DCB పన్నుల నివేదికల విశ్లేషణ (DCB Tax Reports Analyzer) | E-Vedhika",
+    desc: "గ్రామ పంచాయతీ డిమాండ్, వసూలు మరియు బకాయి (DCB) పన్నుల నివేదికల ఆటోమేటిక్ విశ్లేషణ సాధనం.",
+    bodyHtml: `<section><h2>DCB Tax Reports Analyzer</h2><p>గ్రామ పంచాయతీ పన్నుల వసూళ్ల సమగ్ర విశ్లేషణ.</p></section>`
+  },
+  {
+    path: "workspace/unsupported-excel",
+    title: "ఎక్సెల్ వ్యూయర్ (Unsupported / HTML Excel Viewer) | E-Vedhika",
+    desc: "ఈ-పంచాయతీ పోర్టల్ నుండి వచ్చే HTML ఫార్మాట్ ఎక్సెల్ ఫైల్స్‌ను సులభంగా ఓపెన్ చేసి చూసే సాధనం.",
+    bodyHtml: `<section><h2>HTML Excel Viewer</h2><p>పాత మరియు అన్‌సపోర్టెడ్ ఎక్సెల్ ఫైల్స్ వ్యూయర్.</p></section>`
+  },
+  {
+    path: "workspace/excel-studio",
+    title: "28-ఇన్-1 ఎక్సెల్ ఫైల్ మేనేజర్ (28-in-1 Excel Studio) | E-Vedhika",
+    desc: "ఎక్సెల్ ఫైల్స్ పోలిక, విలీనం, ఫార్మాటింగ్ మరియు డేటా అనలిటిక్స్ కొరకు 28-ఇన్-1 అధునాతన స్టూడియో.",
+    bodyHtml: `<section><h2>28-in-1 Excel Studio</h2><p>అధునాతన ఎక్సెల్ మేనేజ్‌మెంట్ మరియు కంపేర్ టూల్స్.</p></section>`
+  },
+  {
+    path: "workspace/epanchayat-tutorials",
+    title: "ఈ-పంచాయతీ వీడియో ట్యుటోరియల్స్ (e-Panchayat Video Tutorials) | E-Vedhika",
+    desc: "ఈ-పంచాయతీ, eGramSwaraj, UBD పోర్టల్ సేవల సమగ్ర వీడియో ట్యుటోరియల్స్ మరియు గైడ్స్.",
+    bodyHtml: `<section><h2>e-Panchayat &amp; Citizen Services Video Tutorials</h2><p>ఈ-పంచాయతీ సేవల ఆన్‌లైన్ వీడియో గైడ్స్.</p></section>`
+  },
+  {
+    path: "workspace/gallery",
+    title: "మీడియా & గ్యాలరీ (Official Media & Event Gallery) | E-Vedhika",
+    desc: "పంచాయతీ సమావేశాలు, గ్రామ సభలు మరియు అధికారిక కార్యక్రమాల ఫోటో గ్యాలరీ మరియు మీడియా సెంటర్.",
+    bodyHtml: `<section><h2>Official Media &amp; Event Gallery</h2><p>గ్రామ పంచాయతీ అధికారిక కార్యక్రమాలు మరియు ఫోటో ఆర్కైవ్స్.</p></section>`
+  },
+  {
+    path: "online_portal",
+    title: "Online portal at our line (త్వరలో ప్రారంభం) | E-Vedhika",
+    desc: "Online portal at our line - ఈ సేవ ప్రస్తుతం అభివృద్ధి మరియు నిర్మాణ దశలో ఉంది. గ్రామ పంచాయతీ & మండల స్థాయి సేవలను సులభతరం చేసే సరికొత్త పోర్టల్ త్వరలోనే అందుబాటులోకి రానుంది.",
+    bodyHtml: `<section><h2>Online Portal at Our Line (Under Construction)</h2><p>గ్రామ పంచాయతీ మరియు మండల స్థాయి ఆన్‌లైన్ సేవలను వేగంగా పూర్తి చేసుకునేలా అతి త్వరలోనే ఈ సరికొత్త పోర్టల్ అందుబాటులోకి రానుంది.</p></section>`
+  },
+  {
     path: "gos_formats",
     title: "జీవోలు & ఫార్మాట్లు (GOs, Circulars & Official Formats) | E-Vedhika",
     desc: "పంచాయతీ రాజ్ శాఖ ప్రభుత్వ జీవోలు (GOs), సర్క్యులర్లు, ప్రొసీడింగ్స్, జనన/మరణ/వివాహ దరఖాస్తు ఫార్మాట్‌లు మరియు కార్యాలయ రిజిస్టర్ ఫైల్స్ డౌన్‌లోడ్ చేసుకోండి.",
@@ -712,7 +784,7 @@ function generateSitemap(allPostUrls) {
   // Standard canonical routes (excluding admin/disallowed/alias duplicates)
   standardRoutes.forEach((route) => {
     if (route.excludeFromSitemap || route.isAlias) return;
-    const isPolicyOrCore = ["about", "contact", "privacy", "terms", "disclaimer", "cookie-policy", "editorial-policy", "sitemap", "workspace", "workspace/dsr", "ubd-settings-dsk-issues", "gos_formats", "farmer_registry", "software_hub"].includes(route.path);
+    const isPolicyOrCore = ["about", "contact", "privacy", "terms", "disclaimer", "cookie-policy", "editorial-policy", "sitemap", "workspace", "workspace/dsr", "workspace/portal-gateway", "online_portal", "ubd-settings-dsk-issues", "gos_formats", "farmer_registry", "software_hub"].includes(route.path);
     addSitemapUrl(`${BASE_URL}/${route.path}`, "weekly", isPolicyOrCore ? "0.9" : "0.8");
   });
 

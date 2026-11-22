@@ -17,6 +17,7 @@ import {
   Building,
   MessageSquare,
   FileDown,
+  Globe,
 } from "lucide-react";
 
 interface RoyalWelcomeHeroCardProps {
@@ -400,15 +401,15 @@ export function RoyalWelcomeHeroCard({
 
         <button
           type="button"
-          onClick={() => handleNav("/pdf_compress", "pdf_compress")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-rose-950 hover:from-rose-900 hover:to-slate-900 text-white rounded-xl border border-rose-800/30 hover:border-rose-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
+          onClick={() => handleNav("/online_portal", "online_portal")}
+          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-amber-950 hover:from-amber-900 hover:to-slate-900 text-white rounded-xl border border-amber-800/30 hover:border-amber-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
         >
-          <div className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 group-hover:scale-105 transition-transform shrink-0">
-            <FileDown size={15} />
+          <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+            <Globe size={15} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-rose-300 truncate">Pdf Compress 250 Kb</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">సైజ్ తగ్గించుకోండి</div>
+            <div className="text-[11px] sm:text-xs font-bold text-amber-300 truncate">Online portal at your line</div>
+            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">త్వరలో ప్రారంభం (Soon)</div>
           </div>
         </button>
       </div>
