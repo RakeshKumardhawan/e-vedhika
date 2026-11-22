@@ -7187,16 +7187,18 @@ E-Vedhika Support System`;
                               }
                             }
                           }}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
+                          className={`flex items-center ${
+                            item.id === "home" ? "gap-1.5 px-3 py-1.5" : "gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5"
+                          } rounded-full whitespace-nowrap transition-all duration-200 shrink-0 ${themeClasses.button}`}
                         >
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-transform ${themeClasses.iconBg}`}>
+                          <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shrink-0 transition-transform ${themeClasses.iconBg}`}>
                             <Icon size={13} />
                           </div>
-                          <span className={`text-[13px] tracking-tight ${themeClasses.text}`}>
+                          <span className={`text-xs sm:text-[13px] tracking-tight ${themeClasses.text}`}>
                             {item.label}
                           </span>
                           {item.hasDropdown && (
-                            <ChevronDown size={14} className={isActive ? "ml-0.5 text-white/80" : "ml-0.5 text-slate-400 group-hover:text-slate-600 transition-colors"} />
+                            <ChevronDown size={13} className={isActive ? "ml-0.5 text-white/80" : "ml-0.5 text-slate-400 group-hover:text-slate-600 transition-colors"} />
                           )}
                         </button>
                         

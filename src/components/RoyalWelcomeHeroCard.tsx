@@ -65,9 +65,10 @@ export function RoyalWelcomeHeroCard({
     greetingColor = "from-indigo-300 via-sky-200 to-cyan-300";
   }
 
-  // Determine user name cleanly
+  // Determine if user is logged in cleanly
+  const isLoggedIn = Boolean(currentUser || userProfile?.name || userProfile?.displayName || userProfile?.email);
   const rawName = userProfile?.name || currentUser?.displayName || userProfile?.displayName || "";
-  const nameToDisplay = rawName.trim() || (currentUser?.email ? currentUser.email.split("@")[0] : "Rakesh Dhawan");
+  const nameToDisplay = rawName.trim() || (currentUser?.email ? currentUser.email.split("@")[0] : "");
 
   const handleNav = (target: string, tabId?: string) => {
     if (tabId) {
@@ -102,10 +103,21 @@ export function RoyalWelcomeHeroCard({
               {/* Primary Welcome Heading */}
               <div className="space-y-0.5">
                 <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-tight flex flex-wrap items-center gap-2">
-                  <span>Welcome,</span>
-                  <span className="bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-sm font-mandali">
-                    {nameToDisplay}
-                  </span>
+                  {isLoggedIn && nameToDisplay ? (
+                    <>
+                      <span>Welcome,</span>
+                      <span className="bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-sm font-mandali">
+                        {nameToDisplay}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Welcome to</span>
+                      <span className="bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-100 bg-clip-text text-transparent drop-shadow-sm font-mandali">
+                        e-Vedhika
+                      </span>
+                    </>
+                  )}
                   <Sparkles className="text-amber-400 w-5 h-5 sm:w-6 sm:h-6 inline-block animate-pulse" />
                 </h1>
                 <p className="text-xs sm:text-sm font-medium text-cyan-300">
@@ -128,62 +140,80 @@ export function RoyalWelcomeHeroCard({
               </div>
             </div>
 
-            {/* Right Emblem - Vivid Glowing Royal Holographic EV Circle */}
+            {/* Right Emblem - Vivid Glowing Royal Holographic EV Circle with Spinning Ring */}
             <div className="shrink-0 flex items-center justify-center self-center md:self-auto py-2">
               <div className="relative group/logo flex items-center justify-center">
-                {/* Outer Pulsing Cyan & Gold Neon Glow Halos */}
-                <div className="absolute -inset-4 rounded-full bg-cyan-400/40 blur-xl animate-pulse pointer-events-none" />
-                <div className="absolute -inset-2 rounded-full bg-gradient-to-tr from-cyan-400/50 via-blue-500/40 to-amber-400/50 blur-lg animate-pulse pointer-events-none" />
+                {/* Outer Ambient Glow Halos */}
+                <div className="absolute -inset-4 rounded-full bg-cyan-400/35 blur-xl animate-pulse pointer-events-none" />
+                <div className="absolute -inset-2 rounded-full bg-gradient-to-tr from-cyan-400/40 via-blue-500/30 to-amber-400/40 blur-lg animate-pulse pointer-events-none" />
 
-                {/* Soft expanding ping ripple */}
-                <div className="absolute -inset-2 rounded-full border-2 border-cyan-400/40 animate-ping opacity-30 pointer-events-none" />
+                {/* Main Medallion SVG with authentic header spinning ring */}
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center">
+                  <svg
+                    viewBox="0 0 64 64"
+                    className="w-full h-full drop-shadow-[0_0_20px_rgba(14,165,233,0.7)] select-none"
+                  >
+                    <defs>
+                      <linearGradient id="heroCoreG" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#0d2a4a" />
+                        <stop offset="100%" stopColor="#040f26" />
+                      </linearGradient>
+                      <linearGradient id="heroRingG" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" />
+                        <stop offset="50%" stopColor="#facc15" />
+                        <stop offset="100%" stopColor="#0ea5e9" />
+                      </linearGradient>
+                    </defs>
 
-                {/* Outer rotating neon cyber conic-border */}
-                <div
-                  className="absolute -inset-1 rounded-full opacity-90 animate-spin pointer-events-none"
-                  style={{
-                    animationDuration: "8s",
-                    background: "conic-gradient(from 0deg, #00f0ff, #3b82f6, #facc15, #00f0ff)",
-                    filter: "drop-shadow(0 0 12px rgba(6, 182, 212, 0.9))"
-                  }}
-                />
-
-                {/* Core Glowing Medallion */}
-                <div
-                  className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full p-[3px] bg-slate-950 flex items-center justify-center"
-                  style={{
-                    boxShadow: "0 0 25px rgba(6, 182, 212, 0.85), 0 0 50px rgba(14, 165, 233, 0.5), inset 0 0 18px rgba(6, 182, 212, 0.5)"
-                  }}
-                >
-                  {/* Concentric rotating dashed neon ring */}
-                  <svg className="absolute inset-0 w-full h-full animate-spin pointer-events-none" style={{ animationDuration: "14s" }} viewBox="0 0 100 100">
+                    {/* Rotating Dashed Ring - uses global .logo-ring matching header logo */}
                     <circle
-                      cx="50"
-                      cy="50"
-                      r="45"
+                      className="logo-ring"
+                      cx="32"
+                      cy="32"
+                      r="29"
                       fill="none"
-                      stroke="rgba(34, 211, 238, 0.85)"
-                      strokeWidth="2.5"
-                      strokeDasharray="14 7"
+                      stroke="url(#heroRingG)"
+                      strokeWidth="2.8"
+                      strokeDasharray="10 5"
                       strokeLinecap="round"
-                      filter="drop-shadow(0 0 4px #00f0ff)"
                     />
-                  </svg>
 
-                  {/* Concentric inner glow border */}
-                  <div className="absolute inset-1 rounded-full border border-cyan-300/40 shadow-[0_0_10px_rgba(6,182,212,0.6)] pointer-events-none" />
-
-                  {/* Inner deep-space core with animated radial cyan flare */}
-                  <div className="w-full h-full rounded-full bg-gradient-to-b from-[#051736] to-[#020a1a] flex flex-col items-center justify-center relative overflow-hidden z-10 border border-cyan-500/30">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(6,182,212,0.5)_0%,_transparent_75%)] animate-pulse" />
+                    {/* Inner Colored Accent Disc */}
+                    <circle cx="32" cy="32" r="25" fill="url(#heroCoreG)" stroke="rgba(34, 211, 238, 0.45)" strokeWidth="0.8" />
                     
-                    <span className="text-2xl sm:text-3xl font-black bg-gradient-to-b from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(6,182,212,0.9)] tracking-wider select-none">
+                    {/* Deep Space Core */}
+                    <circle cx="32" cy="32" r="21" fill="#020817" />
+
+                    {/* Central EV Text */}
+                    <text
+                      x="50%"
+                      y="46%"
+                      dominantBaseline="middle"
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      fontSize="17"
+                      fontWeight="900"
+                      fontFamily="Segoe UI, system-ui, sans-serif"
+                      letterSpacing="0.5px"
+                    >
                       EV
-                    </span>
-                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-amber-300 drop-shadow-[0_0_6px_rgba(250,204,21,0.85)] -mt-0.5 select-none">
+                    </text>
+
+                    {/* Subtitle E-VEDHIKA */}
+                    <text
+                      x="50%"
+                      y="64%"
+                      dominantBaseline="middle"
+                      textAnchor="middle"
+                      fill="#facc15"
+                      fontSize="5"
+                      fontWeight="900"
+                      letterSpacing="1.2px"
+                      fontFamily="Segoe UI, system-ui, sans-serif"
+                    >
                       E-VEDHIKA
-                    </span>
-                  </div>
+                    </text>
+                  </svg>
                 </div>
               </div>
             </div>
