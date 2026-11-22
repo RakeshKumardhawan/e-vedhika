@@ -12557,6 +12557,15 @@ export function getDirectImageUrl(rawUrl: string): string {
   if (!rawUrl || typeof rawUrl !== "string") return "";
   let url = rawUrl.trim();
 
+  // Strip accidental leading slash or double origin prefix
+  if (url.startsWith("/http://") || url.startsWith("/https://")) {
+    url = url.substring(1);
+  }
+  const embeddedHttp = url.search(/https?:\/\//i);
+  if (embeddedHttp > 0) {
+    url = url.substring(embeddedHttp);
+  }
+
   // Google Drive conversion
   if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
     const fileDMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
