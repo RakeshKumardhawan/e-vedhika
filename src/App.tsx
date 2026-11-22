@@ -201,7 +201,7 @@ import { CloudStorageManager } from "./components/CloudStorageManager";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
-import { SmartAdminDesk } from "./components/SmartAdminDesk";
+import { SmartLettersTool, PortalGatewayTool, PaymentVoucherTool, GPCertificatesTool, PublicNoticeBoardTool, SmartAdminDesk } from "./components/SmartAdminDesk";
 
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
@@ -7332,7 +7332,11 @@ E-Vedhika Support System`;
                                     <div className="h-px bg-slate-200/70 my-1" />
 
                                     {[
-                                      { id: 'smart-admin-desk', label: 'Smart Letters & Admin Tools', icon: <FileText size={16} />, isFree: true },
+                                      { id: 'smart-letters', label: 'Official Letters Generator (అధికారిక లేఖలు)', icon: <FileText size={16} />, isFree: true },
+                                      { id: 'portal-gateway', label: 'Live Portals Gateway (లైవ్ గేట్‌వే)', icon: <Globe size={16} />, isFree: true },
+                                      { id: 'payment-voucher', label: 'GP Payment Voucher (చెల్లింపు వోచర్)', icon: <FileCheck size={16} />, isFree: true },
+                                      { id: 'gp-certificates', label: 'Certificates & NOC (ధ్రువీకరణ పత్రాలు)', icon: <FileBadge size={16} />, isFree: true },
+                                      { id: 'public-notice-board', label: 'Public Notice Board (నోటీస్ బోర్డు)', icon: <Share2 size={16} />, isFree: true },
                                       { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} />, isFree: true },
                                       { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: true },
                                       { id: 'MAS', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: true },
@@ -19272,10 +19276,34 @@ function DigitalWorkspaceSection({
 }) {
   const tools = [
     {
-      id: "smart-admin-desk",
-      title: "Smart Letters & GP Administrative Desk",
+      id: "smart-letters",
+      title: "Official Letters & Proceedings Generator",
       icon: FileText,
-      desc: "అధికారిక లేఖల జనరేటర్ (A4/Legal), లైవ్ సర్వర్ గేట్‌వే, చెల్లింపు వోచర్లు & సర్టిఫికెట్స్",
+      desc: "గ్రామ పంచాయతీ & MPDO అధికారిక లేఖలు (A4/Legal ప్రింట్, స్మార్ట్ సంతకాలు)",
+    },
+    {
+      id: "portal-gateway",
+      title: "Live Government Portals Gateway",
+      icon: Globe,
+      desc: "ధరణి, UBD, CFMS, DSR ప్రభుత్వ వెబ్‌సైట్ల లైవ్ కనెక్టివిటీ గేట్‌వే & షార్ట్‌కట్స్",
+    },
+    {
+      id: "payment-voucher",
+      title: "GP Official Payment Voucher Generator",
+      icon: FileCheck,
+      desc: "ఆడిట్ మరియు క్యాష్ బుక్ కొరకు రెవెన్యూ స్టాంప్, సర్పంచ్ & సెక్రటరీ సంతకాల వోచర్",
+    },
+    {
+      id: "gp-certificates",
+      title: "Certificates & NOC Generator",
+      icon: FileBadge,
+      desc: "నివాస, ఆస్తి యాజమాన్య, కుళాయి మరియు కరెంట్ కనెక్షన్ అధికారిక NOC పత్రాలు",
+    },
+    {
+      id: "public-notice-board",
+      title: "Public Notice Board & Announcement Poster",
+      icon: Share2,
+      desc: "పన్నుల గడువు, తాగునీటి సరఫరా ప్రకటనల కోసం పెద్ద అక్షరాల అధికారిక పోస్టర్",
     },
     {
       id: "dsr",
@@ -19582,8 +19610,23 @@ function DigitalWorkspaceSection({
                 </div>
               ) : (
                 <>
+              {activeTool === "smart-letters" && (
+                <SmartLettersTool addToast={addToast} />
+              )}
+              {activeTool === "portal-gateway" && (
+                <PortalGatewayTool addToast={addToast} />
+              )}
+              {activeTool === "payment-voucher" && (
+                <PaymentVoucherTool addToast={addToast} />
+              )}
+              {activeTool === "gp-certificates" && (
+                <GPCertificatesTool addToast={addToast} />
+              )}
+              {activeTool === "public-notice-board" && (
+                <PublicNoticeBoardTool addToast={addToast} />
+              )}
               {activeTool === "smart-admin-desk" && (
-                <SmartAdminDesk addToast={addToast} user={user} />
+                <SmartLettersTool addToast={addToast} />
               )}
               {activeTool === "dsr" && (
                 <DSRAnalyzer addToast={addToast} user={user} />
