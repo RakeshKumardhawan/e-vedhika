@@ -201,6 +201,7 @@ import { CloudStorageManager } from "./components/CloudStorageManager";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
+import { SmartAdminDesk } from "./components/SmartAdminDesk";
 
 const formatPostTitle = (title: string | undefined): string => {
   if (!title) return "";
@@ -7331,6 +7332,7 @@ E-Vedhika Support System`;
                                     <div className="h-px bg-slate-200/70 my-1" />
 
                                     {[
+                                      { id: 'smart-admin-desk', label: 'Smart Letters & Admin Tools', icon: <FileText size={16} />, isFree: true },
                                       { id: 'dsr', label: 'DSR Analyzer', icon: <BarChart3 size={16} />, isFree: true },
                                       { id: 'multiday', label: 'Multi-Day attendance', icon: <Layers size={16} />, isFree: true },
                                       { id: 'MAS', label: 'Monthly Activity Monitoring (MAS)', icon: <FileSpreadsheet size={16} />, isFree: true },
@@ -19270,6 +19272,12 @@ function DigitalWorkspaceSection({
 }) {
   const tools = [
     {
+      id: "smart-admin-desk",
+      title: "Smart Letters & GP Administrative Desk",
+      icon: FileText,
+      desc: "అధికారిక లేఖల జనరేటర్ (A4/Legal), లైవ్ సర్వర్ గేట్‌వే, చెల్లింపు వోచర్లు & సర్టిఫికెట్స్",
+    },
+    {
       id: "dsr",
       title: "DSR Analyzer",
       icon: BarChart3,
@@ -19574,6 +19582,9 @@ function DigitalWorkspaceSection({
                 </div>
               ) : (
                 <>
+              {activeTool === "smart-admin-desk" && (
+                <SmartAdminDesk addToast={addToast} user={user} />
+              )}
               {activeTool === "dsr" && (
                 <DSRAnalyzer addToast={addToast} user={user} />
               )}
