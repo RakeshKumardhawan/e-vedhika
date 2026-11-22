@@ -12,6 +12,9 @@ import {
   FileText,
   Download,
   ShieldCheck,
+  Building,
+  MessageSquare,
+  FileDown,
 } from "lucide-react";
 
 interface RoyalWelcomeHeroCardProps {
@@ -260,8 +263,8 @@ export function RoyalWelcomeHeroCard({
         )}
       </div>
 
-      {/* 5 Core Feature Quick Buttons - Sweet, Sleek & Compact */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+      {/* 6 Core Feature Quick Buttons - Sweet, Sleek & Compact */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <button
           type="button"
           onClick={() => handleNav("/ubd_tracker", "ubd_tracker")}
@@ -278,29 +281,29 @@ export function RoyalWelcomeHeroCard({
 
         <button
           type="button"
-          onClick={() => handleNav("/workspace/dsr", "workspace")}
+          onClick={() => handleNav("/workspace", "workspace")}
           className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-indigo-950 hover:from-indigo-900 hover:to-blue-950 text-white rounded-xl border border-indigo-800/30 hover:border-indigo-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
         >
           <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
-            <BarChart3 size={15} />
+            <Building size={15} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-indigo-300 truncate">DSR Analyzer</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">హాజరు &amp; శానిటేషన్</div>
+            <div className="text-[11px] sm:text-xs font-bold text-indigo-300 truncate">Mana Panchayath</div>
+            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">డిజిటల్ వర్క్‌స్పేస్</div>
           </div>
         </button>
 
         <button
           type="button"
-          onClick={() => handleNav("/farmer_registry", "farmer_registry")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-emerald-950 hover:from-emerald-900 hover:to-slate-900 text-white rounded-xl border border-emerald-800/30 hover:border-emerald-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
+          onClick={() => handleNav("/suggestions", "suggestions")}
+          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-pink-950 hover:from-pink-900 hover:to-slate-900 text-white rounded-xl border border-pink-800/30 hover:border-pink-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
         >
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
-            <Wheat size={15} />
+          <div className="p-1.5 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400 group-hover:scale-105 transition-transform shrink-0">
+            <MessageSquare size={15} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-emerald-300 truncate">Farmer Registry</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">రైతు సర్వే &amp; వివరాలు</div>
+            <div className="text-[11px] sm:text-xs font-bold text-pink-300 truncate">Public Feedback</div>
+            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">సలహాలు &amp; సూచనలు</div>
           </div>
         </button>
 
@@ -321,7 +324,7 @@ export function RoyalWelcomeHeroCard({
         <button
           type="button"
           onClick={() => handleNav("/software_hub", "software_hub")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-purple-950 hover:from-purple-900 hover:to-slate-900 text-white rounded-xl border border-purple-800/30 hover:border-purple-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left col-span-2 sm:col-span-1"
+          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-purple-950 hover:from-purple-900 hover:to-slate-900 text-white rounded-xl border border-purple-800/30 hover:border-purple-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
         >
           <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-105 transition-transform shrink-0">
             <Download size={15} />
@@ -329,6 +332,20 @@ export function RoyalWelcomeHeroCard({
           <div className="min-w-0">
             <div className="text-[11px] sm:text-xs font-bold text-purple-300 truncate">Software Hub</div>
             <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">టోకెన్ డ్రైవర్లు &amp; టూల్స్</div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleNav("/pdf_compress", "pdf_compress")}
+          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-rose-950 hover:from-rose-900 hover:to-slate-900 text-white rounded-xl border border-rose-800/30 hover:border-rose-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
+        >
+          <div className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 group-hover:scale-105 transition-transform shrink-0">
+            <FileDown size={15} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] sm:text-xs font-bold text-rose-300 truncate">Pdf Compress 250 Kb</div>
+            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">సైజ్ తగ్గించుకోండి</div>
           </div>
         </button>
       </div>
