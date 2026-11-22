@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../firebase";
 import {
   Sparkles,
   Sun,
@@ -68,10 +70,71 @@ export function RoyalWelcomeHeroCard({
     greetingColor = "from-indigo-300 via-sky-200 to-cyan-300";
   }
 
-  // Determine if user is logged in cleanly
-  const isLoggedIn = Boolean(currentUser || userProfile?.name || userProfile?.displayName || userProfile?.email);
-  const rawName = userProfile?.name || currentUser?.displayName || userProfile?.displayName || "";
-  const nameToDisplay = rawName.trim() || (currentUser?.email ? currentUser.email.split("@")[0] : "");
+  // Keep local user in sync with props and Firebase Auth
+  const [activeUser, setActiveUser] = useState<any>(currentUser || auth.currentUser);
+
+  useEffect(() => {
+    if (currentUser) {
+      setActiveUser(currentUser);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setActiveUser(u);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const effectiveUser = activeUser || currentUser || auth.currentUser;
+  const isAnonymous = Boolean(effectiveUser?.isAnonymous);
+
+  // Calculate full name with comprehensive priority:
+  // 1. Surname + Name or Name + Surname from profile
+  // 2. FullName from profile
+  // 3. DisplayName from Firebase Auth user
+  // 4. Username from profile
+  // 5. DisplayName from profile
+  // 6. Email prefix fallback
+  let fullName = "";
+  if (userProfile?.surname || userProfile?.name) {
+    const s = (userProfile.surname || "").trim();
+    const n = (userProfile.name || "").trim();
+    if (s && n) {
+      fullName = `${s} ${n}`;
+    } else if (n) {
+      fullName = n;
+    } else if (s) {
+      fullName = s;
+    }
+  }
+  if (!fullName && userProfile?.fullName && typeof userProfile.fullName === "string") {
+    fullName = userProfile.fullName.trim();
+  }
+  if (!fullName && effectiveUser?.displayName && typeof effectiveUser.displayName === "string") {
+    fullName = effectiveUser.displayName.trim();
+  }
+  if (!fullName && userProfile?.displayName && typeof userProfile.displayName === "string") {
+    fullName = userProfile.displayName.trim();
+  }
+  if (!fullName && userProfile?.username && typeof userProfile.username === "string" && userProfile.username !== "User" && userProfile.username !== "System User") {
+    fullName = userProfile.username.trim();
+  }
+  if (!fullName && effectiveUser?.email && typeof effectiveUser.email === "string") {
+    fullName = effectiveUser.email.split("@")[0].trim();
+  }
+  if (!fullName && userProfile?.email && typeof userProfile.email === "string") {
+    fullName = userProfile.email.split("@")[0].trim();
+  }
+
+  const isLoggedIn = Boolean(
+    (!isAnonymous && (effectiveUser?.uid || effectiveUser?.email)) ||
+    (userProfile && (userProfile.name || userProfile.surname || userProfile.username || userProfile.email)) ||
+    fullName
+  );
+  const nameToDisplay = fullName.trim();
 
   const handleNav = (target: string, tabId?: string) => {
     if (tabId) {
