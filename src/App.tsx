@@ -6354,7 +6354,7 @@ E-Vedhika Support System`;
             {/* Website Name Section */}
             <div className="flex flex-col justify-center translate-y-[-1px] shrink min-w-0">
               <h2
-                className="brand-title text-[15px] sm:text-[18px] md:text-[20px] leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
+                className="brand-title text-[14px] min-[360px]:text-[15px] sm:text-[18px] md:text-[20px] leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[110px] min-[380px]:max-w-[150px] min-[480px]:max-w-none"
                 style={{
                   color: "#fbe947",
                   background: "none",
@@ -6371,7 +6371,7 @@ E-Vedhika Support System`;
               </h2>
               <div className="flex items-center">
                 <span
-                  className="whitespace-nowrap overflow-hidden text-ellipsis text-[8px] sm:text-[9px] font-extrabold tracking-wider text-slate-300 uppercase"
+                  className="whitespace-nowrap overflow-hidden text-ellipsis text-[8px] sm:text-[9px] font-extrabold tracking-wider text-slate-300 uppercase max-w-[110px] min-[380px]:max-w-[150px] min-[480px]:max-w-none"
                 >
                   all problems one solution
                 </span>
@@ -6380,16 +6380,16 @@ E-Vedhika Support System`;
           </div>
 
           {/* Right Action Icons & User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             {/* Language Selector Toggle (ENG | తెలుగు) */}
-            <div className="relative shrink-0 mr-1 sm:mr-2">
+            <div className="relative shrink-0 mr-0.5 sm:mr-1.5">
               <button
                 onClick={() => setLang(lang === "en" ? "te" : "en")}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-300/40 text-white transition-all text-xs font-black cursor-pointer shadow-sm active:scale-95 hover:border-amber-400 group"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-300/40 text-white transition-all text-xs font-black cursor-pointer shadow-sm active:scale-95 hover:border-amber-400 group"
                 title={lang === "en" ? "తెలుగు భాషకి మార్చండి (Switch to Telugu)" : "Switch to English"}
               >
-                <Globe size={15} className="text-amber-300 shrink-0 group-hover:rotate-12 transition-transform" />
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-200">
+                <Globe size={14} className="text-amber-300 shrink-0 group-hover:rotate-12 transition-transform" />
+                <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-200">
                   {lang === "en" ? "ENG" : "తెలుగు"}
                 </span>
               </button>
@@ -6397,7 +6397,7 @@ E-Vedhika Support System`;
 
             {/* Direct Messages Button */}
             <div
-              className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-1 sm:mr-3 rounded-full hover:bg-white/10 relative"
+              className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0.5 sm:mr-2 rounded-full hover:bg-white/10 relative"
               onClick={() => {
                 if (!user) {
                   requireLoginAlert();
@@ -6407,9 +6407,9 @@ E-Vedhika Support System`;
               }}
               title="Direct Messages"
             >
-              <MessageCircle size={20} className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" />
+              <MessageCircle size={18} className="w-[17px] h-[17px] sm:w-[20px] sm:h-[20px]" />
               {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border-2 border-[#0d2a4a]">
+                <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-blue-500 text-white text-[9px] sm:text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border-2 border-[#0d2a4a]">
                   {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length}
                 </span>
               )}
@@ -6417,12 +6417,12 @@ E-Vedhika Support System`;
 
           <div className="relative" ref={notifDropdownRef}>
             <div
-              className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0 sm:mr-3 rounded-full hover:bg-white/10"
+              className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0.5 sm:mr-2 rounded-full hover:bg-white/10"
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <Bell
-                size={20}
-                className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]"
+                size={18}
+                className="w-[17px] h-[17px] sm:w-[20px] sm:h-[20px]"
               />
               {user && unreadCount > 0 && (
                 <span
@@ -6912,7 +6912,7 @@ E-Vedhika Support System`;
             >
               <div
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                className="flex items-center gap-2 sm:gap-3 bg-gradient-to-r from-[#174b7c] to-transparent pl-1.5 pr-2 sm:pr-5 py-1.5 rounded-[16px] border border-accent/30 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_0_20px_rgba(250,204,21,0.25)] hover:border-accent/60 transition-all duration-300 relative overflow-hidden group cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-3 bg-gradient-to-r from-[#174b7c] to-transparent pl-1.5 pr-1.5 sm:pr-5 py-1 sm:py-1.5 rounded-[12px] sm:rounded-[16px] border border-accent/30 shadow-[0_4px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_0_20px_rgba(250,204,21,0.25)] hover:border-accent/60 transition-all duration-300 relative overflow-hidden group cursor-pointer"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-gradient-to-br from-accent to-[#d97706] flex items-center justify-center text-primary font-black text-lg shadow-inner border-[2px] border-white/20 relative z-10 shadow-[0_0_10px_rgba(250,204,21,0.5)] overflow-hidden">
