@@ -26,8 +26,61 @@ import {
 import {
   LiveWebsiteItem,
   DEFAULT_LIVE_WEBSITES,
+  HeroFeatureButton,
+  DEFAULT_HERO_FEATURES,
   LiveWebsitesManager,
 } from "./admin/LiveWebsitesManager";
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  Settings,
+  Building,
+  MessageSquare,
+  FileText,
+  Download,
+  Globe,
+  Wheat,
+  ShieldCheck,
+  Sparkles,
+};
+
+const THEME_CLASSES: Record<string, { bg: string; text: string; iconBg: string; border: string }> = {
+  cyan: {
+    bg: "from-slate-900 to-blue-950 hover:from-blue-900 hover:to-indigo-950",
+    text: "text-cyan-300",
+    iconBg: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400",
+    border: "border-blue-800/30 hover:border-cyan-400/50"
+  },
+  indigo: {
+    bg: "from-slate-900 to-indigo-950 hover:from-indigo-900 hover:to-blue-950",
+    text: "text-indigo-300",
+    iconBg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+    border: "border-indigo-800/30 hover:border-indigo-400/50"
+  },
+  pink: {
+    bg: "from-slate-900 to-pink-950 hover:from-pink-900 hover:to-slate-900",
+    text: "text-pink-300",
+    iconBg: "bg-pink-500/10 border-pink-500/20 text-pink-400",
+    border: "border-pink-800/30 hover:border-pink-400/50"
+  },
+  amber: {
+    bg: "from-slate-900 to-amber-950 hover:from-amber-900 hover:to-slate-900",
+    text: "text-amber-300",
+    iconBg: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+    border: "border-amber-800/30 hover:border-amber-400/50"
+  },
+  purple: {
+    bg: "from-slate-900 to-purple-950 hover:from-purple-900 hover:to-slate-900",
+    text: "text-purple-300",
+    iconBg: "bg-purple-500/10 border-purple-500/20 text-purple-400",
+    border: "border-purple-800/30 hover:border-purple-400/50"
+  },
+  emerald: {
+    bg: "from-slate-900 to-emerald-950 hover:from-emerald-900 hover:to-slate-900",
+    text: "text-emerald-300",
+    iconBg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+    border: "border-emerald-800/30 hover:border-emerald-400/50"
+  }
+};
 
 interface RoyalWelcomeHeroCardProps {
   userProfile?: any;
@@ -155,15 +208,19 @@ export function RoyalWelcomeHeroCard({
     userEmail.includes("evedhikasupport@gmail.com")
   );
 
-  // Live Websites state loaded in real-time from Firestore
+  // Live Websites & Hero Features state loaded in real-time from Firestore
   const [liveWebsites, setLiveWebsites] = useState<LiveWebsiteItem[]>(DEFAULT_LIVE_WEBSITES);
+  const [heroFeatures, setHeroFeatures] = useState<HeroFeatureButton[]>(DEFAULT_HERO_FEATURES);
   const [showAdminModal, setShowAdminModal] = useState(false);
 
   useEffect(() => {
-    let unsub = () => {};
+    let unsubWebsites = () => {};
+    let unsubFeatures = () => {};
+
     try {
       if (db) {
-        unsub = onSnapshot(
+        // 1. Live Websites listener
+        unsubWebsites = onSnapshot(
           doc(db, "site_settings", "live_websites"),
           (snap) => {
             if (snap.exists()) {
@@ -180,17 +237,88 @@ export function RoyalWelcomeHeroCard({
               setLiveWebsites(DEFAULT_LIVE_WEBSITES);
             }
           },
-          (err) => {
-            console.warn("Failed to listen to live_websites in Hero, using defaults:", err);
+          () => {
             setLiveWebsites(DEFAULT_LIVE_WEBSITES);
+          }
+        );
+
+        // 2. Hero Features listener
+        unsubFeatures = onSnapshot(
+          doc(db, "site_settings", "hero_features"),
+          (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              if (Array.isArray(data.features) && data.features.length > 0) {
+                const sorted = [...data.features].sort(
+                  (a, b) => (a.order || 0) - (b.order || 0)
+                );
+                setHeroFeatures(sorted);
+              } else {
+                setHeroFeatures(DEFAULT_HERO_FEATURES);
+              }
+            } else {
+              setHeroFeatures(DEFAULT_HERO_FEATURES);
+            }
+          },
+          () => {
+            setHeroFeatures(DEFAULT_HERO_FEATURES);
           }
         );
       }
     } catch (e) {
       setLiveWebsites(DEFAULT_LIVE_WEBSITES);
+      setHeroFeatures(DEFAULT_HERO_FEATURES);
     }
-    return () => unsub();
+
+    return () => {
+      unsubWebsites();
+      unsubFeatures();
+    };
   }, []);
+
+  // Automated background health ping for live websites
+  useEffect(() => {
+    if (!liveWebsites || liveWebsites.length === 0) return;
+    const checkHealth = async () => {
+      try {
+        const payload = {
+          portals: liveWebsites
+            .filter((w) => w.active)
+            .map((w) => ({ id: w.id, name: w.name, url: w.url }))
+        };
+        const res = await fetch("/api/portals/check-batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.results)) {
+            setLiveWebsites((prev) =>
+              prev.map((site) => {
+                const match = data.results.find((r: any) => r.id === site.id);
+                if (match) {
+                  return {
+                    ...site,
+                    healthStatus: site.manualOverrideDown ? "offline" : match.status,
+                    latencyMs: match.latencyMs,
+                    lastChecked: match.lastChecked
+                  };
+                }
+                return site;
+              })
+            );
+          }
+        }
+      } catch (e) {
+        // Silent failover, keep existing status
+      }
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 90000); // Poll every 90 seconds
+    return () => clearInterval(interval);
+  }, [liveWebsites.length]);
 
   const handleNav = (target: string, tabId?: string) => {
     if (tabId) {
@@ -260,37 +388,85 @@ export function RoyalWelcomeHeroCard({
                   🏛️ All Problems One Solution
                 </span>
 
-                {/* 🌐 Live Websites configured from Admin Panel - right beside 'All Problems One Solution' */}
+                {/* 🌐 Live Websites configured from Admin Panel with Auto Down Indicator */}
                 {liveWebsites
                   .filter((site) => site.active)
-                  .map((site) => (
-                    <a
-                      key={site.id}
-                      href={site.url}
-                      target={site.url.startsWith("http") ? "_blank" : undefined}
-                      rel={site.url.startsWith("http") ? "noopener noreferrer" : undefined}
-                      onClick={(e) => {
-                        if (!site.url.startsWith("http")) {
-                          e.preventDefault();
-                          handleNav(site.url);
+                  .map((site) => {
+                    const isDown = site.healthStatus === "offline" || site.manualOverrideDown;
+                    const isSlow = site.healthStatus === "slow";
+
+                    return (
+                      <a
+                        key={site.id}
+                        href={site.url}
+                        target={site.url.startsWith("http") ? "_blank" : undefined}
+                        rel={site.url.startsWith("http") ? "noopener noreferrer" : undefined}
+                        onClick={(e) => {
+                          if (!site.url.startsWith("http")) {
+                            e.preventDefault();
+                            handleNav(site.url);
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border transition-all shadow-xs group cursor-pointer active:scale-95 select-none ${
+                          isDown
+                            ? "bg-rose-950/90 hover:bg-rose-900 border-rose-500/60 hover:border-rose-400 text-rose-200 hover:text-white"
+                            : isSlow
+                            ? "bg-amber-950/80 hover:bg-amber-900 border-amber-500/40 text-amber-200 hover:text-white"
+                            : "bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/40 hover:border-emerald-300 text-emerald-200 hover:text-white"
+                        }`}
+                        title={
+                          isDown
+                            ? `⚠️ ${site.name} సర్వర్ తాత్కాలికంగా స్పందించడం లేదు (Server Currently Down / Offline)`
+                            : isSlow
+                            ? `🟡 ${site.name} సర్వర్ కొద్దిగా నెమ్మదిగా ఉంది`
+                            : site.notes
+                            ? `${site.name} • ${site.notes}`
+                            : `${site.name} (Live Portal)`
                         }
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 hover:border-emerald-300 text-emerald-200 hover:text-white transition-all shadow-xs group cursor-pointer active:scale-95 select-none"
-                      title={site.notes ? `${site.name} • ${site.notes}` : `${site.name} (క్లిక్ చేసి ఓపెన్ చేయండి)`}
-                    >
-                      <span className="relative flex h-2 w-2 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                      </span>
-                      <span className="font-bold tracking-tight text-emerald-100 group-hover:text-white">
-                        {site.name}
-                      </span>
-                      <ExternalLink
-                        size={10}
-                        className="text-emerald-400/80 group-hover:text-emerald-200 group-hover:translate-x-0.5 transition-transform shrink-0"
-                      />
-                    </a>
-                  ))}
+                      >
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span
+                            className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                              isDown ? "bg-rose-500" : isSlow ? "bg-amber-400" : "bg-emerald-400"
+                            }`}
+                          />
+                          <span
+                            className={`relative inline-flex rounded-full h-2 w-2 ${
+                              isDown ? "bg-rose-500" : isSlow ? "bg-amber-400" : "bg-emerald-400"
+                            }`}
+                          />
+                        </span>
+                        <span
+                          className={`font-bold tracking-tight ${
+                            isDown
+                              ? "line-through opacity-85 text-rose-200 group-hover:text-white"
+                              : "text-emerald-100 group-hover:text-white"
+                          }`}
+                        >
+                          {site.name}
+                        </span>
+                        {isDown ? (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-rose-500/30 text-rose-300 font-black border border-rose-500/50">
+                            🔴 డౌన్
+                          </span>
+                        ) : isSlow ? (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 font-bold">
+                            🟡 Slow
+                          </span>
+                        ) : (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-black">
+                            Live
+                          </span>
+                        )}
+                        <ExternalLink
+                          size={10}
+                          className={`${
+                            isDown ? "text-rose-400" : "text-emerald-400/80"
+                          } group-hover:text-emerald-200 group-hover:translate-x-0.5 transition-transform shrink-0`}
+                        />
+                      </a>
+                    );
+                  })}
 
                 {/* Admin Quick Manage Button - visible only to Admin */}
                 {isAdmin && (
@@ -427,91 +603,39 @@ export function RoyalWelcomeHeroCard({
         )}
       </div>
 
-      {/* 6 Core Feature Quick Buttons - Sweet, Sleek & Compact */}
+      {/* Core Feature Quick Buttons - Dynamically Managed from Admin Panel */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <button
-          type="button"
-          onClick={() => handleNav("/ubd_tracker", "ubd_tracker")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-blue-950 hover:from-blue-900 hover:to-indigo-950 text-white rounded-xl border border-blue-800/30 hover:border-cyan-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
-        >
-          <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-105 transition-transform shrink-0">
-            <Settings size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-cyan-300 truncate">UBD Settings &amp; DSK</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">లైవ్ రికార్డ్స్ &amp; ట్రాకర్</div>
-          </div>
-        </button>
+        {heroFeatures
+          .filter((f) => f.active)
+          .map((item) => {
+            const IconComponent = ICON_MAP[item.iconName] || Globe;
+            const theme = THEME_CLASSES[item.colorTheme] || THEME_CLASSES.amber;
 
-        <button
-          type="button"
-          onClick={() => handleNav("/workspace", "workspace")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-indigo-950 hover:from-indigo-900 hover:to-blue-950 text-white rounded-xl border border-indigo-800/30 hover:border-indigo-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
-        >
-          <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
-            <Building size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-indigo-300 truncate">Mana Panchayath</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">డిజిటల్ వర్క్‌స్పేస్</div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleNav("/suggestions", "suggestions")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-pink-950 hover:from-pink-900 hover:to-slate-900 text-white rounded-xl border border-pink-800/30 hover:border-pink-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
-        >
-          <div className="p-1.5 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400 group-hover:scale-105 transition-transform shrink-0">
-            <MessageSquare size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-pink-300 truncate">Public Feedback</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">సలహాలు &amp; సూచనలు</div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleNav("/gos_formats", "gos_formats")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-amber-950 hover:from-amber-900 hover:to-slate-900 text-white rounded-xl border border-amber-800/30 hover:border-amber-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
-        >
-          <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform shrink-0">
-            <FileText size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-amber-300 truncate">GOs &amp; Formats</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">అధికారిక జీవోలు</div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleNav("/software_hub", "software_hub")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-purple-950 hover:from-purple-900 hover:to-slate-900 text-white rounded-xl border border-purple-800/30 hover:border-purple-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
-        >
-          <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-105 transition-transform shrink-0">
-            <Download size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-purple-300 truncate">Software Hub</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">టోకెన్ డ్రైవర్లు &amp; టూల్స్</div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleNav("/online_portal", "online_portal")}
-          className="p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 to-amber-950 hover:from-amber-900 hover:to-slate-900 text-white rounded-xl border border-amber-800/30 hover:border-amber-400/50 shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left"
-        >
-          <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform shrink-0">
-            <Globe size={15} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] sm:text-xs font-bold text-amber-300 truncate">Online portal at your line</div>
-            <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">త్వరలో ప్రారంభం (Soon)</div>
-          </div>
-        </button>
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleNav(item.target, item.tabId)}
+                className={`p-2 sm:p-2.5 bg-gradient-to-br ${theme.bg} text-white rounded-xl border ${theme.border} shadow-sm flex items-center gap-2 transition-all group cursor-pointer text-left active:scale-95`}
+              >
+                <div
+                  className={`p-1.5 rounded-lg ${theme.iconBg} border group-hover:scale-105 transition-transform shrink-0`}
+                >
+                  <IconComponent size={15} />
+                </div>
+                <div className="min-w-0">
+                  <div className={`text-[11px] sm:text-xs font-bold ${theme.text} truncate`}>
+                    {item.title}
+                  </div>
+                  {item.subtitle && (
+                    <div className="text-[9px] sm:text-[10px] text-slate-400 truncate">
+                      {item.subtitle}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
       </div>
 
       {/* Admin Quick Live Websites Modal */}
