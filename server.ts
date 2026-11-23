@@ -7917,7 +7917,6 @@ app.get('/api/remote-commands', (req, res) => {
 
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath, { 
-      index: false,
       setHeaders: (res, filePath) => {
         if (filePath.endsWith(".html") || filePath.endsWith("sw.js") || filePath.endsWith("manifest.json") || filePath.endsWith("service-worker.js")) {
           res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -7927,16 +7926,38 @@ app.get('/api/remote-commands', (req, res) => {
       }
     }));
 
-    app.get("/{*splat}", async (req, res) => {
+    app.get("*", async (req, res) => {
       if (req.path.startsWith('/api') || req.path.startsWith('/proxy') || req.path.startsWith('/uploads')) {
         return res.status(404).json({ error: `Not found: ${req.path}` });
       }
+
+      // Check if a pre-rendered static route HTML file exists in dist/ (e.g. dist/workspace/portal-gateway/index.html or dist/home/post/ubdsetting/index.html)
+      const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
+      if (cleanPath) {
+        const candidates = [
+          path.join(distPath, cleanPath, "index.html"),
+          path.join(distPath, `${cleanPath}.html`)
+        ];
+        for (const candidate of candidates) {
+          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+            return res.sendFile(candidate);
+          }
+        }
+      }
+
       const indexPath = path.join(distPath, "index.html");
-      if (!fs.existsSync(indexPath)) {
+      const rootIndexPath = path.join(process.cwd(), "index.html");
+      const targetIndexPath = fs.existsSync(indexPath) ? indexPath : (fs.existsSync(rootIndexPath) ? rootIndexPath : null);
+
+      if (!targetIndexPath) {
         return res.status(404).send("Page not found");
       }
 
-      let html = fs.readFileSync(indexPath, "utf-8");
+      let html = fs.readFileSync(targetIndexPath, "utf-8");
       try {
         html = await renderDynamicOgTags(req, html);
       } catch (err) {

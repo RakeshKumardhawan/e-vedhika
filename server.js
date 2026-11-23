@@ -201,6 +201,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.get('*', (req, res) => {
+  const cleanPath = req.path.replace(/^\/+|\/+$/g, "");
+  if (cleanPath) {
+    const candidate1 = path.join(__dirname, 'dist', cleanPath, 'index.html');
+    const candidate2 = path.join(__dirname, 'dist', `${cleanPath}.html`);
+    if (fs.existsSync(candidate1)) return res.sendFile(candidate1);
+    if (fs.existsSync(candidate2)) return res.sendFile(candidate2);
+  }
   const distIndex = path.join(__dirname, 'dist', 'index.html');
   if (fs.existsSync(distIndex)) {
     return res.sendFile(distIndex);
