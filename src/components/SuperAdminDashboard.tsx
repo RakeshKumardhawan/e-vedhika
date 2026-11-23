@@ -45,6 +45,7 @@ import { AdminSoftwareHub } from './admin/AdminSoftwareHub';
 import { UBDMonitoringSection } from './admin/UBDMonitoringSection';
 import { GoogleAuthDiagnosticsReport } from './admin/GoogleAuthDiagnosticsReport';
 import { YouTubeTutorialsAdmin } from './admin/YouTubeTutorialsAdmin';
+import { LiveWebsitesManager } from './admin/LiveWebsitesManager';
 import { Youtube } from 'lucide-react';
 
 
@@ -650,6 +651,8 @@ export function SuperAdminDashboard({
       {/* Route to specific sub-tool or default to Analytics Hub Overview */}
       {effectiveTab === "cms" ? (
         <VisualCMS />
+      ) : effectiveTab === "live_websites" ? (
+        <LiveWebsitesManager user={user} addToast={addToast} />
       ) : effectiveTab === "moderation" ? (
         <TechCommunityModeration />
       ) : effectiveTab === "broadcast" ? (
@@ -949,6 +952,7 @@ export function SuperAdminDashboard({
                   {[
                     { l: "User Directory", i: "users", icon: Users, color: "text-blue-400", bg: "bg-blue-400/10" },
                     { l: "Content CMS", i: "cms", icon: LayoutDashboard, color: "text-purple-400", bg: "bg-purple-400/10" },
+                    { l: "లైవ్ వెబ్సైట్లు", i: "live_websites", icon: Globe, color: "text-emerald-400", bg: "bg-emerald-400/10" },
                     { l: "Moderation Queue", i: "moderation", icon: Bot, color: "text-amber-400", bg: "bg-amber-400/10" },
                     { l: "Emergency Broadcast", i: "broadcast", icon: Megaphone, color: "text-emerald-400", bg: "bg-emerald-400/10" },
                     { l: "Database Backups", i: "db_backup", icon: Database, color: "text-cyan-400", bg: "bg-cyan-400/10" },

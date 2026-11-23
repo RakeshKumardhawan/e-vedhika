@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Save, Plus, FileEdit, Trash2, Link as LinkIcon, RefreshCw, Eye } from 'lucide-react';
+import { LayoutDashboard, Save, Plus, FileEdit, Trash2, Link as LinkIcon, RefreshCw, Eye, Globe, X } from 'lucide-react';
+import { LiveWebsitesManager } from './LiveWebsitesManager';
 
 export function VisualCMS() {
   const [pages, setPages] = useState([
@@ -12,6 +13,7 @@ export function VisualCMS() {
   const [copiedFeedUrl, setCopiedFeedUrl] = useState(false);
   const [testingSync, setTestingSync] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [showLiveWebsitesModal, setShowLiveWebsitesModal] = useState(false);
 
   const officialFeedUrl = "https://www.e-vedhika.in/api/v1/posts/feed";
   const currentFeedUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1/posts/feed` : officialFeedUrl;
@@ -182,6 +184,21 @@ export function VisualCMS() {
                 </div>
                 <button className="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg"><FileEdit size={14} /></button>
               </div>
+
+              <div className="p-3 bg-emerald-50/90 rounded-lg border border-emerald-200/90 flex items-center justify-between">
+                <div>
+                  <h5 className="font-bold text-emerald-950 text-xs mb-0.5 flex items-center gap-1.5">
+                    <Globe size={13} className="text-emerald-600" /> Hero Live Websites
+                  </h5>
+                  <p className="text-[10px] text-emerald-800 font-medium">All Problems One Solution పక్కన కనిపించే లైవ్ వెబ్‌సైట్లు</p>
+                </div>
+                <button
+                  onClick={() => setShowLiveWebsitesModal(true)}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg transition-colors cursor-pointer"
+                >
+                  Manage
+                </button>
+              </div>
             </div>
             <button className="w-full mt-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
               <Save size={14} /> Save Layout Changes
@@ -189,6 +206,18 @@ export function VisualCMS() {
           </div>
         </div>
       </div>
+
+      {/* Hero Live Websites Manager Modal */}
+      {showLiveWebsitesModal && (
+        <div className="fixed inset-0 z-[12000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden my-auto border border-slate-200">
+            <LiveWebsitesManager
+              isModal={true}
+              onClose={() => setShowLiveWebsitesModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

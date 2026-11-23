@@ -14427,7 +14427,7 @@ function AdminPanel({
             
             
             
-            {["dash", "super_admin", "overview", "adsense", "cms", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "ubd_monitoring", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management", "google_auth_report"].includes(activeSubTab) && (
+            {["dash", "super_admin", "overview", "adsense", "cms", "live_websites", "ci_cd", "ai_copilot", "seo", "theme", "db_backup", "newsletter", "moderation", "broadcast", "ai_seo", "ssl", "localization", "exe_release", "ubd_monitoring", "health", "ddos", "cdn", "errors", "timeline", "monitoring", "security", "admin_inbox", "chat_mgmt", "support", "notifications", "roles", "users", "staff_management", "google_auth_report"].includes(activeSubTab) && (
               <SuperAdminDashboard 
                 user={userProfile || user} 
                 stats={stats} 

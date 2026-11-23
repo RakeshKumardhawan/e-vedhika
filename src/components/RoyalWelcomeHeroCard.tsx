@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { auth, db } from "../../firebase";
 import {
   Sparkles,
   Sun,
@@ -18,7 +19,15 @@ import {
   MessageSquare,
   FileDown,
   Globe,
+  ExternalLink,
+  Plus,
+  X,
 } from "lucide-react";
+import {
+  LiveWebsiteItem,
+  DEFAULT_LIVE_WEBSITES,
+  LiveWebsitesManager,
+} from "./admin/LiveWebsitesManager";
 
 interface RoyalWelcomeHeroCardProps {
   userProfile?: any;
@@ -137,6 +146,52 @@ export function RoyalWelcomeHeroCard({
   );
   const nameToDisplay = fullName.trim();
 
+  // Admin check for managing live websites
+  const userRole = (userProfile?.role || effectiveUser?.role || "").toLowerCase();
+  const userEmail = (effectiveUser?.email || userProfile?.email || "").toLowerCase();
+  const isAdmin = Boolean(
+    ["admin", "super_admin", "editor", "moderator"].includes(userRole) ||
+    userEmail === "rakeshkumardhawan123@gmail.com" ||
+    userEmail.includes("evedhikasupport@gmail.com")
+  );
+
+  // Live Websites state loaded in real-time from Firestore
+  const [liveWebsites, setLiveWebsites] = useState<LiveWebsiteItem[]>(DEFAULT_LIVE_WEBSITES);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+
+  useEffect(() => {
+    let unsub = () => {};
+    try {
+      if (db) {
+        unsub = onSnapshot(
+          doc(db, "site_settings", "live_websites"),
+          (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              if (Array.isArray(data.websites) && data.websites.length > 0) {
+                const sorted = [...data.websites].sort(
+                  (a, b) => (a.order || 0) - (b.order || 0)
+                );
+                setLiveWebsites(sorted);
+              } else {
+                setLiveWebsites(DEFAULT_LIVE_WEBSITES);
+              }
+            } else {
+              setLiveWebsites(DEFAULT_LIVE_WEBSITES);
+            }
+          },
+          (err) => {
+            console.warn("Failed to listen to live_websites in Hero, using defaults:", err);
+            setLiveWebsites(DEFAULT_LIVE_WEBSITES);
+          }
+        );
+      }
+    } catch (e) {
+      setLiveWebsites(DEFAULT_LIVE_WEBSITES);
+    }
+    return () => unsub();
+  }, []);
+
   const handleNav = (target: string, tabId?: string) => {
     if (tabId) {
       setCurrentTab(tabId);
@@ -204,6 +259,51 @@ export function RoyalWelcomeHeroCard({
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-950/60 border border-emerald-500/25 text-emerald-200">
                   🏛️ All Problems One Solution
                 </span>
+
+                {/* 🌐 Live Websites configured from Admin Panel - right beside 'All Problems One Solution' */}
+                {liveWebsites
+                  .filter((site) => site.active)
+                  .map((site) => (
+                    <a
+                      key={site.id}
+                      href={site.url}
+                      target={site.url.startsWith("http") ? "_blank" : undefined}
+                      rel={site.url.startsWith("http") ? "noopener noreferrer" : undefined}
+                      onClick={(e) => {
+                        if (!site.url.startsWith("http")) {
+                          e.preventDefault();
+                          handleNav(site.url);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 hover:border-emerald-300 text-emerald-200 hover:text-white transition-all shadow-xs group cursor-pointer active:scale-95 select-none"
+                      title={site.notes ? `${site.name} • ${site.notes}` : `${site.name} (క్లిక్ చేసి ఓపెన్ చేయండి)`}
+                    >
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                      </span>
+                      <span className="font-bold tracking-tight text-emerald-100 group-hover:text-white">
+                        {site.name}
+                      </span>
+                      <ExternalLink
+                        size={10}
+                        className="text-emerald-400/80 group-hover:text-emerald-200 group-hover:translate-x-0.5 transition-transform shrink-0"
+                      />
+                    </a>
+                  ))}
+
+                {/* Admin Quick Manage Button - visible only to Admin */}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminModal(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-950/60 hover:bg-amber-900/90 border border-amber-500/40 hover:border-amber-300 text-amber-300 hover:text-amber-100 text-[10px] font-black tracking-wide shadow-xs transition-all cursor-pointer active:scale-95"
+                    title="లైవ్ వెబ్‌సైట్లను సవరించండి (Admin Only)"
+                  >
+                    <Settings size={11} className="text-amber-400 animate-spin-slow" />
+                    <span>+ లైవ్ వెబ్సైట్లు మేనేజ్ చేయండి</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -413,6 +513,19 @@ export function RoyalWelcomeHeroCard({
           </div>
         </button>
       </div>
+
+      {/* Admin Quick Live Websites Modal */}
+      {showAdminModal && isAdmin && (
+        <div className="fixed inset-0 z-[12000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden my-auto border border-slate-200">
+            <LiveWebsitesManager
+              user={effectiveUser}
+              isModal={true}
+              onClose={() => setShowAdminModal(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
