@@ -7917,6 +7917,7 @@ app.get('/api/remote-commands', (req, res) => {
 
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath, { 
+      redirect: false,
       setHeaders: (res, filePath) => {
         if (filePath.endsWith(".html") || filePath.endsWith("sw.js") || filePath.endsWith("manifest.json") || filePath.endsWith("service-worker.js")) {
           res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
