@@ -306,6 +306,11 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
       const mandal = mandalMatch?.[1]?.trim() || 'Telangana';
       const district = districtMatch?.[1]?.trim() || 'Telangana';
 
+      const updated = { ...session, cookie: cookieStr, verified: true, officeId, gpName, mandal, district, userLevel };
+      const updatedSessionId = encodeStatelessToken(updated);
+      epSessions.set(updatedSessionId, updated);
+      if (env && env.SESSIONS) await env.SESSIONS.put(updatedSessionId, JSON.stringify(updated), { expirationTtl: 3600 });
+
       const result = {
         success: true,
         authenticated: true,
@@ -319,13 +324,9 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
         district_name: district,
         userLevel,
         user_level: userLevel,
-        sessionId
+        portalTarget: (() => { try { const u = new URL(otpResp.url); return u.pathname + u.search; } catch { return '/deptLoginVerified'; } })(),
+        sessionId: updatedSessionId
       };
-
-      // Update session
-      const updated = { ...session, cookie: cookieStr, verified: true, ...result };
-      epSessions.set(sessionId, updated);
-      if (env && env.SESSIONS) await env.SESSIONS.put(sessionId, JSON.stringify(updated), { expirationTtl: 3600 });
 
       return Response.json(result, { headers: corsHeaders });
     } catch (e) {
@@ -377,6 +378,116 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
       return Response.json({ success: true, rows, source: 'epanchayat_live' }, { headers: corsHeaders });
     } catch (e) {
       return Response.json({ error: 'balance_fetch_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // GET/POST /api/epanchayat/portal?sessionId=xxx&target=/deptLoginVerified
+  // Full Authenticated e-Panchayat Portal Proxy (Indian Edge IP)
+  if (path === '/api/epanchayat/portal') {
+    const sid = url.searchParams.get('sessionId') || url.searchParams.get('sid') || '';
+    let target = url.searchParams.get('target') || '/deptLoginVerified';
+    let session = epSessions.get(sid) || decodeStatelessToken(sid);
+    if (!session && env && env.SESSIONS && sid) {
+      const kv = await env.SESSIONS.get(sid);
+      if (kv) session = JSON.parse(kv);
+    }
+    if (!session || !session.verified) {
+      return new Response('<html><body style="font-family:sans-serif;padding:24px;"><h3>Session Expired</h3><p>దయచేసి మళ్లీ OTP తో లాగిన్ అవ్వండి.</p></body></html>', {
+        status: 401,
+        headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }
+      });
+    }
+
+    // Restrict strictly to epanchayat.telangana.gov.in
+    let targetUrl;
+    try {
+      if (target.startsWith('http://') || target.startsWith('https://')) {
+        const parsed = new URL(target);
+        if (parsed.hostname !== 'epanchayat.telangana.gov.in') {
+          return new Response('Forbidden host', { status: 403, headers: corsHeaders });
+        }
+        targetUrl = parsed.toString();
+      } else {
+        targetUrl = `${EP_BASE}${target.startsWith('/') ? '' : '/'}${target}`;
+      }
+    } catch {
+      targetUrl = `${EP_BASE}/deptLoginVerified`;
+    }
+
+    try {
+      const fwdHeaders = {
+        ...EP_HEADERS_BASE,
+        'Cookie': session.cookie,
+        'Referer': `${EP_BASE}/deptLoginVerified`,
+        'Origin': EP_BASE
+      };
+      const reqCt = request.headers.get('content-type');
+      if (reqCt) fwdHeaders['Content-Type'] = reqCt;
+
+      const fwdInit = {
+        method: request.method,
+        headers: fwdHeaders,
+        redirect: 'follow'
+      };
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        fwdInit.body = await request.arrayBuffer();
+      }
+
+      const epResp = await fetch(targetUrl, fwdInit);
+      const ct = (epResp.headers.get('content-type') || '').toLowerCase();
+
+      if (ct.includes('text/html')) {
+        let html = await epResp.text();
+        const proxyPrefix = `${url.origin}/api/epanchayat/portal?sessionId=${encodeURIComponent(sid)}&target=`;
+        const navScript = `
+<base href="${EP_BASE}/">
+<script>
+(function(){
+  var PREFIX = ${JSON.stringify(proxyPrefix)};
+  function toTarget(raw) {
+    if (!raw) return null;
+    if (raw.startsWith('#') || raw.startsWith('javascript:') || raw.startsWith('mailto:')) return null;
+    try {
+      var u = new URL(raw, '${EP_BASE}/');
+      if (u.hostname !== 'epanchayat.telangana.gov.in') return null;
+      return PREFIX + encodeURIComponent(u.pathname + u.search);
+    } catch(e) { return null; }
+  }
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!a) return;
+    var href = a.getAttribute('href');
+    var proxied = toTarget(href);
+    if (proxied) { e.preventDefault(); window.location.href = proxied; }
+  }, true);
+  document.addEventListener('submit', function(e) {
+    var f = e.target;
+    if (!f || !f.tagName || f.tagName.toLowerCase() !== 'form') return;
+    var action = f.getAttribute('action') || window.location.pathname;
+    var proxied = toTarget(action);
+    if (proxied) { f.action = proxied; }
+  }, true);
+})();
+</script>`;
+        if (/<head[^>]*>/i.test(html)) {
+          html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${navScript}`);
+        } else {
+          html = navScript + html;
+        }
+        return new Response(html, {
+          status: epResp.status,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }
+        });
+      }
+
+      const buf = await epResp.arrayBuffer();
+      const respHeaders = new Headers(corsHeaders);
+      if (ct) respHeaders.set('Content-Type', ct);
+      const disp = epResp.headers.get('content-disposition');
+      if (disp) respHeaders.set('Content-Disposition', disp);
+      return new Response(buf, { status: epResp.status, headers: respHeaders });
+    } catch (e) {
+      return new Response(`Portal proxy error: ${String(e)}`, { status: 502, headers: corsHeaders });
     }
   }
 

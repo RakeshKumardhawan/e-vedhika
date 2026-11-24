@@ -63,8 +63,10 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const [mandalName, setMandalName] = useState("భీమిని మండలం (Bheemini)");
   const [districtName, setDistrictName] = useState("మంచిర్యాల జిల్లా (Mancherial)");
 
-  // Active Report Tab: 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb'
-  const [activeReport, setActiveReport] = useState<'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb'>('balance_14_1');
+  // Active Report Tab: 'full_portal' | 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb'
+  const [activeReport, setActiveReport] = useState<'full_portal' | 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb'>('full_portal');
+  const [portalTarget, setPortalTarget] = useState("/deptLoginVerified");
+  const [portalRefreshKey, setPortalRefreshKey] = useState(0);
   const [reportSearch, setReportSearch] = useState("");
   const [isScrapingLive, setIsScrapingLive] = useState(false);
   const [scrapeProgress, setScrapeProgress] = useState(0);
@@ -208,6 +210,8 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       setIsValidatingOtp(false);
 
       if (data && (data.success || data.authenticated)) {
+        if (data.sessionId) setEpSessionId(data.sessionId);
+        if (data.portalTarget) setPortalTarget(data.portalTarget);
         if (data.user_level || data.userLevel) setUserLevel(data.user_level || data.userLevel);
         if (data.gp_name || data.gpName) setGpName(data.gp_name || data.gpName);
         if (data.mandal_name || data.mandal) setMandalName(data.mandal_name || data.mandal);
@@ -639,7 +643,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   }, [userLevel, gpName, dcbGpsData]);
 
   // Scrape trigger
-  const handleTriggerScrape = (reportKey: 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb') => {
+  const handleTriggerScrape = (reportKey: 'full_portal' | 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb') => {
     setActiveReport(reportKey);
     setIsScrapingLive(true);
     setScrapeProgress(25);
@@ -1130,8 +1134,15 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
           </div>
 
           {/* Module Tabs (Tailored dynamically based on User Level) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
             {[
+              { 
+                id: 'full_portal', 
+                label: '🌐 పూర్తి e-Panchayat పోర్టల్', 
+                sub: 'Full Live Official Access', 
+                icon: Globe, 
+                color: 'border-emerald-600 bg-emerald-50/80 text-emerald-950' 
+              },
               { 
                 id: 'balance_14_1', 
                 label: userLevel === 'gp' ? 'GM-R 14.1 బ్యాలెన్స్ నివేదిక' : 'GM-R 14.2 GP బ్యాలెన్స్ ఎంట్రీ', 
@@ -1256,6 +1267,46 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
           {/* =================================================================== */}
           {/* TAB 1: BALANCE REPORT (BRANCHED FOR GP vs MANDAL vs DISTRICT)        */}
           {/* =================================================================== */}
+          {activeReport === 'full_portal' && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+                  <Globe size={16} className="text-emerald-400" />
+                  <span>Full Live e-Panchayat Portal ({gpName})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setPortalTarget('/deptLoginVerified'); setPortalRefreshKey(k => k + 1); }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold cursor-pointer"
+                  >
+                    🏠 Home
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPortalRefreshKey(k => k + 1)}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw size={12} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+              {epSessionId ? (
+                <iframe
+                  key={`${epSessionId}-${portalRefreshKey}`}
+                  src={`${EP_WORKER_BASE}/api/epanchayat/portal?sessionId=${encodeURIComponent(epSessionId)}&target=${encodeURIComponent(portalTarget)}`}
+                  title="Full e-Panchayat Live Portal"
+                  className="w-full h-[78vh] border-0 bg-white"
+                />
+              ) : (
+                <div className="p-8 text-center text-sm text-slate-600">
+                  దయచేసి ముందుగా OTP తో లాగిన్ అవ్వండి.
+                </div>
+              )}
+            </div>
+          )}
+
           {activeReport === 'balance_14_1' && (
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
               {/* Header */}
