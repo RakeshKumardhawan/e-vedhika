@@ -733,26 +733,28 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
 
             {viewMode === 'preview' ? (
               /* Authentic Official Portal Replica Preview - Mobile Adaptive & Unclipped */
-              <div className="p-3 sm:p-6 bg-slate-50 border-2 border-slate-300 rounded-2xl font-serif space-y-4">
+              <div className="p-3 sm:p-6 bg-slate-50 border-2 border-slate-300 rounded-2xl font-serif space-y-4 max-w-full overflow-hidden">
                 {/* 1. Header & Title - Always 100% visible, centered, responsive, never clipped on mobile */}
-                <div className="text-center px-1 sm:px-4 py-2 border-b border-slate-200">
-                  <h3 className="font-bold text-xs sm:text-base text-blue-950 uppercase tracking-wide leading-tight">
+                <div className="text-center px-2 sm:px-4 py-3 border-b border-slate-200 bg-white/70 rounded-xl">
+                  <h3 className="font-bold text-xs sm:text-base text-blue-950 uppercase tracking-wide leading-snug break-words">
                     UNIFIED BIRTH &amp; DEATH REGISTRATION - MANAGEMENT INFORMATION SYSTEM
                   </h3>
-                  <h4 className="font-extrabold text-[11px] sm:text-sm text-blue-900 uppercase mt-1">
+                  <h4 className="font-extrabold text-[11px] sm:text-sm text-blue-900 uppercase mt-1 break-words">
                     {selectedState === 'TS' ? 'GOVERNMENT OF TELANGANA' : 'GOVERNMENT OF ANDHRA PRADESH'}
                   </h4>
-                  <p className="text-[10px] sm:text-xs font-semibold text-slate-700 mt-2 leading-relaxed">
+                  <p className="text-[10px] sm:text-xs font-semibold text-slate-700 mt-2 leading-relaxed break-words">
                     {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for the Local Body &mdash; Gram Panchayat: <strong className="text-blue-900">{gpName}</strong> | Mandal: <strong>{mandal || '-'}</strong> | District: <strong>{district || 'TELANGANA'}</strong> as on {new Date().toLocaleDateString('en-GB')}
                   </p>
                 </div>
 
                 {/* 2. Top action bar with Export button & Mobile scroll hint */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-[11px] text-blue-700 bg-blue-50/90 border border-blue-200/80 px-2.5 py-1 rounded-lg font-sans font-medium">
-                    <span>↔️</span>
-                    <span>మొబైల్‌లో పూర్తి టేబుల్ చూడటానికి పక్కకి స్క్రోల్ చేయండి (Swipe horizontally)</span>
-                  </div>
+                  {currentRecords.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-blue-700 bg-blue-50/90 border border-blue-200/80 px-2.5 py-1 rounded-lg font-sans font-medium">
+                      <span>↔️</span>
+                      <span>మొబైల్‌లో పూర్తి టేబుల్ చూడటానికి పక్కకి స్క్రోల్ చేయండి (Swipe horizontally)</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={handleExportExcel}
@@ -762,27 +764,27 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                   </button>
                 </div>
 
-                {/* 3. Table Container - Scrollable horizontally without clipping the outer cards */}
-                <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white shadow-2xs">
-                  <table className="min-w-[720px] w-full border-collapse border border-slate-300 text-xs text-left">
-                    <thead>
-                      <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
-                        <th className="p-2.5 text-center border-r border-slate-300 w-12">Sl. No</th>
-                        <th className="p-2.5 border-r border-slate-300">Reg. No</th>
-                        <th className="p-2.5 border-r border-slate-300">Reg. Year</th>
-                        <th className="p-2.5 border-r border-slate-300">Reg. Date</th>
-                        <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Date of Death' : 'Date of Birth'}</th>
-                        <th className="p-2.5 border-r border-slate-300">Gender</th>
-                        <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Deceased Name' : 'Child Name'}</th>
-                        <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Relative Name' : 'Mother Name'}</th>
-                        {registerType === 'BIR' && (
-                          <th className="p-2.5">Father Name</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {currentRecords.length > 0 ? (
-                        currentRecords.map((r, idx) => (
+                {/* 3. Table Container or Clean Responsive Empty State */}
+                {currentRecords.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white shadow-2xs -webkit-overflow-scrolling-touch">
+                    <table className="min-w-[720px] w-full border-collapse border border-slate-300 text-xs text-left">
+                      <thead>
+                        <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
+                          <th className="p-2.5 text-center border-r border-slate-300 w-12">Sl. No</th>
+                          <th className="p-2.5 border-r border-slate-300">Reg. No</th>
+                          <th className="p-2.5 border-r border-slate-300">Reg. Year</th>
+                          <th className="p-2.5 border-r border-slate-300">Reg. Date</th>
+                          <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Date of Death' : 'Date of Birth'}</th>
+                          <th className="p-2.5 border-r border-slate-300">Gender</th>
+                          <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Deceased Name' : 'Child Name'}</th>
+                          <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Relative Name' : 'Mother Name'}</th>
+                          {registerType === 'BIR' && (
+                            <th className="p-2.5">Father Name</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {currentRecords.map((r, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors">
                             <td className="p-2.5 text-center border-r border-slate-200">{r.sno || idx + 1}</td>
                             <td className="p-2.5 border-r border-slate-200 font-mono font-bold text-blue-900">{r.regNo || "-"}</td>
@@ -796,17 +798,20 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
                               <td className="p-2.5">{r.fatherName || "-"}</td>
                             )}
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={registerType === 'BIR' ? 9 : 8} className="p-8 text-center text-slate-500 font-bold bg-slate-50/50">
-                            No registered records found for Gram Panchayat #{activeUnitId} in this register.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-8 px-4 text-center rounded-xl border border-slate-300 bg-white shadow-2xs space-y-2">
+                    <p className="text-xs sm:text-sm font-bold text-slate-800">
+                      ఈ గ్రామ పంచాయతీకి (#{activeUnitId}) ప్రస్తుత రిజిస్టర్‌లో రికార్డులు ఏవీ లేవు.
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      No registered records found for Gram Panchayat #{activeUnitId} in this register.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="border border-blue-200 rounded-2xl overflow-hidden shadow-xs">
