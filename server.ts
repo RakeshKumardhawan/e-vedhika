@@ -426,7 +426,7 @@ async function startServer() {
         userLevel,
         gpName: isGp ? `గ్రామ పంచాయతీ (${cleanId})` : null,
         mandalName: isGp ? "సంబంధిత మండలం" : "మండల కార్యాలయం",
-        district: district || "తెలంగాణ",
+        district: district || "మంచిర్యాల జిల్లా",
         status: "connected",
         portal: "epanchayat.telangana.gov.in",
         sessionToken: `tok_${Date.now()}_auth`,
