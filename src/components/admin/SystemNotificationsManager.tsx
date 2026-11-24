@@ -8,7 +8,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot, 
   query, orderBy, limit, setDoc, getDoc 
 } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../../../firebase';
 import Swal from 'sweetalert2';
 
 interface SystemNotificationsManagerProps {
