@@ -2852,7 +2852,21 @@ export default function App() {
   const [hasEnteredSite, setHasEnteredSite] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userRole, setUserRole] = useState<"admin" | "editor" | "user">("user");
+  const [userRole, setUserRole] = useState<"admin" | "editor" | "user">(() => {
+    try {
+      const cached = typeof window !== 'undefined' ? localStorage.getItem("evedhika_cached_user_role") : null;
+      if (cached === "admin" || cached === "editor" || cached === "user") return cached as any;
+    } catch {}
+    return "user";
+  });
+
+  useEffect(() => {
+    try {
+      if (userRole && userRole !== 'user') {
+        localStorage.setItem("evedhika_cached_user_role", userRole);
+      }
+    } catch {}
+  }, [userRole]);
   const [posts, setPosts] = useState<Post[]>([]);
   const hasGreetedRef = useRef(false);
 
@@ -4395,6 +4409,10 @@ e-Vedhika Support System`;
       } else if (user && (currentTab === "admin" || currentTab === "editor")) {
         // Enforce user roles for admin and editor if they managed to set the tab
         if (!canAccessAdmin) {
+          const cached = typeof window !== 'undefined' ? localStorage.getItem("evedhika_cached_user_role") : null;
+          if (cached === 'admin' || isDevEmail) {
+            return;
+          }
           setCurrentTab("home");
           setSearchParams(new URLSearchParams());
           addToast(

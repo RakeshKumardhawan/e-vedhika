@@ -642,6 +642,52 @@ app.get('/api/announcements', (req, res) => {
   res.json(liveAnnouncements);
 });
 
+// API: Authentic Live Server Health & System Telemetry Metrics
+let lastCpuUsage = process.cpuUsage();
+let lastCpuTime = Date.now();
+app.get(['/api/admin/system-health', '/api/system-health'], (req, res) => {
+  try {
+    const mem = process.memoryUsage();
+    const uptime = Math.floor(process.uptime());
+    const hours = Math.floor(uptime / 3600);
+    const mins = Math.floor((uptime % 3600) / 60);
+    const secs = uptime % 60;
+    const uptimeStr = hours > 0 ? `${hours}h ${mins}m ${secs}s` : `${mins}m ${secs}s`;
+
+    // Calculate real CPU load percentage
+    const currentCpuUsage = process.cpuUsage(lastCpuUsage);
+    const currentTime = Date.now();
+    const timeDiffMs = currentTime - lastCpuTime || 1;
+    const totalCpuMs = (currentCpuUsage.user + currentCpuUsage.system) / 1000;
+    const cpuPercent = Math.min(100, Math.max(1, Math.round((totalCpuMs / timeDiffMs) * 100)));
+    lastCpuUsage = process.cpuUsage();
+    lastCpuTime = currentTime;
+
+    const rssMb = (mem.rss / (1024 * 1024)).toFixed(1);
+    const heapUsedMb = (mem.heapUsed / (1024 * 1024)).toFixed(1);
+
+    res.json({
+      success: true,
+      status: "optimal",
+      uptime: uptime,
+      uptimeFormatted: uptimeStr,
+      memory: {
+        rssMb: parseFloat(rssMb),
+        heapUsedMb: parseFloat(heapUsedMb),
+        heapTotalMb: parseFloat((mem.heapTotal / (1024 * 1024)).toFixed(1))
+      },
+      cpu: {
+        loadPercent: cpuPercent
+      },
+      platform: process.platform,
+      nodeVersion: process.version,
+      timestamp: Date.now()
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // API: Admin Broadcast Welcome Messages & Delivery Report
 app.all(['/api/admin/broadcast-welcome-messages', '/api/admin/broadcast-welcome'], async (req, res) => {
   try {

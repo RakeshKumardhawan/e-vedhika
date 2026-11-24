@@ -732,78 +732,81 @@ export function UBDTracker({ user, addToast }: UBDTrackerProps) {
             </div>
 
             {viewMode === 'preview' ? (
-              /* Authentic Official Portal Replica Preview */
-              <div className="p-4 sm:p-6 bg-slate-50 border-2 border-slate-300 rounded-2xl overflow-x-auto font-serif">
-                <table width="100%" border={0} className="text-center mb-3">
-                  <tbody>
-                    <tr>
-                      <td className="font-bold text-sm sm:text-base text-blue-950 uppercase tracking-wide">
-                        UNIFIED BIRTH &amp; DEATH REGISTRATION-MANAGEMENT INFORMATION SYSTEM<br />
-                        {selectedState === 'TS' ? 'GOVERNMENT OF TELANGANA' : 'GOVERNMENT OF ANDHRA PRADESH'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table width="100%" border={0} className="text-center mb-3">
-                  <tbody>
-                    <tr className="text-xs sm:text-sm font-semibold text-slate-800">
-                      <td>
-                        {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for the Local Body &nbsp; &nbsp; Gram Panchayat:&nbsp; <b>{gpName}</b> | Mandal: <b>{mandal || '-'}</b> | District: <b>{district || 'TELANGANA'}</b> as on {new Date().toLocaleDateString('en-GB')}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div className="flex justify-end mb-2">
+              /* Authentic Official Portal Replica Preview - Mobile Adaptive & Unclipped */
+              <div className="p-3 sm:p-6 bg-slate-50 border-2 border-slate-300 rounded-2xl font-serif space-y-4">
+                {/* 1. Header & Title - Always 100% visible, centered, responsive, never clipped on mobile */}
+                <div className="text-center px-1 sm:px-4 py-2 border-b border-slate-200">
+                  <h3 className="font-bold text-xs sm:text-base text-blue-950 uppercase tracking-wide leading-tight">
+                    UNIFIED BIRTH &amp; DEATH REGISTRATION - MANAGEMENT INFORMATION SYSTEM
+                  </h3>
+                  <h4 className="font-extrabold text-[11px] sm:text-sm text-blue-900 uppercase mt-1">
+                    {selectedState === 'TS' ? 'GOVERNMENT OF TELANGANA' : 'GOVERNMENT OF ANDHRA PRADESH'}
+                  </h4>
+                  <p className="text-[10px] sm:text-xs font-semibold text-slate-700 mt-2 leading-relaxed">
+                    {registerType === 'BIR' ? 'Birth Register Details' : 'Death Register Details'} for the Local Body &mdash; Gram Panchayat: <strong className="text-blue-900">{gpName}</strong> | Mandal: <strong>{mandal || '-'}</strong> | District: <strong>{district || 'TELANGANA'}</strong> as on {new Date().toLocaleDateString('en-GB')}
+                  </p>
+                </div>
+
+                {/* 2. Top action bar with Export button & Mobile scroll hint */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-[11px] text-blue-700 bg-blue-50/90 border border-blue-200/80 px-2.5 py-1 rounded-lg font-sans font-medium">
+                    <span>↔️</span>
+                    <span>మొబైల్‌లో పూర్తి టేబుల్ చూడటానికి పక్కకి స్క్రోల్ చేయండి (Swipe horizontally)</span>
+                  </div>
                   <button
                     type="button"
                     onClick={handleExportExcel}
-                    className="px-4 py-1 bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 text-xs font-bold border border-slate-400 rounded cursor-pointer"
+                    className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 text-xs font-bold border border-slate-400 rounded-lg cursor-pointer transition-all shadow-2xs font-sans ml-auto"
                   >
-                    Export
+                    Export Excel
                   </button>
                 </div>
-                <table width="100%" border={1} className="border-collapse border border-slate-400 text-xs bg-white text-left">
-                  <thead>
-                    <tr className="bg-slate-200 text-slate-800 font-bold border border-slate-400">
-                      <th className="p-2 text-center border border-slate-400">Sl. No</th>
-                      <th className="p-2 border border-slate-400">Reg. No</th>
-                      <th className="p-2 border border-slate-400">Reg. Year</th>
-                      <th className="p-2 border border-slate-400">Reg. Date</th>
-                      <th className="p-2 border border-slate-400">{registerType === 'DEA' ? 'Date of Death' : 'Date of Birth'}</th>
-                      <th className="p-2 border border-slate-400">Gender</th>
-                      <th className="p-2 border border-slate-400">{registerType === 'DEA' ? 'Deceased Name' : 'Child Name'}</th>
-                      <th className="p-2 border border-slate-400">{registerType === 'DEA' ? 'Relative Name' : 'Mother Name'}</th>
-                      {registerType === 'BIR' && (
-                        <th className="p-2 border border-slate-400">Father Name</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentRecords.length > 0 ? (
-                      currentRecords.map((r, idx) => (
-                        <tr key={idx} className="border border-slate-300">
-                          <td className="p-2 text-center border border-slate-300">{r.sno || idx + 1}</td>
-                          <td className="p-2 border border-slate-300">{r.regNo || "-"}</td>
-                          <td className="p-2 border border-slate-300">{r.regYear || "-"}</td>
-                          <td className="p-2 border border-slate-300">{r.regDate || "-"}</td>
-                          <td className="p-2 border border-slate-300">{r.dob || r.dod || "-"}</td>
-                          <td className="p-2 border border-slate-300">{r.gender || "-"}</td>
-                          <td className="p-2 font-bold border border-slate-300">{r.childName || r.deceasedName || "-"}</td>
-                          <td className="p-2 border border-slate-300">{r.motherName || r.relativeName || "-"}</td>
-                          {registerType === 'BIR' && (
-                            <td className="p-2 border border-slate-300">{r.fatherName || "-"}</td>
-                          )}
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={registerType === 'BIR' ? 9 : 8} className="p-6 text-center text-slate-500 font-bold">
-                          No registered records found for Gram Panchayat #{activeUnitId} in this register.
-                        </td>
+
+                {/* 3. Table Container - Scrollable horizontally without clipping the outer cards */}
+                <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white shadow-2xs">
+                  <table className="min-w-[720px] w-full border-collapse border border-slate-300 text-xs text-left">
+                    <thead>
+                      <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300">
+                        <th className="p-2.5 text-center border-r border-slate-300 w-12">Sl. No</th>
+                        <th className="p-2.5 border-r border-slate-300">Reg. No</th>
+                        <th className="p-2.5 border-r border-slate-300">Reg. Year</th>
+                        <th className="p-2.5 border-r border-slate-300">Reg. Date</th>
+                        <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Date of Death' : 'Date of Birth'}</th>
+                        <th className="p-2.5 border-r border-slate-300">Gender</th>
+                        <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Deceased Name' : 'Child Name'}</th>
+                        <th className="p-2.5 border-r border-slate-300">{registerType === 'DEA' ? 'Relative Name' : 'Mother Name'}</th>
+                        {registerType === 'BIR' && (
+                          <th className="p-2.5">Father Name</th>
+                        )}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {currentRecords.length > 0 ? (
+                        currentRecords.map((r, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-2.5 text-center border-r border-slate-200">{r.sno || idx + 1}</td>
+                            <td className="p-2.5 border-r border-slate-200 font-mono font-bold text-blue-900">{r.regNo || "-"}</td>
+                            <td className="p-2.5 border-r border-slate-200">{r.regYear || "-"}</td>
+                            <td className="p-2.5 border-r border-slate-200">{r.regDate || "-"}</td>
+                            <td className="p-2.5 border-r border-slate-200">{r.dob || r.dod || "-"}</td>
+                            <td className="p-2.5 border-r border-slate-200">{r.gender || "-"}</td>
+                            <td className="p-2.5 font-bold border-r border-slate-200">{r.childName || r.deceasedName || "-"}</td>
+                            <td className="p-2.5 border-r border-slate-200">{r.motherName || r.relativeName || "-"}</td>
+                            {registerType === 'BIR' && (
+                              <td className="p-2.5">{r.fatherName || "-"}</td>
+                            )}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={registerType === 'BIR' ? 9 : 8} className="p-8 text-center text-slate-500 font-bold bg-slate-50/50">
+                            No registered records found for Gram Panchayat #{activeUnitId} in this register.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="border border-blue-200 rounded-2xl overflow-hidden shadow-xs">

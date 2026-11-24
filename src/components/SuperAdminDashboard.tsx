@@ -46,6 +46,7 @@ import { UBDMonitoringSection } from './admin/UBDMonitoringSection';
 import { GoogleAuthDiagnosticsReport } from './admin/GoogleAuthDiagnosticsReport';
 import { YouTubeTutorialsAdmin } from './admin/YouTubeTutorialsAdmin';
 import { LiveWebsitesManager } from './admin/LiveWebsitesManager';
+import { SystemNotificationsManager } from './admin/SystemNotificationsManager';
 import { Youtube } from 'lucide-react';
 
 
@@ -184,14 +185,43 @@ export function SuperAdminDashboard({
     };
   }, []);
 
+  // Real Live Server Health & Telemetry Metrics (Connected directly to Render container stats)
+  const [serverUptime, setServerUptime] = useState<string>("Active");
+
   useEffect(() => {
+    let isMounted = true;
+    const fetchRealHealth = async () => {
+      const pingStart = Date.now();
+      try {
+        const res = await fetch('/api/admin/system-health');
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          const pingDuration = Date.now() - pingStart;
+          setNetworkPing(pingDuration);
+          if (data.cpu?.loadPercent !== undefined) {
+            setCpuLoad(data.cpu.loadPercent);
+          }
+          if (data.memory?.rssMb) {
+            setMemoryUsage(Number((data.memory.rssMb / 1024).toFixed(2)));
+          }
+          if (data.uptimeFormatted) {
+            setServerUptime(data.uptimeFormatted);
+          }
+        }
+      } catch (err) {
+        if (isMounted) setNetworkPing(Date.now() - pingStart);
+      }
+    };
+
+    fetchRealHealth();
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-      setCpuLoad(Math.floor(14 + Math.random() * 12));
-      setMemoryUsage(Number((1.6 + Math.random() * 0.4).toFixed(1)));
-      setNetworkPing(Math.floor(20 + Math.random() * 10));
-    }, 2500);
-    return () => clearInterval(timer);
+      fetchRealHealth();
+    }, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
   }, []);
 
   const generateChartData = (visitorsArr: any[]) => {
@@ -730,35 +760,7 @@ export function SuperAdminDashboard({
       ) : effectiveTab === "roles" || effectiveTab === "staff_management" || effectiveTab === "users" ? (
         <RolesAndPermissionsControl currentUser={user} addToast={addToast} initialRoleFilter={adminUserRoleFilter} />
       ) : effectiveTab === "notifications" ? (
-        <div className="space-y-6">
-          <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                <Bell className="text-indigo-600" size={24} /> System Notifications Center
-              </h2>
-              <p className="text-xs font-medium text-slate-500 mt-1">Broadcast real-time push alerts and admin notices</p>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Dispatch System Notification</h3>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Type notification message to broadcast to all portal users..."
-                value={broadcastText}
-                onChange={e => setBroadcastText(e.target.value)}
-                className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button 
-                onClick={triggerBroadcast}
-                disabled={isBroadcasting || !broadcastText.trim()}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl text-xs font-black transition-all shadow-md shadow-blue-500/20"
-              >
-                Send Alert
-              </button>
-            </div>
-          </div>
-        </div>
+        <SystemNotificationsManager currentUser={user} addToast={addToast} />
       ) : (
         /* UNIFIED OVERVIEW & ANALYTICS HUB DASHBOARD */
         <div className="space-y-6 pb-12">
@@ -915,22 +917,22 @@ export function SuperAdminDashboard({
                 <div className="flex items-center gap-2">
                   <Cpu size={14} className="text-blue-500" />
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">CPU Load</span>
-                    <span className="text-xs font-black text-slate-800">{cpuLoad}% Nominal</span>
+                    <span className="text-[10px] text-slate-400 font-bold block">Live CPU Load</span>
+                    <span className="text-xs font-black text-slate-800">{cpuLoad}% Live</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <HardDrive size={14} className="text-indigo-500" />
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">Memory</span>
-                    <span className="text-xs font-black text-slate-800">{memoryUsage} GB / 8 GB</span>
+                    <span className="text-[10px] text-slate-400 font-bold block">Server Memory (RSS)</span>
+                    <span className="text-xs font-black text-slate-800">{memoryUsage} GB Used</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Wifi size={14} className="text-emerald-500" />
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">Database Ping</span>
-                    <span className="text-xs font-black text-slate-800">{networkPing} ms (Fast)</span>
+                    <span className="text-[10px] text-slate-400 font-bold block">Uptime / Ping</span>
+                    <span className="text-xs font-black text-emerald-700">{serverUptime} ({networkPing}ms)</span>
                   </div>
                 </div>
               </div>
