@@ -115,7 +115,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
     }, 1000);
 
     try {
-      const resp = await fetch("/api/naresh/login", {
+      const resp = await fetch("/api/epanchayat/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ officerId: userId.trim(), password: password.trim() })
@@ -159,7 +159,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
     setIsValidatingOtp(true);
 
     try {
-      const resp = await fetch("/api/naresh/verify-otp", {
+      const resp = await fetch("/api/epanchayat/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ officerId: userId.trim(), otp: cleanOtp })
@@ -192,7 +192,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   // Disconnect / Close Session
   const handleDisconnectSession = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    fetch("/api/naresh/logout", { method: "POST" }).catch(() => null);
+    fetch("/api/epanchayat/logout", { method: "POST" }).catch(() => null);
     setModalStep(1);
     setPassword("");
     setOtpValue("");
