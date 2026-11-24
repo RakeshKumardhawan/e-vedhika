@@ -68,31 +68,27 @@ async function hashEpanchayatPassword(plainPwd, salt) {
 }
 
 // Cookie management helpers
-function parseCookieHeader(setCookieStr) {
-  if (!setCookieStr) return {};
-  const result = {};
-  const parts = setCookieStr.split(/,(?=[^;]+=[^;]*;? )/);
-  for (const part of parts) {
-    const [kv] = part.trim().split(';');
-    const idx = kv.indexOf('=');
-    if (idx > 0) result[kv.slice(0, idx).trim()] = kv.slice(idx + 1).trim();
-  }
-  return result;
-}
-
-function mergeCookies(existing, newHeader) {
+function extractCookiesFromResponse(resp, existing = '') {
   const map = {};
-  if (existing) for (const pair of existing.split(';')) {
-    const idx = pair.indexOf('='); if (idx > 0) map[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+  if (existing) {
+    for (const pair of existing.split(';')) {
+      const idx = pair.indexOf('=');
+      if (idx > 0) map[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+    }
   }
-  const parsed = parseCookieHeader(newHeader || '');
-  Object.assign(map, parsed);
+  let list = [];
+  if (resp?.headers && typeof resp.headers.getSetCookie === 'function') {
+    list = resp.headers.getSetCookie();
+  } else {
+    const raw = resp?.headers?.get('set-cookie') || '';
+    if (raw) list = raw.split(/,(?=[^;]+=[^;]*;? )/);
+  }
+  for (const item of list) {
+    const first = item.split(';')[0].trim();
+    const idx = first.indexOf('=');
+    if (idx > 0) map[first.slice(0, idx).trim()] = first.slice(idx + 1).trim();
+  }
   return Object.entries(map).map(([k, v]) => `${k}=${v}`).join('; ');
-}
-
-function cookieStringFromHeader(header) {
-  if (!header) return '';
-  return header.split(/,(?=[^ ])/).map(c => c.trim().split(';')[0]).join('; ');
 }
 
 // In-memory session store (Workers are stateless but survive short bursts)
@@ -140,7 +136,7 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
         headers: EP_HEADERS_BASE,
         redirect: 'follow'
       });
-      let cookieStr = cookieStringFromHeader(mainResp.headers.get('set-cookie'));
+      let cookieStr = extractCookiesFromResponse(mainResp);
       const mainHtml = await mainResp.text();
       const saltMatch = mainHtml.match(/SHA256_hash\(hash\)\s*\+\s*["']([A-Fa-f0-9]{16,64})["']/);
       const salt = saltMatch ? saltMatch[1] : '1D4FD6FED4247F26092DABE774AB6619';
@@ -149,7 +145,7 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
       const capResp = await fetch(`${EP_BASE}/CaptchaServlet?${Math.random()}`, {
         headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` }
       });
-      cookieStr = mergeCookies(cookieStr, capResp.headers.get('set-cookie'));
+      cookieStr = extractCookiesFromResponse(capResp, cookieStr);
       const imgBuf = await capResp.arrayBuffer();
       const bytes = new Uint8Array(imgBuf);
       let binary = '';
@@ -205,7 +201,7 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
         redirect: 'manual'
       });
 
-      cookieStr = mergeCookies(cookieStr, loginResp.headers.get('set-cookie'));
+      cookieStr = extractCookiesFromResponse(loginResp, cookieStr);
       const location = loginResp.headers.get('location') || '';
       let bodyText = await loginResp.text();
 
@@ -215,19 +211,22 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
           headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` },
           redirect: 'follow'
         });
-        cookieStr = mergeCookies(cookieStr, nextResp.headers.get('set-cookie'));
+        cookieStr = extractCookiesFromResponse(nextResp, cookieStr);
         bodyText = await nextResp.text();
       }
 
       const pvalsMatch = bodyText.match(/id=["']pvals["'][^>]*>([\s\S]*?)<\/p>/i);
       const pvalsText = pvalsMatch ? pvalsMatch[1].replace(/<[^>]+>/g, '').trim() : '';
 
-      // Check for captcha / credential error
-      if (/invalid captcha/i.test(pvalsText) || /invalid captcha/i.test(bodyText)) {
+      // Check ONLY #pvals text (never bodyText, which contains JS strings like == 'Invalid Captcha')
+      if (/invalid captcha/i.test(pvalsText)) {
         return Response.json({ success: false, error: 'Captcha తప్పుగా ఉంది. దయచేసి కొత్త Captcha ఎంటర్ చేయండి.', code: 'captcha_invalid', retry: true }, { status: 400, headers: corsHeaders });
       }
-      if (/invalid credentials/i.test(pvalsText) || /invalid credentials|wrong password/i.test(bodyText)) {
+      if (/invalid credentials|wrong password/i.test(pvalsText)) {
         return Response.json({ success: false, error: 'User ID లేదా Password తప్పుగా ఉంది.', code: 'credentials_invalid' }, { status: 401, headers: corsHeaders });
+      }
+      if (!pvalsText && !/deptLoginVerified|otpvalid/i.test(bodyText)) {
+        return Response.json({ success: false, error: 'e-Panchayat login response అస్పష్టంగా ఉంది. దయచేసి మళ్లీ ప్రయత్నించండి.', retry: true }, { status: 400, headers: corsHeaders });
       }
 
       // Extract masked mobile from #pvals or OTP message
@@ -283,7 +282,7 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
         body: otpFormBody.toString(),
         redirect: 'follow'
       });
-      cookieStr = mergeCookies(cookieStr, otpResp.headers.get('set-cookie'));
+      cookieStr = extractCookiesFromResponse(otpResp, cookieStr);
       const dashBody = await otpResp.text();
 
       if (/invalid otp/i.test(dashBody)) {
