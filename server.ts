@@ -388,13 +388,19 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "Officer ID is required" });
       }
       const sessionId = `eps_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      // Determine user level based on officerId conventions in Telangana e-Panchayat
+      const isGp = String(officerId).toLowerCase().includes("sec") || /^\d+$/.test(officerId.trim());
+      const userLevel = isGp ? "gp" : String(officerId).toLowerCase().includes("mpo") ? "mandal" : "district";
+
       res.json({
         success: true,
         sessionId,
-        district: district || "MANCHERIAL",
-        officerId,
-        message: "e-Panchayat SMS OTP dispatched to officer registered mobile",
-        maskedPhone: "+91 98480 •••••",
+        district: district || "",
+        officerId: officerId.trim(),
+        userLevel,
+        message: "e-Panchayat అధికారిక SMS OTP మీ రిజిస్టర్డ్ మొబైల్‌కు పంపబడింది.",
+        maskedPhone: null,
         expiresIn: 180
       });
     } catch (e: any) {
@@ -406,17 +412,27 @@ async function startServer() {
     try {
       const { district, officerId, otp } = req.body || {};
       if (!otp || String(otp).length < 4) {
-        return res.status(400).json({ success: false, error: "Valid 6-digit OTP is required" });
+        return res.status(400).json({ success: false, error: "సరైన 6-అంకెల OTP ని నమోదు చేయండి" });
       }
+      
+      const cleanId = String(officerId || "").trim();
+      const isGp = cleanId.toLowerCase().includes("sec") || /^\d+$/.test(cleanId) || !cleanId.toLowerCase().includes("mpo");
+      const userLevel = isGp ? "gp" : "mandal";
+
       res.json({
         success: true,
         authenticated: true,
-        officerId: officerId || "289478_sec",
-        district: district || "MANCHERIAL",
+        officerId: cleanId,
+        userLevel,
+        gpName: isGp ? `గ్రామ పంచాయతీ (${cleanId})` : null,
+        mandalName: isGp ? "సంబంధిత మండలం" : "మండల కార్యాలయం",
+        district: district || "తెలంగాణ",
         status: "connected",
         portal: "epanchayat.telangana.gov.in",
         sessionToken: `tok_${Date.now()}_auth`,
-        availableReports: ["dsr_14_col", "thursday_balance", "mas_18_indicator", "gp_inspections"]
+        availableReports: isGp 
+          ? ["balance_14_1", "thursday_entry", "dsr_gp", "inspections_gp", "mas_gp"]
+          : ["dsr_14_col", "thursday_balance", "mas_18_indicator", "gp_inspections"]
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message });
