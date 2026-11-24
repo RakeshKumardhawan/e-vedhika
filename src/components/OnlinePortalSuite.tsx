@@ -72,7 +72,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const timerRef = useRef<any>(null);
   const EP_WORKER_BASE = "https://e-vedhika.rakeshkumardhawan123.workers.dev";
 
-  const fetchLiveCaptcha = async () => {
+  const fetchLiveCaptcha = async (preserveAlert = false) => {
     setIsLoadingCaptcha(true);
     setCaptchaCode("");
     try {
@@ -81,7 +81,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       if (data && data.captchaBase64) {
         setCaptchaBase64(`data:${data.mimeType || "image/jpeg"};base64,${data.captchaBase64}`);
         setCaptchaTempId(data.tempId || "");
-        setLoginAlert("");
+        if (!preserveAlert) setLoginAlert("");
       } else {
         setLoginAlert(data?.error || "e-Panchayat Captcha లోడ్ చేయడం సాధ్యం కాలేదు. Refresh నొక్కండి.");
       }
@@ -176,7 +176,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       } else {
         setLoginAlert(data?.error || "లాగిన్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.");
         if (data?.retry) {
-          fetchLiveCaptcha();
+          fetchLiveCaptcha(true);
         }
       }
     } catch (e: any) {
@@ -875,7 +875,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
                       </div>
                       <button
                         type="button"
-                        onClick={fetchLiveCaptcha}
+                        onClick={() => fetchLiveCaptcha(false)}
                         disabled={isLoadingCaptcha}
                         className="px-3 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                         title="Refresh Captcha"

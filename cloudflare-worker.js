@@ -106,6 +106,28 @@ const EP_HEADERS_BASE = {
   'Accept-Language': 'en-US,en;q=0.9,te;q=0.8',
 };
 
+function encodeStatelessToken(obj) {
+  const json = JSON.stringify(obj);
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function decodeStatelessToken(token) {
+  if (!token || typeof token !== 'string' || token.length < 20) return null;
+  try {
+    let b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4 !== 0) b64 += '=';
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return JSON.parse(new TextDecoder('utf-8').decode(bytes));
+  } catch {
+    return null;
+  }
+}
+
 // ─── e-Panchayat Automation Handler ─────────────────────────────────────────
 async function handleEpanchayat(url, request, corsHeaders, env) {
   const path = url.pathname;
@@ -133,8 +155,8 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
       let binary = '';
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
       const b64 = btoa(binary);
-      const tempId = crypto.randomUUID();
       const capSessionData = { cookie: cookieStr, salt, ts: Date.now() };
+      const tempId = encodeStatelessToken(capSessionData);
       epSessions.set('cap_' + tempId, capSessionData);
       if (env && env.SESSIONS) {
         await env.SESSIONS.put('cap_' + tempId, JSON.stringify(capSessionData), { expirationTtl: 600 });
@@ -156,7 +178,7 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
 
       let cookieStr = '';
       let salt = '1D4FD6FED4247F26092DABE774AB6619';
-      let capSession = epSessions.get('cap_' + tempId);
+      let capSession = epSessions.get('cap_' + tempId) || decodeStatelessToken(tempId);
       if (!capSession && env && env.SESSIONS && tempId) {
         const kvCap = await env.SESSIONS.get('cap_' + tempId);
         if (kvCap) capSession = JSON.parse(kvCap);
@@ -216,8 +238,8 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
         ? `xxxxxx${mobileMatch[2] || mobileMatch[1].slice(-4)}`
         : 'xxxxxx....';
 
-      const sessionId = crypto.randomUUID();
       const sessionData = { cookie: cookieStr, userId, salt, ts: Date.now(), verified: false };
+      const sessionId = encodeStatelessToken(sessionData);
       epSessions.set(sessionId, sessionData);
       if (env && env.SESSIONS) await env.SESSIONS.put(sessionId, JSON.stringify(sessionData), { expirationTtl: 3600 });
 
@@ -238,7 +260,7 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
   if (path === '/api/epanchayat/verify-otp' && request.method === 'POST') {
     try {
       const { sessionId, otp } = await request.json();
-      let session = epSessions.get(sessionId);
+      let session = epSessions.get(sessionId) || decodeStatelessToken(sessionId);
       if (!session && env && env.SESSIONS) {
         const kv = await env.SESSIONS.get(sessionId);
         if (kv) session = JSON.parse(kv);
