@@ -46,8 +46,8 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const [otpValue, setOtpValue] = useState("");
   const [otpAlert, setOtpAlert] = useState("");
   const [isValidatingOtp, setIsValidatingOtp] = useState(false);
-  // Default to real masked number ending in 5586 as shown in user's official e-Panchayat session
-  const [maskedMobile, setMaskedMobile] = useState("xxxxxx5586");
+  // Dynamic masked number from live portal session
+  const [maskedMobile, setMaskedMobile] = useState("xxxxxx.... (Registered Mobile)");
 
   // User Level / Role: 'gp' (Secretary) | 'mandal' (MPO) | 'district' (DPO)
   const [userLevel, setUserLevel] = useState<'gp' | 'mandal' | 'district'>('gp');
@@ -1018,36 +1018,27 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
               </div>
             </div>
 
-            {/* 3-Level Role Switcher Pill & Logout */}
+            {/* Role Indicator (Locked automatically by Login ID - No manual toggle) */}
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              <div className="flex items-center bg-slate-800/90 p-1 rounded-xl border border-slate-700 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => { setUserLevel('gp'); setSelectedMandalForDrilldown(null); }}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                    userLevel === 'gp' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  గ్రామ పంచాయతీ (GP)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setUserLevel('mandal'); setSelectedMandalForDrilldown(null); }}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                    userLevel === 'mandal' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  మండల స్థాయి (MPO)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setUserLevel('district'); setSelectedMandalForDrilldown(null); }}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                    userLevel === 'district' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  జిల్లా స్థాయి (DPO)
-                </button>
+              <div className="flex items-center px-3 py-1.5 rounded-xl text-xs font-bold border shadow-xs bg-slate-800/90 border-slate-700">
+                {userLevel === 'gp' && (
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>లాగిన్ స్థాయి: <strong>గ్రామ పంచాయతీ (GP Secretary)</strong></span>
+                  </span>
+                )}
+                {userLevel === 'mandal' && (
+                  <span className="flex items-center gap-1.5 text-blue-400">
+                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                    <span>లాగిన్ స్థాయి: <strong>మండల స్థాయి (MPO Console)</strong></span>
+                  </span>
+                )}
+                {userLevel === 'district' && (
+                  <span className="flex items-center gap-1.5 text-purple-400">
+                    <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                    <span>లాగిన్ స్థాయి: <strong>జిల్లా స్థాయి (DPO Console)</strong></span>
+                  </span>
+                )}
               </div>
 
               <button

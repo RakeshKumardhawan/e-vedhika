@@ -529,8 +529,8 @@ async function startServer() {
         gp_name: gpName,
         mandal_name: mandalName,
         district_name: districtName,
-        mobile_number: "xxxxxx5586",
-        otp_message: "A 6 digit OTP has been sent to your registered mobile number xxxxxx5586. Enter OTP to continue."
+        mobile_number: "xxxxxx.... (Registered Mobile)",
+        otp_message: `A 6 digit OTP has been sent to your registered mobile number for officer ${user}. Enter OTP to continue.`
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message });
@@ -590,7 +590,7 @@ async function startServer() {
         user_level: "gp",
         mandal_name: "భీమిని మండలం (Bheemini)",
         district_name: "మంచిర్యాల జిల్లా (Mancherial)",
-        mobile_number: "xxxxxx5586"
+        mobile_number: "xxxxxx.... (Registered Mobile)"
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message });
