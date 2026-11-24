@@ -1,11 +1,330 @@
 /**
- * Cloudflare Worker for E-Vedhika Portal (Firebase Firestore + Edge Cache & Telemetry Receiver)
+ * Cloudflare Worker for E-Vedhika Portal
  * Purpose:
- * 1) Receive UBD Deployment Tool (C# .NET 4.8) telemetry via Raw JSON POST, Base64 URL-Encoded POST (`payload_b64`),
- *    and Base64 GET requests on `/api/reporting/receiver`, `/admin/ubd_monitoring`, `/api/telemetry`.
- * 2) Persist records directly to Firebase Firestore (`e-vedhika-258f2` / `(default)` / `telemetryLogs`).
- * 3) Serve live consolidated fleet summary JSON with strict CORS for `https://www.e-vedhika.in`.
+ * 1) Receive UBD Deployment Tool (C# .NET 4.8) telemetry.
+ * 2) Persist records to Firebase Firestore.
+ * 3) Serve live consolidated fleet summary JSON.
+ * 4) [NEW] e-Panchayat Automation Proxy — Indian Edge IP → epanchayat.telangana.gov.in
+ *    Routes: /api/epanchayat/captcha  /api/epanchayat/login  /api/epanchayat/verify-otp
+ *            /api/epanchayat/session-status  /api/epanchayat/data/*
  */
+
+// ─── MD5 (pure JS, needed for e-Panchayat password hashing) ─────────────────
+function md5(inputStr) {
+  function safeAdd(x, y) { const lsw = (x & 0xffff) + (y & 0xffff); const msw = (x >> 16) + (y >> 16) + (lsw >> 16); return (msw << 16) | (lsw & 0xffff); }
+  function bitRotateLeft(num, cnt) { return (num << cnt) | (num >>> (32 - cnt)); }
+  function md5cmn(q, a, b, x, s, t) { return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
+  function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+  function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+  function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+  function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+  const str = unescape(encodeURIComponent(inputStr));
+  const bytes = Array.from({length: str.length}, (_, i) => str.charCodeAt(i));
+  bytes.push(0x80);
+  while (bytes.length % 64 !== 56) bytes.push(0);
+  const bitLen = (inputStr.length * 8);
+  bytes.push(bitLen & 0xff,(bitLen>>8)&0xff,(bitLen>>16)&0xff,(bitLen>>24)&0xff,0,0,0,0);
+  const M = [];
+  for (let i = 0; i < bytes.length; i += 4) M.push(bytes[i]|(bytes[i+1]<<8)|(bytes[i+2]<<16)|(bytes[i+3]<<24));
+  let [a,b,c,d] = [0x67452301,0xefcdab89,0x98badcfe,0x10325476];
+  for (let i = 0; i < M.length; i += 16) {
+    const [oA,oB,oC,oD] = [a,b,c,d];
+    const m = M.slice(i, i+16);
+    a=md5ff(a,b,c,d,m[0],7,-680876936);d=md5ff(d,a,b,c,m[1],12,-389564586);c=md5ff(c,d,a,b,m[2],17,606105819);b=md5ff(b,c,d,a,m[3],22,-1044525330);
+    a=md5ff(a,b,c,d,m[4],7,-176418897);d=md5ff(d,a,b,c,m[5],12,1200080426);c=md5ff(c,d,a,b,m[6],17,-1473231341);b=md5ff(b,c,d,a,m[7],22,-45705983);
+    a=md5ff(a,b,c,d,m[8],7,1770035416);d=md5ff(d,a,b,c,m[9],12,-1958414417);c=md5ff(c,d,a,b,m[10],17,-42063);b=md5ff(b,c,d,a,m[11],22,-1990404162);
+    a=md5ff(a,b,c,d,m[12],7,1804603682);d=md5ff(d,a,b,c,m[13],12,-40341101);c=md5ff(c,d,a,b,m[14],17,-1502002290);b=md5ff(b,c,d,a,m[15],22,1236535329);
+    a=md5gg(a,b,c,d,m[1],5,-165796510);d=md5gg(d,a,b,c,m[6],9,-1069501632);c=md5gg(c,d,a,b,m[11],14,643717713);b=md5gg(b,c,d,a,m[0],20,-373897302);
+    a=md5gg(a,b,c,d,m[5],5,-701558691);d=md5gg(d,a,b,c,m[10],9,38016083);c=md5gg(c,d,a,b,m[15],14,-660478335);b=md5gg(b,c,d,a,m[4],20,-405537848);
+    a=md5gg(a,b,c,d,m[9],5,568446438);d=md5gg(d,a,b,c,m[14],9,-1019803690);c=md5gg(c,d,a,b,m[3],14,-187363961);b=md5gg(b,c,d,a,m[8],20,1163531501);
+    a=md5gg(a,b,c,d,m[13],5,-1444681467);d=md5gg(d,a,b,c,m[2],9,-51403784);c=md5gg(c,d,a,b,m[7],14,1735328473);b=md5gg(b,c,d,a,m[12],20,-1926607734);
+    a=md5hh(a,b,c,d,m[5],4,-378558);d=md5hh(d,a,b,c,m[8],11,-2022574463);c=md5hh(c,d,a,b,m[11],16,1839030562);b=md5hh(b,c,d,a,m[14],23,-35309556);
+    a=md5hh(a,b,c,d,m[1],4,-1530992060);d=md5hh(d,a,b,c,m[4],11,1272893353);c=md5hh(c,d,a,b,m[7],16,-155497632);b=md5hh(b,c,d,a,m[10],23,-1094730640);
+    a=md5hh(a,b,c,d,m[13],4,681279174);d=md5hh(d,a,b,c,m[0],11,-358537222);c=md5hh(c,d,a,b,m[3],16,-722521979);b=md5hh(b,c,d,a,m[6],23,76029189);
+    a=md5hh(a,b,c,d,m[9],4,-640364487);d=md5hh(d,a,b,c,m[12],11,-421815835);c=md5hh(c,d,a,b,m[15],16,530742520);b=md5hh(b,c,d,a,m[2],23,-995338651);
+    a=md5ii(a,b,c,d,m[0],6,-198630844);d=md5ii(d,a,b,c,m[7],10,1126891415);c=md5ii(c,d,a,b,m[14],15,-1416354905);b=md5ii(b,c,d,a,m[5],21,-57434055);
+    a=md5ii(a,b,c,d,m[12],6,1700485571);d=md5ii(d,a,b,c,m[3],10,-1894986606);c=md5ii(c,d,a,b,m[10],15,-1051523);b=md5ii(b,c,d,a,m[1],21,-2054922799);
+    a=md5ii(a,b,c,d,m[8],6,1873313359);d=md5ii(d,a,b,c,m[15],10,-30611744);c=md5ii(c,d,a,b,m[6],15,-1560198380);b=md5ii(b,c,d,a,m[13],21,1309151649);
+    a=md5ii(a,b,c,d,m[4],6,-145523070);d=md5ii(d,a,b,c,m[11],10,-1120210379);c=md5ii(c,d,a,b,m[2],15,718787259);b=md5ii(b,c,d,a,m[9],21,-343485551);
+    a=safeAdd(a,oA);b=safeAdd(b,oB);c=safeAdd(c,oC);d=safeAdd(d,oD);
+  }
+  return [a,b,c,d].map(n=>[n&0xff,(n>>8)&0xff,(n>>16)&0xff,(n>>24)&0xff]).flat().map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// SHA-256 using Web Crypto (available in Cloudflare Workers)
+async function sha256hex(str) {
+  const enc = new TextEncoder();
+  const hash = await crypto.subtle.digest('SHA-256', enc.encode(str));
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// e-Panchayat password hash: SHA256(SHA256(MD5(MD5(pwd))) + SALT)
+async function hashEpanchayatPassword(plainPwd) {
+  const SALT = '092217720C9917CBAAA7A18D09659E72';
+  const md5Once = md5(plainPwd);
+  const md5Twice = md5(md5Once);
+  const sha1 = await sha256hex(md5Twice);
+  return await sha256hex(sha1 + SALT);
+}
+
+// Cookie management helpers
+function parseCookieHeader(setCookieStr) {
+  if (!setCookieStr) return {};
+  const result = {};
+  const parts = setCookieStr.split(/,(?=[^;]+=[^;]*;? )/);
+  for (const part of parts) {
+    const [kv] = part.trim().split(';');
+    const idx = kv.indexOf('=');
+    if (idx > 0) result[kv.slice(0, idx).trim()] = kv.slice(idx + 1).trim();
+  }
+  return result;
+}
+
+function mergeCookies(existing, newHeader) {
+  const map = {};
+  if (existing) for (const pair of existing.split(';')) {
+    const idx = pair.indexOf('='); if (idx > 0) map[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+  }
+  const parsed = parseCookieHeader(newHeader || '');
+  Object.assign(map, parsed);
+  return Object.entries(map).map(([k, v]) => `${k}=${v}`).join('; ');
+}
+
+function cookieStringFromHeader(header) {
+  if (!header) return '';
+  return header.split(/,(?=[^ ])/).map(c => c.trim().split(';')[0]).join('; ');
+}
+
+// In-memory session store (Workers are stateless but survive short bursts)
+// For production: use Cloudflare KV (bind as SESSIONS)
+const epSessions = new Map();
+
+const EP_BASE = 'https://epanchayat.telangana.gov.in';
+const EP_HEADERS_BASE = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9,te;q=0.8',
+};
+
+// ─── e-Panchayat Automation Handler ─────────────────────────────────────────
+async function handleEpanchayat(url, request, corsHeaders, env) {
+  const path = url.pathname;
+
+  // GET /api/epanchayat/captcha  → fetch captcha image + return base64
+  if (path === '/api/epanchayat/captcha' && request.method === 'GET') {
+    try {
+      // Step 1: load main page to get session cookie
+      const mainResp = await fetch(`${EP_BASE}/cs`, {
+        headers: EP_HEADERS_BASE,
+        redirect: 'follow'
+      });
+      let cookieStr = cookieStringFromHeader(mainResp.headers.get('set-cookie'));
+
+      // Step 2: fetch captcha image
+      const capResp = await fetch(`${EP_BASE}/CaptchaServlet`, {
+        headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` }
+      });
+      cookieStr = mergeCookies(cookieStr, capResp.headers.get('set-cookie'));
+      const imgBuf = await capResp.arrayBuffer();
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(imgBuf)));
+      const tempId = crypto.randomUUID();
+      epSessions.set('cap_' + tempId, { cookie: cookieStr, ts: Date.now() });
+
+      return Response.json({ tempId, captchaBase64: b64, mimeType: 'image/jpeg' }, { headers: corsHeaders });
+    } catch (e) {
+      return Response.json({ error: 'captcha_fetch_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // POST /api/epanchayat/login  → { userId, password, tempId, captchaCode }
+  if (path === '/api/epanchayat/login' && request.method === 'POST') {
+    try {
+      const { userId, password, tempId, captchaCode } = await request.json();
+      if (!userId || !password || !captchaCode) {
+        return Response.json({ error: 'missing_fields' }, { status: 400, headers: corsHeaders });
+      }
+
+      let cookieStr = '';
+      const capSession = epSessions.get('cap_' + tempId);
+      if (capSession) { cookieStr = capSession.cookie; epSessions.delete('cap_' + tempId); }
+
+      const hashedPwd = await hashEpanchayatPassword(password);
+      const formBody = new URLSearchParams({ uname: userId, pwd: hashedPwd, cp: captchaCode });
+
+      const loginResp = await fetch(`${EP_BASE}/cs/login`, {
+        method: 'POST',
+        headers: {
+          ...EP_HEADERS_BASE,
+          'Cookie': cookieStr,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Referer': `${EP_BASE}/cs`,
+          'Origin': EP_BASE
+        },
+        body: formBody.toString(),
+        redirect: 'manual'
+      });
+
+      cookieStr = mergeCookies(cookieStr, loginResp.headers.get('set-cookie'));
+      const location = loginResp.headers.get('location') || '';
+      const bodyText = await loginResp.text();
+
+      // Check for captcha / credential error
+      if (bodyText.toLowerCase().includes('invalid captcha') || bodyText.toLowerCase().includes('captcha')) {
+        return Response.json({ error: 'captcha_invalid', retry: true }, { status: 400, headers: corsHeaders });
+      }
+      if (bodyText.toLowerCase().includes('invalid') || bodyText.toLowerCase().includes('wrong password')) {
+        return Response.json({ error: 'credentials_invalid' }, { status: 401, headers: corsHeaders });
+      }
+
+      // Should redirect to OTP page or contain OTP info
+      const otpPageResp = await fetch(location || `${EP_BASE}/cs/otppage`, {
+        headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` },
+        redirect: 'manual'
+      });
+      cookieStr = mergeCookies(cookieStr, otpPageResp.headers.get('set-cookie'));
+      const otpBody = await otpPageResp.text();
+
+      // Extract masked mobile from #pvals or OTP message
+      const mobileMatch = otpBody.match(/(\*{4,}|x{4,}|X{4,})(\d{4})/i)
+        || otpBody.match(/registered mobile[^0-9]*(\d{10})/i)
+        || otpBody.match(/OTP[^0-9]*sent[^0-9]*(\d{10})/i);
+      const maskedMobile = mobileMatch
+        ? `xxxxxx${mobileMatch[2] || mobileMatch[1].slice(-4)}`
+        : 'xxxxxx....';
+
+      const sessionId = crypto.randomUUID();
+      const sessionData = { cookie: cookieStr, userId, ts: Date.now(), verified: false };
+      epSessions.set(sessionId, sessionData);
+      // Also save to KV if available
+      if (env && env.SESSIONS) await env.SESSIONS.put(sessionId, JSON.stringify(sessionData), { expirationTtl: 3600 });
+
+      return Response.json({ success: true, sessionId, maskedMobile, otpSent: true }, { headers: corsHeaders });
+    } catch (e) {
+      return Response.json({ error: 'login_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // POST /api/epanchayat/verify-otp  → { sessionId, otp }
+  if (path === '/api/epanchayat/verify-otp' && request.method === 'POST') {
+    try {
+      const { sessionId, otp } = await request.json();
+      let session = epSessions.get(sessionId);
+      if (!session && env && env.SESSIONS) {
+        const kv = await env.SESSIONS.get(sessionId);
+        if (kv) session = JSON.parse(kv);
+      }
+      if (!session) return Response.json({ error: 'session_not_found' }, { status: 404, headers: corsHeaders });
+
+      let cookieStr = session.cookie;
+
+      // Submit OTP
+      const otpFormBody = new URLSearchParams({ otp: String(otp) });
+      const otpResp = await fetch(`${EP_BASE}/cs/validateotp`, {
+        method: 'POST',
+        headers: {
+          ...EP_HEADERS_BASE,
+          'Cookie': cookieStr,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Referer': `${EP_BASE}/cs/otppage`,
+          'Origin': EP_BASE
+        },
+        body: otpFormBody.toString(),
+        redirect: 'manual'
+      });
+      cookieStr = mergeCookies(cookieStr, otpResp.headers.get('set-cookie'));
+      const redirectTo = otpResp.headers.get('location') || `${EP_BASE}/deptLoginVerified`;
+
+      // Load dashboard page
+      const dashResp = await fetch(redirectTo.startsWith('http') ? redirectTo : `${EP_BASE}${redirectTo}`, {
+        headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs/otppage` },
+        redirect: 'follow'
+      });
+      cookieStr = mergeCookies(cookieStr, dashResp.headers.get('set-cookie'));
+      const dashBody = await dashResp.text();
+
+      // Extract officer details from dashboard header
+      const gpMatch = dashBody.match(/(?:GP|Gram Panchayat|Village Panchayat)[:\s]+([A-Za-z\s]+?)(?:<|\s{2,}|,)/i)
+        || dashBody.match(/id="gpName"[^>]*>([^<]+)/i)
+        || dashBody.match(/class="[^"]*gp[^"]*"[^>]*>([^<]+)/i);
+      const mandalMatch = dashBody.match(/(?:Mandal)[:\s]+([A-Za-z\s]+?)(?:<|\s{2,}|,)/i)
+        || dashBody.match(/id="mandalName"[^>]*>([^<]+)/i);
+      const districtMatch = dashBody.match(/(?:District)[:\s]+([A-Za-z\s]+?)(?:<|\s{2,}|,)/i)
+        || dashBody.match(/id="districtName"[^>]*>([^<]+)/i);
+      const officeIdMatch = dashBody.match(/(?:Office ID|officeId)[:\s"]+([a-z]+\d+)/i);
+
+      const userId = session.userId;
+      const userLevel = /^mpo/i.test(userId) ? 'MPO' : /^dpo/i.test(userId) ? 'DPO' : 'GP';
+
+      const result = {
+        success: true,
+        officeId: officeIdMatch?.[1]?.trim() || userId,
+        gpName: gpMatch?.[1]?.trim() || userId.toUpperCase(),
+        mandal: mandalMatch?.[1]?.trim() || 'Loading from portal...',
+        district: districtMatch?.[1]?.trim() || 'Telangana',
+        userLevel,
+        sessionId
+      };
+
+      // Update session
+      const updated = { ...session, cookie: cookieStr, verified: true, ...result };
+      epSessions.set(sessionId, updated);
+      if (env && env.SESSIONS) await env.SESSIONS.put(sessionId, JSON.stringify(updated), { expirationTtl: 3600 });
+
+      return Response.json(result, { headers: corsHeaders });
+    } catch (e) {
+      return Response.json({ error: 'otp_verify_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
+    }
+  }
+
+  // GET /api/epanchayat/session-status?sessionId=xxx
+  if (path === '/api/epanchayat/session-status' && request.method === 'GET') {
+    const sid = url.searchParams.get('sessionId');
+    if (!sid) return Response.json({ active: false }, { headers: corsHeaders });
+    let session = epSessions.get(sid);
+    if (!session && env && env.SESSIONS) {
+      const kv = await env.SESSIONS.get(sid);
+      if (kv) session = JSON.parse(kv);
+    }
+    if (!session) return Response.json({ active: false }, { headers: corsHeaders });
+    return Response.json({
+      active: true,
+      verified: session.verified || false,
+      officeId: session.officeId || session.userId,
+      gpName: session.gpName,
+      mandal: session.mandal,
+      district: session.district,
+      userLevel: session.userLevel
+    }, { headers: corsHeaders });
+  }
+
+  // GET /api/epanchayat/data/balance?sessionId=xxx  → GP Bank Balance
+  if (path === '/api/epanchayat/data/balance' && request.method === 'GET') {
+    const sid = url.searchParams.get('sessionId');
+    let session = epSessions.get(sid);
+    if (!session && env && env.SESSIONS) { const kv = await env.SESSIONS && env.SESSIONS.get(sid); if (kv) session = JSON.parse(kv); }
+    if (!session || !session.verified) return Response.json({ error: 'not_authenticated' }, { status: 401, headers: corsHeaders });
+
+    try {
+      const balResp = await fetch(`${EP_BASE}/cs/bankbalance`, {
+        headers: { ...EP_HEADERS_BASE, 'Cookie': session.cookie }
+      });
+      const html = await balResp.text();
+      // Simple table row extraction
+      const rows = [];
+      const rowReg = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      let m;
+      while ((m = rowReg.exec(html)) !== null) {
+        const cells = [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(c => c[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
+        if (cells.length >= 3) rows.push(cells);
+      }
+      return Response.json({ success: true, rows, source: 'epanchayat_live' }, { headers: corsHeaders });
+    } catch (e) {
+      return Response.json({ error: 'balance_fetch_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
+    }
+  }
+
+  return null; // Not an epanchayat route
+}
 
 const CACHE_TTL_SECONDS = 60;
 const FIREBASE_PROJECT_ID = "e-vedhika-258f2";
@@ -211,6 +530,12 @@ export default {
 
     if (method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // ─── e-Panchayat Automation (Indian Edge IP Proxy) ───────────────────────
+    if (url.pathname.startsWith('/api/epanchayat/')) {
+      const epResult = await handleEpanchayat(url, request, corsHeaders, env);
+      if (epResult) return epResult;
     }
 
     // 0. LIVE UBDMIS DIRECT SEARCH & PARSER (Zero Sleep, 24/7 Edge Gateway)

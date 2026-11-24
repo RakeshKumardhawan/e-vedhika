@@ -455,12 +455,36 @@ async function startServer() {
   });
 
   // =========================================================================
-  // e-Panchayat & E-Vedhika Official Live Reporting Endpoints (/api/epanchayat/*, /api/evedhika/*, /api/balance/*, /api/tax/*)
-  // Connects seamlessly to live Playwright Python robot or provides zero-downtime governance responses
+  // e-Panchayat & E-Vedhika Official Live Reporting Endpoints
+  // Routes via Cloudflare Worker (Indian Edge IP) → epanchayat.telangana.gov.in
   // =========================================================================
   const PANCHAYAT_AUTOMATION_URL = (process.env.PANCHAYAT_AUTOMATION_URL || "").trim();
+  // Cloudflare Worker URL — Indian PoP (Mumbai/Chennai) — bypasses NIC geo-block
+  const CLOUDFLARE_WORKER_URL = (process.env.CLOUDFLARE_WORKER_URL || "https://e-vedhika.rakeshkumardhawan123.workers.dev").trim();
 
-  // Helper to proxy requests to external Python automation robot if reachable
+  // Helper: proxy to Cloudflare Worker (Indian IP) for live e-Panchayat automation
+  async function proxyToCloudflareWorker(endpoint: string, method: string, body?: any): Promise<any> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s for OTP flow
+      const url = `${CLOUDFLARE_WORKER_URL.replace(/\/+$/, '')}${endpoint}`;
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'X-EVedhika-Client': 'server' },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) return await res.json();
+      const errText = await res.text();
+      console.error(`[CloudflareWorker] ${endpoint} returned ${res.status}: ${errText}`);
+    } catch (e: any) {
+      console.error(`[CloudflareWorker] ${endpoint} error:`, e?.message);
+    }
+    return null;
+  }
+
+  // Legacy: proxy to external Python automation robot if set
   async function proxyToAutomationRobot(endpoint: string, method: string, body?: any, headers?: any) {
     if (!PANCHAYAT_AUTOMATION_URL) return null;
     try {
@@ -469,105 +493,88 @@ async function startServer() {
       const url = `${PANCHAYAT_AUTOMATION_URL.replace(/\/+$/, '')}${endpoint}`;
       const res = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(headers || {})
-        },
+        headers: { 'Content-Type': 'application/json', ...(headers || {}) },
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal
       });
       clearTimeout(timeoutId);
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      // Robot backend offline or starting up, fall through to native handlers
-    }
+      if (res.ok) return await res.json();
+    } catch (e) { }
     return null;
   }
 
-  // 1. Department Login & Captcha Auto-Solve (/api/epanchayat/login & /api/evedhika/login)
+  // 1. Department Login & Captcha Auto-Solve — via Cloudflare Worker (Indian IP)
   app.post(["/api/epanchayat/login", "/api/evedhika/login"], async (req, res) => {
     try {
-      const { officerId, password, userId } = req.body || {};
+      const { officerId, password, userId, captchaCode, tempId } = req.body || {};
       const user = String(officerId || userId || "").trim();
-      if (!user) {
-        return res.status(400).json({ success: false, error: "e-Panchayat User ID is required" });
+      if (!user || !password) {
+        return res.status(400).json({ success: false, error: "e-Panchayat User ID మరియు Password అవసరం" });
       }
 
-      // Try live robot first
+      // 1st: Try Cloudflare Worker (Indian IP → real login)
+      const workerResult = await proxyToCloudflareWorker("/api/epanchayat/login", "POST", {
+        userId: user, password, captchaCode: captchaCode || '', tempId: tempId || ''
+      });
+      if (workerResult && (workerResult.success || workerResult.sessionId)) {
+        return res.json(workerResult);
+      }
+      // Check captcha retry signal from worker
+      if (workerResult && workerResult.retry) {
+        return res.status(400).json({ success: false, error: "Captcha తప్పుగా ఉంది, మళ్ళీ try చేయండి", retry: true });
+      }
+
+      // 2nd: Try legacy Python robot
       const robotResult = await proxyToAutomationRobot("/api/epanchayat/login", "POST", req.body, req.headers);
-      if (robotResult) {
-        return res.json(robotResult);
-      }
+      if (robotResult) return res.json(robotResult);
 
-      // Detect role / hierarchy level
+      // Fallback: return waiting state (backend starting)
       const cleanUser = user.toLowerCase();
-      let userLevel: 'gp' | 'mandal' | 'district' = 'gp';
-      let mandalName = "భీమిని మండలం (Bheemini)";
-      let districtName = "మంచిర్యాల జిల్లా (Mancherial)";
-      let gpName = `చిన్నతుంపల్లి (Chinnathumpally GP)`;
-
-      if (cleanUser.startsWith("mpo") || cleanUser.includes("mandal")) {
-        userLevel = 'mandal';
-      } else if (cleanUser.startsWith("dpo") || cleanUser.startsWith("dpoa") || cleanUser.startsWith("dlpo")) {
-        userLevel = 'district';
-      } else {
-        userLevel = 'gp';
-        gpName = cleanUser.length > 3 ? `గ్రామ పంచాయతీ (${user})` : "చిన్నతుంపల్లి (Chinnathumpally GP)";
-      }
-
+      const userLevel = cleanUser.startsWith("mpo") ? 'mandal' : cleanUser.startsWith("dpo") ? 'district' : 'gp';
       const sessionId = `sid_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
       res.json({
-        success: true,
-        authenticated: false,
-        status: "awaiting_otp",
-        step: "otp_required",
-        session_id: sessionId,
-        user_id: user,
-        user_level: userLevel,
-        gp_name: gpName,
-        mandal_name: mandalName,
-        district_name: districtName,
-        mobile_number: "xxxxxx.... (Registered Mobile)",
-        otp_message: `A 6 digit OTP has been sent to your registered mobile number for officer ${user}. Enter OTP to continue.`
+        success: false,
+        error: "e-Panchayat portal కి connect చేయడం సాధ్యం కాలేదు. మీ Cloudflare Worker URL సరిగ్గా set చేయండి.",
+        workerError: workerResult?.error || "worker_unreachable",
+        sessionId,
+        userId: user,
+        userLevel
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message });
     }
   });
 
-  // 2. Validate 6-Digit SMS OTP (/api/epanchayat/verify-otp & /api/evedhika/verify-otp)
+  // 2. Validate 6-Digit SMS OTP — via Cloudflare Worker
   app.post(["/api/epanchayat/verify-otp", "/api/evedhika/verify-otp"], async (req, res) => {
     try {
-      const { officerId, otp, userId } = req.body || {};
+      const { officerId, otp, userId, sessionId } = req.body || {};
       const cleanOtp = String(otp || "").replace(/\D/g, '');
       if (cleanOtp.length !== 6) {
         return res.status(400).json({ success: false, error: "దయచేసి సరైన 6-అంకెల OTP ని నమోదు చేయండి." });
       }
 
-      const robotResult = await proxyToAutomationRobot("/api/epanchayat/verify-otp", "POST", req.body, req.headers);
-      if (robotResult) {
-        return res.json(robotResult);
-      }
+      // 1st: Try Cloudflare Worker (real OTP verification)
+      const workerResult = await proxyToCloudflareWorker("/api/epanchayat/verify-otp", "POST", {
+        sessionId: sessionId || req.body.session_id, otp: cleanOtp
+      });
+      if (workerResult && workerResult.success) return res.json(workerResult);
 
+      // 2nd: Try legacy Python robot
+      const robotResult = await proxyToAutomationRobot("/api/epanchayat/verify-otp", "POST", req.body, req.headers);
+      if (robotResult) return res.json(robotResult);
+
+      // Fallback
       const user = String(officerId || userId || "Officer").trim();
       const cleanUser = user.toLowerCase();
       let userLevel: 'gp' | 'mandal' | 'district' = 'gp';
-      if (cleanUser.startsWith("mpo") || cleanUser.includes("mandal")) userLevel = 'mandal';
-      else if (cleanUser.startsWith("dpo") || cleanUser.startsWith("dlpo")) userLevel = 'district';
+      if (cleanUser.startsWith("mpo")) userLevel = 'mandal';
+      else if (cleanUser.startsWith("dpo")) userLevel = 'district';
 
-      res.json({
-        success: true,
-        authenticated: true,
-        status: "authenticated",
-        user_id: user,
-        user_level: userLevel,
-        gp_name: userLevel === 'gp' ? `చిన్నతుంపల్లి GP (${user})` : undefined,
-        mandal_name: "భీమిని మండలం (Bheemini)",
-        district_name: "మంచిర్యాల జిల్లా (Mancherial)",
-        office_name: userLevel === 'gp' ? "గ్రామ పంచాయతీ కార్యాలయం" : userLevel === 'mandal' ? "మండల పరిషత్ కార్యాలయం" : "జిల్లా పంచాయతీ కార్యాలయం",
-        session_id: `sid_auth_${Date.now().toString(36)}`
+      res.status(503).json({
+        success: false,
+        error: "OTP verify చేయడం సాధ్యం కాలేదు. Cloudflare Worker connect కాలేదు.",
+        workerError: workerResult?.error || "worker_unreachable"
       });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e?.message });
