@@ -19,7 +19,8 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const [sessionStage, setSessionStage] = useState<'login' | 'otp' | 'dashboard'>('login');
 
   // Stage 1: Login Credentials
-  const [selectedDistrict, setSelectedDistrict] = useState("MANCHERIAL");
+  const [selectedDistrict, setSelectedDistrict] = useState("Mancherial");
+  const [selectedMandal, setSelectedMandal] = useState("Bheemini");
   const [officerId, setOfficerId] = useState("");
   const [password, setPassword] = useState("");
   const [captchaCode, setCaptchaCode] = useState("7XK9P");
@@ -352,22 +353,46 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
-            {/* District Selector */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                జిల్లా ఎంచుకోండి (Select District)
-              </label>
-              <select
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
-              >
-                {DEFAULT_DISTRICTS_DATA.map((d) => (
-                  <option key={d.id} value={d.name}>
-                    {d.name} ({d.teName})
-                  </option>
-                ))}
-              </select>
+            {/* District & Mandal Selector Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  జిల్లా ఎంచుకోండి (Select District)
+                </label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => {
+                    const dist = e.target.value;
+                    setSelectedDistrict(dist);
+                    const mandals = DEFAULT_DISTRICTS_DATA[dist] || [];
+                    if (mandals.length > 0) setSelectedMandal(mandals[0]);
+                  }}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                >
+                  {Object.keys(DEFAULT_DISTRICTS_DATA).map((dist) => (
+                    <option key={dist} value={dist}>
+                      {dist}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  మండలం ఎంచుకోండి (Select Mandal)
+                </label>
+                <select
+                  value={selectedMandal}
+                  onChange={(e) => setSelectedMandal(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+                >
+                  {(DEFAULT_DISTRICTS_DATA[selectedDistrict] || []).map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Officer / User ID */}
