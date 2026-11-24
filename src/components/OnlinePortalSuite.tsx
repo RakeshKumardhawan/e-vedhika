@@ -3,9 +3,16 @@ import {
   ArrowLeft, Globe, Eye, EyeOff, Check, RotateCw, RefreshCw, 
   Download, Search, BarChart3, FileSpreadsheet, Building2, 
   Layers, LogOut, UserCheck, PlusCircle, Save, HelpCircle,
-  ChevronRight, Building, Filter
+  ChevronRight, Building, Filter, Settings, ExternalLink, Link2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { checkAdminAccess } from './UnderConstruction';
+import {
+  AdminLinkManagerModal,
+  loadCustomPortalLinks,
+  normalizeEpanchayatTarget,
+  PortalCustomLink
+} from './EpanchayatAdminLinks';
 
 interface OnlinePortalSuiteProps {
   onBackToHome: () => void;
@@ -68,6 +75,8 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const [portalTarget, setPortalTarget] = useState("/deptLoginVerified");
   const [initialPortalHtml, setInitialPortalHtml] = useState("");
   const [portalRefreshKey, setPortalRefreshKey] = useState(0);
+  const [customLinks, setCustomLinks] = useState<PortalCustomLink[]>([]);
+  const [isAdminLinksOpen, setIsAdminLinksOpen] = useState(false);
   const [reportSearch, setReportSearch] = useState("");
   const [isScrapingLive, setIsScrapingLive] = useState(false);
   const [scrapeProgress, setScrapeProgress] = useState(0);
@@ -100,6 +109,22 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       fetchLiveCaptcha();
     }
   }, [modalStep]);
+
+  useEffect(() => {
+    loadCustomPortalLinks().then(setCustomLinks);
+  }, []);
+
+  const visibleCustomLinks = useMemo(
+    () => customLinks.filter((l) => l.roles.includes(userLevel)),
+    [customLinks, userLevel]
+  );
+
+  const handleOpenCustomLink = (rawUrl: string) => {
+    const normalized = normalizeEpanchayatTarget(rawUrl);
+    setPortalTarget(normalized);
+    setActiveReport('full_portal');
+    setPortalRefreshKey((k) => k + 1);
+  };
 
   // Handle Step 1 Credentials Submit
   const handleCredsSubmit = async (e: React.FormEvent) => {
@@ -1124,14 +1149,26 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleDisconnectSession}
-                className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              >
-                <LogOut size={13} />
-                <span>లాగౌట్</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {checkAdminAccess() && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminLinksOpen(true)}
+                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Settings size={13} />
+                    <span>Admin Links ({customLinks.length})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleDisconnectSession}
+                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                >
+                  <LogOut size={13} />
+                  <span>లాగౌట్</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1215,6 +1252,58 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
               </button>
             ))}
           </div>
+
+          {/* Role-Assigned Custom Reports & Entries (Configured by Admin) */}
+          {visibleCustomLinks.length > 0 && (
+            <div className="p-4 bg-white rounded-2xl border border-emerald-200 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-black text-emerald-900 flex items-center gap-1.5">
+                  <Link2 size={14} className="text-emerald-600" />
+                  <span>
+                    {userLevel === 'gp'
+                      ? 'PS (GP) స్థాయి రిపోర్ట్స్ & ఎంట్రీలు'
+                      : userLevel === 'mandal'
+                      ? 'MPO స్థాయి రిపోర్ట్స్ & ఎంట్రీలు'
+                      : 'DPO స్థాయి రిపోర్ట్స్ & ఎంట్రీలు'}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-slate-500">
+                  {visibleCustomLinks.length} లింక్‌లు అందుబాటులో ఉన్నాయి
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {visibleCustomLinks.map((lnk) => (
+                  <button
+                    key={lnk.id}
+                    type="button"
+                    onClick={() => handleOpenCustomLink(lnk.targetUrl)}
+                    className="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/60 text-left transition-all cursor-pointer flex items-start justify-between gap-2"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                          lnk.category === 'entry'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {lnk.category === 'entry' ? 'Entry' : 'Report'}
+                      </span>
+                      <div className="text-xs font-black text-slate-900 truncate">
+                        {lnk.title}
+                      </div>
+                      {lnk.subtitle && (
+                        <div className="text-[10px] text-slate-500 truncate">
+                          {lnk.subtitle}
+                        </div>
+                      )}
+                    </div>
+                    <ExternalLink size={14} className="text-emerald-600 shrink-0 mt-1" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Action Bar: Search, Live Reload, Excel Export */}
           <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -2078,6 +2167,13 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
           )}
         </div>
       )}
+      <AdminLinkManagerModal
+        isOpen={isAdminLinksOpen}
+        onClose={() => setIsAdminLinksOpen(false)}
+        links={customLinks}
+        onLinksChanged={setCustomLinks}
+        onTestOpenLink={handleOpenCustomLink}
+      />
     </div>
   );
 }
