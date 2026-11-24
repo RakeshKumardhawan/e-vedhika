@@ -124,6 +124,66 @@ function decodeStatelessToken(token) {
   }
 }
 
+function injectPortalProxyScripts(html, workerOrigin, sid) {
+  const proxyPrefix = `${workerOrigin}/api/epanchayat/portal?sessionId=${encodeURIComponent(sid)}&target=`;
+  const navScript = `
+<base href="${EP_BASE}/">
+<script>
+(function(){
+  var PREFIX = ${JSON.stringify(proxyPrefix)};
+  function toTarget(raw) {
+    if (!raw) return null;
+    if (raw.startsWith('#') || raw.startsWith('javascript:') || raw.startsWith('mailto:')) return null;
+    try {
+      var u = new URL(raw, '${EP_BASE}/');
+      if (u.hostname !== 'epanchayat.telangana.gov.in') return null;
+      return PREFIX + encodeURIComponent(u.pathname + u.search);
+    } catch(e) { return null; }
+  }
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!a) return;
+    var href = a.getAttribute('href');
+    var proxied = toTarget(href);
+    if (proxied) { e.preventDefault(); window.location.href = proxied; }
+  }, true);
+  document.addEventListener('submit', function(e) {
+    var f = e.target;
+    if (!f || !f.tagName || f.tagName.toLowerCase() !== 'form') return;
+    var action = f.getAttribute('action') || window.location.pathname;
+    var proxied = toTarget(action);
+    if (proxied) { f.action = proxied; }
+  }, true);
+})();
+</script>`;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (m) => `${m}\n${navScript}`);
+  }
+  return navScript + html;
+}
+
+async function fetchWithCookies(targetUrl, init, cookieStr, maxRedirects = 5) {
+  let currentUrl = targetUrl;
+  let currentCookies = cookieStr;
+  let currentInit = { ...init, redirect: 'manual' };
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    currentInit.headers = { ...(currentInit.headers || {}), 'Cookie': currentCookies };
+    const resp = await fetch(currentUrl, currentInit);
+    currentCookies = extractCookiesFromResponse(resp, currentCookies);
+    if (resp.status >= 300 && resp.status < 400) {
+      const loc = resp.headers.get('location');
+      if (!loc) return { resp, cookieStr: currentCookies, finalUrl: currentUrl };
+      currentUrl = new URL(loc, currentUrl).toString();
+      currentInit = { method: 'GET', headers: { ...EP_HEADERS_BASE, 'Referer': currentUrl }, redirect: 'manual' };
+      continue;
+    }
+    return { resp, cookieStr: currentCookies, finalUrl: currentUrl };
+  }
+  const resp = await fetch(currentUrl, { ...currentInit, redirect: 'follow' });
+  currentCookies = extractCookiesFromResponse(resp, currentCookies);
+  return { resp, cookieStr: currentCookies, finalUrl: currentUrl };
+}
+
 // ─── e-Panchayat Automation Handler ─────────────────────────────────────────
 async function handleEpanchayat(url, request, corsHeaders, env) {
   const path = url.pathname;
@@ -268,22 +328,20 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
 
       let cookieStr = session.cookie;
 
-      // Submit OTP to /deptLoginVerified
+      // Submit OTP to /deptLoginVerified (manual redirect tracking to preserve cookies)
       const otpFormBody = new URLSearchParams({ otp: String(otp), uname: session.userId });
-      const otpResp = await fetch(`${EP_BASE}/deptLoginVerified`, {
+      const otpFetch = await fetchWithCookies(`${EP_BASE}/deptLoginVerified`, {
         method: 'POST',
         headers: {
           ...EP_HEADERS_BASE,
-          'Cookie': cookieStr,
           'Content-Type': 'application/x-www-form-urlencoded',
           'Referer': `${EP_BASE}/login`,
           'Origin': EP_BASE
         },
-        body: otpFormBody.toString(),
-        redirect: 'follow'
-      });
-      cookieStr = extractCookiesFromResponse(otpResp, cookieStr);
-      const dashBody = await otpResp.text();
+        body: otpFormBody.toString()
+      }, cookieStr);
+      cookieStr = otpFetch.cookieStr;
+      const dashBody = await otpFetch.resp.text();
 
       if (/invalid otp/i.test(dashBody)) {
         return Response.json({ success: false, error: 'చెల్లని OTP. దయచేసి సరైన 6-అంకెల OTP ఎంటర్ చేయండి.' }, { status: 400, headers: corsHeaders });
@@ -311,6 +369,10 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
       epSessions.set(updatedSessionId, updated);
       if (env && env.SESSIONS) await env.SESSIONS.put(updatedSessionId, JSON.stringify(updated), { expirationTtl: 3600 });
 
+      const initialPortalHtml = dashBody && dashBody.trim() && dashBody.trim() !== 'null'
+        ? injectPortalProxyScripts(dashBody, url.origin, updatedSessionId)
+        : '';
+
       const result = {
         success: true,
         authenticated: true,
@@ -324,7 +386,8 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
         district_name: district,
         userLevel,
         user_level: userLevel,
-        portalTarget: (() => { try { const u = new URL(otpResp.url); return u.pathname + u.search; } catch { return '/deptLoginVerified'; } })(),
+        portalTarget: (() => { try { const u = new URL(otpFetch.finalUrl); return u.pathname + u.search; } catch { return '/deptLoginVerified'; } })(),
+        initialPortalHtml,
         sessionId: updatedSessionId
       };
 
@@ -426,54 +489,25 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
 
       const fwdInit = {
         method: request.method,
-        headers: fwdHeaders,
-        redirect: 'follow'
+        headers: fwdHeaders
       };
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         fwdInit.body = await request.arrayBuffer();
       }
 
-      const epResp = await fetch(targetUrl, fwdInit);
+      const fetched = await fetchWithCookies(targetUrl, fwdInit, session.cookie);
+      const epResp = fetched.resp;
       const ct = (epResp.headers.get('content-type') || '').toLowerCase();
 
       if (ct.includes('text/html')) {
         let html = await epResp.text();
-        const proxyPrefix = `${url.origin}/api/epanchayat/portal?sessionId=${encodeURIComponent(sid)}&target=`;
-        const navScript = `
-<base href="${EP_BASE}/">
-<script>
-(function(){
-  var PREFIX = ${JSON.stringify(proxyPrefix)};
-  function toTarget(raw) {
-    if (!raw) return null;
-    if (raw.startsWith('#') || raw.startsWith('javascript:') || raw.startsWith('mailto:')) return null;
-    try {
-      var u = new URL(raw, '${EP_BASE}/');
-      if (u.hostname !== 'epanchayat.telangana.gov.in') return null;
-      return PREFIX + encodeURIComponent(u.pathname + u.search);
-    } catch(e) { return null; }
-  }
-  document.addEventListener('click', function(e) {
-    var a = e.target && e.target.closest ? e.target.closest('a') : null;
-    if (!a) return;
-    var href = a.getAttribute('href');
-    var proxied = toTarget(href);
-    if (proxied) { e.preventDefault(); window.location.href = proxied; }
-  }, true);
-  document.addEventListener('submit', function(e) {
-    var f = e.target;
-    if (!f || !f.tagName || f.tagName.toLowerCase() !== 'form') return;
-    var action = f.getAttribute('action') || window.location.pathname;
-    var proxied = toTarget(action);
-    if (proxied) { f.action = proxied; }
-  }, true);
-})();
-</script>`;
-        if (/<head[^>]*>/i.test(html)) {
-          html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${navScript}`);
-        } else {
-          html = navScript + html;
+        if (!html || html.trim() === 'null') {
+          return new Response('<html><body style="font-family:sans-serif;padding:24px;"><h3>e-Panchayat Portal Response Empty</h3><p>దయచేసి Home బటన్ నొక్కండి లేదా మళ్లీ ప్రయత్నించండి.</p></body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }
+          });
         }
+        html = injectPortalProxyScripts(html, url.origin, sid);
         return new Response(html, {
           status: epResp.status,
           headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }

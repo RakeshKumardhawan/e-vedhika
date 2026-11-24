@@ -66,6 +66,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   // Active Report Tab: 'full_portal' | 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb'
   const [activeReport, setActiveReport] = useState<'full_portal' | 'balance_14_1' | 'thursday_entry' | 'dsr' | 'inspections' | 'mas' | 'tax_dcb'>('full_portal');
   const [portalTarget, setPortalTarget] = useState("/deptLoginVerified");
+  const [initialPortalHtml, setInitialPortalHtml] = useState("");
   const [portalRefreshKey, setPortalRefreshKey] = useState(0);
   const [reportSearch, setReportSearch] = useState("");
   const [isScrapingLive, setIsScrapingLive] = useState(false);
@@ -212,6 +213,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       if (data && (data.success || data.authenticated)) {
         if (data.sessionId) setEpSessionId(data.sessionId);
         if (data.portalTarget) setPortalTarget(data.portalTarget);
+        if (data.initialPortalHtml) setInitialPortalHtml(data.initialPortalHtml);
         if (data.user_level || data.userLevel) setUserLevel(data.user_level || data.userLevel);
         if (data.gp_name || data.gpName) setGpName(data.gp_name || data.gpName);
         if (data.mandal_name || data.mandal) setMandalName(data.mandal_name || data.mandal);
@@ -1293,12 +1295,21 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
                 </div>
               </div>
               {epSessionId ? (
-                <iframe
-                  key={`${epSessionId}-${portalRefreshKey}`}
-                  src={`${EP_WORKER_BASE}/api/epanchayat/portal?sessionId=${encodeURIComponent(epSessionId)}&target=${encodeURIComponent(portalTarget)}`}
-                  title="Full e-Panchayat Live Portal"
-                  className="w-full h-[78vh] border-0 bg-white"
-                />
+                initialPortalHtml && portalRefreshKey === 0 ? (
+                  <iframe
+                    key={`${epSessionId}-initial`}
+                    srcDoc={initialPortalHtml}
+                    title="Full e-Panchayat Live Portal"
+                    className="w-full h-[78vh] border-0 bg-white"
+                  />
+                ) : (
+                  <iframe
+                    key={`${epSessionId}-${portalRefreshKey}`}
+                    src={`${EP_WORKER_BASE}/api/epanchayat/portal?sessionId=${encodeURIComponent(epSessionId)}&target=${encodeURIComponent(portalTarget)}`}
+                    title="Full e-Panchayat Live Portal"
+                    className="w-full h-[78vh] border-0 bg-white"
+                  />
+                )
               ) : (
                 <div className="p-8 text-center text-sm text-slate-600">
                   దయచేసి ముందుగా OTP తో లాగిన్ అవ్వండి.
