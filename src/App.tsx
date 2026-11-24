@@ -198,6 +198,7 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
 import { CloudStorageManager } from "./components/CloudStorageManager";
+import { OnlinePortalSuite } from "./components/OnlinePortalSuite";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
@@ -10072,73 +10073,13 @@ E-Vedhika Support System`;
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="max-w-4xl mx-auto space-y-4"
+                    className="w-full space-y-4"
                   >
-                    <div className="flex justify-between items-center mb-2">
-                      <button
-                        aria-label="Back to Home"
-                        onClick={() => setCurrentTab("home")}
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 cursor-pointer"
-                      >
-                        <ArrowLeft size={16} /> Back to Home
-                      </button>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-amber-400/30 text-center relative overflow-hidden">
-                      <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-                      <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                      <div className="relative z-10 flex flex-col items-center">
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-amber-500/20 via-yellow-500/20 to-orange-500/20 border-2 border-amber-400/40 flex items-center justify-center text-amber-400 mb-6 shadow-inner animate-pulse">
-                          <Wrench size={42} className="text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
-                        </div>
-
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs sm:text-sm font-black mb-4">
-                          <Clock size={14} className="animate-spin text-amber-400" />
-                          <span>ఈ పోర్టల్ ప్రస్తుతం నిర్మాణంలో ఉంది (Under Construction)</span>
-                        </div>
-
-                        <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
-                          Online Portal at Our Line
-                        </h1>
-
-                        <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed mb-6 font-medium">
-                          ఈ సేవ ప్రస్తుతం అభివృద్ధి మరియు నిర్మాణ దశలో ఉంది. గ్రామ పంచాయతీ మరియు మండల స్థాయి ఆన్‌లైన్ సేవలను వేగంగా, ఒకే చోట పూర్తి చేసుకునేలా అతి త్వరలోనే ఈ సరికొత్త పోర్టల్ అందుబాటులోకి రానుంది.
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl mb-8 text-left">
-                          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
-                            <div className="text-amber-400 font-black text-sm mb-1">⚡ డైరెక్ట్ యాక్సెస్</div>
-                            <div className="text-xs text-slate-300">సిబ్బందికి అవసరమైన ఆన్‌లైన్ పోర్టల్స్ క్విక్ లింక్స్.</div>
-                          </div>
-                          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
-                            <div className="text-cyan-400 font-black text-sm mb-1">🛡️ సురక్షిత వ్యవస్థ</div>
-                            <div className="text-xs text-slate-300">అధికారిక లాగిన్స్ మరియు పారదర్శక సేవలు.</div>
-                          </div>
-                          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
-                            <div className="text-emerald-400 font-black text-sm mb-1">🚀 త్వరలో లాంచ్</div>
-                            <div className="text-xs text-slate-300">తుది మెరుగులు దిద్దుకుంటున్న సరికొత్త ఫీచర్లు.</div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setCurrentTab("home")}
-                            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
-                          >
-                            హోమ్‌కి వెళ్లండి (Home)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentTab("workspace")}
-                            className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm transition-all cursor-pointer"
-                          >
-                            Mana Panchayath టూల్స్ చూడండి
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <OnlinePortalSuite 
+                      onBackToHome={() => setCurrentTab("home")}
+                      onNavigateTab={(t) => setCurrentTab(t)}
+                      addToast={addToast}
+                    />
                   </motion.div>
                 )}
 
