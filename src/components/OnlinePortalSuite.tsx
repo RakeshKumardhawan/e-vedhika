@@ -6,7 +6,6 @@ import {
   Layers, LogOut, Check, Clock, UserCheck
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { DEFAULT_DISTRICTS_DATA } from '../data/districts';
 
 interface OnlinePortalSuiteProps {
   onBackToHome: () => void;
@@ -19,8 +18,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const [sessionStage, setSessionStage] = useState<'login' | 'otp' | 'dashboard'>('login');
 
   // Stage 1: Login Credentials
-  const [selectedDistrict, setSelectedDistrict] = useState("Mancherial");
-  const [selectedMandal, setSelectedMandal] = useState("Bheemini");
+  const [selectedDistrict, setSelectedDistrict] = useState("Telangana");
   const [officerId, setOfficerId] = useState("");
   const [password, setPassword] = useState("");
   const [captchaCode, setCaptchaCode] = useState("7XK9P");
@@ -321,17 +319,6 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
               తెలంగాణ పంచాయతీరాజ్ e-Panchayat పోర్టల్ నుండి నేరుగా SMS OTP ద్వారా లైవ్ రిపోర్టులు: 14-కాలమ్ DSR అటెండెన్స్, గురువారం GP బ్యాలెన్స్, MAS మ్యాట్రిక్స్ &amp; తనిఖీల రిపోర్టులు.
             </p>
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center">
-              <div className="text-[10px] uppercase font-bold text-slate-300">రోబోట్ స్పీడ్</div>
-              <div className="text-xl font-black text-cyan-400">⚡ 15 Sec</div>
-            </div>
-            <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center">
-              <div className="text-[10px] uppercase font-bold text-slate-300">సెక్యూరిటీ</div>
-              <div className="text-xl font-black text-emerald-400">SMS OTP</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -339,7 +326,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       {/* STAGE 1: DEPARTMENTAL LOGIN & CAPTCHA                                     */}
       {/* ========================================================================= */}
       {sessionStage === 'login' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-md max-w-2xl mx-auto space-y-6">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-md max-w-xl mx-auto space-y-6">
           <div className="text-center space-y-2 border-b border-slate-100 pb-5">
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
               <Globe size={24} />
@@ -353,48 +340,6 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
-            {/* District & Mandal Selector Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  జిల్లా ఎంచుకోండి (Select District)
-                </label>
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => {
-                    const dist = e.target.value;
-                    setSelectedDistrict(dist);
-                    const mandals = DEFAULT_DISTRICTS_DATA[dist] || [];
-                    if (mandals.length > 0) setSelectedMandal(mandals[0]);
-                  }}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
-                >
-                  {Object.keys(DEFAULT_DISTRICTS_DATA).map((dist) => (
-                    <option key={dist} value={dist}>
-                      {dist}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  మండలం ఎంచుకోండి (Select Mandal)
-                </label>
-                <select
-                  value={selectedMandal}
-                  onChange={(e) => setSelectedMandal(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
-                >
-                  {(DEFAULT_DISTRICTS_DATA[selectedDistrict] || []).map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Officer / User ID */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
