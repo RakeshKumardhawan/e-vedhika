@@ -27,11 +27,12 @@ export function checkAdminAccess(): boolean {
 
 interface GuardProps {
   children: React.ReactNode;
+  isSuperAdmin?: boolean;
 }
 
-export function OnlinePortalGuard({ children }: GuardProps) {
+export function OnlinePortalGuard({ children, isSuperAdmin = false }: GuardProps) {
   const [unlocked, setUnlocked] = useState(() => checkAdminAccess());
-  if (unlocked) {
+  if (isSuperAdmin || unlocked) {
     return <>{children}</>;
   }
   return <UnderConstruction onAdminAccess={() => setUnlocked(true)} />;

@@ -505,6 +505,83 @@ async function startServer() {
     return null;
   }
 
+  // 0A. Live Browser Proxy for SuperAdmin (/api/epanchayat/browse?url=...)
+  const browseHostCookies = new Map<string, Record<string, string>>();
+  app.all("/api/epanchayat/browse", async (req, res) => {
+    try {
+      const rawTarget = String(req.query.url || "https://epanchayat.telangana.gov.in/epmis/allgpdata.jsp");
+      const uaMode = String(req.query.ua || "chrome").toLowerCase();
+      const userAgent = uaMode === "firefox"
+        ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"
+        : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+      const parsed = new URL(rawTarget.startsWith("http") ? rawTarget : `https://${rawTarget}`);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return res.status(400).send("Invalid protocol");
+      }
+
+      // Manual redirect loop so Set-Cookie (e.g. ASP.NET_SessionId) is preserved across 302 hops & clicks!
+      let currentUrl = parsed.toString();
+      const cookieMap: Record<string, string> = { ...(browseHostCookies.get(parsed.hostname) || {}) };
+      const mergeSetCookies = (r: globalThis.Response, host: string) => {
+        const list: string[] = typeof (r.headers as any).getSetCookie === "function"
+          ? (r.headers as any).getSetCookie()
+          : (r.headers.get("set-cookie") ? [r.headers.get("set-cookie")!] : []);
+        for (const c of list) {
+          const kv = c.split(";")[0].trim();
+          const eq = kv.indexOf("=");
+          if (eq > 0) cookieMap[kv.slice(0, eq).trim()] = kv.slice(eq + 1).trim();
+        }
+        browseHostCookies.set(host, { ...cookieMap });
+      };
+      const cookieHeader = () => Object.entries(cookieMap).map(([k, v]) => `${k}=${v}`).join("; ");
+
+      let resp: globalThis.Response | null = null;
+      let curMethod = req.method === "POST" ? "POST" : "GET";
+      let curBody = req.method === "POST" && req.body ? new URLSearchParams(req.body).toString() : undefined;
+
+      for (let hop = 0; hop < 6; hop++) {
+        const curHost = new URL(currentUrl).hostname;
+        const hdrs: Record<string, string> = {
+          "User-Agent": userAgent,
+          "Referer": new URL(currentUrl).origin + "/"
+        };
+        const ck = cookieHeader();
+        if (ck) hdrs["Cookie"] = ck;
+        if (curMethod === "POST") hdrs["Content-Type"] = "application/x-www-form-urlencoded";
+
+        resp = await fetch(currentUrl, { method: curMethod, headers: hdrs, body: curBody, redirect: "manual" });
+        mergeSetCookies(resp, curHost);
+
+        if (resp.status >= 300 && resp.status < 400) {
+          const loc = resp.headers.get("location");
+          if (!loc) break;
+          currentUrl = new URL(loc, currentUrl).toString();
+          curMethod = "GET";
+          curBody = undefined;
+          continue;
+        }
+        break;
+      }
+
+      if (!resp) return res.status(502).send("No response");
+      const ct = (resp.headers.get("content-type") || "").toLowerCase();
+      if (ct.includes("text/html")) {
+        let html = await resp.text();
+        const finalUrlObj = new URL(currentUrl);
+        const baseDir = finalUrlObj.origin + finalUrlObj.pathname.replace(/\/[^/]*$/, "/");
+        const navScript = `<base href="${baseDir}"><script>(function(){var P="/api/epanchayat/browse?ua=${encodeURIComponent(uaMode)}&url=";function T(r){if(!r||r[0]==="#"||r.startsWith("javascript:")||r.startsWith("mailto:"))return null;try{var u=new URL(r,${JSON.stringify(currentUrl)});return(u.protocol==="http:"||u.protocol==="https:")?P+encodeURIComponent(u.toString()):null;}catch(e){return null;}}document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a"):null;if(!a)return;var p=T(a.getAttribute("href"));if(p){e.preventDefault();location.href=p;}},true);document.addEventListener("submit",function(e){var f=e.target;if(!f||f.tagName!=="FORM")return;var p=T(f.getAttribute("action")||${JSON.stringify(currentUrl)});if(p)f.action=p;},true);})();</script>`;
+        html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => `${m}\n${navScript}`) : navScript + html;
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.status(resp.status).send(html);
+      }
+      const buf = Buffer.from(await resp.arrayBuffer());
+      if (ct) res.setHeader("Content-Type", ct);
+      return res.status(resp.status).send(buf);
+    } catch (e: any) {
+      return res.status(502).send(`Live Browser error: ${e?.message || e}`);
+    }
+  });
+
   // 0. Live Captcha Fetch — via Cloudflare Worker (Indian IP)
   app.get(["/api/epanchayat/captcha", "/api/evedhika/captcha"], async (req, res) => {
     try {

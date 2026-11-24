@@ -18,6 +18,7 @@ interface OnlinePortalSuiteProps {
   onBackToHome: () => void;
   onNavigateTab?: (tab: string) => void;
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+  isSuperAdmin?: boolean;
 }
 
 interface SchemeAccountRow {
@@ -35,7 +36,7 @@ interface SchemeAccountRow {
   updatedOn: string;
 }
 
-export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: OnlinePortalSuiteProps) {
+export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast, isSuperAdmin = false }: OnlinePortalSuiteProps) {
   // Modal Steps: 1 ('creds') -> 2 ('otp') -> 3 ('success') -> 'console'
   const [modalStep, setModalStep] = useState<1 | 2 | 3 | 'console'>(1);
 
@@ -1150,7 +1151,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
               </div>
 
               <div className="flex items-center gap-2">
-                {checkAdminAccess() && (
+                {(isSuperAdmin || checkAdminAccess()) && (
                   <button
                     type="button"
                     onClick={() => setIsAdminLinksOpen(true)}

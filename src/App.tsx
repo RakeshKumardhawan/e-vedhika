@@ -202,6 +202,7 @@ import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
 import { CloudStorageManager } from "./components/CloudStorageManager";
 import { OnlinePortalSuite } from "./components/OnlinePortalSuite";
 import { OnlinePortalGuard } from "./components/UnderConstruction";
+import { AdminOnlineReportingPanel } from "./components/EpanchayatAdminLinks";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
@@ -10078,11 +10079,12 @@ E-Vedhika Support System`;
                     exit={{ opacity: 0 }}
                     className="w-full space-y-4"
                   >
-                    <OnlinePortalGuard>
+                    <OnlinePortalGuard isSuperAdmin={isAdmin}>
                       <OnlinePortalSuite 
                         onBackToHome={() => setCurrentTab("home")}
                         onNavigateTab={(t) => setCurrentTab(t)}
                         addToast={addToast}
+                        isSuperAdmin={isAdmin}
                       />
                     </OnlinePortalGuard>
                   </motion.div>
@@ -13650,6 +13652,11 @@ function AdminPanel({
                       label: "Software Hub & Files",
                       icon: <HardDrive size={18} />,
                     },
+                    {
+                      id: "admin_online_portal",
+                      label: "Online Reporting Module",
+                      icon: <Globe size={18} />,
+                    },
                   ]
                 : []),
               ...(hasViewPermission("settings") && isEffectiveAdmin
@@ -14410,6 +14417,15 @@ function AdminPanel({
                 addToast={addToast}
                 onViewPublicHub={() => {
                   setCurrentTab("software_hub");
+                }}
+              />
+            )}
+
+            {activeSubTab === "admin_online_portal" && (
+              <AdminOnlineReportingPanel
+                onOpenPortal={() => {
+                  window.history.pushState({}, "", "/online_portal");
+                  setCurrentTab("online_portal");
                 }}
               />
             )}

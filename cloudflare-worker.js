@@ -444,6 +444,92 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
     }
   }
 
+  // GET/POST /api/epanchayat/browse?url=https://...
+  // Live Browser Proxy for SuperAdmin (No Departmental Login Required, Indian Edge IP)
+  if (path === '/api/epanchayat/browse') {
+    const rawTarget = url.searchParams.get('url') || 'https://epanchayat.telangana.gov.in/epmis/allgpdata.jsp';
+    const uaMode = (url.searchParams.get('ua') || 'chrome').toLowerCase();
+    const customUA = uaMode === 'firefox'
+      ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0'
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    let targetUrl;
+    try {
+      const parsed = new URL(rawTarget.startsWith('http') ? rawTarget : `https://${rawTarget}`);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return new Response('Invalid protocol', { status: 400, headers: corsHeaders });
+      }
+      targetUrl = parsed.toString();
+    } catch {
+      return new Response('Invalid URL', { status: 400, headers: corsHeaders });
+    }
+
+    try {
+      const fwdHeaders = {
+        ...EP_HEADERS_BASE,
+        'User-Agent': customUA,
+        'Referer': new URL(targetUrl).origin + '/'
+      };
+      const reqCt = request.headers.get('content-type');
+      if (reqCt) fwdHeaders['Content-Type'] = reqCt;
+
+      const fwdInit = { method: request.method, headers: fwdHeaders };
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        fwdInit.body = await request.arrayBuffer();
+      }
+
+      const fetched = await fetchWithCookies(targetUrl, fwdInit, '');
+      const resp = fetched.resp;
+      const finalOrigin = new URL(fetched.finalUrl).origin;
+      const ct = (resp.headers.get('content-type') || '').toLowerCase();
+
+      if (ct.includes('text/html')) {
+        let html = await resp.text();
+        const finalUrlObj = new URL(fetched.finalUrl);
+        const baseDir = finalUrlObj.origin + finalUrlObj.pathname.replace(/\/[^/]*$/, '/');
+        const browsePrefix = `${url.origin}/api/epanchayat/browse?ua=${encodeURIComponent(uaMode)}&url=`;
+        const navScript = `
+<base href="${baseDir}">
+<script>
+(function(){
+  var PREFIX = ${JSON.stringify(browsePrefix)};
+  function toTarget(raw) {
+    if (!raw || raw.startsWith('#') || raw.startsWith('javascript:') || raw.startsWith('mailto:')) return null;
+    try {
+      var u = new URL(raw, ${JSON.stringify(fetched.finalUrl)});
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+      return PREFIX + encodeURIComponent(u.toString());
+    } catch(e) { return null; }
+  }
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (!a) return;
+    var proxied = toTarget(a.getAttribute('href'));
+    if (proxied) { e.preventDefault(); window.location.href = proxied; }
+  }, true);
+  document.addEventListener('submit', function(e) {
+    var f = e.target;
+    if (!f || !f.tagName || f.tagName.toLowerCase() !== 'form') return;
+    var proxied = toTarget(f.getAttribute('action') || window.location.href);
+    if (proxied) { f.action = proxied; }
+  }, true);
+})();
+</script>`;
+        html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => `${m}\n${navScript}`) : navScript + html;
+        return new Response(html, {
+          status: resp.status,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }
+        });
+      }
+
+      const buf = await resp.arrayBuffer();
+      const respHeaders = new Headers(corsHeaders);
+      if (ct) respHeaders.set('Content-Type', ct);
+      return new Response(buf, { status: resp.status, headers: respHeaders });
+    } catch (e) {
+      return new Response(`Live Browser error: ${String(e)}`, { status: 502, headers: corsHeaders });
+    }
+  }
+
   // GET/POST /api/epanchayat/portal?sessionId=xxx&target=/deptLoginVerified
   // Full Authenticated e-Panchayat Portal Proxy (Indian Edge IP)
   if (path === '/api/epanchayat/portal') {
