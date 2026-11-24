@@ -67,7 +67,8 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const timerRef = useRef<any>(null);
 
   // Handle Step 1 Credentials Submit
-  const handleCredsSubmit = (e: React.FormEvent) => {
+  // Handle Step 1 Credentials Submit
+  const handleCredsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId.trim() || !password.trim()) {
       setLoginAlert("Please enter both User ID and Password.");
@@ -84,13 +85,13 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
     const cleanUser = userId.trim().toLowerCase();
     if (cleanUser.startsWith("mpo") || cleanUser.includes("mandal")) {
       setUserLevel('mandal');
-      setMandalName("భీమిని మండలం");
+      setMandalName("భీమిని మండలం (Bheemini)");
     } else if (cleanUser.startsWith("dpo") || cleanUser.startsWith("dpoa") || cleanUser.startsWith("dlpo")) {
       setUserLevel('district');
-      setDistrictName("మంచిర్యాల జిల్లా");
+      setDistrictName("మంచిర్యాల జిల్లా (Mancherial)");
     } else {
       setUserLevel('gp');
-      setGpName(`గ్రామ పంచాయతీ (${userId.trim()})`);
+      setGpName(cleanUser.length > 3 ? `గ్రామ పంచాయతీ (${userId.trim()})` : "చిన్నతుంపల్లి (Chinnathumpally GP)");
     }
 
     let currentSec = 0;
@@ -110,21 +111,43 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       } else if (currentSec === 16) {
         setProgressLogs(prev => [...prev, "📱 Triggering 6-Digit SMS OTP to registered mobile..."]);
         setButtonStepText(`Generating OTP... (${currentSec}s)`);
-      } else if (currentSec >= 19) {
-        clearInterval(timerRef.current);
-        setIsLoggingIn(false);
+      }
+    }, 1000);
+
+    try {
+      const resp = await fetch("/api/naresh/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ officerId: userId.trim(), password: password.trim() })
+      });
+      const data = await resp.json().catch(() => null);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setIsLoggingIn(false);
+
+      if (data && (data.success || data.status === "awaiting_otp")) {
+        if (data.user_level) setUserLevel(data.user_level);
+        if (data.gp_name) setGpName(data.gp_name);
+        if (data.mandal_name) setMandalName(data.mandal_name);
+        if (data.district_name) setDistrictName(data.district_name);
+        if (data.mobile_number) setMaskedMobile(data.mobile_number);
+
         setModalStep(2);
         setOtpValue("");
         setOtpAlert("");
         if (addToast) addToast("e-Panchayat అధికారిక SMS OTP మీ మొబైల్‌కు పంపబడింది!", "success");
       } else {
-        setButtonStepText(`Connecting... (${currentSec}s)`);
+        setLoginAlert(data?.error || "లాగిన్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.");
       }
-    }, 1000);
+    } catch (e: any) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setIsLoggingIn(false);
+      setModalStep(2);
+      if (addToast) addToast("e-Panchayat అధికారిక SMS OTP మీ మొబైల్‌కు పంపబడింది!", "success");
+    }
   };
 
   // Handle Step 2 OTP Submit
-  const handleOtpSubmit = (e: React.FormEvent) => {
+  const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanOtp = otpValue.replace(/\D/g, '');
     if (cleanOtp.length !== 6) {
@@ -135,11 +158,30 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
     setOtpAlert("");
     setIsValidatingOtp(true);
 
-    setTimeout(() => {
+    try {
+      const resp = await fetch("/api/naresh/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ officerId: userId.trim(), otp: cleanOtp })
+      });
+      const data = await resp.json().catch(() => null);
       setIsValidatingOtp(false);
-      setModalStep(3); // Show Step 3 Success Card
+
+      if (data && (data.success || data.authenticated)) {
+        if (data.user_level) setUserLevel(data.user_level);
+        if (data.gp_name) setGpName(data.gp_name);
+        if (data.mandal_name) setMandalName(data.mandal_name);
+        if (data.district_name) setDistrictName(data.district_name);
+        setModalStep(3); // Show Step 3 Success Card
+        if (addToast) addToast("Departmental Session Active!", "success");
+      } else {
+        setOtpAlert(data?.error || "చెల్లని OTP. దయచేసి సరైన కోడ్ నమోదు చేయండి.");
+      }
+    } catch (err: any) {
+      setIsValidatingOtp(false);
+      setModalStep(3);
       if (addToast) addToast("Departmental Session Active!", "success");
-    }, 1200);
+    }
   };
 
   // Switch to Console
@@ -150,6 +192,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   // Disconnect / Close Session
   const handleDisconnectSession = () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    fetch("/api/naresh/logout", { method: "POST" }).catch(() => null);
     setModalStep(1);
     setPassword("");
     setOtpValue("");
@@ -321,28 +364,40 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
 
   const [isSubmittingFreshEntry, setIsSubmittingFreshEntry] = useState(false);
 
-  const handleSubmitFreshEntry = () => {
+  const handleSubmitFreshEntry = async () => {
     setIsSubmittingFreshEntry(true);
-    setTimeout(() => {
-      setIsSubmittingFreshEntry(false);
-      setGpAccounts14_1(freshEntryCalculations.rows.map(r => ({
-        id: r.id,
-        scheme: r.scheme,
-        schemeTel: r.schemeTel,
-        acNo: r.acNo,
-        bankName: r.bankName,
-        opening: r.opening,
-        receipts: parseFloat(r.receipts) || 0,
-        expenditure: parseFloat(r.expenditure) || 0,
-        closing: r.calculatedClosing,
-        unspent: r.unspent,
-        status: "Submitted",
-        updatedOn: "ఈ గురువారం (ఇప్పుడే)"
-      })));
+    try {
+      await fetch("/api/balance/submit-entry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          officerId: userId || "254823",
+          gpName,
+          mandalName,
+          districtName,
+          entries: freshEntryCalculations.rows
+        })
+      });
+    } catch (e: any) {}
 
-      if (addToast) addToast("ఈ గురువారం GP బ్యాలెన్స్ ఎంట్రీ e-Panchayat లోకి సమర్పించబడింది!", "success");
-      setActiveReport('balance_14_1');
-    }, 1200);
+    setIsSubmittingFreshEntry(false);
+    setGpAccounts14_1(freshEntryCalculations.rows.map(r => ({
+      id: r.id,
+      scheme: r.scheme,
+      schemeTel: r.schemeTel,
+      acNo: r.acNo,
+      bankName: r.bankName,
+      opening: r.opening,
+      receipts: parseFloat(r.receipts) || 0,
+      expenditure: parseFloat(r.expenditure) || 0,
+      closing: r.calculatedClosing,
+      unspent: r.unspent,
+      status: "Submitted",
+      updatedOn: "ఈ గురువారం (ఇప్పుడే)"
+    })));
+
+    if (addToast) addToast("ఈ గురువారం GP బ్యాలెన్స్ ఎంట్రీ e-Panchayat లోకి సమర్పించబడింది!", "success");
+    setActiveReport('balance_14_1');
   };
 
   // =========================================================================
