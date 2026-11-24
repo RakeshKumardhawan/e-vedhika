@@ -189,6 +189,8 @@ import { UnsupportedExcelViewer } from "./components/UnsupportedExcelViewer";
 import { DcbReportAnalyzer } from "./components/DcbReportAnalyzer";
 import { ExcelStudioManager } from "./components/ExcelStudioManager";
 import { EPanchayatCitizenCenter } from "./components/EPanchayatCitizenCenter";
+import { PdfStudioSuite } from "./components/PdfStudioSuite";
+import { OfficialSoftwareHub } from "./components/OfficialSoftwareHub";
 import { YouTubeInteractivePlayer } from "./components/YouTubeInteractivePlayer";
 import { SupportTicketTrackerModal } from "./components/SupportTicketTrackerModal";
 import { notifySupportTicketToTelegram, pushPostToSupportSystem } from "./services/supportTicketService";
@@ -19436,6 +19438,18 @@ function DigitalWorkspaceSection({
       desc: "శిక్షణా కార్యక్రమాలు, ఈవెంట్ ఫోటోలు మరియు వీడియో ట్యుటోరియల్స్",
     },
     {
+      id: "pdf-studio",
+      title: "14-in-1 All-in-One PDF Studio",
+      icon: FileText,
+      desc: "PDF కంప్రెస్, మెర్జ్, స్ప్లిట్, పేజ్ నంబర్స్, వాటర్‌మార్క్, రొటేట్ & ఇమేజ్ టు PDF (100% Client-Side Safe)",
+    },
+    {
+      id: "software-drivers-hub",
+      title: "Official Software & Driver Hub (14 Pack)",
+      icon: HardDrive,
+      desc: "DSC సైనింగ్ డ్రైవర్లు, Java 8 32/64-Bit, ProxKey, HYP2003, Google తెలుగు IME & Adobe v11",
+    },
+    {
       id: "ticket-tracker",
       title: "Support Ticket Tracker",
       icon: LifeBuoy,
@@ -19732,6 +19746,12 @@ function DigitalWorkspaceSection({
                     addToast={addToast}
                   />
                 </div>
+              )}
+              {activeTool === "pdf-studio" && (
+                <PdfStudioSuite addToast={addToast} />
+              )}
+              {activeTool === "software-drivers-hub" && (
+                <OfficialSoftwareHub addToast={addToast} />
               )}
                 </>
               )}

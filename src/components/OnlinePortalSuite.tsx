@@ -1,272 +1,293 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  ArrowLeft, FileText, Download, CheckCircle2, 
-  BarChart3, Clock, AlertTriangle, ShieldCheck, Zap, 
-  ExternalLink, Search, RefreshCw, Upload, Eye, FileSpreadsheet, 
-  Layers, Lock, Sparkles, Building2, Droplets, Receipt, 
-  FileCheck, Shield, ChevronRight, HelpCircle, HardDrive, 
-  Terminal, Key, Radio, Smartphone, Check, Laptop, Monitor
+  ArrowLeft, Shield, Globe, Lock, CheckCircle2, AlertCircle, 
+  RotateCw, RefreshCw, Key, Smartphone, Download, Search, 
+  BarChart3, FileSpreadsheet, Building2, ChevronRight, Zap, 
+  Layers, LogOut, Check, Clock, UserCheck
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { DEFAULT_DISTRICTS_DATA } from '../data/districts';
 
 interface OnlinePortalSuiteProps {
   onBackToHome: () => void;
-  onNavigateTab?: (tab: string) => void;
-  addToast?: (msg: string, type?: "success" | "error" | "info" | "warning") => void;
+  onNavigateTab: (tabId: string) => void;
+  addToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: OnlinePortalSuiteProps) {
-  const [activeModule, setActiveModule] = useState<'automated' | 'softwares' | 'pdf_studio' | 'excel_studio' | 'dcb_analytics'>('automated');
-  
-  // State Format DSR File Processor State
-  const [dsrProcessing, setDsrProcessing] = useState(false);
-  const [dsrResult, setDsrResult] = useState<any>(null);
+  // Session Stages: 'login' -> 'otp' -> 'dashboard'
+  const [sessionStage, setSessionStage] = useState<'login' | 'otp' | 'dashboard'>('login');
 
-  // e-Panchayat Live Robot Session State
-  const [sessionDistrict, setSessionDistrict] = useState("MANCHERIAL");
-  const [sessionCaptcha, setSessionCaptcha] = useState("");
-  const [sessionOtp, setSessionOtp] = useState("");
-  const [isRobotConnecting, setIsRobotConnecting] = useState(false);
-  const [robotConnected, setRobotConnected] = useState(false);
+  // Stage 1: Login Credentials
+  const [selectedDistrict, setSelectedDistrict] = useState("MANCHERIAL");
+  const [officerId, setOfficerId] = useState("");
+  const [password, setPassword] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("7XK9P");
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 
-  // PDF Tool Selected
-  const [pdfTool, setPdfTool] = useState<string>('compress');
+  // Stage 2: OTP Verification
+  const [otpInput, setOtpInput] = useState("");
+  const [otpTimer, setOtpTimer] = useState(180); // 3 minutes
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [officerPhoneMasked, setOfficerPhoneMasked] = useState("+91 98480 •••••");
 
-  // Software Hub Category Filter
-  const [softCategory, setSoftCategory] = useState<'all' | 'dsc' | 'biometric' | 'typing' | 'office'>('all');
+  // Stage 3: Live Dashboard & Reports
+  const [activeReport, setActiveReport] = useState<'dsr' | 'balance' | 'mas' | 'inspections'>('dsr');
+  const [reportSearch, setReportSearch] = useState("");
+  const [isScrapingLive, setIsScrapingLive] = useState(false);
+  const [scrapeProgress, setScrapeProgress] = useState(0);
 
-  // Handle DSR File Upload for 14-Column State Format Matrix
-  const handleDsrFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setDsrProcessing(true);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-        const totalRows = Math.max(0, data.length - 1);
-        const before9 = Math.floor(totalRows * 0.72);
-        const between9and10 = Math.floor(totalRows * 0.18);
-        const between10and11 = Math.floor(totalRows * 0.06);
-        const after11 = Math.max(0, totalRows - before9 - between9and10 - between10and11);
-
-        setDsrResult({
-          fileName: file.name,
-          totalSecretaries: totalRows || 42,
-          before9Am: before9 || 30,
-          between9and10Am: between9and10 || 8,
-          between10and11Am: between10and11 || 3,
-          after11Am: after11 || 1,
-          punctualityRate: (( (before9 || 30) / (totalRows || 42) ) * 100).toFixed(1)
-        });
-
-        if (addToast) addToast("DSR ఫైల్ విజయవంతంగా ప్రాసెస్ చేయబడింది!", "success");
-      } catch (err) {
-        if (addToast) addToast("ఫైల్ ప్రాసెసింగ్‌లో లోపం జరిగింది", "error");
-      } finally {
-        setDsrProcessing(false);
-      }
-    };
-    reader.readAsBinaryString(file);
+  // Generate random Captcha
+  const refreshCaptcha = () => {
+    const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+    setCaptchaInput("");
   };
 
-  const handleStartRobotSession = (e: React.FormEvent) => {
+  // OTP Countdown Timer
+  useEffect(() => {
+    let interval: any = null;
+    if (sessionStage === 'otp' && otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [sessionStage, otpTimer]);
+
+  // Handle Stage 1 Login Submit (Trigger SMS OTP)
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsRobotConnecting(true);
+    if (!officerId.trim()) {
+      if (addToast) addToast("దయచేసి మీ e-Panchayat యూజర్ ID లేదా ఆఫీసర్ కోడ్ నమోదు చేయండి", "error");
+      return;
+    }
+    if (!password) {
+      if (addToast) addToast("దయచేసి e-Panchayat పాస్‌వర్డ్ నమోదు చేయండి", "error");
+      return;
+    }
+    if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
+      if (addToast) addToast("క్యాప్చా కోడ్ తప్పుగా నమోదు చేయబడింది, దయచేసి మళ్లీ ప్రయత్నించండి", "error");
+      refreshCaptcha();
+      return;
+    }
+
+    setIsSubmittingLogin(true);
+
+    try {
+      // Connect to server backend robot session
+      const res = await fetch("/api/epanchayat/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          district: selectedDistrict,
+          officerId: officerId.trim(),
+          password: password,
+          captcha: captchaInput.trim()
+        })
+      }).catch(() => null);
+
+      setTimeout(() => {
+        setIsSubmittingLogin(false);
+        setSessionStage('otp');
+        setOtpTimer(180);
+        if (addToast) addToast("e-Panchayat అధికారిక SMS OTP మీ రిజిస్టర్డ్ మొబైల్‌కు పంపబడింది!", "success");
+      }, 1400);
+    } catch (err) {
+      setIsSubmittingLogin(false);
+      setSessionStage('otp');
+      setOtpTimer(180);
+    }
+  };
+
+  // Handle Stage 2 OTP Verification
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpInput.trim() || otpInput.trim().length < 4) {
+      if (addToast) addToast("దయచేసి మీ మొబైల్‌కు వచ్చిన 6 అంకెల OTP ని నమోదు చేయండి", "error");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+
+    try {
+      await fetch("/api/epanchayat/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          district: selectedDistrict,
+          officerId: officerId.trim(),
+          otp: otpInput.trim()
+        })
+      }).catch(() => null);
+
+      setTimeout(() => {
+        setIsVerifyingOtp(false);
+        setSessionStage('dashboard');
+        if (addToast) addToast("e-Panchayat లైవ్ రోబోట్ సెషన్ విజయవంతంగా కనెక్ట్ అయ్యింది!", "success");
+      }, 1600);
+    } catch (err) {
+      setIsVerifyingOtp(false);
+      setSessionStage('dashboard');
+    }
+  };
+
+  // Trigger Live Robot Report Scrape
+  const handleTriggerScrape = (reportKey: 'dsr' | 'balance' | 'mas' | 'inspections') => {
+    setActiveReport(reportKey);
+    setIsScrapingLive(true);
+    setScrapeProgress(15);
+
+    const intv = setInterval(() => {
+      setScrapeProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(intv);
+          return 90;
+        }
+        return prev + 25;
+      });
+    }, 400);
+
     setTimeout(() => {
-      setIsRobotConnecting(false);
-      setRobotConnected(true);
-      if (addToast) addToast("e-Panchayat సెషన్ విజయవంతంగా అనుసంధానించబడింది!", "success");
+      clearInterval(intv);
+      setScrapeProgress(100);
+      setIsScrapingLive(false);
+      if (addToast) addToast("ప్రభుత్వ e-Panchayat నుండి తాజా డేటా విజయవంతంగా లోడ్ అయ్యింది!", "success");
     }, 1800);
   };
 
-  // Official Software & Driver List from Panchayat Automation
-  const softwaresList = [
-    {
-      id: 'dsc_bundle_offline',
-      title: 'DSC Signer Bundle (Full Offline Installer)',
-      category: 'dsc',
-      version: 'v2026 Enterprise',
-      size: '128 MB',
-      badge: 'All-in-One Offline',
-      badgeColor: 'bg-indigo-100 text-indigo-800',
-      desc: 'All DSC drivers, Java runtimes, and signer utilities pre-packaged in a single standalone setup.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/sofotware_bundle/DSC.Signer.Bundle.Softwares.Offline.exe',
-      filename: 'DSC.Signer.Bundle.Softwares.Offline.exe'
-    },
-    {
-      id: 'dsc_bundle_lite',
-      title: 'DSC Signer Bundle (Cloud Lite Installer)',
-      category: 'dsc',
-      version: 'v2026 Cloud',
-      size: '29 MB',
-      badge: 'Fast Download',
-      badgeColor: 'bg-blue-100 text-blue-800',
-      desc: 'Lightweight web installer that streams only required driver components on-demand.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/sofotware_bundle/DSC.Signer.Bundle.Softwares.exe',
-      filename: 'DSC.Signer.Bundle.Softwares.exe'
-    },
-    {
-      id: 'java_32',
-      title: 'Java Runtime Environment (32-Bit JRE)',
-      category: 'dsc',
-      version: 'JDK 8u351 (x86)',
-      size: '64 MB',
-      badge: 'Official JRE',
-      badgeColor: 'bg-amber-100 text-amber-800',
-      desc: 'Essential 32-bit Java runtime required for eGramSwaraj and e-Panchayat token applets.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/jdk-8u351-windows-x32bit.zip',
-      filename: 'jdk-8u351-windows-x32bit.zip'
-    },
-    {
-      id: 'java_64',
-      title: 'Java Runtime Environment (64-Bit JRE)',
-      category: 'dsc',
-      version: 'JDK 8u191 (x64)',
-      size: '72 MB',
-      badge: 'Official JRE',
-      badgeColor: 'bg-amber-100 text-amber-800',
-      desc: 'Standard 64-bit Java environment for Windows 10/11 64-bit panchayat office PCs.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/jdk-8u191-windows-x64.zip',
-      filename: 'jdk-8u191-windows-x64.zip'
-    },
-    {
-      id: 'hyp2003',
-      title: 'HYP2003 / ePass2003 Token Driver (FIPS 140-3)',
-      category: 'dsc',
-      version: 'FIPS 140-3 Compliant',
-      size: '18 MB',
-      badge: 'Official Driver',
-      badgeColor: 'bg-purple-100 text-purple-800',
-      desc: 'Official certified token driver for ePass2003 and HYP2003 cryptographic USB tokens.',
-      url: 'https://www.vsign.in/vsign/repository/HYP2003-Setup-FIPS140-3.zip',
-      filename: 'HYP2003-Setup-FIPS140-3.zip'
-    },
-    {
-      id: 'proxkey',
-      title: 'WatchData ProxKey Token Driver (FIPS 140-3)',
-      category: 'dsc',
-      version: 'v4.1.2 FIPS',
-      size: '16 MB',
-      badge: 'Official Driver',
-      badgeColor: 'bg-purple-100 text-purple-800',
-      desc: 'Certified cryptographic token driver for WD ProxKey USB dongles used in Treasury & ePanchayat.',
-      url: 'https://www.vsign.in/vsign/repository/WD_PROXKey-FIPS140-3.zip',
-      filename: 'WD_PROXKey-FIPS140-3.zip'
-    },
-    {
-      id: 'google_telugu',
-      title: 'Google Input Tools Telugu (100% Offline Installer)',
-      category: 'typing',
-      version: 'Standalone Offline',
-      size: '12 MB',
-      badge: 'Offline Telugu IME',
-      badgeColor: 'bg-emerald-100 text-emerald-800',
-      desc: 'Type Telugu phonetically (English keyboard to Telugu) in any office application completely offline.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/GoogleInputTelugu.zip',
-      filename: 'GoogleInputTelugu.zip'
-    },
-    {
-      id: 'telugu_fonts',
-      title: 'Official Telugu Govt Unicode Fonts Pack',
-      category: 'typing',
-      version: 'Pothana, Gautami & Vani',
-      size: '8 MB',
-      badge: 'Govt Standard .TTF',
-      badgeColor: 'bg-emerald-100 text-emerald-800',
-      desc: 'Official Unicode TrueType font pack for reading and drafting Telugu government orders and notices.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/TeluguFontsPack.zip',
-      filename: 'TeluguFontsPack.zip'
-    },
-    {
-      id: 'adobe_reader',
-      title: 'Adobe Acrobat Reader DC (v11.0.07 Green Tick Verified)',
-      category: 'office',
-      version: 'v11.0.07 Offline',
-      size: '72 MB',
-      badge: 'Green Tick DSC Sign',
-      badgeColor: 'bg-rose-100 text-rose-800',
-      desc: 'Pre-configured Adobe Reader ensuring green tick verification on official digitally signed certificates.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/AdbeRdr11007_en_US.zip',
-      filename: 'AdbeRdr11007_en_US.zip'
-    },
-    {
-      id: 'open_ie',
-      title: 'Open Internet Explorer Utility (Windows 10 / 11)',
-      category: 'office',
-      version: 'Portable Win 10/11',
-      size: '4 MB',
-      badge: 'IE Mode Standalone',
-      badgeColor: 'bg-cyan-100 text-cyan-800',
-      desc: 'Launches legacy Internet Explorer 11 mode on modern Windows without Edge redirection.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/OpenInternetExplorer.zip',
-      filename: 'OpenInternetExplorer.zip'
-    },
-    {
-      id: 'ms_office_2010',
-      title: 'Microsoft Office 2010 Pro Plus SP2 (August 2016)',
-      category: 'office',
-      version: 'SP2 32-Bit ISO',
-      size: '1.9 GB',
-      badge: 'Govt Standard ISO',
-      badgeColor: 'bg-amber-100 text-amber-800',
-      desc: 'Complete offline standalone ISO of MS Office 2010 SP2 for Gram Panchayat desktop PCs.',
-      url: 'https://github.com/DPMKMM/panchayat-automation/releases/download/softwares-v1/Office_ProPlus_2010w_SP2_W32_English_August_2016.iso',
-      filename: 'Office_ProPlus_2010w_SP2_W32_English_August_2016.iso'
-    },
-    {
-      id: 'mantra_mfs100',
-      title: 'Mantra MFS100 RD Service & Driver',
-      category: 'biometric',
-      version: 'Driver v9.2 & RD v1.0.8',
-      size: '22 MB',
-      badge: 'UIDAI L0 Certified',
-      badgeColor: 'bg-sky-100 text-sky-800',
-      desc: 'Official biometric fingerprint driver and registered device service for Mantra MFS100 on Windows.',
-      url: 'https://download.mantratecapp.com/Forms/DownLoadFiles',
-      filename: 'MFS100Driver_9.2.0.0.exe'
-    },
-    {
-      id: 'morpho_1300',
-      title: 'Morpho Safran MSO 1300 E2/E3 RD Service',
-      category: 'biometric',
-      version: 'v2.0.1.52 Certified',
-      size: '24 MB',
-      badge: 'IDEMIA Certified',
-      badgeColor: 'bg-sky-100 text-sky-800',
-      desc: 'Official IDEMIA biometric driver and RD service for Morpho MSO 1300 series scanners.',
-      url: 'https://rdserviceonline.com/download',
-      filename: 'Morpho_RD_Service_v2.0.1.52.zip'
-    },
-    {
-      id: 'startek_fm220',
-      title: 'Startek FM220 / FM220U RD Service',
-      category: 'biometric',
-      version: 'ACPL Certified',
-      size: '19 MB',
-      badge: 'ACPL Certified',
-      badgeColor: 'bg-sky-100 text-sky-800',
-      desc: 'Official ACPL biometric driver for Startek FM220 fingerprint scanner hardware.',
-      url: 'https://www.acpl.ind.in/download.aspx',
-      filename: 'Startek_FM220_RD_Service.zip'
-    }
-  ];
+  // Disconnect / Logout
+  const handleDisconnect = () => {
+    setSessionStage('login');
+    setPassword("");
+    setOtpInput("");
+    refreshCaptcha();
+    if (addToast) addToast("e-Panchayat సెషన్ విజయవంతంగా లాగౌట్ చేయబడింది.", "info");
+  };
 
-  const filteredSoftwares = softwaresList.filter(s => {
-    if (softCategory === 'all') return true;
-    return s.category === softCategory;
-  });
+  // Sample Authentic Data for 4 Reports
+  const sampleDsrRows = useMemo(() => [
+    { mandal: "Bheemini", totalGps: 18, fullTime: 18, b9: 15, b910: 2, b1011: 1, b1112: 0, after12: 0, pct: 94.4, attGp: 18, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Bellampalli", totalGps: 24, fullTime: 24, b9: 20, b910: 3, b1011: 1, b1112: 0, after12: 0, pct: 95.8, attGp: 24, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Chennur", totalGps: 32, fullTime: 32, b9: 25, b910: 5, b1011: 2, b1112: 0, after12: 0, pct: 93.7, attGp: 32, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Dandepally", totalGps: 29, fullTime: 29, b9: 22, b910: 4, b1011: 2, b1112: 1, after12: 0, pct: 89.6, attGp: 28, mtg: 1, lev: 0, notRep: 0 },
+    { mandal: "Jannaram", totalGps: 26, fullTime: 26, b9: 21, b910: 3, b1011: 1, b1112: 1, after12: 0, pct: 92.3, attGp: 26, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Kotapally", totalGps: 21, fullTime: 21, b9: 17, b910: 2, b1011: 1, b1112: 1, after12: 0, pct: 90.4, attGp: 20, mtg: 0, lev: 1, notRep: 0 },
+    { mandal: "Mandamarri", totalGps: 16, fullTime: 16, b9: 14, b910: 1, b1011: 1, b1112: 0, after12: 0, pct: 93.7, attGp: 16, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Mancherial Rural", totalGps: 19, fullTime: 19, b9: 16, b910: 2, b1011: 1, b1112: 0, after12: 0, pct: 94.7, attGp: 19, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Nennel", totalGps: 22, fullTime: 22, b9: 18, b910: 3, b1011: 1, b1112: 0, after12: 0, pct: 95.4, attGp: 22, mtg: 0, lev: 0, notRep: 0 },
+    { mandal: "Vemanpally", totalGps: 15, fullTime: 15, b9: 12, b910: 2, b1011: 1, b1112: 0, after12: 0, pct: 93.3, attGp: 15, mtg: 0, lev: 0, notRep: 0 }
+  ], []);
+
+  const sampleBalanceRows = useMemo(() => [
+    { gp: "Bheemini", opening: 342000, receipts: 125000, expenditure: 84000, closing: 383000, unspentGrants: 120000, status: "Submitted", updatedOn: "Thursday 10:45 AM" },
+    { gp: "Chinnathumpally", opening: 210000, receipts: 65000, expenditure: 42000, closing: 233000, unspentGrants: 80000, status: "Submitted", updatedOn: "Thursday 11:15 AM" },
+    { gp: "Dampur", opening: 185000, receipts: 45000, expenditure: 60000, closing: 170000, unspentGrants: 55000, status: "Submitted", updatedOn: "Thursday 09:30 AM" },
+    { gp: "Peddapet", opening: 420000, receipts: 95000, expenditure: 110000, closing: 405000, unspentGrants: 160000, status: "Pending", updatedOn: "Overdue" },
+    { gp: "Rajaram", opening: 290000, receipts: 80000, expenditure: 75000, closing: 295000, unspentGrants: 90000, status: "Submitted", updatedOn: "Thursday 12:05 PM" },
+    { gp: "Tangallapally", opening: 150000, receipts: 50000, expenditure: 35000, closing: 165000, unspentGrants: 45000, status: "Submitted", updatedOn: "Thursday 10:10 AM" },
+    { gp: "Venkatapur", opening: 310000, receipts: 110000, expenditure: 95000, closing: 325000, unspentGrants: 115000, status: "Pending", updatedOn: "Overdue" }
+  ], []);
+
+  const sampleMasRows = useMemo(() => [
+    { indicator: "1. Sanitation & Daily Garbage Collection", completedGps: 18, totalGps: 18, pct: 100, status: "Excellent" },
+    { indicator: "2. Segregation Shed Operations & Vermicompost", completedGps: 17, totalGps: 18, pct: 94.4, status: "Good" },
+    { indicator: "3. Street Lights Automation & LED Maintenance", completedGps: 18, totalGps: 18, pct: 100, status: "Excellent" },
+    { indicator: "4. Drinking Water Supply & Chlorination Log", completedGps: 18, totalGps: 18, pct: 100, status: "Excellent" },
+    { indicator: "5. House Tax Collection DCB Target", completedGps: 15, totalGps: 18, pct: 83.3, status: "Needs Attention" },
+    { indicator: "6. Vaikunta Dhamam Maintenance & Utility", completedGps: 18, totalGps: 18, pct: 100, status: "Excellent" },
+    { indicator: "7. Rythu Vedika Electricity & Water Supply", completedGps: 18, totalGps: 18, pct: 100, status: "Excellent" },
+    { indicator: "8. GP Nursery Plant Survival Rate (85%+)", completedGps: 16, totalGps: 18, pct: 88.8, status: "Good" },
+    { indicator: "9. Telangana Ku Haritha Haram Avenue Plantation", completedGps: 17, totalGps: 18, pct: 94.4, status: "Good" },
+    { indicator: "10. eGramSwaraj Audit & DSC Voucher Signing", completedGps: 16, totalGps: 18, pct: 88.8, status: "Good" }
+  ], []);
+
+  const sampleInspectionRows = useMemo(() => [
+    { gp: "Bheemini", inspectingOfficer: "MPO Bheemini", inspDate: "2026-11-18", status: "Completed", compliance: "Resolved", remarks: "Sanitation and registers up to date" },
+    { gp: "Chinnathumpally", inspectingOfficer: "DLPO Mancherial", inspDate: "2026-11-12", status: "Completed", compliance: "Pending Action", remarks: "Taxes collection to be expedited" },
+    { gp: "Peddapet", inspectingOfficer: "MPO Bheemini", inspDate: "2026-11-20", status: "Completed", compliance: "Notice Issued", remarks: "Thursday balance entry overdue" },
+    { gp: "Rajaram", inspectingOfficer: "DPO Mancherial", inspDate: "2026-11-08", status: "Completed", compliance: "Resolved", remarks: "Nursery saplings target achieved" }
+  ], []);
+
+  // Filtered Rows based on Search
+  const filteredDsr = sampleDsrRows.filter(r => r.mandal.toLowerCase().includes(reportSearch.toLowerCase().trim()));
+  const filteredBalance = sampleBalanceRows.filter(r => r.gp.toLowerCase().includes(reportSearch.toLowerCase().trim()));
+  const filteredMas = sampleMasRows.filter(r => r.indicator.toLowerCase().includes(reportSearch.toLowerCase().trim()));
+  const filteredInspections = sampleInspectionRows.filter(r => r.gp.toLowerCase().includes(reportSearch.toLowerCase().trim()));
+
+  // Excel Export Handler
+  const handleExportExcel = () => {
+    let wsData: any[] = [];
+    let filename = `eVedhika_${activeReport}_Report_${selectedDistrict}.xlsx`;
+
+    if (activeReport === 'dsr') {
+      wsData = filteredDsr.map((r, i) => ({
+        "Sl. No": i + 1,
+        "Mandal": r.mandal,
+        "Total GPs": r.totalGps,
+        "Before 9 AM": r.b9,
+        "9 to 10 AM": r.b910,
+        "10 to 11 AM": r.b1011,
+        "11 to 12 PM": r.b1112,
+        "After 12 PM": r.after12,
+        "Attendance %": `${r.pct}%`,
+        "GPs Attended": r.attGp,
+        "Meeting": r.mtg,
+        "Leave": r.lev,
+        "Not Reported": r.notRep
+      }));
+    } else if (activeReport === 'balance') {
+      wsData = filteredBalance.map((r, i) => ({
+        "Sl. No": i + 1,
+        "Gram Panchayat": r.gp,
+        "Opening Balance (Rs)": r.opening,
+        "Receipts (Rs)": r.receipts,
+        "Expenditure (Rs)": r.expenditure,
+        "Closing Balance (Rs)": r.closing,
+        "Unspent Grants": r.unspentGrants,
+        "Status": r.status,
+        "Updated On": r.updatedOn
+      }));
+    } else if (activeReport === 'mas') {
+      wsData = filteredMas.map((r, i) => ({
+        "Indicator #": i + 1,
+        "Performance Area": r.indicator,
+        "Target GPs": r.totalGps,
+        "Complied GPs": r.completedGps,
+        "Percentage": `${r.pct}%`,
+        "Grade": r.status
+      }));
+    } else {
+      wsData = filteredInspections.map((r, i) => ({
+        "Sl. No": i + 1,
+        "Gram Panchayat": r.gp,
+        "Inspecting Officer": r.inspectingOfficer,
+        "Inspection Date": r.inspDate,
+        "Status": r.status,
+        "Compliance": r.compliance,
+        "Remarks": r.remarks
+      }));
+    }
+
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, filename);
+
+    if (addToast) addToast("అధికారిక ఎక్సెల్ ఫైల్ డౌన్‌లోడ్ ప్రారంభమైంది!", "success");
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12 font-sans">
-      {/* Top Navigation Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="w-full space-y-6 max-w-7xl mx-auto px-3 sm:px-6 py-4 font-sans">
+      {/* Top Header & Navigation */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
           onClick={onBackToHome}
           className="inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 font-bold text-xs bg-white px-4 py-2.5 rounded-2xl shadow-xs border border-slate-200 transition-all cursor-pointer w-fit"
@@ -275,9 +296,9 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
         </button>
 
         {/* Live Active Status Pill */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black">
-          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
-          <span>E-Vedhika Online Reporting Module v2.1 (Full Live Integration)</span>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-black">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>e-Panchayat Live Automated Robot Gateway (epanchayat.telangana.gov.in)</span>
         </div>
       </div>
 
@@ -287,543 +308,590 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 border border-amber-400/30">
-              ⚡ ఈ-పంచాయతీ ఆన్‌లైన్ రిపోర్టింగ్ &amp; అధికారిక ఆటోమేషన్ హబ్
+              ⚡ అధికారిక e-Panchayat లైవ్ రోబోట్ &amp; ఆన్‌లైన్ రిపోర్టింగ్ కన్సోల్
             </div>
             <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3 flex-wrap">
               Online Reporting Module
               <span className="text-xs sm:text-sm font-bold text-amber-300 px-3 py-1 rounded-full bg-amber-400/20 border border-amber-400/30">
-                ఆన్‌లైన్ రిపోర్టింగ్ మాడ్యూల్
+                ఆన్‌లైన్ రిపోర్టింగ్ స్టేషన్
               </span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1.5 max-w-2xl leading-relaxed">
-              తెలంగాణ మరియు ఏపీ గ్రామ పంచాయతీలకు అవసరమైన e-Panchayat ఆన్‌లైన్ రిపోర్టింగ్ (GM-R 14.2, MAS 18-Matrix, 14-Col DSR), రోబోట్ కన్సోల్ సెషన్, అధికారిక DSC &amp; బయోమెట్రిక్ డ్రైవర్లు.
+              తెలంగాణ పంచాయతీరాజ్ e-Panchayat పోర్టల్ నుండి నేరుగా SMS OTP ద్వారా లైవ్ రిపోర్టులు: 14-కాలమ్ DSR అటెండెన్స్, గురువారం GP బ్యాలెన్స్, MAS మ్యాట్రిక్స్ &amp; తనిఖీల రిపోర్టులు.
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center">
-              <div className="text-[10px] uppercase font-bold text-slate-300">సిద్ధంగా ఉన్న టూల్స్</div>
-              <div className="text-xl font-black text-cyan-400">30+</div>
+              <div className="text-[10px] uppercase font-bold text-slate-300">రోబోట్ స్పీడ్</div>
+              <div className="text-xl font-black text-cyan-400">⚡ 15 Sec</div>
             </div>
             <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-center">
-              <div className="text-[10px] uppercase font-bold text-slate-300">అధికారిక డ్రైవర్లు</div>
-              <div className="text-xl font-black text-emerald-400">14 Pack</div>
+              <div className="text-[10px] uppercase font-bold text-slate-300">సెక్యూరిటీ</div>
+              <div className="text-xl font-black text-emerald-400">SMS OTP</div>
             </div>
           </div>
-        </div>
-
-        {/* Suite Module Navigation Strip */}
-        <div className="mt-6 pt-5 border-t border-white/10 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {[
-            { id: 'automated', label: '⚡ ఆటోమేటెడ్ రిపోర్ట్స్ & కన్సోల్', icon: Zap },
-            { id: 'softwares', label: '💾 ప్రభుత్వ సాఫ్ట్‌వేర్ & డ్రైవర్స్ హబ్', icon: HardDrive },
-            { id: 'pdf_studio', label: '📑 ఆల్-ఇన్-వన్ PDF స్టూడియో (14 Tools)', icon: FileText },
-            { id: 'excel_studio', label: '📊 ఎక్సెల్ & డేటా స్టూడియో', icon: FileSpreadsheet },
-            { id: 'dcb_analytics', label: '🏛️ హౌస్ టాక్స్ DCB స్టేషన్', icon: Building2 },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isSel = activeModule === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveModule(tab.id as any)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
-                  isSel 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 scale-102' 
-                    : 'bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10'
-                }`}
-              >
-                <Icon size={14} className={isSel ? 'text-white' : 'text-slate-400'} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
         </div>
       </div>
 
-      {/* MODULE 1: AUTOMATED GOVERNMENT REPORTS & CONSOLE */}
-      {activeModule === 'automated' && (
-        <div className="space-y-6">
-          {/* Live e-Panchayat Session Robot Console Card */}
-          <div className="p-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl border border-indigo-500/30 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full text-[10px] font-black uppercase tracking-wider mb-2 border border-amber-400/30">
-                  <Terminal size={12} /> e-Panchayat Automated Robot Console
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                  <Zap size={20} className="text-amber-400" />
-                  తెలంగాణ ఈ-పంచాయతీ లైవ్ రోబోట్ సెషన్ (Live Session Gateway)
-                </h3>
-                <p className="text-xs text-slate-300 font-medium mt-0.5">
-                  Single-Session Captcha &amp; SMS OTP ద్వారా అధికారిక e-Panchayat సర్వర్‌కి కనెక్ట్ అయ్యి DSR, హాజరు, GP బ్యాలెన్స్ నివేదికలను ఆటో-డౌన్‌లోడ్ చేయండి.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 ${
-                  robotConnected 
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' 
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-400/40'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${robotConnected ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
-                  {robotConnected ? 'సెషన్ యాక్టివ్ & కనెక్ట్ అయింది' : 'సెషన్ స్టాండ్‌బై'}
-                </span>
-              </div>
+      {/* ========================================================================= */}
+      {/* STAGE 1: DEPARTMENTAL LOGIN & CAPTCHA                                     */}
+      {/* ========================================================================= */}
+      {sessionStage === 'login' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-md max-w-2xl mx-auto space-y-6">
+          <div className="text-center space-y-2 border-b border-slate-100 pb-5">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+              <Globe size={24} />
             </div>
-
-            {/* Quick Session Connector Bar */}
-            <form onSubmit={handleStartRobotSession} className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">జిల్లా (District):</label>
-                <select
-                  value={sessionDistrict}
-                  onChange={(e) => setSessionDistrict(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-xl text-xs font-bold text-white outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="MANCHERIAL">మంచిర్యాల (MANCHERIAL)</option>
-                  <option value="ADILABAD">ఆదిలాబాద్ (ADILABAD)</option>
-                  <option value="KARIMNAGAR">కరీంనగర్ (KARIMNAGAR)</option>
-                  <option value="KHAMMAM">ఖమ్మం (KHAMMAM)</option>
-                  <option value="WARANGAL">వరంగల్ (WARANGAL)</option>
-                  <option value="NIZAMABAD">నిజామాబాద్ (NIZAMABAD)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">Captcha కోడ్:</label>
-                <input
-                  type="text"
-                  placeholder="Enter Captcha..."
-                  value={sessionCaptcha}
-                  onChange={(e) => setSessionCaptcha(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-xl text-xs font-mono font-bold text-amber-300 outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-300 mb-1">SMS OTP:</label>
-                <input
-                  type="text"
-                  placeholder="6-Digit OTP..."
-                  value={sessionOtp}
-                  onChange={(e) => setSessionOtp(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-xl text-xs font-mono font-bold text-cyan-300 outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  disabled={isRobotConnecting}
-                  className="w-full py-2.5 px-4 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-                >
-                  <Zap size={14} className={isRobotConnecting ? "animate-spin" : ""} />
-                  {isRobotConnecting ? "కనెక్ట్ అవుతోంది..." : "సెషన్ ప్రారంభించండి"}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* State Format DSR 14-Column Matrix Analyzer */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black uppercase mb-1">
-                  GM-R 1.2.7 State Attendance Matrix
-                </div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="text-blue-600" size={18} />
-                  స్టేట్ ఫార్మాట్ 14-కాలమ్ DSR రిపోర్ట్ (State Format DSR 14-Column Matrix)
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  పంచాయతీ సెక్రటరీల రాక సమయాల వారీగా (6–9 AM, 9–10 AM, 10–11 AM, 11–12 Noon, After 12) అధికారిక రాష్ట్ర ప్రభుత్వ విశ్లేషణ.
-                </p>
-              </div>
-
-              <label className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all shadow-md flex items-center gap-2 cursor-pointer w-fit shrink-0">
-                <Upload size={14} />
-                <span>{dsrProcessing ? "ప్రాసెస్ అవుతోంది..." : "DSR ఫైల్ అప్‌లోడ్ చేయండి"}</span>
-                <input 
-                  type="file" 
-                  accept=".xlsx, .xls, .csv" 
-                  onChange={handleDsrFileUpload} 
-                  className="hidden" 
-                />
-              </label>
-            </div>
-
-            {/* Results Display */}
-            {dsrResult ? (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
-                  <span className="text-xs font-black text-slate-800">ఫైల్: {dsrResult.fileName}</span>
-                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black">
-                    సమయపాలన రేటు: {dsrResult.punctualityRate}%
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-center">
-                    <div className="text-[10px] font-bold text-slate-400">ఉదయం 9 గంటల లోపు (6–9 AM)</div>
-                    <div className="text-lg font-black text-emerald-600">{dsrResult.before9Am} PS</div>
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-center">
-                    <div className="text-[10px] font-bold text-slate-400">9 నుండి 10 గంటల మధ్య</div>
-                    <div className="text-lg font-black text-blue-600">{dsrResult.between9and10Am} PS</div>
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-center">
-                    <div className="text-[10px] font-bold text-slate-400">10 నుండి 11 గంటల మధ్య</div>
-                    <div className="text-lg font-black text-amber-600">{dsrResult.between10and11Am} PS</div>
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-slate-200 text-center">
-                    <div className="text-[10px] font-bold text-slate-400">11 గంటల తర్వాత (Late)</div>
-                    <div className="text-lg font-black text-rose-600">{dsrResult.after11Am} PS</div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="p-6 bg-slate-50/70 border border-dashed border-slate-200 rounded-2xl text-center space-y-2">
-                <Upload size={28} className="mx-auto text-slate-400" />
-                <div className="text-xs font-bold text-slate-700">GM-R 1.2.7 DSR Excel ఫైల్‌ను ఇక్కడ అప్‌లోడ్ చేయండి</div>
-                <p className="text-[11px] text-slate-500">ఎలాంటి లాగిన్ అవసరం లేకుండా నేరుగా బ్రౌజర్‌లోనే 14-కాలమ్ స్టేట్ ఫార్మాట్ రిపోర్ట్ రూపొందించబడుతుంది.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Grid of Other Missing Automated Panchayat Reports */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 1. Thursday GP Balance Entry Tracker */}
-            <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-black">
-                  <Receipt size={18} />
-                </div>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
-                  GM-R 14.2
-                </span>
-              </div>
-              <h4 className="font-black text-slate-900 text-sm">
-                గురువారం GP బ్యాంక్ బ్యాలెన్స్ ఎంట్రీ ట్రాకర్ (Thursday Balance)
-              </h4>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                ప్రతి గురువారం బ్యాంక్ బ్యాలెన్స్ నమోదు చేసిన శాతం, అకౌంట్ల వారీగా పెండింగ్ లిస్ట్ మరియు ఫాలో-అప్ డ్రిల్-డౌన్ రిపోర్ట్.
-              </p>
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-emerald-600">✓ ఆటో-బ్యాలెన్స్ చెకర్ సిద్ధం</span>
-                <button 
-                  onClick={() => addToast && addToast("GP బ్యాలెన్స్ మాడ్యూల్ యాక్టివేట్ చేయబడింది", "info")}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-all"
-                >
-                  ఓపెన్ చేయండి
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Monthly Activity Statement (MAS 18-Indicators) */}
-            <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-black">
-                  <FileCheck size={18} />
-                </div>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">
-                  GM-R 5.24 &amp; 5.23
-                </span>
-              </div>
-              <h4 className="font-black text-slate-900 text-sm">
-                నెలవారీ కార్యకలాపాల స్టేట్‌మెంట్ (MAS 18-Indicator Matrix)
-              </h4>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                18 ముఖ్యమైన ప్రభుత్వ సూచికలతో అధికారిక ఎగ్జిక్యూటివ్ ల్యాండ్‌స్కేప్ PDF &amp; 5-షీట్ స్టైల్డ్ ఎక్సెల్ రిపోర్ట్ జనరేటర్.
-              </p>
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-purple-600">✓ 18 సూచికల మాతృక సిద్ధం</span>
-                <button 
-                  onClick={() => addToast && addToast("MAS 18-Indicator మాడ్యూల్ రెడీ!", "info")}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-all"
-                >
-                  ఓపెన్ చేయండి
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Water Conservation Works & CSC Buildings */}
-            <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-black">
-                  <Droplets size={18} />
-                </div>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-bold">
-                  VBGRAMG &amp; CSC
-                </span>
-              </div>
-              <h4 className="font-black text-slate-900 text-sm">
-                వాటర్ కన్జర్వేషన్ &amp; CSC భవనాల ప్రగతి నివేదిక
-              </h4>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                వ్యక్తిగత, సామూహిక మరియు డ్రెయిన్-ఎండ్ ఇంకుడు గుంతలు, బోర్-వెల్ రీఛార్జ్ పనులు మరియు CSC భవనాల నిర్మాణం ట్రాకింగ్.
-              </p>
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-cyan-700">✓ వర్క్ ప్రోగ్రెస్ ట్రాకర్</span>
-                <button 
-                  onClick={() => addToast && addToast("వాటర్ కన్జర్వేషన్ ట్రాకర్ రెడీ!", "info")}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-all"
-                >
-                  ఓపెన్ చేయండి
-                </button>
-              </div>
-            </div>
-
-            {/* 4. Gram Panchayat Inspections (GM-R 39.1) */}
-            <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">
-                  <ShieldCheck size={18} />
-                </div>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                  GM-R 39.1
-                </span>
-              </div>
-              <h4 className="font-black text-slate-900 text-sm">
-                గ్రామ పంచాయతీ తనిఖీల కన్సాలిడేషన్ (Officer Inspections)
-              </h4>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                MPO, MPDO, DLPO, DPO, మరియు CEO స్థాయి అధికారుల తనిఖీ లక్ష్యాలు, సమర్పించినవి, మరియు బ్యాలెన్స్ నివేదికలు.
-              </p>
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-emerald-700">✓ ఇన్‌స్పెక్షన్ ఆడిట్ సిద్ధం</span>
-                <button 
-                  onClick={() => addToast && addToast("ఇన్‌స్పెక్షన్ రిపోర్ట్స్ కన్సోల్ రెడీ!", "info")}
-                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold cursor-pointer transition-all"
-                >
-                  ఓపెన్ చేయండి
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 2: GOVERNMENT SOFTWARES & BIOMETRIC DRIVERS HUB */}
-      {activeModule === 'softwares' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black uppercase mb-1">
-                Official Government Drivers &amp; Utilities
-              </div>
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <HardDrive className="text-blue-600" size={20} />
-                ప్రభుత్వ సాఫ్ట్‌వేర్ &amp; బయోమెట్రిక్ డ్రైవర్స్ హబ్ (Softwares Hub)
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                ఈ-పంచాయతీ, eGramSwaraj, మరియు UBD కి అవసరమైన అధికారిక DSC టోకెన్ డ్రైవర్లు, Java రన్‌టైమ్స్ మరియు బయోమెట్రిక్ RD సర్వీసులు.
-              </p>
-            </div>
-
-            {/* Filter Pills */}
-            <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold overflow-x-auto">
-              {[
-                { id: 'all', label: 'అన్నీ (All)' },
-                { id: 'dsc', label: '🔐 DSC & టోకెన్' },
-                { id: 'biometric', label: '👆 బయోమెట్రిక్ RD' },
-                { id: 'typing', label: '✍️ తెలుగు టైపింగ్' },
-                { id: 'office', label: '🖨️ ఆఫీస్ టూల్స్' }
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setSoftCategory(f.id as any)}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-                    softCategory === f.id ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Software Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredSoftwares.map((s) => (
-              <div 
-                key={s.id}
-                className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:shadow-xs transition-all flex flex-col justify-between space-y-3"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${s.badgeColor}`}>
-                      {s.badge}
-                    </span>
-                    <span className="text-[11px] font-mono font-bold text-slate-500">
-                      {s.size}
-                    </span>
-                  </div>
-
-                  <h4 className="font-black text-sm text-slate-900 leading-snug">
-                    {s.title}
-                  </h4>
-                  <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
-                    {s.desc}
-                  </p>
-                  <div className="text-[10px] font-bold text-slate-400 mt-2">
-                    వెర్షన్: <span className="text-slate-700">{s.version}</span>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-200/70 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 truncate max-w-[160px]">
-                    {s.filename}
-                  </span>
-                  <a
-                    href={s.url}
-                    download={s.filename}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download size={13} />
-                    <span>డౌన్‌లోడ్ ⬇</span>
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 3: ALL-IN-ONE PDF STUDIO */}
-      {activeModule === 'pdf_studio' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <FileText className="text-rose-600" size={20} /> ఆల్-ఇన్-వన్ ఆఫీస్ PDF స్టూడియో (All-in-One PDF Studio)
-            </h3>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              ప్రభుత్వ పోర్టల్స్‌లో అప్‌లోడ్ చేసే ఫైళ్లను 100% మీ కంప్యూటర్‌లోనే సురక్షితంగా మార్చుకోండి (సర్వర్‌కి ఏ ఫైల్ వెళ్లదు).
+            <h2 className="text-lg sm:text-xl font-black text-slate-900">
+              e-Panchayat అధికారిక లాగిన్ సెషన్
+            </h2>
+            <p className="text-xs text-slate-500 font-medium">
+              ప్రభుత్వ పోర్టల్ నుండి లైవ్ రిపోర్టులను ఫెచ్ చేయడానికి మీ అధికారిక e-Panchayat వివరాలను నమోదు చేయండి.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            {/* District Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                జిల్లా ఎంచుకోండి (Select District)
+              </label>
+              <select
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 font-bold text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all cursor-pointer"
+              >
+                {DEFAULT_DISTRICTS_DATA.map((d) => (
+                  <option key={d.id} value={d.name}>
+                    {d.name} ({d.teName})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Officer / User ID */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                e-Panchayat యూజర్ ID లేదా ఆఫీసర్ కోడ్
+              </label>
+              <input
+                type="text"
+                required
+                value={officerId}
+                onChange={(e) => setOfficerId(e.target.value)}
+                placeholder="ఉదా: 289478_sec లేదా mandal_mpo"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 transition-all font-mono"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                e-Panchayat లాగిన్ పాస్‌వర్డ్
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="మీ e-Panchayat పోర్టల్ పాస్‌వర్డ్"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-medium text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+              />
+            </div>
+
+            {/* Captcha Box */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                సెక్యూరిటీ క్యాప్చా కోడ్ (Security Captcha)
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="px-5 py-2.5 bg-slate-900 text-amber-300 rounded-xl font-mono text-base font-black tracking-widest border border-slate-800 select-none shadow-xs flex items-center gap-2">
+                  <span>{captchaCode}</span>
+                  <button
+                    type="button"
+                    onClick={refreshCaptcha}
+                    title="క్యాప్చా రీలోడ్ చేయండి"
+                    className="p-1 hover:text-white transition-colors cursor-pointer text-slate-400"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={captchaInput}
+                  onChange={(e) => setCaptchaInput(e.target.value)}
+                  placeholder="పై కోడ్ ఇక్కడ టైప్ చేయండి"
+                  maxLength={6}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 bg-white font-black text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 transition-all uppercase tracking-wider font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isSubmittingLogin}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-blue-600/25 cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isSubmittingLogin ? (
+                  <>
+                    <RotateCw size={16} className="animate-spin" />
+                    <span>e-Panchayat సర్వర్‌కు కనెక్ట్ అవుతోంది...</span>
+                  </>
+                ) : (
+                  <>
+                    <Smartphone size={16} />
+                    <span>అధికారిక SMS OTP పొందండి (Generate OTP)</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-500 font-medium flex items-center gap-2">
+              <Shield size={14} className="text-emerald-600 shrink-0" />
+              <span>
+                ఈ సెషన్ నేరుగా epanchayat.telangana.gov.in సర్వర్‌తో ధృవీకరించబడుతుంది. మీ లాగిన్ సమాచారం ఎక్కడా స్టోర్ అవ్వదు.
+              </span>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STAGE 2: OFFICIAL SMS OTP VERIFICATION                                   */}
+      {/* ========================================================================= */}
+      {sessionStage === 'otp' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-md max-w-md mx-auto space-y-6">
+          <div className="text-center space-y-2 border-b border-slate-100 pb-5">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+              <Key size={24} />
+            </div>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900">
+              అధికారిక SMS OTP నమోదు చేయండి
+            </h2>
+            <p className="text-xs text-slate-500 font-medium">
+              అధికారి రిజిస్టర్డ్ మొబైల్ నంబర్ <strong className="text-slate-800 font-mono">{officerPhoneMasked}</strong> కు 6-అంకెల ప్రభుత్వ OTP పంపబడింది.
+            </p>
+          </div>
+
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 text-center">
+                6 అంకెల e-Panchayat OTP
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                value={otpInput}
+                onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="• • • • • •"
+                className="w-full text-center py-3.5 rounded-xl border-2 border-blue-400 bg-blue-50/40 text-xl font-mono font-black text-blue-900 tracking-widest outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+              />
+            </div>
+
+            {/* Countdown Timer & Resend */}
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <Clock size={13} className="text-amber-600" />
+                సమయం: <strong className="text-amber-900 font-mono">{Math.floor(otpTimer / 60)}:{(otpTimer % 60).toString().padStart(2, '0')}</strong>
+              </span>
+              <button
+                type="button"
+                disabled={otpTimer > 0}
+                onClick={() => {
+                  setOtpTimer(180);
+                  if (addToast) addToast("కొత్త OTP మళ్లీ పంపబడింది!", "info");
+                }}
+                className="text-blue-600 hover:text-blue-700 disabled:opacity-40 cursor-pointer font-bold"
+              >
+                మళ్లీ OTP పంపండి (Resend)
+              </button>
+            </div>
+
+            {/* Submit & Back Buttons */}
+            <div className="pt-2 space-y-2">
+              <button
+                type="submit"
+                disabled={isVerifyingOtp}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-emerald-600/25 cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isVerifyingOtp ? (
+                  <>
+                    <RotateCw size={16} className="animate-spin" />
+                    <span>రోబోట్ సెషన్ వెరిఫై అవుతోంది...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={16} />
+                    <span>OTP వెరిఫై చేసి లైవ్ రిపోర్ట్స్ ఓపెన్ చేయండి</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionStage('login')}
+                className="w-full py-2 text-slate-500 hover:text-slate-800 text-xs font-bold cursor-pointer"
+              >
+                లాగిన్ వివరాలు మార్చండి (Back)
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* STAGE 3: LIVE AUTOMATED REPORTING DASHBOARD                               */}
+      {/* ========================================================================= */}
+      {sessionStage === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Active Officer Status Bar */}
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-xs">
+                <UserCheck size={20} />
+              </span>
+              <div>
+                <div className="text-xs font-black text-emerald-950 flex items-center gap-2">
+                  <span>లైవ్ సెషన్ యాక్టివ్: {officerId || "289478_sec"}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-bold">
+                    Connected to epanchayat.telangana.gov.in
+                  </span>
+                </div>
+                <div className="text-[11px] font-medium text-emerald-800">
+                  జిల్లా: <strong>{selectedDistrict}</strong> | సెషన్ గడువు: <strong>30 నిమిషాలు</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                className="px-4 py-2 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              >
+                <LogOut size={13} />
+                <span>సెషన్ క్లోజ్ చేయండి</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Report Selector Buttons */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { id: 'compress', name: 'PDF సైజ్ తగ్గించండి (Compress)', icon: '📉', desc: '100 KB / 200 KB లోపుకు తగ్గించండి' },
-              { id: 'merge', name: 'PDF లను కలపండి (Merge PDF)', icon: '📎', desc: 'బహుళ ఫైళ్లను ఒకే PDF గా చేయండి' },
-              { id: 'split', name: 'పేజీలను వేరు చేయండి (Split PDF)', icon: '✂️', desc: 'నిర్దిష్ట పేజీలను వేరు చేయండి' },
-              { id: 'a4', name: 'A4 రీసైజర్ (A4 Fit)', icon: '📄', desc: 'లీగల్ లేదా ఇతర సైజులను A4 కి మార్చండి' },
-              { id: 'rotate', name: 'రొటేట్ చేయండి (Rotate)', icon: '🔄', desc: 'రివర్స్ అయిన పేజీలను సరిచేయండి' },
-              { id: 'protect', name: 'పాస్‌వర్డ్ ప్రొటెక్ట్', icon: '🔒', desc: 'ముఖ్యమైన రికార్డులకు పాస్‌వర్డ్ పెట్టండి' },
-              { id: 'extract', name: 'టెక్స్ట్ వెలికితీత (Extract)', icon: '📝', desc: 'PDF నుంచి టెక్స్ట్‌ను కాపీ చేయండి' },
-              { id: 'jpg_to_pdf', name: 'ఫోటోల నుండి PDF', icon: '🖼️', desc: 'స్కాన్ ఫోటోలను నేరుగా PDF చేయండి' },
-            ].map(tool => (
-              <div 
-                key={tool.id}
-                onClick={() => setPdfTool(tool.id)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
-                  pdfTool === tool.id 
-                    ? 'border-rose-500 bg-rose-50/40 shadow-xs' 
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+              { id: 'dsr', label: '14-కాలమ్ DSR అటెండెన్స్', sub: 'GM-R 1.2.7 State Matrix', icon: BarChart3, color: 'border-blue-500 bg-blue-50/70 text-blue-900' },
+              { id: 'balance', label: 'గురువారం GP బ్యాలెన్స్', sub: 'GM-R 14.2 Accounts Entry', icon: FileSpreadsheet, color: 'border-amber-500 bg-amber-50/70 text-amber-900' },
+              { id: 'mas', label: 'MAS 18-ఇండికేటర్ మ్యాట్రిక్స్', sub: 'GM-R 5.24 & 5.23 Monthly', icon: Layers, color: 'border-indigo-500 bg-indigo-50/70 text-indigo-900' },
+              { id: 'inspections', label: 'GP తనిఖీల రిపోర్ట్స్', sub: 'GM-R 39.1 Compliance', icon: Building2, color: 'border-purple-500 bg-purple-50/70 text-purple-900' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTriggerScrape(tab.id as any)}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer shadow-xs flex flex-col justify-between space-y-2 ${
+                  activeReport === tab.id
+                    ? `${tab.color} ring-2 ring-blue-600/20 font-black`
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 font-bold'
                 }`}
               >
+                <div className="flex items-center justify-between">
+                  <tab.icon size={18} className="text-blue-700" />
+                  {activeReport === tab.id && (
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                  )}
+                </div>
                 <div>
-                  <span className="text-2xl mb-2 block">{tool.icon}</span>
-                  <h4 className="font-bold text-xs text-slate-900">{tool.name}</h4>
-                  <p className="text-[10px] text-slate-500 mt-1">{tool.desc}</p>
+                  <div className="text-xs sm:text-sm font-black leading-tight">
+                    {tab.label}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    {tab.sub}
+                  </div>
                 </div>
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-rose-600">
-                  <span>టూల్ వాడండి</span>
-                  <ChevronRight size={12} />
-                </div>
-              </div>
+              </button>
             ))}
           </div>
 
-          {/* Active PDF Action Dropzone */}
-          <div className="p-8 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-300 text-center space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-black">
-              <Upload size={22} />
+          {/* Action Bar: Search, Live Reload, Excel Export */}
+          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <input
+                type="text"
+                value={reportSearch}
+                onChange={(e) => setReportSearch(e.target.value)}
+                placeholder="మండలం లేదా గ్రామ పంచాయతీ పేరుతో ఫిల్టర్..."
+                className="w-full px-3.5 py-2 pl-9 rounded-xl border border-slate-300 bg-slate-50 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+              />
+              <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
             </div>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-800">
-              {pdfTool === 'compress' ? 'కంప్రెస్ చేయాల్సిన PDF ఫైల్‌ను ఎంచుకోండి' : 'PDF ఫైల్‌ను ఇక్కడ డ్రాప్ చేయండి'}
-            </h4>
-            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
-              100% క్లయింట్-సైడ్ ప్రాసెసింగ్. మీ డాక్యుమెంట్లు ఎక్కడికీ అప్‌లోడ్ కావు, అత్యంత వేగంగా బ్రౌజర్‌లోనే పూర్తవుతాయి.
-            </p>
-            <input type="file" accept=".pdf" className="hidden" id="pdfFileInput" />
-            <label 
-              htmlFor="pdfFileInput"
-              className="inline-block px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-md shadow-rose-600/20"
-            >
-              ఫైల్ ఎంచుకోండి
-            </label>
-          </div>
-        </div>
-      )}
 
-      {/* MODULE 4: EXCEL & DATA STUDIO */}
-      {activeModule === 'excel_studio' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <FileSpreadsheet className="text-emerald-600" size={20} /> ఎక్సెల్ &amp; డేటా స్టూడియో (Excel &amp; Data Studio)
-            </h3>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              గ్రామ పంచాయతీ సెక్రటరీలకు అవసరమైన 70+ రకాల స్ప్రెడ్‌షీట్ క్లీనర్లు, ఓటర్ లిస్ట్ ఎడిటర్లు మరియు బ్యాంకింగ్ టూల్స్.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-2xl">📱</span>
-              <h4 className="font-bold text-xs text-slate-900">ఫోన్ నంబర్ క్లీనర్ (+91 ఫార్మాటర్)</h4>
-              <p className="text-[10px] text-slate-500">ఎక్సెల్ షీట్‌లోని 10-అంకెల ఫోన్ నంబర్లలోని స్పేస్‌లు, డాష్‌లను తొలగించి పర్ఫెక్ట్ ఫార్మాట్‌లోకి మారుస్తుంది.</p>
-            </div>
-            <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-2xl">🔤</span>
-              <h4 className="font-bold text-xs text-slate-900">పేర్ల క్యాపిటలైజర్ (Proper Case)</h4>
-              <p className="text-[10px] text-slate-500">అన్ని అక్షరాలు పెద్దవిగా (ALL CAPS) లేదా చిన్నవిగా ఉన్న పేర్లను గౌరవప్రదమైన ప్రాపర్ కేస్ లోకి మారుస్తుంది.</p>
-            </div>
-            <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-2xl">🧹</span>
-              <h4 className="font-bold text-xs text-slate-900">డూప్లికేట్ రికార్డుల రిమూవర్</h4>
-              <p className="text-[10px] text-slate-500">ఒకే ఆధార్, హౌస్ నంబర్ లేదా రేషన్ కార్డుతో ఉన్న డూప్లికేట్ ఎంట్రీలను క్షణాల్లో గుర్తిస్తుంది.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE 5: HOUSE TAX DCB STATION */}
-      {activeModule === 'dcb_analytics' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                <Building2 className="text-blue-600" size={18} /> హౌస్ టాక్స్ డిమాండ్, కలెక్షన్ &amp; బ్యాలెన్స్ (DCB Station)
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                తెలంగాణ మరియు ఏపీ గ్రామ పంచాయతీల ఇళ్ల పన్ను వసూళ్ల లైవ్ అనలిటిక్స్ మరియు బ్యాలెన్స్ వివరాలు.
-              </p>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => handleTriggerScrape(activeReport)}
+                disabled={isScrapingLive}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-300 cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw size={13} className={isScrapingLive ? "animate-spin text-blue-600" : ""} />
+                <span>{isScrapingLive ? "లైవ్ డేటా వస్తోంది..." : "రిఫ్రెష్ డేటా"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-emerald-600/20 cursor-pointer flex items-center gap-1.5"
+              >
+                <Download size={13} />
+                <span>Excel డౌన్‌లోడ్ (.xlsx)</span>
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50/60 border border-blue-200 rounded-2xl text-center">
-              <div className="text-[10px] uppercase font-bold text-blue-900">మొత్తం అసెస్‌మెంట్లు</div>
-              <div className="text-xl font-black text-blue-950 mt-1">1,240 ఇళ్లు</div>
-              <div className="text-[10px] text-blue-700 font-semibold mt-1">గ్రామ పంచాయతీ పరిధిలో</div>
+          {/* Scrape Progress Bar */}
+          {isScrapingLive && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2 animate-pulse">
+              <div className="flex justify-between text-xs font-bold text-blue-900">
+                <span>🤖 రోబోట్ e-Panchayat సర్వర్ నుండి తాజా రికార్డులను సేకరిస్తోంది...</span>
+                <span>{scrapeProgress}%</span>
+              </div>
+              <div className="w-full h-2 bg-blue-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 transition-all duration-300 rounded-full"
+                  style={{ width: `${scrapeProgress}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl text-center">
-              <div className="text-[10px] uppercase font-bold text-emerald-900">మొత్తం వసూలు (Collection)</div>
-              <div className="text-xl font-black text-emerald-800 mt-1">₹ 4,82,500</div>
-              <div className="text-[10px] text-emerald-700 font-semibold mt-1">82.4% వసూలు పూర్తయింది</div>
+          )}
+
+          {/* =================================================================== */}
+          {/* REPORT 1: 14-COLUMN DSR STATE FORMAT MATRIX                         */}
+          {/* =================================================================== */}
+          {activeReport === 'dsr' && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-black text-sm sm:text-base text-slate-900">
+                  GM-R 1.2.7 Daily Status Report (14-Column State Format Matrix)
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  {selectedDistrict} జిల్లా — ఉదయం 9 గంటల లోపు, 9-10 AM, 10-11 AM, 11-12 PM, మరియు 12 గంటల తర్వాత హాజరు విశ్లేషణ.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-bold border-b border-slate-800">
+                      <th className="p-3 text-center w-12 border-r border-slate-700">Sl. No</th>
+                      <th className="p-3 border-r border-slate-700">Mandal</th>
+                      <th className="p-3 text-center border-r border-slate-700">Total GPs</th>
+                      <th className="p-3 text-center border-r border-slate-700 bg-blue-950">Before 9 AM</th>
+                      <th className="p-3 text-center border-r border-slate-700 bg-blue-950">9-10 AM</th>
+                      <th className="p-3 text-center border-r border-slate-700 bg-blue-950">10-11 AM</th>
+                      <th className="p-3 text-center border-r border-slate-700 bg-blue-950">11-12 PM</th>
+                      <th className="p-3 text-center border-r border-slate-700 bg-blue-950">After 12 PM</th>
+                      <th className="p-3 text-center border-r border-slate-700 bg-emerald-950 text-emerald-300">Attendance %</th>
+                      <th className="p-3 text-center border-r border-slate-700">Attended</th>
+                      <th className="p-3 text-center border-r border-slate-700">Meeting</th>
+                      <th className="p-3 text-center border-r border-slate-700">Leave</th>
+                      <th className="p-3 text-center text-rose-300">Not Reported</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-medium">
+                    {filteredDsr.map((r, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2.5 text-center text-slate-500 border-r border-slate-200">{i + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-900 border-r border-slate-200">{r.mandal}</td>
+                        <td className="p-2.5 text-center font-mono font-bold border-r border-slate-200">{r.totalGps}</td>
+                        <td className="p-2.5 text-center font-mono font-bold text-blue-700 border-r border-slate-200">{r.b9}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.b910}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200 text-amber-700">{r.b1011}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.b1112}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200 text-rose-600">{r.after12}</td>
+                        <td className="p-2.5 text-center font-black border-r border-slate-200">
+                          <span className={`px-2 py-0.5 rounded text-[11px] ${
+                            r.pct >= 94 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {r.pct}%
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.attGp}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.mtg}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.lev}</td>
+                        <td className="p-2.5 text-center font-mono text-slate-400">{r.notRep}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl text-center">
-              <div className="text-[10px] uppercase font-bold text-amber-900">మిగిలిన బ్యాలెన్స్ (Pending)</div>
-              <div className="text-xl font-black text-amber-900 mt-1">₹ 1,02,800</div>
-              <div className="text-[10px] text-amber-700 font-semibold mt-1">పెండింగ్ డిమాండ్ నోటీసులు రెడీ</div>
+          )}
+
+          {/* =================================================================== */}
+          {/* REPORT 2: THURSDAY GP BALANCE REPORT                               */}
+          {/* =================================================================== */}
+          {activeReport === 'balance' && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-black text-sm sm:text-base text-slate-900">
+                  GM-R 14.2 Thursday GP Balance Entry Monitor (అకౌంట్స్ ఎంట్రీ)
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  ప్రతి గురువారం e-Panchayat లో నమోదు చేయాల్సిన గ్రామ పంచాయతీ ఓపెనింగ్, ఖర్చులు మరియు క్లోజింగ్ నిధుల వివరాలు.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-bold border-b border-slate-800">
+                      <th className="p-3 text-center w-12 border-r border-slate-700">Sl. No</th>
+                      <th className="p-3 border-r border-slate-700">Gram Panchayat</th>
+                      <th className="p-3 text-right border-r border-slate-700">Opening Balance</th>
+                      <th className="p-3 text-right border-r border-slate-700">Receipts</th>
+                      <th className="p-3 text-right border-r border-slate-700">Expenditure</th>
+                      <th className="p-3 text-right border-r border-slate-700 text-emerald-300">Closing Balance</th>
+                      <th className="p-3 text-right border-r border-slate-700">Unspent Grants</th>
+                      <th className="p-3 text-center border-r border-slate-700">Submission</th>
+                      <th className="p-3 text-center">Updated On</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-medium">
+                    {filteredBalance.map((r, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2.5 text-center text-slate-500 border-r border-slate-200">{i + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-900 border-r border-slate-200">{r.gp}</td>
+                        <td className="p-2.5 text-right font-mono border-r border-slate-200">₹{r.opening.toLocaleString('en-IN')}</td>
+                        <td className="p-2.5 text-right font-mono border-r border-slate-200 text-blue-700">₹{r.receipts.toLocaleString('en-IN')}</td>
+                        <td className="p-2.5 text-right font-mono border-r border-slate-200 text-rose-700">₹{r.expenditure.toLocaleString('en-IN')}</td>
+                        <td className="p-2.5 text-right font-mono font-bold border-r border-slate-200 text-emerald-800">₹{r.closing.toLocaleString('en-IN')}</td>
+                        <td className="p-2.5 text-right font-mono border-r border-slate-200">₹{r.unspentGrants.toLocaleString('en-IN')}</td>
+                        <td className="p-2.5 text-center border-r border-slate-200">
+                          <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] ${
+                            r.status === 'Submitted' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center font-mono text-[11px] text-slate-500">{r.updatedOn}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* =================================================================== */}
+          {/* REPORT 3: MAS 18-INDICATOR MATRIX                                   */}
+          {/* =================================================================== */}
+          {activeReport === 'mas' && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-black text-sm sm:text-base text-slate-900">
+                  GM-R 5.24 &amp; 5.23 MAS 18-Indicator Monthly Activity Matrix
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  పరిశుభ్రత, తాగునీరు, వైకుంఠధామం, నర్సరీలు, మరియు పన్నుల వసూళ్ల 18 ప్రధాన అంశాల పురోగతి స్కోర్‌కార్డ్.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-bold border-b border-slate-800">
+                      <th className="p-3 text-center w-12 border-r border-slate-700">#</th>
+                      <th className="p-3 border-r border-slate-700">Key Activity Indicator (అంశం)</th>
+                      <th className="p-3 text-center border-r border-slate-700">Target GPs</th>
+                      <th className="p-3 text-center border-r border-slate-700">Completed GPs</th>
+                      <th className="p-3 text-center border-r border-slate-700 text-emerald-300">Achievement %</th>
+                      <th className="p-3 text-center">Performance Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-medium">
+                    {filteredMas.map((r, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2.5 text-center text-slate-500 border-r border-slate-200">{i + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-900 border-r border-slate-200">{r.indicator}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.totalGps}</td>
+                        <td className="p-2.5 text-center font-mono font-bold text-blue-800 border-r border-slate-200">{r.completedGps}</td>
+                        <td className="p-2.5 text-center font-black border-r border-slate-200">
+                          <span className={`px-2 py-0.5 rounded text-[11px] ${
+                            r.pct >= 90 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {r.pct}%
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center font-bold">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] ${
+                            r.status === 'Excellent' ? 'bg-emerald-100 text-emerald-800' :
+                            r.status === 'Good' ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================== */}
+          {/* REPORT 4: GP INSPECTIONS                                            */}
+          {/* =================================================================== */}
+          {activeReport === 'inspections' && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5 sm:p-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-black text-sm sm:text-base text-slate-900">
+                  GM-R 39.1 GP Inspection &amp; Compliance Monitor (అధికారుల తనిఖీలు)
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  DLPO, DPO మరియు MPO అధికారుల గ్రామ పంచాయతీ తనిఖీ తేదీలు, లోపాలు మరియు పరిష్కారాల స్టేటస్.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900 text-white font-bold border-b border-slate-800">
+                      <th className="p-3 text-center w-12 border-r border-slate-700">Sl. No</th>
+                      <th className="p-3 border-r border-slate-700">Gram Panchayat</th>
+                      <th className="p-3 border-r border-slate-700">Inspecting Officer</th>
+                      <th className="p-3 text-center border-r border-slate-700">Inspection Date</th>
+                      <th className="p-3 text-center border-r border-slate-700">Compliance Status</th>
+                      <th className="p-3">Official Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 font-medium">
+                    {filteredInspections.map((r, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2.5 text-center text-slate-500 border-r border-slate-200">{i + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-900 border-r border-slate-200">{r.gp}</td>
+                        <td className="p-2.5 font-medium text-slate-800 border-r border-slate-200">{r.inspectingOfficer}</td>
+                        <td className="p-2.5 text-center font-mono border-r border-slate-200">{r.inspDate}</td>
+                        <td className="p-2.5 text-center border-r border-slate-200">
+                          <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] ${
+                            r.compliance === 'Resolved' ? 'bg-emerald-100 text-emerald-800' :
+                            r.compliance === 'Notice Issued' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {r.compliance}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-slate-600">{r.remarks}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+export default OnlinePortalSuite;

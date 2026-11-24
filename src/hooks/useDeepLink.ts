@@ -411,6 +411,14 @@ export function useDeepLink({
         title: "శిక్షణ & మీడియా గ్యాలరీ (Training & Video Gallery) | E-Vedhika",
         desc: "గ్రామ పంచాయతీ కంప్యూటర్ ఆపరేటర్ల శిక్షణ ఫోటోలు, కార్యక్రమాలు మరియు ప్రాక్టికల్ వీడియో ట్యుటోరియల్స్ గ్యాలరీ.",
       },
+      "/workspace/pdf-studio": {
+        title: "14-in-1 ఆల్-ఇన్-వన్ PDF స్టూడియో (Offline PDF Studio) | E-Vedhika",
+        desc: "PDF కంప్రెస్, మెర్జ్, స్ప్లిట్, పేజ్ నంబర్స్, వాటర్‌మార్క్, రొటేట్ & ఇమేజ్ టు PDF 100% క్లయింట్-సైడ్ సురక్షిత సాధనాలు.",
+      },
+      "/workspace/software-drivers-hub": {
+        title: "అధికారిక ప్రభుత్వ సాఫ్ట్‌వేర్ & డ్రైవర్ల హబ్ (Official Drivers Hub) | E-Vedhika",
+        desc: "e-Panchayat, UBD మరియు eGramSwaraj కోసం అవసరమైన DSC టోకెన్ డ్రైవర్లు, Java 32/64-Bit, Google Telugu IME.",
+      },
       "/gos_formats": {
         title: "ప్రభుత్వ జీవోలు & ఆఫీస్ ఫార్మాట్లు (GOs & Official Formats) | E-Vedhika",
         desc: "తెలంగాణ & ఏపీ పంచాయతీరాజ్ శాఖ ప్రభుత్వ ఉత్తర్వులు (GOs) మరియు గ్రామ పంచాయతీ కార్యాలయ దరఖాస్తు ఫార్మాట్లు (PDF/Excel).",
