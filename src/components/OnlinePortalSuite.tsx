@@ -70,16 +70,18 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   const [scrapeProgress, setScrapeProgress] = useState(0);
 
   const timerRef = useRef<any>(null);
+  const EP_WORKER_BASE = "https://e-vedhika.rakeshkumardhawan123.workers.dev";
 
   const fetchLiveCaptcha = async () => {
     setIsLoadingCaptcha(true);
     setCaptchaCode("");
     try {
-      const resp = await fetch("/api/epanchayat/captcha");
+      const resp = await fetch(`${EP_WORKER_BASE}/api/epanchayat/captcha`);
       const data = await resp.json().catch(() => null);
       if (data && data.captchaBase64) {
         setCaptchaBase64(`data:${data.mimeType || "image/jpeg"};base64,${data.captchaBase64}`);
         setCaptchaTempId(data.tempId || "");
+        setLoginAlert("");
       } else {
         setLoginAlert(data?.error || "e-Panchayat Captcha లోడ్ చేయడం సాధ్యం కాలేదు. Refresh నొక్కండి.");
       }
@@ -144,10 +146,11 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
     }, 1000);
 
     try {
-      const resp = await fetch("/api/epanchayat/login", {
+      const resp = await fetch(`${EP_WORKER_BASE}/api/epanchayat/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: userId.trim(),
           officerId: userId.trim(),
           password: password.trim(),
           tempId: captchaTempId,
@@ -196,7 +199,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
     setIsValidatingOtp(true);
 
     try {
-      const resp = await fetch("/api/epanchayat/verify-otp", {
+      const resp = await fetch(`${EP_WORKER_BASE}/api/epanchayat/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ officerId: userId.trim(), otp: cleanOtp, sessionId: epSessionId })
