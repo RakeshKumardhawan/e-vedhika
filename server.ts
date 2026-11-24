@@ -164,6 +164,33 @@ async function startServer() {
   app.use(express.text({ limit: '150mb', type: ['text/*', 'application/json'] }));
   app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
+  // 1. Canonical Domain Enforcement & 301 Permanent Redirect
+  // Strictly prevents Google from indexing or showing onrender.com
+  app.use((req, res, next) => {
+    const rawHost = req.get('host') || '';
+    const host = rawHost.toLowerCase().split(':')[0]; // strip port
+
+    // If accessed via onrender.com (e.g. e-vedhika.onrender.com or any *.onrender.com)
+    if (host.includes('onrender.com')) {
+      // Explicitly block all search engine crawlers on onrender.com
+      if (req.path === '/robots.txt') {
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        return res.status(200).send("User-agent: *\nDisallow: /\n");
+      }
+      // Issue 301 Permanent Redirect with noindex header so Google transfers authority and drops onrender.com
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+      return res.redirect(301, `https://www.e-vedhika.in${req.originalUrl}`);
+    }
+
+    // Apex domain redirect: e-vedhika.in -> www.e-vedhika.in
+    if (host === 'e-vedhika.in') {
+      return res.redirect(301, `https://www.e-vedhika.in${req.originalUrl}`);
+    }
+
+    next();
+  });
+
   // Google AdSense ads.txt - Guaranteed 200 OK without any redirects for crawler
   app.get('/ads.txt', (req, res) => {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -176,15 +203,6 @@ async function startServer() {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.status(200).send(`User-agent: Mediapartners-Google\nAllow: /\n\nUser-agent: Google-Adwords-DisplayAds\nAllow: /\n\nUser-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nSitemap: https://www.e-vedhika.in/sitemap.xml\n`);
-  });
-
-  // WWW Redirect Middleware (for pages other than ads.txt and robots.txt)
-  app.use((req, res, next) => {
-    const host = req.get('host');
-    if (host === 'e-vedhika.in') {
-      return res.redirect(301, `https://www.e-vedhika.in${req.originalUrl}`);
-    }
-    next();
   });
 
   const proxyOptions = (targetUrl: string) => ({
