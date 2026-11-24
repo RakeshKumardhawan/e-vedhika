@@ -32,15 +32,20 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
   // Modal Steps: 1 ('creds') -> 2 ('otp') -> 3 ('success') -> 'console'
   const [modalStep, setModalStep] = useState<1 | 2 | 3 | 'console'>(1);
 
-  // Step 1: Credentials
+  // Step 1: Credentials & Live Captcha
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaBase64, setCaptchaBase64] = useState("");
+  const [captchaTempId, setCaptchaTempId] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [isLoadingCaptcha, setIsLoadingCaptcha] = useState(false);
+  const [epSessionId, setEpSessionId] = useState("");
   const [loginAlert, setLoginAlert] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [progressLogs, setProgressLogs] = useState<string[]>([]);
-  const [buttonStepText, setButtonStepText] = useState("Opening Browser...");
+  const [buttonStepText, setButtonStepText] = useState("Connecting to e-Panchayat...");
 
   // Step 2: OTP
   const [otpValue, setOtpValue] = useState("");
@@ -66,11 +71,36 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
 
   const timerRef = useRef<any>(null);
 
+  const fetchLiveCaptcha = async () => {
+    setIsLoadingCaptcha(true);
+    setCaptchaCode("");
+    try {
+      const resp = await fetch("/api/epanchayat/captcha");
+      const data = await resp.json().catch(() => null);
+      if (data && data.captchaBase64) {
+        setCaptchaBase64(`data:${data.mimeType || "image/jpeg"};base64,${data.captchaBase64}`);
+        setCaptchaTempId(data.tempId || "");
+      } else {
+        setLoginAlert(data?.error || "e-Panchayat Captcha లోడ్ చేయడం సాధ్యం కాలేదు. Refresh నొక్కండి.");
+      }
+    } catch {
+      setLoginAlert("e-Panchayat Captcha లోడ్ చేయడంలో లోపం జరిగింది.");
+    } finally {
+      setIsLoadingCaptcha(false);
+    }
+  };
+
+  useEffect(() => {
+    if (modalStep === 1 && !captchaBase64) {
+      fetchLiveCaptcha();
+    }
+  }, [modalStep]);
+
   // Handle Step 1 Credentials Submit
   const handleCredsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId.trim() || !password.trim()) {
-      setLoginAlert("Please enter both User ID and Password.");
+    if (!userId.trim() || !password.trim() || !captchaCode.trim()) {
+      setLoginAlert("దయచేసి User ID, Password మరియు Captcha అన్నింటినీ నమోదు చేయండి.");
       return;
     }
 
@@ -117,18 +147,24 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       const resp = await fetch("/api/epanchayat/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ officerId: userId.trim(), password: password.trim() })
+        body: JSON.stringify({
+          officerId: userId.trim(),
+          password: password.trim(),
+          tempId: captchaTempId,
+          captchaCode: captchaCode.trim()
+        })
       });
       const data = await resp.json().catch(() => null);
       if (timerRef.current) clearInterval(timerRef.current);
       setIsLoggingIn(false);
 
       if (data && (data.success || data.status === "awaiting_otp")) {
-        if (data.user_level) setUserLevel(data.user_level);
-        if (data.gp_name) setGpName(data.gp_name);
-        if (data.mandal_name) setMandalName(data.mandal_name);
-        if (data.district_name) setDistrictName(data.district_name);
-        if (data.mobile_number) setMaskedMobile(data.mobile_number);
+        if (data.sessionId || data.session_id) setEpSessionId(data.sessionId || data.session_id);
+        if (data.user_level || data.userLevel) setUserLevel(data.user_level || data.userLevel);
+        if (data.gp_name || data.gpName) setGpName(data.gp_name || data.gpName);
+        if (data.mandal_name || data.mandal) setMandalName(data.mandal_name || data.mandal);
+        if (data.district_name || data.district) setDistrictName(data.district_name || data.district);
+        if (data.mobile_number || data.maskedMobile) setMaskedMobile(data.mobile_number || data.maskedMobile);
 
         setModalStep(2);
         setOtpValue("");
@@ -136,12 +172,14 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
         if (addToast) addToast("e-Panchayat అధికారిక SMS OTP మీ మొబైల్‌కు పంపబడింది!", "success");
       } else {
         setLoginAlert(data?.error || "లాగిన్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.");
+        if (data?.retry) {
+          fetchLiveCaptcha();
+        }
       }
     } catch (e: any) {
       if (timerRef.current) clearInterval(timerRef.current);
       setIsLoggingIn(false);
-      setModalStep(2);
-      if (addToast) addToast("e-Panchayat అధికారిక SMS OTP మీ మొబైల్‌కు పంపబడింది!", "success");
+      setLoginAlert("నెట్‌వర్క్ లోపం: e-Panchayat సర్వర్‌కు కనెక్ట్ కాలేకపోయింది.");
     }
   };
 
@@ -161,16 +199,16 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       const resp = await fetch("/api/epanchayat/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ officerId: userId.trim(), otp: cleanOtp })
+        body: JSON.stringify({ officerId: userId.trim(), otp: cleanOtp, sessionId: epSessionId })
       });
       const data = await resp.json().catch(() => null);
       setIsValidatingOtp(false);
 
       if (data && (data.success || data.authenticated)) {
-        if (data.user_level) setUserLevel(data.user_level);
-        if (data.gp_name) setGpName(data.gp_name);
-        if (data.mandal_name) setMandalName(data.mandal_name);
-        if (data.district_name) setDistrictName(data.district_name);
+        if (data.user_level || data.userLevel) setUserLevel(data.user_level || data.userLevel);
+        if (data.gp_name || data.gpName) setGpName(data.gp_name || data.gpName);
+        if (data.mandal_name || data.mandal) setMandalName(data.mandal_name || data.mandal);
+        if (data.district_name || data.district) setDistrictName(data.district_name || data.district);
         setModalStep(3); // Show Step 3 Success Card
         if (addToast) addToast("Departmental Session Active!", "success");
       } else {
@@ -178,8 +216,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
       }
     } catch (err: any) {
       setIsValidatingOtp(false);
-      setModalStep(3);
-      if (addToast) addToast("Departmental Session Active!", "success");
+      setOtpAlert("నెట్‌వర్క్ లోపం: OTP నిర్ధారణ విఫలమైంది.");
     }
   };
 
@@ -818,9 +855,46 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
                     </div>
                   </div>
 
-                  {/* Zero-Wait Robot Engine Note */}
+                  {/* Live Official e-Panchayat Captcha */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Official Portal Captcha <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="h-11 min-w-[140px] bg-slate-100 border border-slate-300 rounded-lg flex items-center justify-center overflow-hidden px-2">
+                        {isLoadingCaptcha ? (
+                          <span className="text-[11px] text-slate-500 font-medium">Loading...</span>
+                        ) : captchaBase64 ? (
+                          <img src={captchaBase64} alt="e-Panchayat Captcha" className="h-9 object-contain" />
+                        ) : (
+                          <span className="text-[11px] text-rose-500">Captcha unavailable</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={fetchLiveCaptcha}
+                        disabled={isLoadingCaptcha}
+                        className="px-3 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        title="Refresh Captcha"
+                      >
+                        <RefreshCw size={14} className={isLoadingCaptcha ? "animate-spin" : ""} />
+                        <span>Refresh</span>
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={captchaCode}
+                      onChange={(e) => setCaptchaCode(e.target.value)}
+                      placeholder="Enter captcha shown above"
+                      autoComplete="off"
+                      className="w-full px-3.5 py-2.5 rounded-lg border-2 border-slate-300 font-bold text-sm text-slate-800 tracking-wider outline-none focus:border-emerald-600 transition-colors font-mono"
+                    />
+                  </div>
+
+                  {/* Live Gateway Note */}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[11px] text-slate-600 leading-normal">
-                    ⚡ <strong>Zero-Wait Robot Engine:</strong> Auto-solves dynamic captcha, secures live session, and maintains persistent automation readiness.
+                    🔐 <strong>Official Live Gateway:</strong> Connects directly to <code>epanchayat.telangana.gov.in</code> and triggers your official 6-digit SMS OTP.
                   </div>
 
                   {/* Live Progress Box (When Logging In) */}

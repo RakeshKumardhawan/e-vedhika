@@ -59,8 +59,8 @@ async function sha256hex(str) {
 }
 
 // e-Panchayat password hash: SHA256(SHA256(MD5(MD5(pwd))) + SALT)
-async function hashEpanchayatPassword(plainPwd) {
-  const SALT = '092217720C9917CBAAA7A18D09659E72';
+async function hashEpanchayatPassword(plainPwd, salt) {
+  const SALT = salt || '1D4FD6FED4247F26092DABE774AB6619';
   const md5Once = md5(plainPwd);
   const md5Twice = md5(md5Once);
   const sha1 = await sha256hex(md5Twice);
@@ -110,25 +110,35 @@ const EP_HEADERS_BASE = {
 async function handleEpanchayat(url, request, corsHeaders, env) {
   const path = url.pathname;
 
-  // GET /api/epanchayat/captcha  → fetch captcha image + return base64
+  // GET /api/epanchayat/captcha  → fetch captcha image + dynamic salt + return base64
   if (path === '/api/epanchayat/captcha' && request.method === 'GET') {
     try {
-      // Step 1: load main page to get session cookie
+      // Step 1: load main page to get session cookie & dynamic salt
       const mainResp = await fetch(`${EP_BASE}/cs`, {
         headers: EP_HEADERS_BASE,
         redirect: 'follow'
       });
       let cookieStr = cookieStringFromHeader(mainResp.headers.get('set-cookie'));
+      const mainHtml = await mainResp.text();
+      const saltMatch = mainHtml.match(/SHA256_hash\(hash\)\s*\+\s*["']([A-Fa-f0-9]{16,64})["']/);
+      const salt = saltMatch ? saltMatch[1] : '1D4FD6FED4247F26092DABE774AB6619';
 
       // Step 2: fetch captcha image
-      const capResp = await fetch(`${EP_BASE}/CaptchaServlet`, {
+      const capResp = await fetch(`${EP_BASE}/CaptchaServlet?${Math.random()}`, {
         headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` }
       });
       cookieStr = mergeCookies(cookieStr, capResp.headers.get('set-cookie'));
       const imgBuf = await capResp.arrayBuffer();
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(imgBuf)));
+      const bytes = new Uint8Array(imgBuf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const b64 = btoa(binary);
       const tempId = crypto.randomUUID();
-      epSessions.set('cap_' + tempId, { cookie: cookieStr, ts: Date.now() });
+      const capSessionData = { cookie: cookieStr, salt, ts: Date.now() };
+      epSessions.set('cap_' + tempId, capSessionData);
+      if (env && env.SESSIONS) {
+        await env.SESSIONS.put('cap_' + tempId, JSON.stringify(capSessionData), { expirationTtl: 600 });
+      }
 
       return Response.json({ tempId, captchaBase64: b64, mimeType: 'image/jpeg' }, { headers: corsHeaders });
     } catch (e) {
@@ -141,17 +151,26 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
     try {
       const { userId, password, tempId, captchaCode } = await request.json();
       if (!userId || !password || !captchaCode) {
-        return Response.json({ error: 'missing_fields' }, { status: 400, headers: corsHeaders });
+        return Response.json({ success: false, error: 'User ID, Password మరియు Captcha అన్నీ అవసరం.', code: 'missing_fields' }, { status: 400, headers: corsHeaders });
       }
 
       let cookieStr = '';
-      const capSession = epSessions.get('cap_' + tempId);
-      if (capSession) { cookieStr = capSession.cookie; epSessions.delete('cap_' + tempId); }
+      let salt = '1D4FD6FED4247F26092DABE774AB6619';
+      let capSession = epSessions.get('cap_' + tempId);
+      if (!capSession && env && env.SESSIONS && tempId) {
+        const kvCap = await env.SESSIONS.get('cap_' + tempId);
+        if (kvCap) capSession = JSON.parse(kvCap);
+      }
+      if (capSession) {
+        cookieStr = capSession.cookie;
+        if (capSession.salt) salt = capSession.salt;
+        epSessions.delete('cap_' + tempId);
+      }
 
-      const hashedPwd = await hashEpanchayatPassword(password);
+      const hashedPwd = await hashEpanchayatPassword(password, salt);
       const formBody = new URLSearchParams({ uname: userId, pwd: hashedPwd, cp: captchaCode });
 
-      const loginResp = await fetch(`${EP_BASE}/cs/login`, {
+      const loginResp = await fetch(`${EP_BASE}/login`, {
         method: 'POST',
         headers: {
           ...EP_HEADERS_BASE,
@@ -166,41 +185,52 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
 
       cookieStr = mergeCookies(cookieStr, loginResp.headers.get('set-cookie'));
       const location = loginResp.headers.get('location') || '';
-      const bodyText = await loginResp.text();
+      let bodyText = await loginResp.text();
+
+      if (location) {
+        const nextUrl = location.startsWith('http') ? location : `${EP_BASE}${location.startsWith('/') ? '' : '/'}${location}`;
+        const nextResp = await fetch(nextUrl, {
+          headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` },
+          redirect: 'follow'
+        });
+        cookieStr = mergeCookies(cookieStr, nextResp.headers.get('set-cookie'));
+        bodyText = await nextResp.text();
+      }
+
+      const pvalsMatch = bodyText.match(/id=["']pvals["'][^>]*>([\s\S]*?)<\/p>/i);
+      const pvalsText = pvalsMatch ? pvalsMatch[1].replace(/<[^>]+>/g, '').trim() : '';
 
       // Check for captcha / credential error
-      if (bodyText.toLowerCase().includes('invalid captcha') || bodyText.toLowerCase().includes('captcha')) {
-        return Response.json({ error: 'captcha_invalid', retry: true }, { status: 400, headers: corsHeaders });
+      if (/invalid captcha/i.test(pvalsText) || /invalid captcha/i.test(bodyText)) {
+        return Response.json({ success: false, error: 'Captcha తప్పుగా ఉంది. దయచేసి కొత్త Captcha ఎంటర్ చేయండి.', code: 'captcha_invalid', retry: true }, { status: 400, headers: corsHeaders });
       }
-      if (bodyText.toLowerCase().includes('invalid') || bodyText.toLowerCase().includes('wrong password')) {
-        return Response.json({ error: 'credentials_invalid' }, { status: 401, headers: corsHeaders });
+      if (/invalid credentials/i.test(pvalsText) || /invalid credentials|wrong password/i.test(bodyText)) {
+        return Response.json({ success: false, error: 'User ID లేదా Password తప్పుగా ఉంది.', code: 'credentials_invalid' }, { status: 401, headers: corsHeaders });
       }
-
-      // Should redirect to OTP page or contain OTP info
-      const otpPageResp = await fetch(location || `${EP_BASE}/cs/otppage`, {
-        headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs` },
-        redirect: 'manual'
-      });
-      cookieStr = mergeCookies(cookieStr, otpPageResp.headers.get('set-cookie'));
-      const otpBody = await otpPageResp.text();
 
       // Extract masked mobile from #pvals or OTP message
-      const mobileMatch = otpBody.match(/(\*{4,}|x{4,}|X{4,})(\d{4})/i)
-        || otpBody.match(/registered mobile[^0-9]*(\d{10})/i)
-        || otpBody.match(/OTP[^0-9]*sent[^0-9]*(\d{10})/i);
+      const mobileMatch = (pvalsText || bodyText).match(/(\*{4,}|x{4,}|X{4,})(\d{4})/i)
+        || (pvalsText || bodyText).match(/registered mobile[^0-9]*(\d{10})/i)
+        || (pvalsText || bodyText).match(/OTP[^0-9]*sent[^0-9]*(\d{10})/i);
       const maskedMobile = mobileMatch
         ? `xxxxxx${mobileMatch[2] || mobileMatch[1].slice(-4)}`
         : 'xxxxxx....';
 
       const sessionId = crypto.randomUUID();
-      const sessionData = { cookie: cookieStr, userId, ts: Date.now(), verified: false };
+      const sessionData = { cookie: cookieStr, userId, salt, ts: Date.now(), verified: false };
       epSessions.set(sessionId, sessionData);
-      // Also save to KV if available
       if (env && env.SESSIONS) await env.SESSIONS.put(sessionId, JSON.stringify(sessionData), { expirationTtl: 3600 });
 
-      return Response.json({ success: true, sessionId, maskedMobile, otpSent: true }, { headers: corsHeaders });
+      return Response.json({
+        success: true,
+        sessionId,
+        maskedMobile,
+        mobile_number: maskedMobile,
+        otp_message: pvalsText || undefined,
+        otpSent: true
+      }, { headers: corsHeaders });
     } catch (e) {
-      return Response.json({ error: 'login_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
+      return Response.json({ success: false, error: 'login_failed', detail: String(e) }, { status: 500, headers: corsHeaders });
     }
   }
 
@@ -217,30 +247,26 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
 
       let cookieStr = session.cookie;
 
-      // Submit OTP
-      const otpFormBody = new URLSearchParams({ otp: String(otp) });
-      const otpResp = await fetch(`${EP_BASE}/cs/validateotp`, {
+      // Submit OTP to /deptLoginVerified
+      const otpFormBody = new URLSearchParams({ otp: String(otp), uname: session.userId });
+      const otpResp = await fetch(`${EP_BASE}/deptLoginVerified`, {
         method: 'POST',
         headers: {
           ...EP_HEADERS_BASE,
           'Cookie': cookieStr,
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Referer': `${EP_BASE}/cs/otppage`,
+          'Referer': `${EP_BASE}/login`,
           'Origin': EP_BASE
         },
         body: otpFormBody.toString(),
-        redirect: 'manual'
-      });
-      cookieStr = mergeCookies(cookieStr, otpResp.headers.get('set-cookie'));
-      const redirectTo = otpResp.headers.get('location') || `${EP_BASE}/deptLoginVerified`;
-
-      // Load dashboard page
-      const dashResp = await fetch(redirectTo.startsWith('http') ? redirectTo : `${EP_BASE}${redirectTo}`, {
-        headers: { ...EP_HEADERS_BASE, 'Cookie': cookieStr, 'Referer': `${EP_BASE}/cs/otppage` },
         redirect: 'follow'
       });
-      cookieStr = mergeCookies(cookieStr, dashResp.headers.get('set-cookie'));
-      const dashBody = await dashResp.text();
+      cookieStr = mergeCookies(cookieStr, otpResp.headers.get('set-cookie'));
+      const dashBody = await otpResp.text();
+
+      if (/invalid otp/i.test(dashBody)) {
+        return Response.json({ success: false, error: 'చెల్లని OTP. దయచేసి సరైన 6-అంకెల OTP ఎంటర్ చేయండి.' }, { status: 400, headers: corsHeaders });
+      }
 
       // Extract officer details from dashboard header
       const gpMatch = dashBody.match(/(?:GP|Gram Panchayat|Village Panchayat)[:\s]+([A-Za-z\s]+?)(?:<|\s{2,}|,)/i)
@@ -253,15 +279,25 @@ async function handleEpanchayat(url, request, corsHeaders, env) {
       const officeIdMatch = dashBody.match(/(?:Office ID|officeId)[:\s"]+([a-z]+\d+)/i);
 
       const userId = session.userId;
-      const userLevel = /^mpo/i.test(userId) ? 'MPO' : /^dpo/i.test(userId) ? 'DPO' : 'GP';
+      const userLevel = /^mpo/i.test(userId) ? 'mandal' : /^dpo/i.test(userId) ? 'district' : 'gp';
+      const officeId = officeIdMatch?.[1]?.trim() || userId;
+      const gpName = gpMatch?.[1]?.trim() || userId.toUpperCase();
+      const mandal = mandalMatch?.[1]?.trim() || 'Telangana';
+      const district = districtMatch?.[1]?.trim() || 'Telangana';
 
       const result = {
         success: true,
-        officeId: officeIdMatch?.[1]?.trim() || userId,
-        gpName: gpMatch?.[1]?.trim() || userId.toUpperCase(),
-        mandal: mandalMatch?.[1]?.trim() || 'Loading from portal...',
-        district: districtMatch?.[1]?.trim() || 'Telangana',
+        authenticated: true,
+        officeId,
+        user_id: officeId,
+        gpName,
+        gp_name: gpName,
+        mandal,
+        mandal_name: mandal,
+        district,
+        district_name: district,
         userLevel,
+        user_level: userLevel,
         sessionId
       };
 
