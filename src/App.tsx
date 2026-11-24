@@ -201,6 +201,7 @@ import "react-quill-new/dist/quill.snow.css";
 import { PublicVisitorLogs } from "./components/PublicVisitorLogs";
 import { CloudStorageManager } from "./components/CloudStorageManager";
 import { OnlinePortalSuite } from "./components/OnlinePortalSuite";
+import { OnlinePortalGuard } from "./components/UnderConstruction";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
@@ -10077,11 +10078,13 @@ E-Vedhika Support System`;
                     exit={{ opacity: 0 }}
                     className="w-full space-y-4"
                   >
-                    <OnlinePortalSuite 
-                      onBackToHome={() => setCurrentTab("home")}
-                      onNavigateTab={(t) => setCurrentTab(t)}
-                      addToast={addToast}
-                    />
+                    <OnlinePortalGuard>
+                      <OnlinePortalSuite 
+                        onBackToHome={() => setCurrentTab("home")}
+                        onNavigateTab={(t) => setCurrentTab(t)}
+                        addToast={addToast}
+                      />
+                    </OnlinePortalGuard>
                   </motion.div>
                 )}
 
