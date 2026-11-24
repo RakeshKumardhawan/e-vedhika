@@ -7121,7 +7121,7 @@ E-Vedhika Support System`;
                     { id: "pdf_compress", label: "PDF Compress (250KB)", icon: FileDown, colorTheme: "blue" },
                     { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat, colorTheme: "amber" },
                     { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive, colorTheme: "purple" },
-                    { id: "online_portal", label: "Online portal at our line", icon: Globe, colorTheme: "orange", badge: "Soon" },
+                    { id: "online_portal", label: "Online Reporting Module", icon: Globe, colorTheme: "orange" },
                   ].map((item, index) => {
                     const isActive = currentTab === item.id || (item.id === "priority_services" && (currentTab === "emergency" || currentTab === "my_activity" || currentTab === "chat" || currentTab === "union"));
                     const Icon = item.icon;
@@ -7778,7 +7778,7 @@ E-Vedhika Support System`;
                   { id: "farmer_registry", label: "Farmer Registry Live Verification", icon: Wheat },
                   { id: "software_hub", label: "Software Hub & Drivers", icon: HardDrive },
                   { id: "gpdp_setup", label: "GPDP Initial Setup", icon: ClipboardList },
-                  { id: "online_portal", label: "Online portal at our line (Soon)", icon: Globe },
+                  { id: "online_portal", label: "Online Reporting Module", icon: Globe },
                 ].map((item) => (
                   <MenuButton
                     key={item.id}

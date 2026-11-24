@@ -436,8 +436,8 @@ export function useDeepLink({
         desc: "ప్రభుత్వ పోర్టల్స్‌లో అప్‌లోడ్ చేయాల్సిన PDF ఫైళ్ల సైజును క్వాలిటీ తగ్గకుండా 200 KB లోపుకు తగ్గించే సురక్షిత బ్రౌజర్ టూల్.",
       },
       "/online_portal": {
-        title: "Online Portal at Our Line (నిర్మాణంలో ఉంది) | E-Vedhika",
-        desc: "Online Portal at Our Line - ప్రస్తుతం అభివృద్ధి మరియు నిర్మాణ దశలో ఉంది.",
+        title: "Online Reporting Module (ఆన్‌లైన్ రిపోర్టింగ్ మాడ్యూల్) | E-Vedhika",
+        desc: "e-Panchayat Online Reporting Module, State Format DSR, Official Government Softwares & Drivers Hub.",
       },
     };
 

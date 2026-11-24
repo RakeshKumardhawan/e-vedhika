@@ -277,7 +277,7 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
         {/* Live Active Status Pill */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black">
           <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
-          <span>E-Vedhika Online Portal Suite v2.1 (Full Live Integration)</span>
+          <span>E-Vedhika Online Reporting Module v2.1 (Full Live Integration)</span>
         </div>
       </div>
 
@@ -287,13 +287,16 @@ export function OnlinePortalSuite({ onBackToHome, onNavigateTab, addToast }: Onl
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full text-[10px] font-black uppercase tracking-wider mb-3 border border-amber-400/30">
-              ⚡ పంచాయతీ ఆటోమేషన్, రోబోట్ కన్సోల్ &amp; సాఫ్ట్‌వేర్ హబ్
+              ⚡ ఈ-పంచాయతీ ఆన్‌లైన్ రిపోర్టింగ్ &amp; అధికారిక ఆటోమేషన్ హబ్
             </div>
-            <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight">
-              Online Portal at Our Line
+            <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3 flex-wrap">
+              Online Reporting Module
+              <span className="text-xs sm:text-sm font-bold text-amber-300 px-3 py-1 rounded-full bg-amber-400/20 border border-amber-400/30">
+                ఆన్‌లైన్ రిపోర్టింగ్ మాడ్యూల్
+              </span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1.5 max-w-2xl leading-relaxed">
-              తెలంగాణ మరియు ఏపీ గ్రామ పంచాయతీ సిబ్బందికి అవసరమైన e-Panchayat ఆటోమేటెడ్ రిపోర్టులు, స్టేట్ ఫార్మాట్ DSR, ఆధికారిక బయోమెట్రిక్ &amp; DSC డ్రైవర్లు, PDF &amp; ఎక్సెల్ స్టూడియో సాధనాలు.
+              తెలంగాణ మరియు ఏపీ గ్రామ పంచాయతీలకు అవసరమైన e-Panchayat ఆన్‌లైన్ రిపోర్టింగ్ (GM-R 14.2, MAS 18-Matrix, 14-Col DSR), రోబోట్ కన్సోల్ సెషన్, అధికారిక DSC &amp; బయోమెట్రిక్ డ్రైవర్లు.
             </p>
           </div>
 
