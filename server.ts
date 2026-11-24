@@ -455,10 +455,10 @@ async function startServer() {
   });
 
   // =========================================================================
-  // PanchayatAutomation.in Compatible Live Endpoints (/api/naresh/*, /api/balance/*, /api/tax/*)
+  // e-Panchayat & E-Vedhika Official Live Reporting Endpoints (/api/epanchayat/*, /api/evedhika/*, /api/balance/*, /api/tax/*)
   // Connects seamlessly to live Playwright Python robot or provides zero-downtime governance responses
   // =========================================================================
-  const PANCHAYAT_AUTOMATION_URL = (process.env.PANCHAYAT_AUTOMATION_URL || "https://panchayatautomation.in").trim();
+  const PANCHAYAT_AUTOMATION_URL = (process.env.PANCHAYAT_AUTOMATION_URL || "").trim();
 
   // Helper to proxy requests to external Python automation robot if reachable
   async function proxyToAutomationRobot(endpoint: string, method: string, body?: any, headers?: any) {
@@ -486,8 +486,8 @@ async function startServer() {
     return null;
   }
 
-  // 1. Department Login & Captcha Auto-Solve (/api/epanchayat/login & /api/naresh/login)
-  app.post(["/api/epanchayat/login", "/api/naresh/login"], async (req, res) => {
+  // 1. Department Login & Captcha Auto-Solve (/api/epanchayat/login & /api/evedhika/login)
+  app.post(["/api/epanchayat/login", "/api/evedhika/login"], async (req, res) => {
     try {
       const { officerId, password, userId } = req.body || {};
       const user = String(officerId || userId || "").trim();
@@ -496,7 +496,7 @@ async function startServer() {
       }
 
       // Try live robot first
-      const robotResult = await proxyToAutomationRobot("/api/naresh/login", "POST", req.body, req.headers);
+      const robotResult = await proxyToAutomationRobot("/api/epanchayat/login", "POST", req.body, req.headers);
       if (robotResult) {
         return res.json(robotResult);
       }
@@ -537,8 +537,8 @@ async function startServer() {
     }
   });
 
-  // 2. Validate 6-Digit SMS OTP (/api/epanchayat/verify-otp & /api/naresh/verify-otp)
-  app.post(["/api/epanchayat/verify-otp", "/api/naresh/verify-otp"], async (req, res) => {
+  // 2. Validate 6-Digit SMS OTP (/api/epanchayat/verify-otp & /api/evedhika/verify-otp)
+  app.post(["/api/epanchayat/verify-otp", "/api/evedhika/verify-otp"], async (req, res) => {
     try {
       const { officerId, otp, userId } = req.body || {};
       const cleanOtp = String(otp || "").replace(/\D/g, '');
@@ -546,7 +546,7 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "దయచేసి సరైన 6-అంకెల OTP ని నమోదు చేయండి." });
       }
 
-      const robotResult = await proxyToAutomationRobot("/api/naresh/verify-otp", "POST", req.body, req.headers);
+      const robotResult = await proxyToAutomationRobot("/api/epanchayat/verify-otp", "POST", req.body, req.headers);
       if (robotResult) {
         return res.json(robotResult);
       }
@@ -574,10 +574,10 @@ async function startServer() {
     }
   });
 
-  // 3. Session Status Poller (/api/epanchayat/session-status & /api/naresh/session-status)
-  app.get(["/api/epanchayat/session-status", "/api/naresh/session-status"], async (req, res) => {
+  // 3. Session Status Poller (/api/epanchayat/session-status & /api/evedhika/session-status)
+  app.get(["/api/epanchayat/session-status", "/api/evedhika/session-status"], async (req, res) => {
     try {
-      const robotResult = await proxyToAutomationRobot("/api/naresh/session-status", "GET", null, req.headers);
+      const robotResult = await proxyToAutomationRobot("/api/epanchayat/session-status", "GET", null, req.headers);
       if (robotResult) {
         return res.json(robotResult);
       }
@@ -597,10 +597,10 @@ async function startServer() {
     }
   });
 
-  // 4. Logout Session (/api/epanchayat/logout & /api/naresh/logout)
-  app.post(["/api/epanchayat/logout", "/api/naresh/logout"], async (req, res) => {
+  // 4. Logout Session (/api/epanchayat/logout & /api/evedhika/logout)
+  app.post(["/api/epanchayat/logout", "/api/evedhika/logout"], async (req, res) => {
     try {
-      await proxyToAutomationRobot("/api/naresh/logout", "POST", req.body, req.headers);
+      await proxyToAutomationRobot("/api/epanchayat/logout", "POST", req.body, req.headers);
       res.json({ success: true, message: "ePanchayat logged out successfully" });
     } catch (e: any) {
       res.json({ success: true, message: "Session closed" });
@@ -681,10 +681,10 @@ async function startServer() {
     }
   });
 
-  // 8. Daily Status Report Attendance Matrix (/api/naresh/dsr)
-  app.get("/api/naresh/dsr", async (req, res) => {
+  // 8. Daily Status Report Attendance Matrix (/api/epanchayat/dsr & /api/evedhika/dsr)
+  app.get(["/api/epanchayat/dsr", "/api/evedhika/dsr"], async (req, res) => {
     try {
-      const robotResult = await proxyToAutomationRobot("/api/naresh/dsr", "GET", null, req.headers);
+      const robotResult = await proxyToAutomationRobot("/api/epanchayat/dsr", "GET", null, req.headers);
       if (robotResult) {
         return res.json(robotResult);
       }
