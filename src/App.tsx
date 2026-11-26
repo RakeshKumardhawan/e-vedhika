@@ -820,7 +820,6 @@ function isUserProfileComplete(profile: UserProfile | null | undefined): boolean
   if (gender !== "Female" && mobile.replace(/\D/g, "").length < 10) return false;
   if (!district || district.toLowerCase() === "undefined") return false;
   if (!mandal) return false;
-  if (!village) return false;
   if (!designation) return false;
 
   return true;
@@ -11096,11 +11095,10 @@ function EditProfileModal({
       (cleanGender !== "Female" && cleanMobile.replace(/\D/g, "").length < 10) ||
       !cleanDistrict ||
       !cleanMandal ||
-      !cleanVillage ||
       !cleanDesignation
     ) {
       const msg =
-        "దయచేసి నక్షత్రం (*) గుర్తు ఉన్న అన్ని ప్రొఫైల్ వివరాలను (ఇంటి పేరు, పేరు, యూజర్ నేమ్, లింగం, 10 అంకెల మొబైల్ నంబర్, జిల్లా, మండలం, గ్రామ పంచాయతీ, హోదా) పూర్తిగా నమోదు చేయండి!";
+        "దయచేసి నక్షత్రం (*) గుర్తు ఉన్న అన్ని ప్రొఫైల్ వివరాలను (ఇంటి పేరు, పేరు, యూజర్ నేమ్, లింగం, 10 అంకెల మొబైల్ నంబర్, జిల్లా, మండలం, హోదా) పూర్తిగా నమోదు చేయండి!";
       setValidationError(msg);
       addToast(msg);
       return;
@@ -11519,14 +11517,13 @@ function EditProfileModal({
             <div>
               <label className="text-[10px] font-black text-slate-700 uppercase mb-1 block ml-1">
                 గ్రామ పంచాయతీ / గ్రామం (Village / GP){" "}
-                <span className="text-rose-600">*</span>
+                <span className="text-slate-400 font-semibold">(Optional)</span>
               </label>
               <input
                 value={village}
-                required
                 onChange={(e) => setVillage(e.target.value)}
                 className="w-full bg-slate-50 border-2 border-slate-200 p-2.5 rounded-xl focus:border-primary focus:bg-white outline-none font-bold text-xs text-slate-800"
-                placeholder="గ్రామ పంచాయతీ పేరు (Village / GP)"
+                placeholder="గ్రామ పంచాయతీ పేరు (ఐచ్ఛికం / Optional)"
               />
             </div>
           </div>
