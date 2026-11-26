@@ -203,6 +203,7 @@ import { CloudStorageManager } from "./components/CloudStorageManager";
 import { OnlinePortalSuite } from "./components/OnlinePortalSuite";
 import { OnlinePortalGuard } from "./components/UnderConstruction";
 import { AdminOnlineReportingPanel } from "./components/EpanchayatAdminLinks";
+import { RecentUpdatesTicker } from "./components/RecentUpdatesTicker";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
@@ -299,38 +300,68 @@ import {
 import { auth, db, storage } from "../firebase";
 import { uploadFileToSupabase } from "./supabase";
 
-async function uploadFileSafe(file: File, path: string, onProgress?: (p: number) => void): Promise<string> {
-  // Only Cloudflare R2 (Supabase fallback removed to be strictly R2 as per user request)
-  const providers = ["cloudflare"];
-
-  for (const provider of providers) {
-    if (provider === "cloudflare") {
-      try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: {
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-            'X-Admin-Auth': 'true'
-          },
-          body: formData
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.url) {
-            if (onProgress) onProgress(100);
-            return data.url;
-          }
-        }
-      } catch (e) {
-        console.warn("Cloudflare R2 upload failed:", e);
+async function uploadFileSafe(file: File, storagePath: string, onProgress?: (p: number) => void): Promise<string> {
+  // 1. Primary: Cloudflare R2 (/api/upload) — ONLY accept permanent cloud URLs (never ephemeral /uploads/ disk paths!)
+  try {
+    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        'X-Admin-Auth': 'true'
+      },
+      body: formData
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.url && data.r2 === true && String(data.url).startsWith('http')) {
+        if (onProgress) onProgress(100);
+        return data.url;
       }
+      console.warn("Server returned non-R2/ephemeral URL, upgrading to permanent cloud backup:", data?.url);
+    }
+  } catch (e) {
+    console.warn("Cloudflare R2 upload failed, using permanent backup:", e);
+  }
+
+  // 2. Permanent Backup: Firebase Storage (never ephemeral server /tmp disk)
+  try {
+    const safePath = storagePath || `comment_media/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const storageRef = ref(storage, safePath);
+    const snap = await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(snap.ref);
+    if (onProgress) onProgress(100);
+    return url;
+  } catch (fbErr) {
+    console.warn("Firebase Storage fallback failed:", fbErr);
+  }
+
+  // 3. Final Indestructible Fallback for Images: Compress < 300KB & store inline data URL
+  if (file.type.startsWith("image/")) {
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.28,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
+      });
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsDataURL(compressed);
+      });
+      if (dataUrl && dataUrl.length < 750000) {
+        if (onProgress) onProgress(100);
+        return dataUrl;
+      }
+    } catch (compErr) {
+      console.warn("Image compression fallback failed:", compErr);
     }
   }
 
-  throw new Error("Cloudflare R2 upload failed. Please check storage configuration. (క్లౌడ్ ఫ్లేర్ R2 అప్‌లోడ్ విఫలమైంది. దయచేసి నెట్‌వర్క్ లేదా కాన్ఫిగరేషన్ తనిఖీ చేయండి)");
+  throw new Error("Photo upload failed. Please check your connection and try again.");
 }
 
 enum OperationType {
@@ -8025,6 +8056,17 @@ E-Vedhika Support System`;
                       currentUser={user || auth.currentUser}
                       setCurrentTab={setCurrentTab}
                       dataLoading={dataLoading}
+                    />
+                    <RecentUpdatesTicker
+                      posts={posts}
+                      onNavigateTab={(t) => {
+                        if (t === "software_hub") {
+                          window.history.pushState({}, "", "/software_hub");
+                        } else if (t === "online_portal") {
+                          window.history.pushState({}, "", "/online_portal");
+                        }
+                        setCurrentTab(t);
+                      }}
                     />
                     {dataLoading ? (
                       <div className="space-y-4 animate-in fade-in duration-500">
