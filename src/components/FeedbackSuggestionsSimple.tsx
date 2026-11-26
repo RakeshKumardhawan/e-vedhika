@@ -47,6 +47,29 @@ function formatDateTime(ts: any): string {
   });
 }
 
+function extractAdminReply(item: any): string {
+  if (!item) return "";
+  const direct =
+    item.adminReply ||
+    item.reply ||
+    item.adminResponse ||
+    item.response ||
+    item.solution ||
+    item.adminSolution ||
+    item.adminNotes ||
+    item.remarks ||
+    item.answer;
+  if (direct && String(direct).trim()) return String(direct).trim();
+  if (Array.isArray(item.replies) && item.replies.length > 0) {
+    return item.replies
+      .map((r: any) => (typeof r === "string" ? r : r?.text || r?.reply || r?.msg || ""))
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+  return "";
+}
+
 export function FeedbackSuggestionsSimple({
   suggestions,
   user,
@@ -78,7 +101,8 @@ export function FeedbackSuggestionsSimple({
     const filtered = (suggestions || []).filter((s) => {
       const st = String(s.status || "").toLowerCase();
       if (st === "deleted" || st === "rejected") return false;
-      if (!isAdmin && st === "pending" && s.uid !== user?.uid) return false;
+      const hasAnyReply = Boolean(extractAdminReply(s));
+      if (!isAdmin && st === "pending" && !hasAnyReply && s.uid !== user?.uid) return false;
       if (categoryFilter !== "ALL") {
         const cat = String(s.category || "General Appreciation");
         if (cat.toLowerCase() !== categoryFilter.toLowerCase()) return false;
@@ -230,7 +254,8 @@ export function FeedbackSuggestionsSimple({
                 const cat = String(item.category || "General Appreciation");
                 const desig = String(item.designation || "").trim();
                 const textBody = String(item.suggestion || item.text || item.msg || "");
-                const hasReply = Boolean(item.adminReply);
+                const adminReplyText = extractAdminReply(item);
+                const hasReply = Boolean(adminReplyText);
                 return (
                   <div
                     key={item.id}
@@ -282,7 +307,7 @@ export function FeedbackSuggestionsSimple({
                           )}
                         </div>
                         <p className="text-xs text-emerald-900 leading-relaxed whitespace-pre-wrap">
-                          {item.adminReply}
+                          {adminReplyText}
                         </p>
                       </div>
                     )}
@@ -323,7 +348,7 @@ export function FeedbackSuggestionsSimple({
                             type="button"
                             onClick={() => {
                               setReplyingId(item.id);
-                              setReplyText(item.adminReply || "");
+                              setReplyText(adminReplyText);
                             }}
                             className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
                           >
