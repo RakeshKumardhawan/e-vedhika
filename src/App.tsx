@@ -204,6 +204,8 @@ import { OnlinePortalSuite } from "./components/OnlinePortalSuite";
 import { OnlinePortalGuard } from "./components/UnderConstruction";
 import { AdminOnlineReportingPanel } from "./components/EpanchayatAdminLinks";
 import { RecentUpdatesTicker } from "./components/RecentUpdatesTicker";
+import { FeedbackSuggestionsSimple } from "./components/FeedbackSuggestionsSimple";
+import { SupportChatSimple } from "./components/SupportChatSimple";
 import { SoftwareHub } from "./components/SoftwareHub";
 import { AdminSoftwareHub } from "./components/admin/AdminSoftwareHub";
 import { parseTabFromUrl, useDeepLink } from "./hooks/useDeepLink";
@@ -6448,24 +6450,38 @@ E-Vedhika Support System`;
               </button>
             </div>
 
-            {/* Direct Messages Button */}
-            <div
-              className="p-1 sm:p-2 cursor-pointer text-white/80 hover:text-white transition-colors mr-0.5 sm:mr-2 rounded-full hover:bg-white/10 relative"
-              onClick={() => {
-                if (!user) {
-                  requireLoginAlert();
-                  return;
-                }
-                setShowDirectMessages(true);
-              }}
-              title="Direct Messages"
-            >
-              <MessageCircle size={18} className="w-[17px] h-[17px] sm:w-[20px] sm:h-[20px]" />
-              {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-blue-500 text-white text-[9px] sm:text-[10px] font-black rounded-full flex items-center justify-center shadow-lg border-2 border-[#0d2a4a]">
-                  {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length}
-                </span>
-              )}
+            {/* Header Pill Buttons: Suggestions (Left) + Support Chat (Right) */}
+            <div className="flex items-center gap-1.5 mr-1 sm:mr-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.pushState({}, "", "/suggestions");
+                  setCurrentTab("suggestions");
+                }}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-slate-200 shadow-xs text-[11px] sm:text-xs font-bold transition-all cursor-pointer shrink-0"
+                title="Feedback & Suggestions"
+              >
+                <Lightbulb size={13} className="text-amber-500 shrink-0" />
+                <span className="hidden sm:inline">Suggestions</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.pushState({}, "", "/chat");
+                  setCurrentTab("chat");
+                }}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-white/95 hover:bg-white text-slate-800 border border-slate-200 shadow-xs text-[11px] sm:text-xs font-bold transition-all cursor-pointer relative shrink-0"
+                title="Support Chat"
+              >
+                <MessageCircle size={13} className="text-indigo-500 shrink-0" />
+                <span className="hidden sm:inline">Support Chat</span>
+                {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length > 0 && (
+                  <span className="w-4 h-4 bg-blue-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                    {allDmMessages.filter(m => m.receiverId === user?.uid && !m.read).length}
+                  </span>
+                )}
+              </button>
             </div>
 
           <div className="relative" ref={notifDropdownRef}>
@@ -8954,13 +8970,13 @@ E-Vedhika Support System`;
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
+                    className="py-2"
                   >
-                    <ChatSection
-                      messages={chatMessages}
+                    <SupportChatSimple
                       user={user}
+                      userProfile={userProfile}
                       isAdmin={isAdmin}
                       addToast={addToast}
-                      userProfile={userProfile}
                     />
                   </motion.div>
                 )}
@@ -9409,337 +9425,19 @@ E-Vedhika Support System`;
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
+                    className="py-2"
                   >
-                    <AdBanner />
-                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-sm border border-slate-200">
-                      <div className="border-b border-slate-100 pb-4 mb-6">
-                        <h2 className="text-xl sm:text-2xl font-black text-slate-800 flex flex-row items-center flex-wrap gap-2">
-                          <Lightbulb className="text-amber-500 shrink-0" />
-                          <span>e-Vedhika Suggestion Portal</span>
-                        </h2>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
-                          మీ సూచనలు మాకు ఎంతో ముఖ్యం
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                          <div className="bg-slate-50 rounded-[28px] border border-slate-200 p-6 relative overflow-hidden shadow-sm">
-                            <div className="flex justify-between items-start mb-4">
-                              <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-                                Latest Suggestions
-                              </h3>
-                            </div>
-                            <div
-                              ref={suggestionsScrollRef}
-                              onMouseEnter={() => setIsSuggestionsHovered(true)}
-                              onMouseLeave={() =>
-                                setIsSuggestionsHovered(false)
-                              }
-                              className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2"
-                            >
-                              {approvedSuggestions.length > 0 ? (
-                                [...approvedSuggestions]
-                                  .sort(
-                                    (a, b) => getValidTime(b) - getValidTime(a),
-                                  )
-                                  .slice(0, visibleSuggestionsCount)
-                                  .map((s) => (
-                                    <motion.div
-                                      key={s.id}
-                                      initial={{ opacity: 0, y: 10 }}
-                                      animate={{
-                                        opacity: 1,
-                                        y: 0,
-                                      }}
-                                      className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-blue-400 transition-colors shadow-sm"
-                                    >
-                                      <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-black text-slate-600">
-                                            {(s.name ||
-                                              s.author ||
-                                              "U")[0].toUpperCase()}
-                                          </div>
-                                          <div className="flex flex-col">
-                                            <span className="text-xs font-black text-slate-800 leading-tight">
-                                              {s.name || s.author || "Unknown"}
-                                            </span>
-                                            {s.village && (
-                                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-                                                {s.village}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <div className="text-[9px] text-slate-500 font-bold uppercase tracking-tight text-right">
-                                          <div className="leading-none mb-0.5 whitespace-nowrap">
-                                            {new Date(
-                                              getValidTime(s),
-                                            ).toLocaleDateString("en-IN", {
-                                              day: "numeric",
-                                              month: "short",
-                                            })}
-                                          </div>
-                                          <div className="text-[8px] opacity-70 whitespace-nowrap">
-                                            {new Date(
-                                              getValidTime(s),
-                                            ).toLocaleTimeString("en-IN", {
-                                              hour: "numeric",
-                                              minute: "2-digit",
-                                              hour12: true,
-                                            })}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <p className="text-[13px] text-slate-800 font-bold leading-relaxed whitespace-pre-wrap">
-                                        {s.msg || s.suggestion}
-                                      </p>
-                                    </motion.div>
-                                  ))
-                              ) : (
-                                <div className="text-center py-20 text-slate-400 text-xs font-bold uppercase tracking-widest">
-                                  No submissions yet
-                                </div>
-                              )}
-                              {approvedSuggestions.length >
-                                visibleSuggestionsCount && (
-                                <div className="pt-4 text-center pb-4">
-                                  <button
-                                    onClick={() =>
-                                      setVisibleSuggestionsCount(
-                                        (prev) => prev + 20,
-                                      )
-                                    }
-                                    className="px-6 py-2 bg-white text-slate-700 rounded-xl font-black uppercase text-xs tracking-widest border border-slate-200 hover:bg-slate-50 hover:text-blue-600 transition-all active:scale-95 shadow-sm"
-                                  >
-                                    Load More Suggestions
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="relative bg-white p-6 sm:p-8 rounded-[32px] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col h-full hover:shadow-2xl hover:border-slate-300/80 transition-all duration-300 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1.5 before:bg-gradient-to-r before:from-indigo-600 before:via-blue-500 before:to-indigo-500 before:rounded-t-[32px]">
-                          {(!user || user?.isAnonymous) && (
-                            <div
-                              className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-[32px]"
-                              onClick={() => {
-                                window.dispatchEvent(new Event("open-login-modal"));
-                              }}
-                            />
-                          )}
-                          <div
-                            className={
-                              !user || user?.isAnonymous
-                                ? "opacity-30 pointer-events-none"
-                                : ""
-                            }
-                          >
-                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-                              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                                <MessageSquare className="w-5 h-5" />
-                              </div>
-                              <span>Submit Suggestion & Feedback</span>
-                            </h3>
-                            <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-3 mb-6 flex items-center gap-1.5 pl-0.5">
-                              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
-                              మీ అమూల్యమైన సూచనలను ఇక్కడ నమోదు చేయండి
-                            </p>
-
-                            <form
-                              onSubmit={async (e) => {
-                                e.preventDefault();
-                                const target = e.target as any;
-                                const name = target.name.value.trim();
-                                const village = target.village.value.trim();
-                                const mobile = target.mobile
-                                  ? target.mobile.value.trim()
-                                  : "";
-                                const category = target.category.value;
-                                const suggestion =
-                                  target.suggestion.value.trim();
-
-                                if (
-                                  !name ||
-                                  !village ||
-                                  !category ||
-                                  !suggestion ||
-                                  (userProfile?.gender !== "Female" && !mobile)
-                                ) {
-                                  return addToast(
-                                    "దయచేసి అన్ని వివరాలు నింపండి (Please fill all fields)",
-                                  );
-                                }
-
-                                if (mobile && !/^[0-9]{10}$/.test(mobile)) {
-                                  return addToast(
-                                    "దయచేసి 10 అంకెల మొబైల్ నంబర్ నమోదు చేయండి",
-                                  );
-                                }
-
-                                try {
-                                  await addDoc(collection(db, "suggestions"), {
-                                    name,
-                                    village,
-                                    mobile,
-                                    category,
-                                    suggestion,
-                                    time: Date.now(),
-                                    status: "pending",
-                                    uid: user?.uid || "anonymous",
-                                  });
-                                  
-                                  // Send Telegram notification
-                                  sendTelegramNotification(`💡 <b>New Suggestion/Issue Submitted</b>\n\n<b>From:</b> ${name} (${village})\n<b>Mobile:</b> ${mobile || "N/A"}\n<b>Category:</b> ${category}\n<b>Message:</b> ${suggestion.substring(0, 150)}\n\n<i>Please review in the Suggestions panel.</i>`, "system");
-
-                                  await addDoc(collection(db, "notifications"), {
-                                    uid: "all",
-                                    title: "కొత్త సూచన (Suggestion Alert)",
-                                    message: `${name} వారు ఒక కొత్త సూచన/సమస్యను సమర్పించారు: ${suggestion.substring(0, 50)}`,
-                                    type: "admin_alert",
-                                    read: false,
-                                    time: Date.now()
-                                  }).catch(() => {});
-                                  await logUserActivity(
-                                    `Submitted Suggestion: ${category}`,
-                                  );
-                                  target.name.value = userProfile
-                                    ? `${userProfile.name || ""} ${userProfile.surname || ""}`.trim()
-                                    : "";
-                                  target.village.value = userProfile
-                                    ? `${userProfile.mandal || ""} / ${userProfile.district || ""}`
-                                        .trim()
-                                        .replace(/^ \/ | \/ $/g, "")
-                                    : "";
-                                  if (target.mobile)
-                                    target.mobile.value =
-                                      userProfile?.mobile || "";
-                                  target.category.value = "";
-                                  target.suggestion.value = "";
-
-                                  Swal.fire({
-                                    title: "✅ సక్సెస్!",
-                                    text: "మీ సూచన విజయవంతంగా నమోదు చేయబడింది.",
-                                    icon: "success",
-                                    confirmButtonColor: "#0d3b66",
-                                  });
-                                } catch (error) {
-                                  handleFirestoreError(
-                                    error,
-                                    OperationType.CREATE,
-                                    "suggestions",
-                                  );
-                                  addToast("సబ్మిట్ చేయడంలో లోపం కలిగింది.");
-                                }
-                              }}
-                              className="space-y-4"
-                            >
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5 flex flex-col">
-                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
-                                    మీ పేరు (Name){" "}
-                                    <span className="text-rose-500">*</span>
-                                  </label>
-                                  <input
-                                    name="name"
-                                    type="text"
-                                    defaultValue={
-                                      userProfile
-                                        ? `${userProfile.name || ""} ${userProfile.surname || ""}`.trim()
-                                        : ""
-                                    }
-                                    placeholder="Enter your name"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                                    required
-                                  />
-                                </div>
-                                <div className="space-y-1.5 flex flex-col">
-                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
-                                    జిల్లా / మండలం (Area){" "}
-                                    <span className="text-rose-500">*</span>
-                                  </label>
-                                  <input
-                                    name="village"
-                                    type="text"
-                                    defaultValue={
-                                      userProfile
-                                        ? `${userProfile.mandal || ""} / ${userProfile.district || ""}`
-                                            .trim()
-                                            .replace(/^ \/ | \/ $/g, "")
-                                        : ""
-                                    }
-                                    placeholder="District / Mandal"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                                    required
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {userProfile?.gender !== "Female" && (
-                                  <div className="space-y-1.5 flex flex-col">
-                                    <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
-                                      మొబైల్ నంబర్ (Mobile){" "}
-                                      <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                      name="mobile"
-                                      type="tel"
-                                      defaultValue={userProfile?.mobile || ""}
-                                      maxLength={10}
-                                      placeholder="10 Digit Number"
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm"
-                                      required
-                                    />
-                                  </div>
-                                )}
-                                <div className="space-y-1.5 flex flex-col">
-                                  <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
-                                    విభాగం (Category){" "}
-                                    <span className="text-rose-500">*</span>
-                                  </label>
-                                  <select
-                                    name="category"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-sm font-bold text-slate-900 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm cursor-pointer"
-                                    required
-                                  >
-                                    <option value="">విభాగం ఎంచుకోండి</option>
-                                    {suggestionCategories.map((cat, idx) => (
-                                      <option key={idx} value={cat}>{cat}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="space-y-1.5 pt-2 flex flex-col">
-                                <label className="text-xs font-bold text-slate-700 tracking-wide pl-1">
-                                  మీ సూచన (Suggestion){" "}
-                                  <span className="text-rose-500">*</span>
-                                </label>
-                                <textarea
-                                  name="suggestion"
-                                  placeholder="మీ సూచన ఇక్కడ టైప్ చేయండి..."
-                                  rows={4}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none hover:bg-slate-100/40 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 shadow-sm resize-none"
-                                  required
-                                ></textarea>
-                              </div>
-
-                              <button
-                                aria-label="Submit Entry"
-                                type="submit"
-                                className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 hover:from-indigo-700 hover:via-blue-700 hover:to-indigo-800 text-white py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:shadow-xl hover:shadow-indigo-600/30 hover:scale-[1.01] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
-                              >
-                                <Send className="w-4 h-4" />
-                                <span>Submit Entry</span>
-                              </button>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <FeedbackSuggestionsSimple
+                      suggestions={suggestions}
+                      user={user}
+                      userProfile={userProfile}
+                      isAdmin={isAdmin}
+                      onClose={() => {
+                        window.history.pushState({}, "", "/");
+                        setCurrentTab("home");
+                      }}
+                      addToast={addToast}
+                    />
                   </motion.div>
                 )}
 
