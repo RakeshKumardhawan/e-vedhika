@@ -782,7 +782,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-16 text-left">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-24 text-left">
       {/* Top Banner with Real-time Sync indicator */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -836,13 +836,13 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search software by name, driver, version, tag or keyword..."
-              className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium"
+              className="w-full pl-11 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all font-medium"
             />
             {searchQuery && (
               <button
@@ -980,7 +980,7 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                 <div
                   key={folder.id}
                   onClick={() => setActiveFolderId(folder.id)}
-                  className={`p-5 rounded-2xl border ${colorStyle.card} shadow-xs hover:shadow-lg transition-all duration-200 cursor-pointer group flex flex-col justify-between text-left relative overflow-hidden`}
+                  className={`h-full p-5 rounded-2xl border ${colorStyle.card} shadow-xs hover:shadow-lg transition-all duration-200 cursor-pointer group flex flex-col justify-between text-left relative overflow-hidden`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3">
@@ -1002,10 +1002,10 @@ export const SoftwareHub: React.FC<SoftwareHubProps> = ({
                     </div>
 
                     <div>
-                      <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2">
                         {folder.name}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2 min-h-[2.5rem]">
                         {folder.descriptionTelugu || "Software items and links in this folder."}
                       </p>
                     </div>

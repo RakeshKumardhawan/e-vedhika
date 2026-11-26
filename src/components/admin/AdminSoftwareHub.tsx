@@ -134,6 +134,11 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
   // Drag and Drop state
   const [draggedSoftwareId, setDraggedSoftwareId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [isSystemDragOver, setIsSystemDragOver] = useState(false);
+  const [dropTargetFolderId, setDropTargetFolderId] = useState<string>("folder-office");
+  const [bulkUploadStatus, setBulkUploadStatus] = useState<{ active: boolean; current: number; total: number; fileName: string } | null>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+  const bulkFolderInputRef = useRef<HTMLInputElement>(null);
 
   // Cloudflare R2 Storage State
   const [r2Files, setR2Files] = useState<R2StorageFile[]>([]);
@@ -348,72 +353,193 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
     return "link";
   };
 
-  // Upload to Firebase Storage
-  const handleFileUpload = (file: File, isQuickModal = false) => {
+  // Helper: remove undefined keys so Firestore setDoc/updateDoc never throws
+  const cleanForFirestore = <T extends Record<string, any>>(obj: T): T => {
+    const out: Record<string, any> = {};
+    Object.keys(obj).forEach((k) => {
+      if (obj[k] !== undefined) out[k] = obj[k];
+    });
+    return out as T;
+  };
+
+  // Helper: upload single File STRICTLY to Cloudflare R2 (/api/upload)
+  const uploadSingleFileSmart = async (file: File, onProgress?: (p: number) => void): Promise<string> => {
+    const token = await auth.currentUser?.getIdToken();
+    if (!token) {
+      throw new Error("Admin login token లేదు — దయచేసి మళ్ళీ Sign In అవ్వండి.");
+    }
+
+    if (onProgress) onProgress(20);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.url) {
+      throw new Error(data?.error || `Cloudflare R2 upload failed (HTTP ${res.status})`);
+    }
+    if (onProgress) onProgress(100);
+    return data.url;
+  };
+
+  // Bulk upload multiple files (and auto-create public folder if dropped from a named folder)
+  const handleBulkFilesUpload = async (entries: Array<{ file: File; folderName?: string }>) => {
+    if (!entries.length) return;
+    setBulkUploadStatus({ active: true, current: 0, total: entries.length, fileName: entries[0].file.name });
+    const createdFolderMap = new Map<string, string>();
+    let successCount = 0;
+
+    for (let i = 0; i < entries.length; i++) {
+      const { file, folderName: droppedFolder } = entries[i];
+      setBulkUploadStatus({ active: true, current: i + 1, total: entries.length, fileName: file.name });
+
+      try {
+        let targetFId = dropTargetFolderId || (selectedFolderFilter !== "all" ? selectedFolderFilter : "folder-office");
+
+        // If user dropped a folder from Windows, find or auto-create a Public folder with that name
+        if (droppedFolder) {
+          const existing = folders.find((f) => f.name.toLowerCase() === droppedFolder.toLowerCase());
+          if (existing) {
+            targetFId = existing.id;
+          } else if (createdFolderMap.has(droppedFolder.toLowerCase())) {
+            targetFId = createdFolderMap.get(droppedFolder.toLowerCase())!;
+          } else {
+            const newFId = `folder_${Date.now()}_${i}`;
+            const newFolder: SoftwareFolder = {
+              id: newFId,
+              name: droppedFolder,
+              descriptionTelugu: `${droppedFolder} ఫోల్డర్ ఫైల్స్`,
+              iconName: "Folder",
+              colorTheme: "indigo",
+              allowedRoles: [], // Public folder
+              order: folders.length + createdFolderMap.size + 1,
+              updatedAt: new Date().toISOString(),
+            };
+            await setDoc(doc(db, "software_folders", newFId), cleanForFirestore(newFolder), { merge: true });
+            createdFolderMap.set(droppedFolder.toLowerCase(), newFId);
+            targetFId = newFId;
+          }
+        }
+
+        const downloadUrl = await uploadSingleFileSmart(file);
+        const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").trim() || file.name;
+        const ext = file.name.split(".").pop()?.toUpperCase() || "FILE";
+        const sizeStr = formatBytes(file.size);
+        const docId = `sw_${Date.now()}_${i}`;
+
+        const itemPayload: SoftwareItem = {
+          id: docId,
+          name: cleanName,
+          category: "office",
+          folderId: targetFId,
+          itemType: "file",
+          fileFormat: ext,
+          version: "v1.0",
+          fileSize: sizeStr,
+          supportedOS: "Windows 10/11",
+          downloadUrl,
+          descriptionTelugu: `${cleanName} (${ext} • ${sizeStr})`,
+          isOfficial: true,
+          isR2Storage: true,
+          lastUpdated: new Date().toLocaleDateString("en-IN"),
+          updatedAtTimestamp: Date.now(),
+        };
+
+        await setDoc(doc(db, "software_repository", docId), cleanForFirestore(itemPayload), { merge: true });
+        successCount++;
+      } catch (err: any) {
+        console.error(`Failed uploading ${file.name}:`, err);
+        if (addToast) addToast(`'${file.name}' అప్‌లోడ్ విఫలమైంది: ${err?.message || "Upload error"}`, "error");
+      }
+    }
+
+    setBulkUploadStatus(null);
+    if (successCount > 0 && addToast) {
+      addToast(`${successCount}/${entries.length} ఫైల్స్ Software Hub లోకి అప్‌లోడ్ అయ్యాయి!`, "success");
+    }
+  };
+
+  // Read dropped files AND dropped folders recursively from Windows Explorer
+  const handleSystemDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsSystemDragOver(false);
+
+    // Ignore internal card drags
+    if (draggedSoftwareId) return;
+
+    const collected: Array<{ file: File; folderName?: string }> = [];
+    const items = e.dataTransfer?.items;
+
+    const readEntry = async (entry: any, topFolder?: string): Promise<void> => {
+      if (entry.isFile) {
+        await new Promise<void>((res) => {
+          entry.file((f: File) => {
+            collected.push({ file: f, folderName: topFolder });
+            res();
+          }, () => res());
+        });
+      } else if (entry.isDirectory) {
+        const dirReader = entry.createReader();
+        const folderLabel = topFolder || entry.name;
+        await new Promise<void>((res) => {
+          dirReader.readEntries(async (subEntries: any[]) => {
+            for (const sub of subEntries) {
+              await readEntry(sub, folderLabel);
+            }
+            res();
+          }, () => res());
+        });
+      }
+    };
+
+    if (items && items.length > 0 && typeof items[0].webkitGetAsEntry === "function") {
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry();
+        if (entry) await readEntry(entry);
+      }
+    } else if (e.dataTransfer?.files?.length) {
+      Array.from(e.dataTransfer.files).forEach((f) => collected.push({ file: f }));
+    }
+
+    if (collected.length > 0) {
+      await handleBulkFilesUpload(collected);
+    }
+  };
+
+  // Upload single file (used inside Quick Update & Full Add/Edit modals)
+  const handleFileUpload = async (file: File, isQuickModal = false) => {
     const isQuick = isQuickModal;
     if (isQuick) {
       setIsUploading(true);
-      setUploadProgress(1);
+      setUploadProgress(10);
     }
-
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storageRef = ref(storage, `software_hub/${Date.now()}_${safeName}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const p = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+    try {
+      const downloadUrl = await uploadSingleFileSmart(file, (p) => {
         if (isQuick) setUploadProgress(p);
-      },
-      (error) => {
-        console.warn("Upload error, falling back to Base64:", error);
-        const reader = new FileReader();
-        reader.onload = () => {
-          const downloadUrl = reader.result as string;
-          const sizeFormatted = formatBytes(file.size);
-          const ext = file.name.split(".").pop()?.toUpperCase() || "EXE";
+      });
+      const sizeFormatted = formatBytes(file.size);
+      const ext = file.name.split(".").pop()?.toUpperCase() || "EXE";
 
-          if (isQuick) {
-            setNewDownloadUrl(downloadUrl);
-            setQuickItemType("file");
-            setIsUploading(false);
-          } else {
-            setFormUrl(downloadUrl);
-          }
-          if (addToast) addToast("File uploaded successfully (Local fallback)!", "success");
-        };
-        reader.onerror = () => {
-          if (isQuick) setIsUploading(false);
-          if (addToast) addToast("Failed to upload file.", "error");
-        };
-        reader.readAsDataURL(file);
-      },
-      async () => {
-        try {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          const sizeFormatted = formatBytes(file.size);
-          const ext = file.name.split(".").pop()?.toUpperCase() || "EXE";
-
-          if (isQuick) {
-            setNewDownloadUrl(downloadUrl);
-            setQuickItemType("file");
-            setIsUploading(false);
-          } else {
-            setFormUrl(downloadUrl);
-            setFormFileSize(sizeFormatted);
-            setFormFileFormat(ext);
-            setFormItemType("file");
-          }
-
-          if (addToast) addToast(`File uploaded successfully! (${sizeFormatted})`, "success");
-        } catch (err) {
-          console.error(err);
-          if (isQuick) setIsUploading(false);
-          if (addToast) addToast("Failed to retrieve file URL.", "error");
-        }
+      if (isQuick) {
+        setNewDownloadUrl(downloadUrl);
+        setQuickItemType("file");
+        setIsUploading(false);
+      } else {
+        setFormUrl(downloadUrl);
+        setFormFileSize(sizeFormatted);
+        setFormFileFormat(ext);
+        setFormItemType("file");
       }
-    );
+      if (addToast) addToast(`File uploaded successfully! (${sizeFormatted})`, "success");
+    } catch (err: any) {
+      console.error("File upload error:", err);
+      if (isQuick) setIsUploading(false);
+      if (addToast) addToast(`ఫైల్ అప్‌లోడ్ విఫలమైంది: ${err?.message || "Storage error"}`, "error");
+    }
   };
 
   // Upload directly to Cloudflare R2 via /api/upload
@@ -576,7 +702,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
     };
 
     try {
-      await setDoc(doc(db, "software_repository", docId), payload, { merge: true });
+      await setDoc(doc(db, "software_repository", docId), cleanForFirestore(payload), { merge: true });
       if (addToast) {
         addToast(
           editingItem
@@ -637,13 +763,13 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       descriptionTelugu: folderDesc.trim() || "Folder containing software and utility files.",
       iconName: folderIcon,
       colorTheme: folderColor,
-      allowedRoles: folderAllowedRoles.length > 0 ? folderAllowedRoles : undefined,
+      allowedRoles: folderAllowedRoles.length > 0 ? folderAllowedRoles : [],
       order: editingFolder ? editingFolder.order : folders.length + 1,
       updatedAt: new Date().toISOString(),
     };
 
     try {
-      await setDoc(doc(db, "software_folders", fId), payload, { merge: true });
+      await setDoc(doc(db, "software_folders", fId), cleanForFirestore(payload), { merge: true });
       if (addToast) {
         addToast(
           editingFolder
@@ -931,6 +1057,110 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
                 <div className="text-sm font-black text-slate-900 font-mono truncate">{folders.length} folders</div>
               </div>
             </div>
+          </div>
+
+          {/* System Drag & Drop Bulk File / Folder Upload Zone */}
+          <div
+            onDragOver={(e) => {
+              if (!draggedSoftwareId) {
+                e.preventDefault();
+                setIsSystemDragOver(true);
+              }
+            }}
+            onDragLeave={() => setIsSystemDragOver(false)}
+            onDrop={handleSystemDrop}
+            className={`rounded-2xl border-2 border-dashed p-5 transition-all ${
+              isSystemDragOver
+                ? "border-indigo-500 bg-indigo-50/80 scale-[1.01]"
+                : "border-slate-300 bg-slate-50/70 hover:border-indigo-400"
+            }`}
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 text-center md:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Upload size={22} />
+                </div>
+                <div>
+                  <div className="text-sm font-black text-slate-900">
+                    Drag &amp; Drop Files or Folder from PC (ఒకేసారి బహుళ ఫైల్స్ / ఫోల్డర్)
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    మీ కంప్యూటర్ నుండి ఫైల్స్ లేదా మొత్తం ఫోల్డర్‌ను ఇక్కడ డ్రాగ్ చేసి వదలండి — ఆటోమేటిక్‌గా Cloud లో సేవ్ అయ్యి పబ్లిక్ Software Hub లో కనిపిస్తాయి.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <select
+                  value={dropTargetFolderId}
+                  onChange={(e) => setDropTargetFolderId(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 outline-none"
+                  title="Target Folder for Dropped Files"
+                >
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      📁 {f.name}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  ref={bulkFileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files ? Array.from(e.target.files) : [];
+                    if (files.length) handleBulkFilesUpload(files.map((file) => ({ file })));
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={bulkFolderInputRef}
+                  type="file"
+                  multiple
+                  {...({ webkitdirectory: "", directory: "" } as any)}
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files ? Array.from(e.target.files) : [];
+                    if (files.length) {
+                      handleBulkFilesUpload(
+                        files.map((file) => {
+                          const rel = (file as any).webkitRelativePath || "";
+                          const topFolder = rel.includes("/") ? rel.split("/")[0] : undefined;
+                          return { file, folderName: topFolder };
+                        })
+                      );
+                    }
+                    e.target.value = "";
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => bulkFileInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black cursor-pointer"
+                >
+                  Select Files
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bulkFolderInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black cursor-pointer"
+                >
+                  Select Folder
+                </button>
+              </div>
+            </div>
+
+            {bulkUploadStatus?.active && (
+              <div className="mt-3 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-between text-xs font-bold text-indigo-900">
+                <span>
+                  ⏳ Uploading {bulkUploadStatus.current}/{bulkUploadStatus.total}: {bulkUploadStatus.fileName}
+                </span>
+                <span>{Math.round((bulkUploadStatus.current / bulkUploadStatus.total) * 100)}%</span>
+              </div>
+            )}
           </div>
 
           {/* Filter / Search Bar */}
@@ -1743,9 +1973,9 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       {/* QUICK UPDATE LINK/FILE MODAL */}
       {/* ======================================================== */}
       {quickUpdateItem && (
-        <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 my-auto text-left">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 text-left">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Link className="text-cyan-400" size={20} />
                 <div>
@@ -1761,7 +1991,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
               {/* Type Selection */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -1891,9 +2121,9 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       {/* FULL ADD / EDIT SOFTWARE MODAL */}
       {/* ======================================================== */}
       {isFullModalOpen && (
-        <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 my-8 text-left">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 text-left">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <HardDrive className="text-cyan-400" size={20} />
                 <h3 className="text-base font-black">
@@ -2140,9 +2370,9 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
       {/* FOLDER ADD / EDIT MODAL (WINDOWS EXPLORER STYLE) */}
       {/* ======================================================== */}
       {isFolderModalOpen && (
-        <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 my-auto text-left">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-[5000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200 text-left">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <FolderPlus className="text-cyan-400" size={20} />
                 <h3 className="text-base font-black">
@@ -2157,7 +2387,7 @@ export const AdminSoftwareHub: React.FC<AdminSoftwareHubProps> = ({
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
               {/* Folder Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
