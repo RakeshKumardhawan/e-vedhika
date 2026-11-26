@@ -11012,38 +11012,10 @@ function EditProfileModal({
     if (!file) return;
     setUploadingAvatar(true);
     try {
-      let finalUrl = "";
-      try {
-        const token = await auth.currentUser?.getIdToken().catch(() => null);
-        const formData = new FormData();
-        formData.append("file", file);
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            "X-Admin-Auth": "true",
-          },
-          body: formData,
-        });
-        const resText = await response.text();
-        let data: any = null;
-        try {
-          data = JSON.parse(resText);
-        } catch {}
-        if (response.ok && data?.url) {
-          finalUrl = data.url;
-        }
-      } catch (e) {
-        console.warn("Server avatar upload fallback:", e);
-      }
-
-      if (!finalUrl) {
-        finalUrl = await uploadFileSafe(
-          file,
-          `uploads/avatars/${Date.now()}_${file.name}`,
-        );
-      }
-
+      const finalUrl = await uploadFileSafe(
+        file,
+        `uploads/avatars/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`,
+      );
       setPhotoURL(finalUrl);
       addToast("ప్రొఫైల్ ఫోటో అప్‌లోడ్ చేయబడింది (Profile photo uploaded)!");
     } catch (err) {
@@ -31705,35 +31677,8 @@ function PostComments({
 
           const safeName = (fileToUploadLocal.name || 'image.png').replace(/[^a-zA-Z0-9.\-_]/g, '_');
           const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
-          
-          // strictly Cloudflare R2
-          try {
-            const token = await auth.currentUser?.getIdToken().catch(() => null);
-            const formData = new FormData();
-            formData.append('file', processedFile);
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-                'X-Admin-Auth': 'true'
-              },
-              body: formData
-            });
-            const resText = await response.text();
-            let data: any = null;
-            try { data = JSON.parse(resText); } catch {}
-            if (response.ok && data?.url) {
-              uploadedImageUrl = data.url;
-            }
-          } catch (cfErr) {
-            console.warn("Screenshot server upload failed:", cfErr);
-          }
-
-          if (!uploadedImageUrl) {
-            throw new Error("క్లౌడ్ ఫ్లేర్ R2 అప్‌లోడ్ విఫలమైంది.");
-          }
-          
-          addToast("Screenshot uploaded successfully! (R2)");
+          uploadedImageUrl = await uploadFileSafe(processedFile, `comment_media/${uniqueFilename}`);
+          addToast("Screenshot uploaded successfully!");
         } catch (e: any) {
           addToast(`Failed to upload screenshot: ${e.message || "Unknown error"}`);
           console.error("Screenshot upload error", e);
