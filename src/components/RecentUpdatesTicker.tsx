@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { collection, collectionGroup, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import {
   Sparkles,
   Folder,
   HardDrive,
-  Globe,
   FileText,
-  MessageSquare,
   Zap,
   ArrowUpRight,
   Pause,
@@ -18,7 +16,7 @@ export interface RecentUpdateItem {
   id: string;
   title: string;
   subtitle: string;
-  source: "Software Hub" | "Folder" | "Portal Link" | "Post" | "Comment" | "New Feature";
+  source: "Software Hub" | "Folder" | "Post" | "New Feature";
   timestamp: number;
   dateLabel: string;
   targetTab: string;
@@ -45,6 +43,16 @@ function parseTimestampMs(val: any): number {
   return 0;
 }
 
+function isAdminCreatedPost(p: any): boolean {
+  if (!p) return false;
+  if (p.isAdminPost === true) return true;
+  if (p.uid === "KGT2roF9bPTNhWIceHgWsJEnEnH3") return true;
+  const role = String(p.authorRole || p.role || "").toLowerCase();
+  if (role.includes("admin")) return true;
+  const author = String(p.userName || p.author || "").trim().toLowerCase();
+  return author === "admin" || author === "rakesh dhawan" || author === "super admin";
+}
+
 const PLATFORM_NEW_FEATURES: RecentUpdateItem[] = [
   {
     id: "feat_sw_dragdrop",
@@ -58,7 +66,7 @@ const PLATFORM_NEW_FEATURES: RecentUpdateItem[] = [
   {
     id: "feat_recent_ticker",
     title: "Live Recent Updates Feed on Home Page",
-    subtitle: "New Feature • పోస్టులు, కామెంట్లు, సాఫ్ట్‌వేర్ అప్‌డేట్స్ లైవ్ రోలింగ్",
+    subtitle: "New Feature • అడ్మిన్ పోస్టులు, సాఫ్ట్‌వేర్లు & కొత్త ఫీచర్లు",
     source: "New Feature",
     timestamp: Date.parse("2026-11-26T22:00:00+05:30"),
     dateLabel: "26/11/2026",
@@ -69,11 +77,9 @@ const PLATFORM_NEW_FEATURES: RecentUpdateItem[] = [
 export function RecentUpdatesTicker({ posts = [], onNavigateTab }: RecentUpdatesTickerProps) {
   const [swUpdates, setSwUpdates] = useState<RecentUpdateItem[]>([]);
   const [folderUpdates, setFolderUpdates] = useState<RecentUpdateItem[]>([]);
-  const [linkUpdates, setLinkUpdates] = useState<RecentUpdateItem[]>([]);
-  const [commentUpdates, setCommentUpdates] = useState<RecentUpdateItem[]>([]);
   const [isPaused, setIsPaused] = useState(false);
 
-  // 1. Live Software Hub updates
+  // 1. Live Software Hub updates (publicly accessible items)
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "software_repository"),
@@ -99,7 +105,7 @@ export function RecentUpdatesTicker({ posts = [], onNavigateTab }: RecentUpdates
     return () => unsub();
   }, []);
 
-  // 2. Live Folder updates
+  // 2. Live Public Folder updates (skip restricted/non-public folders)
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "software_folders"),
@@ -107,6 +113,7 @@ export function RecentUpdatesTicker({ posts = [], onNavigateTab }: RecentUpdates
         const list: RecentUpdateItem[] = [];
         snap.forEach((d) => {
           const data = d.data() as any;
+          if (Array.isArray(data.allowedRoles) && data.allowedRoles.length > 0) return;
           const ts = parseTimestampMs(data.updatedAt);
           if (ts > 0) {
             list.push({
@@ -127,115 +134,36 @@ export function RecentUpdatesTicker({ posts = [], onNavigateTab }: RecentUpdates
     return () => unsub();
   }, []);
 
-  // 3. Live Online Portal link updates (NEVER expose raw sensitive URLs)
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "epanchayat_portal_links"),
-      (snap) => {
-        const list: RecentUpdateItem[] = [];
-        snap.forEach((d) => {
-          const data = d.data() as any;
-          const ts = parseTimestampMs(data.createdAt);
-          list.push({
-            id: `lnk_${d.id}`,
-            title: String(data.title || "Portal Update"),
-            subtitle: String(data.subtitle || "Online Reporting Update"),
-            source: "Portal Link",
-            timestamp: ts,
-            dateLabel: ts ? new Date(ts).toLocaleDateString("en-IN") : "New",
-            targetTab: "online_portal",
-          });
-        });
-        setLinkUpdates(list);
-      },
-      () => {}
-    );
-    return () => unsub();
-  }, []);
-
-  // 4. Live Comments across all posts via collectionGroup
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collectionGroup(db, "comments"),
-      (snap) => {
-        const list: RecentUpdateItem[] = [];
-        snap.forEach((d) => {
-          const c = d.data() as any;
-          const txt = String(c.text || c.comment || "").replace(/https?:\/\/\S+/gi, "").trim();
-          if (!txt && !c.imageUrl) return;
-          const ts = parseTimestampMs(c.createdAt || c.time || c.timestamp);
-          const author = String(c.userName || c.author || "User");
-          list.push({
-            id: `cmt_${d.id}`,
-            title: `${author}: ${txt ? txt.slice(0, 80) : "Shared a photo"}`,
-            subtitle: "New Comment on Post",
-            source: "Comment",
-            timestamp: ts,
-            dateLabel: ts ? new Date(ts).toLocaleDateString("en-IN") : "Recent",
-            targetTab: "home",
-          });
-        });
-        list.sort((a, b) => b.timestamp - a.timestamp);
-        setCommentUpdates(list.slice(0, 6));
-      },
-      () => {}
-    );
-    return () => unsub();
-  }, []);
-
-  // 5. Recent Posts + Legacy embedded comments inside posts
-  const postUpdates: RecentUpdateItem[] = [];
-  const legacyCommentUpdates: RecentUpdateItem[] = [];
-
-  (posts || []).forEach((p) => {
-    const st = String(p.status || "").toLowerCase();
-    if (st === "rejected" || st === "deleted" || st === "pending") return;
-
-    const ts = parseTimestampMs(p.updatedAtTimestamp || p.updatedAt || p.createdAt || p.time || p.timestamp);
-    postUpdates.push({
-      id: `post_${p.id}`,
-      title: String(p.title || p.content || "New Post").slice(0, 85),
-      subtitle: `${p.userName || p.author || "Member"} • ${p.category || "Community Post"}`,
-      source: "Post",
-      timestamp: ts,
-      dateLabel: ts ? new Date(ts).toLocaleDateString("en-IN") : "Recent",
-      targetTab: "home",
-    });
-
-    if (Array.isArray(p.comments)) {
-      p.comments.forEach((c: any, idx: number) => {
-        const txt = String(c.text || c.comment || "").replace(/https?:\/\/\S+/gi, "").trim();
-        if (!txt && !c.imageUrl) return;
-        const cTs = parseTimestampMs(c.createdAt || c.time || c.timestamp);
-        legacyCommentUpdates.push({
-          id: `lcmt_${p.id}_${c.id || idx}`,
-          title: `${c.userName || c.author || "Member"}: ${txt ? txt.slice(0, 80) : "Shared a photo"}`,
-          subtitle: `Comment on "${String(p.title || "Post").slice(0, 35)}"`,
-          source: "Comment",
-          timestamp: cTs,
-          dateLabel: cTs ? new Date(cTs).toLocaleDateString("en-IN") : "Recent",
-          targetTab: "home",
-        });
-      });
-    }
-  });
-
-  // Merge, deduplicate comments by id, and sort newest first across all categories
-  const topPosts = postUpdates.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
-  const topComments = [...commentUpdates, ...legacyCommentUpdates]
+  // 3. ONLY Admin-created Posts (exclude regular user posts & under-construction modules)
+  const adminPostUpdates: RecentUpdateItem[] = (posts || [])
+    .filter((p) => {
+      const st = String(p.status || "").toLowerCase();
+      if (st === "rejected" || st === "deleted" || st === "pending") return false;
+      return isAdminCreatedPost(p);
+    })
+    .map((p) => {
+      const ts = parseTimestampMs(p.updatedAtTimestamp || p.updatedAt || p.createdAt || p.time || p.timestamp);
+      return {
+        id: `post_${p.id}`,
+        title: String(p.title || p.content || "Admin Announcement").slice(0, 85),
+        subtitle: `Admin • ${p.category || "Official Update"}`,
+        source: "Post" as const,
+        timestamp: ts,
+        dateLabel: ts ? new Date(ts).toLocaleDateString("en-IN") : "Recent",
+        targetTab: "home",
+      };
+    })
     .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 5);
+    .slice(0, 6);
 
   const allUpdates = [
     ...PLATFORM_NEW_FEATURES,
-    ...topPosts,
-    ...topComments,
-    ...swUpdates.sort((a, b) => b.timestamp - a.timestamp).slice(0, 4),
+    ...adminPostUpdates,
+    ...swUpdates.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5),
     ...folderUpdates.sort((a, b) => b.timestamp - a.timestamp).slice(0, 3),
-    ...linkUpdates.sort((a, b) => b.timestamp - a.timestamp).slice(0, 3),
   ]
     .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 15);
+    .slice(0, 14);
 
   if (allUpdates.length === 0) return null;
 
@@ -257,18 +185,6 @@ export function RecentUpdatesTicker({ posts = [], onNavigateTab }: RecentUpdates
           pill: "bg-purple-50 text-purple-700 border-purple-200/80",
           iconBox: "bg-purple-100/80 text-purple-600",
           icon: <Folder size={14} />,
-        };
-      case "Portal Link":
-        return {
-          pill: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-          iconBox: "bg-emerald-100/80 text-emerald-600",
-          icon: <Globe size={14} />,
-        };
-      case "Comment":
-        return {
-          pill: "bg-cyan-50 text-cyan-700 border-cyan-200/80",
-          iconBox: "bg-cyan-100/80 text-cyan-600",
-          icon: <MessageSquare size={14} />,
         };
       case "New Feature":
         return {
@@ -299,7 +215,7 @@ export function RecentUpdatesTicker({ posts = [], onNavigateTab }: RecentUpdates
             Recent Updates
           </span>
           <span className="text-[11px] font-semibold text-slate-300 hidden sm:inline">
-            • పోస్టులు, కామెంట్లు, సాఫ్ట్‌వేర్లు &amp; కొత్త ఫీచర్లు
+            • అడ్మిన్ పోస్టులు, సాఫ్ట్‌వేర్లు &amp; కొత్త ఫీచర్లు
           </span>
         </div>
 
